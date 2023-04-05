@@ -723,7 +723,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       }
     },
 
-    testNowAllowedLet: function() {
+    testNotAllowedLet: function() {
       try {
         collection.properties({
           computedValues: [
@@ -739,8 +739,67 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
       }
     },
+    
+    testInteractionBetweenSchemaAndComputedValues: function() {
+      const schema = {
+        rule: {
+          type: "object",
+          properties: {
+            value1: {
+              type: "boolean",
+            },
+          },
+          required: ["value1"],
+        },
+        level: "moderate",
+        message: "Schema validation failed",
+        type: "json",
+      };
 
-    testSchemaValidationWithComputedValuesoverwrite: function() {
+      const computedValues = [
+        {
+          name: "value1",
+          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+          computeOn: ["insert", "update", "replace"],
+          overwrite: true,
+          failOnWarning: false,
+          keepNull: true,
+        }
+      ];
+
+      collection.properties({ schema, computedValues });
+
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      let colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("schema"));
+      assertEqual(schema, colProperties.schema);
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(computedValues, colProperties.computedValues);
+
+      // update just the schema
+      collection.properties({ schema });
+
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("schema"));
+      assertEqual(schema, colProperties.schema);
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(computedValues, colProperties.computedValues);
+    },
+
+    testSchemaValidationWithComputedValuesOverwrite: function() {
       collection.properties({
         schema: {
           "rule": {
@@ -791,7 +850,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertEqual(res.length, 0);
     },
 
-    testSchemaValidationWithComputedValuesNooverwrite: function() {
+    testSchemaValidationWithComputedValuesNoOverwrite: function() {
       collection.properties({
         schema: {
           "rule": {
@@ -846,7 +905,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
 
-    testRedefineComputedValueUpdateoverwrite: function() {
+    testRedefineComputedValueUpdateOverwrite: function() {
       collection.properties({
         computedValues: [
           {
@@ -921,7 +980,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
-    testRedefineComputedValueUpdateNooverwrite: function() {
+    testRedefineComputedValueUpdateNoOverwrite: function() {
       collection.properties({
         computedValues: [
           {

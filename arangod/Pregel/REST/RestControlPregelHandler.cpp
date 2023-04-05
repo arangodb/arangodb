@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,9 +30,12 @@
 #include "Cluster/ServerState.h"
 #include "Inspection/VPackWithErrorT.h"
 #include "Pregel/Conductor/Conductor.h"
+#include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/REST/RestOptions.h"
+#include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "Pregel/StatusActor.h"
 #include "Transaction/StandaloneContext.h"
 
 #include <velocypack/Builder.h>
@@ -59,11 +62,11 @@ RestStatus RestControlPregelHandler::execute() {
       break;
     }
     case rest::RequestType::GET: {
-      getExecutionStatus();
+      handleGetRequest();
       break;
     }
     case rest::RequestType::DELETE_REQ: {
-      cancelExecution();
+      handleDeleteRequest();
       break;
     }
     default: {
@@ -90,6 +93,13 @@ RestControlPregelHandler::forwardingTarget() {
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
+    return {std::make_pair(StaticStrings::Empty, false)};
+  }
+
+  // Do NOT forward requests to any other arangod instance in case we're
+  // requesting the history API. Any coordinator is able to handle this
+  // request.
+  if (suffixes.size() >= 1 && suffixes.at(0) == "history") {
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
@@ -138,61 +148,148 @@ void RestControlPregelHandler::startExecution() {
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
-void RestControlPregelHandler::getExecutionStatus() {
+void RestControlPregelHandler::handleGetRequest() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.empty()) {
-    bool const allDatabases = _request->parsedValue("all", false);
-    bool const fanout = ServerState::instance()->isCoordinator() &&
-                        !_request->parsedValue("local", false);
+    VPackBuilder builder;
+    pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
+    return handlePregelHistoryResult(cWriter.readAllNonExpiredResults());
+  }
+
+  if (suffixes.size() == 1 && suffixes.at(0) != "history") {
+    if (suffixes[0].empty()) {
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+          "superfluous parameter, expecting /_api/control_pregel[/<id>]");
+      return;
+    }
+    auto executionNumber = arangodb::pregel::ExecutionNumber{
+        arangodb::basics::StringUtils::uint64(suffixes[0])};
+    auto c = _pregel.conductor(executionNumber);
+
+    if (nullptr == c) {
+      auto status = _pregel.getStatus(executionNumber);
+      if (not status.ok()) {
+        generateError(rest::ResponseCode::NOT_FOUND, status.errorNumber(),
+                      status.errorMessage());
+        return;
+      }
+      auto serializedState = inspection::serializeWithErrorT(status.get());
+      if (!serializedState.ok()) {
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
+                      fmt::format("Cannot serialize status: {}",
+                                  serializedState.error().error()));
+        return;
+      }
+      generateResult(rest::ResponseCode::OK, serializedState.get().slice());
+      return;
+    }
 
     VPackBuilder builder;
-    _pregel.toVelocyPack(_vocbase, builder, allDatabases, fanout);
+    c->toVelocyPack(builder);
     generateResult(rest::ResponseCode::OK, builder.slice());
     return;
+  } else if ((suffixes.size() >= 1 || suffixes.size() <= 2) &&
+             suffixes.at(0) == "history") {
+    if (_pregel.isStopping()) {
+      return handlePregelHistoryResult({Result(TRI_ERROR_SHUTTING_DOWN)});
+    }
+
+    if (suffixes.size() == 1) {
+      // Read all pregel history entries
+      pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
+      return handlePregelHistoryResult(cWriter.readAllResults());
+    } else {
+      // Read single history entry
+      auto executionNumber = arangodb::pregel::ExecutionNumber{
+          arangodb::basics::StringUtils::uint64(suffixes.at(1))};
+      pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
+                                                           executionNumber};
+      return handlePregelHistoryResult(cWriter.readResult());
+    }
   }
 
-  if (suffixes.size() != 1 || suffixes[0].empty()) {
-    generateError(
-        rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-        "superfluous parameter, expecting /_api/control_pregel[/<id>]");
-    return;
-  }
-
-  auto executionNumber = arangodb::pregel::ExecutionNumber{
-      arangodb::basics::StringUtils::uint64(suffixes[0])};
-  auto c = _pregel.conductor(executionNumber);
-
-  if (nullptr == c) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                  "Execution number is invalid");
-    return;
-  }
-
-  VPackBuilder builder;
-  c->toVelocyPack(builder);
-  generateResult(rest::ResponseCode::OK, builder.slice());
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                "expecting one of the resources /_api/control_pregel[/<id>] or "
+                "/_api/control_pregel/history[/<id>]");
 }
 
-void RestControlPregelHandler::cancelExecution() {
+void RestControlPregelHandler::handlePregelHistoryResult(
+    ResultT<OperationResult> result) {
+  if (result.fail()) {
+    // check outer ResultT result
+    generateError(rest::ResponseCode::BAD, result.errorNumber(),
+                  result.errorMessage());
+    return;
+  }
+  if (result.get().fail()) {
+    // check inner OperationResult
+    std::string message = std::string{result.get().errorMessage()};
+    if (result.get().errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      // For reasons, not all OperationResults deliver the expected message.
+      // Therefore, we need set up the message properly and manually here.
+      message = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND).errorMessage();
+    }
+
+    ResponseCode code =
+        GeneralResponse::responseCode(result.get().errorNumber());
+    generateError(code, result.get().errorNumber(), message);
+    return;
+  }
+
+  if (result->hasSlice()) {
+    if (result->slice().isNone()) {
+      // Truncate does not deliver a proper slice in a Cluster.
+      generateResult(rest::ResponseCode::OK, VPackSlice::trueSlice());
+    } else {
+      generateResult(rest::ResponseCode::OK, result.get().slice());
+    }
+  } else {
+    // Should always have a Slice, doing this check to be sure.
+    // (e.g. a truncate might not return a Slice in SingleServer)
+    generateResult(rest::ResponseCode::OK, VPackSlice::trueSlice());
+  }
+}
+
+void RestControlPregelHandler::handleDeleteRequest() {
+  if (_pregel.isStopping()) {
+    return handlePregelHistoryResult({Result(TRI_ERROR_SHUTTING_DOWN)});
+  }
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+
+  if ((suffixes.size() >= 1 || suffixes.size() <= 2) &&
+      suffixes.at(0) == "history") {
+    if (suffixes.size() == 1) {
+      // Delete all pregel history entries
+      pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
+      return handlePregelHistoryResult(cWriter.deleteAllResults());
+    } else {
+      // Delete single history entry
+      auto executionNumber = arangodb::pregel::ExecutionNumber{
+          arangodb::basics::StringUtils::uint64(suffixes.at(1))};
+      pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
+                                                           executionNumber};
+      return handlePregelHistoryResult(cWriter.deleteResult());
+    }
+  }
+
   if ((suffixes.size() != 1) || suffixes[0].empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "bad parameter, expecting /_api/control_pregel/<id>");
+                  "bad parameter, expecting /_api/control_pregel/<id> or "
+                  "/_api/control_pregel/history[/<id>]");
     return;
   }
 
   auto executionNumber = arangodb::pregel::ExecutionNumber{
       arangodb::basics::StringUtils::uint64(suffixes[0])};
-  auto c = _pregel.conductor(executionNumber);
 
-  if (nullptr == c) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                  "Execution number is invalid");
+  auto canceled = _pregel.cancel(executionNumber);
+  if (canceled.fail()) {
+    generateError(rest::ResponseCode::NOT_FOUND, canceled.errorNumber(),
+                  canceled.errorMessage());
     return;
   }
-
-  c->cancel();
 
   VPackBuilder builder;
   builder.add(VPackValue(""));

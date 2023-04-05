@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint strict: false, unused: false */
-/* global window, atob, Backbone, $,_, window, frontendConfig, arangoHelper */
+/* global window, Backbone, $,_, window, frontendConfig, arangoHelper */
 
 window.ArangoUsers = Backbone.Collection.extend({
   model: window.Users,
@@ -65,7 +65,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           throw new Error('base64 support missing in browser');
         }
 
-        var payload = JSON.parse(atob(jwtParts[1]));
+        var payload = JSON.parse(window.atob(jwtParts[1]));
         self.activeUser = payload.preferred_username;
 
         if (self.activeUser === undefined) {
@@ -166,9 +166,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     }
 
     var url = 'whoAmI?_=' + Date.now();
-    if (frontendConfig.react) {
-      url = arangoHelper.databaseUrl('/_admin/aardvark/' + url);
-    }
 
     $.ajax({
       type: 'GET',

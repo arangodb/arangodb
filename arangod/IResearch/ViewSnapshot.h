@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 
 #include "index/index_reader.hpp"
 #include "search/boolean_filter.hpp"
+#include "search/proxy_filter.hpp"
 
 #include <vector>
 #include <string_view>
@@ -53,9 +54,13 @@ class ViewSnapshot : public irs::IndexReader {
  public:
   using Links = std::vector<LinkLock>;
   using Segments = std::vector<ViewSegment>;
+  using ImmutablePartCache =
+      std::map<aql::AstNode const*, irs::proxy_filter::cache_ptr>;
 
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
+
+  [[nodiscard]] virtual ImmutablePartCache& immutablePartCache() noexcept = 0;
 
   [[nodiscard]] virtual StorageSnapshot const& snapshot(
       std::size_t i) const noexcept = 0;

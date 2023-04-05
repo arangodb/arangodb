@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +23,12 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "Auth/Common.h"
 #include "Auth/User.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
@@ -172,7 +173,7 @@ class UserManager {
 
   /// Protected the sync process from db, always lock
   /// before locking _userCacheLock
-  Mutex _loadFromDBLock;
+  std::mutex _loadFromDBLock;
 
   /// Protect the _userCache access
   basics::ReadWriteLock _userCacheLock;

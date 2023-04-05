@@ -2,7 +2,7 @@
 @startDocuBlock get_api_wal_access_tail
 @brief Fetch recent operations
 
-@RESTHEADER{GET /_api/wal/tail, Tail recent server operations, handleCommandTail}
+@RESTHEADER{GET /_api/wal/tail, Tail recent server operations, getWalTail}
 
 @RESTQUERYPARAMETERS
 
@@ -126,7 +126,7 @@ The response also contains the following HTTP headers:
   to break up requests over multiple responses.
 
 - `x-arango-replication-lasttick`: the last tick value the server has
-  logged in its write ahead log (not necessarily included in the result). By comparing the the last
+  logged in its write ahead log (not necessarily included in the result). By comparing the last
   tick and last included tick values, clients have an approximate indication of
   how many events there are still left to fetch.
 

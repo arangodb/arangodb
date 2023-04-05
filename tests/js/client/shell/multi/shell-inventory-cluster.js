@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen : 4000 */
-/* global arango, assertTrue, assertFalse, assertEqual, assertNotEqual */
+/* global arango, assertTrue, assertFalse, assertEqual, assertNotEqual, _ */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for inventory
@@ -78,7 +78,11 @@ function clusterInventorySuite () {
     assertEqual("object", typeof view.links);
     Object.keys(view.links).forEach(function(collection) {
       let link = view.links[collection];
-      assertEqual(11, Object.keys(link).length);
+      if (isEnterprise) {
+        assertEqual(12, Object.keys(link).length);
+      } else {
+        assertEqual(11, Object.keys(link).length);
+      }
       assertEqual("number", typeof link.version);
       assertEqual(1, link.version);
       assertTrue(Array.isArray(link.analyzerDefinitions));
@@ -221,23 +225,45 @@ function clusterInventorySuite () {
       db._createView("UnitTestsDumpViewEmpty", "arangosearch", {});
 
       let view = db._createView("UnitTestsDumpView", "arangosearch", {});
-      view.properties({
-        cleanupIntervalStep: 456,
-        consolidationPolicy: {
-          threshold: 0.3,
-          type: "bytes_accum"
-        },
-        commitIntervalMsec: 12345,
-        consolidationIntervalMsec: 0,
-        links: {
-          "UnitTestsDumpEmpty" : {
-            includeAllFields: true,
-            fields: {
-              text: { analyzers: [ "text_en", analyzer.name ] }
+      let viewMeta = {};
+      if (isEnterprise) {
+        viewMeta = {
+          cleanupIntervalStep: 456,
+          consolidationPolicy: {
+            threshold: 0.3,
+            type: "bytes_accum"
+          },
+          commitIntervalMsec: 12345,
+          consolidationIntervalMsec: 0,
+          links: {
+            "UnitTestsDumpEmpty" : {
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en", analyzer.name ], "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} }
+              }
             }
           }
-        }
-      });
+        };
+      } else {
+        viewMeta = {
+          cleanupIntervalStep: 456,
+          consolidationPolicy: {
+            threshold: 0.3,
+            type: "bytes_accum"
+          },
+          commitIntervalMsec: 12345,
+          consolidationIntervalMsec: 0,
+          links: {
+            "UnitTestsDumpEmpty" : {
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en", analyzer.name ], "fields": { "value": {}}}
+              }
+            }
+          }
+        };
+      }
+      view.properties(viewMeta);
       
       c = db._create("UnitTestsDumpSearchAliasCollection");
       let idx = c.ensureIndex({ type: "inverted", fields: [{ name: "value", analyzer: analyzer.name }] });
@@ -367,7 +393,11 @@ function clusterInventorySuite () {
       assertEqual(1, Object.keys(links).length);
       assertEqual("UnitTestsDumpEmpty", Object.keys(links)[0]);
       let link = links["UnitTestsDumpEmpty"];
-      assertEqual(11, Object.keys(link).length);
+      if (isEnterprise) {
+        assertEqual(12, Object.keys(link).length);
+      } else {
+        assertEqual(11, Object.keys(link).length);
+      }
       assertEqual("number", typeof link.version);
       assertEqual(1, link.version);
       assertEqual("string", typeof link.collectionName);
@@ -384,10 +414,18 @@ function clusterInventorySuite () {
       assertEqual(1, Object.keys(link.fields).length);
       assertEqual("text", Object.keys(link.fields)[0]);
       let field = link.fields["text"];
-      assertEqual(1, Object.keys(field).length);
+      assertEqual(2, Object.keys(field).length);
       assertEqual("analyzers", Object.keys(field)[0]);
       assertTrue(Array.isArray(field.analyzers));
       assertEqual(["custom", "text_en"], field.analyzers.sort());
+
+      assertEqual("fields", Object.keys(field)[1]);
+      assertTrue(typeof field.fields === 'object');
+      if (isEnterprise) {
+        assertTrue(_.isEqual(field.fields.value.nested.nested_1.nested.nested_2, {}));
+      } else {
+        assertTrue(_.isEqual(field.fields.value, {}));
+      }
 
       assertTrue(Array.isArray(link.analyzerDefinitions));
       assertEqual(3, link.analyzerDefinitions.length);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,8 +80,6 @@ namespace arangodb {
 namespace basics {
 class UnshackledMutex;
 }
-
-class Mutex;
 
 template<class T, class L>
 class MutexGuard {
@@ -239,7 +237,7 @@ class Guarded {
  private:
   template<class F, class R = std::invoke_result_t<F, value_type&>,
            class Q = std::conditional_t<std::is_void_v<R>, std::monostate, R>>
-  [[nodiscard]] static auto tryCallUnderLock(M& Mutex, F&& callback, T& value)
+  [[nodiscard]] static auto tryCallUnderLock(M& mutex, F&& callback, T& value)
       -> std::optional<Q>;
 
   value_type _value;

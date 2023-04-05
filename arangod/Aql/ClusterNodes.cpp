@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -423,6 +423,7 @@ void DistributeNode::addSatellite(aql::Collection* satellite) {
         TRI_ASSERT(false);
         return nullptr;  // diamond boundary
       case REMOTESINGLE:
+      case REMOTE_MULTIPLE:
         // While being a CollectionAccessingNode, it lives on the Coordinator.
         // However it should thus not be encountered here.
         TRI_ASSERT(false);

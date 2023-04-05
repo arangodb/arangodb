@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -589,11 +589,13 @@ struct InsertOperationCtx {
     } else {
       userSpecifiedKey = true;
       if (keySlice.isString()) {
-        // validate the key provided by the user
-        auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
-                                                    value, isRestore);
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
+        if (!keySlice.stringView().empty()) {
+          // validate the key provided by the user
+          auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
+                                                      value, isRestore);
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
         }
       }
     }
@@ -3721,7 +3723,8 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
     // Check timestamps of all dbservers:
     size_t good = 0;  // Count restarted servers
     for (auto const& dbs : dbServers) {
-      if (postServersKnown.at(dbs) != preServersKnown.at(dbs)) {
+      if (postServersKnown.at(dbs).rebootId !=
+          preServersKnown.at(dbs).rebootId) {
         ++good;
       }
     }

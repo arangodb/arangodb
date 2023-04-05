@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,8 +28,8 @@
 #include <rocksdb/status.h>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 
+#include <mutex>
 #include <string>
 #include <string_view>
 
@@ -75,7 +75,7 @@ class ChecksumHelper {
  private:
   std::string const _rootPath;
 
-  Mutex _calculatedHashesMutex;
+  std::mutex _calculatedHashesMutex;
   std::unordered_map<std::string, std::string> _fileNamesToHashes;
 };
 

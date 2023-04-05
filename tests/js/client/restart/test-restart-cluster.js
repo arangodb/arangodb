@@ -52,10 +52,10 @@ function testSuite() {
       if (res.status === 200 || res.status === 401 || res.status === 403) {
         break;
       }
-      console.warn("waiting for server response from url " + baseurl);
+      console.warn(`waiting for server response from url ${baseurl} - got ${JSON.stringify(res)}`);
       require('internal').sleep(0.5);
     }
-    return res.status;
+    return res;
   };
 
   let checkAvailability = function (servers, expectedCode) {
@@ -94,7 +94,7 @@ function testSuite() {
         "server.authentication": "false"
       });
       let aliveStatus = waitForAlive(30, coordinator.url, {});
-      assertEqual(200, aliveStatus);
+      assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
     },
 
     testRestartCoordinatorNormal : function() {
@@ -143,7 +143,7 @@ function testSuite() {
 
         // we expect this to run into a timeout
         let aliveStatus = waitForAlive(20, coordinator.url, {});
-        assertEqual(200, aliveStatus);
+        assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
       } finally {
         // make db servers available again
         coordinator.suspended = false; 
@@ -151,7 +151,7 @@ function testSuite() {
         
         // check that the coordinator is usable again
         let aliveStatus = waitForAlive(20, coordinator.url, {});
-        assertEqual(200, aliveStatus);
+        assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
       }
     },
     
@@ -188,7 +188,7 @@ function testSuite() {
         }, 'HS256');
     
         let aliveStatus = waitForAlive(30, coordinator.url, { auth: { bearer: jwt } });
-        assertEqual(401, aliveStatus);
+        assertEqual(401, aliveStatus.status, JSON.stringify(aliveStatus));
       } finally {
         // make db servers available again
         coordinator.suspended = false; 
@@ -228,7 +228,7 @@ function testSuite() {
     
         let aliveStatus = waitForAlive(30, coordinator.url, { auth: { bearer: jwt } });
         // note: this should actually work, but currently doesn't TODO
-        assertTrue([500, 503].indexOf(aliveStatus) !== -1, aliveStatus);
+        assertTrue([500, 503].indexOf(aliveStatus.status) !== -1, JSON.stringify(aliveStatus));
       } finally {
         // make db servers available again
         coordinator.suspended = false; 

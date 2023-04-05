@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -283,12 +283,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief a -1 entry means none is expanding,
   /// otherwise the non-negative number is the index of the expanding one.
   std::vector<int> _expanding;
-
-  /// @brief whether or not the user requested to use a cache for the index.
-  /// note: even if this is set to true, it may not mean that the cache is
-  /// effectively in use. for example, for system collections and on the
-  /// coordinator, no cache will actually be used although this flag may be true
-  bool const _cacheEnabled;
 
   // if true, force a refill of the in-memory cache after each
   // insert/update/replace operation

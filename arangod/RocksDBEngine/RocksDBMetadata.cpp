@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -394,10 +394,23 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     return res;
   }
 
+  struct Stats {
+    rocksdb::SequenceNumber originalAppliedSeq = 0;
+    rocksdb::SequenceNumber maxCommitSeq = 0;
+    rocksdb::SequenceNumber appliedSeqAfterRevisionTree = 0;
+    bool didWork = false;
+  };
+
+  Stats stats;
+  // store original applied seq
+  stats.originalAppliedSeq = appliedSeq;
+
   auto& engine = coll.vocbase().engine<RocksDBEngine>();
   std::string const context = coll.vocbase().name() + "/" + coll.name();
 
   rocksdb::SequenceNumber const maxCommitSeq = committableSeq(appliedSeq);
+  // store committable seq
+  stats.maxCommitSeq = maxCommitSeq;
   TRI_ASSERT(maxCommitSeq <= appliedSeq);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -418,6 +431,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   bool didWork = applyAdjustments(maxCommitSeq);
+  stats.didWork = didWork;
   appliedSeq = maxCommitSeq;
 
   RocksDBKey key;
@@ -520,21 +534,36 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     }
   }
 
-  if (!coll.useSyncByRevision()) {
-    return Result{};
+  TRI_ASSERT(res.ok());
+
+  if (coll.useSyncByRevision()) {
+    // Step 4. Take care of revision tree, either serialize or persist
+    // it, or at least check if we can move forward the seq number when
+    // it was last serialized (in case there have been no writes to the
+    // collection for some time). In either case, the resulting sequence
+    // number is incorporated into the minimum calculation for lastSync
+    // (via `appliedSeq`), such that recovery only has to look at the WAL
+    // from this sequence number on to be able to recover the tree from
+    // its last persisted state.
+    res = rcoll->takeCareOfRevisionTreePersistence(coll, engine, batch, cf,
+                                                   maxCommitSeq, force, context,
+                                                   output, appliedSeq);
+
+    stats.appliedSeqAfterRevisionTree = appliedSeq;
   }
 
-  // Step 4. Take care of revision tree, either serialize or persist
-  // it, or at least check if we can move forward the seq number when
-  // it was last serialized (in case there have been no writes to the
-  // collection for some time). In either case, the resulting sequence
-  // number is incorporated into the minimum calculation for lastSync
-  // (via `appliedSeq`), such that recovery only has to look at the WAL
-  // from this sequence number on to be able to recover the tree from
-  // its last persisted state.
-  return rcoll->takeCareOfRevisionTreePersistence(coll, engine, batch, cf,
-                                                  maxCommitSeq, force, context,
-                                                  output, appliedSeq);
+  if (stats.didWork || stats.originalAppliedSeq != appliedSeq) {
+    // only log if there is something noteworthy
+    LOG_TOPIC("ec667", DEBUG, Logger::ENGINES)
+        << "serializeMeta for '" << coll.vocbase().name() << "/" << coll.name()
+        << "': original applied seq: " << stats.originalAppliedSeq
+        << ", max commit seq: " << maxCommitSeq
+        << ", applied seq after revision trees: "
+        << stats.appliedSeqAfterRevisionTree
+        << ", didWork: " << (didWork ? "yes" : "no");
+  }
+
+  return res;
 }
 
 /// @brief deserialize collection metadata, only called on startup

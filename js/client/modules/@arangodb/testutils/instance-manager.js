@@ -67,8 +67,11 @@ const termSignal = 15;
 
 const instanceRole = inst.instanceRole;
 
+let instanceCount = 1;
+
 class instanceManager {
   constructor(protocol, options, addArgs, testname, tmpDir) {
+    this.instanceCount = instanceCount++;
     this.protocol = protocol;
     this.options = options;
     this.addArgs = addArgs;
@@ -528,20 +531,48 @@ class instanceManager {
   // / @brief dump the state of the agency to disk. if we still can get one.
   // //////////////////////////////////////////////////////////////////////////////
   dumpAgency() {
+    const dumpdir = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}`);
+    const zipfn = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}.zip`);
+    if (fs.isFile(zipfn)) {
+      fs.remove(zipfn);
+    };
+    if (fs.exists(dumpdir)) {
+      fs.list(dumpdir).forEach(file => {
+        const fn = fs.join(dumpdir, file);
+        if (fs.isFile(fn)) {
+          fs.remove(fn);
+        }
+      });
+    } else {
+      fs.makeDirectory(dumpdir);
+    }
     this.arangods.forEach((arangod) => {
       if (arangod.isAgent()) {
         if (!arangod.checkArangoAlive()) {
           print(Date() + " this agent is already dead: " + JSON.stringify(arangod.getStructure()));
         } else {
           print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod.getStructure()));
-          arangod.dumpAgent( '/_api/agency/config', 'GET', 'agencyConfig');
+          arangod.dumpAgent( '/_api/agency/config', 'GET', 'agencyConfig', dumpdir);
 
-          arangod.dumpAgent('/_api/agency/state', 'GET', 'agencyState');
+          arangod.dumpAgent('/_api/agency/state', 'GET', 'agencyState', dumpdir);
 
-          arangod.dumpAgent('/_api/agency/read', 'POST', 'agencyPlan');
+          arangod.dumpAgent('/_api/agency/read', 'POST', 'agencyPlan', dumpdir);
         }
       }
     });
+    let zipfiles = [];
+    fs.list(dumpdir).forEach(file => {
+      const fn = fs.join(dumpdir, file);
+      if (fs.isFile(fn)) {
+        zipfiles.push(file);
+      }
+    });
+    print(`${CYAN}${Date()} Zipping ${zipfn}${RESET}`);
+    fs.zipFile(zipfn, dumpdir, zipfiles);
+    zipfiles.forEach(file => {
+      fs.remove(fs.join(dumpdir, file));
+    });
+    fs.removeDirectory(dumpdir);
   }
 
   checkUptime () {
@@ -611,16 +642,24 @@ class instanceManager {
   checkInstanceAlive({skipHealthCheck = false} = {}) {
     this.arangods.forEach(arangod => { arangod.netstat = {'in':{}, 'out': {}};});
     let obj = this;
-    netstat({platform: process.platform}, function (data) {
-      // skip server ports, we know what we bound.
-      if (data.state !== 'LISTEN') {
-        obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+    try {
+      netstat({platform: process.platform}, function (data) {
+        // skip server ports, we know what we bound.
+        if (data.state !== 'LISTEN') {
+          obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+        }
+      });
+      if (!this.options.noStartStopLogs) {
+        this.printNetstat();
       }
-    });
-    if (!this.options.noStartStopLogs) {
-      this.printNetstat();
+    } catch (ex) {
+      let timeout = internal.SetGlobalExecutionDeadlineTo(0.0);
+      print(RED + 'netstat gathering has thrown: ' + (timeout? "because of timeout in execution":""));
+      print(ex, ex.stack);
+      print(RESET);
+      this.cleanup = false;
+      return this._forceTerminate(ex.message + " during health check");
     }
-    
     if (this.options.activefailover &&
         this.hasOwnProperty('authOpts') &&
         (this.url !== this.agencyConfig.urls[0])
@@ -651,7 +690,6 @@ class instanceManager {
       for (
         const start = Date.now();
         !rc && Date.now() < start + seconds(60) && checkAllAlive();
-        internal.sleep(1)
       ) {
         rc = this._checkServersGOOD();
         if (first) {
@@ -659,6 +697,9 @@ class instanceManager {
             print(RESET + "Waiting for all servers to go GOOD...");
           }
           first = false;
+        }
+        if (!rc) {
+          internal.sleep(1);
         }
       }
     }
@@ -681,9 +722,14 @@ class instanceManager {
   // / @brief checks whether any instance has failure points set
   // //////////////////////////////////////////////////////////////////////////////
 
-  checkServerFailurePoints(instanceInfo) {
+  checkServerFailurePoints(instanceMgr = null) {
     let failurePoints = [];
-    instanceInfo.arangods.forEach(arangod => {
+    let im = this;
+    if (instanceMgr !== null) {
+      im = instanceMgr;
+    }
+
+    im.arangods.forEach(arangod => {
       // we don't have JWT success atm, so if, skip:
       if ((!arangod.isAgent()) &&
           !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
@@ -739,6 +785,12 @@ class instanceManager {
     }
   }
 
+  detectShouldBeRunning() {
+    let ret = true;
+    this.arangods.forEach(arangod => { ret = ret && arangod.pid !== null; } );
+    return ret;
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief shuts down an instance
   // //////////////////////////////////////////////////////////////////////////////
@@ -777,20 +829,16 @@ class instanceManager {
   }
 
   _forceTerminate(moreReason="") {
-    print("Aggregating coredumps");
+    if (!this.options.coreCheck && !this.options.setInterruptable) {
+      print("Interactive mode: SIGABRT killing all arangods");
+    } else {
+      print("Aggregating coredumps");
+    }
     this.arangods.forEach((arangod) => {
-      if (arangod.pid !== null) {
-        arangod.killWithCoreDump('forced shutdown because of: ' + moreReason);
-        arangod.serverCrashedLocal = true;
-      } else {
-        print(RED + Date() + 'instance already gone? ' + arangod.name + RESET);
-      }
+      arangod.killWithCoreDump('force terminating');
     });
     this.arangods.forEach((arangod) => {
-      if (arangod.checkArangoAlive()) {
-        crashUtils.aggregateDebugger(arangod, this.options);
-        arangod.waitForExitAfterDebugKill();
-      }
+      arangod.aggregateDebugger();
     });
     return true;
   }

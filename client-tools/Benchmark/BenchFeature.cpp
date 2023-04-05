@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +32,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <thread>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -367,8 +368,7 @@ void BenchFeature::start() {
     auto connectDB = client.databaseName();
     client.setDatabaseName(StaticStrings::SystemDatabase);
     auto createDbClient = client.createHttpClient();
-    createDbClient->params().setUserNamePassword("/", client.username(),
-                                                 client.password());
+
     VPackBuilder b;
     b.openObject();
     b.add("name", VPackValue(normalizeUtf8ToNFC(connectDB)));
@@ -490,8 +490,8 @@ void BenchFeature::start() {
 
     // broadcast the start signal to all threads
     {
-      CONDITION_LOCKER(guard, startCondition);
-      guard.broadcast();
+      std::lock_guard guard{startCondition.mutex};
+      startCondition.cv.notify_all();
     }
 
     uint64_t const stepValue = _operations / 20;

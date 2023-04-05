@@ -33,6 +33,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const cu = require('@arangodb/testutils/crash-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const {versionHas, flushInstanceInfo} = require("@arangodb/test-helper");
 const internal = require('internal');
 const platform = internal.platform;
 
@@ -109,6 +110,7 @@ let optionsDocumentation = [
   '   - `sniffProgram`: specify your own programm',
   '   - `sniffAgency`: when sniffing cluster, sniff agency traffic too? (true)',
   '   - `sniffDBServers`: when sniffing cluster, sniff dbserver traffic too? (true)',
+  '   - `sniffFilter`: only launch tcpdump for tests matching this string',
   '',
   '   - `build`: the directory containing the binaries',
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
@@ -121,6 +123,7 @@ let optionsDocumentation = [
   '   - `disableClusterMonitor`: if set to false, an arangosh is started that will send',
   '                              keepalive requests to all cluster instances, and report on error',
   '   - `disableMonitor`: if set to true on windows, procdump will not be attached.',
+  '   - `enableAliveMonitor`: checks whether spawned arangods disapears or aborts during the tests.',
   '   - `rr`: if set to true arangod instances are run with rr',
   '   - `exceptionFilter`: on windows you can use this to abort tests on specific exceptions',
   '                        i.e. `bad_cast` to abort on throwing of std::bad_cast',
@@ -159,14 +162,13 @@ let optionsDocumentation = [
   '     previous test run. The information which tests previously failed is taken',
   '     from the "UNITTEST_RESULT.json" (if available).',
   '   - `encryptionAtRest`: enable on disk encryption, enterprise only',
+  '   - `optionsJson`: all of the above, as json list for mutliple suite launches',
   ''
 ];
 
-const isSan = (
-  global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
-  global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
-  internal.coverage
-);
+const isCoverage = versionHas('coverage');
+const isSan = versionHas('asan') || versionHas('tsan');
+const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const optionsDefaults = {
   'dumpAgencyOnError': true,
   'agencySize': 3,
@@ -213,6 +215,7 @@ const optionsDefaults = {
   'sniffDBServers': true,
   'sniffDevice': undefined,
   'sniffProgram': undefined,
+  'sniffFilter': undefined,
   'skipLogAnalysis': true,
   'maxLogFileSize': 500 * 1024,
   'skipMemoryIntense': false,
@@ -220,8 +223,10 @@ const optionsDefaults = {
   'skipNondeterministic': false,
   'skipGrey': false,
   'onlyGrey': false,
-  'oneTestTimeout': (isSan? 25 : 15) * 60,
+  'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
   'isSan': isSan,
+  'isCov': isCoverage,
+  'isInstrumented': isInstrumented,
   'skipTimeCritical': false,
   'test': undefined,
   'testBuckets': undefined,
@@ -242,10 +247,12 @@ const optionsDefaults = {
   'crashAnalysisText': 'testfailures.txt',
   'testCase': undefined,
   'disableMonitor': false,
+  'enableAliveMonitor': true,
   'disableClusterMonitor': true,
   'sleepBeforeStart' : 0,
   'sleepBeforeShutdown' : 0,
   'failed': false,
+  'optionsJson': null,
 };
 
 let globalStatus = true;
@@ -497,12 +504,25 @@ function iterateTests(cases, options) {
     cases = _.filter(cases, c => options.failed.hasOwnProperty(c));
   }
   caselist = translateTestList(cases);
+  let optionsList = [];
+  if (options.optionsJson != null) {
+    optionsList = JSON.parse(options.optionsJson);
+    if (optionsList.length !== caselist.length) {
+      throw new Error("optionsJson must have one entry per suite!");
+    }
+  }
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
+    // required, because each different test suite may operate with a different set of servers!
+    flushInstanceInfo();
+
     const currentTest = caselist[n];
     var localOptions = _.cloneDeep(options);
     if (localOptions.failed) {
       localOptions.failed = localOptions.failed[currentTest];
+    }
+    if (optionsList.length !== 0) {
+      localOptions = _.defaults(optionsList[n], localOptions);
     }
     let printTestName = currentTest;
     if (options.testBuckets) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -465,6 +465,23 @@ void RestVocbaseBaseHandler::generateTransactionError(
                     "collection is read-only");
       return;
 
+    case static_cast<int>(TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED):
+      // This deserves an explanation: If the write concern for a write
+      // operation is not fulfilled, then we do not want to retry
+      // cluster-internally, or else the client would only be informed
+      // about the problem once a longish timeout of 15 minutes has passed.
+      // Rather, we want to report back the problem immediately. Therefore,
+      // a coordinator will return 503 as it should be in this case, after
+      // all the request is retryable. But a dbserver must return 403, such
+      // that the coordinator who initiated the request will *not* retry.
+      if (ServerState::instance()->isCoordinator()) {
+        generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, code,
+                      "write concern not fulfilled");
+      } else {
+        generateError(rest::ResponseCode::FORBIDDEN, code,
+                      "write concern not fulfilled");
+      }
+      return;
     case static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND):
       generateDocumentNotFound(collectionName, key);
       return;

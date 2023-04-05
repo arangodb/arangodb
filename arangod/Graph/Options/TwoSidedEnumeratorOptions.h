@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +39,8 @@ struct TwoSidedEnumeratorOptions {
 
   ~TwoSidedEnumeratorOptions();
 
+  void setMinDepth(size_t min);
+  void setMaxDepth(size_t max);
   [[nodiscard]] size_t getMinDepth() const;
   [[nodiscard]] size_t getMaxDepth() const;
   [[nodiscard]] PathType::Type getPathType() const;

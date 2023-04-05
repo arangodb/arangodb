@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,6 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/DBServerAgencySync.h"
@@ -39,6 +38,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 
 namespace arangodb {
@@ -215,7 +215,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   /// @brief status lock
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::Mutex> _statusLock;
+  std::shared_ptr<std::mutex> _statusLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyComm instance

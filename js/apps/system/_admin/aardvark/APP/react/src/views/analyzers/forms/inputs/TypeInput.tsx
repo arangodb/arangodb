@@ -1,11 +1,8 @@
-import React, { ChangeEvent } from "react";
-import { AnalyzerTypeState } from "../../constants";
-import { FormProps } from "../../../../utils/constants";
 import { map } from "lodash";
+import React, { ChangeEvent } from "react";
 import Select from "../../../../components/pure-css/form/Select";
-
-declare var versionHelper: { [key: string]: any };
-declare var frontendConfig: { [key: string]: any };
+import { FormProps } from "../../../../utils/constants";
+import { AnalyzerTypeState } from "../../constants";
 
 type TypeInputProps = FormProps<AnalyzerTypeState> & {
   typeNameMap: {
@@ -25,7 +22,7 @@ const TypeInput = ({ formState, dispatch, disabled, typeNameMap, inline }: TypeI
     });
   };
 
-  const docuVersion = versionHelper.toDocuVersion(frontendConfig.version.version);
+  const docuVersion = window.versionHelper.toDocuVersion(window.frontendConfig.version.version);
 
   return <>
     <Select label={'Analyzer Type'} value={formState.type} onChange={updateType}

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,7 @@
 #include <vector>
 
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/fpconv.h"
 #include "Basics/voc-errors.h"
@@ -2039,6 +2040,47 @@ std::string formatSize(uint64_t value) {
     out = out.substr(0, pos + 2);
   }
   return out + ' ' + label;
+}
+
+std::string headersToString(
+    std::unordered_map<std::string, std::string> const& headers) {
+  std::string headersForLogging;
+  headersForLogging.reserve(headers.size() * 60);  // just a guess
+  for (auto const& p : headers) {
+    if (p.first == StaticStrings::Authorization) {
+      headersForLogging.append(StaticStrings::Authorization);
+      headersForLogging.append(": SENSITIVE_DETAILS_HIDDEN,");
+    } else {
+      headersForLogging.append(StringUtils::escapeUnicode(p.first));
+      headersForLogging.append(":");
+      headersForLogging.append(StringUtils::escapeUnicode(p.second));
+      headersForLogging.append(",");
+    }
+  }
+  if (!headersForLogging.empty()) {
+    headersForLogging.pop_back();
+  }
+  return headersForLogging;
+}
+
+std::string getEndpointFromUrl(std::string const& url) {
+  char const* p = url.c_str();
+  char const* e = p + url.size();
+  size_t slashes = 0;
+
+  while (p < e) {
+    if (*p == '?') {
+      // http(s)://example.com?foo=bar
+      return url.substr(0, p - url.c_str());
+    } else if (*p == '/') {
+      if (++slashes == 3) {
+        return url.substr(0, p - url.c_str());
+      }
+    }
+    ++p;
+  }
+
+  return url;
 }
 
 }  // namespace StringUtils

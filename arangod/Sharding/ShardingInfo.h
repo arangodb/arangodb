@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,8 +60,8 @@ class ShardingInfo {
   std::string shardingStrategyName() const;
 
   LogicalCollection* collection() const noexcept;
-  void toVelocyPack(arangodb::velocypack::Builder& result,
-                    bool translateCids) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result, bool translateCids,
+                    bool includeShardsEntry = true) const;
 
   std::string const& distributeShardsLike() const noexcept;
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);

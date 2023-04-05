@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_logger_follow
 @brief Fetch log lines from the server
 
-@RESTHEADER{GET /_api/replication/logger-follow, Returns log entries, handleCommandLoggerFollow}
+@RESTHEADER{GET /_api/replication/logger-follow, Returns log entries, getReplicationLoggerFollow}
 
 @HINTS
 {% hint 'warning' %}
@@ -100,7 +100,7 @@ The response will also contain the following HTTP headers:
   events from the start of the log again).
 
 - *x-arango-replication-lasttick*: the last tick value the logger server has
-  logged (not necessarily included in the result). By comparing the the last
+  logged (not necessarily included in the result). By comparing the last
   tick and last included tick values, clients have an approximate indication of
   how many events there are still left to fetch.
 

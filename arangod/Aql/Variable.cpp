@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,15 +46,7 @@ Variable::Variable(velocypack::Slice slice)
       name(basics::VelocyPackHelper::checkAndGetStringValue(slice, "name")),
       isFullDocumentFromCollection(basics::VelocyPackHelper::getBooleanValue(
           slice, "isFullDocumentFromCollection", false)),
-      _constantValue(slice.get("constantValue")) {
-  if (!isFullDocumentFromCollection) {
-    // "isDataFromCollection" used to be the old attribute name, used
-    // before 3.10. for downwards-compatibility we also check the old attribute
-    // here. this can be removed after 3.10.
-    isFullDocumentFromCollection |= basics::VelocyPackHelper::getBooleanValue(
-        slice, "isDataFromCollection", false);
-  }
-}
+      _constantValue(slice.get("constantValue")) {}
 
 /// @brief destroy the variable
 Variable::~Variable() { _constantValue.destroy(); }
@@ -65,7 +57,7 @@ Variable* Variable::clone() const {
 
 bool Variable::isUserDefined() const noexcept {
   TRI_ASSERT(!name.empty());
-  char const c = name[0];
+  char c = name[0];
   // variables starting with a number are not user-defined
   return (c < '0' || c > '9');
 }

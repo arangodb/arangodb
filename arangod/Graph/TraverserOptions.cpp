@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -417,22 +417,17 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other,
     TRI_ASSERT(other._baseVertexExpression == nullptr);
   }
 
-  TRI_ASSERT(other.refactor());
-  if (other.refactor()) {
-    // TODO: [GraphRefactor] Clean this up as soon as we get rid of all the old
-    // code
-    if (other._baseVertexExpression != nullptr) {
-      auto baseVertexExpression = other._baseVertexExpression->clone(
-          other._baseVertexExpression->ast());
-      _baseVertexExpression = std::move(baseVertexExpression);
-    }
-    if (!other._vertexExpressions.empty()) {
-      for (auto const& vertexExpressionPerDepth : other._vertexExpressions) {
-        auto depth = vertexExpressionPerDepth.first;
-        auto expression = vertexExpressionPerDepth.second->clone(
-            vertexExpressionPerDepth.second->ast());
-        _vertexExpressions.insert({depth, std::move(expression)});
-      }
+  if (other._baseVertexExpression != nullptr) {
+    auto baseVertexExpression =
+        other._baseVertexExpression->clone(other._baseVertexExpression->ast());
+    _baseVertexExpression = std::move(baseVertexExpression);
+  }
+  if (!other._vertexExpressions.empty()) {
+    for (auto const& vertexExpressionPerDepth : other._vertexExpressions) {
+      auto depth = vertexExpressionPerDepth.first;
+      auto expression = vertexExpressionPerDepth.second->clone(
+          vertexExpressionPerDepth.second->ast());
+      _vertexExpressions.insert({depth, std::move(expression)});
     }
   }
 
@@ -552,7 +547,6 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.add("minDepth", VPackValue(minDepth));
   result.add("maxDepth", VPackValue(maxDepth));
   result.add("parallelism", VPackValue(_parallelism));
-  result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
   result.add("neighbors", VPackValue(useNeighbors));
 
   result.add(VPackValue("uniqueVertices"));

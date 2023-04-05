@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,7 +48,6 @@ std::string const StaticStrings::PostfixOfKeyString(":_key");
 std::string const StaticStrings::RevString("_rev");
 std::string const StaticStrings::FromString("_from");
 std::string const StaticStrings::ToString("_to");
-std::string const StaticStrings::TimeString("_time");
 
 // URL parameter names
 std::string const StaticStrings::IgnoreRevsString("ignoreRevs");
@@ -102,9 +101,8 @@ std::string const StaticStrings::QueuesCollection("_queues");
 std::string const StaticStrings::JobsCollection("_jobs");
 std::string const StaticStrings::AppsCollection("_apps");
 std::string const StaticStrings::AppBundlesCollection("_appbundles");
-std::string const StaticStrings::ModulesCollection("_modules");
-std::string const StaticStrings::FishbowlCollection("_fishbowl");
 std::string const StaticStrings::FrontendCollection("_frontend");
+std::string const StaticStrings::PregelCollection("_pregel_queries");
 std::string const StaticStrings::StatisticsCollection("_statistics");
 std::string const StaticStrings::Statistics15Collection("_statistics15");
 std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
@@ -229,7 +227,8 @@ std::string const StaticStrings::TransferEncoding("transfer-encoding");
 std::string const StaticStrings::TransactionBody("x-arango-trx-body");
 std::string const StaticStrings::TransactionId("x-arango-trx-id");
 
-std::string const StaticStrings::Unlimited = "unlimited";
+std::string const StaticStrings::Unlimited("unlimited");
+std::string const StaticStrings::UserAgent("user-agent");
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
@@ -255,6 +254,7 @@ std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 // accept-encodings
 std::string const StaticStrings::EncodingIdentity("identity");
 std::string const StaticStrings::EncodingDeflate("deflate");
+std::string const StaticStrings::EncodingGzip("gzip");
 
 std::string const StaticStrings::Body("body");
 std::string const StaticStrings::ParsedBody("parsedBody");
@@ -356,6 +356,7 @@ std::string const StaticStrings::GraphQueryVertices("vertices");
 std::string const StaticStrings::GraphQueryPath("path");
 std::string const StaticStrings::GraphQueryGlobal("global");
 std::string const StaticStrings::GraphQueryNone("none");
+std::string const StaticStrings::GraphQueryWeight("weight");
 std::string const StaticStrings::GraphQueryWeights("weights");
 std::string const StaticStrings::GraphQueryOrder("order");
 std::string const StaticStrings::GraphQueryOrderBFS("bfs");

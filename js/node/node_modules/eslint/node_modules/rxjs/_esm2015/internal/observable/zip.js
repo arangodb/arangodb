@@ -1,9 +1,8 @@
 import { fromArray } from './fromArray';
 import { isArray } from '../util/isArray';
 import { Subscriber } from '../Subscriber';
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
 import { iterator as Symbol_iterator } from '../../internal/symbol/iterator';
+import { SimpleOuterSubscriber, SimpleInnerSubscriber, innerSubscribe } from '../innerSubscribe';
 export function zip(...observables) {
     const resultSelector = observables[observables.length - 1];
     if (typeof resultSelector === 'function') {
@@ -22,10 +21,10 @@ export class ZipOperator {
 export class ZipSubscriber extends Subscriber {
     constructor(destination, resultSelector, values = Object.create(null)) {
         super(destination);
+        this.resultSelector = resultSelector;
         this.iterators = [];
         this.active = 0;
-        this.resultSelector = (typeof resultSelector === 'function') ? resultSelector : null;
-        this.values = values;
+        this.resultSelector = (typeof resultSelector === 'function') ? resultSelector : undefined;
     }
     _next(value) {
         const iterators = this.iterators;
@@ -52,7 +51,7 @@ export class ZipSubscriber extends Subscriber {
             let iterator = iterators[i];
             if (iterator.stillUnsubscribed) {
                 const destination = this.destination;
-                destination.add(iterator.subscribe(iterator, i));
+                destination.add(iterator.subscribe());
             }
             else {
                 this.active--;
@@ -126,7 +125,7 @@ class StaticIterator {
     }
     hasCompleted() {
         const nextResult = this.nextResult;
-        return nextResult && nextResult.done;
+        return Boolean(nextResult && nextResult.done);
     }
 }
 class StaticArrayIterator {
@@ -151,7 +150,7 @@ class StaticArrayIterator {
         return this.array.length === this.index;
     }
 }
-class ZipBufferIterator extends OuterSubscriber {
+class ZipBufferIterator extends SimpleOuterSubscriber {
     constructor(destination, parent, observable) {
         super(destination);
         this.parent = parent;
@@ -187,12 +186,12 @@ class ZipBufferIterator extends OuterSubscriber {
             this.destination.complete();
         }
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext(innerValue) {
         this.buffer.push(innerValue);
         this.parent.checkIterators();
     }
-    subscribe(value, index) {
-        return subscribeToResult(this, this.observable, this, index);
+    subscribe() {
+        return innerSubscribe(this.observable, new SimpleInnerSubscriber(this));
     }
 }
 //# sourceMappingURL=zip.js.map

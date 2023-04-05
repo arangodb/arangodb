@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -106,6 +106,8 @@ void PhysicalCollection::prepareIndexes(velocypack::Slice indexesSlice) {
     }
   }
 
+  TRI_ASSERT(!_indexes.empty());
+
   auto it = _indexes.cbegin();
   if ((*it)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
@@ -121,10 +123,8 @@ void PhysicalCollection::prepareIndexes(velocypack::Slice indexesSlice) {
           << "- " << it->context();
     }
 #endif
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(msg));
   }
-
-  TRI_ASSERT(!_indexes.empty());
 }
 
 void PhysicalCollection::close() {

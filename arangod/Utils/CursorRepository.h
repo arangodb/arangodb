@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include <mutex>
 #include <unordered_map>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Utils/Cursor.h"
 #include "VocBase/voc-types.h"
 
@@ -132,7 +132,7 @@ class CursorRepository {
   /// @brief mutex for the cursors repository
   //////////////////////////////////////////////////////////////////////////////
 
-  Mutex _lock;
+  std::mutex _lock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of current cursors

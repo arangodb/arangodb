@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/FlatHashMap.h"
 #include "Futures/Future.h"
@@ -38,6 +37,8 @@
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
 
+#include <mutex>
+
 namespace arangodb {
 
 namespace velocypack {
@@ -48,6 +49,7 @@ typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
+struct UserInputCollectionProperties;
 class ComputedValues;
 class FollowerInfo;
 class Index;
@@ -158,8 +160,6 @@ class LogicalCollection : public LogicalDataSource {
 
   void executeWhileStatusWriteLocked(std::function<void()> const& callback);
 
-  uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
-
   // SECTION: Properties
   RevisionId revision(transaction::Methods*) const;
   bool waitForSync() const noexcept { return _waitForSync; }
@@ -214,6 +214,8 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
 
+  UserInputCollectionProperties getCollectionProperties() const noexcept;
+
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const noexcept;
   size_t replicationFactor() const noexcept;
@@ -224,7 +226,29 @@ class LogicalCollection : public LogicalDataSource {
   bool isSatellite() const noexcept;
   bool usesDefaultShardKeys() const noexcept;
   std::vector<std::string> const& shardKeys() const noexcept;
-  TEST_VIRTUAL std::shared_ptr<ShardMap> shardIds() const;
+
+  virtual std::shared_ptr<ShardMap> shardIds() const;
+
+  // @brief will write the full ShardMap into the builder, containing
+  // all ShardIDs including their server distribution (ServerIDs) as an Object.
+  // Example:
+  //  {
+  //    ...
+  //    "s123456": ["PRMR-a41b97a0-e4d3-482b-925a-ff8efc9e0198", ...]
+  //    ...
+  //  }
+  void shardMapToVelocyPack(arangodb::velocypack::Builder& result) const;
+
+  // @brief will iterate over the whole ShardMap and will write only the
+  // ShardIDs into the builder as an Array. The ShardIDs are sorted and returned
+  // alphabetically.
+  // Example:
+  //  [
+  //    ...
+  //    "s123456",
+  //    ...
+  //  ]
+  void shardIDsToVelocyPack(arangodb::velocypack::Builder& result) const;
 
   // mutation options for sharding
   void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
@@ -444,7 +468,7 @@ class LogicalCollection : public LogicalDataSource {
   std::atomic<bool> _syncByRevision;
 
 #ifdef USE_ENTERPRISE
-  mutable Mutex
+  mutable std::mutex
       _smartGraphAttributeLock;  // lock protecting the smartGraphAttribute
   std::string _smartGraphAttribute;
 
@@ -458,7 +482,7 @@ class LogicalCollection : public LogicalDataSource {
 
   std::unique_ptr<PhysicalCollection> _physical;
 
-  mutable Mutex _infoLock;  // lock protecting the info
+  mutable std::mutex _infoLock;  // lock protecting the info
 
   // the following contains in the cluster/DBserver case the information
   // which other servers are in sync with this shard. It is unset in all

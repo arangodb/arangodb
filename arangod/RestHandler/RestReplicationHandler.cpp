@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,6 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -92,7 +91,6 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 std::string const dataString("data");
-std::string const keyString("key");
 std::string const typeString("type");
 }  // namespace
 
@@ -689,7 +687,7 @@ Result RestReplicationHandler::testPermissions() {
               std::string dbName = _request->databaseName();
               DatabaseFeature& databaseFeature =
                   _vocbase.server().getFeature<DatabaseFeature>();
-              TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
+              auto vocbase = databaseFeature.useDatabase(dbName);
               if (vocbase == nullptr) {
                 return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
               }
@@ -856,11 +854,15 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   DatabaseFeature& databaseFeature =
       _vocbase.server().getFeature<DatabaseFeature>();
-  TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
-  if (vocbase) {
-    resultBuilder.add(VPackValue(StaticStrings::Properties));
-    vocbase->toVelocyPack(resultBuilder);
+  auto vocbase = databaseFeature.useDatabase(dbName);
+  if (!vocbase) {
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return;
   }
+
+  resultBuilder.add(VPackValue(StaticStrings::Properties));
+  vocbase->toVelocyPack(resultBuilder);
+  vocbase.reset();
 
   auto& exec = ExecContext::current();
   ExecContextSuperuserScope escope(exec.isAdminUser());
@@ -868,13 +870,14 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
     if (!exec.isAdminUser() &&
-        !exec.canUseCollection(vocbase->name(), c->name(), auth::Level::RO)) {
+        !exec.canUseCollection(dbName, c->name(), auth::Level::RO)) {
       continue;
     }
 
     // We want to check if the collection is usable and all followers
     // are in sync:
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
+
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
     auto cic = ci.getCollectionCurrent(dbName,
@@ -884,13 +887,36 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     bool allInSync = true;
     for (auto const& p : *shardMap) {
       auto currentServerList = cic->servers(p.first /* shardId */);
-      if (currentServerList.size() == 0 || p.second.size() == 0 ||
-          currentServerList[0] != p.second[0] ||
-          (!p.second[0].empty() && p.second[0][0] == '_')) {
-        isReady = false;
-      }
-      if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
-        allInSync = false;
+      if (c->isSmart() && c->type() == TRI_COL_TYPE_EDGE && c->isAStub()) {
+        // Means we do have a Virtual SmartEdge Collection.
+        // A Virtual SmartEdge Collection does not include any shards.
+        // Therefore, we cannot, and we do not need to verify if shards are in
+        // sync or not.
+        ADB_PROD_ASSERT(!c->isSmartChild());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        // Additionally, whenever we see a Virtual Edge Collection, we must make
+        // sure that the related shadow collections are part of the inventory.
+        for (auto const& shadowCollectionName : c->realNames()) {
+          bool foundShadowCollection = false;
+          for (auto const& logicalCollection : cols) {
+            if (logicalCollection->name() == shadowCollectionName) {
+              // A ShadowCollection must be a SmartChild
+              TRI_ASSERT(logicalCollection->isSmartChild());
+              foundShadowCollection = true;
+            }
+          }
+          TRI_ASSERT(foundShadowCollection);
+        }
+#endif
+      } else {
+        if (currentServerList.size() == 0 || p.second.size() == 0 ||
+            currentServerList[0] != p.second[0] ||
+            (!p.second[0].empty() && p.second[0][0] == '_')) {
+          isReady = false;
+        }
+        if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
+          allInSync = false;
+        }
       }
     }
     c->toVelocyPackForClusterInventory(resultBuilder, includeSystem, isReady,
@@ -904,8 +930,9 @@ void RestReplicationHandler::handleCommandClusterInventory() {
           resultBuilder.openObject();
           view->properties(resultBuilder,
                            LogicalDataSource::Serialization::Inventory);
-          // details, !forPersistence because on restore any datasource ids will
-          // differ, so need an end-user representation
+          // details, !forPersistence because on restore any
+          // datasource ids will differ, so need an end-user
+          // representation
           resultBuilder.close();
         }
 
@@ -1598,11 +1625,14 @@ Result RestReplicationHandler::parseBatch(
             // prevent checking for _rev twice in the same document
             checkRev = false;
 
-            char ridBuffer[arangodb::basics::maxUInt64StringSize];
-            RevisionId newRid = collection->newRevisionId();
-
-            documentsToInsert.add(it.key);
-            documentsToInsert.add(newRid.toValuePair(ridBuffer));
+            // We simply get rid of the `_rev` attribute here on the
+            // coordinator. We need to create a new value but it has to be
+            // unique in the shard, therefore the shard leader must create the
+            // value. If multiple coordinators would create a timestamp based
+            // _rev value concurrently, we could get a duplicate, which would
+            // lead to a clash on the actual shard leader and can lead to
+            // RocksDB conflicts or even data corruption between primary index
+            // and data in the documents column family.
           } else {
             // copy key/value verbatim
             documentsToInsert.add(it.key);
@@ -2095,7 +2125,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
   if (!slice.isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-
     return;
   }
 
@@ -2383,7 +2412,7 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
   VPackBuilder builder;
   builder.openObject();
   for (auto& name : databaseFeature.getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
+    auto vocbase = databaseFeature.useDatabase(name);
 
     if (vocbase == nullptr) {
       continue;
@@ -2451,7 +2480,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  auto col = _vocbase.lookupCollection(shardSlice.copyString());
+  auto col = _vocbase.lookupCollection(shardSlice.stringView());
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -2634,7 +2663,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
     return;
   }
 
-  auto col = _vocbase.lookupCollection(shard.copyString());
+  auto col = _vocbase.lookupCollection(shard.stringView());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2693,7 +2722,7 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   }
 
   std::string leaderId = leaderIdSlice.copyString();
-  auto col = _vocbase.lookupCollection(shard.copyString());
+  auto col = _vocbase.lookupCollection(shard.stringView());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2793,7 +2822,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   TransactionId id = ExtractReadlockId(idSlice);
-  auto col = _vocbase.lookupCollection(collection.copyString());
+  auto col = _vocbase.lookupCollection(collection.stringView());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -3740,7 +3769,7 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
     transaction::Methods trx(ctx);
     TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
 
-    uint64_t num = col->numberDocuments(&trx, transaction::CountType::Normal);
+    uint64_t num = col->getPhysical()->numberDocuments(&trx);
     return ResultT<std::string>::success(std::to_string(num));
   } catch (...) {
     // Query exists, but is in use.

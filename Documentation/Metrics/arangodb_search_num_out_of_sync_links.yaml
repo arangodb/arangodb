@@ -10,7 +10,7 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Number of arangosearch links and inverted indexes that are
+  Number of `arangosearch` View links and inverted indexes that are
   currently out of sync. A link or inverted index is out of sync
   if the recovery for it is intentionally skipped or a commit
   operation on the link/index has failed.

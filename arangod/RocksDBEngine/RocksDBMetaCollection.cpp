@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -216,9 +216,19 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     TRI_ASSERT(it->key().compare(upper) < 0);
     ++count;
 
-    if (count % 4096 == 0 && server.isStopping()) {
-      // check for server shutdown
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    if (count % 4096 == 0) {
+      if (server.isStopping()) {
+        // server shutdown
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      if (_logicalCollection.vocbase().isDropped()) {
+        // database dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+      if (_logicalCollection.deleted()) {
+        // collection dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      }
     }
   }
 
@@ -794,7 +804,16 @@ RocksDBMetaCollection::buildTreeFromIterator(
       revisions.clear();
 
       if (_logicalCollection.vocbase().server().isStopping()) {
+        // server shutdown
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      if (_logicalCollection.vocbase().isDropped()) {
+        // database dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+      if (_logicalCollection.deleted()) {
+        // collection dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     }
     it.next();
@@ -1022,7 +1041,16 @@ void RocksDBMetaCollection::rebuildRevisionTree(
       revisions.clear();
 
       if (_logicalCollection.vocbase().server().isStopping()) {
+        // server shutdown
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      if (_logicalCollection.vocbase().isDropped()) {
+        // database dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+      if (_logicalCollection.deleted()) {
+        // collection dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     }
   }
@@ -1143,7 +1171,16 @@ uint64_t RocksDBMetaCollection::placeRevisionTreeBlocker(
     }
 
     if (_logicalCollection.vocbase().server().isStopping()) {
+      // server shutdown
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+    if (_logicalCollection.vocbase().isDropped()) {
+      // database dropped
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+    if (_logicalCollection.deleted()) {
+      // collection dropped
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
     std::this_thread::yield();
@@ -1181,7 +1218,7 @@ void RocksDBMetaCollection::bufferUpdates(
   }
 
   LOG_TOPIC("bafcf", TRACE, Logger::ENGINES)
-      << "buffering " << inserts.size() << "inserts and " << removals.size()
+      << "buffering " << inserts.size() << " inserts and " << removals.size()
       << " removals "
       << "for collection " << _logicalCollection.name();
 
@@ -1458,9 +1495,7 @@ void RocksDBMetaCollection::applyUpdates(
   }
 
   TRI_IF_FAILURE("applyUpdates::forceHibernation2") {
-    if (_revisionTree != nullptr) {
-      _revisionTree->hibernate(/*force*/ true);
-    }
+    _revisionTree->hibernate(/*force*/ true);
   }
 }
 

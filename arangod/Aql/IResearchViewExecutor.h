@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -564,7 +564,8 @@ class IResearchViewExecutorBase {
   iresearch::ViewSnapshotPtr _reader;
   irs::filter::prepared::ptr _filter;
   irs::filter::prepared const** _filterCookie{};
-  irs::Order _order;
+  containers::SmallVector<irs::Scorer::ptr, 2> _scorersContainer;
+  irs::Scorers _scorers;
   std::vector<ColumnIterator> _storedValuesReaders;
   std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
   bool _isInitialized;

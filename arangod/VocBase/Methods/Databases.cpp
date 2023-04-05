@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -46,6 +47,7 @@
 #include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
+#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Tasks.h"
 #include "VocBase/Methods/Upgrade.h"
@@ -63,7 +65,7 @@ using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
-std::string Databases::normalizeName(std::string const& name) {
+std::string Databases::normalizeName(std::string_view name) {
   return normalizeUtf8ToNFC(name);
 }
 
@@ -88,7 +90,7 @@ std::vector<std::string> Databases::list(ArangodServer& server,
   }
 }
 
-arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
+Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
     auto& cache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
     auto [acb, idx] = cache.read(std::vector<std::string>{
@@ -137,8 +139,8 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 
 // Grant permissions on newly created database to current user
 // to be able to run the upgrade script
-arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info,
-                                             int64_t timeout) {
+Result Databases::grantCurrentUser(CreateDatabaseInfo const& info,
+                                   int64_t timeout) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
   Result res;
@@ -309,7 +311,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   TRI_ASSERT(vocbase != nullptr);
   TRI_ASSERT(!vocbase->isDangling());
 
-  auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
+  auto sg = scopeGuard([&]() noexcept { vocbase->release(); });
 
   Result res = grantCurrentUser(info, 10);
   if (!res.ok()) {
@@ -324,76 +326,89 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   return std::move(upgradeRes.result());
 }
 
-arangodb::Result Databases::create(ArangodServer& server,
-                                   ExecContext const& exec,
-                                   std::string const& dbName,
-                                   VPackSlice const& users,
-                                   VPackSlice const& options) {
-  // Only admin users are permitted to create databases
-  if (!exec.isAdminUser() || (ServerState::readOnly() && !exec.isSuperuser())) {
-    events::CreateDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
-    return Result(TRI_ERROR_FORBIDDEN);
-  }
+Result Databases::create(ArangodServer& server, ExecContext const& exec,
+                         std::string const& dbName, VPackSlice const& users,
+                         VPackSlice const& options) {
+  Result res = basics::catchToResult([&]() {
+    Result res;
 
-  CreateDatabaseInfo createInfo(server, exec);
-  arangodb::Result res = createInfo.load(dbName, options, users);
-
-  if (!res.ok()) {
-    events::CreateDatabase(dbName, res, exec);
-    return res;
-  }
-
-  if (createInfo.getName() != dbName) {
-    // check if name after normalization will change
-    res.reset(TRI_ERROR_ARANGO_ILLEGAL_NAME,
-              "database name is not properly UTF-8 NFC-normalized");
-    events::CreateDatabase(dbName, res, exec);
-    return res;
-  }
-
-  if (createInfo.replicationVersion() == replication::Version::TWO &&
-      !replication2::EnableReplication2) {
-    using namespace std::string_view_literals;
-    auto const message =
-        R"(Replication version 2 is disabled in this binary, but trying to create a version 2 database.)"sv;
-    LOG_TOPIC("e768d", ERR, Logger::REPLICATION2) << message;
-    // Should not happen during testing
-    TRI_ASSERT(false);
-    return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
-  }
-
-  if (ServerState::instance()->isCoordinator() /* REVIEW! && !localDatabase*/) {
-    if (!createInfo.validId()) {
-      auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
-      createInfo.setId(clusterInfo.uniqid());
+    // Only admin users are permitted to create databases
+    if (!exec.isAdminUser()) {
+      return res.reset(TRI_ERROR_FORBIDDEN);
     }
-    if (server.getFeature<ClusterFeature>().forceOneShard()) {
-      createInfo.sharding("single");
+    if (ServerState::readOnly() && !exec.isSuperuser()) {
+      return res.reset(TRI_ERROR_FORBIDDEN, "server is in read-only mode");
     }
 
-    res =
-        ShardingInfo::validateShardsAndReplicationFactor(options, server, true);
-    if (res.ok()) {
-      res = createCoordinator(createInfo);
+    CreateDatabaseInfo createInfo(server, exec);
+    if (ServerState::instance()->isDBServer()) {
+      // if we are on a DB server, we are likely called by the maintenance,
+      // and validation of database creation should have happened on the
+      // coordinator already.
+      // we should not make the validation fail on the DB server only,
+      // because that can lead to all sorts of problems later on if _new_
+      // DB servers are added that validate _existing_ databases
+      // differently.
+      createInfo.strictValidation(false);
     }
 
-  } else {  // Single, DBServer, Agency
-    if (!createInfo.validId()) {
-      createInfo.setId(TRI_NewTickServer());
-    }
-    res = createOther(createInfo);
-  }
+    res = createInfo.load(dbName, options, users);
 
-  if (res.fail()) {
-    if (!res.is(TRI_ERROR_BAD_PARAMETER) &&
+    if (!res.ok()) {
+      return res;
+    }
+
+    if (createInfo.getName() != dbName) {
+      // check if name after normalization will change
+      res.reset(TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                "database name is not properly UTF-8 NFC-normalized");
+      return res;
+    }
+
+    if (createInfo.replicationVersion() == replication::Version::TWO &&
+        !replication2::EnableReplication2) {
+      using namespace std::string_view_literals;
+      auto const message =
+          R"(Replication version 2 is disabled in this binary, but trying to create a version 2 database.)"sv;
+      LOG_TOPIC("e768d", ERR, Logger::REPLICATION2) << message;
+      // Should not happen during testing
+      TRI_ASSERT(false);
+      return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
+    }
+
+    if (ServerState::instance()
+            ->isCoordinator() /* REVIEW! && !localDatabase*/) {
+      if (!createInfo.validId()) {
+        auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
+        createInfo.setId(clusterInfo.uniqid());
+      }
+      if (server.getFeature<ClusterFeature>().forceOneShard()) {
+        createInfo.sharding("single");
+      }
+
+      res = ShardingInfo::validateShardsAndReplicationFactor(options, server,
+                                                             true);
+      if (res.ok()) {
+        res = createCoordinator(createInfo);
+      }
+
+    } else {  // Single, DBServer, Agency
+      if (!createInfo.validId()) {
+        createInfo.setId(TRI_NewTickServer());
+      }
+      res = createOther(createInfo);
+    }
+
+    if (res.fail() && !res.is(TRI_ERROR_BAD_PARAMETER) &&
         !res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
       LOG_TOPIC("1964a", ERR, Logger::FIXME)
           << "Could not create database: " << res.errorMessage();
     }
-  }
+
+    return res;
+  });
 
   events::CreateDatabase(dbName, res, exec);
-
   return res;
 }
 
@@ -439,9 +454,8 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
 const std::string dropError = "Error when dropping database";
 }  // namespace
 
-arangodb::Result Databases::drop(ExecContext const& exec,
-                                 TRI_vocbase_t* systemVocbase,
-                                 std::string const& dbName) {
+Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
+                       std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
   if (exec.systemAuthLevel() != auth::Level::RW) {
     events::DropDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
@@ -472,24 +486,26 @@ arangodb::Result Databases::drop(ExecContext const& exec,
       TRI_ClearObjectCacheV8(isolate);
 
       if (ServerState::instance()->isCoordinator()) {
-        // If we are a coordinator in a cluster, we have to behave differently:
+        // If we are a coordinator in a cluster, we have to behave
+        // differently:
         auto& df = server.getFeature<DatabaseFeature>();
         res = ::dropDBCoordinator(df, dbName);
       } else {
-        res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
+        res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
 
         if (res.fail()) {
           events::DropDatabase(dbName, res, exec);
           return res;
         }
 
-        arangodb::Task::removeTasksForDatabase(dbName);
+        Task::removeTasksForDatabase(dbName);
         // run the garbage collection in case the database held some objects
         // which can now be freed
         TRI_RunGarbageCollectionV8(isolate, 0.25);
-        dealer.addGlobalContextMethod("reloadRouting");
+        dealer.addGlobalContextMethod(
+            GlobalContextMethods::MethodType::kReloadRouting);
       }
-    } catch (arangodb::basics::Exception const& ex) {
+    } catch (basics::Exception const& ex) {
       events::DropDatabase(dbName, TRI_ERROR_INTERNAL, exec);
       return Result(ex.code(), dropError + ex.message());
     } catch (std::exception const& ex) {
@@ -505,7 +521,7 @@ arangodb::Result Databases::drop(ExecContext const& exec,
       auto& df = server.getFeature<DatabaseFeature>();
       res = ::dropDBCoordinator(df, dbName);
     } else {
-      res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
+      res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
     }
   }
 

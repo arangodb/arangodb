@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,7 @@ class FileSystemFeature;
 class ShellConsoleFeature;
 class TempFeature;
 class EncryptionFeature;
-
+class ProcessMonitoringFeature;
 using ArangoshFeaturesList = TypeList<
     // Phases
     BasicFeaturePhaseClient, CommunicationFeaturePhase, GreetingsFeaturePhase,
@@ -53,7 +53,7 @@ using ArangoshFeaturesList = TypeList<
     OptionsCheckFeature, FileSystemFeature, RandomFeature, ShellColorsFeature,
     ShutdownFeature, SslFeature, V8ShellFeaturePhase, ShellFeature,
     V8PlatformFeature, V8ShellFeature, LanguageFeature, V8SecurityFeature,
-    TempFeature>;
+    ProcessMonitoringFeature, TempFeature>;
 struct ArangoshFeatures : ArangoshFeaturesList {};
 using ArangoshServer = ApplicationServerT<ArangoshFeatures>;
 using ArangoshFeature = ApplicationFeatureT<ArangoshServer>;

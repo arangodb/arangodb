@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -49,14 +48,16 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/Validators.h"
+#include "velocypack/Builder.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
 #include <absl/strings/str_cat.h>
@@ -269,16 +270,17 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
 }
 
 Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
-  auto result =
-      ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
+  if (!computedValues.isNone()) {
+    auto result =
+        ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
 
-  if (result.fail()) {
-    return result.result();
+    if (result.fail()) {
+      return result.result();
+    }
+
+    std::atomic_store_explicit(&_computedValues, result.get(),
+                               std::memory_order_release);
   }
-
-  std::atomic_store_explicit(&_computedValues, result.get(),
-                             std::memory_order_release);
-
   return {};
 }
 
@@ -294,6 +296,29 @@ RevisionId LogicalCollection::newRevisionId() const {
 ShardingInfo* LogicalCollection::shardingInfo() const {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding.get();
+}
+
+UserInputCollectionProperties LogicalCollection::getCollectionProperties()
+    const noexcept {
+  UserInputCollectionProperties props;
+  // NOTE: This implementation is NOT complete.
+  // It only contains what was absolute necessary to get distributeShardsLike
+  // to work.
+  // Longterm-Plan: A logical collection should have those properties as a
+  // member and just return a reference to them.
+  props.name = name();
+  props.id = id();
+  props.numberOfShards = numberOfShards();
+  props.writeConcern = writeConcern();
+  props.replicationFactor = replicationFactor();
+  auto distLike = distributeShardsLike();
+  if (!distLike.empty()) {
+    props.distributeShardsLikeCid = std::move(distLike);
+  }
+  props.shardKeys = shardKeys();
+  props.shardingStrategy = shardingInfo()->shardingStrategyName();
+  props.waitForSync = waitForSync();
+  return props;
 }
 
 size_t LogicalCollection::numberOfShards() const noexcept {
@@ -352,6 +377,29 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   return _sharding->shardIds();
 }
 
+void LogicalCollection::shardMapToVelocyPack(
+    arangodb::velocypack::Builder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+
+  result.add(VPackValue("shards"));
+  serialize(result, *shardIds());
+}
+
+void LogicalCollection::shardIDsToVelocyPack(
+    arangodb::velocypack::Builder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+  result.add(VPackValue("shards"));
+
+  std::vector<ShardID> combinedShardIDs;
+  for (auto const& s : *shardIds()) {
+    combinedShardIDs.push_back(s.first);
+  }
+  std::sort(combinedShardIDs.begin(), combinedShardIDs.end(),
+            [&](ShardID const& a, ShardID const& b) { return a < b; });
+
+  serialize(result, combinedShardIDs);
+}
+
 void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
   TRI_ASSERT(_sharding != nullptr);
   _sharding->setShardMap(std::move(map));
@@ -401,28 +449,6 @@ std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(
 std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(
     transaction::Methods* trx) {
   return _physical->getAnyIterator(trx);
-}
-// @brief Return the number of documents in this collection
-uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
-                                            transaction::CountType type) {
-  // detailed results should have been handled in the levels above us
-  TRI_ASSERT(type != transaction::CountType::Detailed);
-
-  uint64_t documents = transaction::CountCache::NotPopulated;
-  if (type == transaction::CountType::ForceCache) {
-    // always return from the cache, regardless what's in it
-    documents = _countCache.get();
-  } else if (type == transaction::CountType::TryCache) {
-    // get data from cache, but only if not expired
-    documents = _countCache.getWithTtl();
-  }
-  if (documents == transaction::CountCache::NotPopulated) {
-    // cache was not populated before or cache value has expired
-    documents = getPhysical()->numberDocuments(trx);
-    _countCache.store(documents);
-  }
-  TRI_ASSERT(documents != transaction::CountCache::NotPopulated);
-  return documents;
 }
 
 bool LogicalCollection::hasClusterWideUniqueRevs() const noexcept {
@@ -757,7 +783,28 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     build.add(StaticStrings::DataSourcePlanId,
               VPackValue(std::to_string(planId().id())));
   }
+
+#ifdef USE_ENTERPRISE
+  if (isSmart() && type() == TRI_COL_TYPE_EDGE &&
+      ServerState::instance()->isRunningInCluster()) {
+    TRI_ASSERT(!isSmartChild());
+    VirtualClusterSmartEdgeCollection const* edgeCollection =
+        static_cast<arangodb::VirtualClusterSmartEdgeCollection const*>(this);
+    if (edgeCollection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to cast smart edge collection");
+    }
+    edgeCollection->shardMapToVelocyPack(build);
+    bool includeShardsEntry = false;
+    _sharding->toVelocyPack(build, ctx != Serialization::List,
+                            includeShardsEntry);
+  } else {
+    _sharding->toVelocyPack(build, ctx != Serialization::List);
+  }
+#else
   _sharding->toVelocyPack(build, ctx != Serialization::List);
+#endif
+
   includeVelocyPackEnterprise(build);
   TRI_ASSERT(build.isOpenObject());
   // We leave the object open
@@ -814,7 +861,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
                   "failed to find a storage engine while updating collection");
   }
 
-  MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
+  std::lock_guard guard{_infoLock};  // prevent simultaneous updates
 
   auto res = updateSchema(slice.get(StaticStrings::Schema));
   if (res.fail()) {

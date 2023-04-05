@@ -24,6 +24,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 let db = require("@arangodb").db;
+let pregel = require("@arangodb/pregel");
+
 const isEnterprise = require('internal').isEnterprise();
 let smart_graph_module;
 if (isEnterprise) {
@@ -43,7 +45,7 @@ const {
 } = require("@arangodb/graph/graphs-generation");
 
 const {
-    runPregelInstance,
+    waitUntilRunFinishedSuccessfully,
     assertAlmostEquals,
     epsilon,
     makeSetUp,
@@ -53,14 +55,14 @@ const {
 const testReadWriteOnGraph = function (vertices, edges) {
     db[vColl].save(vertices);
     db[eColl].save(edges);
-    const query = `
-                  FOR v in ${vColl}
-                  RETURN {"_key": v._key, "input": v.input, "output": v.output}  
-              `;
 
     let parameters = {sourceField: "input", resultField: "output"};
-    let algName = "readwrite";
-    const result = runPregelInstance(algName, graphName, parameters, query);
+    const pid = pregel.start("readwrite", graphName, parameters);
+    waitUntilRunFinishedSuccessfully(pid);
+    const result = db._query(`
+                  FOR v in ${vColl}
+                  RETURN {"_key": v._key, "input": v.input, "output": v.output}  
+                `).toArray();
     
     for (const resultV of result) {
         const vKey = resultV._key;

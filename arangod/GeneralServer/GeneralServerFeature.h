@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,6 +88,11 @@ class GeneralServerFeature final : public ArangodFeature {
 
   void countVstConnection() { _vstConnections.count(); }
 
+  bool isTelemetricsEnabled() const noexcept { return _enableTelemetrics; }
+  uint64_t telemetricsMaxRequestsPerInterval() const noexcept {
+    return _telemetricsMaxRequestsPerInterval;
+  }
+
  private:
   // build HTTP server(s)
   void buildServers();
@@ -99,11 +104,13 @@ class GeneralServerFeature final : public ArangodFeature {
   void defineRemainingHandlers(rest::RestHandlerFactory& f);
 
   double _keepAliveTimeout = 300.0;
+  uint64_t _telemetricsMaxRequestsPerInterval;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _startedListening;
 #endif
   bool _allowEarlyConnections;
   bool _allowMethodOverride;
+  bool _enableTelemetrics;
   bool _proxyCheck;
   bool _returnQueueTimeHeader;
   bool _permanentRootRedirect;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 #include <deque>
 #include <functional>
 #include <map>
+#include <mutex>
 
 struct TRI_vocbase_t;
 
@@ -278,7 +279,7 @@ class State {
   /**< @brief Mutex for modifying
      _log & _cur
   */
-  mutable arangodb::Mutex _logLock;
+  mutable std::mutex _logLock;
   std::deque<log_t> _log; /**< @brief  State entries */
   // Invariant: This has at least one entry at all times!
   bool _collectionsLoaded;
@@ -296,7 +297,7 @@ class State {
   arangodb::OperationOptions _options;
 
   /// @brief Protect writing into configuration collection
-  arangodb::Mutex _configurationWriteLock;
+  std::mutex _configurationWriteLock;
 
   /// @brief Current state deque size in bytes
   metrics::Gauge<uint64_t>& _log_size;

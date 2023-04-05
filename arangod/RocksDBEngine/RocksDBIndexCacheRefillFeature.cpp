@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,6 +70,7 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
       _maxConcurrentIndexFillTasks(::defaultConcurrentIndexFillTasks()),
       _autoRefill(false),
       _fillOnStartup(false),
+      _autoRefillOnFollowers(true),
       _totalFullIndexRefills(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_full_index_refills_total{})),
       _currentlyRunningIndexFillTasks(0) {
@@ -165,6 +166,20 @@ or cache-enabled persistent indexes.)");
       .setIntroducedIn(31020)
       .setLongDescription(R"(The lower this number, the lower the impact of the
 index cache filling, but the longer it takes to complete.)");
+
+  options
+      ->addOption(
+          "--rocksdb.auto-refill-index-caches-on-followers",
+          "Whether or not to automatically (re-)fill the in-memory index "
+          "caches on followers as well.",
+          new options::BooleanParameter(&_autoRefillOnFollowers),
+          arangodb::options::makeFlags(options::Flags::DefaultNoComponents,
+                                       options::Flags::OnDBServer,
+                                       options::Flags::OnSingle))
+      .setIntroducedIn(31005)
+      .setLongDescription(R"(Set this to `false` to only (re-)fill in-memory
+index caches on leaders and save memory on followers. 
+Note that the value of this option should be identical for all DBServers.)");
 }
 
 void RocksDBIndexCacheRefillFeature::beginShutdown() {
@@ -202,6 +217,10 @@ void RocksDBIndexCacheRefillFeature::stop() { stopThread(); }
 
 bool RocksDBIndexCacheRefillFeature::autoRefill() const noexcept {
   return _autoRefill;
+}
+
+bool RocksDBIndexCacheRefillFeature::autoRefillOnFollowers() const noexcept {
+  return _autoRefillOnFollowers;
 }
 
 size_t RocksDBIndexCacheRefillFeature::maxCapacity() const noexcept {
@@ -305,10 +324,16 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
               res = {TRI_ERROR_INTERNAL, ex.what()};
             }
             if (res.fail()) {
-              LOG_TOPIC("91c13", WARN, Logger::ENGINES)
-                  << "unable to warmup index '" << task.iid.id() << "' in "
-                  << task.database << "/" << task.collection << ": "
-                  << res.errorMessage();
+              // check error. it is somewhat expected that a collection or
+              // database is not found anymore in case someone has dropped it
+              if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
+                  !res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+                // an unexpected error
+                LOG_TOPIC("91c13", WARN, Logger::ENGINES)
+                    << "unable to warmup index '" << task.iid.id() << "' in "
+                    << task.database << "/" << task.collection << ": "
+                    << res.errorMessage();
+              }
             } else {
               ++_totalFullIndexRefills;
             }

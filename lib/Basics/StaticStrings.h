@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,6 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
-  static std::string const TimeString;
 
   // URL parameter names
   static std::string const IgnoreRevsString;
@@ -98,9 +97,8 @@ class StaticStrings {
   static std::string const JobsCollection;
   static std::string const AppsCollection;
   static std::string const AppBundlesCollection;
-  static std::string const ModulesCollection;
-  static std::string const FishbowlCollection;
   static std::string const FrontendCollection;
+  static std::string const PregelCollection;
   static std::string const StatisticsCollection;
   static std::string const Statistics15Collection;
   static std::string const StatisticsRawCollection;
@@ -215,6 +213,7 @@ class StaticStrings {
   static std::string const TransactionBody;
   static std::string const TransactionId;
   static std::string const Unlimited;
+  static std::string const UserAgent;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
   static std::string const XArangoFrontend;
@@ -236,6 +235,7 @@ class StaticStrings {
   // encodings
   static std::string const EncodingIdentity;
   static std::string const EncodingDeflate;
+  static std::string const EncodingGzip;
 
   // arangosh result body
   static std::string const Body;
@@ -335,6 +335,7 @@ class StaticStrings {
   static std::string const GraphQueryPath;
   static std::string const GraphQueryGlobal;
   static std::string const GraphQueryNone;
+  static std::string const GraphQueryWeight;
   static std::string const GraphQueryWeights;
   static std::string const GraphQueryOrder;
   static std::string const GraphQueryOrderBFS;

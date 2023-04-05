@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -67,6 +68,11 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
         << " not found during creation of snapshot handler";
     return nullptr;
   }
+  // TODO: this looks unsafe, because the vocbase that we have fetched above
+  // is just a raw pointer. there may be a concurrent thread that deletes
+  // the vocbase we just looked up.
+  // this should be improved, by using `DatabaseFeature::useDatabase()`
+  // instead, which returns a managed pointer.
   return std::make_unique<DocumentStateSnapshotHandler>(
       std::make_unique<CollectionReaderFactory>(*vocbase));
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1886,7 +1886,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       }
 
       // UpdateCurrentForCollections (Current/Collections/Collection)
-      if (curcolls.isObject()) {
+      if (curcolls.isObject() && ldb.isObject()) {
         for (auto const& collection : VPackObjectIterator(curcolls)) {
           auto const colName = collection.key.copyString();
 
@@ -1901,8 +1901,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             // Shard in current and has servers
             auto servers = shard.value.get(SERVERS);
             auto const shName = shard.key.copyString();
-
-            TRI_ASSERT(ldb.isObject());
 
             if (servers.isArray() && servers.length() > 0  // servers in current
                 && servers[0].stringView() == serverId     // we are leading

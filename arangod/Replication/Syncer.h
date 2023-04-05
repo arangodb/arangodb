@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -174,7 +174,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   virtual ~Syncer();
 
   /// @brief request location rewriter (injects database name)
-  static std::string rewriteLocation(void*, std::string const&);
+  static std::string rewriteLocation(void const*, std::string const&);
 
   void setLeaderId(std::string const& leaderId) { _state.leaderId = leaderId; }
 

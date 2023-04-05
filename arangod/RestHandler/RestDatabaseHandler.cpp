@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -164,8 +164,8 @@ RestStatus RestDatabaseHandler::createDatabase() {
   if (res.ok()) {
     generateOk(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
   } else {
-    if (res.errorNumber() == TRI_ERROR_FORBIDDEN ||
-        res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
+    if (res.is(TRI_ERROR_FORBIDDEN) ||
+        res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
       generateError(res);
     } else {  // http_server compatibility
       generateError(rest::ResponseCode::BAD, res.errorNumber(),

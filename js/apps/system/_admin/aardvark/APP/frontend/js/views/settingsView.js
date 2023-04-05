@@ -239,10 +239,8 @@
                 this.saveModifiedCollection.bind(this)
               )
             );
-
+            var templates = ['modalTable.ejs'];
             var tabBar = ['General', 'Indexes'];
-            var templates = ['modalTable.ejs', 'indicesView.ejs'];
-
             window.modalView.show(
               templates,
               'Modify Collection',
@@ -260,13 +258,22 @@
             } else {
               var wfs = data.waitForSync;
               if (data.replicationFactor && frontendConfig.isCluster) {
-                if (data.replicationFactor === 'satellite' || data.distributeShardsLike !== undefined) {
+                var reason = null;
+                var hint = '';
+                if (data.replicationFactor === 'satellite') {
+                  reason = 'This collection is a SatelliteCollection.';
+                } else if (data.distributeShardsLike !== undefined) {
+                  reason = 'This collection uses \'distributeShardsLike\'.';
+                  hint = ' The value can be changed in collection \'' + data.distributeShardsLike + '\' instead.';
+                }
+
+                if (reason !== null) {
                   tableContent.push(
                     window.modalView.createReadOnlyEntry(
                       'change-replication-factor',
                       'Replication factor',
                       data.replicationFactor,
-                      'This collection is a SatelliteCollection. The replicationFactor is not changeable.',
+                      reason + ' The replication factor is not changeable for this collection.' + hint,
                       '',
                       true
                     )
@@ -276,7 +283,7 @@
                       'change-write-concern',
                       'Write concern',
                       JSON.stringify(data.writeConcern),
-                      'This collection is a SatelliteCollection. The write concern is not changeable.',
+                      reason + ' The write concern is not changeable for this collection.' + hint,
                       '',
                       true
                     )

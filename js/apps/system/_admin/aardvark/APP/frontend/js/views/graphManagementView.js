@@ -299,7 +299,7 @@
       var name = $(e.currentTarget).attr('id');
       if (name) {
         name = name.substr(0, name.length - 5);
-        window.App.navigate('graph/' + encodeURIComponent(name), {trigger: true});
+        window.App.navigate('graphs-v2/' + encodeURIComponent(name), {trigger: true});
       }
     },
 
@@ -1572,6 +1572,9 @@
 
     resetDisplaySettings: function () {
       var graphName = $('#editGraphName').val();
+
+      const localStorageKey = graphName + "-gv-urlparameters";
+      window.localStorage.removeItem(localStorageKey);
 
       var test = new window.GraphSettingsView({
         name: graphName,

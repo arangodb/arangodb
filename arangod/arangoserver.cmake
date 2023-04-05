@@ -108,6 +108,7 @@ add_library(arangoserver STATIC
   RestHandler/RestSupportInfoHandler.cpp
   RestHandler/RestSystemReportHandler.cpp
   RestHandler/RestTasksHandler.cpp
+  RestHandler/RestTelemetricsHandler.cpp
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestTtlHandler.cpp
@@ -205,6 +206,7 @@ target_link_libraries(arangoserver
   arango_geo
   arango_graph
   arango_indexes
+  arango_inspection
   arango_iresearch
   arango_metrics
   arango_network

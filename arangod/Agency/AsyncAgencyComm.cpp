@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -104,10 +104,10 @@ std::string extractEndpointFromUrl(std::string const& location) {
 
   if (location.starts_with("http://")) {
     specification = "http+tcp://" + location.substr(7);
-    delim = specification.find_first_of('/', 12);
+    delim = specification.find('/', 12);
   } else if (location.starts_with("https://")) {
     specification = "http+ssl://" + location.substr(8);
-    delim = specification.find_first_of('/', 13);
+    delim = specification.find('/', 13);
   }
 
   // invalid location header

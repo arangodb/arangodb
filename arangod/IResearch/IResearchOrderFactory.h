@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,7 @@
 
 #include "VocBase/voc-types.h"
 
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 
 namespace arangodb {
 namespace aql {
@@ -62,13 +62,13 @@ aql::Variable const* refFromScorer(aql::AstNode const& node);
 // Determine if the 'node' can be converted into an iresearch scorer
 // if 'scorer' != nullptr then also append build iresearch scorer
 // there.
-bool scorer(irs::sort::ptr* scorer, aql::AstNode const& node,
+bool scorer(irs::Scorer::ptr* scorer, aql::AstNode const& node,
             QueryContext const& ctx);
 
 // Determine if the 'node' can be converted into an iresearch scorer
 // if 'scorer' != nullptr then also append build iresearch comparer
 // there
-bool comparer(irs::sort::ptr* scorer, aql::AstNode const& node);
+bool comparer(irs::Scorer::ptr* scorer, aql::AstNode const& node);
 
 }  // namespace iresearch::order_factory
 }  // namespace arangodb

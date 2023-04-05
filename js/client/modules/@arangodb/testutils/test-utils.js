@@ -41,6 +41,7 @@ const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadl
 const userManager = require("@arangodb/users");
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const setDidSplitBuckets = require('@arangodb/testutils/testrunner').setDidSplitBuckets;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -192,8 +193,18 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if ((testname.indexOf('-noinstr') !== -1) && (options.isInstrumented)) {
+    whichFilter.filter = 'skip when built with an instrumented build';
+    return false;
+  }
+
   if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
     whichFilter.filter = 'skip when built with asan or tsan';
+    return false;
+  }
+
+  if ((testname.indexOf('-nocov') !== -1) && (options.isCov)) {
+    whichFilter.filter = 'skip when built with coverage';
     return false;
   }
 
@@ -221,6 +232,10 @@ function splitBuckets (options, cases) {
   let n = options.testBuckets.split('/');
   let r = parseInt(n[0]);
   let s = parseInt(n[1]);
+
+  if (cases.length < r) {
+    throw `We only have ${m} test cases, cannot split them into ${r} buckets`;
+  }
 
   if (r < 1) {
     r = 1;
@@ -260,7 +275,7 @@ function doOnePathInner (path) {
 
 function scanTestPaths (paths, options) {
   // add Enterprise Edition tests
-  if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
+  if (isEnterprise()) {
     paths = paths.concat(paths.map(function(p) {
       return 'enterprise/' + p;
     }));
@@ -309,8 +324,11 @@ function getTestCode(file, options, instanceManager) {
     filter = filter || '';
     runTest = 'const runTest = require("@arangodb/mocha-runner");\n';
   }
-  return 'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n' + runTest +
-         'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
+  let ret = '';
+  if (instanceManager != null) {
+    ret = 'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n';
+  }
+  return ret + runTest + 'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a remote unittest file using /_admin/execute
@@ -494,8 +512,8 @@ class runLocalInArangoshRunner extends testRunnerBase{
       }
     }
 
-    let testCode = getTestCode(file, this.options, this.instanceManager);
-    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
+    let testCode = getTestCode(file, this.options, null);
+    global.instanceManager = this.instanceManager;
     let testFunc;
     try {
       eval('testFunc = function () {\n' + testCode + "}");
@@ -519,7 +537,7 @@ class runLocalInArangoshRunner extends testRunnerBase{
           timeout: true,
           forceTerminate: true,
           status: false,
-          message: "test ran into timeout. Original test status: " + JSON.stringify(result),
+          message: `test aborted due to ${require('internal').getDeadlineReasonString()}. Original test status: ${JSON.stringify(result)}`,
         };
       }
       if (result === undefined) {
