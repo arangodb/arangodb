@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <chrono>
 #include "Actor/ActorPID.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/CollectionSpecifications.h"
@@ -42,6 +43,7 @@ struct WorkerState {
   WorkerState(std::unique_ptr<WorkerContext> workerContext,
               actor::ActorPID conductor,
               worker::message::CreateWorker specifications,
+              std::chrono::seconds messageTimeout,
               std::unique_ptr<MessageFormat<M>> newMessageFormat,
               std::unique_ptr<MessageCombiner<M>> newMessageCombiner,
               std::unique_ptr<Algorithm<V, E, M>> algorithm,
@@ -49,6 +51,7 @@ struct WorkerState {
               actor::ActorPID resultActor, actor::ActorPID statusActor)
       : config{std::make_shared<WorkerConfig>(&vocbase)},
         workerContext{std::move(workerContext)},
+        messageTimeout{std::move(messageTimeout)},
         messageFormat{std::move(newMessageFormat)},
         messageCombiner{std::move(newMessageCombiner)},
         conductor{std::move(conductor)},
@@ -86,11 +89,14 @@ struct WorkerState {
 
   // only needed in computing state
   std::unique_ptr<WorkerContext> workerContext;
+  std::chrono::seconds messageTimeout;
   std::vector<worker::message::PregelMessage> messagesForNextGss;
   // distinguishes config.globalSuperStep being initialized to 0 and
   // config.globalSuperStep being explicitely set to 0 when the first superstep
   // starts: needed to process incoming messages in its dedicated gss
   bool computationStarted = false;
+  std::optional<std::chrono::steady_clock::time_point>
+      isWaitingForAllMessagesSince;
   std::unique_ptr<MessageFormat<M>> messageFormat;
   std::unique_ptr<MessageCombiner<M>> messageCombiner;
   std::unique_ptr<InCache<M>> readCache = nullptr;

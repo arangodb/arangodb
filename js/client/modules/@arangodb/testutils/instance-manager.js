@@ -722,9 +722,14 @@ class instanceManager {
   // / @brief checks whether any instance has failure points set
   // //////////////////////////////////////////////////////////////////////////////
 
-  checkServerFailurePoints(instanceInfo) {
+  checkServerFailurePoints(instanceMgr = null) {
     let failurePoints = [];
-    instanceInfo.arangods.forEach(arangod => {
+    let im = this;
+    if (instanceMgr !== null) {
+      im = instanceMgr;
+    }
+
+    im.arangods.forEach(arangod => {
       // we don't have JWT success atm, so if, skip:
       if ((!arangod.isAgent()) &&
           !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&

@@ -111,15 +111,18 @@ auto inspect(Inspector& f, ComputationStarted& x) {
 
 struct GlobalSuperStepStarted {
   uint64_t gss;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
   VPackBuilder aggregators;
   std::string state;
   TimingInMicroseconds time = TimingInMicroseconds::now();
 };
 template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepStarted& x) {
-  return f.object(x).fields(f.field("gss", x.gss),
-                            f.field("aggregators", x.aggregators),
-                            f.field("state", x.state), f.field("time", x.time));
+  return f.object(x).fields(
+      f.field("gss", x.gss), f.field("vertexCount", x.vertexCount),
+      f.field("edgeCount", x.edgeCount), f.field("aggregators", x.aggregators),
+      f.field("state", x.state), f.field("time", x.time));
 }
 
 struct GlobalSuperStepUpdate {

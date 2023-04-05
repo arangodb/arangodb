@@ -29,13 +29,13 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Pregel/GraphStore/GraphStorerBase.h"
-#include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/GraphStore/Magazine.h"
 #include "Cluster/ClusterTypes.h"
 #include "Pregel/StatusMessages.h"
+#include "Pregel/Worker/WorkerConfig.h"
+#include "Utils/DatabaseGuard.h"
 
 namespace arangodb::pregel {
-
-class WorkerConfig;
 
 template<class V, class E>
 struct GraphFormat;
@@ -51,20 +51,24 @@ using StoringUpdateCallback =
 
 template<typename V, typename E>
 struct GraphStorer : GraphStorerBase<V, E> {
-  explicit GraphStorer(std::shared_ptr<WorkerConfig> config,
+  explicit GraphStorer(ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
                        std::shared_ptr<GraphFormat<V, E> const> graphFormat,
                        std::vector<ShardID> globalShards,
                        StoringUpdateCallback updateCallback)
-      : graphFormat(graphFormat),
+      : executionNumber(executionNumber),
+        vocbaseGuard(vocbase),
+        graphFormat(graphFormat),
         globalShards(globalShards),
-        config(config),
         updateCallback(updateCallback) {}
 
-  auto store(std::shared_ptr<Quiver<V, E>> quiver) -> void override;
+  auto storeQuiver(std::shared_ptr<Quiver<V, E>> quiver) -> void;
+  auto store(Magazine<V, E> magazine)
+      -> futures::Future<futures::Unit> override;
 
+  ExecutionNumber executionNumber;
+  DatabaseGuard vocbaseGuard;
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   std::vector<ShardID> globalShards;
-  std::shared_ptr<WorkerConfig const> config;
   StoringUpdateCallback updateCallback;
 };
 
