@@ -9,7 +9,8 @@ import {
 } from "@chakra-ui/react";
 import { DocumentMetadata } from "arangojs/documents";
 import { JsonEditor } from "jsoneditor-react";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import useSWR from "swr";
 import {
   Modal,
   ModalBody,
@@ -61,24 +62,22 @@ const useAddEdgeAction = ({
   return { addEdge };
 };
 
-const useEdgesCollections = () => {
+const useEdgeCollections = () => {
   const { graphName } = useGraph();
-  const [edgesCollections, setEdgesCollections] = useState<string[]>([]);
-  useEffect(() => {
-    const fetchEdgesCollections = async () => {
+  const { data: edgeCollections } = useSWR(
+    ["edgeCollections", graphName],
+    async () => {
       const db = getCurrentDB();
       const collections = await db.graph(graphName).listEdgeCollections();
-      setEdgesCollections(collections);
-    };
-    fetchEdgesCollections();
-  }, [graphName]);
-
-  return { edgesCollections };
+      return collections;
+    }
+  );
+  return { edgeCollections };
 };
 
 export const AddEdgeModal = () => {
   const { graphName, onClearAction, selectedAction, graphData } = useGraph();
-  const { edgesCollections } = useEdgesCollections();
+  const { edgeCollections } = useEdgeCollections();
   const { from, to } = selectedAction || {};
   const { addEdge } = useAddEdgeAction({
     graphName,
@@ -99,7 +98,7 @@ export const AddEdgeModal = () => {
 
   const [json, setJson] = useState({});
   const [key, setKey] = useState("");
-  const [collection, setCollection] = useState(edgesCollections?.[0] || "");
+  const [collection, setCollection] = useState(edgeCollections?.[0] || "");
   const isEnterprise =
     graphData?.settings.isSmart && !graphData.settings.smartGraphAttribute;
   return (
@@ -131,7 +130,7 @@ export const AddEdgeModal = () => {
                 id="edgeCollection"
                 onChange={event => setCollection(event.target.value)}
               >
-                {edgesCollections?.map(edgeCollectionName => {
+                {edgeCollections?.map(edgeCollectionName => {
                   return (
                     <option key={edgeCollectionName} value={edgeCollectionName}>
                       {edgeCollectionName}
@@ -160,7 +159,9 @@ export const AddEdgeModal = () => {
             onClick={() => {
               if (from && to) {
                 addEdge({
-                  collection: collection ? collection : edgesCollections?.[0],
+                  collection: collection
+                    ? collection
+                    : edgeCollections?.[0] || collection,
                   data: {
                     ...json,
                     _key: key || undefined,

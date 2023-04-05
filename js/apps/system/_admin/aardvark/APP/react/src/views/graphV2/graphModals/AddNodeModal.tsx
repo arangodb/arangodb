@@ -68,6 +68,7 @@ const getHasSmartAttributeError = ({
   if (smartGraphAttribute && !smartGraphAttributeValue) {
     return true;
   }
+  return false;
 };
 
 export const AddNodeModal = () => {
