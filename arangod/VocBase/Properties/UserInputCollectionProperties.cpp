@@ -29,13 +29,14 @@
 
 using namespace arangodb;
 
-[[nodiscard]] arangodb::Result
+[[nodiscard]] Result
 UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
     DatabaseConfiguration const& config) {
   //  Check name is allowed
-  if (!CollectionNameValidator::isAllowedName(
-          isSystem, config.allowExtendedNames, name)) {
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  if (auto res = CollectionNameValidator::validateName(
+          isSystem, config.allowExtendedNames, name);
+      res.fail()) {
+    return res;
   }
 
   auto res = CollectionInternalProperties::

@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Rest/GeneralResponse.h"
@@ -193,6 +194,14 @@ void RestViewHandler::createView() {
     return;
   }
 
+  if (nameSlice.stringView() != normalizeUtf8ToNFC(nameSlice.stringView())) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                  "view name is not properly UTF-8 NFC-normalized");
+    events::CreateView(_vocbase.name(), nameSlice.copyString(),
+                       TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+
   // ...........................................................................
   // end of parameter parsing
   // ...........................................................................
@@ -275,6 +284,13 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
+
+  if (name != normalizeUtf8ToNFC(name)) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                  "view name is not properly UTF-8 NFC-normalized");
+    return;
+  }
+
   CollectionNameResolver resolver(_vocbase);
   auto view = resolver.getView(name);
 
@@ -286,7 +302,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   bool parseSuccess = false;
-  VPackSlice const body = this->parseVPackBody(parseSuccess);
+  VPackSlice body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;
@@ -435,6 +451,14 @@ void RestViewHandler::deleteView() {
   }
 
   auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
+
+  if (name != normalizeUtf8ToNFC(name)) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                  "view name is not properly UTF-8 NFC-normalized");
+    events::DropView(_vocbase.name(), name, TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+
   auto allowDropSystem =
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
   auto view = CollectionNameResolver(_vocbase).getView(name);

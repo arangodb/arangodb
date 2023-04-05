@@ -74,6 +74,7 @@ class DumpFeature final : public ArangoDumpFeature {
     bool allDatabases{false};
     bool clusterMode{false};
     bool dumpData{true};
+    bool dumpViews{true};
     bool force{false};
     bool ignoreDistributeShardsLikeErrors{false};
     bool includeSystemCollections{false};
@@ -167,7 +168,7 @@ class DumpFeature final : public ArangoDumpFeature {
                  uint64_t batchId);
 
   Result storeDumpJson(VPackSlice body, std::string const& dbName) const;
-  Result storeViews(velocypack::Slice const&) const;
+  Result storeViews(velocypack::Slice views) const;
 };
 
 }  // namespace arangodb

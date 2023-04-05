@@ -298,16 +298,9 @@ Result CreateDatabaseInfo::checkOptions() {
   }
 
   bool isSystem = _name == StaticStrings::SystemDatabase;
-  bool extendedNames =
-      _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
+  bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNames();
 
-  Result res;
-
-  if (!DatabaseNameValidator::isAllowedName(isSystem, extendedNames, _name)) {
-    res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-  }
-
-  return res;
+  return DatabaseNameValidator::validateName(isSystem, extendedNames, _name);
 }
 
 VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
