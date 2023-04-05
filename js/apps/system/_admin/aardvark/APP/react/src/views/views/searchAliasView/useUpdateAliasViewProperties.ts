@@ -54,6 +54,8 @@ const putRenameView = async ({
 }) => {
   let isError = false;
   const route = getApiRouteForCurrentDB();
+  // normalize again here because 
+  // this can change from the JSON form too
   const normalizedViewName = name.normalize();
   const encodedInitialViewName = encodeURIComponent(initialName.normalize());
   const result = await route.put(`/view/${encodedInitialViewName}/rename`, {
