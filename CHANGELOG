@@ -8,7 +8,7 @@ devel
         FILTER v.isRelevant == true
         RETURN p
 
-  If the comparison side contains a variable and the sae variable is used
+  If the comparison side contains a variable and the same variable is used
   as the start vertex e.g. like this:
 
   FOR candidate IN ["vertices/1", "vertices/2"]
