@@ -40,7 +40,6 @@ class ClusterFeature;
 class LogicalCollection;
 struct CollectionCreationInfo;
 class CollectionNameResolver;
-struct CreateCollectionBody;
 
 namespace transaction {
 class Methods;
@@ -88,19 +87,6 @@ struct Collections {
       TRI_vocbase_t const& vocbase,  // vocbase to search
       std::string const& name,       // collection name
       std::shared_ptr<LogicalCollection>& ret);
-
-  /// Create collection, ownership of collection in callback is
-  /// transferred to callee
-  [[nodiscard]] static arangodb::ResultT<
-      std::vector<std::shared_ptr<LogicalCollection>>>
-  create(                      // create collection
-      TRI_vocbase_t& vocbase,  // collection vocbase
-      OperationOptions const& options,
-      std::vector<CreateCollectionBody> collections,  // Collections to create
-      bool createWaitsForSyncReplication,             // replication wait flag
-      bool enforceReplicationFactor,                  // replication factor flag
-      bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
-      bool isRestore = false);  // whether this is being called during restore
 
   /// Create collection, ownership of collection in callback is
   /// transferred to callee
