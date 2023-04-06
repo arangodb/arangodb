@@ -300,7 +300,10 @@ function dumpIntegrationSuite() {
         c.insert(docs);
 
         db._drop(cn + "AutoIncrement");
-        let numShards = 1;
+        let numShards = 3;
+        if (isCluster) {
+          numShards = 1;
+        }
         c = db._create(cn + "AutoIncrement", {keyOptions: {type: "autoincrement"}, numberOfShards: numShards});
         docs = [];
         for (let i = 0; i < 1000; ++i) {
