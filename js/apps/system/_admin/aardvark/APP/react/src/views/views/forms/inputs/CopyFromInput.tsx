@@ -2,7 +2,6 @@ import { ArrowBackIcon } from "@chakra-ui/icons";
 import { Box, Button, Stack, Text } from "@chakra-ui/react";
 import { find, pick, sortBy } from "lodash";
 import React, { useEffect, useState } from "react";
-import { useHistory, useLocation } from "react-router-dom";
 import useSWRImmutable from "swr/immutable";
 import SingleSelect from "../../../../components/select/SingleSelect";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
@@ -32,13 +31,11 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
   const initalViewOptions = filterAndSortViews(views);
   const [viewOptions, setViewOptions] = useState(initalViewOptions);
   const [selectedView, setSelectedView] = useState(viewOptions[0]);
-  const {encoded: selectedViewValue} = encodeHelper(selectedView.value);
+  const {encoded: encodedSelectedView} = encodeHelper(selectedView.value);
   const { data } = useSWRImmutable(
-    `/view/${selectedViewValue}/properties`,
+    `/view/${encodedSelectedView}/properties`,
     path => getApiRouteForCurrentDB().get(path)
   );
-  const location = useLocation();
-  const history = useHistory();
   const fullView = data ? data.body : selectedView;
 
   useEffect(() => {
@@ -67,9 +64,6 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
       formState: fullView as FormState
     });
     dispatch({ type: "regenRenderKey" });
-    if (location) {
-      history.push("/");
-    }
   };
 
   const updateSelectedView = (value: string) => {
