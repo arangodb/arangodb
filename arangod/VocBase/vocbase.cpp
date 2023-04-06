@@ -56,6 +56,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
@@ -994,11 +995,11 @@ Result TRI_vocbase_t::validateCollectionParameters(
       parameters, StaticStrings::DataSourceName, "");
   bool isSystem = VelocyPackHelper::getBooleanValue(
       parameters, StaticStrings::DataSourceSystem, false);
-  bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesForCollections();
-  if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, name)) {
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
-            "illegal collection name '" + name + "'"};
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res =
+          CollectionNameValidator::validateName(isSystem, extendedNames, name);
+      res.fail()) {
+    return res;
   }
 
   TRI_col_type_e collectionType =
@@ -1064,10 +1065,11 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool extendedNames = databaseFeature.extendedNamesForViews();
-  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames,
-                                        newName)) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  bool extendedNames = databaseFeature.extendedNames();
+  if (auto res = ViewNameValidator::validateName(/*allowSystem*/ false,
+                                                 extendedNames, newName);
+      res.fail()) {
+    return res;
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1137,6 +1139,13 @@ Result TRI_vocbase_t::renameCollection(DataSourceId cid,
   // check if names are actually different
   if (oldName == newName) {
     return TRI_ERROR_NO_ERROR;
+  }
+
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = CollectionNameValidator::validateName(/*allowSystem*/ false,
+                                                       extendedNames, newName);
+      res.fail()) {
+    return res;
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1277,10 +1286,10 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::createView(
     name = VelocyPackHelper::getStringValue(parameters,
                                             StaticStrings::DataSourceName, "");
 
-    bool extendedNames =
-        server().getFeature<DatabaseFeature>().extendedNamesForCollections();
-    valid &= ViewNameValidator::isAllowedName(/*allowSystem*/ false,
-                                              extendedNames, name);
+    bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
+    valid &= ViewNameValidator::validateName(/*allowSystem*/ false,
+                                             extendedNames, name)
+                 .ok();
   }
 
   if (!valid) {
@@ -1704,7 +1713,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   });
 
   config.maxNumberOfShards = cl.maxNumberOfShards();
-  config.allowExtendedNames = db.extendedNamesForCollections();
+  config.allowExtendedNames = db.extendedNames();
   config.shouldValidateClusterSettings = true;
   config.minReplicationFactor = cl.minReplicationFactor();
   config.maxReplicationFactor = cl.maxReplicationFactor();

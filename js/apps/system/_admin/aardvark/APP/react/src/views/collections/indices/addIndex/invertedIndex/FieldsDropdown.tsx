@@ -5,7 +5,7 @@ import { components, MultiValueGenericProps } from "react-select";
 import CreatableMultiSelect from "../../../../../components/select/CreatableMultiSelect";
 import { OptionType } from "../../../../../components/select/SelectBase";
 import { IndexFormFieldProps } from "../IndexFormField";
-import { InfoTooltip } from "../InfoTooltip";
+import { IndexInfoTooltip } from "../IndexInfoTooltip";
 import { useInvertedIndexContext } from "./InvertedIndexContext";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
@@ -99,7 +99,7 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
               }}
               value={dropdownValue}
             />
-            {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Spacer />}
+            {field.tooltip ? <IndexInfoTooltip label={field.tooltip} /> : <Spacer />}
           </Box>
         );
       }}

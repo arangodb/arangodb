@@ -51,6 +51,8 @@
     return c;
   }
 
+  const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief test suite
   ////////////////////////////////////////////////////////////////////////////////
@@ -426,6 +428,27 @@
               assertEqual(i + 1, doc.value2);
             }
           }
+        }
+      },
+      
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief test collection with extended name
+      ////////////////////////////////////////////////////////////////////////////////
+      
+      testExtendedName: function () {
+        var c = db._collection(extendedName);
+        var p = c.properties();
+
+        assertEqual(2, c.type()); // document
+        assertFalse(p.waitForSync);
+
+        assertEqual(1, c.getIndexes().length); // just primary index
+        assertEqual("primary", c.getIndexes()[0].type);
+        assertEqual(10000, c.count());
+
+        for (let i = 0; i < 10000; ++i) {
+          let doc = c.document("test" + i);
+          assertEqual(i, doc.value1);
         }
       },
 

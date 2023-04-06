@@ -45,7 +45,7 @@
       'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
-      'visgraphs/:name': 'showVisGraph',
+      'graphs-v2/:name': 'showV2Graph',
       'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',
@@ -379,10 +379,10 @@
         document.getElementById('content')));
     },
 
-    showVisGraph: function (name) {
+    showV2Graph: function (name) {
       this.checkUser();
 
-      this.init.then(() => ReactDOM.render(React.createElement(window.VisGraphReactView),
+      this.init.then(() => ReactDOM.render(React.createElement(window.GraphV2ReactView),
         document.getElementById('content'))
       );
     },

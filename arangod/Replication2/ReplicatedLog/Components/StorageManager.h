@@ -48,7 +48,7 @@ struct StorageManager : IStorageManager,
   auto getCommittedLogIterator(std::optional<LogRange> range) const
       -> std::unique_ptr<LogRangeIterator> override;
   auto getPersistedLogIterator(LogIndex first) const
-      -> std::unique_ptr<PersistedLogIterator>;
+      -> std::unique_ptr<PersistedLogIterator> override;
   auto getPersistedLogIterator(std::optional<LogRange> range) const
       -> std::unique_ptr<PersistedLogIterator>;
   auto getTermIndexMapping() const -> TermIndexMapping override;

@@ -5836,8 +5836,9 @@ static void JS_IsAllowedDatabaseName(
 
   auto databaseName = TRI_ObjectToString(isolate, args[0]);
   bool isExtendedName = TRI_ObjectToBoolean(isolate, args[1]);
-  bool result = arangodb::DatabaseNameValidator::isAllowedName(
-      true, isExtendedName, databaseName);
+  bool result = arangodb::DatabaseNameValidator::validateName(
+                    true, isExtendedName, databaseName)
+                    .ok();
 
   TRI_V8_RETURN_BOOL(result);
   TRI_V8_TRY_CATCH_END

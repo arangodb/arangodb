@@ -71,7 +71,7 @@ rta_makedata single suffix=afo -- --activeFailover true
 # Cluster Tests
 
 arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
-chaos cluster !full -- --dumpAgencyOnError true parallelity=8
+chaos cluster !coverage !full -- --dumpAgencyOnError true parallelity=8
 restart priority=1000 size=small sniff cluster -- --dumpAgencyOnError true --forceJson true
 
 load_balancing priority=500 size=small cluster -- --dumpAgencyOnError true
@@ -103,7 +103,7 @@ shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5
 shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true
 shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
 
-# TODO: rta_makedata cluster
+rta_makedata cluster
 
 # Common Tests
 
@@ -150,7 +150,7 @@ ldapsecondldap !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST -
 
 # Full Cluster Tests
 authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true
-chaos !windows full cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
+chaos !windows !coverage full cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
 client_resilience full cluster priority=500 -- --dumpAgencyOnError true
 resilience_failover_failure full cluster priority=500 -- --dumpAgencyOnError true
 resilience_failover_view full cluster priority=500 -- --dumpAgencyOnError true
