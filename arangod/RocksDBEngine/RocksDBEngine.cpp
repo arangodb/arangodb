@@ -3109,7 +3109,8 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
   auto readOptions = rocksdb::ReadOptions();
   readOptions.iterate_upper_bound = &upper;
 
-  auto iter = _db->NewIterator(readOptions, cfDefs);
+  auto iter =
+      std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(readOptions, cfDefs));
   for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
     ADB_PROD_ASSERT(vocbase.id() == RocksDBKey::databaseId(iter->key()));
 
