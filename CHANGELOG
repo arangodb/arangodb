@@ -81,10 +81,14 @@ devel
   - `LET docs = [...] FOR doc IN docs INSERT doc INTO ...` (where the documents
     set up by the LET are some static documents known at query compile time),
 
-  If a query has such pattern, and there are no following RETURN nodes
-  (including any RETURN OLD, RETURN NEW), the FOR loop is not contained in
-  another outer FOR loop, and there are no calculations between the FOR and
-  the INSERT, the optimization is triggered.
+  If a query has such pattern, and all the following restrictions are met, then
+  the optimization is triggered:
+
+  - there are no following RETURN nodes (including any RETURN OLD, RETURN NEW)
+  - the FOR loop is not contained in another outer FOR loop or subquery
+  - there are no other nodes (e.g. LET, FILTER) between the FOR and the INSERT
+  - the INSERT is not used on a SmartGraph edge collection
+  - the FOR loop is iterating over a constant, deterministic expression
 
   The optimization will then add a `MultipleRemoteExecutionNode` to the query
   execution plan, which will care about inserting all documents into the 

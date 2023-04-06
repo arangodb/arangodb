@@ -46,18 +46,14 @@ const vn2 = "UnitTestsVertex2";
 const en = "UnitTestsEdge";
 
 let createData = function() {
-  let numberOfShards = 3;
-  if (db._properties().sharding === "single") {
-    numberOfShards = 1;
-  }
-  let v1 = db._create(vn1, {numberOfShards});
-  let v2 = db._create(vn2, {numberOfShards});
-  let e = db._createEdgeCollection(en, {numberOfShards});
+  let v1 = db._create(vn1, { numberOfShards: 3 });
+  let v2 = db._create(vn2, { numberOfShards: 3 });
+  let e = db._createEdgeCollection(en, { numberOfShards: 3 });
 
   const n = 10;
   let docs = [];
   for (let i = 0; i < n; ++i) {
-    docs.push({_key: "test" + i});
+    docs.push({ _key: "test" + i });
   }
   v1.insert(docs);
   v2.insert(docs);
