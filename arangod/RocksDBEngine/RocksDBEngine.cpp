@@ -2741,7 +2741,8 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
 
   auto rv = Result();
 
-  auto iter = _db->NewIterator(readOptions, cfDefs);
+  auto iter =
+      std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(readOptions, cfDefs));
   for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
     ADB_PROD_ASSERT(databaseId == RocksDBKey::databaseId(iter->key()));
 
