@@ -647,15 +647,11 @@
       var query = this.queriesHistory[counter].sentQuery;
 
       if (query !== '' && query !== undefined && query !== null) {
-        var url;
-        if (Object.keys(this.queriesHistory[counter].bindParam).length === 0) {
-          url = 'query/result/download/' + encodeURIComponent(window.btoa(JSON.stringify({ query: query })));
-        } else {
-          url = 'query/result/download/' + encodeURIComponent(window.btoa(JSON.stringify({
-            query: query,
-            bindVars: this.queriesHistory[counter].bindParam
-          })));
+        var toEncode = { query: query };
+        if (Object.keys(this.queriesHistory[counter].bindParam).length !== 0) {
+          toEncode.bindVars = this.queriesHistory[counter].bindParam;
         }
+        var url = 'query/result/download/' + encodeURIComponent(arangoHelper.toBinary(JSON.stringify(toEncode)));
         arangoHelper.download(url);
       } else {
         arangoHelper.arangoError('Query error', 'Could not download the result.');

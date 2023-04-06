@@ -319,17 +319,17 @@ constexpr frozen::unordered_map<std::string_view, ServerHealth, 4>
       auto status = ServerHealth::kUnclear;
       std::string serverId = it.key.copyString();
       if (ADB_LIKELY(supervisionHealth.isObject())) {
-        try {
-          auto decoded = kHealthStatusMap.find(
-              supervisionHealth.get(serverId).get("Status").stringView());
-          if (decoded != kHealthStatusMap.end()) {
-            status = decoded->second;
+        auto serverKey = supervisionHealth.get(serverId);
+        // Server may be missing from Health if it has just arrived
+        // to our cluster.
+        if (serverKey.isObject()) {
+          auto statusString = serverKey.get("Status");
+          if (statusString.isString()) {
+            auto decoded = kHealthStatusMap.find(statusString.stringView());
+            if (decoded != kHealthStatusMap.end()) {
+              status = decoded->second;
+            }
           }
-        } catch (velocypack::Exception const& ex) {
-          LOG_TOPIC("d783d", WARN, Logger::CLUSTER)
-              << "Invalid health data for server " << serverId
-              << " Error: " << ex.what()
-              << " Data: " << supervisionHealth.toString();
         }
       }
       VPackSlice const knownServerSlice = it.value;
@@ -375,7 +375,7 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
           res = Result{TRI_ERROR_DEBUG};
         }
         else {
-          res = methods::Indexes::drop(coll.get(), builder.slice());
+          res = methods::Indexes::drop(*coll, builder.slice());
         }
         if (res.fail() && res.isNot(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
           // we should have internal superuser

@@ -160,27 +160,17 @@ class DatabaseFeature final : public ArangodFeature {
     return _defaultReplicationVersion;
   }
 
-  /// @brief whether or not extended names for databases can be used
-  bool extendedNamesForDatabases() const noexcept {
-    return _extendedNamesForDatabases;
-  }
+  /// @brief whether or not extended names for databases, collections, views
+  /// and indexes
+  bool extendedNames() const noexcept { return _extendedNames; }
   /// @brief will be called only during startup when reading stored value from
   /// storage engine
-  void extendedNamesForDatabases(bool value) noexcept {
-    _extendedNamesForDatabases = value;
-  }
+  void extendedNames(bool value) noexcept { _extendedNames = value; }
 
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForCollections() const noexcept { return false; }
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForViews() const noexcept { return false; }
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForAnalyzers() const noexcept { return false; }
-
-  void enableCheckVersion() { _checkVersion = true; }
-  void enableUpgrade() { _upgrade = true; }
-  void disableUpgrade() { _upgrade = false; }
-  void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
+  void enableCheckVersion() noexcept { _checkVersion = true; }
+  void enableUpgrade() noexcept { _upgrade = true; }
+  void disableUpgrade() noexcept { _upgrade = false; }
+  void isInitiallyEmpty(bool value) noexcept { _isInitiallyEmpty = value; }
 
   static TRI_vocbase_t& getCalculationVocbase();
 
@@ -206,8 +196,8 @@ class DatabaseFeature final : public ArangodFeature {
   bool _isInitiallyEmpty{false};
   bool _checkVersion{false};
   bool _upgrade{false};
-  // allow extended database names or not
-  bool _extendedNamesForDatabases{false};
+  // allow extended names for databases, collections, views and indexes
+  bool _extendedNames{false};
   bool _performIOHeartbeat{true};
   std::atomic_bool _started{false};
 

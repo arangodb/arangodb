@@ -30,13 +30,11 @@
 using namespace arangodb::pregel::conductor;
 
 Storing::Storing(ConductorState& conductor) : conductor{conductor} {
-  conductor.timing.storing.start();
   // TODO GORDO-1510
   // conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_add(1);
 }
 
 Storing::~Storing() {
-  conductor.timing.storing.finish();
   // TODO GORDO-1510
   // conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
 }

@@ -41,7 +41,7 @@ const LinkPropertiesInput = ({
 
   return (
     <Grid
-      templateColumns="1fr 1fr"
+      templateColumns="minmax(300px, 1fr) 1fr"
       columnGap="10"
       border="2px solid"
       borderColor="gray.300"

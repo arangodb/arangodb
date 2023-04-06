@@ -171,7 +171,18 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 // @brief load the initial worker data, call conductor eventually
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
-  std::function<void()> finishedCallback = [self = shared_from_this(), this] {
+  LOG_PREGEL("52070", WARN) << fmt::format(
+      "Worker for execution number {} is loading", _config->executionNumber());
+  _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
+
+  auto loader = std::make_shared<GraphLoader<V, E>>(
+      _config, _algorithm->inputFormat(),
+      OldLoadingUpdate{.fn = _makeStatusCallback()});
+
+  auto self = shared_from_this();
+  loader->load().thenFinal([self, this](auto&& r) {
+    _magazine = r.get();
+
     LOG_PREGEL("52062", WARN)
         << fmt::format("Worker for execution number {} has finished loading.",
                        _config->executionNumber());
@@ -189,35 +200,7 @@ void Worker<V, E, M>::setupWorker() {
     _callConductor(Utils::finishedStartupPath,
                    VPackBuilder(serialized.get().slice()));
     _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
-  };
-
-  // initialization of the graphstore might take an undefined amount
-  // of time. Therefore this is performed asynchronously
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  LOG_PREGEL("52070", WARN) << fmt::format(
-      "Worker for execution number {} is loading", _config->executionNumber());
-  _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW,
-                   [this, self = shared_from_this(),
-                    statusUpdateCallback = std::move(_makeStatusCallback()),
-                    finishedCallback = std::move(finishedCallback)] {
-                     try {
-                       auto loader = GraphLoader<V, E>(
-                           _config, _algorithm->inputFormat(),
-                           OldLoadingUpdate{.fn = statusUpdateCallback});
-                       _magazine = std::move(loader.load());
-                     } catch (std::exception const& ex) {
-                       LOG_PREGEL("a47c4", WARN)
-                           << "caught exception in loadShards: " << ex.what();
-                       throw;
-                     } catch (...) {
-                       LOG_PREGEL("e932d", WARN)
-                           << "caught unknown exception in loadShards";
-                       throw;
-                     }
-                     finishedCallback();
-                   });
+  });
 }
 
 template<typename V, typename E, typename M>
@@ -541,30 +524,22 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
   if (msg.store) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
-    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(
-        RequestLane::INTERNAL_LOW,
-        [this, self = shared_from_this(),
-         statusUpdateCallback = std::move(_makeStatusCallback()),
-         cleanup = std::move(cleanup)] {
-          try {
-            auto storer = GraphStorer<V, E>(
-                _config, _algorithm->inputFormat(), _config->globalShardIDs(),
-                OldStoringUpdate{.fn = std::move(statusUpdateCallback)});
-            _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
-            for (auto& quiver : _magazine) {
-              storer.store(quiver);
-            }
-          } catch (std::exception const& ex) {
-            LOG_PREGEL("a4774", WARN)
-                << "caught exception in store: " << ex.what();
-            throw;
-          } catch (...) {
-            LOG_PREGEL("e932e", WARN) << "caught unknown exception in store";
-            throw;
-          }
-          cleanup();
-        });
+
+    try {
+      auto storer = std::make_shared<GraphStorer<V, E>>(
+          _config->executionNumber(), *_config->vocbase(),
+          _algorithm->inputFormat(), _config->globalShardIDs(),
+          OldStoringUpdate{.fn = std::move(_makeStatusCallback())});
+      _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
+      storer->store(_magazine).thenFinal(
+          [self = shared_from_this(), cleanup](auto&& res) { cleanup(); });
+    } catch (std::exception const& ex) {
+      LOG_PREGEL("a4774", WARN) << "caught exception in store: " << ex.what();
+      throw;
+    } catch (...) {
+      LOG_PREGEL("e932e", WARN) << "caught unknown exception in store";
+      throw;
+    }
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
     cleanup();
@@ -573,19 +548,13 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
 
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
-  auto storer =
-      GraphVPackBuilderStorer<V, E>(withId, _config, _algorithm->inputFormat(),
-                                    std::move(_makeStatusCallback()));
+  auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
+      withId, _config, _algorithm->inputFormat(),
+      std::move(_makeStatusCallback()));
 
-  for (auto& quiver : _magazine) {
-    storer.store(quiver);
-  }
-  auto result = storer.stealResult();
-  if (result != nullptr) {
-    return PregelResults{.results = *result};  // Yes, this is a copy rn.
-  } else {
-    return PregelResults{};
-  }
+  storer->store(_magazine).get();
+  return PregelResults{.results =
+                           *storer->stealResult()};  // Yes, this is a copy rn.
 }
 
 template<typename V, typename E, typename M>
