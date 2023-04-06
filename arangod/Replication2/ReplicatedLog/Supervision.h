@@ -46,6 +46,7 @@ using LogCurrentLocalStates =
     std::unordered_map<ParticipantId, LogCurrentLocalState>;
 
 auto computeEffectiveWriteConcern(LogTargetConfig const& config,
+                                  std::optional<LogCurrent> current,
                                   ParticipantsFlagsMap const& participants,
                                   ParticipantsHealth const& health) -> size_t;
 

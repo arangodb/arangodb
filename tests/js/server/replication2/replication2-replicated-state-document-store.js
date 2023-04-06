@@ -34,7 +34,7 @@ const lh = require("@arangodb/testutils/replicated-logs-helper");
 const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const lhttp = require('@arangodb/testutils/replicated-logs-http-helper');
 const dh = require("@arangodb/testutils/document-state-helper");
-const request = require("@arangodb/request");
+const ch = require("@arangodb/testutils/collection-groups-helper");
 
 const database = "replication2_document_store_test_db";
 const collectionName = "testCollection";
@@ -616,6 +616,13 @@ const replicatedStateSnapshotTransferSuite = function () {
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd, stopServerWait, continueServerWait} =
       lh.testHelperFunctions(database, {replicationVersion: "2"});
 
+  const clearAllFailurePoints = () => {
+    for (const server of lh.dbservers) {
+      helper.debugClearFailAt(lh.getServerUrl(server));
+    }
+  };
+
+
   return {
     setUpAll,
     tearDownAll,
@@ -629,13 +636,14 @@ const replicatedStateSnapshotTransferSuite = function () {
       log = db._replicatedLog(logId);
     }),
     tearDown: tearDownAnd(() => {
+      clearAllFailurePoints();
       if (collection !== null) {
         collection.drop();
       }
       collection = null;
     }),
 
-    testDropCollectionOngoingTransfer: function (testName) {
+    testDropCollectionOngoingTransfer: function(testName) {
       collection.insert({_key: testName});
       const participants = lhttp.listLogs(coordinator, database).result[logId];
       let leaderUrl = lh.getServerUrl(participants[0]);
@@ -647,7 +655,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       collection = null;
     },
 
-    testFollowerSnapshotTransfer: function () {
+    testFollowerSnapshotTransfer: function() {
       // Prepare the grounds for replacing a follower.
       const participants = lhttp.listLogs(coordinator, database).result[logId];
       const followers = participants.slice(1);
@@ -729,7 +737,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       }
     },
 
-    testSnapshotDiscardedOnRebootIdChange() {
+    testSnapshotDiscardedOnRebootIdChange: function() {
       const participants = lhttp.listLogs(coordinator, database).result[logId];
       let leaderUrl = lh.getServerUrl(participants[0]);
       const follower = participants.slice(1)[0];
@@ -787,6 +795,87 @@ const replicatedStateSnapshotTransferSuite = function () {
       result = dh.allSnapshotsStatus(leaderUrl, database, logId);
       lh.checkRequestResult(result);
       assertEqual(Object.keys(result.json.result.snapshots).length, 0);
+    },
+
+    testEffectiveWriteConcernShouldAccountForMissingSnapshots: function(testName) {
+      // We start with 3 servers, so the effective write concern should be 3.
+      lh.waitFor(lp.allServicesOperational(database, logId));
+      let {plan} = lh.readReplicatedLogAgency(database, logId);
+      const leader = plan.currentTerm.leader.serverId;
+      const gid = plan.properties.implementation.parameters.groupId;
+      let ewc = plan.participantsConfig.config.effectiveWriteConcern;
+      assertEqual(ewc, 3);
+
+      // Insert a couple of documents, so there's something for the snapshot,
+      // then compact the log in order to trigger a snapshot transfer next time a server is added.
+      for (let i = 0; i < 10; ++i) {
+        collection.insert({_key: `${testName}_${i}`});
+      }
+      log.compact();
+
+      // Leader will keep sending empty batches, so the snapshot never finishes.
+      helper.debugSetFailAt(lh.getServerUrl(leader), "DocumentStateSnapshot::infiniteSnapshot");
+
+      // Increase the replication factor to 4. This will add a new server.
+      // Normally, the effective write concern should become 4, but since the snapshot transfer is stuck,
+      // it should stay at 3.
+      ch.modifyCollectionGroupTarget(database, gid, function (target) {
+        target.attributes.mutable.replicationFactor = 4;
+        target.version = 2;
+      });
+
+      // Wait for the following state to appear in Current;
+      // - 3 servers are operational
+      // - 1 is stuck in "AcquiringSnapshot" state
+      lh.waitFor(() => {
+        let {plan, current} = lh.readReplicatedLogAgency(database, logId);
+        if (plan.participantsConfig === undefined || plan.participantsConfig.participants === undefined) {
+          return Error("No participants in plan");
+        }
+
+        const planParticipants = plan.participantsConfig.participants;
+        if (Object.keys(planParticipants).length !== 4) {
+          return Error("Not enough participants in plan");
+        }
+
+        const currentStatus = current.localStatus;
+        if (currentStatus === undefined) {
+          return Error("No localStatus in current");
+        }
+        if (Object.keys(currentStatus).length !== 4) {
+          return Error("Not enough participants in current");
+        }
+
+        let operational = 0;
+        let acquiringSnapshot = 0;
+        for (let [pid, _] of Object.entries(planParticipants)) {
+          if (currentStatus[pid] === undefined) {
+            return Error(`No status for participant ${pid} in current`);
+          }
+
+          if (currentStatus[pid].snapshotAvailable === true && currentStatus[pid].state === "ServiceOperational") {
+            ++operational;
+          } else if (currentStatus[pid].snapshotAvailable === false && currentStatus[pid].state === "AcquiringSnapshot") {
+            ++acquiringSnapshot;
+          }
+        }
+
+        if (operational !== 3) {
+          return Error(`Expected 3 operational servers, got ${operational}`);
+        }
+        if (acquiringSnapshot !== 1) {
+          return Error(`Expected 1 server acquiring snapshot, got ${acquiringSnapshot}`);
+        }
+
+        return true;
+      });
+
+      plan = lh.readReplicatedLogAgency(database, logId).plan;
+      ewc = plan.participantsConfig.config.effectiveWriteConcern;
+      assertEqual(ewc, 3);
+
+      // We should be able to insert documents.
+      collection.insert({_key: `${testName}_final`});
     }
   };
 };

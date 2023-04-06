@@ -89,13 +89,30 @@ auto computeNumUsableParticipants(
 }
 
 auto computeEffectiveWriteConcern(LogTargetConfig const& config,
+                                  std::optional<LogCurrent> current,
                                   ParticipantsFlagsMap const& participants,
                                   ParticipantsHealth const& health) -> size_t {
-  auto const numberNotFailedParticipants =
-      health.numberNotIsFailedOf(participants);
+  if (!current.has_value()) {
+    // We can only rely on health information, as no participant is usable yet.
+    auto const numberNotFailedParticipants =
+        health.numberNotIsFailedOf(participants);
+    return std::max(config.writeConcern, std::min(numberNotFailedParticipants,
+                                                  config.softWriteConcern));
+  }
 
-  return std::max(config.writeConcern, std::min(numberNotFailedParticipants,
-                                                config.softWriteConcern));
+  // We have to take into account the number of usable participants. If a
+  // participant is healthy, but for example, does not have a snapshot yet, the
+  // effectiveWriteConcern should be lowered accordingly.
+  std::vector<ParticipantId> participantsList;
+  participantsList.reserve(participants.size());
+  for (auto const& [p, _] : participants) {
+    participantsList.emplace_back(p);
+  }
+  auto const numUsableParticipants =
+      computeNumUsableParticipants(*current, participantsList, health);
+
+  return std::max(config.writeConcern,
+                  std::min(numUsableParticipants, config.softWriteConcern));
 }
 
 auto isConfigurationCommitted(Log const& log) -> bool {
@@ -322,7 +339,8 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
     auto const& newLeaderRebootId = health.getRebootId(newLeader);
 
     auto effectiveWriteConcern = computeEffectiveWriteConcern(
-        log.target.config, plan.participantsConfig.participants, health);
+        log.target.config, log.current, plan.participantsConfig.participants,
+        health);
 
     if (newLeaderRebootId.has_value()) {
       ctx.reportStatus<LogCurrentSupervision::LeaderElectionSuccess>(election);
@@ -631,7 +649,7 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
       auto leader = pickLeader(target.leader, target.participants, health,
                                log.target.id.id());
       auto effectiveWriteConcern = computeEffectiveWriteConcern(
-          target.config, target.participants, health);
+          target.config, std::nullopt, target.participants, health);
       auto config =
           LogPlanConfig(effectiveWriteConcern, target.config.waitForSync);
       ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
@@ -828,7 +846,7 @@ auto checkConfigChanged(SupervisionContext& ctx, Log const& log,
 
   // Check write concern
   auto effectiveWriteConcern = computeEffectiveWriteConcern(
-      target.config, plan.participantsConfig.participants, health);
+      target.config, log.current, plan.participantsConfig.participants, health);
 
   if (effectiveWriteConcern !=
       plan.participantsConfig.config.effectiveWriteConcern) {
