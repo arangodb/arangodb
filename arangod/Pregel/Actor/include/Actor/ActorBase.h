@@ -26,6 +26,7 @@
 
 #include "Actor/ActorPID.h"
 #include "Actor/Message.h"
+#include "Futures/Future.h"
 
 namespace arangodb::pregel::actor {
 
@@ -34,6 +35,9 @@ struct ActorBase {
   virtual auto process(ActorPID sender, MessagePayloadBase& msg) -> void = 0;
   virtual auto process(ActorPID sender, velocypack::SharedSlice msg)
       -> void = 0;
+  template<typename Response>
+  virtual auto processAndReturn(ActorPID sender, MessagePayloadBase& msg)
+      -> futures::Future<Response> = 0;
   virtual auto typeName() -> std::string_view = 0;
   virtual auto serialize() -> velocypack::SharedSlice = 0;
   virtual auto finish() -> void = 0;

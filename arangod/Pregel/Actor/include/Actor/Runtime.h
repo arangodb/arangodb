@@ -29,6 +29,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include "Futures/Future.h"
 #include "Inspection/VPackWithErrorT.h"
 
 #include "Actor/Actor.h"
@@ -147,6 +148,16 @@ struct Runtime
     });
   }
 
+  template<typename ActorMessage, typename Response>
+  auto request(ActorPID sender, ActorPID receiver, ActorMessage const& message)
+      -> futures::Future<Response> {
+    if (receiver.server == sender.server) {
+      return requestLocally(sender, receiver, message);
+    } else {
+      // TODO return requestExternally(sender, receiver, message);
+    }
+  }
+
   auto areAllActorsIdle() -> bool {
     return actors.checkAll([](std::shared_ptr<ActorBase> const& actor) {
       return actor->isIdle();
@@ -204,6 +215,19 @@ struct Runtime
     auto payload = inspection::serializeWithErrorT(message);
     ACTOR_ASSERT(payload.ok());
     (*externalDispatcher)(sender, receiver, payload.get());
+  }
+
+  template<typename ActorMessage, typename Response>
+  auto requestLocally(ActorPID sender, ActorPID receiver,
+                      ActorMessage const& message)
+      -> futures::Future<Response> {
+    auto actor = actors.find(receiver.id);
+    auto payload = MessagePayload<ActorMessage>(std::move(message));
+    if (actor.has_value()) {
+      return actor->get()->requestAndReturn(sender, payload);
+    } else {
+      // TODO return ActorNotFound
+    }
   }
 };
 template<Schedulable Scheduler, VPackDispatchable ExternalDispatcher,

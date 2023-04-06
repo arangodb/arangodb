@@ -33,6 +33,8 @@
 #include "Actor/HandlerBase.h"
 #include "Actor/Message.h"
 #include "Actor/MPSCQueue.h"
+#include "Futures/Future.h"
+#include "Futures/Promise.h"
 
 namespace arangodb::pregel::actor {
 
@@ -122,6 +124,17 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     }
   }
 
+  template<typename Response>
+  auto processAndReturn(ActorPID sender, MessagePayloadBase& msg)
+      -> futures::Future<Response> {
+    if (auto* m = dynamic_cast<MessagePayload<typename Config::Message>*>(&msg);
+        m != nullptr) {
+      return pushWithResponse(sender, std::move(m->payload));
+    } else {
+      // TODO return UnknownMessage error
+    }
+  }
+
   auto finish() -> void override { finished.store(true); }
   auto isFinishedAndIdle() -> bool override {
     return finished.load() and idle.load();
@@ -160,6 +173,16 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
         std::make_unique<message::MessageOrError<typename Config::Message>>(
             msg)));
   }
+  template<typename Response>
+  auto pushWithResponse(ActorPID sender, typename Config::Message&& msg)
+      -> futures::Future<Response> {
+    auto internalMessage = std::make_unique<InternalMessage>(
+        sender,
+        std::make_unique<message::MessageOrError<typename Config::Message>>(
+            msg),
+        true);
+    return internalMessage->response->getFuture();
+  }
 
   void kick() {
     // Make sure that *someone* works here
@@ -180,10 +203,21 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     auto i = batchSize;
 
     while (auto msg = inbox.pop()) {
-      state = std::visit(
-          typename Config::template Handler<Runtime>{
-              {pid, msg->sender, std::move(state), runtime}},
-          msg->payload->item);
+      if (msg->response == std::nullopt) {
+        state = std::visit(
+            typename Config::template Handler<Runtime>{
+                {pid, msg->sender, std::move(state), runtime}},
+            msg->payload->item);
+      } else {
+        auto [newState, response] = std::visit(
+            typename Config::template Handler<Runtime>{
+                // TODO here we don't want to move the state in the handler but
+                // just use a reference to it
+                {pid, msg->sender, std::move(state), runtime}},
+            msg->payload->item);
+        state = std::move(newState);
+        msg->response.setValue(response);
+      }
       if (--i == 0) {
         break;
       }
@@ -210,10 +244,19 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     InternalMessage(
         ActorPID sender,
         std::unique_ptr<message::MessageOrError<typename Config::Message>>&&
-            payload)
-        : sender(sender), payload(std::move(payload)) {}
+            payload,
+        bool withResponse = false)
+        : sender(sender), payload(std::move(payload)) {
+      if (withResponse) {
+        response = futures::Promise<
+            message::MessageOrError<typename Config::Response>>();
+      }
+    }
     ActorPID sender;
     std::unique_ptr<message::MessageOrError<typename Config::Message>> payload;
+    std::optional<
+        futures::Promise<message::MessageOrError<typename Config::Response>>>
+        response;
   };
 
   auto pushToQueueAndKick(std::unique_ptr<InternalMessage> msg) -> void {
@@ -224,8 +267,8 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
 
     inbox.push(std::move(msg));
 
-    // only push work to scheduler if actor is idle (meaning no work is waiting
-    // on the scheduler and no work is currently processed in work())
+    // only push work to scheduler if actor is idle (meaning no work is
+    // waiting on the scheduler and no work is currently processed in work())
     // and set idle to false
     auto isIdle = idle.load();
     if (isIdle and idle.compare_exchange_strong(isIdle, false)) {

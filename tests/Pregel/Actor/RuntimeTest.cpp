@@ -174,6 +174,26 @@ TYPED_TEST(ActorRuntimeTest, sends_message_to_an_actor) {
   runtime->softShutdown();
 }
 
+TYPED_TEST(ActorRuntimeTest, sends_request_to_an_actor_with_response) {
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime = std::make_shared<Runtime<TypeParam, EmptyExternalDispatcher>>(
+      "PRMR-1234", "RuntimeTest", this->scheduler, dispatcher);
+  auto actor = runtime->template spawn<TrivialActor>(
+      "database", std::make_unique<TrivialState>("foo"),
+      test::message::TrivialStart{});
+
+  auto response = runtime->request(
+      ActorPID{.server = "PRMR-1234", .database = "database", .id = actor},
+      ActorPID{.server = "PRMR-1234", .database = "database", .id = actor},
+      TrivialActor::Message{test::message::TrivialRequest{}});
+
+  this->scheduler->stop();
+  ASSERT_EQ(response, TrivialActor::Response{TrivialResponse{"hello"}});
+  auto state = runtime->template getActorStateByID<TrivialActor>(actor);
+  ASSERT_EQ(state, (TrivialState("foo")));  // state did no tchange
+  runtime->softShutdown();
+}
+
 struct SomeMessage {};
 template<typename Inspector>
 auto inspect(Inspector& f, SomeMessage& x) {

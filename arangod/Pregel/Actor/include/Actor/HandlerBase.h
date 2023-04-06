@@ -25,6 +25,7 @@
 #pragma once
 
 #include <chrono>
+#include "Futures/Future.h"
 #include "Inspection/VPackWithErrorT.h"
 
 #include "Message.h"
@@ -37,6 +38,9 @@ struct HandlerBase {
   HandlerBase(ActorPID self, ActorPID sender, std::unique_ptr<State> state,
               std::shared_ptr<Runtime> runtime)
       : self(self), sender(sender), state{std::move(state)}, runtime(runtime){};
+  HandlerBase(ActorPID self, ActorPID sender, State const& state,
+              std::shared_ptr<Runtime> runtime)
+      : self(self), sender(sender), state{state}, runtime(runtime){};
 
   template<typename ActorMessage>
   auto dispatch(ActorPID receiver, ActorMessage message) -> void {
@@ -47,6 +51,12 @@ struct HandlerBase {
   auto dispatchDelayed(std::chrono::seconds delay, ActorPID receiver,
                        ActorMessage const& message) -> void {
     runtime->dispatchDelayed(delay, self, receiver, message);
+  }
+
+  template<typename ActorMessage, typename Response>
+  auto request(ActorPID receiver, ActorMessage message)
+      -> futures::Future<Response> {
+    return runtime->request(self, receiver, message);
   }
 
   template<typename ActorConfig>
