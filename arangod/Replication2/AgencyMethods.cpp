@@ -80,65 +80,6 @@ auto sendAgencyWriteTransaction(VPackBufferUInt8 trx)
 }
 }  // namespace
 
-auto methods::updateTermSpecificationTrx(arangodb::agency::envelope envelope,
-                                         DatabaseID const& database, LogId id,
-                                         LogPlanTermSpecification const& spec,
-                                         std::optional<LogTerm> prevTerm)
-    -> arangodb::agency::envelope {
-  auto path =
-      paths::plan()->replicatedLogs()->database(database)->log(to_string(id));
-  auto logPath = path->str();
-  auto termPath = path->currentTerm()->str();
-
-  return envelope.write()
-      .emplace_object(
-          termPath,
-          [&](VPackBuilder& builder) { velocypack::serialize(builder, spec); })
-      .inc(paths::plan()->version()->str())
-      .precs()
-      .isNotEmpty(logPath)
-      .cond(prevTerm.has_value(),
-            [&](auto&& precs) {
-              return std::move(precs).isEqual(
-                  path->currentTerm()->term()->str(), prevTerm->value);
-            })
-      .end();
-}
-
-auto methods::updateParticipantsConfigTrx(
-    arangodb::agency::envelope envelope, DatabaseID const& database, LogId id,
-    ParticipantsConfig const& participantsConfig,
-    ParticipantsConfig const& prevConfig) -> arangodb::agency::envelope {
-  auto const logPath =
-      paths::plan()->replicatedLogs()->database(database)->log(to_string(id));
-
-  return envelope.write()
-      .emplace_object(logPath->participantsConfig()->str(),
-                      [&](VPackBuilder& builder) {
-                        velocypack::serialize(builder, participantsConfig);
-                      })
-      .inc(paths::plan()->version()->str())
-      .precs()
-      .isNotEmpty(logPath->str())
-      .end();
-}
-
-auto methods::updateTermSpecification(DatabaseID const& database, LogId id,
-                                      LogPlanTermSpecification const& spec,
-                                      std::optional<LogTerm> prevTerm)
-    -> futures::Future<ResultT<uint64_t>> {
-  VPackBufferUInt8 trx;
-  {
-    VPackBuilder builder(trx);
-    updateTermSpecificationTrx(
-        arangodb::agency::envelope::into_builder(builder), database, id, spec,
-        prevTerm)
-        .done();
-  }
-
-  return sendAgencyWriteTransaction(std::move(trx));
-}
-
 auto methods::deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
                                      DatabaseID const& database, LogId id)
     -> arangodb::agency::envelope {
@@ -203,51 +144,6 @@ auto methods::createReplicatedLog(DatabaseID const& database,
         .done();
   }
   return sendAgencyWriteTransaction(std::move(trx));
-}
-
-auto methods::removeElectionResult(arangodb::agency::envelope envelope,
-                                   DatabaseID const& database, LogId id)
-    -> arangodb::agency::envelope {
-  auto path = paths::current()
-                  ->replicatedLogs()
-                  ->database(database)
-                  ->log(to_string(id))
-                  ->str();
-
-  return envelope.write()
-      .remove(path + "/supervision/election")
-      .inc(paths::current()->version()->str())
-      .end();
-}
-
-auto methods::updateElectionResult(arangodb::agency::envelope envelope,
-                                   DatabaseID const& database, LogId id,
-                                   LogCurrentSupervisionElection const& result)
-    -> arangodb::agency::envelope {
-  auto path = paths::current()
-                  ->replicatedLogs()
-                  ->database(database)
-                  ->log(to_string(id))
-                  ->str();
-
-  return envelope.write()
-      .emplace_object(path + "/supervision/election",
-                      [&](VPackBuilder& builder) {
-                        velocypack::serialize(builder, result);
-                      })
-      .inc(paths::current()->version()->str())
-      .end();
-}
-
-auto methods::getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
-    -> LogCurrentSupervision {
-  auto& agencyCache =
-      vocbase.server().getFeature<ClusterFeature>().agencyCache();
-  VPackBuilder builder;
-  agencyCache.get(builder, basics::StringUtils::concatT(
-                               "Current/ReplicatedLogs/", vocbase.name(), "/",
-                               id, "/supervision"));
-  return velocypack::deserialize<LogCurrentSupervision>(builder.slice());
 }
 
 auto methods::replaceReplicatedStateParticipant(

@@ -82,6 +82,15 @@ FollowerManager::FollowerManager(
           *messageIdManager, metrics, loggerContext)),
       termInfo(termInfo) {
   metrics->replicatedLogFollowerNumber->operator++();
+  // TODO The following line creates a dependency loop: It means the StateHandle
+  //      depends on the MethodsProvider, which isn't currently explicit in the
+  //      constructors. This creates the last edge in the loop
+  //               MethodsProviderManager
+  //        ->     SnapshotManager
+  //        ->     StateHandleManager
+  //        -(!)-> MethodsProviderManager
+  //      which can (and probably does) lead to lock
+  //      inversions. We should break it up.
   stateHandle->becomeFollower(methodsProvider->getMethods());
   // Follower state manager is there, now get a snapshot if we need one.
   snapshot->acquireSnapshotIfNecessary();

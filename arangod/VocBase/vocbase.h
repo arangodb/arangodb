@@ -78,7 +78,6 @@ struct ILogFollower;
 struct ILogParticipant;
 struct LogStatus;
 struct QuickLogStatus;
-struct PersistedLog;
 struct ReplicatedLog;
 }  // namespace replicated_log
 namespace replicated_state {

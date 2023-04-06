@@ -48,7 +48,6 @@ struct IStorageEngineMethods;
 namespace arangodb::replication2::replicated_log {
 
 struct IReplicatedStateHandle;
-struct LogCore;
 struct LogStatus;
 struct QuickLogStatus;
 struct InMemoryLog;

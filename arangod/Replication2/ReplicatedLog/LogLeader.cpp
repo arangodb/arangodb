@@ -64,7 +64,6 @@
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/IScheduler.h"
@@ -1109,26 +1108,6 @@ auto replicated_log::LogLeader::compact() -> ResultT<CompactionResult> {
                           .stopReason = result.stopReason};
 }
 
-auto replicated_log::LogLeader::GuardedLeaderData::waitForResign()
-    -> std::pair<futures::Future<futures::Unit>, DeferredAction> {
-  if (!_didResign) {
-    auto future = _waitForResignQueue.addWaitFor();
-    return {std::move(future), DeferredAction{}};
-  } else {
-    TRI_ASSERT(_waitForResignQueue.empty());
-    auto promise = futures::Promise<futures::Unit>{};
-    auto future = promise.getFuture();
-
-    auto action =
-        DeferredAction([promise = std::move(promise)]() mutable noexcept {
-          TRI_ASSERT(promise.valid());
-          promise.setValue();
-        });
-
-    return {std::move(future), std::move(action)};
-  }
-}
-
 auto replicated_log::LogLeader::waitForIterator(LogIndex index)
     -> replicated_log::ILogParticipant::WaitForIteratorFuture {
   if (index == LogIndex{0}) {
@@ -1437,25 +1416,6 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
       });
 
   return waitForIndex;
-}
-
-auto replicated_log::LogLeader::getCommitIndex() const noexcept -> LogIndex {
-  return _inMemoryLogManager->getCommitIndex();
-}
-
-auto replicated_log::LogLeader::getParticipantConfigGenerations() const noexcept
-    -> std::pair<std::size_t, std::optional<std::size_t>> {
-  return _guardedLeaderData.doUnderLock([&](GuardedLeaderData const& data) {
-    auto activeGeneration = data.activeParticipantsConfig->generation;
-    auto committedGeneration = std::optional<std::size_t>{};
-
-    if (auto committedConfig = data.committedParticipantsConfig;
-        committedConfig != nullptr) {
-      committedGeneration = committedConfig->generation;
-    }
-
-    return std::make_pair(activeGeneration, committedGeneration);
-  });
 }
 
 auto replicated_log::LogLeader::setSnapshotAvailable(
