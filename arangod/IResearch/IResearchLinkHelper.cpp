@@ -264,8 +264,8 @@ Result modifyLinks(containers::FlatHashSet<DataSourceId>& modified,
             "error parsing link parameters from json for arangosearch view '",
             view.name(), "'")};
   }
-  auto const pkCache = view.pkCache();
-  auto const sortCache = view.sortCache();
+  [[maybe_unused]] bool const pkCache = view.pkCache();
+  [[maybe_unused]] bool const sortCache = view.sortCache();
   std::vector<std::string> collectionsToLock;
   std::vector<std::pair<velocypack::Builder, IResearchLinkMeta>>
       linkDefinitions;
@@ -306,7 +306,10 @@ Result modifyLinks(containers::FlatHashSet<DataSourceId>& modified,
     auto res = IResearchLinkHelper::normalize(
         normalized, link, true, view.vocbase(), defaultVersion,
         &view.primarySort(), &view.primarySortCompression(),
-        &view.storedValues(), &pkCache, &sortCache,
+        &view.storedValues(),
+#ifdef USE_ENTERPRISE
+        &view.meta()._optimizeTopK, &pkCache, &sortCache,
+#endif
         link.get(arangodb::StaticStrings::IndexId), collectionName);
 
     if (!res.ok()) {
@@ -427,20 +430,18 @@ Result modifyLinks(containers::FlatHashSet<DataSourceId>& modified,
             << "found link for collection '" << state._collection->name()
             << "' - slated for removal";
 
-        view.unlink(
-            state._collection
-                ->id());  // drop any stale data for the specified collection
+        // drop any stale data for the specified collection
+        view.unlink(state._collection->id());
         itr = linkModifications.erase(itr);
 
         continue;
       }
-
-      if (state._link       // links currently exists
-          && !state._stale  // did not originate from the stale list (remove
-                            // stale links lower)
-          && state._linkDefinitionsOffset >=
-                 linkDefinitions.size()) {  // link removal request
-        LOG_TOPIC("a58da", TRACE, arangodb::iresearch::TOPIC)
+      // links currently exists
+      // did not originate from the stale list (remove stale links lower)
+      // link removal request
+      if (state._link && !state._stale &&
+          state._linkDefinitionsOffset >= linkDefinitions.size()) {
+        LOG_TOPIC("a58da", TRACE, TOPIC)
             << "found link '" << state._link->index().id()
             << "' for collection '" << state._collection->name()
             << "' - slated for removal";
@@ -595,9 +596,7 @@ Result modifyLinks(containers::FlatHashSet<DataSourceId>& modified,
 }
 
 }  // namespace
-
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 VPackBuilder IResearchLinkHelper::emptyIndexSlice(uint64_t objectId) {
   VPackBuilder builder;
@@ -692,12 +691,14 @@ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
 Result IResearchLinkHelper::normalize(
     velocypack::Builder& normalized, velocypack::Slice definition,
     bool isCreation, TRI_vocbase_t const& vocbase, LinkVersion defaultVersion,
-    IResearchViewSort const* primarySort, /* = nullptr */
-    irs::type_info::type_id const* primarySortCompression /*= nullptr*/,
-    IResearchViewStoredValues const* storedValues, /* = nullptr */
-    bool const* pkCache /*= nullptr*/, bool const* sortCache /*= nullptr*/,
-    velocypack::Slice idSlice, /* = velocypack::Slice()*/
-    std::string_view collectionName /*= std::string_view{}*/) {
+    IResearchViewSort const* primarySort,
+    irs::type_info::type_id const* primarySortCompression,
+    IResearchViewStoredValues const* storedValues,
+#ifdef USE_ENTERPRISE
+    IResearchOptimizeTopK const* optimizeTopK, bool const* pkCache,
+    bool const* sortCache,
+#endif
+    velocypack::Slice idSlice, std::string_view collectionName) {
   if (!normalized.isOpenObject()) {
     return {TRI_ERROR_BAD_PARAMETER,
             "invalid output buffer provided for arangosearch link normalized "
@@ -775,6 +776,10 @@ Result IResearchLinkHelper::normalize(
     meta._storedValues = *storedValues;
   }
 #ifdef USE_ENTERPRISE
+  if (optimizeTopK) {
+    meta._optimizeTopK = *optimizeTopK;
+  }
+
   if (pkCache) {
     meta._pkCache = *pkCache;
   }
@@ -868,8 +873,8 @@ Result IResearchLinkHelper::validateLinks(TRI_vocbase_t& vocbase,
       // analyzer should be either from same database as view (and collection)
       // or from system database
       {
-        const auto& currentVocbase = vocbase.name();
-        for (const auto& analyzer : meta._analyzerDefinitions) {
+        auto const& currentVocbase = vocbase.name();
+        for (auto const& analyzer : meta._analyzerDefinitions) {
           TRI_ASSERT(analyzer);  // should be checked in meta init
           if (ADB_UNLIKELY(!analyzer)) {
             continue;
@@ -947,5 +952,4 @@ Result IResearchLinkHelper::updateLinks(
   }
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch
