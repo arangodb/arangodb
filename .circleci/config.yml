@@ -27,14 +27,14 @@ jobs:
             # Unfortunately GitHub does not support the git-archive protocol, so we need to fetch the required files by hand.
             (mkdir .circleci && cd .circleci && curl https://api.github.com/repos/arangodb/arangodb/contents/.circleci?ref=$CIRCLE_SHA1 | jq ".[].download_url" | xargs wget)
             (mkdir tests && cd tests && wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_SHA1/tests/test-definitions.txt)
-      - run:
-          name: Generate config
-          command: |
-            pip install pyyaml
-            python3 ".circleci/generate_config.py" -o generated_config.yml ./.circleci/base_config.yml "tests/test-definitions.txt"
+#      - run:
+#          name: Generate config
+#          command: |
+#            pip install pyyaml
+#            python3 ".circleci/generate_config.py" -o generated_config.yml ./.circleci/base_config.yml "tests/test-definitions.txt"
 
       - continuation/continue:
-          configuration_path: generated_config.yml # use newly generated config to continue
+          configuration_path: ./.circleci/base_config.yml # use newly generated config to continue
 
 # our single workflow, that triggers the setup job defined above
 workflows:
