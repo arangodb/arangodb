@@ -49,7 +49,7 @@ template<bool AllowUnsafeTypes, class Context = NoContext>
 struct VPackLoadInspectorImpl
     : LoadInspectorBase<VPackLoadInspectorImpl<AllowUnsafeTypes, Context>,
                         velocypack::Slice, Context> {
- public:
+ protected:
   using Base =
       LoadInspectorBase<VPackLoadInspectorImpl, velocypack::Slice, Context>;
 

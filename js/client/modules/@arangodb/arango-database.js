@@ -447,15 +447,6 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     'type': ArangoCollection.TYPE_DOCUMENT
   });
 
-  // Convenience transformation.
-  // We have documented that the strings "edge" and "document" are allowed
-  // here, but not in the HTTP Api.
-  if (type === 'edge') {
-    type = ArangoCollection.TYPE_EDGE;
-  } else if (type === 'document') {
-    type = ArangoCollection.TYPE_DOCUMENT;
-  }
-
   if (typeof type === 'object') {
     options = type;
     type = undefined;
@@ -484,9 +475,7 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     urlAddon += '?' + urlAddons.join('&');
   }
 
-  if (!isNaN(type)) {
-    // Only overwrite type with numeric values, otherwise
-    // use default value.
+  if (type !== undefined) {
     body.type = type;
   }
 
