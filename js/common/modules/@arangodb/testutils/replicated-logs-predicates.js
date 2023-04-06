@@ -381,8 +381,8 @@ const allServicesOperational = function (database, logId) {
       }
     }
     return true;
-  }
-}
+  };
+};
 
 exports.allServersHealthy = allServersHealthy;
 exports.replicatedLogIsGone = replicatedLogIsGone;
