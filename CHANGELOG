@@ -88,7 +88,7 @@ devel
   - the FOR loop is not contained in another outer FOR loop or subquery
   - there are no other nodes (e.g. LET, FILTER) between the FOR and the INSERT
   - the INSERT is not used on a SmartGraph edge collection
-  - the FOR loop is iterating over a constant, deterministic exprssion
+  - the FOR loop is iterating over a constant, deterministic expression
 
   The optimization will then add a `MultipleRemoteExecutionNode` to the query
   execution plan, which will care about inserting all documents into the 
