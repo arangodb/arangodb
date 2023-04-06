@@ -84,7 +84,7 @@ devel
   If a query has such pattern, and all the following restrictions are met, then
   the optimization is triggered:
 
-  - there are no following RETURN nodes (including any RETURN OLD, RETURN NEW) 
+  - there are no following RETURN nodes (including any RETURN OLD, RETURN NEW)
   - the FOR loop is not contained in another outer FOR loop or subquery
   - there are no other nodes (e.g. LET, FILTER) between the FOR and the INSERT
   - the INSERT is not used on a SmartGraph edge collection
