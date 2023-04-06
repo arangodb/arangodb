@@ -83,7 +83,6 @@ namespace arangodb::replication2::algorithms {
 struct ParticipantState;
 }
 namespace arangodb::replication2::replicated_log {
-struct LogCore;
 struct ReplicatedLogMetrics;
 }  // namespace arangodb::replication2::replicated_log
 
@@ -151,25 +150,13 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto getInternalLogIterator(std::optional<LogRange> bounds)
       const -> std::unique_ptr<PersistedLogIterator> override;
 
-  // Returns true if the leader has established its leadership: at least one
-  // entry within its term has been committed.
-  [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool;
-
   auto waitForLeadership() -> WaitForFuture override;
   auto ping(std::optional<std::string> message) -> LogIndex override;
-
-  // This function returns the current commit index. Do NOT poll this function,
-  // use waitFor(idx) instead. This function is used in tests.
-  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex;
 
   // Updates the flags of the participants.
   auto updateParticipantsConfig(
       std::shared_ptr<agency::ParticipantsConfig const> const& config)
       -> LogIndex override;
-
-  // Returns [acceptedConfig.generation, committedConfig.?generation]
-  auto getParticipantConfigGenerations() const noexcept
-      -> std::pair<std::size_t, std::optional<std::size_t>>;
 
   auto setSnapshotAvailable(ParticipantId const& participantId,
                             SnapshotAvailableReport report) -> Result;
@@ -304,14 +291,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     [[nodiscard]] auto createAppendEntriesRequest(
         FollowerInfo& follower, TermIndexPair const& lastAvailableIndex) const
         -> std::pair<AppendEntriesRequest, TermIndexPair>;
-
-    auto insertInternal(
-        std::variant<LogMetaPayload, LogPayload>, bool waitForSync,
-        std::optional<InMemoryLogEntry::clock::time_point> insertTp)
-        -> LogIndex;
-
-    [[nodiscard]] auto waitForResign()
-        -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
 
     LogLeader& _self;
     std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>

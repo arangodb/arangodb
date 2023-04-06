@@ -70,7 +70,6 @@ struct DocumentLeaderState
       -> futures::Future<Result>;
   auto dropShard(ShardID shard, CollectionID collectionId)
       -> futures::Future<Result>;
-  auto modifyShard(ShardID shard) -> futures::Future<Result>;
 
   auto getActiveTransactionsCount() const noexcept -> std::size_t {
     return _activeTransactions.getLockedGuard()->getTransactions().size();

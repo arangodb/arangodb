@@ -2,7 +2,7 @@ import { Box, FormLabel } from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
 import { IndexFormField, IndexFormFieldProps } from "../IndexFormField";
-import { InfoTooltip } from "../InfoTooltip";
+import { IndexInfoTooltip } from "../IndexInfoTooltip";
 
 //
 export const InvertedIndexConsolidationPolicy = ({
@@ -42,7 +42,7 @@ const ConsolidationPolicyFields = ({
       >
         <FormLabel>Type</FormLabel>
         <Box>{formikField.value.type}</Box>
-        <InfoTooltip label="Represents the type of policy." />
+        <IndexInfoTooltip label="Represents the type of policy." />
         <IndexFormField
           field={{
             name: "consolidationPolicy.segmentsMin",

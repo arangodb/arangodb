@@ -28,6 +28,7 @@ const {db, errors} = require('@arangodb');
 const console = require('console');
 const rh = require('@arangodb/testutils/restart-helper');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
+const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const dh = require("@arangodb/testutils/document-state-helper");
 const {getCtrlDBServers} = require('@arangodb/test-helper');
 const {sleep} = require('internal');
@@ -102,6 +103,8 @@ function testSuite () {
       rh.restartServers(dbServers);
       disableMaintenanceMode();
 
+      lh.waitFor(lp.allReplicatedStatesAccessible(databaseName));
+
       compareAllDocuments(col, expectedKeys);
       // Insert another document to check if the collection is writable (it should)
       col.insert({_key: "another-document"});
@@ -119,6 +122,8 @@ function testSuite () {
 
       rh.restartServers(dbServers);
       disableMaintenanceMode();
+
+      lh.waitFor(lp.allReplicatedStatesAccessible(databaseName));
 
       compareAllDocuments(col, expectedKeys);
       // Insert another document to check if the collection is writable (it should)
@@ -142,6 +147,8 @@ function testSuite () {
 
       rh.restartServers([leader]);
       disableMaintenanceMode();
+
+      lh.waitFor(lp.replicatedStateAccessible(databaseName, logId));
 
       compareAllDocuments(col, expectedKeys);
       // Insert another document to check if the collection is writable (it should)
@@ -168,6 +175,8 @@ function testSuite () {
 
       rh.restartServers([leader]);
       disableMaintenanceMode();
+
+      lh.waitFor(lp.replicatedStateAccessible(databaseName, logId));
 
       // query for shards on that server
       const assocShards = dh.getAssociatedShards(lh.getServerUrl(leaderId), databaseName, logId);

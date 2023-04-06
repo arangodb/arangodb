@@ -419,8 +419,9 @@ bool Index::validateHandle(bool extendedNames,
     return false;
   }
   // check collection name part
-  if (!CollectionNameValidator::isAllowedName(
-          /*allowSystem*/ true, extendedNames, handle.substr(0, pos))) {
+  if (!CollectionNameValidator::validateName(
+           /*allowSystem*/ true, extendedNames, handle.substr(0, pos))
+           .ok()) {
     return false;
   }
   // check remainder (index id)
@@ -437,12 +438,14 @@ bool Index::validateHandleName(bool extendedNames,
     return false;
   }
   // check collection name part
-  if (!CollectionNameValidator::isAllowedName(
-          /*allowSystem*/ true, extendedNames, name.substr(0, pos))) {
+  if (!CollectionNameValidator::validateName(
+           /*allowSystem*/ true, extendedNames, name.substr(0, pos))
+           .ok()) {
     return false;
   }
   // check remainder (index name)
-  return IndexNameValidator::isAllowedName(extendedNames, name.substr(pos + 1));
+  return IndexNameValidator::validateName(extendedNames, name.substr(pos + 1))
+      .ok();
 }
 
 /// @brief generate a new index id

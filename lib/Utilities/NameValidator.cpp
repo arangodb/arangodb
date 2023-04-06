@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "NameValidator.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
 
 #include <velocypack/Utf8Helper.h>
 
@@ -107,6 +109,19 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
   return (length > 0 && length <= maxNameLength(extendedNames));
 }
 
+Result DatabaseNameValidator::validateName(bool allowSystem, bool extendedNames,
+                                           std::string_view name) {
+  if (!isAllowedName(allowSystem, extendedNames, name)) {
+    return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
+  }
+  if (extendedNames && name != normalizeUtf8ToNFC(name)) {
+    return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID,
+            "database name is not properly UTF-8 NFC-normalized"};
+  }
+
+  return {};
+}
+
 /// @brief checks if a collection name is valid
 /// returns true if the name is allowed and false otherwise
 bool CollectionNameValidator::isAllowedName(bool allowSystem,
@@ -165,6 +180,20 @@ bool CollectionNameValidator::isAllowedName(bool allowSystem,
 
   // collection names must be within the expected length limits
   return (length > 0 && length <= maxNameLength(extendedNames));
+}
+
+Result CollectionNameValidator::validateName(bool allowSystem,
+                                             bool extendedNames,
+                                             std::string_view name) {
+  if (!isAllowedName(allowSystem, extendedNames, name)) {
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
+  if (extendedNames && name != normalizeUtf8ToNFC(name)) {
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
+            "collection name is not properly UTF-8 NFC-normalized"};
+  }
+
+  return {};
 }
 
 /// @brief checks if a view name is valid
@@ -226,6 +255,19 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
   return (length > 0 && length <= maxNameLength(extendedNames));
 }
 
+Result ViewNameValidator::validateName(bool allowSystem, bool extendedNames,
+                                       std::string_view name) {
+  if (!isAllowedName(allowSystem, extendedNames, name)) {
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
+  if (extendedNames && name != normalizeUtf8ToNFC(name)) {
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
+            "view name is not properly UTF-8 NFC-normalized"};
+  }
+
+  return {};
+}
+
 /// @brief checks if an index name is valid
 /// returns true if the name is allowed and false otherwise
 bool IndexNameValidator::isAllowedName(bool extendedNames,
@@ -274,6 +316,19 @@ bool IndexNameValidator::isAllowedName(bool extendedNames,
 
   // index names must be within the expected length limits
   return (length > 0 && length <= maxNameLength(extendedNames));
+}
+
+Result IndexNameValidator::validateName(bool extendedNames,
+                                        std::string_view name) {
+  if (!isAllowedName(extendedNames, name)) {
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
+  if (extendedNames && name != normalizeUtf8ToNFC(name)) {
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
+            "index name is not properly UTF-8 NFC-normalized"};
+  }
+
+  return {};
 }
 
 /// @brief checks if an analyzer name is valid
@@ -327,6 +382,19 @@ bool AnalyzerNameValidator::isAllowedName(bool extendedNames,
 
   // analyzer names must be within the expected length limits
   return (length > 0 && length <= maxNameLength(extendedNames));
+}
+
+Result AnalyzerNameValidator::validateName(bool extendedNames,
+                                           std::string_view name) {
+  if (!isAllowedName(extendedNames, name)) {
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
+  if (extendedNames && name != normalizeUtf8ToNFC(name)) {
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
+            "analyzer name is not properly UTF-8 NFC-normalized"};
+  }
+
+  return {};
 }
 
 }  // namespace arangodb

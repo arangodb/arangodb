@@ -683,7 +683,9 @@ TEST_F(DocumentStateMachineTest,
 
   cluster::RebootTracker fakeRebootTracker{nullptr};
   fakeRebootTracker.updateServerState(
-      {{"documentStateMachineServer", RebootId{1}}});
+
+      {{"documentStateMachineServer",
+        ServerHealthState{RebootId{1}, arangodb::ServerHealth::kUnclear}}});
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
       handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
@@ -720,7 +722,8 @@ TEST_F(DocumentStateMachineTest, snapshot_handler_abort_snapshot) {
 
   cluster::RebootTracker fakeRebootTracker{nullptr};
   fakeRebootTracker.updateServerState(
-      {{"documentStateMachineServer", RebootId{1}}});
+      {{"documentStateMachineServer",
+        ServerHealthState{RebootId{1}, arangodb::ServerHealth::kUnclear}}});
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
       handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
@@ -743,7 +746,9 @@ TEST_F(DocumentStateMachineTest,
 
   cluster::RebootTracker fakeRebootTracker{nullptr};
   fakeRebootTracker.updateServerState(
-      {{"documentStateMachineServer", RebootId{1}}});
+
+      {{"documentStateMachineServer",
+        ServerHealthState{RebootId{1}, arangodb::ServerHealth::kUnclear}}});
 
   auto snapshotHandler = DocumentStateSnapshotHandler(
       handlersFactoryMock->makeUniqueDatabaseSnapshotFactory(),
@@ -1012,7 +1017,8 @@ TEST_F(DocumentStateMachineTest,
       handlersFactoryMock);
 
   MockDocumentStateSnapshotHandler::rebootTracker.updateServerState(
-      {{"participantId", RebootId(1)}});
+      {{"participantId",
+        ServerHealthState{RebootId{1}, arangodb::ServerHealth::kUnclear}}});
 
   std::atomic<bool> acquireSnapshotCalled = false;
 
@@ -1510,7 +1516,9 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshot_successfully) {
 
   cluster::RebootTracker fakeRebootTracker{nullptr};
   fakeRebootTracker.updateServerState(
-      {{"documentStateMachineServer", RebootId{1}}});
+
+      {{"documentStateMachineServer",
+        ServerHealthState{RebootId{1}, arangodb::ServerHealth::kUnclear}}});
 
   auto snapshotHandler =
       handlersFactoryMock->makeRealSnapshotHandler(&fakeRebootTracker);
