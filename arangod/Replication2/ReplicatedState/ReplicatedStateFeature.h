@@ -33,7 +33,6 @@
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLog;
-class LogFollower;
 class LogLeader;
 }  // namespace arangodb::replication2::replicated_log
 

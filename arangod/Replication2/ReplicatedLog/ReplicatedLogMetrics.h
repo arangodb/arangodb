@@ -41,6 +41,7 @@ struct ReplicatedLogMetrics {
   metrics::Counter* replicatedLogDeletionNumber{nullptr};
   metrics::Gauge<std::uint64_t>* replicatedLogLeaderNumber{nullptr};
   metrics::Gauge<std::uint64_t>* replicatedLogFollowerNumber{nullptr};
+  // TODO This metric currently isn't populated
   metrics::Gauge<std::uint64_t>* replicatedLogInactiveNumber{nullptr};
   metrics::Gauge<std::uint64_t>* leaderNumInMemoryEntries{nullptr};
   metrics::Gauge<std::size_t>* leaderNumInMemoryBytes{nullptr};
@@ -60,6 +61,7 @@ struct ReplicatedLogMetrics {
   metrics::Counter* replicatedLogNumberAcceptedEntries{nullptr};
   metrics::Counter* replicatedLogNumberCommittedEntries{nullptr};
   metrics::Counter* replicatedLogNumberMetaEntries{nullptr};
+  // TODO This metric currently isn't populated
   metrics::Counter* replicatedLogNumberCompactedEntries{nullptr};
 };
 

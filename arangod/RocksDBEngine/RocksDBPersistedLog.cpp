@@ -27,7 +27,6 @@
 #include <Basics/debugging.h>
 #include <Basics/application-exit.h>
 #include <Logger/LogMacros.h>
-#include <Replication2/ReplicatedLog/PersistedLog.h>
 #include <Basics/ResultT.h>
 #include <Inspection/VPack.h>
 #include <memory>

@@ -41,7 +41,6 @@
 #endif
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
 
 namespace arangodb::replication2::replicated_log {
 
