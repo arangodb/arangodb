@@ -62,7 +62,7 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
   let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
   var status;
   do {
-    internal.sleep(0.2);
+    internal.sleep(sleepIntervalSeconds);
     status = pregel.status(pid);
     if (wakeupsLeft-- === 0) {
       assertTrue(false, "timeout in pregel execution");

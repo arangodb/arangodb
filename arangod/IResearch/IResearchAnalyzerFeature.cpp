@@ -1182,9 +1182,9 @@ Result IResearchAnalyzerFeature::createAnalyzerPool(
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  if (!AnalyzerNameValidator::isAllowedName(
-          extendedNames,
-          std::string_view(split.second.data(), split.second.size()))) {
+  if (auto res = AnalyzerNameValidator::validateName(extendedNames,
+                                                     split.second.data());
+      res.fail()) {
     return {TRI_ERROR_BAD_PARAMETER,
             absl::StrCat("invalid characters in analyzer name '", split.second,
                          "'")};
@@ -1243,11 +1243,10 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
-  if (!AnalyzerNameValidator::isAllowedName(
-          extendedNames,
-          std::string_view(split.second.data(), split.second.size()))) {
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res =
+          AnalyzerNameValidator::validateName(extendedNames, split.second);
+      res.fail()) {
     return {TRI_ERROR_BAD_PARAMETER,
             absl::StrCat("invalid characters in analyzer name '", split.second,
                          "'")};

@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
@@ -182,6 +183,13 @@ static void JS_CreateViewVocbase(
     throw;
   }
 
+  if (name != normalizeUtf8ToNFC(name)) {
+    events::CreateView(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_ILLEGAL_NAME,
+        "view name is not properly UTF-8 NFC-normalized");
+  }
+
   // ...........................................................................
   // end of parameter parsing
   // ...........................................................................
@@ -218,15 +226,16 @@ static void JS_CreateViewVocbase(
     LogicalView::ptr view;
     res = LogicalView::create(view, vocbase, builder.slice(), true);
 
+    if (res.ok() && !view) {
+      res.reset(TRI_ERROR_INTERNAL, "problem creating view");
+    }
+
     if (!res.ok()) {
       // events::CreateView(vocbase.name(), name, res.errorNumber());
       TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
 
-    if (!view) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "problem creating view");
-    }
+    TRI_ASSERT(view);
 
     v8::Handle<v8::Value> result = WrapView(isolate, view);
 
@@ -289,6 +298,13 @@ static void JS_DropViewVocbase(
 
   // extract the name
   std::string const name = TRI_ObjectToString(isolate, args[0]);
+
+  if (name != normalizeUtf8ToNFC(name)) {
+    events::DropView(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_ILLEGAL_NAME,
+        "view name is not properly UTF-8 NFC-normalized");
+  }
 
   // ...........................................................................
   // end of parameter parsing

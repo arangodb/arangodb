@@ -59,8 +59,7 @@ class GeoAnalyzer : public irs::analysis::analyzer,
 #endif
 
  protected:
-  explicit GeoAnalyzer(irs::type_info const& type,
-                       S2RegionTermIndexer::Options const& options);
+  explicit GeoAnalyzer(S2RegionTermIndexer::Options const& options);
   void reset(std::vector<std::string>&& terms) noexcept;
   void reset() noexcept {
     _begin = _terms.data();
@@ -104,6 +103,10 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
 
   explicit GeoPointAnalyzer(Options const& options);
 
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<GeoPointAnalyzer>::id();
+  }
+
   bool reset(std::string_view value) final;
 
   void prepare(GeoFilterOptionsBase& options) const final;
@@ -146,8 +149,7 @@ class GeoJsonAnalyzerBase : public GeoAnalyzer {
 #endif
 
  protected:
-  explicit GeoJsonAnalyzerBase(irs::type_info const& type,
-                               OptionsBase const& options);
+  explicit GeoJsonAnalyzerBase(OptionsBase const& options);
 
   bool resetImpl(std::string_view value, bool legacy,
                  geo::coding::Options options, Encoder* encoder);
@@ -173,6 +175,10 @@ class GeoVPackAnalyzer final : public GeoJsonAnalyzerBase {
   static irs::bytes_view store(irs::token_stream* ctx, velocypack::Slice slice);
 
   explicit GeoVPackAnalyzer(Options const& opts);
+
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<GeoVPackAnalyzer>::id();
+  }
 
   bool reset(std::string_view value) final;
 

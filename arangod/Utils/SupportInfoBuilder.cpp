@@ -697,8 +697,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             }
 
             VPackBuilder output;
-            std::ignore =
-                methods::Indexes::getAll(coll.get(), flags, false, output);
+            std::ignore = methods::Indexes::getAll(*coll, flags, false, output);
             velocypack::Slice outSlice = output.slice();
 
             result.add("idxs", VPackValue(VPackValueType::Array));

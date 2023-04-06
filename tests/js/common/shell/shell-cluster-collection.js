@@ -136,16 +136,14 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateInvalid : function () {
-      let invalidNames = ["123", "_x", "_x", "!", "?", "%", "xyz&asd", "&"];
-      let properties = {};
+      let invalidNames = ["123", "_x", "/", "/?/", "\t", "\r\n"];
 
-      let c;
       invalidNames.forEach(function (collectionName) {
         try {
-          c = db._create(collectionName, properties);
+          db._create(collectionName);
           fail();
         } catch (err) {
-          assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+          assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum, collectionName);
         }
       });
     },

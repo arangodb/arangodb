@@ -25,12 +25,14 @@
 #include "OptimizerRules.h"
 
 #include "Aql/ClusterNodes.h"
+#include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/MultipleRemoteModificationNode.h"
 #include "Aql/Optimizer.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
@@ -142,6 +144,7 @@ bool depIsSingletonOrConstCalc(ExecutionNode const* node) {
     }
 
     VarSet used;
+    // cppcheck-suppress nullPointerRedundantCheck
     node->getVariablesUsedHere(used);
     if (!used.empty()) {
       return false;
@@ -439,6 +442,94 @@ bool substituteClusterSingleDocumentOperationsNoIndex(
   return modified;
 }
 
+bool substituteClusterMultipleDocumentInsertOperations(
+    Optimizer* opt, ExecutionPlan* plan, OptimizerRule const& rule) {
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(nodes, {EN::INSERT}, false);
+
+  if (nodes.size() != 1) {
+    return false;
+  }
+
+  auto* node = nodes[0];
+  auto* dep = node->getFirstDependency();
+  if (dep == nullptr || dep->getType() != EN::ENUMERATE_LIST) {
+    return false;
+  }
+
+  if (!::depIsSingletonOrConstCalc(dep)) {
+    return false;
+  }
+
+  bool modified = false;
+  auto mod = ExecutionNode::castTo<InsertNode*>(node);
+
+  // for now, not support smart graph
+  if (mod->collection()->isSmart() &&
+      mod->collection()->type() == TRI_COL_TYPE_EDGE) {
+    return false;
+  }
+
+  Variable const* oldVariable = mod->getOutVariableOld();
+  if (oldVariable != nullptr && mod->isVarUsedLater(oldVariable)) {
+    // using RETURN OLD cannot use optimization
+    return false;
+  }
+
+  Variable const* newVariable = mod->getOutVariableNew();
+  if (newVariable != nullptr && mod->isVarUsedLater(newVariable)) {
+    // using RETURN NEW. cannot use optimization
+    return false;
+  }
+
+  auto* enumerateNode = ExecutionNode::castTo<EnumerateListNode const*>(dep);
+  if (enumerateNode->outVariable() != mod->inVariable()) {
+    return false;
+  }
+
+  if (enumerateNode->isInInnerLoop()) {
+    // FOR ... INSERT is contained in inner loop. cannot use optimization
+    return false;
+  }
+
+  // node cannot have any parent, because it either would have a RETURN or a
+  // modification node, which is not supported for now
+  if (node->getFirstParent() != nullptr) {
+    return false;
+  }
+
+  auto setterNode = plan->getVarSetBy(enumerateNode->inVariable()->id);
+  if (setterNode == nullptr || setterNode->getType() != EN::CALCULATION) {
+    return false;
+  }
+
+  auto* calcSetterNode =
+      ExecutionNode::castTo<CalculationNode const*>(setterNode);
+
+  if (!calcSetterNode->expression()->isConstant() ||
+      !calcSetterNode->expression()->isDeterministic()) {
+    return false;
+  }
+
+  // deal with dependency of enumerate list needing to be singleton or const
+  // calculation
+
+  // TODO - need more checks?
+
+  ExecutionNode* multiOperationNode =
+      plan->createNode<MultipleRemoteModificationNode>(
+          plan, plan->nextId(), mod->collection(), mod->getOptions(),
+          enumerateNode->inVariable() /*in*/, nullptr, mod->getOutVariableOld(),
+          mod->getOutVariableNew());
+
+  ::replaceNode(plan, mod, multiOperationNode);
+  plan->unlinkNode(dep);
+
+  modified = true;
+
+  return modified;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -456,6 +547,27 @@ void substituteClusterSingleDocumentOperationsRule(
     if (modified) {
       break;
     }
+  }
+  if (modified) {
+    // turn off all other cluster optimization rules now as they are superfluous
+    opt->disableRules(plan.get(), [](OptimizerRule const& rule) {
+      return rule.isClusterOnly();
+    });
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+void substituteClusterMultipleDocumentOperationsRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+    OptimizerRule const& rule) {
+  bool modified =
+      substituteClusterMultipleDocumentInsertOperations(opt, plan.get(), rule);
+  if (modified) {
+    // turn off all other cluster optimization rules now as they are superfluous
+    opt->disableRules(plan.get(), [](OptimizerRule const& rule) {
+      return rule.isClusterOnly();
+    });
   }
 
   opt->addPlan(std::move(plan), rule, modified);
