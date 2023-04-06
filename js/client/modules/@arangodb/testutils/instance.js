@@ -656,6 +656,7 @@ class instance {
       print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
 
+    process.env['ARANGODB_SERVER_DIR'] = this.rootDir;
     return executeExternal(cmd, argv, false, pu.coverageEnvironment());
   }
   // //////////////////////////////////////////////////////////////////////////////
@@ -884,15 +885,15 @@ class instance {
     }
   }
   killWithCoreDump (message) {
+    if (this.options.enableAliveMonitor) {
+      internal.removePidFromMonitor(this.pid);
+    }
     this.getInstanceProcessStatus();
     this.serverCrashedLocal = true;
     if (this.pid === null) {
       print(`${RED}${Date()} instance already gone? ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
       this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
     } else {
-      if (this.options.enableAliveMonitor) {
-        internal.removePidFromMonitor(this.pid);
-      }
       print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
       crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
     }

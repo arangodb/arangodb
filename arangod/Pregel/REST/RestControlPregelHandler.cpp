@@ -30,10 +30,12 @@
 #include "Cluster/ServerState.h"
 #include "Inspection/VPackWithErrorT.h"
 #include "Pregel/Conductor/Conductor.h"
+#include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/REST/RestOptions.h"
 #include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "Pregel/StatusActor.h"
 #include "Transaction/StandaloneContext.h"
 
 #include <velocypack/Builder.h>
@@ -150,14 +152,8 @@ void RestControlPregelHandler::handleGetRequest() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.empty()) {
-    bool const allDatabases = _request->parsedValue("all", false);
-    bool const fanout = ServerState::instance()->isCoordinator() &&
-                        !_request->parsedValue("local", false);
-
-    VPackBuilder builder;
-    _pregel.toVelocyPack(_vocbase, builder, allDatabases, fanout);
-    generateResult(rest::ResponseCode::OK, builder.slice());
-    return;
+    pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
+    return handlePregelHistoryResult(cWriter.readAllNonExpiredResults());
   }
 
   if (suffixes.size() == 1 && suffixes.at(0) != "history") {
@@ -169,18 +165,9 @@ void RestControlPregelHandler::handleGetRequest() {
     }
     auto executionNumber = arangodb::pregel::ExecutionNumber{
         arangodb::basics::StringUtils::uint64(suffixes[0])};
-    auto c = _pregel.conductor(executionNumber);
-
-    if (nullptr == c) {
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                    "Execution number is invalid");
-      return;
-    }
-
-    VPackBuilder builder;
-    c->toVelocyPack(builder);
-    generateResult(rest::ResponseCode::OK, builder.slice());
-    return;
+    pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
+                                                         executionNumber};
+    return handlePregelHistoryResult(cWriter.readResult(), true);
   } else if ((suffixes.size() >= 1 || suffixes.size() <= 2) &&
              suffixes.at(0) == "history") {
     if (_pregel.isStopping()) {
@@ -197,7 +184,7 @@ void RestControlPregelHandler::handleGetRequest() {
           arangodb::basics::StringUtils::uint64(suffixes.at(1))};
       pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
                                                            executionNumber};
-      return handlePregelHistoryResult(cWriter.readResult());
+      return handlePregelHistoryResult(cWriter.readResult(), true);
     }
   }
 
@@ -207,7 +194,7 @@ void RestControlPregelHandler::handleGetRequest() {
 }
 
 void RestControlPregelHandler::handlePregelHistoryResult(
-    ResultT<OperationResult> result) {
+    ResultT<OperationResult> result, bool onlyReturnFirstAqlResultEntry) {
   if (result.fail()) {
     // check outer ResultT result
     generateError(rest::ResponseCode::BAD, result.errorNumber(),
@@ -234,7 +221,20 @@ void RestControlPregelHandler::handlePregelHistoryResult(
       // Truncate does not deliver a proper slice in a Cluster.
       generateResult(rest::ResponseCode::OK, VPackSlice::trueSlice());
     } else {
-      generateResult(rest::ResponseCode::OK, result.get().slice());
+      if (onlyReturnFirstAqlResultEntry) {
+        TRI_ASSERT(result->slice().isArray());
+        if (result.get().slice().at(0).isNull()) {
+          // due to AQL returning "null" values in case a document does not
+          // exist ....
+          Result nf = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+          ResponseCode code = GeneralResponse::responseCode(nf.errorNumber());
+          generateError(code, nf.errorNumber(), nf.errorMessage());
+        } else {
+          generateResult(rest::ResponseCode::OK, result.get().slice().at(0));
+        }
+      } else {
+        generateResult(rest::ResponseCode::OK, result.get().slice());
+      }
     }
   } else {
     // Should always have a Slice, doing this check to be sure.
@@ -274,15 +274,13 @@ void RestControlPregelHandler::handleDeleteRequest() {
 
   auto executionNumber = arangodb::pregel::ExecutionNumber{
       arangodb::basics::StringUtils::uint64(suffixes[0])};
-  auto c = _pregel.conductor(executionNumber);
 
-  if (nullptr == c) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                  "Execution number is invalid");
+  auto canceled = _pregel.cancel(executionNumber);
+  if (canceled.fail()) {
+    generateError(rest::ResponseCode::NOT_FOUND, canceled.errorNumber(),
+                  canceled.errorMessage());
     return;
   }
-
-  c->cancel();
 
   VPackBuilder builder;
   builder.add(VPackValue(""));

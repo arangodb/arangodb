@@ -1,7 +1,11 @@
 import React from "react";
 
-import { Props } from "react-select";
-import SelectBase, { OptionType } from "./SelectBase";
+import Select, { Props } from "react-select";
+import { getSelectBase, OptionType } from "./SelectBase";
 
-const SingleSelect = (props: Props<OptionType>) => <SelectBase {...props} />;
+const SingleSelectBase = getSelectBase<false>(Select);
+
+const SingleSelect = (props: Props<OptionType, false>) => (
+  <SingleSelectBase {...props} />
+);
 export default SingleSelect;

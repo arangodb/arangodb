@@ -83,10 +83,11 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
                 std::make_unique<AggregatorHandler>(algorithm.get()),
                 std::make_unique<AggregatorHandler>(algorithm.get()),
                 msg.message.userParameters.slice()),
-            msg.conductor, msg.message, algorithm->messageFormatUnique(),
+            msg.conductor, msg.message, std::chrono::seconds(60),
+            algorithm->messageFormatUnique(),
             algorithm->messageCombinerUnique(), std::move(algorithm),
             this->state->vocbaseGuard.database(), this->self,
-            this->state->resultActor),
+            this->state->resultActor, msg.statusActor),
         worker::message::WorkerStart{});
   }
 

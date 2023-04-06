@@ -25,10 +25,10 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 
 struct TRI_vocbase_t;
 
@@ -61,10 +61,9 @@ class TRI_action_t {
 
   virtual TRI_action_result_t execute(TRI_vocbase_t*, arangodb::GeneralRequest*,
                                       arangodb::GeneralResponse*,
-                                      arangodb::Mutex* dataLock,
-                                      void** data) = 0;
+                                      std::mutex* dataLock, void** data) = 0;
 
-  virtual void cancel(arangodb::Mutex* dataLock, void** data) = 0;
+  virtual void cancel(std::mutex* dataLock, void** data) = 0;
 
   void setUrl(std::string const& url, size_t urlParts) {
     _url = url;
@@ -91,12 +90,12 @@ class TRI_fake_action_t final : public TRI_action_t {
 
   /// @brief actions of this type are executed directly. nothing to do here
   TRI_action_result_t execute(TRI_vocbase_t*, arangodb::GeneralRequest*,
-                              arangodb::GeneralResponse*, arangodb::Mutex*,
+                              arangodb::GeneralResponse*, std::mutex*,
                               void**) override;
 
   /// @brief actions of this type are not registered anywhere, and thus
   /// cannot be canceled
-  void cancel(arangodb::Mutex*, void**) override {}
+  void cancel(std::mutex*, void**) override {}
 };
 
 /// @brief defines an action

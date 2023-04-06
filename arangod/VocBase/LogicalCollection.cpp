@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -166,12 +165,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   TRI_ASSERT(info.isObject());
 
-  bool extendedNames = vocbase.server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
-  if (!CollectionNameValidator::isAllowedName(system(), extendedNames,
-                                              name())) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = CollectionNameValidator::validateName(system(), extendedNames,
+                                                       name());
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   if (_version < minimumVersion()) {
@@ -869,7 +868,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   auto& engine =
       vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
-  MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
+  std::lock_guard guard{_infoLock};  // prevent simultaneous updates
 
   auto res = updateSchema(slice.get(StaticStrings::Schema));
   if (res.fail()) {

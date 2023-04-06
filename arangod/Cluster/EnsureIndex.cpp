@@ -151,8 +151,7 @@ bool EnsureIndex::first() {
     }
 
     VPackBuilder index;
-    auto res =
-        methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
+    auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index);
     result(res);
 
     if (res.ok()) {

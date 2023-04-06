@@ -1,19 +1,18 @@
-import { FormState } from "../../constants";
-import { FormProps } from "../../../../utils/constants";
-import React, { useEffect, useState } from "react";
-import { find, sortBy, pick } from "lodash";
-import useSWRImmutable from "swr/immutable";
-import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
-import { validateAndFix } from "../../helpers";
-import { useHistory, useLocation } from "react-router-dom";
-import { Box, Button, Stack, Text } from "@chakra-ui/react";
 import { ArrowBackIcon } from "@chakra-ui/icons";
+import { Box, Button, Stack, Text } from "@chakra-ui/react";
+import { find, pick, sortBy } from "lodash";
+import React, { useEffect, useState } from "react";
+import { useHistory, useLocation } from "react-router-dom";
+import useSWRImmutable from "swr/immutable";
 import SingleSelect from "../../../../components/select/SingleSelect";
+import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { FormProps } from "../../../../utils/constants";
+import { FormState } from "../../constants";
+import { validateAndFix } from "../../helpers";
 
 type CopyFromInputProps = {
   views: FormState[];
-} & Pick<FormProps<FormState>, 'dispatch' | 'formState'>;
-
+} & Pick<FormProps<FormState>, "dispatch" | "formState">;
 
 const filterAndSortViews = (views: FormState[]) => {
   return sortBy(
@@ -25,14 +24,17 @@ const filterAndSortViews = (views: FormState[]) => {
         return { value: view.name, label: view.name };
       }),
     "name"
-  );
+  ) as {value: string; label: string}[];
 };
 
 const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
   const initalViewOptions = filterAndSortViews(views);
   const [viewOptions, setViewOptions] = useState(initalViewOptions);
   const [selectedView, setSelectedView] = useState(viewOptions[0]);
-  const { data } = useSWRImmutable(`/view/${selectedView.value}/properties`, (path) => getApiRouteForCurrentDB().get(path));
+  const { data } = useSWRImmutable(
+    `/view/${selectedView.value}/properties`,
+    path => getApiRouteForCurrentDB().get(path)
+  );
   const location = useLocation();
   const history = useHistory();
   const fullView = data ? data.body : selectedView;
@@ -43,16 +45,28 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
 
   const copyFormState = () => {
     validateAndFix(fullView);
-    Object.assign(fullView, pick(formState, 'id', 'name', 'primarySort', 'primarySortCompression',
-      'storedValues', 'writebufferIdle', 'writebufferActive', 'writebufferSizeMax'));
+    Object.assign(
+      fullView,
+      pick(
+        formState,
+        "id",
+        "name",
+        "primarySort",
+        "primarySortCompression",
+        "storedValues",
+        "writebufferIdle",
+        "writebufferActive",
+        "writebufferSizeMax"
+      )
+    );
 
     dispatch({
-      type: 'setFormState',
+      type: "setFormState",
       formState: fullView as FormState
     });
-    dispatch({ type: 'regenRenderKey' });
-    if(location) {
-      history.push("/"); 
+    dispatch({ type: "regenRenderKey" });
+    if (location) {
+      history.push("/");
     }
   };
 
@@ -61,7 +75,6 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
 
     setSelectedView(tempSelectedView);
   };
-
 
   return (
     <Stack direction="row" alignItems="center" flexWrap="wrap">
@@ -74,15 +87,11 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
               option => option.value === selectedView.value
             )}
             onChange={value => {
-              updateSelectedView((value as any).value);
+              updateSelectedView(value?.value || viewOptions[0].value);
             }}
           />
         </Box>
-        <Button
-          size="xs"
-          leftIcon={<ArrowBackIcon />}
-          onClick={copyFormState}
-        >
+        <Button size="xs" leftIcon={<ArrowBackIcon />} onClick={copyFormState}>
           Copy from
         </Button>
       </Stack>

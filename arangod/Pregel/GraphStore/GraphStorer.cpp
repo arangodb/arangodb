@@ -35,10 +35,12 @@
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
 
+#include "Pregel/StatusMessages.h"
 #include "Pregel/Worker/WorkerConfig.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/overload.h"
 #include "Logger/LogMacros.h"
-
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -46,16 +48,14 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-
-#define LOG_PREGEL(logId, level)          \
-  LOG_TOPIC(logId, level, Logger::PREGEL) \
-      << "[job " << config->executionNumber() << "] "
+#define LOG_PREGEL(logId, level) \
+  LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << executionNumber << "] "
 
 namespace arangodb::pregel {
 
 template<typename V, typename E>
-auto GraphStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver) -> void {
+auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
+    -> void {
   // transaction on one shard
   OperationOptions options;
   options.silent = true;
@@ -99,7 +99,7 @@ auto GraphStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver) -> void {
         THROW_ARANGO_EXCEPTION(res);
       }
 
-      if (config->vocbase()->server().isStopping()) {
+      if (vocbaseGuard.database().server().isStopping()) {
         LOG_PREGEL("73ec2", WARN) << "Storing data was canceled prematurely";
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
@@ -118,11 +118,11 @@ auto GraphStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver) -> void {
   for (auto& vertex : *quiver) {
     if (vertex.shard() != currentShard || numDocs >= 1000) {
       commitTransaction();
-
       currentShard = vertex.shard();
       shard = globalShards[currentShard.value];
 
-      auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
+      auto ctx =
+          transaction::StandaloneContext::Create(vocbaseGuard.database());
       trx = std::make_unique<SingleCollectionTransaction>(
           ctx, shard, AccessMode::Type::WRITE);
       trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
@@ -146,19 +146,50 @@ auto GraphStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver) -> void {
     builder.close();
     ++numDocs;
     if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
-      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                         statusUpdateCallback);
+      std::visit(overload{[&](ActorStoringUpdate const& update) {
+                            update.fn(message::GraphStoringUpdate{
+                                .verticesStored = 0  // TODO
+                            });
+                          },
+                          [](OldStoringUpdate const& update) {
+                            SchedulerFeature::SCHEDULER->queue(
+                                RequestLane::INTERNAL_LOW, update.fn);
+                          }},
+                 updateCallback);
     }
   }
 
-  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                     statusUpdateCallback);
+  std::visit(overload{[&](ActorStoringUpdate const& update) {
+                        update.fn(message::GraphStoringUpdate{
+                            .verticesStored = 0  // TODO
+                        });
+                      },
+                      [](OldStoringUpdate const& update) {
+                        SchedulerFeature::SCHEDULER->queue(
+                            RequestLane::INTERNAL_LOW, update.fn);
+                      }},
+             updateCallback);
 
   // commit the remainders in our buffer
   // will throw if it fails
   commitTransaction();
 }
 
+template<typename V, typename E>
+auto GraphStorer<V, E>::store(Magazine<V, E> magazine)
+    -> futures::Future<futures::Unit> {
+  auto futures = std::vector<futures::Future<futures::Unit>>{};
+  auto self = this->shared_from_this();
+  for (auto& quiver : magazine) {
+    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+        RequestLane::INTERNAL_LOW, [this, self, quiver] {
+          storeQuiver(quiver);
+          return futures::Unit{};
+        }));
+  }
+  return futures::collectAll(futures).thenValue(
+      [](auto&& units) { return futures::Unit{}; });
+}
 }  // namespace arangodb::pregel
 
 template struct arangodb::pregel::GraphStorer<int64_t, int64_t>;

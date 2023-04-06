@@ -181,7 +181,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     // unable to create index without timeout
     VPackBuilder outputDefinition;
-    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
+    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                         linkJson->slice(), true,
                                                         outputDefinition)
                     .ok());
@@ -193,7 +193,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *updatedCollection0, *logicalView);
     EXPECT_TRUE(link);
-    ASSERT_EQ("1_3simd", link->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN),
+              link->meta()._version);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     ASSERT_TRUE(false == !index);
@@ -259,9 +260,9 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     auto const indexArg =
         arangodb::velocypack::Parser::fromJson("{\"id\": \"42\"}");
-    EXPECT_TRUE(arangodb::methods::Indexes::drop(logicalCollection.get(),
-                                                 indexArg->slice())
-                    .ok());
+    EXPECT_TRUE(
+        arangodb::methods::Indexes::drop(*logicalCollection, indexArg->slice())
+            .ok());
 
     // get new version from plan
     auto updatedCollection1 = ci.getCollection(
@@ -339,7 +340,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     // unable to create index without timeout
     VPackBuilder outputDefinition;
-    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
+    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                         linkJson->slice(), true,
                                                         outputDefinition)
                     .ok());
@@ -351,7 +352,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *updatedCollection, *logicalView);
     EXPECT_TRUE(link);
-    ASSERT_EQ("1_4simd", link->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              link->meta()._version);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     EXPECT_TRUE(true == index->canBeDropped());
