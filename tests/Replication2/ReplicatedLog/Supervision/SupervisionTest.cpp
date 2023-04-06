@@ -748,6 +748,7 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
 
 TEST_F(LogSupervisionTest, test_compute_effective_write_concern) {
   auto const config = LogTargetConfig(3, 3, false);
+  auto const current = LogCurrent();
   auto const participants = ParticipantsFlagsMap{{"A", {}}};
   auto const health = ParticipantsHealth{
       ._health = {
@@ -761,7 +762,7 @@ TEST_F(LogSupervisionTest, test_compute_effective_write_concern) {
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
   auto effectiveWriteConcern =
-      computeEffectiveWriteConcern(config, participants, health);
+      computeEffectiveWriteConcern(config, std::nullopt, participants, health);
   ASSERT_EQ(effectiveWriteConcern, 3U);
 }
 
@@ -782,7 +783,7 @@ TEST_F(LogSupervisionTest,
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}}}};
 
   auto effectiveWriteConcern =
-      computeEffectiveWriteConcern(config, participants, health);
+      computeEffectiveWriteConcern(config, std::nullopt, participants, health);
   ASSERT_EQ(effectiveWriteConcern, 3U);
 }
 
@@ -803,7 +804,7 @@ TEST_F(LogSupervisionTest,
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}}}};
 
   auto effectiveWriteConcern =
-      computeEffectiveWriteConcern(config, participants, health);
+      computeEffectiveWriteConcern(config, std::nullopt, participants, health);
   ASSERT_EQ(effectiveWriteConcern, 2U);
 }
 
@@ -824,7 +825,7 @@ TEST_F(
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
   auto effectiveWriteConcern =
-      computeEffectiveWriteConcern(config, participants, health);
+      computeEffectiveWriteConcern(config, std::nullopt, participants, health);
   ASSERT_EQ(effectiveWriteConcern, 2U);
 }
 
