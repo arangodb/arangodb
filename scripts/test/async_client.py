@@ -169,6 +169,8 @@ def convert_result(result_array):
 
 def add_message_to_report(params, string, print_it=True, add_to_error=False):
     """add a message from python to the report strings/files + print it"""
+    pass
+"""
     oskar = "OSKAR"
     count = int(80 / len(oskar))
     datestr = f"  {datetime.now()} - "
@@ -191,7 +193,7 @@ def add_message_to_report(params, string, print_it=True, add_to_error=False):
         params["output"].flush()
     sys.stdout.flush()
     return string + "\n"
-
+"""
 
 def kill_children(identifier, params, children):
     """slash all processes enlisted in children - if they still exist"""
