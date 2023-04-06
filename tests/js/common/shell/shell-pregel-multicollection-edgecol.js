@@ -99,6 +99,8 @@ function multiCollectionTestSuite() {
           const vj = `${vColl}_${j}`;
           const eij = `${eColl}_${i}_${j}`;
           db._createEdgeCollection(eij, {
+            numberOfShards: 4,
+            replicationFactor: 1,
             shardKeys: ["vertex"],
             distributeShardsLike: v0
           });

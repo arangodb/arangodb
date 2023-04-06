@@ -70,21 +70,21 @@ using Weight = fst::fsa::BooleanWeight;
 
 namespace fst {
 
-inline Weight Times(const Weight& lhs, const Weight& rhs) {
+inline Weight Times(Weight const& lhs, Weight const& rhs) {
   if (!lhs.Member() || !rhs.Member()) {
     return Weight::NoWeight();
   }
   return Weight{lhs && rhs};
 }
 
-inline Weight Plus(const Weight& lhs, const Weight& rhs) {
+inline Weight Plus(Weight const& lhs, Weight const& rhs) {
   if (!lhs.Member() || !rhs.Member()) {
     return Weight::NoWeight();
   }
   return Weight{lhs || rhs};
 }
 
-inline Weight DivideLeft(const Weight& lhs, const Weight& rhs) {
+inline Weight DivideLeft(Weight const& lhs, Weight const& rhs) {
   if (!lhs.Member() || !rhs.Member()) {
     return Weight::NoWeight();
   }
@@ -264,6 +264,11 @@ std::string checkFieldsDifferentCollections(
 
 std::string check(SearchMeta const& search,
                   IResearchInvertedIndexMeta const& index) {
+#ifdef USE_ENTERPRISE
+  if (search.optimizeTopK != index._optimizeTopK) {
+    return "index optimize topK mismatches view optimize topK";
+  }
+#endif
   if (search.primarySort != index._sort) {
     return "index primary sort mismatches view primary sort";
   }
@@ -797,6 +802,9 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
   auto searchMeta = SearchMeta::make();
   auto r = iterate(
       [&](auto const& indexMeta) {
+#ifdef USE_ENTERPRISE
+        searchMeta->optimizeTopK = indexMeta._optimizeTopK;
+#endif
         searchMeta->primarySort = indexMeta._sort;
         searchMeta->storedValues = indexMeta._storedValues;
       },
