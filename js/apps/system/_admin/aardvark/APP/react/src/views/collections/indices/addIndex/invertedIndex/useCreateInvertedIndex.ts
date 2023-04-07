@@ -274,7 +274,7 @@ export const useCreateInvertedIndex = () => {
       fields:
         values.fields && values.fields.length > 0 ? values.fields : undefined,
       analyzer: values.analyzer || undefined,
-      name: values.name?.normalize() || undefined,
+      name: values.name || undefined,
       primarySort: {
         compression: values.primarySort?.compression || "lz4",
         fields: primarySortFields
