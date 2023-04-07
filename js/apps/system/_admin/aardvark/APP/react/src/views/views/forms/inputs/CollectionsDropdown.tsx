@@ -78,33 +78,29 @@ const CollectionsDropdown = () => {
       value: pair[0]
     }))
     .value();
-  const { currentField } = useLinksContext();
   return (
-    <>
-      {JSON.stringify(currentField)}
-      <MultiSelect
-        value={validLinks}
-        options={options}
-        placeholder="Enter a collection name"
-        noOptionsMessage={() => "No collections found"}
-        components={{
-          MultiValueLabel: props => {
-            return <MultiValueLabel {...props} />;
-          }
-        }}
-        isClearable={false}
-        isDisabled={!isAdminUser}
-        onChange={(_, action) => {
-          if (action.action === "remove-value") {
-            removeLink(action.removedValue.value);
-            return;
-          }
-          if (action.action === "select-option" && action.option?.value) {
-            addLink(action.option.value);
-          }
-        }}
-      />
-    </>
+    <MultiSelect
+      value={validLinks}
+      options={options}
+      placeholder="Enter a collection name"
+      noOptionsMessage={() => "No collections found"}
+      components={{
+        MultiValueLabel: props => {
+          return <MultiValueLabel {...props} />;
+        }
+      }}
+      isClearable={false}
+      isDisabled={!isAdminUser}
+      onChange={(_, action) => {
+        if (action.action === "remove-value") {
+          removeLink(action.removedValue.value);
+          return;
+        }
+        if (action.action === "select-option" && action.option?.value) {
+          addLink(action.option.value);
+        }
+      }}
+    />
   );
 };
 
