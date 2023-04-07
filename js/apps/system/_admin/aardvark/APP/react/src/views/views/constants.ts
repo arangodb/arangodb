@@ -133,8 +133,7 @@ export const formSchema: JSONSchemaType<FormState> = {
     },
     name: {
       nullable: false,
-      type: 'string',
-      pattern: '^[a-zA-Z][a-zA-Z0-9-_]*$'
+      type: 'string'
     },
     type: {
       type: 'string',
