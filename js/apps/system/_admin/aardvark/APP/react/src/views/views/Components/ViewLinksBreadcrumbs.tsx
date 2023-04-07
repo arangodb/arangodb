@@ -2,7 +2,6 @@ import { Box, HStack, Text } from "@chakra-ui/react";
 import React from "react";
 import { useLinksContext } from "../LinksContext";
 
-
 const removeQuotes = (value: string) => {
   return value?.split('"')[1];
 };
@@ -82,6 +81,8 @@ export const ViewLinksBreadcrumbs = () => {
                     maxWidth="200px"
                     title={fragment}
                     onClick={() => {
+                      // this gets the fragments array until the current breadcrumb's index
+                      // used to create the path
                       const currentFragments = fragments.slice(0, idx + 1);
                       const path = getPathFromFragments(currentFragments);
                       path &&
