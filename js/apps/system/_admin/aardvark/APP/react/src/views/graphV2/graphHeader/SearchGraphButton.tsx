@@ -10,7 +10,7 @@ import {
   Tooltip,
   useMenuContext
 } from "@chakra-ui/react";
-import React from "react";
+import React, { useState } from "react";
 import SingleSelect from "../../../components/select/SingleSelect";
 import { useGraph } from "../GraphContext";
 
@@ -36,7 +36,7 @@ const SearchList = () => {
     return { value: nodeId as string, label: nodeId as string };
   });
   const { isOpen } = useMenuContext();
-
+  const [inputValue, setInputValue] = useState("");
   if (!isOpen) {
     return null;
   }
@@ -47,6 +47,10 @@ const SearchList = () => {
         <Box padding={"4"}>
           <FormLabel htmlFor="nodeSearch">Search for a node</FormLabel>
           <SingleSelect
+            inputValue={inputValue}
+            onInputChange={inputValue => {
+              setInputValue(inputValue.normalize());
+            }}
             styles={{
               container: base => {
                 return {
