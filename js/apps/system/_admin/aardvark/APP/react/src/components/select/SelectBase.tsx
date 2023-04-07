@@ -26,9 +26,11 @@ export const getSelectBase =
     };
     return (
       <SelectComponent
+        inputValue={normalize && !props.onInputChange ? inputValue : undefined}
+        onInputChange={
+          normalize && !props.onInputChange ? onInputChange : undefined
+        }
         {...rest}
-        inputValue={normalize ? inputValue : undefined}
-        onInputChange={normalize ? onInputChange : undefined}
         menuPortalTarget={document.body}
         components={{
           ...props.components,
