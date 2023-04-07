@@ -7,7 +7,7 @@ const removeQuotes = (value: string) => {
 };
 
 const sanitize = (value: string) => {
-  return removeQuotes(value.split("]")[0]);
+  return removeQuotes(value.slice(0, value.lastIndexOf("]")));
 };
 /**
  * input: links["a"].fields["b"].fields["c"]
@@ -22,7 +22,7 @@ const getFragments = (currentPath?: string) => {
   // the above line doesn't work because field can contain dot
   // so we need to split by .fields[ and .links[
   const linkPathValue = removeQuotes(
-    currentPath.split("links[")[1].split("]")[0]
+    currentPath.split("links[")[1].slice(0, currentPath.lastIndexOf("]"))
   );
   const fieldPathParts = currentPath.split(".fields[").slice(1);
   // we need to append both the parts
