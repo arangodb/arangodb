@@ -12,7 +12,7 @@ const FieldView = ({ disabled }: FieldViewProps) => {
   const { currentField } = useLinksContext();
   const { formState, dispatch } = useContext(ViewContext);
   const field = currentField && get(formState, currentField.fieldPath);
-  if (!currentField) {
+  if (!currentField || !field) {
     return null;
   }
   return (

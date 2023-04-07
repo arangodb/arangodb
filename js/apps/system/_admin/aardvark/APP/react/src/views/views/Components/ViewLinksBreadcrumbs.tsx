@@ -2,25 +2,14 @@ import { Box, HStack, Text } from "@chakra-ui/react";
 import React from "react";
 import { useLinksContext } from "../LinksContext";
 
-/**
- * this function extracts the data between square brackets
- * for eg
- * input: links["a"]
- * output: ["links", "a"]
- */
 
-const extractDataBetweenSquareBrackets = (path: string) => {
-  let result = [];
-  let firstPart = path.split("[")[0];
-  let secondPart = path.split("[")[1];
-  secondPart = secondPart.split("]")[0];
-  // remove the quotes
-  secondPart = secondPart.split('"')[1];
-
-  result = [firstPart, secondPart];
-  return result;
+const removeQuotes = (value: string) => {
+  return value?.split('"')[1];
 };
 
+const sanitize = (value: string) => {
+  return removeQuotes(value.split("]")[0]);
+};
 /**
  * input: links["a"].fields["b"].fields["c"]
  * output: [['links', 'a'], ['fields', 'b], ['fields', 'c']]
@@ -29,9 +18,19 @@ const getFragments = (currentPath?: string) => {
   if (!currentPath) {
     return [];
   }
-  const pathParts = currentPath.split(".");
-  const fragments = pathParts.map(part => {
-    return extractDataBetweenSquareBrackets(part);
+  // split by links[ and fields[
+  // const pathParts = currentPath.split(".");
+  // the above line doesn't work because field can contain dot
+  // so we need to split by .fields[ and .links[
+  const linkPathValue = removeQuotes(
+    currentPath.split("links[")[1].split("]")[0]
+  );
+  const fieldPathParts = currentPath.split(".fields[").slice(1);
+  // we need to append both the parts
+  const linkPathParts = ["links", linkPathValue];
+  let fragments = [linkPathParts]; // should be [['links', 'a'], ['fields', 'b], ['fields', 'c']]
+  fieldPathParts.forEach(pathPart => {
+    fragments = [...fragments, ["fields", sanitize(pathPart)]];
   });
   return fragments;
 };
