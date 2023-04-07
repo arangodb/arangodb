@@ -7,9 +7,7 @@ import { escapeFieldDot } from "../../../../utils/fieldHelpers";
 import { LinkProperties, ViewContext } from "../../constants";
 import { useLinksContext } from "../../LinksContext";
 
-const MultiValueLabel = (
-  props: MultiValueGenericProps<OptionType> & { basePath: string }
-) => {
+const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
   const { setCurrentField, currentField } = useLinksContext();
   return (
     <Box
@@ -81,9 +79,7 @@ export const FieldsDropdown = ({
       isClearable={false}
       noOptionsMessage={() => null}
       components={{
-        MultiValueLabel: props => {
-          return <MultiValueLabel {...props} basePath={basePath} />;
-        }
+        MultiValueLabel
       }}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
