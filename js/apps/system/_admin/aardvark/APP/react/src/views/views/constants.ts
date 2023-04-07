@@ -327,7 +327,7 @@ export const formSchema: JSONSchemaType<FormState> = {
 };
 
 export const ViewContext = createContext({
-  formState: {},
+  formState: {} as FormState,
   dispatch: noop,
   isAdminUser: false,
   changed: false,
