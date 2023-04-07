@@ -1,5 +1,5 @@
-export const encodeHelper = (url: string) => {
-  const normalized = url.normalize();
+export const encodeHelper = (value?: string) => {
+  const normalized = value?.normalize();
   const encoded = normalized ? encodeURIComponent(normalized) : "";
   const advanced = normalized
     ? encodeURIComponent(normalized.replace(/%/g, "%25"))
