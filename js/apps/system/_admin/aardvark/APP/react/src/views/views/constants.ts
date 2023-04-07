@@ -319,6 +319,10 @@ export const formSchema: JSONSchemaType<FormState> = {
         segmentsBytesFloor: 2097152
       },
       required: ['type']
+    },
+    optimizeTopK: {
+      type: "array",
+      nullable: true
     }
   },
   required: ['id', 'name', 'type'],
