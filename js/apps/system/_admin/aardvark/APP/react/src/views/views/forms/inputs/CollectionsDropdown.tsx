@@ -1,29 +1,29 @@
+import { Box } from "@chakra-ui/react";
 import { chain, map } from "lodash";
 import React, { useContext, useEffect, useState } from "react";
-import { Link, useRouteMatch } from "react-router-dom";
 import { components, MultiValueGenericProps } from "react-select";
 import useSWR from "swr";
 import MultiSelect from "../../../../components/select/MultiSelect";
 import { OptionType } from "../../../../components/select/SelectBase";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { FormState, ViewContext } from "../../constants";
+import { useLinksContext } from "../../LinksContext";
 
 const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
-  const match = useRouteMatch();
-  const to =
-    match && match.url === "/"
-      ? props.data.value
-      : `${match.url}/${props.data.value}`;
+  const { setCurrentField } = useLinksContext();
   return (
-    <Link
-      to={to}
+    <Box
       style={{
         textDecoration: "underline",
         minWidth: 0 // because parent is flex
       }}
+      cursor="pointer"
+      onClick={() => {
+        setCurrentField({ fieldPath: `links["${props.data.value}"]` });
+      }}
     >
       <components.MultiValueLabel {...props} />
-    </Link>
+    </Box>
   );
 };
 
@@ -78,28 +78,33 @@ const CollectionsDropdown = () => {
       value: pair[0]
     }))
     .value();
-
+  const { currentField } = useLinksContext();
   return (
-    <MultiSelect
-      value={validLinks}
-      options={options}
-      placeholder="Enter a collection name"
-      noOptionsMessage={() => "No collections found"}
-      components={{
-        MultiValueLabel
-      }}
-      isClearable={false}
-      isDisabled={!isAdminUser}
-      onChange={(_, action) => {
-        if (action.action === "remove-value") {
-          removeLink(action.removedValue.value);
-          return;
-        }
-        if (action.action === "select-option" && action.option?.value) {
-          addLink(action.option.value);
-        }
-      }}
-    />
+    <>
+      {JSON.stringify(currentField)}
+      <MultiSelect
+        value={validLinks}
+        options={options}
+        placeholder="Enter a collection name"
+        noOptionsMessage={() => "No collections found"}
+        components={{
+          MultiValueLabel: props => {
+            return <MultiValueLabel {...props} />;
+          }
+        }}
+        isClearable={false}
+        isDisabled={!isAdminUser}
+        onChange={(_, action) => {
+          if (action.action === "remove-value") {
+            removeLink(action.removedValue.value);
+            return;
+          }
+          if (action.action === "select-option" && action.option?.value) {
+            addLink(action.option.value);
+          }
+        }}
+      />
+    </>
   );
 };
 

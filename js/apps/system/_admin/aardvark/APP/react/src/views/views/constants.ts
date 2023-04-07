@@ -1,8 +1,8 @@
-import { JSONSchemaType } from 'ajv';
-import { createContext } from "react";
+import { JSONSchemaType } from "ajv";
+import { createContext, useContext } from "react";
 import { noop } from "lodash";
 
-type Compression = 'lz4' | 'none';
+type Compression = "lz4" | "none";
 
 type PrimarySortType = {
   field: string;
@@ -15,42 +15,46 @@ export type StoredValue = {
 };
 
 export type StoredValues = {
-  storedValues?: StoredValue[]
+  storedValues?: StoredValue[];
 };
 
 export type PrimarySort = {
-  primarySort?: PrimarySortType[]
+  primarySort?: PrimarySortType[];
 };
 
 export type BytesAccumConsolidationPolicy = {
   consolidationPolicy?: {
-    type: 'bytes_accum';
+    type: "bytes_accum";
     threshold?: number;
-  }
+  };
 };
 
 export type TierConsolidationPolicy = {
   consolidationPolicy?: {
-    type: 'tier';
+    type: "tier";
     segmentsMin?: number;
     segmentsMax?: number;
     segmentsBytesMax?: number;
     segmentsBytesFloor?: number;
     minScore?: number;
-  }
+  };
 };
 
-export type ConsolidationPolicy = BytesAccumConsolidationPolicy | TierConsolidationPolicy;
+export type ConsolidationPolicy =
+  | BytesAccumConsolidationPolicy
+  | TierConsolidationPolicy;
 
-export type ViewProperties = PrimarySort & StoredValues & ConsolidationPolicy & {
-  primarySortCompression?: Compression;
-  cleanupIntervalStep?: number;
-  commitIntervalMsec?: number;
-  consolidationIntervalMsec?: number;
-  writebufferIdle?: number;
-  writebufferActive?: number;
-  writebufferSizeMax?: number;
-};
+export type ViewProperties = PrimarySort &
+  StoredValues &
+  ConsolidationPolicy & {
+    primarySortCompression?: Compression;
+    cleanupIntervalStep?: number;
+    commitIntervalMsec?: number;
+    consolidationIntervalMsec?: number;
+    writebufferIdle?: number;
+    writebufferActive?: number;
+    writebufferSizeMax?: number;
+  };
 
 export type LinkProperties = {
   analyzers?: string[];
@@ -59,7 +63,7 @@ export type LinkProperties = {
   };
   includeAllFields?: boolean;
   trackListPositions?: boolean;
-  storeValues?: 'none' | 'id';
+  storeValues?: "none" | "id";
   inBackground?: boolean;
 };
 
@@ -67,7 +71,7 @@ type BaseFormState = {
   id: string;
   globallyUniqueId?: string;
   name: string;
-  type: 'arangosearch' | 'search-alias';
+  type: "arangosearch" | "search-alias";
   links?: {
     [collectionName: string]: LinkProperties | null;
   };
@@ -76,43 +80,43 @@ type BaseFormState = {
 export type FormState = BaseFormState & ViewProperties;
 
 export const linksSchema = {
-  $id: 'https://arangodb.com/schemas/views/linkProperties.json',
+  $id: "https://arangodb.com/schemas/views/linkProperties.json",
   $recursiveAnchor: true,
-  type: 'object',
+  type: "object",
   nullable: true,
   properties: {
     analyzers: {
-      type: 'array',
+      type: "array",
       nullable: false,
       items: {
-        type: 'string',
-        pattern: '^([a-zA-Z0-9-_]+::)?[a-zA-Z][a-zA-Z0-9-_]*$'
+        type: "string",
+        pattern: "^([a-zA-Z0-9-_]+::)?[a-zA-Z][a-zA-Z0-9-_]*$"
       }
     },
     fields: {
-      type: 'object',
+      type: "object",
       nullable: false,
       patternProperties: {
-        '.+': {
-          $recursiveRef: '#'
+        ".+": {
+          $recursiveRef: "#"
         }
       }
     },
     includeAllFields: {
-      type: 'boolean',
+      type: "boolean",
       nullable: false
     },
     trackListPositions: {
-      type: 'boolean',
+      type: "boolean",
       nullable: false
     },
     storeValues: {
-      type: 'string',
+      type: "string",
       nullable: false,
-      enum: ['none', 'id']
+      enum: ["none", "id"]
     },
     inBackground: {
-      type: 'boolean',
+      type: "boolean",
       nullable: false
     }
   },
@@ -120,133 +124,132 @@ export const linksSchema = {
 };
 
 export const formSchema: JSONSchemaType<FormState> = {
-  $id: 'https://arangodb.com/schemas/views/views.json',
-  type: 'object',
+  $id: "https://arangodb.com/schemas/views/views.json",
+  type: "object",
   properties: {
     id: {
       nullable: false,
-      type: 'string'
+      type: "string"
     },
     globallyUniqueId: {
       nullable: true,
-      type: 'string'
+      type: "string"
     },
     name: {
       nullable: false,
-      type: 'string',
-      pattern: '^[a-zA-Z][a-zA-Z0-9-_]*$'
+      type: "string"
     },
     type: {
-      type: 'string',
-      const: 'arangosearch'
+      type: "string",
+      const: "arangosearch"
     },
     links: {
       nullable: true,
-      type: 'object',
+      type: "object",
       patternProperties: {
-        '^[a-zA-Z0-9-_]+$': {
-          type: 'object',
+        "^[a-zA-Z0-9-_]+$": {
+          type: "object",
           nullable: true,
-          $ref: 'linkProperties.json'
+          $ref: "linkProperties.json"
         }
       },
       required: []
     },
     primarySort: {
-      type: 'array',
+      type: "array",
       nullable: true,
       items: {
-        type: 'object',
+        type: "object",
         nullable: false,
         properties: {
           field: {
-            type: 'string',
+            type: "string",
             nullable: false
           },
           asc: {
-            type: 'boolean',
+            type: "boolean",
             nullable: false
           }
         },
         default: {
-          field: '',
-          direction: 'asc'
+          field: "",
+          direction: "asc"
         },
-        required: ['field', 'asc'],
+        required: ["field", "asc"],
         additionalProperties: false
       }
     },
     primarySortCompression: {
-      type: 'string',
+      type: "string",
       nullable: true,
-      enum: ['lz4', 'none'],
-      default: 'lz4'
+      enum: ["lz4", "none"],
+      default: "lz4"
     },
     storedValues: {
-      type: 'array',
+      type: "array",
       nullable: true,
       items: {
-        type: 'object',
+        type: "object",
         nullable: false,
         properties: {
           fields: {
-            type: 'array',
+            type: "array",
             nullable: false,
             items: {
-              type: 'string'
+              type: "string"
             }
           },
           compression: {
-            type: 'string',
-            enum: ['lz4', 'none'],
-            default: 'lz4'
+            type: "string",
+            enum: ["lz4", "none"],
+            default: "lz4"
           }
         },
-        required: ['fields', 'compression'],
+        required: ["fields", "compression"],
         default: {
-          compression: 'lz4'
+          compression: "lz4"
         },
         additionalProperties: false
       }
     },
     cleanupIntervalStep: {
-      type: 'integer',
+      type: "integer",
       nullable: true,
       minimum: 0,
       default: 2
     },
     commitIntervalMsec: {
-      type: 'integer',
+      type: "integer",
       nullable: true,
       minimum: 0,
       default: 1000
     },
     consolidationIntervalMsec: {
-      type: 'integer',
+      type: "integer",
       nullable: true,
       minimum: 0,
       default: 1000
     },
     writebufferIdle: {
-      type: 'integer',
+      type: "integer",
       nullable: true,
       minimum: 0,
       default: 64
     },
     writebufferActive: {
-      type: 'integer',
+      type: "integer",
       nullable: true,
       minimum: 0,
       default: 0
     },
     writebufferSizeMax: {
-      type: 'integer',
+      type: "integer",
       nullable: true,
       minimum: 0,
       default: 33554432
     },
     consolidationPolicy: {
-      type: 'object',
+      type: "object",
       nullable: true,
       discriminator: {
         propertyName: "type"
@@ -255,10 +258,10 @@ export const formSchema: JSONSchemaType<FormState> = {
         {
           properties: {
             type: {
-              const: 'bytes_accum'
+              const: "bytes_accum"
             },
             threshold: {
-              type: 'number',
+              type: "number",
               nullable: false,
               minimum: 0,
               maximum: 1,
@@ -270,39 +273,39 @@ export const formSchema: JSONSchemaType<FormState> = {
         {
           properties: {
             type: {
-              const: 'tier'
+              const: "tier"
             },
             segmentsMin: {
-              type: 'integer',
+              type: "integer",
               nullable: false,
               minimum: 0,
               maximum: {
-                $data: '1/segmentsMax'
+                $data: "1/segmentsMax"
               },
               default: 1
             },
             segmentsMax: {
-              type: 'integer',
+              type: "integer",
               nullable: false,
               minimum: {
-                $data: '1/segmentsMin'
+                $data: "1/segmentsMin"
               },
               default: 10
             },
             segmentsBytesMax: {
-              type: 'integer',
+              type: "integer",
               nullable: false,
               minimum: 0,
               default: 5368709120
             },
             segmentsBytesFloor: {
-              type: 'integer',
+              type: "integer",
               nullable: false,
               minimum: 0,
               default: 2097152
             },
             minScore: {
-              type: 'number',
+              type: "number",
               nullable: false,
               minimum: 0,
               maximum: 1,
@@ -313,25 +316,26 @@ export const formSchema: JSONSchemaType<FormState> = {
         }
       ],
       default: {
-        type: 'tier',
+        type: "tier",
         segmentsMin: 1,
         segmentsMax: 10,
         segmentsBytesMax: 5368709120,
         segmentsBytesFloor: 2097152
       },
-      required: ['type']
+      required: ["type"]
     }
   },
-  required: ['id', 'name', 'type'],
+  required: ["id", "name", "type"],
   additionalProperties: false
 };
 
 export const ViewContext = createContext({
-  formState: {},
+  formState: {} as FormState,
   dispatch: noop,
   isAdminUser: false,
   changed: false,
-  setChanged: noop,
+  setChanged: noop
 });
 
-export type ViewProps = Pick<BaseFormState, 'name'>;
+export type ViewProps = Pick<BaseFormState, "name">;
+export const useViewContext = () => useContext(ViewContext);
