@@ -279,13 +279,15 @@ TEST_F(LogSupervisionTest, test_acceptable_leader_set) {
       {"D", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"E", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
+  auto term = LogTerm{};
   auto localStates = std::unordered_map<ParticipantId, LogCurrentLocalState>{};
-  localStates["A"].snapshotAvailable = true;
-  localStates["B"].snapshotAvailable = true;
-  localStates["C"].snapshotAvailable = true;
-  localStates["D"].snapshotAvailable = true;
+  localStates["A"].state = LocalStateMachineStatus::kOperational;
+  localStates["B"].state = LocalStateMachineStatus::kOperational;
+  localStates["C"].state = LocalStateMachineStatus::kOperational;
+  localStates["D"].state = LocalStateMachineStatus::kOperational;
 
-  auto r = getParticipantsAcceptableAsLeaders("A", participants, localStates);
+  auto r =
+      getParticipantsAcceptableAsLeaders("A", term, participants, localStates);
 
   auto expectedAcceptable = std::set<ParticipantId>{"B", "D"};
   auto acceptable = std::set<ParticipantId>{};
@@ -334,10 +336,11 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
 
   current.supervision.emplace(LogCurrentSupervision{});
   current.supervision->assumedWriteConcern = 3;
-  current.localState["A"].snapshotAvailable = true;
-  current.localState["B"].snapshotAvailable = true;
-  current.localState["C"].snapshotAvailable = true;
-  current.localState["D"].snapshotAvailable = true;
+  for (auto const& [id, _] : participantsFlags) {
+    current.localState[id].state = LocalStateMachineStatus::kOperational;
+    current.localState[id].term = LogTerm{1};
+    current.localState[id].snapshotAvailable = true;
+  }
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -407,10 +410,12 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_missing_snapshot) {
 
   current.supervision.emplace(LogCurrentSupervision{});
   current.supervision->assumedWriteConcern = 3;
-  current.localState["A"].snapshotAvailable = true;
-  current.localState["B"].snapshotAvailable = false;
-  current.localState["C"].snapshotAvailable = true;
-  current.localState["D"].snapshotAvailable = true;
+  for (auto const& [id, _] : participantsFlags) {
+    current.localState[id].state = LocalStateMachineStatus::kOperational;
+    current.localState[id].term = LogTerm{1};
+    current.localState[id].snapshotAvailable = true;
+  }
+  current.localState["B"].state = LocalStateMachineStatus::kAcquiringSnapshot;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -476,10 +481,11 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
   current.supervision.emplace(LogCurrentSupervision{});
-  current.localState["A"].snapshotAvailable = true;
-  current.localState["B"].snapshotAvailable = true;
-  current.localState["C"].snapshotAvailable = true;
-  current.localState["D"].snapshotAvailable = true;
+  for (auto const& [id, _] : participantsFlags) {
+    current.localState[id].state = LocalStateMachineStatus::kOperational;
+    current.localState[id].term = LogTerm{1};
+    current.localState[id].snapshotAvailable = true;
+  }
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -557,10 +563,12 @@ TEST_F(LogSupervisionTest, test_remove_participant_undo_exclude_from_quorum) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
   current.supervision.emplace(LogCurrentSupervision{});
-  current.localState["A"].snapshotAvailable = true;
-  current.localState["B"].snapshotAvailable = false;
-  current.localState["C"].snapshotAvailable = true;
-  current.localState["D"].snapshotAvailable = true;
+  for (auto const& [id, _] : participantsFlags) {
+    current.localState[id].state = LocalStateMachineStatus::kOperational;
+    current.localState[id].term = LogTerm{1};
+    current.localState[id].snapshotAvailable = true;
+  }
+  current.localState["B"].state = LocalStateMachineStatus::kAcquiringSnapshot;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -629,10 +637,11 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
                          .commitStatus = std::nullopt};
   current.supervision.emplace(LogCurrentSupervision{});
   current.supervision->assumedWriteConcern = 3;
-  current.localState["A"].snapshotAvailable = true;
-  current.localState["B"].snapshotAvailable = true;
-  current.localState["C"].snapshotAvailable = true;
-  current.localState["D"].snapshotAvailable = true;
+  for (auto const& [id, _] : participantsFlags) {
+    current.localState[id].state = LocalStateMachineStatus::kOperational;
+    current.localState[id].term = LogTerm{1};
+    current.localState[id].snapshotAvailable = true;
+  }
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -894,7 +903,8 @@ TEST_F(LogSupervisionTest, test_leader_election_sets_write_concern) {
       .acknowledgeTerm("B")
       .acknowledgeTerm("C")
       .acknowledgeTerm("D")
-      .allSnapshotsTrue();
+      .allSnapshotsTrue()
+      .allStatesReady();
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(

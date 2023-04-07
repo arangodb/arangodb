@@ -190,7 +190,7 @@ auto isLeaderFailed(ServerInstanceReference const& leader,
 //       Yet, is there a case where it is necessary to hand leadership to
 //       an otherwise healthy participant that is not in target anymore?
 auto getParticipantsAcceptableAsLeaders(
-    ParticipantId const& currentLeader, LogTerm const& term,
+    ParticipantId const& currentLeader, LogTerm term,
     ParticipantsFlagsMap const& participants,
     std::unordered_map<ParticipantId, LogCurrentLocalState> const& localStates)
     -> std::vector<ParticipantId> {

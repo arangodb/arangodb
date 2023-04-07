@@ -67,7 +67,7 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
     -> LogCurrentSupervisionElection;
 
 auto getParticipantsAcceptableAsLeaders(
-    ParticipantId const& currentLeader, LogTerm const& term,
+    ParticipantId const& currentLeader, LogTerm term,
     ParticipantsFlagsMap const& participants,
     std::unordered_map<ParticipantId, LogCurrentLocalState> const& localStates)
     -> std::vector<ParticipantId>;

@@ -288,7 +288,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log) {
   log.setPlanLeader("A");
   log.establishLeadership();
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
-  log.allSnapshotsTrue();
+  log.allStatesReady();
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -335,7 +335,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_set_leader) {
   log.setPlanLeader("A");
   log.establishLeadership();
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
-  log.allSnapshotsTrue();
+  log.allStatesReady();
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -384,7 +384,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
   log.establishLeadership();
 
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
-  log.allSnapshotsTrue();
+  log.allStatesReady();
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -456,7 +456,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_wait_for_sync) {
   log.establishLeadership();
 
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
-  log.allSnapshotsTrue();
+  log.allStatesReady();
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -517,7 +517,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_replace_leader) {
   log.setPlanLeader("A");
   log.establishLeadership();
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
-  log.allSnapshotsTrue();
+  log.allStatesReady();
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -566,7 +566,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
   log.setPlanLeader("A");
   log.establishLeadership();
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
-  log.allSnapshotsTrue();
+  log.allStatesReady();
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -623,6 +623,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
   log.establishLeadership();
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
   log.allSnapshotsTrue();
+  log.allStatesReady();
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -678,6 +679,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
   log.establishLeadership();
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
   log.allSnapshotsTrue();
+  log.allStatesReady();
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
