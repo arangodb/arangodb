@@ -6,6 +6,7 @@ import useSWR from "swr";
 import MultiSelect from "../../../../components/select/MultiSelect";
 import { OptionType } from "../../../../components/select/SelectBase";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { escapeFieldDot } from "../../../../utils/fieldHelpers";
 import { FormState, ViewContext } from "../../constants";
 import { useLinksContext } from "../../LinksContext";
 
@@ -51,20 +52,22 @@ const CollectionsDropdown = () => {
   }, [data, formState.links]);
 
   const addLink = (link: string) => {
+    const newLink = escapeFieldDot(link);
     dispatch({
       type: "setField",
       field: {
-        path: `links[${link}]`,
+        path: `links[${newLink}]`,
         value: {}
       }
     });
   };
 
   const removeLink = async (link: string) => {
+    const newLink = escapeFieldDot(link);
     dispatch({
       type: "setField",
       field: {
-        path: `links[${link}]`,
+        path: `links[${newLink}]`,
         value: null
       }
     });
