@@ -812,8 +812,8 @@ const replicatedStateSnapshotTransferSuite = function () {
             return Error(`Expected effective write concern to be ${ewc}, got ${plan.participantsConfig.config.effectiveWriteConcern}`);
           }
           return true;
-        }
-      }
+        };
+      };
 
       lh.waitFor(checkEffectiveWriteConcern(3));
 
