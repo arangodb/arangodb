@@ -799,12 +799,23 @@ const replicatedStateSnapshotTransferSuite = function () {
 
     testEffectiveWriteConcernShouldAccountForMissingSnapshots: function(testName) {
       // We start with 3 servers, so the effective write concern should be 3.
-      lh.waitFor(lp.allServicesOperational(database, logId));
       let {plan} = lh.readReplicatedLogAgency(database, logId);
       const leader = plan.currentTerm.leader.serverId;
       const gid = plan.properties.implementation.parameters.groupId;
-      let ewc = plan.participantsConfig.config.effectiveWriteConcern;
-      assertEqual(ewc, 3);
+      lh.waitFor(lp.allServicesOperational(database, logId));
+
+      // We need to wait for the supervision to react to services becoming operational.
+      const checkEffectiveWriteConcern = (ewc) => {
+        return function () {
+          let {plan} = lh.readReplicatedLogAgency(database, logId);
+          if (plan.participantsConfig.config.effectiveWriteConcern !== ewc) {
+            return Error(`Expected effective write concern to be ${ewc}, got ${plan.participantsConfig.config.effectiveWriteConcern}`);
+          }
+          return true;
+        }
+      }
+
+      lh.waitFor(checkEffectiveWriteConcern(3));
 
       // Insert a couple of documents, so there's something for the snapshot,
       // then compact the log in order to trigger a snapshot transfer next time a server is added.
@@ -872,10 +883,7 @@ const replicatedStateSnapshotTransferSuite = function () {
         return true;
       });
 
-      plan = lh.readReplicatedLogAgency(database, logId).plan;
-      ewc = plan.participantsConfig.config.effectiveWriteConcern;
-      assertEqual(ewc, 3);
-
+      lh.waitFor(checkEffectiveWriteConcern(3));
       // We should be able to insert documents.
       collection.insert({_key: `${testName}_foo`});
 
@@ -883,36 +891,20 @@ const replicatedStateSnapshotTransferSuite = function () {
       // This leaves us with only 2 operational servers, so the effective write concern should be 2.
       const stopFollower = _.without(operational, leader)[0];
       stopServerWait(stopFollower);
-      lh.waitFor(() => {
-        let {plan} = lh.readReplicatedLogAgency(database, logId);
-        if (plan.participantsConfig.config.effectiveWriteConcern !== 2) {
-          return Error(`Expected effective write concern to be 2, got ${plan.participantsConfig.config.effectiveWriteConcern}`);
-        }
-        return true;
-      });
+      lh.waitFor(checkEffectiveWriteConcern(2));
       collection.insert({_key: `${testName}_bar`});
 
       // Now we can finish the snapshot transfer. This should raise the effective write concern to 3.
       helper.debugClearFailAt(lh.getServerUrl(leader), "DocumentStateSnapshot::infiniteSnapshot");
-      lh.waitFor(() => {
-        let {plan} = lh.readReplicatedLogAgency(database, logId);
-        if (plan.participantsConfig.config.effectiveWriteConcern !== 3) {
-          return Error(`Expected effective write concern to be 2, got ${plan.participantsConfig.config.effectiveWriteConcern}`);
-        }
-        return true;
-      });
+      lh.waitFor(checkEffectiveWriteConcern(3));
       collection.insert({_key: `${testName}_baz`});
 
       // Resuming the follower should raise the effective write concern to 4.
       continueServerWait(stopFollower);
-      lh.waitFor(() => {
-        let {plan} = lh.readReplicatedLogAgency(database, logId);
-        if (plan.participantsConfig.config.effectiveWriteConcern !== 4) {
-          return Error(`Expected effective write concern to be 2, got ${plan.participantsConfig.config.effectiveWriteConcern}`);
-        }
-        return true;
-      });
+      // We have to insert something, because the follower might get stuck in "Connecting" state
+      // if the leader does not send an append entries request.
       collection.insert({_key: `${testName}_baz2`});
+      lh.waitFor(checkEffectiveWriteConcern(4));
     }
   };
 };
