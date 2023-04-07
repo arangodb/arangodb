@@ -26,7 +26,9 @@ export const getSelectBase =
     };
     return (
       <SelectComponent
-        inputValue={normalize && !props.onInputChange ? inputValue : undefined}
+        inputValue={
+          normalize && !props.onInputChange ? inputValue : props.inputValue
+        }
         onInputChange={
           normalize && !props.onInputChange ? onInputChange : undefined
         }
