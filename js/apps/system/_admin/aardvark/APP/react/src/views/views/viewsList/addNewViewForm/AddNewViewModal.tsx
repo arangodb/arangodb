@@ -47,14 +47,14 @@ export const AddNewViewModal = ({
 }) => {
   const getFinalValues = (values: typeof initialValues) => {
     if (values.type === "arangosearch") {
-      return { ...values, indexes: undefined };
+      return { ...values, name: values.name.normalize(), indexes: undefined };
     }
     const finalIndexes = values.indexes
       .filter(indexItem => indexItem.collection && indexItem.index)
       .filter(Boolean);
     return {
       type: values.type,
-      name: values.name,
+      name: values.name.normalize(),
       indexes: finalIndexes
     };
   };
