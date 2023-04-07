@@ -13,13 +13,15 @@
 
     <script>
       window.addEventListener("error", function (e) {
-        console.error(e.message);
+        // This is an error which crashes dev, and can be safely ignored
+        // See: https://stackoverflow.com/a/50387233 & 
+        //      https://github.com/WICG/resize-observer/issues/38
         if (e.message === "ResizeObserver loop limit exceeded") {
-          // prevent React's listener from firing
+          console.error(e.message);
           e.stopImmediatePropagation();
-          // prevent the browser's console error message
           e.preventDefault();
         }
+
       });
     </script>
   </head>
