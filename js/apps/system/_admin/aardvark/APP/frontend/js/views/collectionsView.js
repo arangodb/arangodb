@@ -241,7 +241,7 @@
 
     search: function () {
       var searchOptions = this.collection.searchOptions;
-      var searchPhrase = $('#searchInput').val();
+      var searchPhrase = $('#searchInput').val().normalize();
       if (searchPhrase === searchOptions.searchPhrase) {
         return;
       }
