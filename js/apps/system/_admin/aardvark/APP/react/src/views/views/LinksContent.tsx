@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useContext } from "react";
 import FieldView from "./Components/FieldView";
 import { ViewLinksBreadcrumbs } from "./Components/ViewLinksBreadcrumbs";
-import { useViewContext } from "./constants";
+import { ViewContext } from "./constants";
+
 import CollectionsDropdown from "./forms/inputs/CollectionsDropdown";
 import { LinksContextProvider, useLinksContext } from "./LinksContext";
 
@@ -15,7 +16,7 @@ export const LinksContent = () => {
 };
 
 const LinkPropertiesForm = () => {
-  const { isAdminUser } = useViewContext();
+  const { isAdminUser } = useContext(ViewContext);
   const disabled = !isAdminUser;
   const { currentField } = useLinksContext();
   if (!currentField) {
