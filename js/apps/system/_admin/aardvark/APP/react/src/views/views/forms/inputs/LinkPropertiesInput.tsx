@@ -84,7 +84,7 @@ const LinkPropertiesInput = ({
                   basePath
                 )}
                 disabled={disabled}
-                isChecked={formState.includeAllFields}
+                isChecked={formState.includeAllFields || false}
               />
               <FormLabel htmlFor="includeAllFields">
                 Include All Fields
@@ -105,7 +105,7 @@ const LinkPropertiesInput = ({
                   basePath
                 )}
                 disabled={disabled}
-                isChecked={formState.trackListPositions}
+                isChecked={formState.trackListPositions || false}
               />
               <FormLabel htmlFor="trackListPositions">
                 Track List Positions
@@ -122,7 +122,7 @@ const LinkPropertiesInput = ({
                 id="storeIdValue"
                 onChange={updateStoreValues}
                 disabled={disabled}
-                isChecked={storeIdValues}
+                isChecked={storeIdValues || false}
               />
               <FormLabel htmlFor="storeIdValue">Store ID Values</FormLabel>
             </HStack>
@@ -142,7 +142,7 @@ const LinkPropertiesInput = ({
                     basePath
                   )}
                   disabled={disabled}
-                  isChecked={formState.inBackground}
+                  isChecked={formState.inBackground || false}
                 />
                 <FormLabel htmlFor="inBackground">In Background</FormLabel>
               </HStack>
