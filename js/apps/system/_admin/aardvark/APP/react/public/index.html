@@ -10,6 +10,18 @@
     <meta name="description" content="ArangoDB Admin Web Interface">
     <meta name="author" content="Heiko Kernbach, Michael Hackstein">
     <script src="%REACT_APP_ARANGODB_CONFIG_PATH%"></script>
+
+    <script>
+      window.addEventListener("error", function (e) {
+        console.error(e.message);
+        if (e.message === "ResizeObserver loop limit exceeded") {
+          // prevent React's listener from firing
+          e.stopImmediatePropagation();
+          // prevent the browser's console error message
+          e.preventDefault();
+        }
+      });
+    </script>
   </head>
 
   <body>
