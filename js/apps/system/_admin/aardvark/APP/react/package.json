@@ -103,8 +103,5 @@
     "presets": [
       "react-app"
     ]
-  },
-  "resolutions": {
-    "history": "4.5.1"
   }
 }
