@@ -372,7 +372,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         .ttl = executionSpecifications.ttl,
         .parallelism = executionSpecifications.parallelism}};
     auto statusActorID = _actorRuntime->spawn<StatusActor>(
-        vocbase.name(), std::make_unique<StatusState>(),
+        vocbase.name(), std::make_unique<StatusState>(_metricsActor),
         std::move(statusStart));
     auto statusActorPID = actor::ActorPID{
         .server = ss->getId(), .database = vocbase.name(), .id = statusActorID};
@@ -442,6 +442,13 @@ PregelFeature::PregelFeature(Server& server)
       _actorRuntime(nullptr) {
   static_assert(
       Server::isCreatedAfter<PregelFeature, metrics::MetricsFeature>());
+  auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
+      "_system", std::make_unique<MetricsState>(_metrics),
+      message::MetricsStart{});
+  _metricsActor = actor::ActorPID{.server = ServerState::instance()->getId(),
+                                  .database = "_system",
+                                  .id = metricsActorID};
+
   setOptional(true);
   startsAfter<DatabaseFeature>();
   startsAfter<application_features::V8FeaturePhase>();

@@ -23,6 +23,7 @@
 #pragma once
 
 #include <chrono>
+#include <utility>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Inspection/Status.h"
@@ -223,20 +224,24 @@ auto inspect(Inspector& f, StatusDetails& x) {
 }
 
 struct StatusState {
+  explicit StatusState(actor::ActorPID metricsActor) : metricsActor(std::move(metricsActor)) {}
+
   std::string stateName;
   ExecutionNumber id;
   std::string database;
   std::string algorithm;
   std::chrono::steady_clock::time_point created;
   std::optional<std::chrono::steady_clock::time_point> expires;
-  TTL ttl;
-  size_t parallelism;
+  TTL ttl{};
+  size_t parallelism{};
   PregelTimings timings;
-  uint64_t gss;
+  uint64_t gss{};
   VPackBuilder aggregators;
-  uint64_t vertexCount;
-  uint64_t edgeCount;
+  uint64_t vertexCount{};
+  uint64_t edgeCount{};
   StatusDetails details;
+
+  actor::ActorPID metricsActor;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusState& x) {
@@ -320,6 +325,9 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     auto duration = std::chrono::microseconds{msg.time.value};
     this->state->created =
         std::chrono::time_point<std::chrono::steady_clock>{duration};
+
+    this->template dispatch(this->state->metricsActor,
+                            );
 
     return std::move(this->state);
   }

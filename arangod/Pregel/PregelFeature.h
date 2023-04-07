@@ -42,6 +42,7 @@
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/StatusActor.h"
+#include "Pregel/MetricsActor.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
@@ -168,6 +169,7 @@ class PregelFeature final : public ArangodFeature {
   std::atomic<bool> _softShutdownOngoing;
 
   std::shared_ptr<PregelMetrics> _metrics;
+  actor::ActorPID _metricsActor;
 
  public:
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
