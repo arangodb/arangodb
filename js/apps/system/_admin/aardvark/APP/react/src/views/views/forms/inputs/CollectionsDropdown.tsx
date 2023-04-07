@@ -85,9 +85,7 @@ const CollectionsDropdown = () => {
       placeholder="Enter a collection name"
       noOptionsMessage={() => "No collections found"}
       components={{
-        MultiValueLabel: props => {
-          return <MultiValueLabel {...props} />;
-        }
+        MultiValueLabel
       }}
       isClearable={false}
       isDisabled={!isAdminUser}
