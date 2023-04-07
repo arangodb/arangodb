@@ -51,6 +51,9 @@ namespace arangodb::replication2::replicated_log {
 
 namespace {
 
+/// Conditions
+/// - server is healthy
+/// - server has a snapshot
 bool isParticipantUsable(LogCurrent const& current,
                          ParticipantsHealth const& health,
                          ParticipantId const& participantId) {
@@ -88,28 +91,32 @@ auto computeNumUsableParticipants(
   return count;
 }
 
+/// We rely only on health information, as current is not available.
+/// You may want to use this function when the log is in the process of being
+/// created.
 auto computeEffectiveWriteConcern(LogTargetConfig const& config,
-                                  std::optional<LogCurrent> current,
                                   ParticipantsFlagsMap const& participants,
                                   ParticipantsHealth const& health) -> size_t {
-  if (!current.has_value()) {
-    // We can only rely on health information, as no participant is usable yet.
-    auto const numberNotFailedParticipants =
-        health.numberNotIsFailedOf(participants);
-    return std::max(config.writeConcern, std::min(numberNotFailedParticipants,
-                                                  config.softWriteConcern));
-  }
+  auto const numberNotFailedParticipants =
+      health.numberNotIsFailedOf(participants);
+  return std::max(config.writeConcern, std::min(numberNotFailedParticipants,
+                                                config.softWriteConcern));
+}
 
-  // We have to take into account the number of usable participants. If a
-  // participant is healthy, but for example, does not have a snapshot yet, the
-  // effectiveWriteConcern should be lowered accordingly.
+/// After a log has been created, we have to take into account the number of
+/// usable participants, as it is no longer sufficient for a participant to be
+/// healthy.
+auto computeEffectiveWriteConcern(LogTargetConfig const& config,
+                                  LogCurrent const& current,
+                                  ParticipantsFlagsMap const& participants,
+                                  ParticipantsHealth const& health) -> size_t {
   std::vector<ParticipantId> participantsList;
   participantsList.reserve(participants.size());
   for (auto const& [p, _] : participants) {
     participantsList.emplace_back(p);
   }
   auto const numUsableParticipants =
-      computeNumUsableParticipants(*current, participantsList, health);
+      computeNumUsableParticipants(current, participantsList, health);
 
   return std::max(config.writeConcern,
                   std::min(numUsableParticipants, config.softWriteConcern));
@@ -339,7 +346,7 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
     auto const& newLeaderRebootId = health.getRebootId(newLeader);
 
     auto effectiveWriteConcern = computeEffectiveWriteConcern(
-        log.target.config, log.current, plan.participantsConfig.participants,
+        log.target.config, *log.current, plan.participantsConfig.participants,
         health);
 
     if (newLeaderRebootId.has_value()) {
@@ -649,7 +656,7 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
       auto leader = pickLeader(target.leader, target.participants, health,
                                log.target.id.id());
       auto effectiveWriteConcern = computeEffectiveWriteConcern(
-          target.config, std::nullopt, target.participants, health);
+          target.config, target.participants, health);
       auto config =
           LogPlanConfig(effectiveWriteConcern, target.config.waitForSync);
       ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
@@ -846,7 +853,7 @@ auto checkConfigChanged(SupervisionContext& ctx, Log const& log,
 
   // Check write concern
   auto effectiveWriteConcern = computeEffectiveWriteConcern(
-      target.config, log.current, plan.participantsConfig.participants, health);
+      target.config, current, plan.participantsConfig.participants, health);
 
   if (effectiveWriteConcern !=
       plan.participantsConfig.config.effectiveWriteConcern) {
