@@ -25,7 +25,6 @@ const LinkPropertiesInput = ({
   disabled,
   basePath
 }: LinkPropertiesInputProps) => {
-  console.log({ includeAll: formState.includeAllFields });
   const updateStoreValues = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: "setField",
