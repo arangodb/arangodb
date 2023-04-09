@@ -57,12 +57,8 @@ class MetricStats : public metrics::Guard<IResearchDataStore::Stats> {
     TRI_ASSERT(start < labels.size());
     std::string /*TODO(MBkkt) Fix cluster info interface*/ shardId{
         labels.substr(start, labels.size() - start - 1)};
-    auto r = ci.getResponsibleServer(shardId);
-    if (r->empty()) {
-      return true;  // TODO(MBkkt) We should fix cluster info :(
-    }
-    if ((*r)[0] != ServerState::instance()->getId()) {
-      // We want collect only leader shards stats
+    auto r = ci.getShardLeadership(ServerState::instance()->getId(), shardId);
+    if (r != ClusterInfo::ShardLeadership::kLeader) {
       return true;
     }
     return false;

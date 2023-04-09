@@ -602,6 +602,21 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid) {
   // initialize transaction callback
+  if (!collection.isAStub() && ServerState::instance()->isDBServer() &&
+      collection.vocbase()
+          .server()
+          .getFeature<IResearchFeature>()
+          .columnsCacheOnlyLeaders()) {
+    auto& ci = collection.vocbase()
+                   .server()
+                   .getFeature<ClusterFeature>()
+                   .clusterInfo();
+    auto r = ci.getShardLeadership(ServerState::instance()->getId(),
+                                   collection.name());
+    _useSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+    LOG_DEVEL << "CTOR: UseSearchCache:" << _useSearchCache
+              << " For shard:" << collection.name();
+  }
   _beforeCommitCallback = [this](TransactionState& state) {
     auto prev = state.cookie(this);  // get existing cookie
     if (!prev) {
@@ -986,6 +1001,37 @@ Result IResearchDataStore::commitUnsafeImpl(
       _lastCommittedTickOne = lastTickBeforeCommitOne;
       _lastCommittedTickTwo = lastTickBeforeCommitOne;
       impl.tick(_lastCommittedTickOne);
+#ifdef USE_ENTERPRISE
+      // get new reader
+      bool forceOpen{false};
+      if (ServerState::instance()->isDBServer() &&
+          _collection.vocbase()
+              .server()
+              .getFeature<IResearchFeature>()
+              .columnsCacheOnlyLeaders()) {
+        auto& ci = _collection.vocbase()
+                       .server()
+                       .getFeature<ClusterFeature>()
+                       .clusterInfo();
+        auto newUseSearchCache =
+            _useSearchCache.load(std::memory_order_relaxed);
+        auto r = ci.getShardLeadership(ServerState::instance()->getId(),
+                                       _collection.name());
+        if (r != ClusterInfo::ShardLeadership::kUnclear) {
+          newUseSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+        }
+        forceOpen = _useSearchCache.load(std::memory_order_relaxed) !=
+                    newUseSearchCache;
+        _useSearchCache = newUseSearchCache;
+        LOG_DEVEL << "On commit no changes: forceOpen" << forceOpen
+                  << " UseSearchCache:" << _useSearchCache
+                  << " for shard:" << _collection.name();
+      }
+      if (forceOpen) {
+        _dataStore._reader = irs::directory_reader::open(
+            *(_dataStore._directory), _format, _dataStore._readerOptions);
+      }
+#endif
       return {};
     } else {
       code = CommitResult::DONE;
@@ -1037,9 +1083,38 @@ Result IResearchDataStore::commitUnsafeImpl(
       }
     }
 #endif
+   
+    bool forceOpen{false};
+#ifdef USE_ENTERPRISE
     // get new reader
-    auto reader = _dataStore._reader.reopen(_format);
+    if (ServerState::instance()->isDBServer() &&
+        _collection.vocbase()
+            .server()
+            .getFeature<IResearchFeature>()
+            .columnsCacheOnlyLeaders()) {
+      auto& ci = _collection.vocbase()
+                     .server()
+                     .getFeature<ClusterFeature>()
+                     .clusterInfo();
+      auto newUseSearchCache = _useSearchCache.load(std::memory_order_relaxed);
+      auto r = ci.getShardLeadership(ServerState::instance()->getId(),
+                                     _collection.name());
+      if (r != ClusterInfo::ShardLeadership::kUnclear) {
+        newUseSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+      }
+      forceOpen =
+          _useSearchCache.load(std::memory_order_relaxed) != newUseSearchCache;
+      _useSearchCache = newUseSearchCache;
+      LOG_DEVEL << "On commit: forceOpen" << forceOpen
+                << " UseSearchCache:" << _useSearchCache
+                << " for shard:" << _collection.name();
+    }
+#endif
 
+    auto reader = forceOpen ? irs::directory_reader::open(
+                                  *(_dataStore._directory), _format,
+                                  _dataStore._readerOptions)
+                            : _dataStore._reader.reopen(_format);
     if (!reader) {
       // nothing more to do
       LOG_TOPIC("37bcf", WARN, TOPIC)
@@ -1264,9 +1339,8 @@ Result IResearchDataStore::initDataStore(
   }
 
   _engine = &server.getFeature<EngineSelectorFeature>().engine();
-
+  _dataStore._readerOptions = readerOptions;
   _dataStore._path = getPersistedPath(dbPathFeature, *this);
-
   // must manually ensure that the data store directory exists (since not
   // using a lockfile)
   if (!irs::file_utils::exists_directory(pathExists,

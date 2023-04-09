@@ -160,7 +160,7 @@ Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
   irs::index_reader_options readerOptions;
 #ifdef USE_ENTERPRISE
   setupReaderEntepriseOptions(readerOptions, _collection.vocbase().server(),
-                              _meta);
+                              _meta, _useSearchCache);
 #endif
   auto r = initDataStore(pathExists, init, _meta._version, !_meta._sort.empty(),
 #ifdef USE_ENTERPRISE

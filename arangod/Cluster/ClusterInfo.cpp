@@ -5726,6 +5726,30 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
   return std::make_shared<std::vector<ServerID>>();
 }
 
+ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(ServerID server,
+                                                    ShardID shard) const {
+  if (!_currentProt.isValid) {
+    return ShardLeadership::kUnclear;
+  }
+  READ_LOCKER(readLocker, _currentProt.lock);
+  auto it = _shardIds.find(shard);
+
+  if (it != _shardIds.end()) {
+    auto serverList = (*it).second;
+    if (!serverList || serverList->empty()) {
+      return ShardLeadership::kUnclear;
+    }
+    if (!(*serverList)[0].empty() && (*serverList)[0][0] == '_') {
+      // This is a temporary situation in which the leader has already
+      return ShardLeadership::kUnclear;
+    } else {
+      return serverList->at(0) == server ? ShardLeadership::kLeader
+                                         : ShardLeadership::kFollower;
+    }
+  }
+  return ShardLeadership::kUnclear;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief atomically find all servers who are responsible for the given
 /// shards (only the leaders).
