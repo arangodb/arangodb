@@ -160,6 +160,9 @@ auto GraphLoader<V, E>::computeLoadableVertexShards()
 template<typename V, typename E>
 auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
   auto loadableVertexShards = computeLoadableVertexShards();
+  LOG_PREGEL("ff00f", DEBUG) << "vertex shards to be loaded: "
+                             << inspection::json(loadableVertexShards);
+
   auto result = Magazine<V, E>{};
   for (auto&& loadableVertexShard : *loadableVertexShards) {
     try {
