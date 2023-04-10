@@ -100,7 +100,6 @@ void DBServerSnapshotCompleteAction::apply(AgencyState& agency) {
   }
   auto& status = agency.replicatedLog->current->localState[name];
   status.snapshotAvailable = true;
-  status.state = replicated_log::LocalStateMachineStatus::kOperational;
 }
 
 DBServerSnapshotCompleteAction::DBServerSnapshotCompleteAction(
@@ -172,9 +171,6 @@ void ReplaceServerTargetState::apply(AgencyState& agency) const {
   target.participants.erase(oldServer);
   target.participants[newServer];
   target.version.emplace(target.version.value_or(0) + 1);
-  if (agency.replicatedLog->current) {
-    agency.replicatedLog->current->localState.erase(oldServer);
-  }
 }
 
 ReplaceServerTargetLog::ReplaceServerTargetLog(ParticipantId oldServer,
@@ -232,9 +228,6 @@ void RemoveLogParticipantAction::apply(AgencyState& agency) const {
   auto& target = agency.replicatedLog->target;
   target.participants.erase(server);
   target.version.emplace(target.version.value_or(0) + 1);
-  if (agency.replicatedLog->current) {
-    agency.replicatedLog->current->localState.erase(server);
-  }
 }
 
 auto RemoveLogParticipantAction::toString() const -> std::string {
