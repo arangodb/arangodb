@@ -300,43 +300,54 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::_startProcessing() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   auto self = shared_from_this();
-  auto futures = std::vector<futures::Future<VertexProcessorResult>>{};
+  auto futures = std::vector<futures::Future<VertexProcessorResult>>();
+  auto quiverIdx = std::make_shared<std::atomic<size_t>>(0);
 
-  for (auto quiver : _magazine) {
+  for (auto futureN = size_t{0}; futureN < _config->parallelism(); ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
-        RequestLane::INTERNAL_LOW, [self, this, quiver = quiver]() {
+        RequestLane::INTERNAL_LOW, [self, this, quiverIdx]() {
+          LOG_DEVEL << "started processing future";
           auto processor =
               VertexProcessor<V, E, M>(_config, _algorithm, _workerContext,
                                        _messageCombiner, _messageFormat);
 
-          for (auto& vertex : *quiver) {
-            auto messages =
-                _readCache->getMessages(vertex.shard(), vertex.key());
-            processor.process(&vertex, messages);
-
-            // TODO: this code looks completely out of place here;
-            // preferably it should stay out of the way of the
-            // control flow
-            // Also, the number of messages received is counted multiple
-            // times over; so this redundancy should be removed.
-            // Watch out for the fact that some algorithms want to
-            // do batch sizing based on the rate of messages sent and
-            // this might need to be taken into account.
-            _currentGssObservables.verticesProcessed.fetch_add(1);
-            _currentGssObservables.messagesReceived.fetch_add(messages.size());
-            _currentGssObservables.memoryBytesUsedForMessages.fetch_add(
-                messages.size() * sizeof(M));
-            if (_currentGssObservables.verticesProcessed %
-                    Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
-                0) {
-              _makeStatusCallback()();
+          while (true) {
+            auto myCurrentQuiver = quiverIdx->fetch_add(1);
+            if (myCurrentQuiver >= _magazine.size()) {
+              break;
             }
+            for (auto& vertex : *_magazine.quivers.at(myCurrentQuiver)) {
+              auto messages =
+                  _readCache->getMessages(vertex.shard(), vertex.key());
+              processor.process(&vertex, messages);
 
-            // TODO: early cancel & status updates
-            if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-              LOG_PREGEL("ee2ab", WARN) << "Execution aborted prematurely.";
-              // TODO return something?
-              // return {TRI_ERROR_INTERNAL};
+              // TODO: this code looks completely out of place here;
+              // preferably it should stay out of the way of the
+              // control flow
+              // Also, the number of messages received is counted multiple
+              // times over; so this redundancy should be removed.
+              // Watch out for the fact that some algorithms want to
+              // do batch sizing based on the rate of messages sent and
+              // this might need to be taken into account.
+              _currentGssObservables.verticesProcessed.fetch_add(1);
+              _currentGssObservables.messagesReceived.fetch_add(
+                  messages.size());
+              _currentGssObservables.memoryBytesUsedForMessages.fetch_add(
+                  messages.size() * sizeof(M));
+              if (_currentGssObservables.verticesProcessed %
+                      Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+                  0) {
+                _makeStatusCallback()();
+              }
+
+              // TODO: early cancel
+              // TODO: This blow should not happen: self is captured and
+              // shared_from_this?
+              if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
+                LOG_PREGEL("ee2ab", WARN) << "Execution aborted prematurely.";
+                // TODO return something?
+                // return {TRI_ERROR_INTERNAL};
+              }
             }
           }
           processor.outCache->flushMessages();
