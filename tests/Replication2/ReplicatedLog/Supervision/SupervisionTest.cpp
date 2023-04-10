@@ -281,10 +281,10 @@ TEST_F(LogSupervisionTest, test_acceptable_leader_set) {
 
   auto term = LogTerm{};
   auto localStates = std::unordered_map<ParticipantId, LogCurrentLocalState>{};
-  localStates["A"].state = LocalStateMachineStatus::kOperational;
-  localStates["B"].state = LocalStateMachineStatus::kOperational;
-  localStates["C"].state = LocalStateMachineStatus::kOperational;
-  localStates["D"].state = LocalStateMachineStatus::kOperational;
+  localStates["A"].snapshotAvailable = true;
+  localStates["B"].snapshotAvailable = true;
+  localStates["C"].snapshotAvailable = true;
+  localStates["D"].snapshotAvailable = true;
 
   auto r =
       getParticipantsAcceptableAsLeaders("A", term, participants, localStates);
@@ -337,7 +337,6 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
   current.supervision.emplace(LogCurrentSupervision{});
   current.supervision->assumedWriteConcern = 3;
   for (auto const& [id, _] : participantsFlags) {
-    current.localState[id].state = LocalStateMachineStatus::kOperational;
     current.localState[id].term = LogTerm{1};
     current.localState[id].snapshotAvailable = true;
   }
@@ -411,11 +410,10 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_missing_snapshot) {
   current.supervision.emplace(LogCurrentSupervision{});
   current.supervision->assumedWriteConcern = 3;
   for (auto const& [id, _] : participantsFlags) {
-    current.localState[id].state = LocalStateMachineStatus::kOperational;
     current.localState[id].term = LogTerm{1};
     current.localState[id].snapshotAvailable = true;
   }
-  current.localState["B"].state = LocalStateMachineStatus::kAcquiringSnapshot;
+  current.localState["B"].snapshotAvailable = false;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -564,11 +562,10 @@ TEST_F(LogSupervisionTest, test_remove_participant_undo_exclude_from_quorum) {
                          .commitStatus = std::nullopt};
   current.supervision.emplace(LogCurrentSupervision{});
   for (auto const& [id, _] : participantsFlags) {
-    current.localState[id].state = LocalStateMachineStatus::kOperational;
     current.localState[id].term = LogTerm{1};
     current.localState[id].snapshotAvailable = true;
   }
-  current.localState["B"].state = LocalStateMachineStatus::kAcquiringSnapshot;
+  current.localState["B"].snapshotAvailable = false;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -753,6 +750,110 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
   auto writeEmptyTermAction = std::get<WriteEmptyTermAction>(r);
 
   ASSERT_EQ(writeEmptyTermAction.minTerm, LogTerm{3});
+}
+
+TEST_F(LogSupervisionTest, test_compute_effective_write_concern_correct_term) {
+  AgencyLogBuilder log;
+  log.setTargetConfig(LogTargetConfig{3, 3, true})
+      .setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags);
+
+  log.setPlanParticipant("A", defaultFlags)
+      .setPlanParticipant("B", defaultFlags)
+      .setPlanParticipant("C", defaultFlags);
+
+  log.setPlanLeader("A");
+  log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+  log.allSnapshotsTrue();
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  auto effectiveWriteConcern = computeEffectiveWriteConcern(
+      log.get().target.config, log.get().current.value(),
+      log.get().plan.value(), health);
+  ASSERT_EQ(effectiveWriteConcern, 3U);
+}
+
+TEST_F(LogSupervisionTest, test_compute_effective_write_concern_wrong_term) {
+  AgencyLogBuilder log;
+  log.setTargetConfig(LogTargetConfig{1, 3, true})
+      .setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags);
+
+  log.setPlanParticipant("A", defaultFlags)
+      .setPlanParticipant("B", defaultFlags)
+      .setPlanParticipant("C", defaultFlags);
+
+  log.setPlanLeader("A");
+  auto& term = log.makeTerm();
+  log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+  // C will be in the wrong term.
+  term.term = LogTerm{2};
+  log.acknowledgeTerm("A").acknowledgeTerm("B");
+  log.allSnapshotsTrue();
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  auto effectiveWriteConcern = computeEffectiveWriteConcern(
+      log.get().target.config, log.get().current.value(),
+      log.get().plan.value(), health);
+  ASSERT_EQ(effectiveWriteConcern, 2U);
+}
+
+TEST_F(LogSupervisionTest, test_compute_effective_write_concern_no_snapshot) {
+  AgencyLogBuilder log;
+  log.setTargetConfig(LogTargetConfig{1, 3, true})
+      .setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags);
+
+  log.setPlanParticipant("A", defaultFlags)
+      .setPlanParticipant("B", defaultFlags)
+      .setPlanParticipant("C", defaultFlags);
+
+  log.setPlanLeader("A");
+  // C remains without snapshot
+  log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+  log.setSnapshotTrue("A").setSnapshotTrue("B");
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  auto effectiveWriteConcern = computeEffectiveWriteConcern(
+      log.get().target.config, log.get().current.value(),
+      log.get().plan.value(), health);
+  ASSERT_EQ(effectiveWriteConcern, 2U);
 }
 
 TEST_F(LogSupervisionTest, test_compute_effective_write_concern) {
