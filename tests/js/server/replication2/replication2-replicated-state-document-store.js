@@ -901,9 +901,6 @@ const replicatedStateSnapshotTransferSuite = function () {
 
       // Resuming the follower should raise the effective write concern to 4.
       continueServerWait(stopFollower);
-      // We have to insert something, because the follower might get stuck in "Connecting" state
-      // if the leader does not send an append entries request.
-      collection.insert({_key: `${testName}_baz2`});
       lh.waitFor(checkEffectiveWriteConcern(4));
     }
   };
