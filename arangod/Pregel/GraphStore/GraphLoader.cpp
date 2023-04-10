@@ -172,7 +172,6 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
         RequestLane::INTERNAL_LOW,
         [this, self, futureN, loadableShardIdx,
          loadableVertexShards]() -> Magazine<V, E> {
-          LOG_DEVEL << "future number " << futureN << " started";
           auto result = Magazine<V, E>{};
 
           while (true) {
