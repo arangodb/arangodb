@@ -51,16 +51,15 @@ namespace arangodb::replication2::replicated_log {
 
 namespace {
 
-/// If the service is operational, it is guaranteed that the snapshot is
-/// available
+/// The snapshot is valid if it is available and the term matches. We could have
+/// also conditioned this on the state being operational, but that cannot happen
+/// unless the follower gets and append-entries request.
 bool isSnapshotValidInTerm(LogCurrentLocalState const& state, LogTerm term) {
-  return state.state == LocalStateMachineStatus::kOperational &&
-         state.term == term;
+  return state.snapshotAvailable && state.term == term;
 }
 
 /// Conditions
 /// - server is healthy
-/// - server is operational
 /// - server has a valid snapshot in the current term
 bool isParticipantUsable(LogCurrent const& current,
                          std::optional<LogPlanTermSpecification> currentTerm,
