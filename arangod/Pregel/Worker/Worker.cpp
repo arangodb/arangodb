@@ -528,7 +528,8 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
     try {
       auto storer = std::make_shared<GraphStorer<V, E>>(
           _config->executionNumber(), *_config->vocbase(),
-          _algorithm->inputFormat(), _config->globalShardIDs(),
+          _config->parallelism(), _algorithm->inputFormat(),
+          _config->globalShardIDs(),
           OldStoringUpdate{.fn = std::move(_makeStatusCallback())});
       _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
       storer->store(_magazine).thenFinal(
