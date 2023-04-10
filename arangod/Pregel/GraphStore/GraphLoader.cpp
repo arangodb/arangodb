@@ -44,6 +44,7 @@
 #include "Pregel/Algos/SCC/SCCValue.h"
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
+#include "Pregel/GraphStore/LoadableVertexShard.h"
 #include "Pregel/StatusMessages.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -89,9 +90,20 @@ auto GraphLoader<V, E>::requestVertexIds(uint64_t numVertices)
   return VertexIdRange{};
 }
 
+// This function is here to gradually move from about 3.10 era code towards
+// actor type code;
+// Ultimately the code that computes which shards need to be loaded where
+// should be run on the coordinator before anything else is done; code
+// to achieve this has already been written but not merged before the 3.11
+// code freeze.
+// here's a partial fix: compute the shard loading information and store it
+// into a data structure LoadableVertexShard.
+// LoadableVertexShards are part of the new shard distribution code and will
+// be sent to the worker by the coordinator.
 template<typename V, typename E>
-auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
-  auto futures = std::vector<futures::Future<std::shared_ptr<Quiver<V, E>>>>{};
+auto GraphLoader<V, E>::computeLoadableVertexShards()
+    -> std::shared_ptr<std::vector<LoadableVertexShard>> {
+  auto result = std::make_shared<std::vector<LoadableVertexShard>>();
 
   // Contains the shards located on this db server in the right order
   // assuming edges are sharded after _from, vertices after _key
@@ -135,56 +147,92 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
         }
       }
 
-      auto self = this->shared_from_this();
-      futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
-          RequestLane::INTERNAL_LOW,
-          [this, self, vertexShard, edges]() -> std::shared_ptr<Quiver<V, E>> {
-            try {
-              return loadVertices(vertexShard, edges);
-            } catch (basics::Exception const& ex) {
-              LOG_PREGEL("8682a", WARN)
-                  << "caught exception while loading pregel graph: "
-                  << ex.what();
-              return nullptr;
-            } catch (std::exception const& ex) {
-              LOG_PREGEL("c87c9", WARN)
-                  << "caught exception while loading pregel graph: "
-                  << ex.what();
-              return nullptr;
-            } catch (...) {
-              LOG_PREGEL("c7240", WARN)
-                  << "caught unknown exception while loading pregel graph";
-              return nullptr;
-            }
-          }));
+      result->emplace_back(
+          LoadableVertexShard{.pregelShard = InvalidPregelShard,
+                              .vertexShard = vertexShard,
+                              .collectionName = pair.first,
+                              .edgeShards = std::move(edges)});
     }
   }
-  auto self = this->shared_from_this();
-  return collectAll(futures).thenValue([this, self](auto&& results) {
-    auto result = Magazine<V, E>{};
-    for (auto&& r : results) {
-      // TODO: maybe handle exceptions here?
-      result.emplace(std::move(r.get()));
-    }
-    std::visit(overload{[&](ActorLoadingUpdate const& update) {
-                          update.fn(message::GraphLoadingUpdate{
-                              .verticesLoaded = result.numberOfVertices(),
-                              .edgesLoaded = result.numberOfEdges(),
-                              .memoryBytesUsed = 0});
-                        },
-                        [](OldLoadingUpdate const& update) {
-                          SchedulerFeature::SCHEDULER->queue(
-                              RequestLane::INTERNAL_LOW, update.fn);
-                        }},
-               updateCallback);
-    return result;
-  });
+  return result;
 }
 
 template<typename V, typename E>
-auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
-                                     std::vector<ShardID> const& edgeShards)
+auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
+  auto loadableVertexShards = computeLoadableVertexShards();
+  auto result = Magazine<V, E>{};
+  for (auto&& loadableVertexShard : *loadableVertexShards) {
+    try {
+      result.emplace(loadVertices(loadableVertexShard));
+    } catch (basics::Exception const& ex) {
+      LOG_PREGEL("8682a", WARN)
+          << "caught exception while loading pregel graph: " << ex.what();
+      ADB_PROD_ASSERT(false) << "f";
+      // return nullptr;
+    } catch (std::exception const& ex) {
+      LOG_PREGEL("c87c9", WARN)
+          << "caught exception while loading pregel graph: " << ex.what();
+      ADB_PROD_ASSERT(false) << "f";
+      // return nullptr;
+    } catch (...) {
+      LOG_PREGEL("c7240", WARN)
+          << "caught unknown exception while loading pregel graph";
+      ADB_PROD_ASSERT(false) << "f";
+      // return nullptr;
+    }
+  }
+  return {result};
+
+  /*   auto futures = std::vector<futures::Future<std::shared_ptr<Quiver<V,
+    E>>>>{}; auto self = this->shared_from_this();
+    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+        RequestLane::INTERNAL_LOW,
+        [this, self, loadableVertexShards]() -> std::shared_ptr<Quiver<V, E>> {
+          for (auto&& loadableVertexShard : *loadableVertexShards) {
+            LOG_DEVEL << "loading";
+            try {
+              return loadVertices(loadableVertexShard);
+            } catch (basics::Exception const& ex) {
+              LOG_PREGEL("8682a", WARN)
+                  << "caught exception while loading pregel graph: " <<
+    ex.what(); return nullptr; } catch (std::exception const& ex) {
+              LOG_PREGEL("c87c9", WARN)
+                  << "caught exception while loading pregel graph: " <<
+    ex.what(); return nullptr; } catch (...) { LOG_PREGEL("c7240", WARN)
+                  << "caught unknown exception while loading pregel graph";
+              return nullptr;
+            }
+          }
+          return nullptr;
+        }));
+
+    return collectAll(futures).thenValue([this, self](auto&& results) {
+      auto result = Magazine<V, E>{};
+      for (auto&& r : results) {
+        // TODO: maybe handle exceptions here?
+        result.emplace(std::move(r.get()));
+      }
+      std::visit(overload{[&](ActorLoadingUpdate const& update) {
+                            update.fn(message::GraphLoadingUpdate{
+                                .verticesLoaded = result.numberOfVertices(),
+                                .edgesLoaded = result.numberOfEdges(),
+                                .memoryBytesUsed = 0});
+                          },
+                          [](OldLoadingUpdate const& update) {
+                            SchedulerFeature::SCHEDULER->queue(
+                                RequestLane::INTERNAL_LOW, update.fn);
+                          }},
+                 updateCallback);
+      return result;
+    }); */
+}
+
+template<typename V, typename E>
+auto GraphLoader<V, E>::loadVertices(
+    LoadableVertexShard const& loadableVertexShard)
     -> std::shared_ptr<Quiver<V, E>> {
+  auto const& vertexShard = loadableVertexShard.vertexShard;
+  auto const& edgeShards = loadableVertexShard.edgeShards;
   auto result = std::make_shared<Quiver<V, E>>();
 
   transaction::Options trxOpts;
