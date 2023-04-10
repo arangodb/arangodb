@@ -163,71 +163,71 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
   LOG_PREGEL("ff00f", DEBUG) << "vertex shards to be loaded: "
                              << inspection::json(loadableVertexShards);
 
-  auto result = Magazine<V, E>{};
-  for (auto&& loadableVertexShard : *loadableVertexShards) {
-    try {
-      result.emplace(loadVertices(loadableVertexShard));
-    } catch (basics::Exception const& ex) {
-      LOG_PREGEL("8682a", WARN)
-          << "caught exception while loading pregel graph: " << ex.what();
-      ADB_PROD_ASSERT(false) << "f";
-      // return nullptr;
-    } catch (std::exception const& ex) {
-      LOG_PREGEL("c87c9", WARN)
-          << "caught exception while loading pregel graph: " << ex.what();
-      ADB_PROD_ASSERT(false) << "f";
-      // return nullptr;
-    } catch (...) {
-      LOG_PREGEL("c7240", WARN)
-          << "caught unknown exception while loading pregel graph";
-      ADB_PROD_ASSERT(false) << "f";
-      // return nullptr;
-    }
-  }
-  return {result};
+  auto loadableShardIdx = std::make_shared<std::atomic<size_t>>(0);
+  auto futures = std::vector<futures::Future<Magazine<V, E>>>{};
+  auto self = this->shared_from_this();
 
-  /*   auto futures = std::vector<futures::Future<std::shared_ptr<Quiver<V,
-    E>>>>{}; auto self = this->shared_from_this();
+  for (auto futureN = size_t{0}; futureN < config->parallelism(); ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
         RequestLane::INTERNAL_LOW,
-        [this, self, loadableVertexShards]() -> std::shared_ptr<Quiver<V, E>> {
-          for (auto&& loadableVertexShard : *loadableVertexShards) {
-            LOG_DEVEL << "loading";
+        [this, self, futureN, loadableShardIdx,
+         loadableVertexShards]() -> Magazine<V, E> {
+          LOG_DEVEL << "future number " << futureN << " started";
+          auto result = Magazine<V, E>{};
+
+          while (true) {
+            auto myLoadableVertexShardIdx = loadableShardIdx->fetch_add(1);
+            if (myLoadableVertexShardIdx >= loadableVertexShards->size()) {
+              break;
+            }
+
             try {
-              return loadVertices(loadableVertexShard);
+              auto const& loadableVertexShard =
+                  loadableVertexShards->at(myLoadableVertexShardIdx);
+              result.emplace(loadVertices(loadableVertexShard));
             } catch (basics::Exception const& ex) {
               LOG_PREGEL("8682a", WARN)
-                  << "caught exception while loading pregel graph: " <<
-    ex.what(); return nullptr; } catch (std::exception const& ex) {
+                  << "caught exception while loading pregel graph: "
+                  << ex.what();
+              break;
+            } catch (std::exception const& ex) {
               LOG_PREGEL("c87c9", WARN)
-                  << "caught exception while loading pregel graph: " <<
-    ex.what(); return nullptr; } catch (...) { LOG_PREGEL("c7240", WARN)
+                  << "caught exception while loading pregel graph: "
+                  << ex.what();
+              break;
+            } catch (...) {
+              LOG_PREGEL("c7240", WARN)
                   << "caught unknown exception while loading pregel graph";
-              return nullptr;
+              ADB_PROD_ASSERT(false) << "f";
+              break;
             }
           }
-          return nullptr;
+          return result;
         }));
+  }
+  return collectAll(futures).thenValue([this, self](auto&& results) {
+    auto result = Magazine<V, E>{};
+    for (auto&& r : results) {
+      // TODO: maybe handle exceptions here?
+      auto&& magazine = r.get();
 
-    return collectAll(futures).thenValue([this, self](auto&& results) {
-      auto result = Magazine<V, E>{};
-      for (auto&& r : results) {
-        // TODO: maybe handle exceptions here?
-        result.emplace(std::move(r.get()));
+      for (auto&& q : magazine) {
+        result.emplace(std::move(q));
       }
-      std::visit(overload{[&](ActorLoadingUpdate const& update) {
-                            update.fn(message::GraphLoadingUpdate{
-                                .verticesLoaded = result.numberOfVertices(),
-                                .edgesLoaded = result.numberOfEdges(),
-                                .memoryBytesUsed = 0});
-                          },
-                          [](OldLoadingUpdate const& update) {
-                            SchedulerFeature::SCHEDULER->queue(
-                                RequestLane::INTERNAL_LOW, update.fn);
-                          }},
-                 updateCallback);
-      return result;
-    }); */
+    }
+    std::visit(overload{[&](ActorLoadingUpdate const& update) {
+                          update.fn(message::GraphLoadingUpdate{
+                              .verticesLoaded = result.numberOfVertices(),
+                              .edgesLoaded = result.numberOfEdges(),
+                              .memoryBytesUsed = 0});
+                        },
+                        [](OldLoadingUpdate const& update) {
+                          SchedulerFeature::SCHEDULER->queue(
+                              RequestLane::INTERNAL_LOW, update.fn);
+                        }},
+               updateCallback);
+    return result;
+  });
 }
 
 template<typename V, typename E>
