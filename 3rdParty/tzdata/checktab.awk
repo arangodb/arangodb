@@ -107,6 +107,7 @@ BEGIN {
 	    cc = cca[j]
 	    if (used_max < cc_used[cc]) {
 	      used_max = cc_used[cc]
+	      used_max_cc = cc
 	    }
 	  }
 	  if (used_max <= 1 && comments) {
@@ -114,9 +115,9 @@ BEGIN {
 	      zone_table, i, comments \
 	      >>"/dev/stderr"
 	    status = 1
-	  } else if (1 < cc_used[cc] && !comments) {
+	  } else if (1 < used_max && !comments) {
 	    printf "%s:%d: missing comment for %s\n", \
-	      zone_table, i, cc \
+	      zone_table, i, used_max_cc \
 	      >>"/dev/stderr"
 	    status = 1
 	  }
