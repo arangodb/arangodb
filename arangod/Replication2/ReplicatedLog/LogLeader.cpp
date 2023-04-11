@@ -249,65 +249,65 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         // measurement. (And do not use follower._lastRequestStartTP)
         // TODO really needed?
         auto startTime = std::chrono::steady_clock::now();
+        auto currentCommitIndex = request.leaderCommit;
+        auto lowestIndexToKeep = request.leaderCommit;
         // Capture a weak pointer `parentLog` that will be locked
         // when the request returns. If the locking is successful
         // we are still in the same term.
         follower->_impl->appendEntries(std::move(request))
-            .thenFinal([weakParentLog = req->_parentLog,
-                        followerWeak = req->_follower, lastIndex = lastIndex,
-                        currentCommitIndex = request.leaderCommit,
-                        currentLITK = request.lowestIndexToKeep,
-                        currentTerm = logLeader->_currentTerm,
-                        messageId = messageId, startTime,
-                        logMetrics = logMetrics](
-                           futures::Try<AppendEntriesResult>&& res) noexcept {
-              // This has to remain noexcept, because the code below is not
-              // exception safe
-              auto const endTime = std::chrono::steady_clock::now();
+            .thenFinal(
+                [weakParentLog = req->_parentLog, followerWeak = req->_follower,
+                 lastIndex, currentCommitIndex, currentLITK = lowestIndexToKeep,
+                 currentTerm = logLeader->_currentTerm, messageId, startTime,
+                 logMetrics](futures::Try<AppendEntriesResult>&& res) noexcept {
+                  // This has to remain noexcept, because the code below is not
+                  // exception safe
+                  auto const endTime = std::chrono::steady_clock::now();
 
-              auto self = weakParentLog.lock();
-              auto follower = followerWeak.lock();
-              if (self != nullptr && follower != nullptr) {
-                using namespace std::chrono_literals;
-                auto const duration = endTime - startTime;
-                self->_logMetrics->replicatedLogAppendEntriesRttUs->count(
-                    duration / 1us);
-                LOG_CTX("8ff44", TRACE, follower->logContext)
-                    << "received append entries response, messageId = "
-                    << messageId;
-                auto [preparedRequests, resolvedPromises] = std::invoke(
-                    [&]() -> std::pair<std::vector<std::optional<
-                                           PreparedAppendEntryRequest>>,
-                                       ResolvedPromiseSet> {
-                      auto guarded = self->acquireMutex();
-                      if (!guarded->_didResign) {
-                        return guarded->handleAppendEntriesResponse(
-                            *follower, lastIndex, currentCommitIndex,
-                            currentLITK, currentTerm, std::move(res),
-                            endTime - startTime, messageId);
-                      } else {
-                        LOG_CTX("da116", DEBUG, follower->logContext)
-                            << "received response from follower but leader "
-                               "already resigned, messageId = "
-                            << messageId;
-                      }
-                      return {};
-                    });
+                  auto self = weakParentLog.lock();
+                  auto follower = followerWeak.lock();
+                  if (self != nullptr && follower != nullptr) {
+                    using namespace std::chrono_literals;
+                    auto const duration = endTime - startTime;
+                    self->_logMetrics->replicatedLogAppendEntriesRttUs->count(
+                        duration / 1us);
+                    LOG_CTX("8ff44", TRACE, follower->logContext)
+                        << "received append entries response, messageId = "
+                        << messageId;
+                    auto [preparedRequests, resolvedPromises] = std::invoke(
+                        [&]() -> std::pair<std::vector<std::optional<
+                                               PreparedAppendEntryRequest>>,
+                                           ResolvedPromiseSet> {
+                          auto guarded = self->acquireMutex();
+                          if (!guarded->_didResign) {
+                            return guarded->handleAppendEntriesResponse(
+                                *follower, lastIndex, currentCommitIndex,
+                                currentLITK, currentTerm, std::move(res),
+                                endTime - startTime, messageId);
+                          } else {
+                            LOG_CTX("da116", DEBUG, follower->logContext)
+                                << "received response from follower but leader "
+                                   "already resigned, messageId = "
+                                << messageId;
+                          }
+                          return {};
+                        });
 
-                handleResolvedPromiseSet(std::move(resolvedPromises),
-                                         logMetrics);
-                executeAppendEntriesRequests(std::move(preparedRequests),
+                    handleResolvedPromiseSet(std::move(resolvedPromises),
                                              logMetrics);
-              } else {
-                if (follower == nullptr) {
-                  LOG_TOPIC("6f490", DEBUG, Logger::REPLICATION2)
-                      << "follower already gone.";
-                } else {
-                  LOG_CTX("de300", DEBUG, follower->logContext)
-                      << "parent log already gone, messageId = " << messageId;
-                }
-              }
-            });
+                    executeAppendEntriesRequests(std::move(preparedRequests),
+                                                 logMetrics);
+                  } else {
+                    if (follower == nullptr) {
+                      LOG_TOPIC("6f490", DEBUG, Logger::REPLICATION2)
+                          << "follower already gone.";
+                    } else {
+                      LOG_CTX("de300", DEBUG, follower->logContext)
+                          << "parent log already gone, messageId = "
+                          << messageId;
+                    }
+                  }
+                });
       });
     }
   }
