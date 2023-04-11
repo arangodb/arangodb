@@ -305,8 +305,9 @@ void Worker<V, E, M>::_startProcessing() {
 
   for (auto futureN = size_t{0}; futureN < _config->parallelism(); ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
-        RequestLane::INTERNAL_LOW, [self, this, quiverIdx]() {
-          LOG_DEVEL << "started processing future";
+        RequestLane::INTERNAL_LOW, [self, this, quiverIdx, futureN]() {
+          LOG_PREGEL("ee2ac", DEBUG)
+              << fmt::format("Starting vertex processor number {}", futureN);
           auto processor =
               VertexProcessor<V, E, M>(_config, _algorithm, _workerContext,
                                        _messageCombiner, _messageFormat);
@@ -314,6 +315,8 @@ void Worker<V, E, M>::_startProcessing() {
           while (true) {
             auto myCurrentQuiver = quiverIdx->fetch_add(1);
             if (myCurrentQuiver >= _magazine.size()) {
+              LOG_PREGEL("ee2ac", DEBUG) << fmt::format(
+                  "No more work left in vertex processor number {}", futureN);
               break;
             }
             for (auto& vertex : *_magazine.quivers.at(myCurrentQuiver)) {
@@ -340,13 +343,10 @@ void Worker<V, E, M>::_startProcessing() {
                 _makeStatusCallback()();
               }
 
-              // TODO: early cancel
-              // TODO: This blow should not happen: self is captured and
-              // shared_from_this?
-              if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-                LOG_PREGEL("ee2ab", WARN) << "Execution aborted prematurely.";
-                // TODO return something?
-                // return {TRI_ERROR_INTERNAL};
+              if (_state != WorkerState::COMPUTING) {
+                LOG_PREGEL("ee2ab", WARN) << fmt::format(
+                    "Vertex processor number {} aborted.", futureN);
+                break;
               }
             }
           }
