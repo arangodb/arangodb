@@ -39,8 +39,12 @@ TEST(DurationTest, test_duration) {
   ASSERT_TRUE(d1.hasStarted());
   ASSERT_FALSE(d1.hasFinished());
 
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
   auto elapsed = d1.elapsedSeconds();
   ASSERT_GT(elapsed.count(), 0);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   auto moreElapsed = d1.elapsedSeconds();
   ASSERT_GT(moreElapsed, elapsed);
@@ -49,9 +53,13 @@ TEST(DurationTest, test_duration) {
   ASSERT_TRUE(d1.hasStarted());
   ASSERT_TRUE(d1.hasFinished());
 
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
   auto evenMoreElapsed = d1.elapsedSeconds();
 
   ASSERT_GT(evenMoreElapsed, moreElapsed);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   auto notMoreElapsed = d1.elapsedSeconds();
 
