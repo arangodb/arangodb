@@ -315,7 +315,7 @@ void Worker<V, E, M>::_startProcessing() {
           while (true) {
             auto myCurrentQuiver = quiverIdx->fetch_add(1);
             if (myCurrentQuiver >= _magazine.size()) {
-              LOG_PREGEL("ee2ac", DEBUG) << fmt::format(
+              LOG_PREGEL("ee215", DEBUG) << fmt::format(
                   "No more work left in vertex processor number {}", futureN);
               break;
             }
