@@ -5743,7 +5743,7 @@ ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(ServerID server,
       // This is a temporary situation in which the leader has already
       return ShardLeadership::kUnclear;
     } else {
-      return serverList->at(0) == server ? ShardLeadership::kLeader
+      return (*serverList)[0] == server ? ShardLeadership::kLeader
                                          : ShardLeadership::kFollower;
     }
   }

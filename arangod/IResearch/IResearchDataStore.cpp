@@ -990,10 +990,9 @@ Result IResearchDataStore::commitUnsafeImpl(
     }
 #endif
 
-
+#ifdef USE_ENTERPRISE
     auto forceOpen = [&]() -> bool {
       bool force{false};
-#ifdef USE_ENTERPRISE
       if (ServerState::instance()->isDBServer() &&
           _collection.vocbase()
               .server()
@@ -1014,10 +1013,9 @@ Result IResearchDataStore::commitUnsafeImpl(
                       newUseSearchCache;
         _useSearchCache = newUseSearchCache;
       }
-#endif
       return force;
     };
-
+#endif
     auto const commitOne = _dataStore._writer->commit(progress);
     std::move(stageOneGuard).Cancel();
     if (!commitOne) {
@@ -1088,11 +1086,15 @@ Result IResearchDataStore::commitUnsafeImpl(
       }
     }
 #endif
-   
+  
+#ifdef USE_ENTERPRISE
     auto reader = forceOpen() ? irs::directory_reader::open(
                                   *(_dataStore._directory), _format,
                                   _dataStore._readerOptions)
                             : _dataStore._reader.reopen(_format);
+#else
+    auto reader = _dataStore._reader.reopen(_format);
+#endif
     if (!reader) {
       // nothing more to do
       LOG_TOPIC("37bcf", WARN, TOPIC)

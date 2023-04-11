@@ -1068,7 +1068,7 @@ but the returned data may be incomplete.)");
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30911);
+      .setIntroducedIn(31006);
 #endif
 }
 
