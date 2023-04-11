@@ -54,11 +54,20 @@ using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_state;
 
 namespace {
-struct FakeState {
-  using LeaderType = test::EmptyLeaderType<FakeState>;
-  using FollowerType = test::EmptyFollowerType<FakeState>;
+struct EmptyState {
+  using LeaderType = test::EmptyLeaderType<EmptyState>;
+  using FollowerType = test::EmptyFollowerType<EmptyState>;
   using EntryType = test::DefaultEntryType;
   using FactoryType = test::DefaultFactory<LeaderType, FollowerType>;
+  using CoreType = test::TestCoreType;
+  using CoreParameterType = void;
+  using CleanupHandlerType = void;
+};
+struct FakeState {
+  using LeaderType = test::FakeLeaderType<FakeState>;
+  using FollowerType = test::FakeFollowerType<FakeState>;
+  using EntryType = test::DefaultEntryType;
+  using FactoryType = test::RecordingFactory<LeaderType, FollowerType>;
   using CoreType = test::TestCoreType;
   using CoreParameterType = void;
   using CleanupHandlerType = void;

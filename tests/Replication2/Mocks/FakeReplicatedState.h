@@ -269,7 +269,8 @@ struct RecordingFactory {
     return ptr;
   }
 
-  auto constructCore(GlobalLogIdentifier const&) -> std::unique_ptr<CoreType> {
+  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
+      -> std::unique_ptr<CoreType> {
     return std::make_unique<CoreType>();
   }
 
