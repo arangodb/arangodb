@@ -40,16 +40,6 @@ struct TermIndexMapping;
 }
 namespace arangodb::replication2::algorithms {
 
-struct ParticipantRecord {
-  RebootId rebootId;
-  bool isHealthy;
-
-  ParticipantRecord(RebootId rebootId, bool isHealthy)
-      : rebootId(rebootId), isHealthy(isHealthy) {}
-};
-
-using ParticipantInfo = std::unordered_map<ParticipantId, ParticipantRecord>;
-
 enum class ConflictReason {
   LOG_ENTRY_AFTER_END,
   LOG_ENTRY_BEFORE_BEGIN,
@@ -62,19 +52,6 @@ auto to_string(ConflictReason r) noexcept -> std::string_view;
 auto detectConflict(replicated_log::TermIndexMapping const& log,
                     TermIndexPair prevLog) noexcept
     -> std::optional<std::pair<ConflictReason, TermIndexPair>>;
-
-struct LogActionContext {
-  virtual ~LogActionContext() = default;
-  virtual auto dropReplicatedState(LogId) -> Result = 0;
-  virtual auto ensureReplicatedState(LogId id, std::string_view type,
-                                     VPackSlice parameter) -> Result = 0;
-};
-
-auto updateReplicatedLog(
-    LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
-    LogId logId, agency::LogPlanSpecification const* spec,
-    std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
-    -> futures::Future<arangodb::Result>;
 
 struct ParticipantState {
   TermIndexPair lastAckedEntry;
