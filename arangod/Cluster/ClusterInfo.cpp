@@ -5727,7 +5727,7 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
 }
 
 ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(
-    ServerID server, ShardID shard) const {
+    ServerID const& server, ShardID const& shard) const {
   if (!_currentProt.isValid) {
     return ShardLeadership::kUnclear;
   }
