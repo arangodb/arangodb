@@ -79,6 +79,10 @@ struct ResultActorReference {
   actor::ActorPID pid;
   std::shared_ptr<PregelResult> data;
 };
+struct StatusActorReference {
+  actor::ActorPID pid;
+  std::shared_ptr<PregelStatus> status;
+};
 
 class Conductor;
 class IWorker;
@@ -117,7 +121,7 @@ class PregelFeature final : public ArangodFeature {
   void cleanupConductor(ExecutionNumber executionNumber);
   void cleanupWorker(ExecutionNumber executionNumber);
   [[nodiscard]] ResultT<PregelResults> getResults(ExecutionNumber execNr);
-  [[nodiscard]] ResultT<StatusState> getStatus(ExecutionNumber execNr);
+  [[nodiscard]] ResultT<PregelStatus> getStatus(ExecutionNumber execNr);
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
@@ -182,9 +186,10 @@ class PregelFeature final : public ArangodFeature {
 
   Guarded<std::unordered_map<ExecutionNumber, ResultActorReference>>
       _resultActor;
-  // conductor actor is only used on the coordinator
+  // conductor and status actors are only used on the coordinator
   Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _conductorActor;
-  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _statusActors;
+  Guarded<std::unordered_map<ExecutionNumber, StatusActorReference>>
+      _statusActors;
 };
 
 }  // namespace arangodb::pregel

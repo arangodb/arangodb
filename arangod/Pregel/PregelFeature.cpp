@@ -371,13 +371,15 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         .algorithm = executionSpecifications.algorithm,
         .ttl = executionSpecifications.ttl,
         .parallelism = executionSpecifications.parallelism}};
+    auto statusState = std::make_unique<StatusState>();
+    auto status = statusState->status;
     auto statusActorID = _actorRuntime->spawn<StatusActor>(
-        vocbase.name(), std::make_unique<StatusState>(),
-        std::move(statusStart));
+        vocbase.name(), std::move(statusState), std::move(statusStart));
     auto statusActorPID = actor::ActorPID{
         .server = ss->getId(), .database = vocbase.name(), .id = statusActorID};
-    _statusActors.doUnderLock([&en, &statusActorPID](auto& actors) {
-      actors.emplace(en, statusActorPID);
+    _statusActors.doUnderLock([&en, &statusActorPID, status](auto& actors) {
+      actors.emplace(
+          en, StatusActorReference{.pid = statusActorPID, .status = status});
     });
 
     auto resultState = std::make_unique<ResultState>(ttl);
@@ -757,6 +759,14 @@ void PregelFeature::garbageCollectActors() {
           return not _actorRuntime->contains(actor.id);
         });
       });
+  _statusActors.doUnderLock(
+      [this](
+          std::unordered_map<ExecutionNumber, StatusActorReference>& actors) {
+        std::erase_if(actors, [this](auto& item) {
+          auto const& [_, actor] = item;
+          return not _actorRuntime->contains(actor.pid.id);
+        });
+      });
 }
 
 void PregelFeature::garbageCollectConductors() try {
@@ -833,23 +843,17 @@ ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
       });
 }
 
-ResultT<StatusState> PregelFeature::getStatus(ExecutionNumber execNr) {
+ResultT<PregelStatus> PregelFeature::getStatus(ExecutionNumber execNr) {
   return _statusActors.doUnderLock(
-      [&execNr, this](auto const& actors) -> ResultT<StatusState> {
+      [&execNr](auto const& actors) -> ResultT<PregelStatus> {
         auto actor = actors.find(execNr);
         if (actor == actors.end()) {
           return Result{
               TRI_ERROR_HTTP_NOT_FOUND,
               fmt::format("Cannot locate status for pregel run {}.", execNr)};
         }
-        auto state =
-            _actorRuntime->getActorStateByID<StatusActor>(actor->second.id);
-        if (!state.has_value()) {
-          return Result{
-              TRI_ERROR_HTTP_NOT_FOUND,
-              fmt::format("Cannot find status for pregel run {}.", execNr)};
-        }
-        return state.value();
+        auto state = actor->second.status;
+        return *state;
       });
 }
 
