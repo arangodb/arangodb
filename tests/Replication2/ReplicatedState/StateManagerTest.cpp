@@ -117,8 +117,19 @@ struct FakeScheduler : IScheduler {
 struct DelayedScheduler : IScheduler {
   auto delayedFuture(std::chrono::nanoseconds duration, std::string_view name)
       -> arangodb::futures::Future<arangodb::futures::Unit> override {
-    ADB_PROD_CRASH() << "not implemented";
+    if (name.data() == nullptr) {
+      name = "replication-2-test";
+    }
+    auto p = futures::Promise<futures::Unit>{};
+    auto f = p.getFuture();
+    queueDelayed(name, duration, [p = std::move(p)](bool cancelled) mutable {
+      TRI_ASSERT(!cancelled);
+      p.setValue();
+    });
+
+    return f;
   }
+
   auto queueDelayed(std::string_view name, std::chrono::nanoseconds delay,
                     fu2::unique_function<void(bool canceled)> handler) noexcept
       -> WorkItemHandle override {
