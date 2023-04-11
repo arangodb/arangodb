@@ -955,9 +955,19 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
         // part of the replicated log, but no longer are. The supervision should
         // only ever consider those entries in Current that belong to a
         // participant in Plan.
-        return not plan.participantsConfig.participants.contains(pair.first) or
-               pair.second.state ==
-                   replicated_log::LocalStateMachineStatus::kOperational;
+
+        if (not plan.participantsConfig.participants.contains(pair.first)) {
+          return true;
+        }
+
+        // Check if the follower has acked the current term. We are not
+        // interested in information from an old term.
+        if (pair.second.term != plan.currentTerm->term) {
+          return false;
+        }
+
+        return pair.second.state ==
+               replicated_log::LocalStateMachineStatus::kOperational;
       });
   if (!allStatesReady) {
     return;
