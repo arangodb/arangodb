@@ -9,6 +9,7 @@ import { FormProps } from "../../../../utils/constants";
 import { encodeHelper } from "../../../../utils/encodeHelper";
 import { FormState } from "../../constants";
 import { validateAndFix } from "../../helpers";
+import { useLinksContext } from "../../LinksContext";
 
 type CopyFromInputProps = {
   views: FormState[];
@@ -31,12 +32,13 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
   const initalViewOptions = filterAndSortViews(views);
   const [viewOptions, setViewOptions] = useState(initalViewOptions);
   const [selectedView, setSelectedView] = useState(viewOptions[0]);
-  const {encoded: encodedSelectedView} = encodeHelper(selectedView.value);
+  const { encoded: encodedSelectedView } = encodeHelper(selectedView.value);
   const { data } = useSWRImmutable(
     `/view/${encodedSelectedView}/properties`,
     path => getApiRouteForCurrentDB().get(path)
   );
   const fullView = data ? data.body : selectedView;
+  const { setCurrentField } = useLinksContext();
 
   useEffect(() => {
     setViewOptions(filterAndSortViews(views));
@@ -64,6 +66,7 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
       formState: fullView as FormState
     });
     dispatch({ type: "regenRenderKey" });
+    setCurrentField(undefined);
   };
 
   const updateSelectedView = (value: string) => {

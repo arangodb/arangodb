@@ -10,6 +10,7 @@ import { getReducer } from "../../utils/helpers";
 import { usePermissions, userIsAdmin } from "../../utils/usePermissions";
 import { FormState, ViewContext } from "./constants";
 import { postProcessor, useView } from "./helpers";
+import { LinksContextProvider } from "./LinksContext";
 import { ViewHeader } from "./ViewHeader";
 import { ViewSection } from "./ViewSection";
 
@@ -132,28 +133,30 @@ const ViewSettingsInner = ({
   state: State<FormState>;
 }) => {
   return (
-    <Box
-      height="calc(100vh - 60px)"
-      display="grid"
-      gridTemplateRows="120px 1fr"
-      width="full"
-    >
-      <ViewHeader
-        formState={formState}
-        updateName={updateName}
-        isAdminUser={isAdminUser}
-        views={views}
-        dispatch={dispatch}
-        changed={changed}
-        name={name}
-        setChanged={setChanged}
-      />
-      <ViewSection
-        formState={formState}
-        dispatch={dispatch}
-        isAdminUser={isAdminUser}
-        state={state}
-      />
-    </Box>
+    <LinksContextProvider>
+      <Box
+        height="calc(100vh - 60px)"
+        display="grid"
+        gridTemplateRows="120px 1fr"
+        width="full"
+      >
+        <ViewHeader
+          formState={formState}
+          updateName={updateName}
+          isAdminUser={isAdminUser}
+          views={views}
+          dispatch={dispatch}
+          changed={changed}
+          name={name}
+          setChanged={setChanged}
+        />
+        <ViewSection
+          formState={formState}
+          dispatch={dispatch}
+          isAdminUser={isAdminUser}
+          state={state}
+        />
+      </Box>
+    </LinksContextProvider>
   );
 };

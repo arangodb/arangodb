@@ -30,6 +30,7 @@ const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
 
 const CollectionsDropdown = () => {
   const viewContext = useContext(ViewContext);
+  const { setCurrentField } = useLinksContext();
   const { dispatch, formState: fs, isAdminUser } = viewContext;
   const formState = fs as FormState;
   const { data } = useSWR("/collection?excludeSystem=true", () =>
@@ -95,6 +96,7 @@ const CollectionsDropdown = () => {
       onChange={(_, action) => {
         if (action.action === "remove-value") {
           removeLink(action.removedValue.value);
+          setCurrentField(undefined);
           return;
         }
         if (action.action === "select-option" && action.option?.value) {
