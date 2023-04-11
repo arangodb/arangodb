@@ -45,6 +45,7 @@ struct Variable;
 
 class DataAccessingNode {
  public:
+  virtual ~DataAccessingNode() = default;
   virtual aql::Collection const* collection() const = 0;
   virtual bool isUsedAsSatellite() const = 0;
   virtual void useAsSatelliteOf(ExecutionNodeId) = 0;
