@@ -99,6 +99,38 @@ struct DocumentStateMachineTest : testing::Test {
         velocypack::SharedSlice())};
   }
 
+  auto createRealTransactionHandler()
+      -> std::shared_ptr<MockDocumentStateTransactionHandler> {
+    auto transactionHandlerMock =
+        handlersFactoryMock->makeRealTransactionHandler(&vocbaseMock, globalId,
+                                                        shardHandlerMock);
+
+    ON_CALL(*handlersFactoryMock,
+            createTransactionHandler(testing::_, testing::_, testing::_))
+        .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
+                           std::shared_ptr<IDocumentStateShardHandler> const&) {
+          return std::make_unique<
+              testing::NiceMock<MockDocumentStateTransactionHandler>>(
+              transactionHandlerMock);
+        });
+
+    return transactionHandlerMock;
+  }
+
+  auto createLeader() -> std::shared_ptr<DocumentLeaderStateWrapper> {
+    auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
+    return std::make_shared<DocumentLeaderStateWrapper>(
+        factory.constructCore(vocbaseMock, globalId, coreParams),
+        handlersFactoryMock, transactionManagerMock);
+  }
+
+  auto createFollower() -> std::shared_ptr<DocumentFollowerStateWrapper> {
+    auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
+    return std::make_shared<DocumentFollowerStateWrapper>(
+        factory.constructCore(vocbaseMock, globalId, coreParams),
+        handlersFactoryMock);
+  }
+
   void SetUp() override {
     using namespace testing;
 
@@ -228,15 +260,7 @@ TEST_F(DocumentStateMachineTest, constructing_the_core_does_not_create_shard) {
 
 TEST_F(DocumentStateMachineTest, dropping_the_core_with_error_messages) {
   using namespace testing;
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
+  auto transactionHandlerMock = createRealTransactionHandler();
 
   ON_CALL(*transactionHandlerMock, applyEntry(Matcher<ReplicatedOperation>(_)))
       .WillByDefault(Return(Result{TRI_ERROR_WAS_ERLAUBE}));
@@ -298,19 +322,8 @@ TEST_F(DocumentStateMachineTest,
 TEST_F(DocumentStateMachineTest, follower_associated_shard_map) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
@@ -379,20 +392,10 @@ TEST_F(DocumentStateMachineTest,
        snapshot_remove_previous_shards_and_create_new_ones) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
+  auto transactionHandlerMock = createRealTransactionHandler();
 
   // Acquire a snapshot containing a single shard
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
@@ -411,11 +414,6 @@ TEST_F(DocumentStateMachineTest,
     return futures::Future<ResultT<SnapshotConfig>>{
         std::in_place, SnapshotConfig{SnapshotId{1}, newShardMap}};
   });
-
-  ON_CALL(*leaderInterfaceMock, finishSnapshot)
-      .WillByDefault([&](SnapshotId const& snapshotId) {
-        return futures::Future<Result>{std::in_place, Result{}};
-      });
 
   // The previous shard should be dropped
   EXPECT_CALL(*shardHandlerMock, dropAllShards()).Times(1);
@@ -964,14 +962,7 @@ TEST_F(DocumentStateMachineTest,
        follower_acquire_snapshot_calls_leader_interface) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
+  auto transactionHandlerMock = createRealTransactionHandler();
 
   // The first call to applyEntry should be AbortAllOngoingTrx
   // 3 transactions are expected to be applied
@@ -986,10 +977,7 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_CALL(*networkHandlerMock, getLeaderInterface("participantId"))
       .Times(1);
 
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
@@ -1002,19 +990,8 @@ TEST_F(DocumentStateMachineTest,
        follower_resigning_while_acquiring_snapshot_concurrently) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
 
   MockDocumentStateSnapshotHandler::rebootTracker.updateServerState(
       {{"participantId",
@@ -1059,19 +1036,8 @@ TEST_F(DocumentStateMachineTest,
        follower_applyEntries_encounters_AbortAllOngoingTrx_and_aborts_all_trx) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
@@ -1104,19 +1070,8 @@ TEST_F(DocumentStateMachineTest,
        follower_applyEntries_applies_transactions_but_does_not_release) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
@@ -1142,19 +1097,8 @@ TEST_F(DocumentStateMachineTest,
        follower_intermediate_commit_does_not_release) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
@@ -1181,18 +1125,8 @@ TEST_F(DocumentStateMachineTest,
        follower_applyEntries_dies_if_transaction_fails) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
@@ -1214,19 +1148,8 @@ TEST_F(DocumentStateMachineTest,
        follower_applyEntries_commit_and_abort_calls_release) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
@@ -1260,9 +1183,7 @@ TEST_F(DocumentStateMachineTest,
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
 
   // First abort then commit
-  follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  follower = createFollower();
   res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
   stream = std::make_shared<MockProducerStream>();
@@ -1297,19 +1218,8 @@ TEST_F(DocumentStateMachineTest,
        follower_applyEntries_creates_and_drops_shard) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
@@ -1346,19 +1256,8 @@ TEST_F(DocumentStateMachineTest,
        follower_dies_if_shard_creation_or_deletion_fails) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
@@ -1385,19 +1284,8 @@ TEST_F(DocumentStateMachineTest,
 TEST_F(DocumentStateMachineTest, follower_ignores_invalid_transactions) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
@@ -1450,19 +1338,8 @@ TEST_F(DocumentStateMachineTest,
        follower_aborts_transactions_of_dropped_shard) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock);
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
@@ -1527,11 +1404,7 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshot_successfully) {
         return snapshotHandler;
       });
 
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto leader = std::make_shared<DocumentLeaderStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock, transactionManagerMock);
-
+  auto leader = createLeader();
   EXPECT_CALL(*snapshotHandler, create(_, _)).Times(1);
   auto snapshotStartRes = leader->snapshotStart(SnapshotParams::Start{
       .serverId = "documentStateMachineServer", .rebootId = RebootId{1}});
@@ -1576,11 +1449,7 @@ TEST_F(DocumentStateMachineTest, leader_manipulates_snapshots_with_errors) {
       .WillByDefault(Return(
           ResultT<std::weak_ptr<Snapshot>>::error(TRI_ERROR_WAS_ERLAUBE)));
 
-  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
-  auto leader = std::make_shared<DocumentLeaderStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
-      handlersFactoryMock, transactionManagerMock);
-
+  auto leader = createLeader();
   EXPECT_TRUE(leader->snapshotStart(SnapshotParams::Start{}).fail());
   EXPECT_TRUE(leader->snapshotNext(SnapshotParams::Next{SnapshotId{1}}).fail());
   EXPECT_TRUE(
@@ -1592,15 +1461,7 @@ TEST_F(DocumentStateMachineTest,
        leader_resign_should_abort_active_transactions) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
+  auto transactionHandlerMock = createRealTransactionHandler();
   DocumentFactory factory =
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
@@ -1669,15 +1530,7 @@ TEST_F(DocumentStateMachineTest,
        recoverEntries_should_abort_remaining_active_transactions) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
+  auto transactionHandlerMock = createRealTransactionHandler();
   std::vector<DocumentLogEntry> entries;
   entries.emplace_back(
       DocumentLogEntry{ReplicatedOperation::buildCreateShardOperation(
@@ -1727,14 +1580,7 @@ TEST_F(DocumentStateMachineTest,
        recoverEntries_should_abort_transactions_before_dropping_shard) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
+  auto transactionHandlerMock = createRealTransactionHandler();
   ON_CALL(*transactionHandlerMock, getTransactionsForShard(shardId))
       .WillByDefault(Return(std::vector<TransactionId>{
           TransactionId{6}, TransactionId{10}, TransactionId{14}}));
@@ -1769,14 +1615,7 @@ TEST_F(DocumentStateMachineTest,
        leader_recoverEntries_dies_if_transaction_is_invalid) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
+  auto transactionHandlerMock = createRealTransactionHandler();
   ON_CALL(*transactionHandlerMock,
           validate(Matcher<ReplicatedOperation::OperationType const&>(_)))
       .WillByDefault(Return(Result{TRI_ERROR_WAS_ERLAUBE}));
@@ -1825,15 +1664,7 @@ TEST_F(DocumentStateMachineTest,
        leader_ignores_invalid_transactions_during_recovery) {
   using namespace testing;
 
-  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
-      &vocbaseMock, globalId, shardHandlerMock);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
-      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
-                         std::shared_ptr<IDocumentStateShardHandler> const&) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
+  auto transactionHandlerMock = createRealTransactionHandler();
   DocumentFactory factory =
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
