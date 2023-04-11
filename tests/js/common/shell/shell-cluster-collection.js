@@ -472,12 +472,9 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testCreateEmptyShardKeysArray : function () {
-      try {
-        db._create("UnitTestsClusterCrud", {shardKeys: []});
-        fail("Managed to create collection with illegal shardKey entry");
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
+      db._create("UnitTestsClusterCrud", { shardKeys: [ ] });
+      let props = db["UnitTestsClusterCrud"].properties();
+      assertEqual(["_key"], props.shardKeys);
     },
     
     testCreateShardKeysOnKey : function () {
