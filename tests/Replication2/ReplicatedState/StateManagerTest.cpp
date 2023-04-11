@@ -924,7 +924,12 @@ TEST_F(
 }
 
 TEST_F(StateManagerTest_FakeState, follower_acquire_snapshot) {
-  // Overview: // TODO
+  // Overview:
+  //  - start without a snapshot
+  //  - let the state machine acquire a snapshot, but respond with an error
+  //  - let the state machine acquire a snapshot
+  // Meanwhile check that the follower state machine is inaccessible until the
+  // end.
 
   storageContext->meta = replicated_state::PersistedStateInfo{
       .stateId = gid.id,
