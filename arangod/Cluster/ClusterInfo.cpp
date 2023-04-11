@@ -5735,7 +5735,7 @@ ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(
   auto it = _shardIds.find(shard);
 
   if (it != _shardIds.end()) {
-    auto serverList = (*it).second;
+    auto const& serverList = (*it).second;
     if (!serverList || serverList->empty()) {
       return ShardLeadership::kUnclear;
     }

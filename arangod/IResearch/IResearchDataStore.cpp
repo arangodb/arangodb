@@ -603,11 +603,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       _id(iid) {
   // initialize transaction callback
 #ifdef USE_ENTERPRISE
-  if (!collection.isAStub() && ServerState::instance()->isDBServer() &&
-      collection.vocbase()
-          .server()
-          .getFeature<IResearchFeature>()
-          .columnsCacheOnlyLeaders()) {
+  if (!collection.isAStub() && _asyncFeature->columnsCacheOnlyLeaders()) {
     auto& ci = collection.vocbase()
                    .server()
                    .getFeature<ClusterFeature>()
@@ -993,11 +989,7 @@ Result IResearchDataStore::commitUnsafeImpl(
 #ifdef USE_ENTERPRISE
     auto forceOpen = [&]() -> bool {
       bool force{false};
-      if (ServerState::instance()->isDBServer() &&
-          _collection.vocbase()
-              .server()
-              .getFeature<IResearchFeature>()
-              .columnsCacheOnlyLeaders()) {
+      if (_asyncFeature->columnsCacheOnlyLeaders()) {
         auto& ci = _collection.vocbase()
                        .server()
                        .getFeature<ClusterFeature>()
@@ -1319,7 +1311,9 @@ Result IResearchDataStore::initDataStore(
   }
 
   _engine = &server.getFeature<EngineSelectorFeature>().engine();
+#ifdef USE_ENTERPRISE
   _dataStore._readerOptions = readerOptions;
+#endif
   _dataStore._path = getPersistedPath(dbPathFeature, *this);
   // must manually ensure that the data store directory exists (since not
   // using a lockfile)
