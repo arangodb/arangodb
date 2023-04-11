@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-199: Remove URL handling of fields on view screen
+
 * Changed the behavior of the following JavaScript functions in arangosh and
   arangod (e.g. when used from a Foxx service):
 
