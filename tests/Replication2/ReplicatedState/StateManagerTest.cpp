@@ -189,6 +189,7 @@ struct FakeFollowerFactory
   std::shared_ptr<replicated_log::ILeaderCommunicator> leaderComm;
 };
 
+template<typename State>
 struct StateManagerTest : testing::Test {
   GlobalLogIdentifier gid = GlobalLogIdentifier("db", LogId{1});
   arangodb::tests::mocks::MockServer mockServer =
@@ -234,19 +235,23 @@ struct StateManagerTest : testing::Test {
           logMetricsMock, optionsMock, participantsFactory, loggerContext,
           myself);
 
-  std::shared_ptr<FakeState::FactoryType> stateFactory =
-      std::make_shared<FakeState::FactoryType>();
-  std::unique_ptr<FakeState::CoreType> stateCore =
-      std::make_unique<FakeState::CoreType>();
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
-  std::shared_ptr<ReplicatedState<FakeState>> state =
-      std::make_shared<ReplicatedState<FakeState>>(
+
+  std::shared_ptr<typename State::FactoryType> stateFactory =
+      std::make_shared<typename State::FactoryType>();
+  std::unique_ptr<typename State::CoreType> stateCore =
+      std::make_unique<typename State::CoreType>();
+  std::shared_ptr<ReplicatedState<State>> state =
+      std::make_shared<ReplicatedState<State>>(
           gid, log, stateFactory, loggerCtx, stateMetricsMock, scheduler);
   ReplicatedLogConnection connection =
       log->connect(state->createStateHandle(vocbaseMock, std::nullopt));
 };
 
-TEST_F(StateManagerTest, get_leader_state_machine_early) {
+struct StateManagerTest_EmptyState : StateManagerTest<EmptyState> {};
+struct StateManagerTest_FakeState : StateManagerTest<FakeState> {};
+
+TEST_F(StateManagerTest_EmptyState, get_leader_state_machine_early) {
   // Overview:
   // - establish leadership
   // - let recovery finish
@@ -335,7 +340,7 @@ TEST_F(StateManagerTest, get_leader_state_machine_early) {
   }
 }
 
-TEST_F(StateManagerTest,
+TEST_F(StateManagerTest_EmptyState,
        get_follower_state_machine_early_with_snapshot_without_truncate) {
   // Overview:
   //  - start with a valid snapshot
@@ -433,7 +438,7 @@ TEST_F(StateManagerTest,
 }
 
 TEST_F(
-    StateManagerTest,
+    StateManagerTest_EmptyState,
     get_follower_state_machine_early_with_snapshot_with_truncate_append_entries_before_snapshot) {
   // Overview:
   //  - start with a valid snapshot
@@ -558,7 +563,7 @@ TEST_F(
 }
 
 TEST_F(
-    StateManagerTest,
+    StateManagerTest_EmptyState,
     get_follower_state_machine_early_with_snapshot_with_truncate_append_entries_after_snapshot) {
   // Overview:
   //  - start with a valid snapshot
@@ -680,7 +685,7 @@ TEST_F(
 }
 
 TEST_F(
-    StateManagerTest,
+    StateManagerTest_EmptyState,
     get_follower_state_machine_early_without_snapshot_append_entries_before_snapshot) {
   // Overview:
   //  - start without a snapshot
@@ -796,7 +801,7 @@ TEST_F(
 }
 
 TEST_F(
-    StateManagerTest,
+    StateManagerTest_EmptyState,
     get_follower_state_machine_early_without_snapshot_append_entries_after_snapshot) {
   // Overview:
   //  - start without a snapshot
