@@ -40,9 +40,9 @@ const getPathFromFragments = (fragments: string[][]) => {
   let path = "";
   fragments.forEach((fragment, index) => {
     if (index === 0) {
-      path = fragment[0] + '[' + fragment[1] + ']';
+      path = fragment[0] + "[" + fragment[1] + "]";
     } else {
-      path = path + "." + fragment[0] + '[' + fragment[1] + ']';
+      path = path + "." + fragment[0] + "[" + fragment[1] + "]";
     }
   });
   return path;
