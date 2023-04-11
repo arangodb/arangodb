@@ -911,7 +911,7 @@ class ClusterInfo final {
 
   enum class ShardLeadership { kLeader, kFollower, kUnclear };
 
-  ShardLeadership getShardLeadership(ServerID server, ShardID shard) const;
+  ShardLeadership getShardLeadership(ServerID const& server, ShardID const& shard) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
