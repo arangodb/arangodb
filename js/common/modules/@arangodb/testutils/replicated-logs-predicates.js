@@ -364,6 +364,26 @@ const agencyJobIn = function (jobId, where) {
   };
 };
 
+const allServicesOperational = function (database, logId) {
+  return function () {
+    const {plan, current} = LH.readReplicatedLogAgency(database, logId);
+
+    if (current === undefined || current.localStatus === undefined) {
+      return Error("status in current not yet defined");
+    }
+    if (plan === undefined || plan.participantsConfig === undefined) {
+      return Error("participantsConfig in plan not yet defined");
+    }
+
+    for (const [pid, _] of Object.entries(plan.participantsConfig.participants)) {
+      if (pid in current.localStatus && current.localStatus[pid].state !== "ServiceOperational") {
+        return Error(`Participant ${pid} not yet operational`);
+      }
+    }
+    return true;
+  };
+};
+
 exports.allServersHealthy = allServersHealthy;
 exports.replicatedLogIsGone = replicatedLogIsGone;
 exports.replicatedLogIsReady = replicatedLogIsReady;
@@ -381,3 +401,4 @@ exports.serverHealthy = serverHealthy;
 exports.agencyJobIn = agencyJobIn;
 exports.replicatedStateAccessible = replicatedStateAccessible;
 exports.allReplicatedStatesAccessible = allReplicatedStatesAccessible;
+exports.allServicesOperational = allServicesOperational;
