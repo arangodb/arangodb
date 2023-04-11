@@ -1,6 +1,24 @@
 devel
 -----
 
+* MDS-1098: In 3.10 we have introduced an optimization on Traversals to pull
+  post-filter conditions into the traversal-statements, like the following:
+
+      FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
+        FILTER v.isRelevant == true
+        RETURN p
+
+  If the comparison side contains a variable and the same variable is used as
+  the start vertex e.g. like this:
+
+  FOR candidate IN ["vertices/1", "vertices/2"]
+    FOR v,e,p IN 1 OUTBOUND candidate GRAPH "myGraph"
+      FILTER e.MostLikedNeighbor == candidate
+      RETURN v
+
+  There is a chance that we prematurely discarded this variable (candidate in
+  the example) if it is not used later. This has lead to incorrect results.
+
 * Changed the behavior of the following JavaScript functions in arangosh and
   arangod (e.g. when used from a Foxx service):
 
@@ -81,10 +99,14 @@ devel
   - `LET docs = [...] FOR doc IN docs INSERT doc INTO ...` (where the documents
     set up by the LET are some static documents known at query compile time),
 
-  If a query has such pattern, and there are no following RETURN nodes
-  (including any RETURN OLD, RETURN NEW), the FOR loop is not contained in
-  another outer FOR loop, and there are no calculations between the FOR and
-  the INSERT, the optimization is triggered.
+  If a query has such pattern, and all the following restrictions are met, then
+  the optimization is triggered:
+
+  - there are no following RETURN nodes (including any RETURN OLD, RETURN NEW)
+  - the FOR loop is not contained in another outer FOR loop or subquery
+  - there are no other nodes (e.g. LET, FILTER) between the FOR and the INSERT
+  - the INSERT is not used on a SmartGraph edge collection
+  - the FOR loop is iterating over a constant, deterministic expression
 
   The optimization will then add a `MultipleRemoteExecutionNode` to the query
   execution plan, which will care about inserting all documents into the 
