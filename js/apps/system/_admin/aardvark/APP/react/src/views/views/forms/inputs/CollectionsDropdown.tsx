@@ -20,7 +20,7 @@ const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
       }}
       cursor="pointer"
       onClick={() => {
-        setCurrentField({ fieldPath: `links["${props.data.value}"]` });
+        setCurrentField({ fieldPath: `links[${props.data.value}]` });
       }}
     >
       <components.MultiValueLabel {...props} />
