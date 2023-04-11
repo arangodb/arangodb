@@ -142,11 +142,7 @@ class IResearchFeature final : public ArangodFeature {
 
 #ifdef USE_ENTERPRISE
   bool trackColumnsCacheUsage(int64_t diff) noexcept;
-  bool columnsCacheOnlyLeaders() const noexcept {
-    TRI_ASSERT(ServerState::instance()->isDBServer() ||
-               !_columnsCacheOnlyLeader);
-    return _columnsCacheOnlyLeader;
-  }
+  bool columnsCacheOnlyLeaders() const noexcept;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   int64_t columnsCacheUsage() const noexcept;
 

@@ -1396,6 +1396,11 @@ bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
   } while (!done);
   return true;
 }
+
+bool IResearchFeature::columnsCacheOnlyLeaders() const noexcept {
+  TRI_ASSERT(ServerState::instance()->isDBServer() || !_columnsCacheOnlyLeader);
+  return _columnsCacheOnlyLeader;
+}
 #endif
 
 template<typename Engine, typename std::enable_if_t<
