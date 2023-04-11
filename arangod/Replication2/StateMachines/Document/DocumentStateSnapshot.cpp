@@ -95,7 +95,7 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
               }
 
               TRI_IF_FAILURE("DocumentStateSnapshot::infiniteSnapshot") {
-                // Keep the snapshot alive by returning emtpy batches.
+                // Keep the snapshot alive by returning empty batches.
                 VPackBuilder fakePayload;
                 { VPackArrayBuilder{&fakePayload}; }
 
