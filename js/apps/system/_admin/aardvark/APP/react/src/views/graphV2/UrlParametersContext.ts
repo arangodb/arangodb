@@ -16,6 +16,7 @@ export const DEFAULT_URL_PARAMETERS = {
   edgeType: "line",
   nodeSize: "",
   nodeSizeByEdges: false,
+  nodeIcons: false,
   edgeEditable: true,
   nodeLabelByCollection: false,
   edgeLabelByCollection: false,
@@ -43,6 +44,7 @@ export type UrlParametersType = {
   edgeType: string;
   nodeSize: string;
   nodeSizeByEdges: boolean;
+  nodeIcons: boolean;
   edgeEditable: boolean;
   nodeLabelByCollection: boolean;
   edgeLabelByCollection: boolean;

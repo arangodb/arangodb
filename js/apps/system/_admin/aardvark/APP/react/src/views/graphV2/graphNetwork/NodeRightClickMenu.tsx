@@ -60,6 +60,16 @@ export const NodeRightClickMenu = forwardRef(
             Set as Start Node
           </MenuItem>
           <MenuItem
+            onClick={() =>
+              setSelectedAction({
+                action: "addIcon",
+                entity: rightClickedEntity
+              })
+            }
+          >
+            Add icon
+          </MenuItem>
+          <MenuItem
             onClick={() => {
               if (!rightClickedEntity.nodeId) {
                 return;

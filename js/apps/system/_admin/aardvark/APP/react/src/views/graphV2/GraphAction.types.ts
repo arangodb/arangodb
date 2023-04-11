@@ -12,7 +12,7 @@ export type RightClickedEntityType = {
   pointer: GraphPointer;
 };
 export type SelectedActionType = {
-  action: "delete" | "edit" | "add" | "loadFullGraph";
+  action: "delete" | "edit" | "add" | "loadFullGraph" | "addIcon";
   entityType?: "node" | "edge";
   from?: string;
   to?: string;

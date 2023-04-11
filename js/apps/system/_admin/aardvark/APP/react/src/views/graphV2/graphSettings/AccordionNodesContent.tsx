@@ -1,6 +1,7 @@
 import React from "react";
 import { Grid } from "@chakra-ui/react";
 import ParameterNodeLabel from "./ParameterNodeLabel";
+import ParameterNodeIcons from "./ParameterNodeIcons";
 import ParameterNodeColor from "./ParameterNodeColor";
 import ParameterNodeLabelByCollection from "./ParameterNodeLabelByCollection";
 import ParameterNodeColorByCollection from "./ParameterNodeColorByCollection";
@@ -17,6 +18,7 @@ export const AccordionNodesContent = () => {
       justifyItems="start"
     >
       <ParameterNodeLabel />
+      <ParameterNodeIcons />
       <ParameterNodeColor />
       <ParameterNodeColorByCollection />
       <ParameterNodeColorAttribute />

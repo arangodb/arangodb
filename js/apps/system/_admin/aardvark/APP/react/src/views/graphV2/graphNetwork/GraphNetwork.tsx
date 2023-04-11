@@ -47,6 +47,51 @@ const GraphNetworkInner = ({
           containerRef
         }}
       />
+      <button onClick={() => {
+        const nodesData = datasets?.nodes;
+        console.log("nodesData: ", nodesData)
+        console.log("datasets?.nodes.getIds(): ", datasets?.nodes.getIds())
+        /*
+        datasets?.nodes.updateOnly({
+          id: "frenchCity/Lyon",
+          label: "Viking"
+        });
+        */
+        nodesData?.map((node) => {
+          console.log("The node is: ", node);
+          console.log("The node.label is: ", node.label);
+          datasets?.nodes.update({
+            id: node.id,
+            shape: "icon",
+            icon: {
+              face: "FontAwesome",
+              code: "\uf0c0",
+              color: "#f0f"
+            }
+          });
+        });
+        //const nodeIds = datasets?.nodes.getIds();
+
+        /*
+        nodesData?.update(nodeIds?.map(function(key) { return {
+          label: "blabla"
+        }}));
+        */
+        /*
+        nodesData?.update(
+          {
+            id: "frenchCity/Lyon",
+            label: "item 1 (updated once more)",
+            shape: "dot",
+            icon: {
+              face: "FontAwesome",
+              code: "\uf0c0",
+              color: "#f0f"
+            }
+          }
+        );
+        */
+      }}>Update experiment</button>
       <Box id="graphNetworkWrap" height="full" backgroundColor="white">
         {datasets?.nodes.length !== 0 && progressValue < 100 && !graphError ? (
           <Box

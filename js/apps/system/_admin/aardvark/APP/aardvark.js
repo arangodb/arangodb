@@ -1287,9 +1287,22 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
     var sizeCategory;
     var nodeObj;
     var notFoundString = "(attribute not found)";
+
+    const getUniqueColor = (n) => {
+        const rgb = [0, 0, 0];
+    
+        for (let i = 0; i < 24; i++) {
+            rgb[i%3] <<= 1;
+            rgb[i%3] |= n & 0x01;
+            n >>= 1;
+        }
+    
+        return '#' + rgb.reduce((a, c) => (c > 0x0f ? c.toString(16) : '0' + c.toString(16)) + a, '');
+    }
     
     const generateNodeObject = (node) => {
       nodeNames[node._id] = true;
+      const nodeCollection = node._id.split('/')[0];
 
       if (config.nodeLabel) {
         if (config.nodeLabel.indexOf('.') > -1) {
@@ -1342,6 +1355,53 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
           calculatedNodeColor = config.nodeColor;
         }
       }
+
+      let nodeShape =  "dot";
+      let iconDetails = {};
+      /*
+      const icons = {
+        "frenchCity": "\uf001",
+        "germanCity": "\uf002"
+      };
+      */
+
+      const icons = {
+        "frenchCity": {
+          code: "\uf001",
+          color: "#ff0000"
+        },
+        "germanCity": {
+          code: "\uf002",
+          color: "#ff00ff"
+        }
+      };
+
+      if(config.nodeIcons === 'true') {
+        let uniqueColors = []
+        if (config.nodeColorByCollection === 'true') {
+          for(let i = 0; i < Object.keys(icons).length; i++) {
+            print("Object.keys(icons)[i]");
+            print(Object.keys(icons)[i]);
+            const color = getUniqueColor(i);
+            print("color");
+            print(color);
+            icons[nodeCollection].color = color;
+            uniqueColors.push(color);
+          }
+          print("icons[nodeCollection].color");
+          print(icons[nodeCollection].color);
+          calculatedNodeColor = icons[nodeCollection].color;
+        }
+        const iconKey = nodeCollection + "NodeIcon";
+        iconDetails =  {
+          face: "FontAwesome",
+          code: icons[nodeCollection].code,
+          color: calculatedNodeColor
+        };
+        if(icons[nodeCollection] !== undefined) {
+          nodeShape = "icon";
+        }
+      }
         
       nodeObj = {
         id: node._id,
@@ -1349,7 +1409,8 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
         size: nodeSize || 20,
         value: nodeSize || 20,
         sizeCategory: sizeCategory || '',
-        shape: "dot",
+        shape: nodeShape,
+        icon: iconDetails,
         color: calculatedNodeColor,
         font: {
           strokeWidth: 2,
