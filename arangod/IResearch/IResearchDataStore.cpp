@@ -602,6 +602,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid) {
   // initialize transaction callback
+#ifdef USE_ENTERPRISE
   if (!collection.isAStub() && ServerState::instance()->isDBServer() &&
       collection.vocbase()
           .server()
@@ -615,6 +616,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
                                    collection.name());
     _useSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
   }
+#endif
   _beforeCommitCallback = [this](TransactionState& state) {
     auto prev = state.cookie(this);  // get existing cookie
     if (!prev) {
