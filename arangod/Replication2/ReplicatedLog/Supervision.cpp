@@ -53,7 +53,7 @@ namespace {
 
 /// The snapshot is valid if it is available and the term matches. We could have
 /// also conditioned this on the state being operational, but that cannot happen
-/// unless the follower gets and append-entries request.
+/// unless the follower gets an append-entries request.
 bool isSnapshotValidInTerm(LogCurrentLocalState const& state, LogTerm term) {
   return state.snapshotAvailable && state.term == term;
 }
