@@ -752,16 +752,24 @@ const replicatedStateSnapshotTransferSuite = function () {
         if (lh.getServerRebootId(follower) > rebootId) {
           return true;
         }
-        return Error('follower rebootId did not increase');
+        return Error("follower rebootId did not increase");
       });
       rebootId = lh.getServerRebootId(follower);
       result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId - 1);
-      lh.checkRequestResult(result);
-
-      // The snapshot should no longer be available.
-      snapshotId = result.json.result.snapshotId;
-      result = dh.getSnapshotStatus(leaderUrl, database, logId, snapshotId);
-      assertTrue(result.json.error);
+      if (result.json.error) {
+        // This is OK. The snapshot has been removed before we could return the response.
+        assertEqual(result.json.error.errorNum, internal.errors.ERROR_INTERNAL.code);
+      } else {
+        // We need a waitFor here, because the snapshot cleanup is enqueued on the scheduler.
+        snapshotId = result.json.result.snapshotId;
+        lh.waitFor(() => {
+          result = dh.getSnapshotStatus(leaderUrl, database, logId, snapshotId);
+          if (result.json.error) {
+            return true;
+          }
+          return Error(`Expected error, got ${JSON.stringify(result.json)}`);
+        });
+      }
 
       // Now start a snapshot with the correct rebootId and expect it to be available.
       rebootId = lh.getServerRebootId(follower);
