@@ -909,11 +909,7 @@ class ClusterInfo final {
   std::shared_ptr<std::vector<ServerID> const> getResponsibleServer(
       std::string_view shardID);
 
-  enum class ShardLeadership {
-    kLeader,
-    kFollower,
-    kUnclear
-  };
+  enum class ShardLeadership { kLeader, kFollower, kUnclear };
 
   ShardLeadership getShardLeadership(ServerID server, ShardID shard) const;
 

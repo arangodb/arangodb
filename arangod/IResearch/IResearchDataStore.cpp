@@ -1010,7 +1010,7 @@ Result IResearchDataStore::commitUnsafeImpl(
           newUseSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
         }
         force = _useSearchCache.load(std::memory_order_relaxed) !=
-                      newUseSearchCache;
+                newUseSearchCache;
         _useSearchCache = newUseSearchCache;
       }
       return force;
@@ -1086,12 +1086,12 @@ Result IResearchDataStore::commitUnsafeImpl(
       }
     }
 #endif
-  
+
 #ifdef USE_ENTERPRISE
     auto reader = forceOpen() ? irs::directory_reader::open(
-                                  *(_dataStore._directory), _format,
-                                  _dataStore._readerOptions)
-                            : _dataStore._reader.reopen(_format);
+                                    *(_dataStore._directory), _format,
+                                    _dataStore._readerOptions)
+                              : _dataStore._reader.reopen(_format);
 #else
     auto reader = _dataStore._reader.reopen(_format);
 #endif

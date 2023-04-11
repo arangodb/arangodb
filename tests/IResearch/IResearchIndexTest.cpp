@@ -1557,11 +1557,12 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
     ASSERT_TRUE(result.result.ok());
   }
   ASSERT_EQ(feature.columnsCacheUsage(), 0);
-  // now make it leader (just recreate collection in plan with new shards layout)
+  // now make it leader (just recreate collection in plan with new shards
+  // layout)
   std::vector<std::pair<std::string, std::string>> shards2{
       {collection0->name(), "PRMR_0001"}};
-  server.createCollection(
-      vocbase.name(), collection0->name(), shards2, TRI_COL_TYPE_DOCUMENT);
+  server.createCollection(vocbase.name(), collection0->name(), shards2,
+                          TRI_COL_TYPE_DOCUMENT);
   // running query to force sync
   {
     auto result = arangodb::tests::executeQuery(

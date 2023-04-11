@@ -5726,8 +5726,8 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
   return std::make_shared<std::vector<ServerID>>();
 }
 
-ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(ServerID server,
-                                                    ShardID shard) const {
+ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(
+    ServerID server, ShardID shard) const {
   if (!_currentProt.isValid) {
     return ShardLeadership::kUnclear;
   }
@@ -5744,7 +5744,7 @@ ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(ServerID server,
       return ShardLeadership::kUnclear;
     } else {
       return (*serverList)[0] == server ? ShardLeadership::kLeader
-                                         : ShardLeadership::kFollower;
+                                        : ShardLeadership::kFollower;
     }
   }
   return ShardLeadership::kUnclear;

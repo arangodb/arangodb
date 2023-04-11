@@ -1060,14 +1060,13 @@ but the returned data may be incomplete.)");
               arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30905);
   options
-      ->addOption(
-          CACHE_ONLY_LEADER,
-          "Cache ArangoSearch columns only for leader shards.",
-          new options::BooleanParameter(&_columnsCacheOnlyLeader),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::Enterprise))
+      ->addOption(CACHE_ONLY_LEADER,
+                  "Cache ArangoSearch columns only for leader shards.",
+                  new options::BooleanParameter(&_columnsCacheOnlyLeader),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::Enterprise))
       .setIntroducedIn(31006);
 #endif
 }
