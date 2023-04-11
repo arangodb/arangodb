@@ -380,13 +380,16 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
       actors.emplace(en, statusActorPID);
     });
 
+    auto resultState = std::make_unique<ResultState>(ttl);
+    auto resultData = resultState->data;
     auto resultActorID = _actorRuntime->spawn<ResultActor>(
-        vocbase.name(), std::make_unique<ResultState>(ttl),
+        vocbase.name(), std::move(resultState),
         message::ResultMessages{message::ResultStart{}});
     auto resultActorPID = actor::ActorPID{
         .server = ss->getId(), .database = vocbase.name(), .id = resultActorID};
-    _resultActor.doUnderLock([&en, &resultActorPID](auto& actors) {
-      actors.emplace(en, resultActorPID);
+    _resultActor.doUnderLock([&en, &resultActorPID, resultData](auto& actors) {
+      actors.emplace(
+          en, ResultActorReference{.pid = resultActorPID, .data = resultData});
     });
 
     auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
@@ -740,10 +743,11 @@ void PregelFeature::garbageCollectActors() {
 
   // clean up maps
   _resultActor.doUnderLock(
-      [this](std::unordered_map<ExecutionNumber, actor::ActorPID>& actors) {
+      [this](
+          std::unordered_map<ExecutionNumber, ResultActorReference>& actors) {
         std::erase_if(actors, [this](auto& item) {
           auto const& [_, actor] = item;
-          return not _actorRuntime->contains(actor.id);
+          return not _actorRuntime->contains(actor.pid.id);
         });
       });
   _conductorActor.doUnderLock(
@@ -811,27 +815,21 @@ std::shared_ptr<IWorker> PregelFeature::worker(
 
 ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
   return _resultActor.doUnderLock(
-      [&execNr, this](auto const& actors) -> ResultT<PregelResults> {
+      [&execNr](auto const& actors) -> ResultT<PregelResults> {
         auto actor = actors.find(execNr);
         if (actor == actors.end()) {
           return Result{
               TRI_ERROR_HTTP_NOT_FOUND,
               fmt::format("Cannot locate results for pregel run {}.", execNr)};
         }
-        auto state =
-            _actorRuntime->getActorStateByID<ResultActor>(actor->second.id);
+        auto state = actor->second.data->get();
         if (!state.has_value()) {
           return Result{
-              TRI_ERROR_HTTP_NOT_FOUND,
-              fmt::format("Cannot find results for pregel run {}.", execNr)};
+              TRI_ERROR_INTERNAL,
+              fmt::format("Pregel results for run {} are not yet available.",
+                          execNr)};
         }
-        if (state.value().complete) {
-          return state.value().results;
-        }
-        return Result{
-            TRI_ERROR_INTERNAL,
-            fmt::format("Pregel results for run {} are not yet available.",
-                        execNr)};
+        return state.value();
       });
 }
 
@@ -1193,9 +1191,10 @@ auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
     if (actor == actors.end()) {
       return Result{TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid"};
     }
-    if (_actorRuntime->contains(actor->second.id)) {
+    if (_actorRuntime->contains(actor->second.pid.id)) {
       _actorRuntime->dispatch<pregel::message::ResultMessages>(
-          actor->second, actor->second, pregel::message::CleanupResults{});
+          actor->second.pid, actor->second.pid,
+          pregel::message::CleanupResults{});
     }
     return Result{};
   });
