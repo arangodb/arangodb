@@ -5739,8 +5739,9 @@ ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(
     if (!serverList || serverList->empty()) {
       return ShardLeadership::kUnclear;
     }
-    if (!(*serverList)[0].empty() && (*serverList)[0][0] == '_') {
+    if ((*serverList)[0].starts_with('_')) {
       // This is a temporary situation in which the leader has already
+      // resigned, so we don't know exactly right now.
       return ShardLeadership::kUnclear;
     } else {
       return (*serverList)[0] == server ? ShardLeadership::kLeader
