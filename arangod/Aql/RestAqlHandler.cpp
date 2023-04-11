@@ -549,40 +549,49 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
     try {
       TRI_IF_FAILURE("RestAqlHandler::killBeforeOpen") {
         auto engine = _queryRegistry->openExecutionEngine(qId);
-        TRI_ASSERT(engine != nullptr);
-        auto queryId = engine->getQuery().id();
-        auto query = _queryRegistry->destroyQuery(_vocbase.name(), queryId,
-                                                  TRI_ERROR_QUERY_KILLED);
-        TRI_ASSERT(query == nullptr) << "QueryRegistry::destroyQuery handed "
-                                        "out a pointer to a query in use";
-        _queryRegistry->closeEngine(qId);
-        // Here Engine could be gone
+        // engine may be null if the query was killed before we got here.
+        // This can happen if another db server has already processed this
+        // failure point, killed the query and reported back to the coordinator,
+        // which then sent the finish request. If this finish request is
+        // processed before the query is opened here, the query is already gone.
+        if (engine != nullptr) {
+          auto queryId = engine->getQuery().id();
+          auto query = _queryRegistry->destroyQuery(_vocbase.name(), queryId,
+                                                    TRI_ERROR_QUERY_KILLED);
+          TRI_ASSERT(query == nullptr) << "QueryRegistry::destroyQuery handed "
+                                          "out a pointer to a query in use";
+          _queryRegistry->closeEngine(qId);
+          // Here Engine could be gone
+        }
       }
       TRI_IF_FAILURE("RestAqlHandler::completeFinishBeforeOpen") {
         auto errorCode = TRI_ERROR_QUERY_KILLED;
         auto engine = _queryRegistry->openExecutionEngine(qId);
-        TRI_ASSERT(engine != nullptr);
-        auto queryId = engine->getQuery().id();
-        // Unuse the engine, so we can abort properly
-        _queryRegistry->closeEngine(qId);
-        auto query =
-            _queryRegistry->destroyQuery(_vocbase.name(), queryId, errorCode);
-        TRI_ASSERT(query != nullptr)
-            << "QueryRegistry::destroyQuery does not give us the query pointer";
-        auto f = query->finalizeClusterQuery(errorCode);
-        // Wait for query to be fully finalized, as a finish call would do.
-        f.wait();
-        // Here Engine could be gone
+        // engine may be null here due to the race described above
+        if (engine != nullptr) {
+          auto queryId = engine->getQuery().id();
+          // Unuse the engine, so we can abort properly
+          _queryRegistry->closeEngine(qId);
+          auto query =
+              _queryRegistry->destroyQuery(_vocbase.name(), queryId, errorCode);
+          if (query != nullptr) {
+            auto f = query->finalizeClusterQuery(errorCode);
+            // Wait for query to be fully finalized, as a finish call would do.
+            f.wait();
+          }
+          // Here Engine could be gone
+        }
       }
       TRI_IF_FAILURE("RestAqlHandler::prematureCommitBeforeOpen") {
         auto engine = _queryRegistry->openExecutionEngine(qId);
-        TRI_ASSERT(engine != nullptr);
-        auto queryId = engine->getQuery().id();
-        auto query = _queryRegistry->destroyQuery(_vocbase.name(), queryId,
-                                                  TRI_ERROR_NO_ERROR);
-        TRI_ASSERT(query == nullptr) << "QueryRegistry::destroyQuery handed "
-                                        "out a pointer to a query in use";
-        _queryRegistry->closeEngine(qId);
+        if (engine != nullptr) {
+          auto queryId = engine->getQuery().id();
+          auto query = _queryRegistry->destroyQuery(_vocbase.name(), queryId,
+                                                    TRI_ERROR_NO_ERROR);
+          TRI_ASSERT(query == nullptr) << "QueryRegistry::destroyQuery handed "
+                                          "out a pointer to a query in use";
+          _queryRegistry->closeEngine(qId);
+        }
         // Here Engine could be gone
       }
       q = _queryRegistry->openExecutionEngine(qId);
