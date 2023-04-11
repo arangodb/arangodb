@@ -45,10 +45,12 @@ auto StateHandleManager::resign() noexcept
   return std::move(guard->stateHandle);
 }
 
-auto StateHandleManager::updateCommitIndex(LogIndex index) noexcept
+auto StateHandleManager::updateCommitIndex(LogIndex index,
+                                           bool snapshotAvailable) noexcept
     -> DeferredAction {
   if (auto guard = guardedData.getLockedGuard(); guard->stateHandle) {
-    auto&& [maybeResolveIndex, action] = guard->commit.updateCommitIndex(index);
+    auto&& [maybeResolveIndex, action] =
+        guard->commit.updateCommitIndex(index, snapshotAvailable);
     if (maybeResolveIndex) {
       guard->stateHandle->updateCommitIndex(*maybeResolveIndex);
     }

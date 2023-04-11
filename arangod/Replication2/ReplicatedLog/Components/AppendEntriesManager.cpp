@@ -146,9 +146,10 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   }
 
   guard->compaction.updateLowestIndexToKeep(request.lowestIndexToKeep);
-  auto action = guard->stateHandle.updateCommitIndex(request.leaderCommit);
   auto hasSnapshot =
       guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE;
+  auto action =
+      guard->stateHandle.updateCommitIndex(request.leaderCommit, hasSnapshot);
   guard.unlock();
   action.fire();
   requestGuard.reset();

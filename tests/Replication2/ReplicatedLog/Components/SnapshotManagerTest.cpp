@@ -34,6 +34,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
 #include "Replication2/Mocks/LeaderCommunicatorMock.h"
+#include "Replication2/Mocks/StateHandleManagerMock.h"
 #include "Replication2/Mocks/StorageManagerMock.h"
 
 #if defined(__GNUC__)
@@ -63,17 +64,6 @@ struct StateInfoTransactionMock : IStateInfoTransaction {
   MOCK_METHOD(InfoType&, get, (), (noexcept, override));
 };
 
-struct StateHandleManagerMock : IStateHandleManager {
-  MOCK_METHOD(DeferredAction, updateCommitIndex, (LogIndex),
-              (noexcept, override));
-  MOCK_METHOD(void, becomeFollower,
-              (std::unique_ptr<IReplicatedLogFollowerMethods>),
-              (noexcept, override));
-  MOCK_METHOD(std::unique_ptr<IReplicatedStateHandle>, resign, (),
-              (noexcept, override));
-  MOCK_METHOD(void, acquireSnapshot, (ParticipantId const&, std::uint64_t),
-              (noexcept, override));
-};
 }  // namespace
 
 struct SnapshotManagerTest : ::testing::Test {

@@ -33,7 +33,8 @@ inline namespace comp {
 
 struct IFollowerCommitManager {
   virtual ~IFollowerCommitManager() = default;
-  [[nodiscard]] virtual auto updateCommitIndex(LogIndex) noexcept
+  [[nodiscard]] virtual auto updateCommitIndex(LogIndex commitIndex,
+                                               bool snapshotAvailable) noexcept
       -> std::pair<std::optional<LogIndex>, DeferredAction> = 0;
   [[nodiscard]] virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
   [[nodiscard]] virtual auto waitFor(LogIndex index) noexcept
