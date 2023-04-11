@@ -102,6 +102,11 @@ auto EmptyLeaderType<S>::resign() && noexcept
 
 template<typename Input, typename Result>
 struct AsyncOperationMarker {
+  ~AsyncOperationMarker() {
+    TRI_ASSERT(!promise.has_value() or promise->isFulfilled())
+        << "unfulfilled promise in " << ADB_HERE;
+  }
+
   auto trigger(Input inValue) -> futures::Future<Result> {
     TRI_ASSERT(in.has_value() == false);
     in.emplace(std::move(inValue));
