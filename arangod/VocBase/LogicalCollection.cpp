@@ -407,7 +407,7 @@ void LogicalCollection::shardIDsToVelocyPack(
   result.add(VPackValue("shards"));
 
   std::vector<ShardID> combinedShardIDs;
-  for (auto const& s : *shardIds()) {
+  for (auto shardIdsPtr = shardIds(); auto const& s : *shardIdsPtr) {
     combinedShardIDs.push_back(s.first);
   }
   std::sort(combinedShardIDs.begin(), combinedShardIDs.end(),
