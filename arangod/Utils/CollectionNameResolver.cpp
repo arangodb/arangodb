@@ -124,7 +124,7 @@ DataSourceId CollectionNameResolver::getCollectionIdCluster(
     return getCollectionIdLocal(name);
   }
   if (name.empty()) {
-    DataSourceId::none();
+    return DataSourceId::none();
   }
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
@@ -135,7 +135,7 @@ DataSourceId CollectionNameResolver::getCollectionIdCluster(
     auto type = collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 
     if (type == TRI_COL_TYPE_UNKNOWN) {
-      DataSourceId::none();
+      return DataSourceId::none();
     }
     return cid;
   }
