@@ -614,8 +614,6 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
     auto r = ci.getShardLeadership(ServerState::instance()->getId(),
                                    collection.name());
     _useSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
-    LOG_DEVEL << "CTOR: UseSearchCache:" << _useSearchCache
-              << " For shard:" << collection.name();
   }
   _beforeCommitCallback = [this](TransactionState& state) {
     auto prev = state.cookie(this);  // get existing cookie
@@ -989,21 +987,11 @@ Result IResearchDataStore::commitUnsafeImpl(
       LOG_TOPIC("4cb66", DEBUG, TOPIC) << "Commit started";
     }
 #endif
-    auto const commitOne = _dataStore._writer->commit(progress);
-    std::move(stageOneGuard).Cancel();
-    if (!commitOne) {
-      LOG_TOPIC("7e319", TRACE, TOPIC)
-          << "First commit for ArangoSearch index '" << id()
-          << "' is no changes tick " << lastTickBeforeCommitOne;
-      TRI_ASSERT(_lastCommittedTickOne <= lastTickBeforeCommitOne);
-      TRI_ASSERT(_lastCommittedTickTwo <= lastTickBeforeCommitOne);
-      // no changes, can release the latest tick before commit one
-      _lastCommittedTickOne = lastTickBeforeCommitOne;
-      _lastCommittedTickTwo = lastTickBeforeCommitOne;
-      impl.tick(_lastCommittedTickOne);
+
+
+    auto forceOpen = [&]() -> bool {
+      bool force{false};
 #ifdef USE_ENTERPRISE
-      // get new reader
-      bool forceOpen{false};
       if (ServerState::instance()->isDBServer() &&
           _collection.vocbase()
               .server()
@@ -1020,14 +1008,29 @@ Result IResearchDataStore::commitUnsafeImpl(
         if (r != ClusterInfo::ShardLeadership::kUnclear) {
           newUseSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
         }
-        forceOpen = _useSearchCache.load(std::memory_order_relaxed) !=
-                    newUseSearchCache;
+        force = _useSearchCache.load(std::memory_order_relaxed) !=
+                      newUseSearchCache;
         _useSearchCache = newUseSearchCache;
-        LOG_DEVEL << "On commit no changes: forceOpen" << forceOpen
-                  << " UseSearchCache:" << _useSearchCache
-                  << " for shard:" << _collection.name();
       }
-      if (forceOpen) {
+#endif
+      return force;
+    };
+
+    auto const commitOne = _dataStore._writer->commit(progress);
+    std::move(stageOneGuard).Cancel();
+    if (!commitOne) {
+      LOG_TOPIC("7e319", TRACE, TOPIC)
+          << "First commit for ArangoSearch index '" << id()
+          << "' is no changes tick " << lastTickBeforeCommitOne;
+      TRI_ASSERT(_lastCommittedTickOne <= lastTickBeforeCommitOne);
+      TRI_ASSERT(_lastCommittedTickTwo <= lastTickBeforeCommitOne);
+      // no changes, can release the latest tick before commit one
+      _lastCommittedTickOne = lastTickBeforeCommitOne;
+      _lastCommittedTickTwo = lastTickBeforeCommitOne;
+      impl.tick(_lastCommittedTickOne);
+#ifdef USE_ENTERPRISE
+      // get new reader
+      if (forceOpen()) {
         _dataStore._reader = irs::directory_reader::open(
             *(_dataStore._directory), _format, _dataStore._readerOptions);
       }
@@ -1084,34 +1087,7 @@ Result IResearchDataStore::commitUnsafeImpl(
     }
 #endif
    
-    bool forceOpen{false};
-#ifdef USE_ENTERPRISE
-    // get new reader
-    if (ServerState::instance()->isDBServer() &&
-        _collection.vocbase()
-            .server()
-            .getFeature<IResearchFeature>()
-            .columnsCacheOnlyLeaders()) {
-      auto& ci = _collection.vocbase()
-                     .server()
-                     .getFeature<ClusterFeature>()
-                     .clusterInfo();
-      auto newUseSearchCache = _useSearchCache.load(std::memory_order_relaxed);
-      auto r = ci.getShardLeadership(ServerState::instance()->getId(),
-                                     _collection.name());
-      if (r != ClusterInfo::ShardLeadership::kUnclear) {
-        newUseSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
-      }
-      forceOpen =
-          _useSearchCache.load(std::memory_order_relaxed) != newUseSearchCache;
-      _useSearchCache = newUseSearchCache;
-      LOG_DEVEL << "On commit: forceOpen" << forceOpen
-                << " UseSearchCache:" << _useSearchCache
-                << " for shard:" << _collection.name();
-    }
-#endif
-
-    auto reader = forceOpen ? irs::directory_reader::open(
+    auto reader = forceOpen() ? irs::directory_reader::open(
                                   *(_dataStore._directory), _format,
                                   _dataStore._readerOptions)
                             : _dataStore._reader.reopen(_format);
