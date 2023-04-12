@@ -67,7 +67,7 @@ let tasksTests = {
       if (tasks.get().length !== obj.taskCount) {
         obj.results[obj.translateResult(te)] = {
           status: false,
-          message: 'Cleanup of users missing - found users left over: [ ' +
+          message: 'Cleanup of tasks missing - found tasks left over: [ ' +
             JSON.stringify(tasks.get()) +
             ' ] - Original test status: ' +
             JSON.stringify(obj.results[obj.translateResult(te)])
