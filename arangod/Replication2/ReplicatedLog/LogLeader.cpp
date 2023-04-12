@@ -253,7 +253,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         // when the request returns. If the locking is successful
         // we are still in the same term.
         auto currentCommitIndex = request.leaderCommit;
-        auto lowestIndexToKeep = request.leaderCommit;
+        auto lowestIndexToKeep = request.lowestIndexToKeep;
         follower->_impl->appendEntries(std::move(request))
             .thenFinal([weakParentLog = req->_parentLog,
                         followerWeak = req->_follower, lastIndex = lastIndex,
