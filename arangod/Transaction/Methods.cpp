@@ -2625,6 +2625,8 @@ Future<Result> Methods::replicateOperations(
   TRI_ASSERT(followerList != nullptr);
   TRI_ASSERT(!followerList->empty());
 
+  TRI_IF_FAILURE("replicateOperations::skip") { return Result(); }
+
   // path and requestType are different for insert/remove/modify.
 
   network::RequestOptions reqOpts;
