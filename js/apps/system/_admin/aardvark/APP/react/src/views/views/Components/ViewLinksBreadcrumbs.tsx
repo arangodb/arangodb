@@ -10,7 +10,7 @@ const sanitize = (value: string) => {
   return removeQuotes(value.slice(0, value.lastIndexOf("]")));
 };
 /**
- * input: links["a"].fields["b"].fields["c"]
+ * input: links[a].fields[b].fields[c]
  * output: [['links', 'a'], ['fields', 'b], ['fields', 'c']]
  */
 const getFragments = (currentPath?: string) => {
@@ -37,7 +37,7 @@ const getFragments = (currentPath?: string) => {
 /**
  * this function creates a path from the fragments
  * input: [['links', 'a'], ['fields', 'b], ['fields', 'c']]
- * output: links["a"].fields["b"].fields["c"]
+ * output: links[a].fields[b].fields[c]
 
  *  */
 const getPathFromFragments = (fragments: string[][]) => {
