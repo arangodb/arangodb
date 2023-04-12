@@ -396,7 +396,10 @@ class instance {
         'agency.size': this.agencyConfig.agencySize,
         'agency.wait-for-sync': this.agencyConfig.waitForSync,
         'agency.supervision': this.agencyConfig.supervision,
-        'agency.my-address': this.protocol + '://127.0.0.1:' + this.port
+        'agency.my-address': this.protocol + '://127.0.0.1:' + this.port,
+        // Sometimes for unknown reason the agency startup is too slow.
+        // With this log level we might have a chance to see what is going on.
+        'log.level': "agency=debug",
       });
       if (!this.args.hasOwnProperty("agency.supervision-grace-period")) {
         this.args['agency.supervision-grace-period'] = '10.0';
