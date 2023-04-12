@@ -7161,25 +7161,20 @@ void ClusterInfo::startSyncers() {
 }
 
 void ClusterInfo::drainSyncers() {
-  {
-    std::lock_guard g(_waitPlanLock);
-    auto pit = _waitPlan.begin();
-    while (pit != _waitPlan.end()) {
+  auto clearWaitForMaps = [&](auto& mutex, auto& map) {
+    std::lock_guard g(mutex);
+    auto pit = map.begin();
+    while (pit != map.end()) {
       pit->second.setValue(Result(_syncerShutdownCode));
       ++pit;
     }
-    _waitPlan.clear();
-  }
+    map.clear();
+  };
 
-  {
-    std::lock_guard g(_waitCurrentLock);
-    auto pit = _waitCurrent.begin();
-    while (pit != _waitCurrent.end()) {
-      pit->second.setValue(Result(_syncerShutdownCode));
-      ++pit;
-    }
-    _waitCurrent.clear();
-  }
+  clearWaitForMaps(_waitPlanLock, _waitPlan);
+  clearWaitForMaps(_waitPlanVersionLock, _waitPlanVersion);
+  clearWaitForMaps(_waitCurrentLock, _waitCurrent);
+  clearWaitForMaps(_waitCurrentVersionLock, _waitCurrentVersion);
 }
 
 void ClusterInfo::shutdownSyncers() {
