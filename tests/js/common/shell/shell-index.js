@@ -1650,7 +1650,7 @@ function ParallelIndexSuite() {
           break;
         }
         for (let i = indexes.length - 1; i < Math.min(noIndexes, indexes.length - 1 + maxThreads); ++i) {
-          let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + i + '"] }); require("internal").wait(5);';
+          let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + i + '"] });';
           tasks.register({name: "UnitTestsIndexCreate" + i, command: command});
         }
         if (time() - start > 180) {
