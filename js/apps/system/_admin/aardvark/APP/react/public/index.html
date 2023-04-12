@@ -13,9 +13,9 @@
 
     <script>
       window.addEventListener("error", function (e) {
-        // This is an error which crashes dev, and can be safely ignored
+        // This is an error which only crashes dev, and can be safely ignored
         // See: https://stackoverflow.com/a/50387233 & 
-        //      https://github.com/WICG/resize-observer/issues/38
+        //      https://github.com/WICG/resize-observer/issues/38#issuecomment-422126006
         if (e.message === "ResizeObserver loop limit exceeded") {
           console.error(e.message);
           e.stopImmediatePropagation();
