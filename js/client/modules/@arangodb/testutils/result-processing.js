@@ -314,7 +314,7 @@ function saveToJunitXML(options, results) {
         if (testCase.hasOwnProperty('message')) {
           msg = stripAnsiColors(testCase.message);
         } else {
-          msg = stripAnsiColors(`testcase ${testCaseName} doesn't have a messeage! ${JSON.stringify(testCase)}`);
+          msg = stripAnsiColors(`testcase ${testCaseName} doesn't have a message! ${JSON.stringify(testCase)}`);
         }
         state.xml.text('<![CDATA[' + msg  + ']]>\n');
         state.xml.elem('/failure');
