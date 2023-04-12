@@ -49,6 +49,7 @@ const YELLOW = internal.COLORS.COLOR_YELLOW;
 const internalMembers = [
   'crashreport',
   'code',
+  'exitCode',
   'error',
   'status',
   'duration',
@@ -313,7 +314,7 @@ function saveToJunitXML(options, results) {
         if (testCase.hasOwnProperty('message')) {
           msg = stripAnsiColors(testCase.message);
         } else {
-          msg = stripAnsiColors(`testcase doesn't have a messeage! ${JSON.dumps(testCase)}`);
+          msg = stripAnsiColors(`testcase ${testCaseName} doesn't have a messeage! ${JSON.stringify(testCase)}`);
         }
         state.xml.text('<![CDATA[' + msg  + ']]>\n');
         state.xml.elem('/failure');
