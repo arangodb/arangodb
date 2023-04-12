@@ -4,7 +4,7 @@ import { FormProps } from "../../utils/constants";
 import { DeleteButtonWrap } from "./Actions";
 import { FormState } from "./constants";
 import CopyFromInput from "./forms/inputs/CopyFromInput";
-import { SaveArangoSearchViewButton } from "./SaveArangoSearchViewButton";
+import { SaveArangoSearchViewButton } from "./arangoSearchView/SaveArangoSearchViewButton";
 import { EditableViewNameField } from "./searchAliasView/EditableViewNameField";
 import { ViewPropertiesType } from "./searchAliasView/useFetchViewProperties";
 

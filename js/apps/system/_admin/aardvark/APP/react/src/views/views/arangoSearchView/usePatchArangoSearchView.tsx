@@ -1,41 +1,10 @@
-import { CheckIcon } from "@chakra-ui/icons";
-import { Button } from "@chakra-ui/react";
 import { pick } from "lodash";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useSWRConfig } from "swr";
-import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
-import { FormState } from "./constants";
+import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { FormState } from "../constants";
 
-type SaveButtonProps = {
-  view: FormState;
-  disabled?: boolean;
-  oldName?: string;
-  setChanged: (changed: boolean) => void;
-};
-
-export const SaveArangoSearchViewButton = ({
-  disabled,
-  view,
-  oldName,
-  setChanged
-}: SaveButtonProps) => {
-  const handleSave = useHandleSave(view, oldName, setChanged);
-
-  return (
-    <Button
-      size="xs"
-      colorScheme="green"
-      leftIcon={<CheckIcon />}
-      onClick={handleSave}
-      isDisabled={disabled}
-      marginRight="3"
-    >
-      Save view
-    </Button>
-  );
-};
-
-function useHandleSave(
+export function usePatchArangoSearchView(
   view: FormState,
   oldName: string | undefined,
   setChanged: (changed: boolean) => void
@@ -152,9 +121,9 @@ const useSyncPatchViewJob = ({ view }: { view: FormState }) => {
     error: boolean,
     jobs: { id: string; collection: string }[]
   ) {
+    console.log({error, jobs})
     if (error) {
       window.arangoHelper.arangoError("Jobs", "Could not read pending jobs.");
-      
     } else {
       const foundJob = jobs.find(locked => locked.collection === view.name);
       if (foundJob) {
@@ -169,7 +138,7 @@ const useSyncPatchViewJob = ({ view }: { view: FormState }) => {
     }
   };
   useEffect(() => {
-    window.arangoHelper.syncAndReturnUnfinishedAardvarkJobs("view", checkState);
+    window.arangoHelper.getAardvarkJobs(checkState);
 
     let interval = window.setInterval(() => {
       window.arangoHelper.getAardvarkJobs(checkState);
