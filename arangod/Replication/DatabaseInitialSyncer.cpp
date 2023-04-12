@@ -49,6 +49,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -417,6 +418,11 @@ arangodb::Result fetchRevisions(
       futures.pop_front();
       shoppingLists.pop_front();
       TRI_ASSERT(futures.size() == shoppingLists.size());
+
+      res = trx.state()->performIntermediateCommitIfRequired(collection.id());
+      if (res.fail()) {
+        return res;
+      }
     }
   }
 
