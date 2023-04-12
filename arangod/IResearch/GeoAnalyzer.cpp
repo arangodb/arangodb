@@ -29,7 +29,6 @@
 #include "Basics/Exceptions.h"
 #include "Geo/GeoParams.h"
 #include "Geo/GeoJson.h"
-#include "Inspection/VPack.h"
 #include "IResearch/Geo.h"
 #include "IResearch/GeoFilter.h"
 #include "IResearch/IResearchCommon.h"
@@ -46,6 +45,7 @@
 #include <s2/s2point_region.h>
 #include <s2/s2latlng.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 
 namespace arangodb::iresearch {
 namespace {
