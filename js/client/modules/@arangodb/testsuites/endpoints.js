@@ -288,7 +288,7 @@ class endpointRunner extends tu.runInArangoshRunner {
       }
       sleep(2);
       try {
-        obj.instance.checkArangoConnection(40, true);
+        obj.instance.checkArangoConnection(15, true);
       } catch (ex) {
         fatalError = true;
         print(RED + Date() + ' Server did not become available on time' + RESET);
