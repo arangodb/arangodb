@@ -39,7 +39,7 @@ export const useCreateIndex = <
             `index`,
             {
               ...values,
-              name: (values.name as string)?.normalize() || undefined
+              name: String(values.name)?.normalize() || undefined
             },
             `collection=${encodedCollectionName}`,
             {
