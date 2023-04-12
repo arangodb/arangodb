@@ -476,6 +476,9 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         // is retried which has actually already happened. This can lead
         // to wrong replies to the customer, but there is nothing we seem
         // to be able to do against this without larger changes.
+        if (!_options.retryCancelledConnection) {
+          goto returnError;
+        }
       case fuerte::Error::CouldNotConnect: {
         // Note that this case includes the refusal of a leader to accept
         // the operation, in which case we have to retry and wait for
@@ -515,6 +518,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
       case fuerte::Error::ConnectionClosed:
       case fuerte::Error::RequestTimeout:
+      returnError:
       // In these cases we have to report an error, since we cannot know
       // if the request actually went out and was received and executed
       // on the other side.

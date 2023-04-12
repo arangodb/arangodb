@@ -148,6 +148,11 @@ struct RequestOptions {
   // the "allowDirtyReads" options when we want to read from followers.
   std::string overrideDestination;
 
+  // retry if the connection was cancelled.
+  // This can have unintended side effects, for example if the operation is not
+  // idempotent, it could be executed twice.
+  bool retryCancelledConnection = true;
+
   template<typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
     TRI_ASSERT(!std::string_view{val}.empty());  // cannot parse it on receiver

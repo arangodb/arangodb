@@ -1550,6 +1550,8 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
   bool const isJobsCollection =
       coll.system() && coll.name() == StaticStrings::JobsCollection;
 
+  bool const isCreateKeyOnCoordinator = coll.mustCreateKeyOnCoordinator();
+
   Future<Result> f = makeFuture(Result());
   bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -1587,6 +1589,10 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
                (options.mergeObjects ? "true" : "false"))
         .param(StaticStrings::SkipDocumentValidation,
                (options.validate ? "false" : "true"));
+
+    // If the keys are created on the database server, we must not retry the
+    // request, otherwise we might end up with duplicated documents.
+    reqOpts.retryCancelledConnection = isCreateKeyOnCoordinator;
 
     if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
       // this attribute can have 3 values: default, true and false. only
