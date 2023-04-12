@@ -71,7 +71,7 @@
             if (isCoordinator) {
               newname = this.model.get('name');
             } else {
-              newname = String($('#change-collection-name').val()).normalize("NFC");
+              newname = String($('#change-collection-name').val()).normalize();
             }
 
             var self = this;
