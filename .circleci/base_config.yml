@@ -4,6 +4,9 @@ parameters:
   enterprise-branch:
     type: string
     default: ""
+  dockerize:
+    type: boolean
+    default: true
 
 jobs:
   minimal-checkout:
@@ -161,6 +164,11 @@ jobs:
       - run:
           name: SCCache Statistics
           command: sccache -s
+      - run:
+          name: Create archive of compiled instance
+          command: | 
+              ## Enterprise archive not supported yet
+              tar -czf scripts/build/install.tar.gz build/ scripts/ js/ etc/ utils/ 
       - store_artifacts:
           path: build/bin/arango*
       - store_artifacts:
@@ -236,6 +244,30 @@ jobs:
       - store_test_results:
           path: ./test-results/
 
+  create-docker-image:
+    machine:
+      image: ubuntu-2004:current
+      docker_layer_caching: true 
+    resource_class: medium
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Create docker image from install.tar.gz
+          command: |
+            cd scripts/build
+            docker build -t $CIRCLE_BRANCH --target arangodb-tar-starter -f tar-to-docker.Dockerfile . 
+
+      - run:
+          name: Save and upload docker image
+          command: |
+            mkdir -p /tmp/artifacts
+            docker save $CIRCLE_BRANCH > /tmp/artifacts/$CIRCLE_BRANCH.tar.gz
+            rm install.tar.gz
+
+      - store_artifacts:
+          path: /tmp/artifacts
+
 workflows:
   lint:
     jobs:
@@ -260,6 +292,9 @@ workflows:
           preset: community-pr
           edition: x64-community
           enterprise: false
+      - create-docker-image:
+          when: { equal: [ true, << pipeline.parameters.dockerize >> ] }
+
   enterprise-pr:
     jobs:
       - compile-linux:
