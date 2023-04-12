@@ -294,10 +294,13 @@ workflows:
           preset: community-pr
           edition: x64-community
           enterprise: false
-      - create-docker-image:
+      - approve-for-docker-image:
           type: approval
           requires:
             - build-ce
+      - create-docker-image:
+          requires:
+            - approve-for-docker-image
 
   enterprise-pr:
     jobs:
