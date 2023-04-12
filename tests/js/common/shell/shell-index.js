@@ -1616,14 +1616,19 @@ function ParallelIndexSuite() {
     },
 
     tearDown: function() {
-      tasks.get().forEach(function(task) {
-        if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
-          try {
-            tasks.unregister(task);
-          } catch (err) {
-          }
+      let rounds = 0;
+      while(true) {
+        const stillRunning = tasks.get().filter(function(task) {
+          return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)); });
+        if(stillRunning.length === 0) {
+          break;
         }
-      });
+        require("internal").wait(0.5, false);
+        rounds++;
+        if(rounds % 10 === 0) {
+          console.log("After %s rounds there are still the following tasks %s", rounds, JSON.stringify(stillRunning));
+        }
+      }
       internal.db._drop(cn);
     },
 
@@ -1645,7 +1650,7 @@ function ParallelIndexSuite() {
           break;
         }
         for (let i = indexes.length - 1; i < Math.min(noIndexes, indexes.length - 1 + maxThreads); ++i) {
-          let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + i + '"] });';
+          let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + i + '"] }); require("internal").wait(5);';
           tasks.register({name: "UnitTestsIndexCreate" + i, command: command});
         }
         if (time() - start > 180) {
