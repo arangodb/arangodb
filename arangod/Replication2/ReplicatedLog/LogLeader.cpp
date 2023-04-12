@@ -249,11 +249,11 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         // measurement. (And do not use follower._lastRequestStartTP)
         // TODO really needed?
         auto startTime = std::chrono::steady_clock::now();
-        auto currentCommitIndex = request.leaderCommit;
-        auto lowestIndexToKeep = request.leaderCommit;
         // Capture a weak pointer `parentLog` that will be locked
         // when the request returns. If the locking is successful
         // we are still in the same term.
+        auto currentCommitIndex = request.leaderCommit;
+        auto lowestIndexToKeep = request.leaderCommit;
         follower->_impl->appendEntries(std::move(request))
             .thenFinal(
                 [weakParentLog = req->_parentLog, followerWeak = req->_follower,
