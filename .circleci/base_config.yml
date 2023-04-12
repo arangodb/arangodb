@@ -265,7 +265,6 @@ jobs:
           command: |
             mkdir -p /tmp/artifacts
             docker save $CIRCLE_BRANCH > /tmp/artifacts/$CIRCLE_BRANCH.tar.gz
-            rm install.tar.gz
 
       - store_artifacts:
           path: /tmp/artifacts
