@@ -1,6 +1,4 @@
 import { pick } from "lodash";
-import { useEffect } from "react";
-import { useSWRConfig } from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { FormState } from "../constants";
 import { useSyncSearchViewUpdates } from "../searchAliasView/useSyncSearchViewUpdates";
