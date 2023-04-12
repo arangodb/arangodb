@@ -164,12 +164,6 @@ jobs:
       - run:
           name: SCCache Statistics
           command: sccache -s
-      - run:
-          name: Create archive of compiled instance
-          command: | 
-              ## Enterprise archive not supported yet
-              mkdir archive
-              tar -czf archive/install.tar.gz build/ scripts/ js/ etc/ utils/ 
       - store_artifacts:
           path: build/bin/arango*
       - store_artifacts:
@@ -189,7 +183,6 @@ jobs:
             - UnitTests
             - 3rdParty/iresearch/tests/resources
             - 3rdParty/rta-makedata
-            - archive/
 
   run-tests:
     docker:
@@ -255,6 +248,12 @@ jobs:
       - attach_workspace:
           at: .
       - run:
+          name: Create archive of compiled instance
+          command: | 
+              ## Enterprise archive not supported yet
+              mkdir archive
+              tar -czf archive/install.tar.gz build/ scripts/ js/ etc/ utils/ 
+      - run:
           name: Create docker image from install.tar.gz
           command: |
             cp archive/install.tar.gz scripts/build/
@@ -296,6 +295,7 @@ workflows:
           edition: x64-community
           enterprise: false
       - create-docker-image:
+          type: approval
           requires:
             - build-ce
 
