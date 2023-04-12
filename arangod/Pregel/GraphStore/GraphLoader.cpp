@@ -174,6 +174,9 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
          loadableVertexShards]() -> Magazine<V, E> {
           auto result = Magazine<V, E>{};
 
+          LOG_PREGEL("8633a", WARN)
+              << fmt::format("Starting vertex loader number {}", futureN);
+
           while (true) {
             auto myLoadableVertexShardIdx = loadableShardIdx->fetch_add(1);
             if (myLoadableVertexShardIdx >= loadableVertexShards->size()) {
@@ -186,18 +189,17 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
               result.emplace(loadVertices(loadableVertexShard));
             } catch (basics::Exception const& ex) {
               LOG_PREGEL("8682a", WARN)
-                  << "caught exception while loading pregel graph: "
-                  << ex.what();
+                  << fmt::format("vertex loader number {} caught exception: {}",
+                                 futureN, ex.what());
               break;
             } catch (std::exception const& ex) {
               LOG_PREGEL("c87c9", WARN)
-                  << "caught exception while loading pregel graph: "
-                  << ex.what();
+                  << fmt::format("vertex loader number {} caught exception: {}",
+                                 futureN, ex.what());
               break;
             } catch (...) {
-              LOG_PREGEL("c7240", WARN)
-                  << "caught unknown exception while loading pregel graph";
-              ADB_PROD_ASSERT(false) << "f";
+              LOG_PREGEL("c7240", WARN) << fmt::format(
+                  "vertex loader number {} caught unknown exception", futureN);
               break;
             }
           }
