@@ -168,7 +168,8 @@ jobs:
           name: Create archive of compiled instance
           command: | 
               ## Enterprise archive not supported yet
-              tar -czf scripts/build/install.tar.gz build/ scripts/ js/ etc/ utils/ 
+              mkdir archive
+              tar -czf archive/install.tar.gz build/ scripts/ js/ etc/ utils/ 
       - store_artifacts:
           path: build/bin/arango*
       - store_artifacts:
@@ -188,6 +189,7 @@ jobs:
             - UnitTests
             - 3rdParty/iresearch/tests/resources
             - 3rdParty/rta-makedata
+            - archive/
 
   run-tests:
     docker:
@@ -255,6 +257,7 @@ jobs:
       - run:
           name: Create docker image from install.tar.gz
           command: |
+            cp archive/install.tar.gz scripts/build/
             cd scripts/build
             docker build -t $CIRCLE_BRANCH --target arangodb-tar-starter -f tar-to-docker.Dockerfile . 
 
