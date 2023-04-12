@@ -34,7 +34,7 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 const fs = require('fs');
 const path = require('path');
-var utils = require('@arangodb/foxx/manager-utils');
+const utils = require('@arangodb/foxx/manager-utils');
 const FoxxManager = require('@arangodb/foxx/manager');
 function loadFoxxIntoZip(path) {
   let zip = utils.zipDirectory(path);
