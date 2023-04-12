@@ -397,14 +397,10 @@ class testRunner {
     this.usersCount = 0;
     this.taskCount = 0;
     this.cleanupChecks = [ ];
-<<<<<<< Updated upstream
-=======
-    this.cleanupChecks.push(failurePointsCheck);
 
     if (checkCollections) {
       this.cleanupChecks.push(tasksTests);
     }
->>>>>>> Stashed changes
     if (checkUsers) {
       this.cleanupChecks.push(usersTests);
     }
