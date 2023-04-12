@@ -3,6 +3,8 @@ devel
 
 * APM-183: Support UTF-8 on UI (collection/view/index names)
 
+* FE-199: Remove URL handling of fields on view screen
+
 * Changed the behavior of the following JavaScript functions in arangosh and
   arangod (e.g. when used from a Foxx service):
 
