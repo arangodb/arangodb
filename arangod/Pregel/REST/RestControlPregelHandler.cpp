@@ -86,8 +86,10 @@ RestControlPregelHandler::forwardingTarget() {
   }
 
   rest::RequestType const type = _request->requestType();
-  if (type != rest::RequestType::POST && type != rest::RequestType::GET &&
-      type != rest::RequestType::DELETE_REQ) {
+
+  // We only need to support forwarding in case we want to cancel a running
+  // pregel job.
+  if (type != rest::RequestType::DELETE_REQ) {
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 

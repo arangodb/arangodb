@@ -82,7 +82,7 @@ auto CollectionStatusWriter::createResult(velocypack::Slice data)
                                   accessModeType);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
-  options.waitForSync = true;
+  options.waitForSync = false;
 
   Result transactionResult = trx.begin();
   if (transactionResult.fail()) {
