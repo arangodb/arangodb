@@ -1,3 +1,12 @@
+v3.9.10.2 (XXXX-XX-XX)
+----------------------
+
+* Apply intermediate commits for replication transactions during initial sync
+  phase of replication in case the follower already had documents.
+  This fixes issues with large replication transactions consuming a lot of
+  memory on followers during getting shards in sync.
+
+
 v3.9.10.1 (2023-03-28)
 ----------------------
 
