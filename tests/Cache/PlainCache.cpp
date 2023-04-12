@@ -361,10 +361,10 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
   {
     auto cacheStats = cacheHit->hitRates();
     auto managerStats = manager.globalHitRates();
-    ASSERT_TRUE(cacheStats.first >= 40.0);
-    ASSERT_TRUE(cacheStats.second >= 40.0);
-    ASSERT_TRUE(managerStats.first >= 40.0);
-    ASSERT_TRUE(managerStats.second >= 40.0);
+    ASSERT_GE(cacheStats.first, 40.0);
+    ASSERT_GE(cacheStats.second, 40.0);
+    ASSERT_GE(managerStats.first, 40.0);
+    ASSERT_GE(managerStats.second, 40.0);
   }
 
   for (std::uint64_t i = 1024; i < 2048; i++) {
@@ -375,10 +375,10 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
     auto managerStats = manager.globalHitRates();
     ASSERT_EQ(cacheStats.first, 0.0);
     ASSERT_EQ(cacheStats.second, 0.0);
-    ASSERT_TRUE(managerStats.first > 10.0);
-    ASSERT_TRUE(managerStats.first < 60.0);
-    ASSERT_TRUE(managerStats.second > 10.0);
-    ASSERT_TRUE(managerStats.second < 60.0);
+    ASSERT_GT(managerStats.first, 10.0);
+    ASSERT_LT(managerStats.first, 60.0);
+    ASSERT_GT(managerStats.second, 10.0);
+    ASSERT_LT(managerStats.second, 60.0);
   }
 
   for (std::uint64_t i = 0; i < 1024; i++) {
@@ -390,14 +390,14 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
   {
     auto cacheStats = cacheMixed->hitRates();
     auto managerStats = manager.globalHitRates();
-    ASSERT_TRUE(cacheStats.first > 10.0);
-    ASSERT_TRUE(cacheStats.first < 60.0);
-    ASSERT_TRUE(cacheStats.second > 10.0);
-    ASSERT_TRUE(cacheStats.second < 60.0);
-    ASSERT_TRUE(managerStats.first > 10.0);
-    ASSERT_TRUE(managerStats.first < 60.0);
-    ASSERT_TRUE(managerStats.second > 10.0);
-    ASSERT_TRUE(managerStats.second < 60.0);
+    ASSERT_GT(cacheStats.first, 10.0);
+    ASSERT_LT(cacheStats.first, 60.0);
+    ASSERT_GT(cacheStats.second, 10.0);
+    ASSERT_LT(cacheStats.second, 60.0);
+    ASSERT_GT(managerStats.first, 10.0);
+    ASSERT_LT(managerStats.first, 60.0);
+    ASSERT_GT(managerStats.second, 10.0);
+    ASSERT_LT(managerStats.second, 60.0);
   }
 
   manager.destroyCache(cacheHit);
