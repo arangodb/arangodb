@@ -954,7 +954,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     /*
      * SmartGraph Traverser
      */
-    waitForSatelliteIfRequired(&engine);
     if (isSmart() && !isDisjoint()) {
       // Note: Using refactored smart graph cluster engine.
       return createBlock(engine, std::move(filterConditionVariables),

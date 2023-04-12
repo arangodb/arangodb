@@ -23,6 +23,7 @@
 
 #include "ClusterQuery.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExecutionEngine.h"
@@ -31,14 +32,22 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryProfile.h"
 #include "Basics/ScopeGuard.h"
+#include "Cluster/CollectionInfoCurrent.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
+#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Cluster/TraverserEngine.h"
+#include "VocBase/LogicalCollection.h"
 
+#include <fmt/chrono.h>
+#include <fmt/format.h>
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
@@ -89,6 +98,62 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
                                            std::move(options));
 }
 
+void ClusterQuery::waitForSatellites() {
+  using namespace std::chrono;
+  using namespace std::chrono_literals;
+  using std::this_thread::sleep_for;
+
+  auto const maxWait = queryOptions().satelliteSyncWait;
+  auto const start = steady_clock::now();
+  auto const end = start + maxWait;
+  auto const waitInterval = duration_cast<decltype(end - start)>(10ms);
+
+  auto const& server = vocbase().server();
+  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  auto const& dbName = vocbase().name();
+  auto const thisServerId = ServerState::instance()->getId();
+
+  _collections.visit([&](std::string const& cname, Collection& collection) {
+    auto const logicalCollection = collection.getCollection();
+    if (collection.isSatellite() &&
+        !logicalCollection->followers()->getLeader().empty()) {
+      // TODO Is this the right thing to look up?
+      auto const cid = std::to_string(logicalCollection->planId().id());
+
+      auto lastCheckedVersion =
+          decltype(std::declval<CollectionInfoCurrent>().getCurrentVersion())(
+              0);
+      // We're a follower of a satellite collection: we may need to wait on
+      // this.
+      for (auto now = steady_clock::now(); now < end; now = steady_clock::now(),
+                sleep_for(std::min(waitInterval, end - now))) {
+        auto const collectionInfoCurrent = ci.getCollectionCurrent(dbName, cid);
+        auto const currentVersion = collectionInfoCurrent->getCurrentVersion();
+        if (currentVersion == lastCheckedVersion) {
+          continue;
+        }
+        lastCheckedVersion = currentVersion;
+
+        auto const servers = collectionInfoCurrent->servers(collection.name());
+        bool const inSync = std::find(servers.begin(), servers.end(),
+                                      thisServerId) != servers.end();
+        if (inSync) {
+          return true;
+        }
+      }
+
+      auto const message = fmt::format(
+          "Timeout of {} reached while waiting for satellite "
+          "{} to get in sync.",
+          maxWait, collection.name());
+      LOG_TOPIC("a6426", INFO, Logger::AQL) << message;
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC, message);
+    }
+    return true;
+  });
+}
+
 void ClusterQuery::prepareClusterQuery(
     VPackSlice querySlice, VPackSlice collections, VPackSlice variables,
     VPackSlice snippets, VPackSlice traverserSlice, VPackBuilder& answerBuilder,
@@ -118,7 +183,6 @@ void ClusterQuery::prepareClusterQuery(
 
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
-  // FIXME change this format to take the raw one?
   ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
   _ast->variables()->fromVelocyPack(variables);
   // creating the plan may have produced some collections
@@ -132,6 +196,8 @@ void ClusterQuery::prepareClusterQuery(
     inaccessibleCollections = _queryOptions.inaccessibleCollections;
   }
 #endif
+
+  waitForSatellites();
 
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
