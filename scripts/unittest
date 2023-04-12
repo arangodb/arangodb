@@ -93,7 +93,7 @@ fi
 (
   cd "${EXEC_PATH}"
   exec $NUMA $ARANGOSH \
-       -c etc${PS}relative${PS}arangosh.conf \
+       -c etc${PS}testing${PS}arangosh.conf \
        --log.level warning \
        --server.endpoint none \
        --javascript.allow-external-process-control true \

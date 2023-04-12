@@ -1782,30 +1782,6 @@ TRI_vocbase_t::collections(bool includeDeleted) {
   return collections;
 }
 
-bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor) {
-  TRI_ASSERT(visitor);
-
-  std::vector<std::shared_ptr<arangodb::LogicalDataSource>> dataSources;
-
-  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
-
-  dataSources.reserve(_dataSourceById.size());
-
-  // create a copy of all the datasource in case 'visitor' modifies
-  // '_dataSourceById'
-  for (auto& entry : _dataSourceById) {
-    dataSources.emplace_back(entry.second);
-  }
-
-  for (auto& dataSource : dataSources) {
-    if (dataSource && !visitor(*dataSource)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
 /// the result is the object excluding _id, _key and _rev

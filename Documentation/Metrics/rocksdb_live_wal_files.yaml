@@ -1,5 +1,5 @@
 name: rocksdb_live_wal_files
-introducedIn: "3.9.10"
+introducedIn: "3.10.5"
 help: |
   Number of live RocksDB WAL files.
 unit: number
