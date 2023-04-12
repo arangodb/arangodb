@@ -293,7 +293,8 @@ workflows:
           edition: x64-community
           enterprise: false
       - create-docker-image:
-          when: { equal: [ true, << pipeline.parameters.dockerize >> ] }
+          requires:
+            - build-ce
 
   enterprise-pr:
     jobs:
