@@ -101,11 +101,6 @@ async function patchViewProperties({
         replace: true
       });
     }
-
-    window.arangoHelper.arangoNotification(
-      "Success",
-      `Updated View: ${view.name}`
-    );
   }
 }
 

@@ -3,13 +3,14 @@ import { useEffect } from "react";
 import { useSWRConfig } from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { FormState } from "../constants";
+import { useSyncSearchViewUpdates } from "../searchAliasView/useSyncSearchViewUpdates";
 
 export function usePatchArangoSearchView(
   view: FormState,
   oldName: string | undefined,
   setChanged: (changed: boolean) => void
 ) {
-  useSyncPatchViewJob({ view });
+  useSyncSearchViewUpdates({ viewName: view.name });
   const handleSave = async () => {
     let hasError = false;
     const isNameChanged = (oldName && view.name !== oldName) || false;
@@ -113,36 +114,3 @@ async function patchViewProperties({
   }
   return result;
 }
-const useSyncPatchViewJob = ({ view }: { view: FormState }) => {
-  const { mutate } = useSWRConfig();
-
-  const checkState = function (
-    error: boolean,
-    jobs: { id: string; collection: string }[]
-  ) {
-    if (error) {
-      window.arangoHelper.arangoError("Jobs", "Could not read pending jobs.");
-    } else {
-      const foundJob = jobs.find(locked => locked.collection === view.name);
-      if (foundJob) {
-        const path = `/view/${view.name}/properties`;
-        mutate(path);
-        window.arangoHelper.arangoNotification(
-          "Success",
-          `Updated View: ${view.name}`
-        );
-        window.arangoHelper.deleteAardvarkJob(foundJob.id);
-      }
-    }
-  };
-  useEffect(() => {
-    window.arangoHelper.getAardvarkJobs(checkState);
-
-    let interval = window.setInterval(() => {
-      window.arangoHelper.getAardvarkJobs(checkState);
-    }, 10000);
-    return () => window.clearInterval(interval);
-    // disabled because function creation can cause re-render, and this only needs to run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-};
