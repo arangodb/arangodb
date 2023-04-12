@@ -1,4 +1,4 @@
-v3.9.10.2 (XXXX-XX-XX)
+v3.9.10.2 (2023-04-13)
 ----------------------
 
 * Apply intermediate commits for replication transactions during initial sync

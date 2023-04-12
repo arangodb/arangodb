@@ -72,20 +72,20 @@ self.__precacheManifest = [
     "url": "static/media/fontawesome-webfont.c8ddf1e5.woff"
   },
   {
-    "revision": "c3547b2ec6f5eb324b44d8a0c6b2dd31",
-    "url": "static/media/Roboto-300.c3547b2e.eot"
+    "revision": "16a9467557c38b4e1b19e981bd17fe3f",
+    "url": "static/media/Roboto-300.16a94675.woff2"
   },
   {
     "revision": "1dc35d25e61d819a9c357074014867ab",
     "url": "static/media/fontawesome-webfont.1dc35d25.ttf"
   },
   {
-    "revision": "16a9467557c38b4e1b19e981bd17fe3f",
-    "url": "static/media/Roboto-300.16a94675.woff2"
-  },
-  {
     "revision": "7e2d32e7141050d758a38b4ec96390c0",
     "url": "static/media/Roboto-300.7e2d32e7.woff"
+  },
+  {
+    "revision": "c3547b2ec6f5eb324b44d8a0c6b2dd31",
+    "url": "static/media/Roboto-300.c3547b2e.eot"
   },
   {
     "revision": "634f53eb79efa455a9e9d85d608b3447",
@@ -104,10 +104,6 @@ self.__precacheManifest = [
     "url": "static/media/Roboto-regular.f84cb1bf.woff2"
   },
   {
-    "revision": "d7c639084f684d66a1bc66855d193ed8",
-    "url": "static/media/fontawesome-webfont.d7c63908.svg"
-  },
-  {
     "revision": "f94d5e5102359961c44a1da1b58d37c9",
     "url": "static/media/Roboto-regular.f94d5e51.woff"
   },
@@ -116,12 +112,12 @@ self.__precacheManifest = [
     "url": "static/media/Roboto-regular.38861cba.ttf"
   },
   {
-    "revision": "3d3a53586bd78d1069ae4b89a3b9aa98",
-    "url": "static/media/Roboto-regular.3d3a5358.svg"
-  },
-  {
     "revision": "2a52a20f9a56010ec5d985abe9bebcc9",
     "url": "static/media/Roboto-500.2a52a20f.eot"
+  },
+  {
+    "revision": "3d3a53586bd78d1069ae4b89a3b9aa98",
+    "url": "static/media/Roboto-regular.3d3a5358.svg"
   },
   {
     "revision": "1afbee5a09a022fe0287f16e9a48da1f",
@@ -132,16 +128,20 @@ self.__precacheManifest = [
     "url": "static/media/Roboto-500.0f3b7101.woff"
   },
   {
+    "revision": "d7c639084f684d66a1bc66855d193ed8",
+    "url": "static/media/fontawesome-webfont.d7c63908.svg"
+  },
+  {
     "revision": "88f29ea5a372d06f521395134f62ab91",
     "url": "static/media/Roboto-500.88f29ea5.ttf"
   },
   {
-    "revision": "f1d811cdfaea49c969500d4bbe52251b",
-    "url": "static/media/Roboto-500.f1d811cd.svg"
-  },
-  {
     "revision": "128879da78c6c8eb4e2c07fa3732cea7",
     "url": "static/media/Roboto-700.128879da.eot"
+  },
+  {
+    "revision": "f1d811cdfaea49c969500d4bbe52251b",
+    "url": "static/media/Roboto-500.f1d811cd.svg"
   },
   {
     "revision": "3b38c16e4b39e5fd4017cd5055b0d505",
