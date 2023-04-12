@@ -19,7 +19,6 @@ export function usePatchArangoSearchView(
       }
 
       if (!hasError) {
-        console.log("patch!");
         await patchViewProperties({ view, oldName, setChanged });
       }
     } catch (e: any) {
@@ -121,7 +120,6 @@ const useSyncPatchViewJob = ({ view }: { view: FormState }) => {
     error: boolean,
     jobs: { id: string; collection: string }[]
   ) {
-    console.log({error, jobs})
     if (error) {
       window.arangoHelper.arangoError("Jobs", "Could not read pending jobs.");
     } else {
