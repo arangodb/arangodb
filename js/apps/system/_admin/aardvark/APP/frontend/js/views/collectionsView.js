@@ -54,9 +54,9 @@
           });
 
           this.collection.each(function (model) {
-            $('#collection_' + CSS.escape(model.get('name'))).removeClass('locked');
-            if ($('#collection_' + CSS.escape(model.get('name')) + ' .corneredBadge').hasClass('inProgress')) {
-              $('#collection_' + CSS.escape(model.get('name')) + ' .corneredBadge').removeClass('inProgress');
+            $('#collection_' + window.CSS.escape(model.get('name'))).removeClass('locked');
+            if ($('#collection_' + window.CSS.escape(model.get('name')) + ' .corneredBadge').hasClass('inProgress')) {
+              $('#collection_' + window.CSS.escape(model.get('name')) + ' .corneredBadge').removeClass('inProgress');
             }
           });
         }
