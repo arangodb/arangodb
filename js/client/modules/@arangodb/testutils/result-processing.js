@@ -339,7 +339,7 @@ function saveToJunitXML(options, results) {
       state.xml.elem('/testsuite');
       let fn;
       try {
-        fn = fs.join(options.testOutputDirectory,
+        fn = fs.join(options.testXmlOutputDirectory,
                          'UNITTEST_RESULT_' + state.xmlName + '.xml');
         if ((fn.length > 250) && (internal.platform.substr(0, 3) === 'win')) {
           fn = '\\\\?\\' + fn;
