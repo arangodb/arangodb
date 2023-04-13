@@ -1,29 +1,29 @@
+import { Box } from "@chakra-ui/react";
 import { chain, map } from "lodash";
 import React, { useContext, useEffect, useState } from "react";
-import { Link, useRouteMatch } from "react-router-dom";
 import { components, MultiValueGenericProps } from "react-select";
 import useSWR from "swr";
 import MultiSelect from "../../../../components/select/MultiSelect";
 import { OptionType } from "../../../../components/select/SelectBase";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { FormState, ViewContext } from "../../constants";
+import { useLinksContext } from "../../LinksContext";
 
 const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
-  const match = useRouteMatch();
-  const to =
-    match && match.url === "/"
-      ? props.data.value
-      : `${match.url}/${props.data.value}`;
+  const { setCurrentField } = useLinksContext();
   return (
-    <Link
-      to={to}
+    <Box
       style={{
         textDecoration: "underline",
         minWidth: 0 // because parent is flex
       }}
+      cursor="pointer"
+      onClick={() => {
+        setCurrentField({ fieldPath: `links["${props.data.value}"]` });
+      }}
     >
       <components.MultiValueLabel {...props} />
-    </Link>
+    </Box>
   );
 };
 
@@ -78,7 +78,6 @@ const CollectionsDropdown = () => {
       value: pair[0]
     }))
     .value();
-
   return (
     <MultiSelect
       value={validLinks}
