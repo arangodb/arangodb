@@ -1,10 +1,11 @@
 import { Box } from "@chakra-ui/react";
 import React from "react";
-import { useHistory } from "react-router-dom";
+import { encodeHelper } from "../../../utils/encodeHelper";
 import { SearchViewTypeWithLock } from "./useViewsList";
 
 export const ViewTile = ({ view }: { view: SearchViewTypeWithLock }) => {
-  const history = useHistory();
+  const { encoded: encodedName } = encodeHelper(view.name);
+
   return (
     <Box
       display="flex"
@@ -13,7 +14,9 @@ export const ViewTile = ({ view }: { view: SearchViewTypeWithLock }) => {
       boxShadow="md"
       backgroundColor="white"
       cursor="pointer"
-      onClick={() => history.push(`/view/${encodeURIComponent(view.name)}`)}
+      onClick={() => {
+        window.location.href = `${window.location.origin}${window.location.pathname}#view/${encodedName}`;
+      }}
       title={view.name}
     >
       <Box
