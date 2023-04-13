@@ -50,7 +50,10 @@ auto AQLResultsAvailable::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .prevState = pregel::message::PrevState::COMPUTING},
         .newState = std::move(newState)};
   }
   conductor.workers.erase(sender);

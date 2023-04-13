@@ -4,6 +4,7 @@
 #include "Pregel/Conductor/ExecutionStates/LoadingState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/State.h"
+#include "CanceledState.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -58,6 +59,15 @@ auto CreateWorkers::messagesToServers()
 auto CreateWorkers::receive(actor::ActorPID sender,
                             message::ConductorMessages message)
     -> std::optional<StateChange> {
+  if (std::holds_alternative<message::Cancel>(message)) {
+    auto newState = std::make_unique<Canceled>(conductor);
+    auto stateName = newState->name();
+
+    return StateChange{
+        .statusMessage = pregel::message::Canceled{.state = stateName},
+        .newState = std::move(newState)};
+  }
+
   if (not sentServers.contains(sender.server) or
       not std::holds_alternative<ResultT<message::WorkerCreated>>(message)) {
     auto newState = std::make_unique<FatalError>(conductor);

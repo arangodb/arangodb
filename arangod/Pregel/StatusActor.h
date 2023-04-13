@@ -23,13 +23,13 @@
 #pragma once
 
 #include <chrono>
-#include <utility>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Inspection/Status.h"
 #include "Inspection/Format.h"
 #include "Pregel/DatabaseTypes.h"
 #include "Pregel/StatusMessages.h"
+#include "Pregel/MetricsMessages.h"
 #include "fmt/core.h"
 #include "fmt/chrono.h"
 
@@ -224,7 +224,8 @@ auto inspect(Inspector& f, StatusDetails& x) {
 }
 
 struct StatusState {
-  explicit StatusState(actor::ActorPID metricsActor) : metricsActor(std::move(metricsActor)) {}
+  explicit StatusState(actor::ActorPID metricsActor)
+      : metricsActor(std::move(metricsActor)) {}
 
   std::string stateName;
   ExecutionNumber id;
@@ -282,12 +283,31 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
+  auto operator()(message::PregelStarted msg) -> std::unique_ptr<StatusState> {
+    this->state->stateName = msg.state;
+    this->state->timings.totalRuntime.setStart(msg.time);
+
+    auto duration = std::chrono::microseconds{msg.time.value};
+    this->state->created =
+        std::chrono::time_point<std::chrono::steady_clock>{duration};
+
+    this->template dispatch(this->state->metricsActor,
+                            pregel::message::ConductorStarted{});
+
+    return std::move(this->state);
+  }
+
   auto operator()(message::LoadingStarted loading)
       -> std::unique_ptr<StatusState> {
     this->state->stateName = loading.state;
     this->state->timings.loading.setStart(loading.time);
+
+    this->template dispatch(this->state->metricsActor,
+                            pregel::message::ConductorLoadingStarted{});
+
     return std::move(this->state);
   }
+
   auto operator()(message::GraphLoadingUpdate msg)
       -> std::unique_ptr<StatusState> {
     this->state->details.update(
@@ -298,58 +318,15 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
-  auto operator()(message::GlobalSuperStepUpdate msg)
-      -> std::unique_ptr<StatusState> {
-    this->state->details.update(
-        this->sender.server, msg.gss,
-        GlobalSuperStepDetails{
-            .verticesProcessed = msg.verticesProcessed,
-            .messagesSent = msg.messagesSent,
-            .messagesReceived = msg.messagesReceived,
-            .memoryBytesUsedForMessages = msg.memoryBytesUsedForMessages});
-    return std::move(this->state);
-  }
-
-  auto operator()(message::GraphStoringUpdate msg)
-      -> std::unique_ptr<StatusState> {
-    this->state->details.update(
-        this->sender.server,
-        GraphStoringDetails{.verticesStored = msg.verticesStored});
-    return std::move(this->state);
-  }
-
-  auto operator()(message::PregelStarted msg) -> std::unique_ptr<StatusState> {
-    this->state->stateName = msg.state;
-    this->state->timings.totalRuntime.setStart(msg.time);
-
-    auto duration = std::chrono::microseconds{msg.time.value};
-    this->state->created =
-        std::chrono::time_point<std::chrono::steady_clock>{duration};
-
-    this->template dispatch(this->state->metricsActor,
-                            );
-
-    return std::move(this->state);
-  }
-
   auto operator()(message::ComputationStarted msg)
       -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;
     this->state->timings.loading.setStop(msg.time);
     this->state->timings.computation.setStart(msg.time);
     this->state->timings.gss.push_back(PrintableDuration::withStart(msg.time));
-    return std::move(this->state);
-  }
 
-  auto operator()(message::StoringStarted msg) -> std::unique_ptr<StatusState> {
-    this->state->stateName = msg.state;
-    this->state->timings.computation.setStop(msg.time);
-
-    if (not this->state->timings.gss.empty()) {
-      this->state->timings.gss.back().setStop(msg.time);
-    }
-
-    this->state->timings.storing.setStart(msg.time);
+    this->template dispatch(this->state->metricsActor,
+                            pregel::message::ConductorComputingStarted{});
 
     return std::move(this->state);
   }
@@ -366,6 +343,42 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
+  auto operator()(message::GlobalSuperStepUpdate msg)
+      -> std::unique_ptr<StatusState> {
+    this->state->details.update(
+        this->sender.server, msg.gss,
+        GlobalSuperStepDetails{
+            .verticesProcessed = msg.verticesProcessed,
+            .messagesSent = msg.messagesSent,
+            .messagesReceived = msg.messagesReceived,
+            .memoryBytesUsedForMessages = msg.memoryBytesUsedForMessages});
+    return std::move(this->state);
+  }
+
+  auto operator()(message::StoringStarted msg) -> std::unique_ptr<StatusState> {
+    this->state->stateName = msg.state;
+    this->state->timings.computation.setStop(msg.time);
+
+    if (not this->state->timings.gss.empty()) {
+      this->state->timings.gss.back().setStop(msg.time);
+    }
+
+    this->state->timings.storing.setStart(msg.time);
+
+    this->template dispatch(this->state->metricsActor,
+                            pregel::message::ConductorStoringStarted{});
+
+    return std::move(this->state);
+  }
+
+  auto operator()(message::GraphStoringUpdate msg)
+      -> std::unique_ptr<StatusState> {
+    this->state->details.update(
+        this->sender.server,
+        GraphStoringDetails{.verticesStored = msg.verticesStored});
+    return std::move(this->state);
+  }
+
   auto operator()(message::PregelFinished& msg)
       -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;
@@ -374,6 +387,10 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->timings.storing.setStop(msg.time);
     this->state->timings.totalRuntime.setStop(msg.time);
 
+    this->template dispatch(this->state->metricsActor,
+                            pregel::message::ConductorFinished{
+                                .prevState = message::PrevState::STORING});
+
     return std::move(this->state);
   }
 
@@ -381,12 +398,20 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->stateName = msg.state;
     this->state->timings.stopAll(msg.time);
 
+    this->template dispatch(
+        this->state->metricsActor,
+        pregel::message::ConductorFinished{.prevState = msg.prevState});
+
     return std::move(this->state);
   }
 
   auto operator()(message::Canceled& msg) -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;
     this->state->timings.stopAll(msg.time);
+
+    this->template dispatch(
+        this->state->metricsActor,
+        pregel::message::ConductorFinished{.prevState = msg.prevState});
 
     return std::move(this->state);
   }

@@ -58,6 +58,7 @@
 #include "Pregel/ResultActor.h"
 #include "Pregel/ResultMessages.h"
 #include "Pregel/SpawnActor.h"
+#include "Pregel/MetricsActor.h"
 #include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
@@ -446,7 +447,7 @@ PregelFeature::PregelFeature(Server& server)
       "_system", std::make_unique<MetricsState>(_metrics),
       message::MetricsStart{});
   _metricsActor = actor::ActorPID{.server = ServerState::instance()->getId(),
-                                  .database = "_system",
+                                  .database = StaticStrings::SystemDatabase,
                                   .id = metricsActorID};
 
   setOptional(true);

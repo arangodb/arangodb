@@ -6,6 +6,7 @@
 #include "Pregel/Conductor/ExecutionStates/StoringState.h"
 #include "Pregel/Conductor/State.h"
 #include "Pregel/MasterContext.h"
+#include "CanceledState.h"
 
 using namespace arangodb::pregel::conductor;
 
@@ -51,13 +52,28 @@ auto Computing::messages()
 auto Computing::receive(actor::ActorPID sender,
                         message::ConductorMessages message)
     -> std::optional<StateChange> {
+  if (std::holds_alternative<message::Cancel>(message)) {
+    auto newState = std::make_unique<Canceled>(conductor);
+    auto stateName = newState->name();
+
+    return StateChange{
+        .statusMessage =
+            pregel::message::Canceled{
+                .state = stateName,
+                .prevState = pregel::message::PrevState::COMPUTING},
+        .newState = std::move(newState)};
+  }
+
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::GlobalSuperStepFinished>>(
           message)) {
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .prevState = pregel::message::PrevState::COMPUTING},
         .newState = std::move(newState)};
   }
   auto gssFinished =
@@ -66,7 +82,10 @@ auto Computing::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .prevState = pregel::message::PrevState::COMPUTING},
         .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);

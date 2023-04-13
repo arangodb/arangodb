@@ -28,37 +28,12 @@
 #include "Inspection/Types.h"
 
 namespace arangodb::pregel::message {
-enum class GaugeOp { INCR, DECR };
+enum class PrevState { LOADING, COMPUTING, STORING, OTHER };
 template<typename Inspector>
-auto inspect(Inspector& f, GaugeOp& x) {
-  return f.enumeration(x).values(GaugeOp::DECR, "Decrement", GaugeOp::INCR,
-                                 "Increment");
-}
-
-enum class Gauge {
-  CONDUCTORS_TOTAL,
-  CONDUCTORS_LOADING,
-  CONDUCTORS_RUNNING,
-  CONDUCTORS_STORING,
-
-  WORKERS_TOTAL,
-  WORKERS_LOADING,
-  WORKERS_RUNNING,
-  WORKERS_STORING,
-
-  THREAD_COUNT,
-  MEMORY_FOR_GRAPH,
-};
-template<typename Inspector>
-auto inspect(Inspector& f, Gauge& x) {
+auto inspect(Inspector& f, PrevState& x) {
   return f.enumeration(x).values(
-      Gauge::CONDUCTORS_TOTAL, "CONDUCTORS_TOTAL", Gauge::CONDUCTORS_LOADING,
-      "CONDUCTORS_LOADING", Gauge::CONDUCTORS_STORING, "CONDUCTORS_STORING",
-      Gauge::CONDUCTORS_RUNNING, "CONDUCTORS_RUNNING", Gauge::WORKERS_TOTAL,
-      "WORKERS_TOTAL", Gauge::WORKERS_LOADING, "WORKERS_LOADING",
-      Gauge::WORKERS_STORING, "WORKERS_STORING", Gauge::WORKERS_RUNNING,
-      "WORKERS_RUNNING", Gauge::THREAD_COUNT, "THREAD_COUNT",
-      Gauge::MEMORY_FOR_GRAPH, "MEMORY_FOR_GRAPH");
+      PrevState::LOADING, "LOADING", PrevState::COMPUTING, "COMPUTING",
+      PrevState::STORING, "STORING", PrevState::OTHER, "OTHER");
 }
 
 struct MetricsStart {};
@@ -67,99 +42,126 @@ auto inspect(Inspector& f, MetricsStart& x) {
   return f.object(x).fields();
 }
 
-template<Gauge G, GaugeOp O>
-struct GaugeUpdate {
-  uint64_t amount;
-};
-template<typename Inspector, Gauge G, GaugeOp O>
-auto inspect(Inspector& f, GaugeUpdate<G, O>& x) {
-  return f.object(x).fields(f.field("Gauge", G), f.field("GaugeOp", O),
-                            f.field("amount", x.amount));
-}
-
-enum class Counter { MESSAGES_SENT, MESSAGES_RECEIVED };
+struct ConductorStarted {};
 template<typename Inspector>
-auto inspect(Inspector& f, Counter& x) {
-  return f.enumeration(x).values(Counter::MESSAGES_SENT, "MESSAGES_SENT",
-                                 Counter::MESSAGES_RECEIVED,
-                                 "MESSAGES_RECEIVED");
+auto inspect(Inspector& f, ConductorStarted& x) {
+  return f.object(x).fields();
 }
 
-template<Counter C>
-struct CounterUpdate {
-  uint64_t amount;
+struct ConductorLoadingStarted {};
+template<typename Inspector>
+auto inspect(Inspector& f, ConductorLoadingStarted& x) {
+  return f.object(x).fields();
+}
+
+struct ConductorComputingStarted {};
+template<typename Inspector>
+auto inspect(Inspector& f, ConductorComputingStarted& x) {
+  return f.object(x).fields();
+}
+
+struct ConductorStoringStarted {};
+template<typename Inspector>
+auto inspect(Inspector& f, ConductorStoringStarted& x) {
+  return f.object(x).fields();
+}
+
+struct ConductorFinished {
+  PrevState prevState;
 };
-template<typename Inspector, Counter C>
-auto inspect(Inspector& f, CounterUpdate<C>& x) {
-  return f.object(x).fields(f.field("Counter", C), f.field("amount", x.amount));
+template<typename Inspector>
+auto inspect(Inspector& f, ConductorFinished& x) {
+  return f.object(x).fields(f.field("prevState", x.prevState));
 }
 
-using MetricsMessagesBase =
-    std::variant<MetricsStart,
-                 GaugeUpdate<Gauge::CONDUCTORS_TOTAL, GaugeOp::INCR>,
-                 GaugeUpdate<Gauge::CONDUCTORS_LOADING, GaugeOp::INCR>,
-                 GaugeUpdate<Gauge::CONDUCTORS_RUNNING, GaugeOp::INCR>,
-                 GaugeUpdate<Gauge::CONDUCTORS_STORING, GaugeOp::INCR>,
-                 GaugeUpdate<Gauge::WORKERS_TOTAL, GaugeOp::INCR>,
-                 GaugeUpdate<Gauge::WORKERS_LOADING, GaugeOp::INCR>,
-                 GaugeUpdate<Gauge::WORKERS_RUNNING, GaugeOp::INCR>,
-                 GaugeUpdate<Gauge::WORKERS_STORING, GaugeOp::INCR>,
-                 GaugeUpdate<Gauge::THREAD_COUNT, GaugeOp::INCR>,
-                 GaugeUpdate<Gauge::MEMORY_FOR_GRAPH, GaugeOp::INCR>,
-                 GaugeUpdate<Gauge::CONDUCTORS_TOTAL, GaugeOp::DECR>,
-                 GaugeUpdate<Gauge::CONDUCTORS_LOADING, GaugeOp::DECR>,
-                 GaugeUpdate<Gauge::CONDUCTORS_RUNNING, GaugeOp::DECR>,
-                 GaugeUpdate<Gauge::CONDUCTORS_STORING, GaugeOp::DECR>,
-                 GaugeUpdate<Gauge::WORKERS_TOTAL, GaugeOp::DECR>,
-                 GaugeUpdate<Gauge::WORKERS_LOADING, GaugeOp::DECR>,
-                 GaugeUpdate<Gauge::WORKERS_RUNNING, GaugeOp::DECR>,
-                 GaugeUpdate<Gauge::WORKERS_STORING, GaugeOp::DECR>,
-                 GaugeUpdate<Gauge::THREAD_COUNT, GaugeOp::DECR>,
-                 GaugeUpdate<Gauge::MEMORY_FOR_GRAPH, GaugeOp::DECR>,
-                 CounterUpdate<Counter::MESSAGES_SENT>,
-                 CounterUpdate<Counter::MESSAGES_RECEIVED>>;
+struct WorkerStarted {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerStarted& x) {
+  return f.object(x).fields();
+}
 
+struct WorkerLoadingStarted {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerLoadingStarted& x) {
+  return f.object(x).fields();
+}
+
+struct WorkerLoadingFinished {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerLoadingFinished& x) {
+  return f.object(x).fields();
+}
+
+struct WorkerComputingStarted {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerComputingStarted& x) {
+  return f.object(x).fields();
+}
+
+struct WorkerComputingFinished {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerComputingFinished& x) {
+  return f.object(x).fields();
+}
+
+struct WorkerStoringStarted {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerStoringStarted& x) {
+  return f.object(x).fields();
+}
+
+struct WorkerStoringFinished {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerStoringFinished& x) {
+  return f.object(x).fields();
+}
+
+struct WorkerGssStarted {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerGssStarted& x) {
+  return f.object(x).fields();
+}
+
+struct WorkerGssFinished {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerGssFinished& x) {
+  return f.object(x).fields();
+}
+
+struct WorkerFinished {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerFinished& x) {
+  return f.object(x).fields();
+}
+
+using MetricsMessagesBase = std::variant<
+    MetricsStart, ConductorStarted, ConductorLoadingStarted,
+    ConductorComputingStarted, ConductorStoringStarted, ConductorFinished,
+    WorkerStarted, WorkerLoadingStarted, WorkerLoadingFinished,
+    WorkerComputingStarted, WorkerComputingFinished, WorkerStoringStarted,
+    WorkerStoringFinished, WorkerGssStarted, WorkerGssFinished, WorkerFinished>;
 struct MetricsMessages : MetricsMessagesBase {
   using MetricsMessagesBase::variant;
 };
-template<typename Inspector, Gauge G, GaugeOp O, Counter C>
+template<typename Inspector>
 auto inspect(Inspector& f, MetricsMessages& x) {
   namespace insp = arangodb::inspection;
 
   return f.variant(x).unqualified().alternatives(
       insp::type<MetricsStart>("MetricsStart"),
-      insp::type<GaugeUpdate<G, O>>("GaugeUpdate"),
-      insp::type<CounterUpdate<C>>("CounterUpdate"));
+      insp::type<ConductorStarted>("ConductorStarted"),
+      insp::type<ConductorLoadingStarted>("ConductorLoadingStarted"),
+      insp::type<ConductorComputingStarted>("ConductorComputingStarted"),
+      insp::type<ConductorStoringStarted>("ConductorStoringStarted"),
+      insp::type<ConductorFinished>("ConductorFinished"),
+      insp::type<WorkerStarted>("WorkerStarted"),
+      insp::type<WorkerLoadingStarted>("WorkerLoadingStarted"),
+      insp::type<WorkerLoadingFinished>("WorkerLoadingFinished"),
+      insp::type<WorkerComputingStarted>("WorkerComputingStarted"),
+      insp::type<WorkerComputingFinished>("WorkerComputingFinished"),
+      insp::type<WorkerStoringStarted>("WorkerStoringStarted"),
+      insp::type<WorkerStoringFinished>("WorkerStoringFinished"),
+      insp::type<WorkerGssStarted>("WorkerGssStarted"),
+      insp::type<WorkerGssFinished>("WorkerGssFinished"));
 }
-
-// template<typename Inspector>
-// auto inspect(Inspector& f, MetricsMessages& x) {
-//   namespace insp = arangodb::inspection;
-//
-//   return f.variant(x).unqualified().alternatives(
-//       insp::type<GaugeUpdate<Gauge::CONDUCTORS_TOTAL>>(
-//           "GaugeUpdate (CONDUCTORS_TOTAL)"),
-//       insp::type<GaugeUpdate<Gauge::CONDUCTORS_LOADING>>(
-//           "GaugeUpdate (CONDUCTORS_LOADING)"),
-//       insp::type<GaugeUpdate<Gauge::CONDUCTORS_STORING>>(
-//           "GaugeUpdate (CONDUCTORS_STORING)"),
-//       insp::type<GaugeUpdate<Gauge::CONDUCTORS_RUNNING>>(
-//           "GaugeUpdate (CONDUCTORS_RUNNING)"),
-//       insp::type<GaugeUpdate<Gauge::WORKERS_TOTAL>>(
-//           "GaugeUpdate (WORKERS_TOTAL)"),
-//       insp::type<GaugeUpdate<Gauge::WORKERS_LOADING>>(
-//           "GaugeUpdate (WORKERS_LOADING)"),
-//       insp::type<GaugeUpdate<Gauge::WORKERS_STORING>>(
-//           "GaugeUpdate (WORKERS_STORING)"),
-//       insp::type<GaugeUpdate<Gauge::WORKERS_RUNNING>>(
-//           "GaugeUpdate (WORKERS_RUNNING)"),
-//       insp::type<GaugeUpdate<Gauge::THREAD_COUNT>>(
-//           "GaugeUpdate (THREAD_COUNT)"),
-//       insp::type<GaugeUpdate<Gauge::MEMORY_FOR_GRAPH>>(
-//           "GaugeUpdate (MEMORY_FOR_GRAPH)"),
-//       insp::type<CounterUpdate<Counter::MESSAGES_SENT>>(
-//           "CounterUpdate (MESSAGES_SENT)"),
-//       insp::type<CounterUpdate<Counter::MESSAGES_RECEIVED>>(
-//           "CounterUpdate (MESSAGES_RECEIVED)"));
-// }
 }  // namespace arangodb::pregel::message

@@ -30,159 +30,68 @@
 
 namespace arangodb::pregel {
 struct MetricsState {
+  explicit MetricsState(const std::shared_ptr<PregelMetrics>& metrics)
+      : metrics(metrics) {}
+
   std::shared_ptr<PregelMetrics> metrics;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, MetricsState& x) {
+  // TODO: Implement this?
+  return f.object(x).fields();
+}
 
 template<typename Runtime>
 struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
-  auto operator()([[maybe_unused]] message::MetricsStart msg) {
+  auto operator()(message::MetricsStart msg) {
     LOG_TOPIC("89eac", INFO, Logger::PREGEL)
         << fmt::format("Metric Actor {} started", this->self);
 
     return std::move(this->state);
   }
 
-  template<message::Gauge G, message::GaugeOp O>
-  auto operator()(message::GaugeUpdate<G, O> gauge)
-      -> std::unique_ptr<MetricsState> {
-    std::visit(
-        arangodb::overload{
-            // INCR
-            [this](message::GaugeUpdate<message::Gauge::CONDUCTORS_TOTAL,
-                                        message::GaugeOp::INCR>
-                       g) {
-              this->state->metrics->pregelConductorsNumber->fetch_add(g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::CONDUCTORS_LOADING,
-                                        message::GaugeOp::INCR>
-                       g) {
-              this->state->metrics->pregelConductorsLoadingNumber->fetch_add(
-                  g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::CONDUCTORS_RUNNING,
-                                        message::GaugeOp::INCR>
-                       g) {
-              this->state->metrics->pregelConductorsRunningNumber->fetch_add(
-                  g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::CONDUCTORS_STORING,
-                                        message::GaugeOp::INCR>
-                       g) {
-              this->state->metrics->pregelConductorsStoringNumber->fetch_add(
-                  g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::WORKERS_TOTAL,
-                                        message::GaugeOp::INCR>
-                       g) {
-              this->state->metrics->pregelWorkersNumber->fetch_add(g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::WORKERS_LOADING,
-                                        message::GaugeOp::INCR>
-                       g) {
-              this->state->metrics->pregelWorkersLoadingNumber->fetch_add(
-                  g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::WORKERS_RUNNING,
-                                        message::GaugeOp::INCR>
-                       g) {
-              this->state->metrics->pregelWorkersRunningNumber->fetch_add(
-                  g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::WORKERS_STORING,
-                                        message::GaugeOp::INCR>
-                       g) {
-              this->state->metrics->pregelWorkersStoringNumber->fetch_add(
-                  g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::THREAD_COUNT,
-                                        message::GaugeOp::INCR>
-                       g) {
-              this->state->metrics->pregelNumberOfThreads->fetch_add(g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::MEMORY_FOR_GRAPH,
-                                        message::GaugeOp::INCR>
-                       g) {
-              this->state->metrics->pregelMemoryUsedForGraph->fetch_add(
-                  g.amount);
-            },
-
-            // DECR
-            [this](message::GaugeUpdate<message::Gauge::CONDUCTORS_TOTAL,
-                                        message::GaugeOp::DECR>
-                       g) {
-              this->state->metrics->pregelConductorsNumber->fetch_sub(g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::CONDUCTORS_LOADING,
-                                        message::GaugeOp::DECR>
-                       g) {
-              this->state->metrics->pregelConductorsLoadingNumber->fetch_sub(
-                  g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::CONDUCTORS_RUNNING,
-                                        message::GaugeOp::DECR>
-                       g) {
-              this->state->metrics->pregelConductorsRunningNumber->fetch_sub(
-                  g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::CONDUCTORS_STORING,
-                                        message::GaugeOp::DECR>
-                       g) {
-              this->state->metrics->pregelConductorsStoringNumber->fetch_sub(
-                  g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::WORKERS_TOTAL,
-                                        message::GaugeOp::DECR>
-                       g) {
-              this->state->metrics->pregelWorkersNumber->fetch_sub(g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::WORKERS_LOADING,
-                                        message::GaugeOp::DECR>
-                       g) {
-              this->state->metrics->pregelWorkersLoadingNumber->fetch_sub(
-                  g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::WORKERS_RUNNING,
-                                        message::GaugeOp::DECR>
-                       g) {
-              this->state->metrics->pregelWorkersRunningNumber->fetch_sub(
-                  g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::WORKERS_STORING,
-                                        message::GaugeOp::DECR>
-                       g) {
-              this->state->metrics->pregelWorkersStoringNumber->fetch_sub(
-                  g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::THREAD_COUNT,
-                                        message::GaugeOp::DECR>
-                       g) {
-              this->state->metrics->pregelNumberOfThreads->fetch_sub(g.amount);
-            },
-            [this](message::GaugeUpdate<message::Gauge::MEMORY_FOR_GRAPH,
-                                        message::GaugeOp::DECR>
-                       g) {
-              this->state->metrics->pregelMemoryUsedForGraph->fetch_sub(
-                  g.amount);
-            },
-        },
-        gauge);
+  auto operator()(message::ConductorStarted msg) {
+    this->state->metrics->pregelConductorsNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  template<message::Counter C>
-  auto operator()(message::CounterUpdate<C> counter)
-      -> std::unique_ptr<MetricsState> {
-    std::visit(
-        arangodb::overload{
-            [this](message::CounterUpdate<message::Counter::MESSAGES_SENT> c) {
-              this->state->metrics->pregelMessagesSent->count(c.amount);
-            },
-            [this](
-                message::CounterUpdate<message::Counter::MESSAGES_RECEIVED> c) {
-              this->state->metrics->pregelMessagesReceived->count(c.amount);
-            }},
-        counter);
+  auto operator()(message::ConductorLoadingStarted msg) {
+    this->state->metrics->pregelConductorsLoadingNumber->fetch_add(1);
+
+    return std::move(this->state);
+  }
+
+  auto operator()(message::ConductorComputingStarted msg) {
+    this->state->metrics->pregelConductorsLoadingNumber->fetch_sub(1);
+    this->state->metrics->pregelConductorsRunningNumber->fetch_add(1);
+
+    return std::move(this->state);
+  }
+
+  auto operator()(message::ConductorStoringStarted msg) {
+    this->state->metrics->pregelConductorsRunningNumber->fetch_sub(1);
+    this->state->metrics->pregelConductorsStoringNumber->fetch_add(1);
+
+    return std::move(this->state);
+  }
+
+  auto operator()(message::ConductorFinished msg) {
+    this->state->metrics->pregelConductorsNumber->fetch_sub(1);
+
+    switch (msg.prevState) {
+      case message::PrevState::LOADING:
+        this->state->metrics->pregelConductorsLoadingNumber->fetch_sub(1);
+        break;
+      case message::PrevState::COMPUTING:
+        this->state->metrics->pregelConductorsRunningNumber->fetch_sub(1);
+        break;
+      case message::PrevState::STORING:
+        this->state->metrics->pregelConductorsStoringNumber->fetch_sub(1);
+        break;
+      case message::PrevState::OTHER:
+        break;
+    }
 
     return std::move(this->state);
   }

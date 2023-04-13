@@ -42,7 +42,6 @@
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/StatusActor.h"
-#include "Pregel/MetricsActor.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"

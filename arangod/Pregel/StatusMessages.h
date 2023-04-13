@@ -27,6 +27,7 @@
 #include "Actor/ActorPID.h"
 #include "Pregel/PregelOptions.h"
 #include "Inspection/Types.h"
+#include "MetricsMessages.h"
 
 namespace arangodb::pregel::message {
 
@@ -167,6 +168,7 @@ auto inspect(Inspector& f, PregelFinished& x) {
 struct InFatalError {
   std::string state;
   TimingInMicroseconds time = TimingInMicroseconds::now();
+  PrevState prevState = PrevState::OTHER;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, InFatalError& x) {
@@ -176,6 +178,7 @@ auto inspect(Inspector& f, InFatalError& x) {
 struct Canceled {
   std::string state;
   TimingInMicroseconds time = TimingInMicroseconds::now();
+  PrevState prevState = PrevState::OTHER;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Canceled& x) {

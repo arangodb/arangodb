@@ -5,6 +5,7 @@
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/State.h"
 #include "Pregel/MasterContext.h"
+#include "CanceledState.h"
 
 using namespace arangodb::pregel::conductor;
 
@@ -35,6 +36,18 @@ auto Loading::messages()
 auto Loading::receive(actor::ActorPID sender,
                       message::ConductorMessages message)
     -> std::optional<StateChange> {
+  if (std::holds_alternative<message::Cancel>(message)) {
+    auto newState = std::make_unique<Canceled>(conductor);
+    auto stateName = newState->name();
+
+    return StateChange{
+        .statusMessage =
+            pregel::message::Canceled{
+                .state = stateName,
+                .prevState = pregel::message::PrevState::LOADING},
+        .newState = std::move(newState)};
+  }
+
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::GraphLoaded>>(message)) {
   }
@@ -43,7 +56,10 @@ auto Loading::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .prevState = pregel::message::PrevState::LOADING},
         .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);

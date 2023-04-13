@@ -50,7 +50,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
 
     /*
        CreateWorkers is a special state because it creates the workers instead
-       of just sending messages to them. Therefore we cannot use the messages
+       of just sending messages to them. Therefore, we cannot use the messages
        fct of the ExecutionState but need to call the special messagesToServers
        function which is specific to the CreateWorkers state only
     */
@@ -172,11 +172,11 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
         << fmt::format("Conductor Actor: Run {} is canceled",
                        this->state->specifications.executionNumber);
     if (this->state->executionState->canBeCanceled()) {
-      auto newState = std::make_unique<Canceled>(*this->state);
-      auto stateName = newState->name();
-      changeState(StateChange{
-          .statusMessage = pregel::message::Canceled{.state = stateName},
-          .newState = std::move(newState)});
+      auto stateChange =
+          this->state->executionState->receive(this->sender, msg);
+      if (stateChange.has_value()) {
+        changeState(std::move(stateChange.value()));
+      }
       sendMessagesToWorkers();
     }
     return std::move(this->state);

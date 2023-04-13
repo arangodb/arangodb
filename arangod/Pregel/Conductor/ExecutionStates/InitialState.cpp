@@ -26,6 +26,7 @@
 #include "CreateWorkersState.h"
 #include "Pregel/Conductor/State.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
+#include "CanceledState.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -36,6 +37,15 @@ Initial::Initial(ConductorState& conductor) : conductor{conductor} {}
 auto Initial::receive(actor::ActorPID sender,
                       message::ConductorMessages message)
     -> std::optional<StateChange> {
+  if (std::holds_alternative<message::Cancel>(message)) {
+    auto newState = std::make_unique<Canceled>(conductor);
+    auto stateName = newState->name();
+
+    return StateChange{
+        .statusMessage = pregel::message::Canceled{.state = stateName},
+        .newState = std::move(newState)};
+  }
+
   if (!std::holds_alternative<message::ConductorStart>(message)) {
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();

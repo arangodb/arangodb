@@ -26,6 +26,7 @@
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/ExecutionStates/AQLResultsAvailableState.h"
 #include "Pregel/Conductor/State.h"
+#include "CanceledState.h"
 
 using namespace arangodb::pregel::actor;
 using namespace arangodb::pregel::conductor;
@@ -36,11 +37,26 @@ ProduceAQLResults::ProduceAQLResults(ConductorState& conductor)
 auto ProduceAQLResults::receive(actor::ActorPID sender,
                                 message::ConductorMessages message)
     -> std::optional<StateChange> {
+  if (std::holds_alternative<message::Cancel>(message)) {
+    auto newState = std::make_unique<Canceled>(conductor);
+    auto stateName = newState->name();
+
+    return StateChange{
+        .statusMessage =
+            pregel::message::Canceled{
+                .state = stateName,
+                .prevState = pregel::message::PrevState::COMPUTING},
+        .newState = std::move(newState)};
+  }
+
   if (not std::holds_alternative<message::ResultCreated>(message)) {
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .prevState = pregel::message::PrevState::COMPUTING},
         .newState = std::move(newState)};
   }
   responseCount++;
