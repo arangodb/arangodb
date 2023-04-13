@@ -1,20 +1,21 @@
 import { useEffect } from "react";
 import { useSWRConfig } from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { encodeHelper } from "../../../utils/encodeHelper";
 import { useCollectionIndicesContext } from "./CollectionIndicesContext";
 
 export const useSyncIndexCreationJob = () => {
   const { collectionId, collectionName } = useCollectionIndicesContext();
   const { mutate } = useSWRConfig();
 
-  const checkState = function(
+  const checkState = function (
     error: boolean,
     jobsList: { id: string; collection: string }[]
   ) {
     if (error) {
       window.arangoHelper.arangoError("Jobs", "Could not read pending jobs.");
     } else {
-      const readJob = function(data: any, jobId: string) {
+      const readJob = function (data: any, jobId: string) {
         if (data.statusCode === 204) {
           // job is still in quere or pending
           window.arangoHelper.arangoMessage(
@@ -24,7 +25,9 @@ export const useSyncIndexCreationJob = () => {
           return;
         }
         window.arangoHelper.deleteAardvarkJob(jobId);
-        mutate(`/index/?collection=${collectionName}`);
+        const { encoded: encodedCollectionName } = encodeHelper(collectionName);
+
+        mutate(`/index/?collection=${encodedCollectionName}`);
       };
 
       const onJobError = (error: any, jobId: string) => {

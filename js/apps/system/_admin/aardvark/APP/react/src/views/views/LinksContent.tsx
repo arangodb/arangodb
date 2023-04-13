@@ -4,14 +4,14 @@ import { ViewLinksBreadcrumbs } from "./Components/ViewLinksBreadcrumbs";
 import { ViewContext } from "./constants";
 
 import CollectionsDropdown from "./forms/inputs/CollectionsDropdown";
-import { LinksContextProvider, useLinksContext } from "./LinksContext";
+import { useLinksContext } from "./LinksContext";
 
 export const LinksContent = () => {
   return (
-    <LinksContextProvider>
+    <>
       <CollectionsDropdown />
       <LinkPropertiesForm />
-    </LinksContextProvider>
+    </>
   );
 };
 
