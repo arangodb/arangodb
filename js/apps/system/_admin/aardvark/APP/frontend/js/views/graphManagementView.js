@@ -669,7 +669,7 @@
       // In case it is, we fill out from and to automatically and disable the inputs. As we
       // do not allow multiple EdgeDefinitions based on the same name.
       let edgeDefinitionMap = this.calculateEdgeDefinitionMap();
-      const newValues = e.val && e.val.map && e.val.map(value => value?.normalize?.())
+      const newValues = e.val && e.val.map && e.val.map(value => value && String(value).normalize())
       const foundEdgeDefinition = edgeDefinitionMap[newValues]
       if (foundEdgeDefinition) {
         id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
