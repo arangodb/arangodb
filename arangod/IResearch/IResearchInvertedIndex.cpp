@@ -814,7 +814,7 @@ Result IResearchInvertedIndex::init(
     irs::index_reader_options readerOptions;
 #ifdef USE_ENTERPRISE
     setupReaderEntepriseOptions(readerOptions, _collection.vocbase().server(),
-                                _meta);
+                                _meta, _useSearchCache);
 #endif
     auto r = initDataStore(pathExists, initCallback,
                            static_cast<uint32_t>(_meta._version), isSorted(),
