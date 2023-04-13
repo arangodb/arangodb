@@ -1616,14 +1616,19 @@ function ParallelIndexSuite() {
     },
 
     tearDown: function() {
-      tasks.get().forEach(function(task) {
-        if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
-          try {
-            tasks.unregister(task);
-          } catch (err) {
-          }
+      let rounds = 0;
+      while(true) {
+        const stillRunning = tasks.get().filter(function(task) {
+          return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)); });
+        if(stillRunning.length === 0) {
+          break;
         }
-      });
+        require("internal").wait(0.5, false);
+        rounds++;
+        if(rounds % 10 === 0) {
+          console.log("After %s rounds there are still the following tasks %s", rounds, JSON.stringify(stillRunning));
+        }
+      }
       internal.db._drop(cn);
     },
 
