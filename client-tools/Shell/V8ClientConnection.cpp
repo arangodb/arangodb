@@ -1571,14 +1571,14 @@ static void ClientConnection_importCsv(
   }
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+  auto* client = static_cast<ClientFeature*>(wrap->Value());
 
   SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
   ImportHelper ih(encryption, *client, v8connection->endpointSpecification(),
                   params, DefaultChunkSize, 1);
 
   ih.setQuote(quote);
-  ih.setSeparator(separator.c_str());
+  ih.setSeparator(separator);
 
   std::string fileName = TRI_ObjectToString(isolate, args[0]);
   std::string collectionName = TRI_ObjectToString(isolate, args[1]);
