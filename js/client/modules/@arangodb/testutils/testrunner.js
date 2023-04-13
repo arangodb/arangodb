@@ -381,7 +381,7 @@ class testRunner {
     if (checkCollections) {
       this.cleanupChecks.push(graphsTest);
     }
-    this.instanceManager;
+    this.instanceManager = undefined;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
