@@ -104,7 +104,7 @@ exports.debugSetFailAt = function (endpoint, failAt) {
     reconnectRetry(endpoint, db._name(), "root", "");
     let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
     if (res.parsedBody !== true) {
-      throw "Error setting failure point + " + res;
+      throw `Error setting failure point on ${endpoint}: "${res}"`;
     }
     return true;
   } finally {
