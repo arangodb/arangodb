@@ -289,7 +289,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
-  return upgradeRes.result();
+  return std::move(upgradeRes).result();
 }
 
 // Create a database on SingleServer, DBServer,
