@@ -49,8 +49,7 @@ RocksDBTrxMethods::~RocksDBTrxMethods() {
   // and call it ourselves here, because the call in the base class would only
   // execute the base class implementation, therefore leaking the
   // iteratorReadSnapshot.
-  // cppcheck-suppress *
-  cleanupTransaction();
+  RocksDBTrxMethods::cleanupTransaction();
 }
 
 Result RocksDBTrxMethods::beginTransaction() {
