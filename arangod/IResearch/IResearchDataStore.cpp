@@ -602,6 +602,17 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid) {
   // initialize transaction callback
+#ifdef USE_ENTERPRISE
+  if (!collection.isAStub() && _asyncFeature->columnsCacheOnlyLeaders()) {
+    auto& ci = collection.vocbase()
+                   .server()
+                   .getFeature<ClusterFeature>()
+                   .clusterInfo();
+    auto r = ci.getShardLeadership(ServerState::instance()->getId(),
+                                   collection.name());
+    _useSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+  }
+#endif
   _beforeCommitCallback = [this](TransactionState& state) {
     auto prev = state.cookie(this);  // get existing cookie
     if (!prev) {
@@ -974,6 +985,29 @@ Result IResearchDataStore::commitUnsafeImpl(
       LOG_TOPIC("4cb66", DEBUG, TOPIC) << "Commit started";
     }
 #endif
+
+#ifdef USE_ENTERPRISE
+    auto forceOpen = [&]() -> bool {
+      bool force{false};
+      if (_asyncFeature->columnsCacheOnlyLeaders()) {
+        auto& ci = _collection.vocbase()
+                       .server()
+                       .getFeature<ClusterFeature>()
+                       .clusterInfo();
+        auto newUseSearchCache =
+            _useSearchCache.load(std::memory_order_relaxed);
+        auto r = ci.getShardLeadership(ServerState::instance()->getId(),
+                                       _collection.name());
+        if (r != ClusterInfo::ShardLeadership::kUnclear) {
+          newUseSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+        }
+        force = _useSearchCache.load(std::memory_order_relaxed) !=
+                newUseSearchCache;
+        _useSearchCache = newUseSearchCache;
+      }
+      return force;
+    };
+#endif
     auto const commitOne = _dataStore._writer->commit(progress);
     std::move(stageOneGuard).Cancel();
     if (!commitOne) {
@@ -986,6 +1020,13 @@ Result IResearchDataStore::commitUnsafeImpl(
       _lastCommittedTickOne = lastTickBeforeCommitOne;
       _lastCommittedTickTwo = lastTickBeforeCommitOne;
       impl.tick(_lastCommittedTickOne);
+#ifdef USE_ENTERPRISE
+      // get new reader
+      if (forceOpen()) {
+        _dataStore._reader = irs::directory_reader::open(
+            *(_dataStore._directory), _format, _dataStore._readerOptions);
+      }
+#endif
       return {};
     } else {
       code = CommitResult::DONE;
@@ -1037,9 +1078,15 @@ Result IResearchDataStore::commitUnsafeImpl(
       }
     }
 #endif
-    // get new reader
-    auto reader = _dataStore._reader.reopen(_format);
 
+#ifdef USE_ENTERPRISE
+    auto reader = forceOpen() ? irs::directory_reader::open(
+                                    *(_dataStore._directory), _format,
+                                    _dataStore._readerOptions)
+                              : _dataStore._reader.reopen(_format);
+#else
+    auto reader = _dataStore._reader.reopen(_format);
+#endif
     if (!reader) {
       // nothing more to do
       LOG_TOPIC("37bcf", WARN, TOPIC)
@@ -1264,9 +1311,10 @@ Result IResearchDataStore::initDataStore(
   }
 
   _engine = &server.getFeature<EngineSelectorFeature>().engine();
-
+#ifdef USE_ENTERPRISE
+  _dataStore._readerOptions = readerOptions;
+#endif
   _dataStore._path = getPersistedPath(dbPathFeature, *this);
-
   // must manually ensure that the data store directory exists (since not
   // using a lockfile)
   if (!irs::file_utils::exists_directory(pathExists,

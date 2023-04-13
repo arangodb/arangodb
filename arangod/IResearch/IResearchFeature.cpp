@@ -173,6 +173,7 @@ std::string const FAIL_ON_OUT_OF_SYNC(
     "--arangosearch.fail-queries-on-out-of-sync");
 std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
 std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
+std::string const CACHE_ONLY_LEADER("--arangosearch.columns-cache-only-leader");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
@@ -1058,6 +1059,15 @@ but the returned data may be incomplete.)");
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30905);
+  options
+      ->addOption(CACHE_ONLY_LEADER,
+                  "Cache ArangoSearch columns only for leader shards.",
+                  new options::BooleanParameter(&_columnsCacheOnlyLeader),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::Enterprise))
+      .setIntroducedIn(31006);
 #endif
 }
 
@@ -1385,6 +1395,11 @@ bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
     }
   } while (!done);
   return true;
+}
+
+bool IResearchFeature::columnsCacheOnlyLeaders() const noexcept {
+  TRI_ASSERT(ServerState::instance()->isDBServer() || !_columnsCacheOnlyLeader);
+  return _columnsCacheOnlyLeader;
 }
 #endif
 

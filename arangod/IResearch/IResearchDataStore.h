@@ -296,6 +296,9 @@ class IResearchDataStore {
     irs::utf8_path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
+#ifdef USE_ENTERPRISE
+    irs::index_reader_options _readerOptions;
+#endif
     // the tick at which data store was recovered
     uint64_t _recoveryTickLow{0};
     uint64_t _recoveryTickHigh{0};
@@ -464,6 +467,10 @@ class IResearchDataStore {
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;
   bool _hasNestedFields{false};
+
+#ifdef USE_ENTERPRISE
+  std::atomic_bool _useSearchCache{true};
+#endif
 
   // protected by _commitMutex
   bool _commitStageOne{false};
