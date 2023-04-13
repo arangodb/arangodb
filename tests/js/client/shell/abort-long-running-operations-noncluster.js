@@ -55,7 +55,7 @@ let setupCollection = (type) => {
 let shutdownTask = (task) => {
   try {
     if (task === undefined) {
-      tasks.unregister({ name: taskName });
+      tasks.unregister(taskName);
     } else {
       while (true) {
         // will be left by exception here
