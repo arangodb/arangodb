@@ -252,14 +252,14 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         // Capture a weak pointer `parentLog` that will be locked
         // when the request returns. If the locking is successful
         // we are still in the same term.
+        auto currentCommitIndex = request.leaderCommit;
+        auto lowestIndexToKeep = request.lowestIndexToKeep;
         follower->_impl->appendEntries(std::move(request))
             .thenFinal([weakParentLog = req->_parentLog,
                         followerWeak = req->_follower, lastIndex = lastIndex,
-                        currentCommitIndex = request.leaderCommit,
-                        currentLITK = request.lowestIndexToKeep,
-                        currentTerm = logLeader->_currentTerm,
-                        messageId = messageId, startTime,
-                        logMetrics = logMetrics](
+                        currentCommitIndex, currentLITK = lowestIndexToKeep,
+                        currentTerm = logLeader->_currentTerm, messageId,
+                        startTime, logMetrics](
                            futures::Try<AppendEntriesResult>&& res) noexcept {
               // This has to remain noexcept, because the code below is not
               // exception safe
