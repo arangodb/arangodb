@@ -479,6 +479,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         if (!_options.retryCancelledConnection) {
           goto returnError;
         }
+        [[fallthrough]];
       case fuerte::Error::CouldNotConnect: {
         // Note that this case includes the refusal of a leader to accept
         // the operation, in which case we have to retry and wait for
