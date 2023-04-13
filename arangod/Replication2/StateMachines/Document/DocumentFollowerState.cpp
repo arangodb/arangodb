@@ -424,6 +424,9 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                 << "Trying to insert " << snapshotRes->payload.length()
                 << " documents with " << snapshotRes->payload.byteSize()
                 << " bytes into shard " << *snapshotRes->shardId;
+
+            // Note that when the DocumentStateSnapshot::infiniteSnapshot
+            // failure point is enabled, the payload is an empty array.
             if (auto localShardRes = self->populateLocalShard(
                     *snapshotRes->shardId, snapshotRes->payload,
                     data.transactionHandler);
