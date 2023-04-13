@@ -147,7 +147,6 @@ const ViewSettingsInner = ({
         setChanged={setChanged}
       />
       <ViewSection
-        name={name}
         formState={formState}
         dispatch={dispatch}
         isAdminUser={isAdminUser}
