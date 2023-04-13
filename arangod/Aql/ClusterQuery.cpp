@@ -89,10 +89,6 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
                                            std::move(options));
 }
 
-#ifndef USE_ENTERPRISE
-void ClusterQuery::waitForSatellites() {}
-#endif
-
 void ClusterQuery::prepareClusterQuery(
     VPackSlice querySlice, VPackSlice collections, VPackSlice variables,
     VPackSlice snippets, VPackSlice traverserSlice, VPackBuilder& answerBuilder,
@@ -136,7 +132,9 @@ void ClusterQuery::prepareClusterQuery(
   }
 #endif
 
+#ifdef USE_ENTERPRISE
   waitForSatellites();
+#endif
 
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
