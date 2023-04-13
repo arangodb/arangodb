@@ -19,6 +19,8 @@ v3.10.6 (XXXX-XX-XX)
   There is a chance that we prematurely discarded this variable (candidate in
   the example) if it is not used later. This has lead to incorrect results.
 
+* Added option --arangosearch.columns-cache-only-leader (EE only).
+
 * Updated arangosync to v2.16.1.
 
 * Fix potential thread starvation in in-memory edge cache.

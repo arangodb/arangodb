@@ -792,7 +792,7 @@ MockDBServer::MockDBServer(ServerID serverId, bool start, bool useAgencyMock)
     MockDBServer::startFeatures();
     MockDBServer::createDatabase("_system");
   }
-  ServerState::instance()->setId("PRMR_0001");
+  ServerState::instance()->setId(serverId);
 }
 
 MockDBServer::~MockDBServer() = default;
