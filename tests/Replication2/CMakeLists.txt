@@ -32,6 +32,7 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   ReplicatedLog/Integration/MaintenanceTests.cpp
   ReplicatedState/DocumentStateMachineTest.cpp
+  ReplicatedState/DocumentStateShardHandlerTest.cpp
   ReplicatedLog/Integration/StorageEngineMethodsTest.cpp
   ReplicatedState/StateManagerTest.cpp
 
