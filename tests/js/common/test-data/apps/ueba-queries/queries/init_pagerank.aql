@@ -1,0 +1,2 @@
+FOR vertex IN @@collection
+    UPDATE vertex with { vpr: @init_val } IN @@collection 
