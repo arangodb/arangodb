@@ -107,7 +107,7 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testInsertAndRead: function () {
-      let trx = db._createTransaction({ 
+      let trx = db._createTransaction({
         collections: { write: c.name()  }
       });
       try {
@@ -129,11 +129,11 @@ function transactionRevisionsSuite (dbParams) {
         trx.abort(); // otherwise drop hangs
       }
     },
-    
+
     testInsertUniqueFailing: function () {
       c.insert({ _key: 'test', value: 1 });
 
-      let trx = db._createTransaction({ 
+      let trx = db._createTransaction({
         collections: { write: c.name()  }
       });
       try {
@@ -146,7 +146,7 @@ function transactionRevisionsSuite (dbParams) {
       } finally {
         trx.abort(); // otherwise drop hangs
       }
-      
+
       assertEqual(1, c.count());
       assertEqual(1, c.toArray().length);
       assertEqual(1, c.document('test').value);
@@ -155,7 +155,7 @@ function transactionRevisionsSuite (dbParams) {
     testInsertTransactionAbort: function () {
       c.insert({ _key: 'test', value: 1 });
 
-      let trx = db._createTransaction({ 
+      let trx = db._createTransaction({
         collections: { write: c.name()  }
       });
       try {
@@ -165,7 +165,7 @@ function transactionRevisionsSuite (dbParams) {
       } finally {
         trx.abort();
       }
-      
+
       assertEqual(1, c.toArray().length);
       assertEqual(1, c.document('test').value);
     },
@@ -173,7 +173,7 @@ function transactionRevisionsSuite (dbParams) {
     testRemoveTransactionAbort: function () {
       c.insert({ _key: 'test', value: 1 });
 
-      let trx = db._createTransaction({ 
+      let trx = db._createTransaction({
         collections: { write: c.name()  }
       });
 
@@ -194,7 +194,7 @@ function transactionRevisionsSuite (dbParams) {
     testRemoveInsertWithSameRev: function () {
       var doc = c.insert({ _key: 'test', value: 1 });
 
-      let trx = db._createTransaction({ 
+      let trx = db._createTransaction({
         collections: { write: c.name()  }
       });
       try {
@@ -214,7 +214,7 @@ function transactionRevisionsSuite (dbParams) {
     testUpdateWithSameRevTransaction: function () {
       var doc = c.insert({ _key: 'test', value: 1 });
 
-      let trx = db._createTransaction({ 
+      let trx = db._createTransaction({
         collections: { write: c.name()  }
       });
       try {
@@ -233,7 +233,7 @@ function transactionRevisionsSuite (dbParams) {
     testUpdateAbortWithSameRev: function () {
       var doc = c.insert({ _key: 'test', value: 1 });
 
-      let trx = db._createTransaction({ 
+      let trx = db._createTransaction({
         collections: { write: c.name()  }
       });
       try {
@@ -252,7 +252,7 @@ function transactionRevisionsSuite (dbParams) {
     testUpdateFailing: function () {
       c.insert({ _key: 'test', value: 1 });
 
-      let trx = db._createTransaction({ 
+      let trx = db._createTransaction({
         collections: { write: c.name()  }
       });
       try {
@@ -271,7 +271,7 @@ function transactionRevisionsSuite (dbParams) {
     testUpdateAndInsertFailing: function () {
       c.insert({ _key: 'test', value: 1 });
 
-      let trx = db._createTransaction({ 
+      let trx = db._createTransaction({
         collections: { write: c.name()  }
       });
       try {
@@ -292,7 +292,7 @@ function transactionRevisionsSuite (dbParams) {
     testRemoveAndInsert: function () {
       c.insert({ _key: 'test', value: 1 });
 
-      let trx = db._createTransaction({ 
+      let trx = db._createTransaction({
         collections: { write: c.name()  }
       });
       try {
@@ -312,7 +312,7 @@ function transactionRevisionsSuite (dbParams) {
     testRemoveAndInsertAbort: function () {
       c.insert({ _key: 'test', value: 1 });
 
-      let trx = db._createTransaction({ 
+      let trx = db._createTransaction({
         collections: { write: c.name()  }
       });
       try {
@@ -340,15 +340,15 @@ function transactionInvocationSuite (dbParams) {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = "UnitTestsCollection";
-  
+
   let assertInList = function(list, trx) {
     assertTrue(list.filter(function(data) { return data.id === trx._id; }).length > 0,
-               "transaction " + trx._id + " is not contained in list of transactions " + JSON.stringify(list)); 
+      "transaction " + trx._id + " is not contained in list of transactions " + JSON.stringify(list));
   };
 
   let assertNotInList = function(list, trx) {
     assertFalse(list.filter(function(data) { return data.id === trx._id; }).length > 0,
-               "transaction " + trx._id + " is contained in list of transactions " + JSON.stringify(list)); 
+      "transaction " + trx._id + " is contained in list of transactions " + JSON.stringify(list));
   };
 
   return {
@@ -373,7 +373,7 @@ function transactionInvocationSuite (dbParams) {
     tearDown: function () {
       db._drop(cn);
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: invalid invocations of _createTransaction() function
     // //////////////////////////////////////////////////////////////////////////////
@@ -475,7 +475,7 @@ function transactionInvocationSuite (dbParams) {
         }
       });
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: _transactions() function
     // //////////////////////////////////////////////////////////////////////////////
@@ -483,20 +483,20 @@ function transactionInvocationSuite (dbParams) {
     testListTransactions: function () {
       db._create(cn, {numberOfShards: 4});
       let trx1, trx2, trx3;
-      
+
       let obj = {
         collections: {
           read: [ cn ]
         }
       };
-     
+
       try {
         // create a single trx
         trx1 = db._createTransaction(obj);
-      
+
         let trx = db._transactions();
         assertInList(trx, trx1);
-            
+
         trx1.commit();
         // trx is committed now - list should be empty
 
@@ -505,27 +505,27 @@ function transactionInvocationSuite (dbParams) {
 
         // create two more
         trx2 = db._createTransaction(obj);
-      
+
         trx = db._transactions();
         assertInList(trx, trx2);
         assertNotInList(trx, trx1);
-            
+
         trx3 = db._createTransaction(obj);
-      
+
         trx = db._transactions();
         assertInList(trx, trx2);
         assertInList(trx, trx3);
         assertNotInList(trx, trx1);
 
         trx2.commit();
-        
+
         trx = db._transactions();
         assertInList(trx, trx3);
         assertNotInList(trx, trx2);
         assertNotInList(trx, trx1);
 
         trx3.commit();
-        
+
         trx = db._transactions();
         assertNotInList(trx, trx3);
         assertNotInList(trx, trx2);
@@ -542,7 +542,7 @@ function transactionInvocationSuite (dbParams) {
         }
       }
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: _createTransaction() function
     // //////////////////////////////////////////////////////////////////////////////
@@ -557,11 +557,11 @@ function transactionInvocationSuite (dbParams) {
           fail();
         } catch (err) {
           assertTrue(err.errorNum === internal.errors.ERROR_BAD_PARAMETER.code ||
-                     err.errorNum === internal.errors.ERROR_TRANSACTION_NOT_FOUND.code);
+            err.errorNum === internal.errors.ERROR_TRANSACTION_NOT_FOUND.code);
         }
       });
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: abort
     // //////////////////////////////////////////////////////////////////////////////
@@ -569,13 +569,13 @@ function transactionInvocationSuite (dbParams) {
     testAbortTransaction: function () {
       db._create(cn, {numberOfShards: 4});
       let cleanup = [];
-      
+
       let obj = {
         collections: {
           read: [ cn ]
         }
       };
-     
+
       try {
         let trx1 = db._createTransaction(obj);
         cleanup.push(trx1);
@@ -586,9 +586,9 @@ function transactionInvocationSuite (dbParams) {
         let result = db._createTransaction(trx1).abort();
         assertEqual(trx1._id, result.id);
         assertEqual("aborted", result.status);
-        
+
         assertNotInList(db._transactions(), trx1);
-        
+
         let trx2 = db._createTransaction(obj);
         cleanup.push(trx2);
 
@@ -598,7 +598,7 @@ function transactionInvocationSuite (dbParams) {
         result = db._createTransaction(trx2._id).abort();
         assertEqual(trx2._id, result.id);
         assertEqual("aborted", result.status);
-        
+
         assertNotInList(db._transactions(), trx1);
         assertNotInList(db._transactions(), trx2);
 
@@ -616,13 +616,13 @@ function transactionInvocationSuite (dbParams) {
     testCommitTransaction: function () {
       db._create(cn, {numberOfShards: 4});
       let cleanup = [];
-      
+
       let obj = {
         collections: {
           read: [ cn ]
         }
       };
-     
+
       try {
         let trx1 = db._createTransaction(obj);
         cleanup.push(trx1);
@@ -633,9 +633,9 @@ function transactionInvocationSuite (dbParams) {
         let result = db._createTransaction(trx1).commit();
         assertEqual(trx1._id, result.id);
         assertEqual("committed", result.status);
-        
+
         assertNotInList(db._transactions(), trx1);
-        
+
         let trx2 = db._createTransaction(obj);
         cleanup.push(trx2);
 
@@ -645,7 +645,7 @@ function transactionInvocationSuite (dbParams) {
         result = db._createTransaction(trx2._id).commit();
         assertEqual(trx2._id, result.id);
         assertEqual("committed", result.status);
-        
+
         assertNotInList(db._transactions(), trx1);
         assertNotInList(db._transactions(), trx2);
       } finally {
@@ -654,7 +654,7 @@ function transactionInvocationSuite (dbParams) {
         });
       }
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: status
     // //////////////////////////////////////////////////////////////////////////////
@@ -662,13 +662,13 @@ function transactionInvocationSuite (dbParams) {
     testStatusTransaction: function () {
       db._create(cn, {numberOfShards: 4});
       let cleanup = [];
-      
+
       let obj = {
         collections: {
           read: [ cn ]
         }
       };
-     
+
       try {
         let trx1 = db._createTransaction(obj);
         cleanup.push(trx1);
@@ -680,11 +680,11 @@ function transactionInvocationSuite (dbParams) {
         result = db._createTransaction(trx1._id).commit();
         assertEqual(trx1._id, result.id);
         assertEqual("committed", result.status);
-        
+
         result = trx1.status();
         assertEqual(trx1._id, result.id);
         assertEqual("committed", result.status);
-        
+
         let trx2 = db._createTransaction(obj);
         cleanup.push(trx2);
 
@@ -695,7 +695,7 @@ function transactionInvocationSuite (dbParams) {
         result = db._createTransaction(trx2._id).abort();
         assertEqual(trx2._id, result.id);
         assertEqual("aborted", result.status);
-        
+
         result = trx2.status();
         assertEqual(trx2._id, result.id);
         assertEqual("aborted", result.status);
@@ -713,18 +713,18 @@ function transactionInvocationSuite (dbParams) {
     testAbortWriteTransactions: function () {
       db._create(cn, {numberOfShards: 2});
       let trx1, trx2, trx3;
-      
+
       let obj = {
         collections: {
           write: [ cn ]
         }
       };
-     
+
       try {
         trx1 = db._createTransaction(obj);
         trx2 = db._createTransaction(obj);
         trx3 = db._createTransaction(obj);
-        
+
         let trx = db._transactions();
         // the following assertions are not safe, as transactions have
         // an idle timeout of 10 seconds, and we cannot guarantee any
@@ -732,7 +732,7 @@ function transactionInvocationSuite (dbParams) {
         // assertInList(trx, trx1);
         // assertInList(trx, trx2);
         // assertInList(trx, trx3);
-        
+
         let result = arango.DELETE("/_api/transaction/write");
         assertEqual(result.code, 200);
 
@@ -752,7 +752,7 @@ function transactionInvocationSuite (dbParams) {
         }
       }
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: abort write transactions
     // //////////////////////////////////////////////////////////////////////////////
@@ -760,18 +760,18 @@ function transactionInvocationSuite (dbParams) {
     testAbortWriteTransactionAQL: function () {
       db._create(cn, {numberOfShards: 2});
       let trx1;
-      
+
       let obj = {
         collections: {
           write: [ cn ]
         }
       };
-     
+
       try {
         trx1 = db._createTransaction(obj);
         let result = arango.POST_RAW("/_api/cursor", {
           query: "FOR i IN 1..10000000 INSERT {} INTO " + cn
-        }, { 
+        }, {
           "x-arango-trx-id" : trx1._id,
           "x-arango-async" : "store"
         });
@@ -788,10 +788,10 @@ function transactionInvocationSuite (dbParams) {
             break;
           }
         }
-        
+
         let trx = db._transactions();
         assertInList(trx, trx1);
-       
+
         result = arango.DELETE("/_api/transaction/write");
         assertEqual(result.code, 200);
 
@@ -799,7 +799,7 @@ function transactionInvocationSuite (dbParams) {
         tries = 0;
         while (++tries < 60) {
           result = arango.PUT_RAW("/_api/job/" + jobId, {});
-        
+
           if (result.code === 410 || result.code === 404) {
             break;
           }
@@ -1072,7 +1072,7 @@ function transactionCollectionsSuite (dbParams) {
           write: cn1
         }
       };
-      
+
       let trx;
       try {
         trx = db._createTransaction(obj);
@@ -1326,7 +1326,7 @@ function transactionCollectionsSuite (dbParams) {
           trx.commit();
         }
       }
-      
+
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1345,7 +1345,7 @@ function transactionCollectionsSuite (dbParams) {
           read: [ cn1, cn2 ]
         }
       };
-      
+
       let trx;
       try {
         trx = db._createTransaction(obj);
@@ -1494,7 +1494,7 @@ function transactionCollectionsSuite (dbParams) {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
         let tc2 = trx.collection(c2.name());
-        
+
         try {
           trx.query('FOR i IN @@cn1 REMOVE i._key IN @@cn2', { '@cn1': cn1, '@cn2': cn2 });
           fail();
@@ -1536,7 +1536,7 @@ function transactionCollectionsSuite (dbParams) {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
         let tc2 = trx.collection(c2.name());
-        
+
         var ops;
         ops = trx.query('FOR i IN @@cn1 REMOVE i._key IN @@cn1', { '@cn1': cn1 }).getExtra().stats;
         assertEqual(10, ops.writesExecuted);
@@ -1579,10 +1579,10 @@ function transactionCollectionsSuite (dbParams) {
         trx = db._createTransaction(obj);
         // recreating analyzer with same name but different properties
         analyzers.remove(analyzerName, true);
-        analyzers.save(analyzerName,"ngram", {min:2, max:2, preserveOriginal:true}); 
+        analyzers.save(analyzerName,"ngram", {min:2, max:2, preserveOriginal:true});
         let res = trx.query("FOR d IN @@cn1 FILTER TOKENS(d.test_field, @an)[0] == 'some' RETURN d",
-                   { '@cn1': cn1, 'an':analyzerName });  // query should fail due to substituted analyzer
-        fail();      
+          { '@cn1': cn1, 'an':analyzerName });  // query should fail due to substituted analyzer
+        fail();
       } catch(err) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       } finally {
@@ -1607,7 +1607,7 @@ function transactionCollectionsSuite (dbParams) {
       try {
         trx = db._createTransaction(obj);
         let res = trx.query("FOR d IN @@cn1 FILTER TOKENS(d.test_field, @an)[0] == 'some' RETURN d",
-                   { '@cn1': cn1, 'an':analyzerName });  
+          { '@cn1': cn1, 'an':analyzerName });
         assertEqual(1, res.toArray().length);
       } finally {
         if (trx) {
@@ -1661,7 +1661,7 @@ function transactionOperationsSuite (dbParams) {
 
       c2 = null;
     },
-        
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: trx with negative lock timeout
     // //////////////////////////////////////////////////////////////////////////////
@@ -1803,7 +1803,7 @@ function transactionOperationsSuite (dbParams) {
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         //assertEqual(100, tc1.toArray().length);
         assertEqual(100, tc1.count());
 
@@ -1839,7 +1839,7 @@ function transactionOperationsSuite (dbParams) {
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.save({ _key: 'foo' });
 
       } catch(err) {
@@ -1866,12 +1866,12 @@ function transactionOperationsSuite (dbParams) {
           write: [ cn1 ]
         }
       };
-      
+
       let trx;
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.save({ _key: 'foo' });
         tc1.save({ _key: 'bar' });
 
@@ -1906,7 +1906,7 @@ function transactionOperationsSuite (dbParams) {
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.save({ _key: 'baz' });
         tc1.save({ _key: 'bam' });
 
@@ -1941,7 +1941,7 @@ function transactionOperationsSuite (dbParams) {
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         assertEqual(1, tc1.document('foo').a);
         tc1.replace('foo', { a: 3 });
 
@@ -1982,7 +1982,7 @@ function transactionOperationsSuite (dbParams) {
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         assertEqual(1, tc1.document('foo').a);
         tc1.replace('foo', { a: 3 });
         assertEqual(3, tc1.document('foo').a);
@@ -2023,12 +2023,12 @@ function transactionOperationsSuite (dbParams) {
           write: [ cn1 ]
         }
       };
-      
+
       let trx;
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         assertEqual(1, tc1.document('foo').a);
         tc1.update('foo', { a: 3 });
 
@@ -2072,12 +2072,12 @@ function transactionOperationsSuite (dbParams) {
           write: [ cn1 ]
         }
       };
-      
+
       let trx;
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.remove('foo');
         tc1.remove('baz');
 
@@ -2106,12 +2106,12 @@ function transactionOperationsSuite (dbParams) {
         }
       };
 
-           
+
       let trx;
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.truncate({ compact: false });
 
       } catch(err) {
@@ -2125,7 +2125,7 @@ function transactionOperationsSuite (dbParams) {
       assertEqual(0, c1.count());
       assertEqual([ ], sortedKeys(c1));
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: trx with truncate operation
     // //////////////////////////////////////////////////////////////////////////////
@@ -2142,12 +2142,12 @@ function transactionOperationsSuite (dbParams) {
           write: [ cn1 ]
         }
       };
-      
+
       let trx;
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.truncate({ compact: false });
 
       } catch(err) {
@@ -2183,7 +2183,7 @@ function transactionOperationsSuite (dbParams) {
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.truncate({ compact: false });
         tc1.save({ _key: 'foo' });
 
@@ -2214,7 +2214,7 @@ function transactionOperationsSuite (dbParams) {
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         trx.query(`LET g = NOOPT(DOCUMENT("${cn1}/1")) UPDATE g WITH {"updated":1} IN ${cn1}`);
 
         let doc = tc1.document("1");
@@ -2222,7 +2222,7 @@ function transactionOperationsSuite (dbParams) {
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
-      } finally {   
+      } finally {
         if (trx) {
           trx.commit();
         }
@@ -2248,12 +2248,12 @@ function transactionOperationsSuite (dbParams) {
           write: [ cn1 ]
         }
       };
-      
+
       let trx;
       try {
         trx = db._createTransaction(obj);
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.truncate({ compact: false });
 
       } catch(err) {
@@ -2334,7 +2334,7 @@ function transactionBarriersSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         for (let i = 0; i < 100; ++i) {
           tc1.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
         }
@@ -2382,7 +2382,7 @@ function transactionBarriersSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         for (let i = 0; i < 100; ++i) {
           tc1.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
         }
@@ -2429,7 +2429,7 @@ function transactionRollbackSuite (dbParams) {
       db._useDatabase("_system");
       db._dropDatabase(dbn);
     },
-      
+
     setUp: function () {
       db._drop(cn1);
     },
@@ -2457,7 +2457,7 @@ function transactionRollbackSuite (dbParams) {
       });
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.save({ _key: 'tom' });
         tc1.save({ _key: 'tim' });
         tc1.save({ _key: 'tam' });
@@ -2497,7 +2497,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         var _r = r;
 
         tc1.save({ _key: 'tom' });
@@ -2523,7 +2523,7 @@ function transactionRollbackSuite (dbParams) {
         tc1.remove('tom');
         assertEqual(1, compareStringIds(tc1.revision(), _r));
         // _r = c1.revision();
-        
+
       } finally {
         trx.abort(); // rollback
       }
@@ -2553,13 +2553,13 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.save({ _key: 'tom' });
         tc1.save({ _key: 'tim' });
         tc1.save({ _key: 'tam' });
 
         assertEqual(6, tc1.count());
-        
+
       } finally {
         trx.abort(); // rollback
       }
@@ -2592,7 +2592,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.save({ _key: 'tom', value: 'tom' });
         tc1.save({ _key: 'tim', value: 'tim' });
         tc1.save({ _key: 'tam', value: 'tam' });
@@ -2636,7 +2636,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.save({ value: 'tom' });
         tc1.save({ value: 'tim' });
         tc1.save({ value: 'tam' });
@@ -2679,7 +2679,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.save({ _key: 'tom' });
         tc1.save({ _key: 'tim' });
         tc1.save({ _key: 'tam' });
@@ -2723,7 +2723,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         let d4 = tc1.save({ value: 'tom' });
         let d5 = tc1.save({ value: 'tim' });
         let d6 = tc1.save({ value: 'tam' });
@@ -2769,7 +2769,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.update(d1, { a: 4 });
         tc1.update(d2, { a: 5 });
         tc1.update(d3, { a: 6 });
@@ -2808,7 +2808,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.update(d1, { a: 4 });
         tc1.update(d2, { a: 5 });
         tc1.update(d3, { a: 6 });
@@ -2847,7 +2847,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         for (let i = 0; i < 100; ++i) {
           tc1.replace('foo', { a: i });
           tc1.replace('bar', { a: i + 42 });
@@ -2898,7 +2898,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.update('foo', { value: 'foo', a: 2 });
         tc1.update('bar', { value: 'bar', a: 2 });
         tc1.update('meow', { value: 'troet' });
@@ -2935,7 +2935,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.remove('meow');
         tc1.remove('foo');
 
@@ -2971,7 +2971,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.remove(d3._key);
         tc1.remove(d1._key);
 
@@ -3007,7 +3007,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         for (let i = 0; i < 100; ++i) {
           tc1.save({ _key: 'foo' + i });
         }
@@ -3040,7 +3040,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         for (let i = 0; i < 100; ++i) {
           tc1.save({ value: 'foo' + i });
         }
@@ -3078,7 +3078,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.remove('meow');
         tc1.remove('bar');
         tc1.remove('foo');
@@ -3086,7 +3086,7 @@ function transactionRollbackSuite (dbParams) {
         assertEqual(0, tc1.count());
 
         good = true;
-        
+
       } finally {
         trx.abort(); // rollback
       }
@@ -3119,7 +3119,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.remove('meow');
         tc1.remove('bar');
         tc1.remove('foo');
@@ -3130,7 +3130,7 @@ function transactionRollbackSuite (dbParams) {
         assertEqual(2, tc1.count());
 
         good = true;
-      
+
       } finally {
         trx.abort(); // rollback
       }
@@ -3157,12 +3157,12 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         // truncate often...
         for (let i = 0; i < 100; ++i) {
           tc1.truncate({ compact: false });
         }
-      
+
       } finally {
         trx.abort(); // rollback
       }
@@ -3195,13 +3195,13 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         // truncate often...
         for (let i = 0; i < 100; ++i) {
           tc1.truncate({ compact: false });
         }
         tc1.save({ _key: 'bar' });
-      
+
       } finally {
         trx.abort(); // rollback
       }
@@ -3228,7 +3228,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.save({ _key: 'bar' });
         tc1.save({ _key: 'foo' });
         fail();
@@ -3264,19 +3264,19 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.save({ name: 'bar' });
         tc1.save({ name: 'baz' });
         tc1.save({ name: 'foo' });
         fail();
-      
+
       } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       } finally {
         trx.abort(); // rollback
       }
       // end trx
-      
+
       assertEqual(1, c1.count());
       assertEqual('foo', c1.toArray()[0].name);
       assertEqual(d1._rev, c1.toArray()[0]._rev);
@@ -3301,19 +3301,19 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         tc1.save({ name: 'bar' });
         tc1.save({ name: 'baz' });
         tc1.save({ name: 'foo' });
         fail();
-      
+
       } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       } finally {
         trx.abort(); // rollback
       }
       // end trx
-      
+
       assertEqual(1, c1.count());
       assertEqual('foo', c1.toArray()[0].name);
       assertEqual(d1._rev, c1.toArray()[0]._rev);
@@ -3342,7 +3342,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         for (let i = 0; i < 50; ++i) {
           tc1.remove('key' + i);
         }
@@ -3352,7 +3352,7 @@ function transactionRollbackSuite (dbParams) {
         }
 
         tc1.remove('key50');
-      
+
       } finally {
         trx.abort(); // rollback
       }
@@ -3379,7 +3379,7 @@ function transactionRollbackSuite (dbParams) {
       });
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         for (let i = 0; i < 10; ++i) {
           tc1.save({ _key: 'key' + i, value: i });
         }
@@ -3393,7 +3393,7 @@ function transactionRollbackSuite (dbParams) {
         }
 
         tc1.remove('key5');
-      
+
       } finally {
         trx.abort(); // rollback
       }
@@ -3424,7 +3424,7 @@ function transactionRollbackSuite (dbParams) {
       let trx = db._createTransaction(obj);
       try {
         let tc1 = trx.collection(c1.name());
-        
+
         for (let i = 0; i < 10; ++i) {
           tc1.save({ _key: 'key' + i, value: i });
         }
@@ -3452,7 +3452,7 @@ function transactionRollbackSuite (dbParams) {
         for (let i = 0; i < 10; ++i) {
           tc1.save({ _key: 'key' + i, value: i });
         }
-      
+
       } finally {
         trx.abort(); // rollback
       }
@@ -3542,9 +3542,9 @@ function transactionCountSuite (dbParams) {
       } finally {
         trx.commit();
       }
-      
+
       // end trx
-      
+
       assertEqual(0, c1.count());
     },
 
@@ -4017,7 +4017,7 @@ function transactionCrossCollectionSuite (dbParams) {
           for (let x = 0; x < 100; ++x) {
             tc1.save({ _key: 'test' + x });
           }
-  
+
         } catch (err) {
           fail("Transaction failed with: " + JSON.stringify(err));
         } finally {
@@ -4102,9 +4102,9 @@ function transactionTraversalSuite (dbParams) {
       try {
         let tedge = trx.collection(cn + 'Edge');
 
-        let results = trx.query('WITH ' + cn + 'Vertex FOR v, e IN ANY "' + cn + 'Vertex/20" ' + 
-                            cn + 'Edge FILTER v._id == "' + cn + 
-                            'Vertex/21" LIMIT 1 RETURN e').toArray();
+        let results = trx.query('WITH ' + cn + 'Vertex FOR v, e IN ANY "' + cn + 'Vertex/20" ' +
+          cn + 'Edge FILTER v._id == "' + cn +
+          'Vertex/21" LIMIT 1 RETURN e').toArray();
 
         if (results.length > 0) {
           result = results[0];
@@ -4307,7 +4307,7 @@ function transactionAQLStreamSuite (dbParams) {
         let trx, cursor;
         try {
           trx = db._createTransaction({collections: {write: cn}});
-  
+
           cursor = trx.query(q, {}, {}, {stream: true});
           assertEqual(undefined, cursor.count());
           while (cursor.hasNext()) {
@@ -4392,9 +4392,9 @@ function transactionAQLStreamSuite (dbParams) {
       try {
         let tedge = trx.collection(cn + 'Edge');
 
-        let results = trx.query('WITH ' + cn + 'Vertex FOR v, e IN ANY "' + cn + 'Vertex/20" ' + 
-                            cn + 'Edge FILTER v._id == "' + cn + 
-                            'Vertex/21" LIMIT 1 RETURN e', {}, {}, {stream: true}).toArray();
+        let results = trx.query('WITH ' + cn + 'Vertex FOR v, e IN ANY "' + cn + 'Vertex/20" ' +
+          cn + 'Edge FILTER v._id == "' + cn +
+          'Vertex/21" LIMIT 1 RETURN e', {}, {}, {stream: true}).toArray();
 
         if (results.length > 0) {
           result = results[0];
@@ -4529,18 +4529,18 @@ function transactionIteratorSuite(dbParams) {
         docs.push({ value1: i, value2: (100 - i) });
       }
       tc.save(docs);
-      
-      // full scan 
+
+      // full scan
       let cur = trx.query('FOR doc IN @@c RETURN doc', { '@c': cn });
       let half = cur.toArray();
       assertEqual(half.length, 100);
-      
-      // full scan using primary index 
+
+      // full scan using primary index
       cur = trx.query('FOR doc IN @@c SORT doc._key ASC RETURN doc._key', { '@c': cn });
       half = cur.toArray();
       assertEqual(half.length, 100);
 
-      // full scan using secondary index 
+      // full scan using secondary index
       cur = trx.query('FOR doc IN @@c SORT doc.value1 ASC RETURN doc', { '@c': cn });
       half = cur.toArray();
       assertEqual(half.length, 100);
@@ -4572,24 +4572,24 @@ function transactionIteratorSuite(dbParams) {
       }
       tc.save(docs);
 
-      // full scan 
+      // full scan
       let cur = trx.query('FOR doc IN @@c SORT doc.value2 DESC RETURN doc', { '@c': cn });
       let half = cur.toArray();
       assertEqual(half.length, 100);
-      
-      // full scan using primary index 
+
+      // full scan using primary index
       cur = trx.query('FOR doc IN @@c SORT doc._key DESC RETURN doc._key', { '@c': cn });
       half = cur.toArray();
       assertEqual(half.length, 100);
 
-      // full scan using secondary index 
+      // full scan using secondary index
       cur = trx.query('FOR doc IN @@c SORT doc.value1 DESC RETURN doc', { '@c': cn });
       half = cur.toArray();
       assertEqual(half.length, 100);
 
       trx.commit();
     },
-    
+
   };
 }
 
@@ -5015,7 +5015,7 @@ function transactionOverlapSuite(dbParams) {
         trx1.abort();
       }
     },
-    
+
     testOverlapRemoveDirect: function () {
       const doc = db[cn].insert({ _key: "test" });
 
@@ -5203,7 +5203,7 @@ function transactionOverlapUniqueIndexSuite(dbParams) {
         } catch(e) {}
       }
     },
-    
+
     testOverlapUpdateIndex: function () {
       const doc1 = db[cn].insert({ _key: "k1", unique: "der fux" });
       const doc2 = db[cn].insert({ _key: "k2", unique: "der hans" });
@@ -5326,7 +5326,7 @@ function transactionOverlapUniqueIndexSuite(dbParams) {
         trx1.abort();
       }
     },
-    
+
     testOverlapUpdateWithInsertIndexDirect: function () {
       db[cn].insert({ _key: "test" });
 
@@ -5383,7 +5383,7 @@ function transactionOverlapUniqueIndexSuite(dbParams) {
         assertEqual(`${cn}/k2`, doc.parsedBody._id);
         assertEqual("k2", doc.parsedBody._key);
         assertTrue("" !== doc.parsedBody._rev);
-        
+
       } finally {
         try {
           trx.abort();
@@ -5419,7 +5419,7 @@ function transactionOverlapUniqueIndexSuite(dbParams) {
         trx1.abort();
       }
     },
-    
+
     testOverlapReplaceIndexDirect: function () {
       const doc1 = db[cn].insert({ unique: "der fux" });
       const doc2 = db[cn].insert({ unique: "der hans" });
@@ -5608,103 +5608,49 @@ function transactionDatabaseSuite() {
         trx1.abort();
       }
     },
-
   };
 }
 
-function makeTestSuites(testSuite) {
-  let suiteV1 = {};
-  let suiteV2 = {};
-  deriveTestSuite(testSuite({}), suiteV1, "_V1");
-  // For databases with replicationVersion 2 we internally use a ReplicatedRocksDBTransactionState
-  // for the transaction. Since this class is currently not covered by unittests, these tests are
-  // parameterized to cover both cases.
-  deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
-  return [suiteV1, suiteV2];
-}
+exports.transactionRevisionsSuite = transactionRevisionsSuite;
+exports.transactionRollbackSuite = transactionRollbackSuite;
+exports.transactionInvocationSuite = transactionInvocationSuite;
+exports.transactionCollectionsSuite = transactionCollectionsSuite;
+exports.transactionOperationsSuite = transactionOperationsSuite;
+exports.transactionBarriersSuite = transactionBarriersSuite;
+exports.transactionCountSuite = transactionCountSuite;
+exports.transactionCrossCollectionSuite = transactionCrossCollectionSuite;
+exports.transactionTraversalSuite = transactionTraversalSuite;
+exports.transactionAQLStreamSuite = transactionAQLStreamSuite;
+exports.transactionTTLStreamSuite = transactionTTLStreamSuite;
+exports.transactionIteratorSuite = transactionIteratorSuite;
+exports.transactionOverlapSuite = transactionOverlapSuite;
+exports.transactionOverlapUniqueIndexSuite = transactionOverlapUniqueIndexSuite;
 
-function transactionRevisionsSuiteV1() { return makeTestSuites(transactionRevisionsSuite)[0]; }
-function transactionRevisionsSuiteV2() { return makeTestSuites(transactionRevisionsSuite)[1]; }
+/*
+ * Due to the large number of tests, if we were to execute all the suites in this file sequentially,
+ * we would hit the 15min timeout on the macOS nightly. Therefore, these suites are split into shell-transaction-part1.js
+ * and shell-transaction-part2.js files. In turn, each is executed twice, once for replication1 and once for replication2.
+ */
+exports.partSuites = [
+  [
+    transactionRevisionsSuite,
+    transactionRollbackSuite,
+    transactionInvocationSuite,
+    transactionCollectionsSuite,
+    transactionOperationsSuite,
+    transactionBarriersSuite,
+    transactionCountSuite,
+  ],
+  [
+    transactionCrossCollectionSuite,
+    transactionTraversalSuite,
+    transactionAQLStreamSuite,
+    transactionTTLStreamSuite,
+    transactionIteratorSuite,
+    transactionOverlapSuite,
+    transactionOverlapUniqueIndexSuite
+  ]
+];
 
-function transactionRollbackSuiteV1() { return makeTestSuites(transactionRollbackSuite)[0]; }
-function transactionRollbackSuiteV2() { return makeTestSuites(transactionRollbackSuite)[1]; }
-
-function transactionInvocationSuiteV1() { return makeTestSuites(transactionInvocationSuite)[0]; }
-function transactionInvocationSuiteV2() { return makeTestSuites(transactionInvocationSuite)[1]; }
-
-function transactionCollectionsSuiteV1() { return makeTestSuites(transactionCollectionsSuite)[0]; }
-function transactionCollectionsSuiteV2() { return makeTestSuites(transactionCollectionsSuite)[1]; }
-
-function transactionOperationsSuiteV1() { return makeTestSuites(transactionOperationsSuite)[0]; }
-function transactionOperationsSuiteV2() { return makeTestSuites(transactionOperationsSuite)[1]; }
-
-function transactionBarriersSuiteV1() { return makeTestSuites(transactionBarriersSuite)[0]; }
-function transactionBarriersSuiteV2() { return makeTestSuites(transactionBarriersSuite)[1]; }
-
-function transactionCountSuiteV1() { return makeTestSuites(transactionCountSuite)[0]; }
-function transactionCountSuiteV2() { return makeTestSuites(transactionCountSuite)[1]; }
-
-function transactionCrossCollectionSuiteV1() { return makeTestSuites(transactionCrossCollectionSuite)[0]; }
-function transactionCrossCollectionSuiteV2() { return makeTestSuites(transactionCrossCollectionSuite)[1]; }
-
-function transactionTraversalSuiteV1() { return makeTestSuites(transactionTraversalSuite)[0]; }
-function transactionTraversalSuiteV2() { return makeTestSuites(transactionTraversalSuite)[1]; }
-
-function transactionAQLStreamSuiteV1() { return makeTestSuites(transactionAQLStreamSuite)[0]; }
-function transactionAQLStreamSuiteV2() { return makeTestSuites(transactionAQLStreamSuite)[1]; }
-
-function transactionTTLStreamSuiteV1() { return makeTestSuites(transactionTTLStreamSuite)[0]; }
-function transactionTTLStreamSuiteV2() { return makeTestSuites(transactionTTLStreamSuite)[1]; }
-
-function transactionIteratorSuiteV1() { return makeTestSuites(transactionIteratorSuite)[0]; }
-function transactionIteratorSuiteV2() { return makeTestSuites(transactionIteratorSuite)[1]; }
-
-function transactionOverlapSuiteV1() { return makeTestSuites(transactionOverlapSuite)[0]; }
-function transactionOverlapSuiteV2() { return makeTestSuites(transactionOverlapSuite)[1]; }
-
-function transactionOverlapUniqueIndexSuiteV1() { return makeTestSuites(transactionOverlapUniqueIndexSuite)[0]; }
-function transactionOverlapUniqueIndexSuiteV2() { return makeTestSuites(transactionOverlapUniqueIndexSuite)[1]; }
-
-jsunity.run(transactionRevisionsSuiteV1);
-jsunity.run(transactionRollbackSuiteV1);
-jsunity.run(transactionInvocationSuiteV1);
-jsunity.run(transactionCollectionsSuiteV1);
-jsunity.run(transactionOperationsSuiteV1);
-jsunity.run(transactionBarriersSuiteV1);
-jsunity.run(transactionCountSuiteV1);
-jsunity.run(transactionCrossCollectionSuiteV1);
-jsunity.run(transactionTraversalSuiteV1);
-jsunity.run(transactionAQLStreamSuiteV1);
-jsunity.run(transactionTTLStreamSuiteV1);
-jsunity.run(transactionIteratorSuiteV1);
-jsunity.run(transactionOverlapSuiteV1);
-jsunity.run(transactionOverlapUniqueIndexSuiteV1);
-jsunity.run(transactionDatabaseSuite);
-
-if (isReplication2Enabled) {
-  let suites = [
-    transactionRevisionsSuiteV2,
-    transactionRollbackSuiteV2,
-    transactionInvocationSuiteV2,
-    transactionCollectionsSuiteV2,
-    transactionOperationsSuiteV2,
-    transactionBarriersSuiteV2,
-    transactionCountSuiteV2,
-    transactionCrossCollectionSuiteV2,
-    transactionTraversalSuiteV2,
-    transactionAQLStreamSuiteV2,
-    transactionTTLStreamSuiteV2,
-    transactionIteratorSuiteV2,
-    transactionOverlapSuiteV2,
-    transactionOverlapUniqueIndexSuiteV2,
-  ];
-
-  // TODO this is temporary until we update replication2
-  /*
-  for (const suite of suites) {
-    jsunity.run(suite);
-  }
-   */
-}
-
-return jsunity.done();
+// The following suites are replication1 specific
+exports.transactionDatabaseSuite = transactionDatabaseSuite;
