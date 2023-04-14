@@ -11,8 +11,7 @@ using namespace arangodb::pregel::conductor;
 
 Loading::Loading(ConductorState& conductor,
                  std::unordered_map<ShardID, actor::ActorPID> actorForShard)
-    : conductor{conductor}, actorForShard{std::move(actorForShard)} {
-}
+    : conductor{conductor}, actorForShard{std::move(actorForShard)} {}
 
 auto Loading::messages()
     -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {

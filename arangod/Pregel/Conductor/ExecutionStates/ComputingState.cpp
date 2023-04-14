@@ -15,8 +15,7 @@ Computing::Computing(
     std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor)
     : conductor{conductor},
       masterContext{std::move(masterContext)},
-      sendCountPerActor{std::move(sendCountPerActor)} {
-}
+      sendCountPerActor{std::move(sendCountPerActor)} {}
 
 auto Computing::messages()
     -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {

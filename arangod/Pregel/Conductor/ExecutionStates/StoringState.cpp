@@ -30,8 +30,7 @@
 
 using namespace arangodb::pregel::conductor;
 
-Storing::Storing(ConductorState& conductor) : conductor{conductor} {
-}
+Storing::Storing(ConductorState& conductor) : conductor{conductor} {}
 
 auto Storing::messages()
     -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {

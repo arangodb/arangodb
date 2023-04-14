@@ -56,20 +56,23 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] metrics::message::ConductorLoadingStarted msg) {
+  auto operator()(
+      [[maybe_unused]] metrics::message::ConductorLoadingStarted msg) {
     this->state->metrics->pregelConductorsLoadingNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] metrics::message::ConductorComputingStarted msg) {
+  auto operator()(
+      [[maybe_unused]] metrics::message::ConductorComputingStarted msg) {
     this->state->metrics->pregelConductorsLoadingNumber->fetch_sub(1);
     this->state->metrics->pregelConductorsRunningNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] metrics::message::ConductorStoringStarted msg) {
+  auto operator()(
+      [[maybe_unused]] metrics::message::ConductorStoringStarted msg) {
     this->state->metrics->pregelConductorsRunningNumber->fetch_sub(1);
     this->state->metrics->pregelConductorsStoringNumber->fetch_add(1);
 
@@ -108,7 +111,8 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] metrics::message::WorkerLoadingFinished msg) {
+  auto operator()(
+      [[maybe_unused]] metrics::message::WorkerLoadingFinished msg) {
     this->state->metrics->pregelWorkersLoadingNumber->fetch_sub(1);
 
     return std::move(this->state);
@@ -136,7 +140,8 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] metrics::message::WorkerStoringFinished msg) {
+  auto operator()(
+      [[maybe_unused]] metrics::message::WorkerStoringFinished msg) {
     this->state->metrics->pregelWorkersStoringNumber->fetch_sub(1);
 
     return std::move(this->state);

@@ -41,29 +41,39 @@ struct PregelMetrics {
 
  protected:
   template<typename MFP,
-           std::enable_if_t<std::is_same_v<arangodb::metrics::MetricsFeature*, MFP> ||
-                                std::is_null_pointer_v<MFP>,
-                            int> = 0,
+           std::enable_if_t<
+               std::is_same_v<arangodb::metrics::MetricsFeature*, MFP> ||
+                   std::is_null_pointer_v<MFP>,
+               int> = 0,
            bool mock = std::is_null_pointer_v<MFP>>
   explicit PregelMetrics(MFP metricsFeature);
 
  public:
-  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const pregelConductorsNumber;
-  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const pregelConductorsLoadingNumber;
-  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const pregelConductorsRunningNumber;
-  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const pregelConductorsStoringNumber;
+  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const
+      pregelConductorsNumber;
+  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const
+      pregelConductorsLoadingNumber;
+  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const
+      pregelConductorsRunningNumber;
+  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const
+      pregelConductorsStoringNumber;
 
   std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const pregelWorkersNumber;
-  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const pregelWorkersLoadingNumber;
-  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const pregelWorkersRunningNumber;
-  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const pregelWorkersStoringNumber;
+  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const
+      pregelWorkersLoadingNumber;
+  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const
+      pregelWorkersRunningNumber;
+  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const
+      pregelWorkersStoringNumber;
 
   std::shared_ptr<arangodb::metrics::Counter> const pregelMessagesSent;
   std::shared_ptr<arangodb::metrics::Counter> const pregelMessagesReceived;
 
-  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const pregelNumberOfThreads;
+  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const
+      pregelNumberOfThreads;
 
-  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const pregelMemoryUsedForGraph;
+  std::shared_ptr<arangodb::metrics::Gauge<uint64_t>> const
+      pregelMemoryUsedForGraph;
 };
 
 }  // namespace arangodb::pregel

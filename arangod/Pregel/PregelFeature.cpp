@@ -408,7 +408,8 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         std::make_unique<conductor::ConductorState>(
             std::move(algorithm.value()), executionSpecifications,
             std::move(vocbaseLookupInfo), std::move(spawnActor),
-            std::move(resultActorPID), std::move(statusActorPID), _metricsActor),
+            std::move(resultActorPID), std::move(statusActorPID),
+            _metricsActor),
         conductor::message::ConductorStart{});
     auto conductorActorPID = actor::ActorPID{.server = ss->getId(),
                                              .database = vocbase.name(),
@@ -441,8 +442,8 @@ PregelFeature::PregelFeature(Server& server)
       _metrics(std::make_shared<PregelMetrics>(
           server.getFeature<arangodb::metrics::MetricsFeature>())),
       _actorRuntime(nullptr) {
-  static_assert(
-      Server::isCreatedAfter<PregelFeature, arangodb::metrics::MetricsFeature>());
+  static_assert(Server::isCreatedAfter<PregelFeature,
+                                       arangodb::metrics::MetricsFeature>());
   auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
       "_system", std::make_unique<MetricsState>(_metrics),
       metrics::message::MetricsStart{});
@@ -876,7 +877,7 @@ void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
 }
 
 void PregelFeature::cleanupWorker(ExecutionNumber executionNumber) {
-  // unmapping etc might need a few seconds
+  // unmapping etc. might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {
@@ -1199,7 +1200,7 @@ auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
     return Result{};
   }
 
-  // pregel can still have ran with actors, then the result actor would exist
+  // pregel can still have run with actors, then the result actor would exist
   auto resultActor = _resultActor.doUnderLock(
       [&executionNumber](auto const& actors) -> std::optional<actor::ActorPID> {
         auto actor = actors.find(executionNumber);

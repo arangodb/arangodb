@@ -49,7 +49,8 @@ struct WorkerState {
               std::unique_ptr<MessageCombiner<M>> newMessageCombiner,
               std::unique_ptr<Algorithm<V, E, M>> algorithm,
               TRI_vocbase_t& vocbase, actor::ActorPID spawnActor,
-              actor::ActorPID resultActor, actor::ActorPID statusActor, actor::ActorPID metricsActor)
+              actor::ActorPID resultActor, actor::ActorPID statusActor,
+              actor::ActorPID metricsActor)
       : config{std::make_shared<WorkerConfig>(&vocbase)},
         workerContext{std::move(workerContext)},
         messageTimeout{messageTimeout},

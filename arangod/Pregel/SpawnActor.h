@@ -69,7 +69,8 @@ auto inspect(Inspector& f, SpawnState& x) {
 
 template<typename Runtime>
 struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
-  auto operator()([[maybe_unused]] message::SpawnStart start) -> std::unique_ptr<SpawnState> {
+  auto operator()([[maybe_unused]] message::SpawnStart start)
+      -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("4a414", INFO, Logger::PREGEL)
         << fmt::format("Spawn Actor {} started", this->self);
     return std::move(this->state);
@@ -201,7 +202,8 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] message::SpawnCleanup msg) -> std::unique_ptr<SpawnState> {
+  auto operator()([[maybe_unused]] message::SpawnCleanup msg)
+      -> std::unique_ptr<SpawnState> {
     this->finish();
     return std::move(this->state);
   }

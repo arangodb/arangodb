@@ -302,8 +302,9 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->stateName = loading.state;
     this->state->timings.loading.setStart(loading.time);
 
-    this->template dispatch(this->state->metricsActor,
-                            pregel::metrics::message::ConductorLoadingStarted{});
+    this->template dispatch(
+        this->state->metricsActor,
+        pregel::metrics::message::ConductorLoadingStarted{});
 
     return std::move(this->state);
   }
@@ -328,8 +329,9 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->timings.computation.setStart(msg.time);
     this->state->timings.gss.push_back(PrintableDuration::withStart(msg.time));
 
-    this->template dispatch(this->state->metricsActor,
-                            pregel::metrics::message::ConductorComputingStarted{});
+    this->template dispatch(
+        this->state->metricsActor,
+        pregel::metrics::message::ConductorComputingStarted{});
 
     return std::move(this->state);
   }
@@ -368,8 +370,9 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
 
     this->state->timings.storing.setStart(msg.time);
 
-    this->template dispatch(this->state->metricsActor,
-                            pregel::metrics::message::ConductorStoringStarted{});
+    this->template dispatch(
+        this->state->metricsActor,
+        pregel::metrics::message::ConductorStoringStarted{});
 
     return std::move(this->state);
   }
@@ -390,9 +393,10 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->timings.storing.setStop(msg.time);
     this->state->timings.totalRuntime.setStop(msg.time);
 
-    this->template dispatch(this->state->metricsActor,
-                            pregel::metrics::message::ConductorFinished{
-                                .prevState = metrics::message::PrevState::STORING});
+    this->template dispatch(
+        this->state->metricsActor,
+        pregel::metrics::message::ConductorFinished{
+            .prevState = metrics::message::PrevState::STORING});
 
     return std::move(this->state);
   }
@@ -401,9 +405,9 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->stateName = msg.state;
     this->state->timings.stopAll(msg.time);
 
-    this->template dispatch(
-        this->state->metricsActor,
-        pregel::metrics::message::ConductorFinished{.prevState = msg.prevState});
+    this->template dispatch(this->state->metricsActor,
+                            pregel::metrics::message::ConductorFinished{
+                                .prevState = msg.prevState});
 
     return std::move(this->state);
     return std::move(this->state);
@@ -413,9 +417,9 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->stateName = msg.state;
     this->state->timings.stopAll(msg.time);
 
-    this->template dispatch(
-        this->state->metricsActor,
-        pregel::metrics::message::ConductorFinished{.prevState = msg.prevState});
+    this->template dispatch(this->state->metricsActor,
+                            pregel::metrics::message::ConductorFinished{
+                                .prevState = msg.prevState});
 
     return std::move(this->state);
   }
