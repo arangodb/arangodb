@@ -21,28 +21,25 @@ export const useJobSync = ({
     } else {
       const readJob = function (data: any, jobId: string) {
         if (data.statusCode === 204) {
-          // job is still in quere or pending
+          // job is still in queue or pending
           onQueue();
           return;
         }
-        // this means the index is created, so we can delete the job and refetch
-        onSuccess();
+        // this means the job is complete so we can delete it
         window.arangoHelper.deleteAardvarkJob(jobId);
+        onSuccess();
       };
 
       const onJobError = (error: any, jobId: string) => {
         const statusCode = error?.response?.body?.code;
         onError(error);
-        if (statusCode === 404) {
-          // delete non existing aardvark job
-          window.arangoHelper.deleteAardvarkJob(jobId);
-        } else if (statusCode === 400) {
-          // index job failed -> print error
+        if (statusCode === 404 || statusCode === 400) {
           // delete non existing aardvark job
           window.arangoHelper.deleteAardvarkJob(jobId);
         }
       };
-
+      // if a job is in the list, this checks for status
+      // by calling 'put /job/:jobId'
       jobsList.forEach(job => {
         if (job.collection === jobCollectionName) {
           getApiRouteForCurrentDB()
