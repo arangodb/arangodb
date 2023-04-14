@@ -73,6 +73,10 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->state->outCache->setResponsibleActorPerShard(
         msg.responsibleActorPerShard);
 
+    this->template dispatch(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerLoadingStarted{});
+
     // TODO GORDO-1510
     // _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
 
@@ -103,8 +107,14 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                       "caught unknown exception when loading graph"};
       }
     };
+
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor, graphLoaded());
+
+    this->template dispatch(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerLoadingFinished{});
+
     // TODO GORDO-1510
     // _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
     return std::move(this->state);

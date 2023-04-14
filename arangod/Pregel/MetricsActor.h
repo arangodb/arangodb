@@ -102,6 +102,18 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
     return std::move(this->state);
   }
 
+  auto operator()([[maybe_unused]] metrics::message::WorkerLoadingStarted msg) {
+    this->state->metrics->pregelWorkersLoadingNumber->fetch_add(1);
+
+    return std::move(this->state);
+  }
+
+  auto operator()([[maybe_unused]] metrics::message::WorkerLoadingFinished msg) {
+    this->state->metrics->pregelWorkersLoadingNumber->fetch_sub(1);
+
+    return std::move(this->state);
+  }
+
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<MetricsState> {
     LOG_TOPIC("edc16", INFO, Logger::PREGEL) << fmt::format(
