@@ -257,7 +257,7 @@ const schema = Yup.object({
   fields: Yup.array()
     .of(fieldSchema)
     .when("includeAllFields", {
-      is: () => false,
+      is: false,
       then: () =>
         Yup.array()
           .of(fieldSchema)
