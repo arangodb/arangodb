@@ -187,7 +187,6 @@ struct StaticStrings {
   // enables caching for primary key column
   static constexpr std::string_view kCachePrimaryKeyField{"primaryKeyCache"};
 
-
   static constexpr std::string_view kOptimizeTopKField{"optimizeTopK"};
 #endif
 
