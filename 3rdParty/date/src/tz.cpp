@@ -3462,6 +3462,10 @@ init_tzdb()
                 {
                     db->zones.back().add(line);
                 }
+                else if (word.size() > 0 && word[0] == '#')
+                {
+                    continue;
+                }                
                 else
                 {
                     std::cerr << line << '\n';

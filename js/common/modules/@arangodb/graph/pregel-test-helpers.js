@@ -62,7 +62,7 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
   let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
   var status;
   do {
-    internal.sleep(0.2);
+    internal.sleep(sleepIntervalSeconds);
     status = pregel.status(pid);
     if (wakeupsLeft-- === 0) {
       assertTrue(false, "timeout in pregel execution");
@@ -265,19 +265,21 @@ const pregelRunSmallInstanceGetComponents = function (algName, graphName, parame
 };
 
 const makeSetUp = function (smart, smartAttribute, numberOfShards) {
-  return function () {
-    if (smart) {
-      smart_graph_module._create(graphName, [smart_graph_module._relation(eColl, vColl, vColl)], [],
-        {smartGraphAttribute: smartAttribute, numberOfShards: numberOfShards});
-    } else {
-      db._create(vColl, {numberOfShards: numberOfShards});
-      db._createEdgeCollection(eColl, {
-        shardKeys: ["vertex"],
-        distributeShardsLike: vColl
-      });
-      general_graph_module._create(graphName, [general_graph_module._relation(eColl, vColl, vColl)], []);
-    }
-  };
+    return function () {
+        if (smart) {
+            smart_graph_module._create(graphName, [smart_graph_module._relation(eColl, vColl, vColl)], [],
+                {smartGraphAttribute: smartAttribute, numberOfShards: numberOfShards});
+        } else {
+            db._create(vColl, {numberOfShards: numberOfShards});
+            db._createEdgeCollection(eColl, {
+                numberOfShards: numberOfShards,
+                replicationFactor: 1,
+                shardKeys: ["vertex"],
+                distributeShardsLike: vColl
+            });
+            general_graph_module._create(graphName, [general_graph_module._relation(eColl, vColl, vColl)], []);
+        }
+    };
 };
 
 const makeTearDown = function (smart) {

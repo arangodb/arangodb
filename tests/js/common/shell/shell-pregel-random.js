@@ -54,7 +54,7 @@ function randomTestSuite() {
     do {
       try {
         let stats = pregel.status(pid);
-        if (pregelTestHelpers.runCanceled(pid)) {
+        if (pregelTestHelpers.runCanceled(stats)) {
           break;
         }
       } catch (err) {
@@ -88,6 +88,7 @@ function randomTestSuite() {
       graph._addVertexCollection(vColl);
       db._createEdgeCollection(eColl, {
         numberOfShards: 4,
+        replicationFactor: 1,
         shardKeys: ["vertex"],
         distributeShardsLike: vColl
       });

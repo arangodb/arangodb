@@ -315,6 +315,9 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
         GraphLoadingDetails{.verticesLoaded = msg.verticesLoaded,
                             .edgesLoaded = msg.edgesLoaded,
                             .memoryBytesUsed = msg.memoryBytesUsed});
+    this->state->vertexCount =
+        this->state->details.combined.loading.verticesLoaded;
+    this->state->edgeCount = this->state->details.combined.loading.edgesLoaded;
     return std::move(this->state);
   }
 

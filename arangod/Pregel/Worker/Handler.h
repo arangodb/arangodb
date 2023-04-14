@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
@@ -63,12 +64,6 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is loading", this->self);
 
-    this->state->outCache->setDispatch(
-        [this](actor::ActorPID actor,
-               worker::message::PregelMessage message) -> void {
-          this->template dispatch<worker::message::WorkerMessages>(actor,
-                                                                   message);
-        });
     this->state->outCache->setResponsibleActorPerShard(
         msg.responsibleActorPerShard);
 
@@ -85,7 +80,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                   this->template dispatch<pregel::message::StatusMessages>(
                       this->state->statusActor, update);
                 }});
-        this->state->magazine = loader.load();
+        this->state->magazine = loader.load().get();
 
         LOG_TOPIC("5206c", WARN, Logger::PREGEL)
             << fmt::format("Worker {} has finished loading.", this->self);
@@ -113,6 +108,12 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   auto prepareGlobalSuperStep(message::RunGlobalSuperStep message) -> void {
     // write cache becomes the readable cache
+    this->state->outCache->setDispatch(
+        [this](actor::ActorPID actor,
+               worker::message::PregelMessage message) -> void {
+          this->template dispatch<worker::message::WorkerMessages>(actor,
+                                                                   message);
+        });
     TRI_ASSERT(this->state->readCache->containedMessageCount() == 0);
     std::swap(this->state->readCache, this->state->writeCache);
     this->state->config->_globalSuperstep = message.gss;
@@ -243,9 +244,14 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       this->state->workerContext->_writeAggregators->serializeValues(
           aggregators);
     }
+    std::vector<conductor::message::SendCountPerActor> sendCountList;
+    for (auto const& [actor, count] : verticesProcessed.sendCountPerActor) {
+      sendCountList.emplace_back(conductor::message::SendCountPerActor{
+          .receiver = actor, .sendCount = count});
+    }
     auto gssFinishedEvent = conductor::message::GlobalSuperStepFinished{
         this->state->messageStats,
-        verticesProcessed.sendCountPerActor,
+        sendCountList,
         verticesProcessed.activeCount,
         this->state->magazine.numberOfVertices(),
         this->state->magazine.numberOfEdges(),
@@ -285,10 +291,29 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     // if not: send message back to itself such that in between it can receive
     // missing messages
     if (message.sendCount != this->state->writeCache->containedMessageCount()) {
+      if (not this->state->isWaitingForAllMessagesSince.has_value()) {
+        this->state->isWaitingForAllMessagesSince =
+            std::chrono::steady_clock::now();
+      }
+      if (std::chrono::steady_clock::now() -
+              this->state->isWaitingForAllMessagesSince.value() >
+          this->state->messageTimeout) {
+        this->template dispatch<conductor::message::ConductorMessages>(
+            this->state->conductor,
+            ResultT<conductor::message::GlobalSuperStepFinished>::error(
+                TRI_ERROR_INTERNAL,
+                fmt::format("Worker {} received {} messages in gss {} after "
+                            "timeout, although {} were send to it.",
+                            this->self,
+                            this->state->writeCache->containedMessageCount(),
+                            message.gss, message.sendCount)));
+        return std::move(this->state);
+      }
       this->template dispatch<worker::message::WorkerMessages>(this->self,
                                                                message);
       return std::move(this->state);
     }
+    this->state->isWaitingForAllMessagesSince = std::nullopt;
 
     prepareGlobalSuperStep(std::move(message));
 
@@ -312,7 +337,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
   auto operator()(message::PregelMessage message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("80709", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor {} received message {}", this->self, message);
+        "Worker Actor {} with gss {} received message for gss {}", this->self,
+        this->state->config->globalSuperstep(), message.gss);
     if (message.gss != this->state->config->globalSuperstep() &&
         message.gss != this->state->config->globalSuperstep() + 1) {
       LOG_TOPIC("da39a", ERR, Logger::PREGEL)
@@ -350,8 +376,10 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
     auto graphStored = [this]() -> ResultT<conductor::message::Stored> {
       try {
-        auto storer = GraphStorer<V, E>(
-            this->state->config, this->state->algorithm->inputFormat(),
+        auto storer = std::make_shared<GraphStorer<V, E>>(
+            this->state->config->executionNumber(),
+            *this->state->config->vocbase(),
+            this->state->algorithm->inputFormat(),
             this->state->config->globalShardIDs(),
             ActorStoringUpdate{
                 .fn =
@@ -359,9 +387,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                   this->template dispatch<pregel::message::StatusMessages>(
                       this->state->statusActor, update);
                 }});
-        for (auto& quiver : this->state->magazine) {
-          storer.store(quiver);
-        }
+        storer->store(this->state->magazine).get();
         return conductor::message::Stored{};
       } catch (std::exception const& ex) {
         return Result{
@@ -396,14 +422,12 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         //         .status = this->state->observeStatus()});
       };
       try {
-        auto storer =
-            GraphVPackBuilderStorer<V, E>(msg.withID, this->state->config,
-                                          this->state->algorithm->inputFormat(),
-                                          std::move(statusUpdateCallback));
-        for (auto& quiver : this->state->magazine) {
-          storer.store(quiver);
-        }
-        return PregelResults{*storer.result};
+        auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
+            msg.withID, this->state->config,
+            this->state->algorithm->inputFormat(),
+            std::move(statusUpdateCallback));
+        storer->store(this->state->magazine).get();
+        return PregelResults{*storer->stealResult()};
       } catch (std::exception const& ex) {
         return Result{TRI_ERROR_INTERNAL,
                       fmt::format("caught exception when receiving results: {}",

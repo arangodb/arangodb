@@ -74,6 +74,7 @@
   db._drop("UnitTestsImportRemoveAttributeJSON");
   db._drop("UnitTestsImportJsonLarge");
   db._drop("UnitTestsImportRemoveAttributeJsonLarge");
+  db._drop("Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨");
 
   let dbs = ["maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "abc mötor !\" ' & <>", "UnitTestImportCreateDatabase"];
   dbs.forEach((name) => {

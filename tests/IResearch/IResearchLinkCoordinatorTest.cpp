@@ -181,7 +181,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     // unable to create index without timeout
     VPackBuilder outputDefinition;
-    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
+    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                         linkJson->slice(), true,
                                                         outputDefinition)
                     .ok());
@@ -260,9 +260,9 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     auto const indexArg =
         arangodb::velocypack::Parser::fromJson("{\"id\": \"42\"}");
-    EXPECT_TRUE(arangodb::methods::Indexes::drop(logicalCollection.get(),
-                                                 indexArg->slice())
-                    .ok());
+    EXPECT_TRUE(
+        arangodb::methods::Indexes::drop(*logicalCollection, indexArg->slice())
+            .ok());
 
     // get new version from plan
     auto updatedCollection1 = ci.getCollection(
@@ -340,7 +340,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     // unable to create index without timeout
     VPackBuilder outputDefinition;
-    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
+    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                         linkJson->slice(), true,
                                                         outputDefinition)
                     .ok());
