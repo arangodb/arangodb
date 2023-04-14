@@ -1,6 +1,8 @@
 devel
 -----
 
+* SEARCH-466 Fix leaking into individual link definition inherited properties from view
+
 * APM-183: Support UTF-8 on UI (collection/view/index names).
 
 * FE-199: Remove URL handling of fields on view screen.
