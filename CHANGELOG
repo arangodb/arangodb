@@ -1,6 +1,10 @@
 devel
 -----
 
+* APM-183: Support UTF-8 on UI (collection/view/index names).
+
+* FE-199: Remove URL handling of fields on view screen.
+
 * MDS-1098: In 3.10 we have introduced an optimization on Traversals to pull
   post-filter conditions into the traversal-statements, like the following:
 
