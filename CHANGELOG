@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-212: bugfix: links not getting removed when 
+  copying from another view in UI.
+
 * APM-183: Support UTF-8 on UI (collection/view/index names).
 
 * FE-199: Remove URL handling of fields on view screen.
