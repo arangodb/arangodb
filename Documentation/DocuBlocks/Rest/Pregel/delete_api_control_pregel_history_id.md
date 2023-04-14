@@ -1,35 +1,35 @@
-@startDocuBlock delete_api_control_pregel_history_pid
+@startDocuBlock delete_api_control_pregel_history_id
 @brief Removes the persisted state of a past Pregel execution job
 
-@RESTHEADER{DELETE /_api/control_pregel/history/{id}, Remove state of past pregel execution, deletePregelJobStatePid}
+@RESTHEADER{DELETE /_api/control_pregel/history/{id}, Remove the execution statistics of a past Pregel job, deletePregelJobStatistics}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{id,number,required}
-Pregel execution identifier.
+The Pregel job identifier.
 
 @RESTDESCRIPTION
-Removes the persisted state of a past pregel execution.
+Removes the persisted execution statistics of a finished Pregel job.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-HTTP 200 is returned if the job execution ID was valid.
+is returned if the Pregel job ID is valid.
 
 @RESTRETURNCODE{404}
-An HTTP 404 error is returned if no Pregel job with the specified execution number
-is found or the execution number is invalid.
+is returned if no Pregel job with the specified ID is found or if the ID
+is invalid.
 
 @EXAMPLES
 
-Removes the persisted state of a past pregel execution:
+Remove the persisted execution statistics of a finished Pregel job:
 
-@EXAMPLE_ARANGOSH_RUN{RestPregelCancelConnectedComponentsRemoveStatePid}
+@EXAMPLE_ARANGOSH_RUN{RestPregelConnectedComponentsRemoveStatisticsId}
 
   var examples = require("@arangodb/graph-examples/example-graph.js");
   var graph = examples.loadGraph("connectedComponentsGraph");
 
-  var postUrl = "/_api/control_pregel";
+  var url = "/_api/control_pregel";
   var body = {
     algorithm: "wcc",
     graphName: "connectedComponentsGraph",
@@ -38,9 +38,9 @@ Removes the persisted state of a past pregel execution:
       store: false
     }
   };
-  var id = internal.arango.POST(postUrl, body);
-  var historyUrl = "/_api/control_pregel/history/" + id;
+  var id = internal.arango.POST(url, body);
 
+  var url = "/_api/control_pregel/history/" + id;
   while (true) {
     var status = internal.arango.GET(url);
     if (status.error || ["done", "canceled", "fatal error"].includes(status.state)) {
@@ -52,7 +52,7 @@ Removes the persisted state of a past pregel execution:
     }
   }
 
-  var response = logCurlRequest("DELETE", historyUrl);
+  var response = logCurlRequest("DELETE", url);
   assert(response.code === 200);
 
   logJsonResponse(response);

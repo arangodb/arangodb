@@ -1,26 +1,26 @@
 @startDocuBlock delete_api_control_pregel_history
 @brief Removes the persisted state of all past Pregel jobs
 
-@RESTHEADER{DELETE /_api/control_pregel/history, Remove the persisted state of all past Pregel execution jobs, deletePregelAllJobsState}
+@RESTHEADER{DELETE /_api/control_pregel/history, Remove the execution statistics of all past Pregel jobs, deleteAllPregelJobStatistics}
 
 @RESTDESCRIPTION
-Removes the persisted state of a all past Pregel job executions.
+Removes the persisted execution statistics of all past Pregel jobs.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-HTTP 200 is returned if all persisted job states could be successfully deleted.
+is returned if all persisted execution statistics have been successfully deleted.
 
 @EXAMPLES
 
-Removes the persisted states of all past Pregel executions:
+Remove the persisted execution statistics of all past Pregel jobs:
 
-@EXAMPLE_ARANGOSH_RUN{RestPregelCancelConnectedComponentsRemoveState}
+@EXAMPLE_ARANGOSH_RUN{RestPregelConnectedComponentsRemoveStatistics}
 
   var examples = require("@arangodb/graph-examples/example-graph.js");
   var graph = examples.loadGraph("connectedComponentsGraph");
 
-  var postUrl = "/_api/control_pregel";
+  var url = "/_api/control_pregel";
   var body = {
     algorithm: "wcc",
     graphName: "connectedComponentsGraph",
@@ -29,9 +29,9 @@ Removes the persisted states of all past Pregel executions:
       store: false
     }
   };
-  var id = internal.arango.POST(postUrl, body);
-  var historyUrl = "/_api/control_pregel/history;
+  var id = internal.arango.POST(url, body);
 
+  url = "/_api/control_pregel/history";
   while (true) {
     var status = internal.arango.GET(url);
     if (status.error || ["done", "canceled", "fatal error"].includes(status.state)) {
@@ -43,7 +43,7 @@ Removes the persisted states of all past Pregel executions:
     }
   }
 
-  var response = logCurlRequest("DELETE", historyUrl);
+  var response = logCurlRequest("DELETE", url);
   assert(response.code === 200);
 
   logJsonResponse(response);

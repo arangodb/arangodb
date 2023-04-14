@@ -1,56 +1,58 @@
-@startDocuBlock get_api_control_pregel_history_pid
+@startDocuBlock get_api_control_pregel_history_id
 @brief Get the status of a Pregel execution
 
-@RESTHEADER{GET /_api/control_pregel/history/{id}, Get Pregel job execution status, getPregelHistoryPid}
+@RESTHEADER{GET /_api/control_pregel/history/{id}, Get the execution statistics of a Pregel job, getPregelJobStatistics}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{id,number,required}
-Pregel execution identifier.
+Pregel job identifier.
 
 @RESTDESCRIPTION
 Returns the current state of the execution, the current global superstep, the
-runtime, the global aggregator values as well as the number of sent and
-received messages. Compared to the status API `/_api/control_pregel/{id}` the
-history API will also deliver the execution state when they are not kept in 
-memory anymore, as they are being persisted in the database.
+runtime, the global aggregator values, as well as the number of sent and
+received messages.
+
+The execution statistics are persisted to a system collection and kept until you
+remove them, whereas the `/_api/control_pregel/{id}` endpoint only keeps the
+information temporarily in memory.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-HTTP 200 is returned in case the job execution ID was valid and the state is
+is returned if the Pregel job ID is valid and the execution statistics are
 returned along with the response.
 
 @RESTREPLYBODY{,object,required,get_api_control_pregel_struct}
 The information about the Pregel job.
 
 @RESTRETURNCODE{404}
-An HTTP 404 error is returned if no Pregel job with the specified execution number
-is found or the execution number is invalid.
+is returned if no Pregel job with the specified ID is found or if the ID
+is invalid.
 
 @EXAMPLES
 
 Get the execution status of a Pregel job:
 
-@EXAMPLE_ARANGOSH_RUN{RestPregelStatusConnectedComponentsHistoryPid}
+@EXAMPLE_ARANGOSH_RUN{RestPregelConnectedComponentsStatisticsId}
 
 var examples = require("@arangodb/graph-examples/example-graph.js");
 var graph = examples.loadGraph("connectedComponentsGraph");
 
-var postUrl = "/_api/control_pregel";
-  var body = {
-    algorithm: "wcc",
-    graphName: "connectedComponentsGraph",
-    params: {
+var url = "/_api/control_pregel";
+var body = {
+  algorithm: "wcc",
+  graphName: "connectedComponentsGraph",
+  params: {
     maxGSS: graph.components.count(),
     resultField: "component"
   }
 };
-var id = internal.arango.POST(postUrl, body);
+var id = internal.arango.POST(url, body);
 
-var historyUrl = "/_api/control_pregel/history" + id;
+url = "/_api/control_pregel/history" + id;
 while (true) {
-  var status = internal.arango.GET(historyUrl);
+  var status = internal.arango.GET(url);
   if (status.error || ["done", "canceled", "fatal error"].includes(status.state)) {
     assert(status.state == "done");
     break;
