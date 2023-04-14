@@ -52,6 +52,7 @@ const internalMembers = [
   'exitCode',
   'error',
   'status',
+  'skipped',
   'duration',
   'failed',
   'total',
@@ -322,7 +323,13 @@ function saveToJunitXML(options, results) {
       }
     },
     endTestSuite: function(options, state, testSuite, testSuiteName) {
-      if (!state.seenTestCases) {
+      if (testSuite.hasOwnProperty('skipped') && testSuite.skipped) {
+        state.xml.elem('testcase', {
+          name:  state.xmlName,
+            time: 0
+        }, true);
+        state.xml.elem('skipped/');
+      } else if (!state.seenTestCases) {
         if (testSuite.failed === 0) {
           state.xml.elem('testcase', {
             name: 'all_tests_in_' + state.xmlName,
@@ -363,6 +370,7 @@ function unitTestPrettyPrintResults (options, results) {
   let onlyFailedMessages = '';
   let failedMessages = '';
   let SuccessMessages = '';
+  let SkipMessages = '';
   let failedSuiteCount = 0;
   let failedTestsCount = 0;
   let successCases = {};
@@ -372,6 +380,7 @@ function unitTestPrettyPrintResults (options, results) {
   let bucketName = "";
   let testRunStatistics = "";
   let isSuccess = true;
+  let isSkipped = false;
   let suiteSuccess = true;
 
   if (options.testBuckets) {
@@ -439,7 +448,8 @@ function unitTestPrettyPrintResults (options, results) {
 
           let details = successCases[name];
           if (details.skipped) {
-            SuccessMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
+            let msg = ': ' + successCases[name].message;
+            SkipMessages += YELLOW + '    [SKIPPED] ' + name + msg + RESET + '\n';
           } else {
             SuccessMessages += GREEN + '    [SUCCESS] ' + name + RESET + '\n';
           }
@@ -533,11 +543,15 @@ function unitTestPrettyPrintResults (options, results) {
     // write more verbose failures to the testFailureText file
     onlyFailedMessages += '\n\n' + cu.GDB_OUTPUT;
   }
+  if (!options.extremeVerbosity) {
+    SkipMessages = '';
+  }
   print(`
 ${YELLOW}================================================================================'
 TEST RESULTS
 ================================================================================${RESET}
 ${SuccessMessages}
+${SkipMessages}
 ${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}${failText}`);
 
   onlyFailedMessages;
