@@ -1,6 +1,9 @@
 devel
 -----
 
+* SEARCH-466 Fix leaking into individual link definition inherited properties
+  from view.
+
 * FE-222: Fix - Allow additional properties in arangosearch, allow no fields in
   inverted index when 'includeAllFIelds' is true.
 
