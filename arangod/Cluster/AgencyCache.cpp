@@ -418,7 +418,7 @@ void AgencyCache::run() {
                   }
                   index_t firstIndex = firstIndexSlice.getNumber<uint64_t>();
                   if (firstIndex > 0) {
-                    // No snapshot, this is actual some log continuation
+                    // No snapshot, this is actually some log continuation
                     TRI_ASSERT(_initialized);
                     // Do incoming logs match our cache's index?
                     if (firstIndex != curIndex + 1) {
