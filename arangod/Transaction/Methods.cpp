@@ -2884,11 +2884,12 @@ Future<Result> Methods::replicateOperations(
     OperationOptions const& options, velocypack::Builder const& replicationData,
     TRI_voc_document_operation_e operation) {
   TRI_ASSERT(followerList != nullptr);
-
   TRI_ASSERT(!followerList->empty());
 
   TRI_ASSERT(replicationData.slice().isArray());
   TRI_ASSERT(!replicationData.slice().isEmptyArray());
+
+  TRI_IF_FAILURE("replicateOperations::skip") { return Result(); }
 
   // path and requestType are different for insert/remove/modify.
 
