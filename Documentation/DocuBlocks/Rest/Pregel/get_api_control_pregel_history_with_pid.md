@@ -1,4 +1,4 @@
-@startDocuBlock get_api_control_pregel_pregel
+@startDocuBlock get_api_control_pregel_history_pid
 @brief Get the status of a Pregel execution
 
 @RESTHEADER{GET /_api/control_pregel/history/{id}, Get Pregel job execution status, getPregelHistoryPid}
