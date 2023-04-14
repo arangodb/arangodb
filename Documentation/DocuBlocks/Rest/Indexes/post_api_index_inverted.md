@@ -249,6 +249,27 @@ improve the performance of queries that return many documents.
 
 Default: `false`
 
+@RESTBODYPARAM{optimizeTopK,array,optional,string}
+An array of strings defining sort expressions that you want to optimize.
+This is also known as _WAND optimization_.
+
+If you query a collection with a `FILTER` operation accelerated by an
+inverted index together with a `SORT` and `LIMIT` operation, search results can
+be retrieved faster if the sort expression matches one of the optimized expressions.
+
+Only sorting by highest rank is supported, that is, sorting by the result
+of a scoring function in descending order (`DESC`). Use `@doc` in the expression
+where you would normally pass the document variable emitted by the `FOR` loop to
+the scoring function.
+
+You can define up tp 64 expressions per inverted index.
+
+Example: `["BM25(@doc)", "TFIDF(@doc, true)"]`
+
+Default: `[]`
+
+This property is available in the Enterprise Edition only.
+
 @RESTBODYPARAM{analyzer,string,optional,string}
 The name of an Analyzer to use by default. This Analyzer is applied to the
 values of the indexed fields for which you don't define Analyzers explicitly.
