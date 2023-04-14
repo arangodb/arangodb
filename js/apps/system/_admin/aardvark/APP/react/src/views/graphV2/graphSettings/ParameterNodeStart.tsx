@@ -34,7 +34,7 @@ const ParameterNodeStart = () => {
             // when a value is being set (by clicking enter), don't re-fill the input
             return;
           }
-          setInputValue(newValue);
+          setInputValue(newValue.normalize());
         }}
         closeMenuOnSelect={false}
         onChange={(_newValue, action) => {
