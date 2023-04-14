@@ -179,7 +179,7 @@ auto inspect(Inspector& f, Details& x) {
                             f.field("graphStoring", x.storing));
 }
 struct StatusDetails {
-  auto update(ServerID server, GraphLoadingDetails const& loadingDetails)
+  auto update(const ServerID& server, GraphLoadingDetails const& loadingDetails)
       -> void {
     perWorker[server].loading = loadingDetails;
     // update combined
@@ -189,7 +189,7 @@ struct StatusDetails {
     }
     combined.loading = loadingCombined;
   }
-  auto update(ServerID server, GraphStoringDetails const& storingDetails)
+  auto update(const ServerID& server, GraphStoringDetails const& storingDetails)
       -> void {
     perWorker[server].storing = storingDetails;
     // update combined
@@ -199,7 +199,7 @@ struct StatusDetails {
     }
     combined.storing = storingCombined;
   }
-  auto update(ServerID server, uint64_t gss,
+  auto update(const ServerID& server, uint64_t gss,
               GlobalSuperStepDetails const& gssDetails) -> void {
     auto gssName = fmt::format("gss_{}", gss);
     perWorker[server].computing[gssName] = gssDetails;
@@ -292,7 +292,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
         std::chrono::time_point<std::chrono::steady_clock>{duration};
 
     this->template dispatch(this->state->metricsActor,
-                            pregel::message::ConductorStarted{});
+                            pregel::metrics::message::ConductorStarted{});
 
     return std::move(this->state);
   }
@@ -303,7 +303,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->timings.loading.setStart(loading.time);
 
     this->template dispatch(this->state->metricsActor,
-                            pregel::message::ConductorLoadingStarted{});
+                            pregel::metrics::message::ConductorLoadingStarted{});
 
     return std::move(this->state);
   }
@@ -329,7 +329,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->timings.gss.push_back(PrintableDuration::withStart(msg.time));
 
     this->template dispatch(this->state->metricsActor,
-                            pregel::message::ConductorComputingStarted{});
+                            pregel::metrics::message::ConductorComputingStarted{});
 
     return std::move(this->state);
   }
@@ -369,7 +369,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->timings.storing.setStart(msg.time);
 
     this->template dispatch(this->state->metricsActor,
-                            pregel::message::ConductorStoringStarted{});
+                            pregel::metrics::message::ConductorStoringStarted{});
 
     return std::move(this->state);
   }
@@ -391,8 +391,8 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->timings.totalRuntime.setStop(msg.time);
 
     this->template dispatch(this->state->metricsActor,
-                            pregel::message::ConductorFinished{
-                                .prevState = message::PrevState::STORING});
+                            pregel::metrics::message::ConductorFinished{
+                                .prevState = metrics::message::PrevState::STORING});
 
     return std::move(this->state);
   }
@@ -403,7 +403,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
 
     this->template dispatch(
         this->state->metricsActor,
-        pregel::message::ConductorFinished{.prevState = msg.prevState});
+        pregel::metrics::message::ConductorFinished{.prevState = msg.prevState});
 
     return std::move(this->state);
   }
@@ -414,7 +414,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
 
     this->template dispatch(
         this->state->metricsActor,
-        pregel::message::ConductorFinished{.prevState = msg.prevState});
+        pregel::metrics::message::ConductorFinished{.prevState = msg.prevState});
 
     return std::move(this->state);
   }

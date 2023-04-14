@@ -29,7 +29,7 @@ auto Loading::messages()
                                  .responsibleActorPerShard = actorForShard});
   }
   return messages;
-};
+}
 
 auto Loading::receive(actor::ActorPID sender,
                       message::ConductorMessages message)
@@ -42,7 +42,7 @@ auto Loading::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::Canceled{
                 .state = stateName,
-                .prevState = pregel::message::PrevState::LOADING},
+                .prevState = pregel::metrics::message::PrevState::LOADING},
         .newState = std::move(newState)};
   }
 
@@ -57,7 +57,7 @@ auto Loading::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::InFatalError{
                 .state = stateName,
-                .prevState = pregel::message::PrevState::LOADING},
+                .prevState = pregel::metrics::message::PrevState::LOADING},
         .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);
@@ -80,4 +80,4 @@ auto Loading::receive(actor::ActorPID sender,
   }
 
   return std::nullopt;
-};
+}

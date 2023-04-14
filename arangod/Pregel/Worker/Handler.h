@@ -38,6 +38,7 @@
 #include "Pregel/ResultMessages.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/StatusMessages.h"
+#include "Pregel/MetricsMessages.h"
 
 namespace arangodb::pregel::worker {
 
@@ -48,7 +49,7 @@ struct VerticesProcessed {
 
 template<typename V, typename E, typename M, typename Runtime>
 struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
-  auto operator()(message::WorkerStart start)
+  auto operator()([[maybe_unused]] message::WorkerStart start)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor {} started with state {}", this->self, *this->state);
@@ -56,6 +57,11 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     // _feature.metrics()->pregelWorkersNumber->fetch_add(1);
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor, ResultT<conductor::message::WorkerCreated>{});
+
+    this->template dispatch(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerStarted{});
+
     return std::move(this->state);
   }
 
@@ -318,9 +324,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     prepareGlobalSuperStep(std::move(message));
 
     // resend all queued messages that were dedicatd to this gss
-    for (auto const& message : this->state->messagesForNextGss) {
-      this->template dispatch<worker::message::PregelMessage>(this->self,
-                                                              message);
+    for (auto const& msg : this->state->messagesForNextGss) {
+      this->template dispatch<worker::message::PregelMessage>(this->self, msg);
     }
     this->state->messagesForNextGss.clear();
 
@@ -350,7 +355,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
               TRI_ERROR_BAD_PARAMETER, "Superstep out of sync"));
     }
     // queue message if read and write cache are not swapped yet, otherwise
-    // you will loose this message
+    // you will lose this message
     if (message.gss == this->state->config->globalSuperstep() + 1 ||
         // if config->gss == 0 and _computationStarted == false: read and
         // write cache are not swapped yet, config->gss is currently 0 only
@@ -367,7 +372,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   // ------ end computing ----
 
-  auto operator()(message::Store msg) -> std::unique_ptr<WorkerState<V, E, M>> {
+  auto operator()([[maybe_unused]] message::Store msg) -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("980d9", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is storing", this->self);
 
@@ -448,7 +453,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return std::move(this->state);
   }
 
-  auto operator()(message::Cleanup msg)
+  auto operator()([[maybe_unused]] message::Cleanup msg)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("664f5", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is cleaned", this->self);

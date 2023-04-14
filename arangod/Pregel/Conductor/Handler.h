@@ -65,6 +65,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
               .conductor = this->self,
               .resultActorOnCoordinator = this->state->resultActor,
               .statusActor = this->state->statusActor,
+              .metricsActor = this->state->metricsActor,
               .ttl = this->state->specifications.ttl,
               .message = message}});
     }

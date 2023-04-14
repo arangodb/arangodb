@@ -45,7 +45,7 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::Canceled{
                 .state = stateName,
-                .prevState = pregel::message::PrevState::COMPUTING},
+                .prevState = pregel::metrics::message::PrevState::COMPUTING},
         .newState = std::move(newState)};
   }
 
@@ -56,7 +56,7 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::InFatalError{
                 .state = stateName,
-                .prevState = pregel::message::PrevState::COMPUTING},
+                .prevState = pregel::metrics::message::PrevState::COMPUTING},
         .newState = std::move(newState)};
   }
   responseCount++;

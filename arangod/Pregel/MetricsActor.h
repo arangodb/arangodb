@@ -43,55 +43,61 @@ auto inspect(Inspector& f, MetricsState& x) {
 
 template<typename Runtime>
 struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
-  auto operator()(message::MetricsStart msg) {
+  auto operator()([[maybe_unused]] metrics::message::MetricsStart msg) {
     LOG_TOPIC("89eac", INFO, Logger::PREGEL)
         << fmt::format("Metric Actor {} started", this->self);
 
     return std::move(this->state);
   }
 
-  auto operator()(message::ConductorStarted msg) {
+  auto operator()([[maybe_unused]] metrics::message::ConductorStarted msg) {
     this->state->metrics->pregelConductorsNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  auto operator()(message::ConductorLoadingStarted msg) {
+  auto operator()([[maybe_unused]] metrics::message::ConductorLoadingStarted msg) {
     this->state->metrics->pregelConductorsLoadingNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  auto operator()(message::ConductorComputingStarted msg) {
+  auto operator()([[maybe_unused]] metrics::message::ConductorComputingStarted msg) {
     this->state->metrics->pregelConductorsLoadingNumber->fetch_sub(1);
     this->state->metrics->pregelConductorsRunningNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  auto operator()(message::ConductorStoringStarted msg) {
+  auto operator()([[maybe_unused]] metrics::message::ConductorStoringStarted msg) {
     this->state->metrics->pregelConductorsRunningNumber->fetch_sub(1);
     this->state->metrics->pregelConductorsStoringNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  auto operator()(message::ConductorFinished msg) {
+  auto operator()(metrics::message::ConductorFinished msg) {
     this->state->metrics->pregelConductorsNumber->fetch_sub(1);
 
     switch (msg.prevState) {
-      case message::PrevState::LOADING:
+      case metrics::message::PrevState::LOADING:
         this->state->metrics->pregelConductorsLoadingNumber->fetch_sub(1);
         break;
-      case message::PrevState::COMPUTING:
+      case metrics::message::PrevState::COMPUTING:
         this->state->metrics->pregelConductorsRunningNumber->fetch_sub(1);
         break;
-      case message::PrevState::STORING:
+      case metrics::message::PrevState::STORING:
         this->state->metrics->pregelConductorsStoringNumber->fetch_sub(1);
         break;
-      case message::PrevState::OTHER:
+      case metrics::message::PrevState::OTHER:
         break;
     }
+
+    return std::move(this->state);
+  }
+
+  auto operator()([[maybe_unused]] metrics::message::WorkerStarted msg) {
+    this->state->metrics->pregelWorkersNumber->fetch_add(1);
 
     return std::move(this->state);
   }
@@ -127,7 +133,7 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
 
 struct MetricsActor {
   using State = MetricsState;
-  using Message = message::MetricsMessages;
+  using Message = metrics::message::MetricsMessages;
 
   template<typename Runtime>
   using Handler = MetricsHandler<Runtime>;

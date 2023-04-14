@@ -23,6 +23,7 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Pregel/AggregatorHandler.h"
@@ -57,7 +58,7 @@ namespace arangodb::pregel {
 
 struct SpawnState {
   SpawnState(TRI_vocbase_t& vocbase, actor::ActorPID resultActor)
-      : vocbaseGuard{vocbase}, resultActor(resultActor) {}
+      : vocbaseGuard{vocbase}, resultActor(std::move(resultActor)) {}
   const DatabaseGuard vocbaseGuard;
   const actor::ActorPID resultActor;
 };
@@ -68,7 +69,7 @@ auto inspect(Inspector& f, SpawnState& x) {
 
 template<typename Runtime>
 struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
-  auto operator()(message::SpawnStart start) -> std::unique_ptr<SpawnState> {
+  auto operator()([[maybe_unused]] message::SpawnStart start) -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("4a414", INFO, Logger::PREGEL)
         << fmt::format("Spawn Actor {} started", this->self);
     return std::move(this->state);
@@ -87,7 +88,7 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
             algorithm->messageFormatUnique(),
             algorithm->messageCombinerUnique(), std::move(algorithm),
             this->state->vocbaseGuard.database(), this->self,
-            this->state->resultActor, msg.statusActor),
+            this->state->resultActor, msg.statusActor, msg.metricsActor),
         worker::message::WorkerStart{});
   }
 
@@ -200,7 +201,7 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
     return std::move(this->state);
   }
 
-  auto operator()(message::SpawnCleanup msg) -> std::unique_ptr<SpawnState> {
+  auto operator()([[maybe_unused]] message::SpawnCleanup msg) -> std::unique_ptr<SpawnState> {
     this->finish();
     return std::move(this->state);
   }
@@ -226,7 +227,7 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
     return std::move(this->state);
   }
 
-  auto operator()(auto&& rest) -> std::unique_ptr<SpawnState> {
+  auto operator()([[maybe_unused]] auto&& rest) -> std::unique_ptr<SpawnState> {
     LOG_TOPIC("89d72", INFO, Logger::PREGEL)
         << "Spawn Actor: Got unhandled message";
     return std::move(this->state);

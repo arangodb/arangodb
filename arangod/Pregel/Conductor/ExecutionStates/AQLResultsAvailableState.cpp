@@ -53,7 +53,7 @@ auto AQLResultsAvailable::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::InFatalError{
                 .state = stateName,
-                .prevState = pregel::message::PrevState::COMPUTING},
+                .prevState = pregel::metrics::message::PrevState::COMPUTING},
         .newState = std::move(newState)};
   }
   conductor.workers.erase(sender);
@@ -61,4 +61,4 @@ auto AQLResultsAvailable::receive(actor::ActorPID sender,
     return StateChange{.newState = std::make_unique<CleanedUp>()};
   }
   return std::nullopt;
-};
+}

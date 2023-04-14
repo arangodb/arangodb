@@ -408,7 +408,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         std::make_unique<conductor::ConductorState>(
             std::move(algorithm.value()), executionSpecifications,
             std::move(vocbaseLookupInfo), std::move(spawnActor),
-            std::move(resultActorPID), std::move(statusActorPID)),
+            std::move(resultActorPID), std::move(statusActorPID), _metricsActor),
         conductor::message::ConductorStart{});
     auto conductorActorPID = actor::ActorPID{.server = ss->getId(),
                                              .database = vocbase.name(),
@@ -439,13 +439,13 @@ PregelFeature::PregelFeature(Server& server)
       _maxParallelism(::availableCores()),
       _softShutdownOngoing(false),
       _metrics(std::make_shared<PregelMetrics>(
-          server.getFeature<metrics::MetricsFeature>())),
+          server.getFeature<arangodb::metrics::MetricsFeature>())),
       _actorRuntime(nullptr) {
   static_assert(
-      Server::isCreatedAfter<PregelFeature, metrics::MetricsFeature>());
+      Server::isCreatedAfter<PregelFeature, arangodb::metrics::MetricsFeature>());
   auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
       "_system", std::make_unique<MetricsState>(_metrics),
-      message::MetricsStart{});
+      metrics::message::MetricsStart{});
   _metricsActor = actor::ActorPID{.server = ServerState::instance()->getId(),
                                   .database = StaticStrings::SystemDatabase,
                                   .id = metricsActorID};

@@ -27,7 +27,7 @@
 #include <cstdint>
 #include "Inspection/Types.h"
 
-namespace arangodb::pregel::message {
+namespace arangodb::pregel::metrics::message {
 enum class PrevState { LOADING, COMPUTING, STORING, OTHER };
 template<typename Inspector>
 auto inspect(Inspector& f, PrevState& x) {
