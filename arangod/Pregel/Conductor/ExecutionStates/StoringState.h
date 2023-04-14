@@ -29,8 +29,8 @@ namespace arangodb::pregel::conductor {
 struct ConductorState;
 
 struct Storing : ExecutionState {
-  Storing(ConductorState& conductor);
-  ~Storing();
+  explicit Storing(ConductorState& conductor);
+  ~Storing() override = default;
 
   auto name() const -> std::string override { return "storing"; };
   auto messages()

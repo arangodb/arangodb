@@ -114,6 +114,34 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
     return std::move(this->state);
   }
 
+  auto operator()(metrics::message::WorkerGssStarted msg) {
+    this->state->metrics->pregelWorkersRunningNumber->fetch_add(1);
+    this->state->metrics->pregelNumberOfThreads->fetch_add(msg.threadsAdded);
+
+    return std::move(this->state);
+  }
+
+  auto operator()(metrics::message::WorkerGssFinished msg) {
+    this->state->metrics->pregelWorkersRunningNumber->fetch_sub(1);
+    this->state->metrics->pregelNumberOfThreads->fetch_sub(msg.threadsRemoved);
+    this->state->metrics->pregelMessagesSent->count(msg.messagesSent);
+    this->state->metrics->pregelMessagesReceived->count(msg.messagesReceived);
+
+    return std::move(this->state);
+  }
+
+  auto operator()([[maybe_unused]] metrics::message::WorkerStoringStarted msg) {
+    this->state->metrics->pregelWorkersStoringNumber->fetch_add(1);
+
+    return std::move(this->state);
+  }
+
+  auto operator()([[maybe_unused]] metrics::message::WorkerStoringFinished msg) {
+    this->state->metrics->pregelWorkersStoringNumber->fetch_sub(1);
+
+    return std::move(this->state);
+  }
+
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<MetricsState> {
     LOG_TOPIC("edc16", INFO, Logger::PREGEL) << fmt::format(

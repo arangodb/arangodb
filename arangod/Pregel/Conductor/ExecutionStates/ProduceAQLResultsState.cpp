@@ -45,7 +45,7 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::Canceled{
                 .state = stateName,
-                .prevState = pregel::metrics::message::PrevState::COMPUTING},
+                .prevState = pregel::metrics::message::PrevState::STORING},
         .newState = std::move(newState)};
   }
 

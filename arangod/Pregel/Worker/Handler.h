@@ -77,9 +77,6 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         this->state->metricsActor,
         arangodb::pregel::metrics::message::WorkerLoadingStarted{});
 
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
-
     auto graphLoaded = [this]() -> ResultT<conductor::message::GraphLoaded> {
       try {
         auto loader = GraphLoader(
@@ -114,9 +111,6 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->template dispatch(
         this->state->metricsActor,
         arangodb::pregel::metrics::message::WorkerLoadingFinished{});
-
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
     return std::move(this->state);
   }
 
@@ -290,6 +284,11 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("0f658", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is computing", this->self);
 
+    this->template dispatch(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerGssStarted{.threadsAdded =
+                                                                 1});
+
     // check if worker is in expected gss (previous gss of conductor)
     if (message.gss != 0 &&
         message.gss != this->state->config->globalSuperstep() + 1) {
@@ -346,6 +345,13 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         ResultT<conductor::message::GlobalSuperStepFinished>::success(
             std::move(out)));
 
+    this->template dispatch(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerGssFinished{
+            .threadsRemoved = 1,
+            .messagesSent = this->state->messageStats.sendCount,
+            .messagesReceived = this->state->messageStats.receivedCount});
+
     return std::move(this->state);
   }
 
@@ -382,12 +388,14 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   // ------ end computing ----
 
-  auto operator()([[maybe_unused]] message::Store msg) -> std::unique_ptr<WorkerState<V, E, M>> {
+  auto operator()([[maybe_unused]] message::Store msg)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("980d9", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is storing", this->self);
 
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
+    this->template dispatch(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerStoringStarted{});
 
     auto graphStored = [this]() -> ResultT<conductor::message::Stored> {
       try {
@@ -414,8 +422,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       }
     };
 
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
+    this->template dispatch(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerStoringFinished{});
 
     this->finish();
 

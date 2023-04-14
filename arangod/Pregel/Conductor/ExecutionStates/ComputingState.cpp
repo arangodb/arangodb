@@ -16,8 +16,6 @@ Computing::Computing(
     : conductor{conductor},
       masterContext{std::move(masterContext)},
       sendCountPerActor{std::move(sendCountPerActor)} {
-  // TODO GORDO-1510
-  // _feature.metrics()->pregelConductorsRunningNumber->fetch_add(1);
 }
 
 auto Computing::messages()
@@ -104,8 +102,6 @@ auto Computing::receive(actor::ActorPID sender,
 
     if (postGss.finished) {
       masterContext->postApplication();
-      // TODO GORDO-1510
-      // conductor._feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
       if (conductor.specifications.storeResults) {
         auto newState = std::make_unique<Storing>(conductor);
         auto stateName = newState->name();

@@ -31,7 +31,7 @@ struct ConductorState;
 struct Loading : ExecutionState {
   Loading(ConductorState& conductor,
           std::unordered_map<ShardID, actor::ActorPID> actorForShard);
-  ~Loading();
+  ~Loading() override = default;
   auto name() const -> std::string override { return "loading"; };
   auto messages()
       -> std::unordered_map<actor::ActorPID,

@@ -406,6 +406,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
         pregel::metrics::message::ConductorFinished{.prevState = msg.prevState});
 
     return std::move(this->state);
+    return std::move(this->state);
   }
 
   auto operator()(message::Canceled& msg) -> std::unique_ptr<StatusState> {

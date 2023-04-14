@@ -86,22 +86,12 @@ auto inspect(Inspector& f, WorkerLoadingStarted& x) {
   return f.object(x).fields();
 }
 
-struct WorkerLoadingFinished {};
+struct WorkerLoadingFinished {
+  uint64_t memoryConsumed;
+};
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerLoadingFinished& x) {
-  return f.object(x).fields();
-}
-
-struct WorkerComputingStarted {};
-template<typename Inspector>
-auto inspect(Inspector& f, WorkerComputingStarted& x) {
-  return f.object(x).fields();
-}
-
-struct WorkerComputingFinished {};
-template<typename Inspector>
-auto inspect(Inspector& f, WorkerComputingFinished& x) {
-  return f.object(x).fields();
+  return f.object(x).fields(f.field("memoryConsumed", x.memoryConsumed));
 }
 
 struct WorkerStoringStarted {};
@@ -116,16 +106,24 @@ auto inspect(Inspector& f, WorkerStoringFinished& x) {
   return f.object(x).fields();
 }
 
-struct WorkerGssStarted {};
+struct WorkerGssStarted {
+  uint64_t threadsAdded;
+};
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerGssStarted& x) {
-  return f.object(x).fields();
+  return f.object(x).fields(f.field("threadsAdded", x.threadsAdded));
 }
 
-struct WorkerGssFinished {};
+struct WorkerGssFinished {
+  uint64_t threadsRemoved;
+  uint64_t messagesSent;
+  uint64_t messagesReceived;
+};
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerGssFinished& x) {
-  return f.object(x).fields();
+  return f.object(x).fields(f.field("threadsRemoved", x.threadsRemoved),
+                            f.field("messagesSent", x.messagesSent),
+                            f.field("messagesReceived", x.messagesReceived));
 }
 
 struct WorkerFinished {};
@@ -134,12 +132,13 @@ auto inspect(Inspector& f, WorkerFinished& x) {
   return f.object(x).fields();
 }
 
-using MetricsMessagesBase = std::variant<
-    MetricsStart, ConductorStarted, ConductorLoadingStarted,
-    ConductorComputingStarted, ConductorStoringStarted, ConductorFinished,
-    WorkerStarted, WorkerLoadingStarted, WorkerLoadingFinished,
-    WorkerComputingStarted, WorkerComputingFinished, WorkerStoringStarted,
-    WorkerStoringFinished, WorkerGssStarted, WorkerGssFinished, WorkerFinished>;
+using MetricsMessagesBase =
+    std::variant<MetricsStart, ConductorStarted, ConductorLoadingStarted,
+                 ConductorComputingStarted, ConductorStoringStarted,
+                 ConductorFinished, WorkerStarted, WorkerLoadingStarted,
+                 WorkerLoadingFinished, WorkerStoringStarted,
+                 WorkerStoringFinished, WorkerGssStarted, WorkerGssFinished,
+                 WorkerFinished>;
 struct MetricsMessages : MetricsMessagesBase {
   using MetricsMessagesBase::variant;
 };
@@ -157,11 +156,9 @@ auto inspect(Inspector& f, MetricsMessages& x) {
       insp::type<WorkerStarted>("WorkerStarted"),
       insp::type<WorkerLoadingStarted>("WorkerLoadingStarted"),
       insp::type<WorkerLoadingFinished>("WorkerLoadingFinished"),
-      insp::type<WorkerComputingStarted>("WorkerComputingStarted"),
-      insp::type<WorkerComputingFinished>("WorkerComputingFinished"),
       insp::type<WorkerStoringStarted>("WorkerStoringStarted"),
       insp::type<WorkerStoringFinished>("WorkerStoringFinished"),
       insp::type<WorkerGssStarted>("WorkerGssStarted"),
       insp::type<WorkerGssFinished>("WorkerGssFinished"));
 }
-}  // namespace arangodb::pregel::message
+}  // namespace arangodb::pregel::metrics::message
