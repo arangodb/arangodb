@@ -4,6 +4,7 @@ import { pick } from "lodash";
 import React, { useState } from "react";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
+import { encodeHelper } from "../../utils/encodeHelper";
 import { FormState } from "./constants";
 import { DeleteViewModal } from "./DeleteViewModal";
 
@@ -12,11 +13,11 @@ declare var window: { [key: string]: any };
 
 type DeleteButtonWrapProps = {
   view: FormState;
-  disabled?: boolean
+  disabled?: boolean;
 };
 
 type SaveButtonProps = {
-  view: FormState
+  view: FormState;
   disabled?: boolean;
   oldName?: string;
   setChanged: (changed: boolean) => void;
@@ -32,12 +33,15 @@ export const SaveButtonWrap = ({
     const route = getApiRouteForCurrentDB();
     let result;
     let error = false;
-    const path = `/view/${view.name}/properties`;
+    const { normalized: normalizedViewName, encoded: encodedViewName } =
+      encodeHelper(view.name);
+    const path = `/view/${encodedViewName}/properties`;
 
     try {
       if (oldName && view.name !== oldName) {
-        result = await route.put(`/view/${oldName}/rename`, {
-          name: view.name
+        const { encoded: encodedOldName } = encodeHelper(oldName);
+        result = await route.put(`/view/${encodedOldName}/rename`, {
+          name: normalizedViewName
         });
 
         if (result.body.error) {
@@ -78,7 +82,8 @@ export const SaveButtonWrap = ({
           if (view.name === oldName) {
             await mutate(path);
           } else {
-            let newRoute = `#view/${view.name}`;
+            const { encoded: encodedViewName } = encodeHelper(view.name);
+            let newRoute = `#view/${encodedViewName}`;
             window.App.navigate(newRoute, {
               trigger: true,
               replace: true
@@ -110,17 +115,17 @@ export const SaveButtonWrap = ({
     >
       Save view
     </Button>
-  )
+  );
 };
 
 export const DeleteButtonWrap = ({ view, disabled }: DeleteButtonWrapProps) => {
   const [show, setShow] = useState(false);
 
-
   const handleDelete = async () => {
     try {
+      const { encoded: encodedViewName } = encodeHelper(view.name);
       const result = await getApiRouteForCurrentDB().delete(
-        `/view/${view.name}`
+        `/view/${encodedViewName}`
       );
 
       if (result.body.error) {
