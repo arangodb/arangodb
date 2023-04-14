@@ -1,36 +1,31 @@
-import { useEffect } from "react";
-import { useSWRConfig } from "swr";
+import { mutate } from "swr";
+import { useJobSync } from "../../../components/hooks/useJobSync";
+import { encodeHelper } from "../../../utils/encodeHelper";
 
-export const useSyncSearchViewUpdates = ({ viewName }: { viewName: string }) => {
-  const { mutate } = useSWRConfig();
-
-  const checkState = function (
-    error: boolean,
-    jobs: { id: string; collection: string }[]
-  ) {
-    if (error) {
-      window.arangoHelper.arangoError("Jobs", "Could not read pending jobs.");
-    } else {
-      const foundJob = jobs.find(locked => locked.collection === viewName);
-      if (foundJob) {
-        const path = `/view/${viewName}/properties`;
-        mutate(path);
-        window.arangoHelper.arangoNotification(
-          "Success",
-          `Updated View: ${viewName}`
-        );
-        window.arangoHelper.deleteAardvarkJob(foundJob.id);
-      }
-    }
-  };
-  useEffect(() => {
-    window.arangoHelper.getAardvarkJobs(checkState);
-
-    let interval = window.setInterval(() => {
-      window.arangoHelper.getAardvarkJobs(checkState);
-    }, 10000);
-    return () => window.clearInterval(interval);
-    // disabled because function creation can cause re-render, and this only needs to run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+export const useSyncSearchViewUpdates = ({
+  viewName
+}: {
+  viewName: string;
+}) => {
+  useJobSync({
+    onQueue: () => {
+      window.arangoHelper.arangoMessage(
+        "View",
+        "There is at least one new view in the queue or in the process of being created."
+      );
+    },
+    onSuccess: () => {
+      const { encoded: encodedViewName } = encodeHelper(viewName);
+      mutate(`/view/${encodedViewName}/properties`);
+      window.arangoHelper.arangoNotification(
+        "Success",
+        `Updated View: ${viewName}`
+      );
+    },
+    onError: error => {
+      const errorMessage = error?.response?.body?.errorMessage;
+      window.arangoHelper.arangoError("View creation failed", errorMessage);
+    },
+    jobCollectionName: viewName
+  });
 };
