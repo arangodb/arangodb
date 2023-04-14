@@ -445,7 +445,7 @@ PregelFeature::PregelFeature(Server& server)
   static_assert(Server::isCreatedAfter<PregelFeature,
                                        arangodb::metrics::MetricsFeature>());
   auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
-      "_system", std::make_unique<MetricsState>(_metrics),
+      StaticStrings::SystemDatabase, std::make_unique<MetricsState>(_metrics),
       metrics::message::MetricsStart{});
   _metricsActor = actor::ActorPID{.server = ServerState::instance()->getId(),
                                   .database = StaticStrings::SystemDatabase,
