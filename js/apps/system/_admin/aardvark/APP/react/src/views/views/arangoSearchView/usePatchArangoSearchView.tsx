@@ -1,5 +1,6 @@
 import { pick } from "lodash";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { encodeHelper } from "../../../utils/encodeHelper";
 import { FormState } from "../constants";
 import { useSyncSearchViewUpdates } from "../searchAliasView/useSyncSearchViewUpdates";
 
@@ -39,8 +40,9 @@ async function putRenameView({
 }) {
   const route = getApiRouteForCurrentDB();
   let error = false;
-  const result = await route.put(`/view/${oldName}/rename`, {
-    name: view.name
+  const { encoded: encodedOldViewName } = encodeHelper(oldName);
+  const result = await route.put(`/view/${encodedOldViewName}/rename`, {
+    name: view.name.normalize()
   });
 
   if (result.body.error) {
@@ -62,9 +64,10 @@ async function patchViewProperties({
   oldName: string | undefined;
   setChanged: (changed: boolean) => void;
 }) {
-  const path = `/view/${view.name}/properties`;
-
+  const { encoded: encodedViewName } = encodeHelper(view.name);
+  const path = `/view/${encodedViewName}/properties`;
   const route = getApiRouteForCurrentDB();
+
   window.arangoHelper.arangoMessage(
     "Saving",
     `Please wait while the view is being saved. This could take some time for large views.`
@@ -103,7 +106,7 @@ async function patchViewProperties({
     setChanged(false);
 
     if (view.name !== oldName) {
-      let newRoute = `#view/${view.name}`;
+      let newRoute = `#view/${encodedViewName}`;
       window.App.navigate(newRoute, {
         trigger: true,
         replace: true

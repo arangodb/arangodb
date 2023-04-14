@@ -2,6 +2,7 @@ import { DeleteIcon } from "@chakra-ui/icons";
 import { Button } from "@chakra-ui/react";
 import React, { useState } from "react";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
+import { encodeHelper } from "../../utils/encodeHelper";
 import { FormState } from "./constants";
 import { DeleteViewModal } from "./DeleteViewModal";
 
@@ -10,17 +11,17 @@ declare var window: { [key: string]: any };
 
 type DeleteButtonWrapProps = {
   view: FormState;
-  disabled?: boolean
+  disabled?: boolean;
 };
 
 export const DeleteButtonWrap = ({ view, disabled }: DeleteButtonWrapProps) => {
   const [show, setShow] = useState(false);
 
-
   const handleDelete = async () => {
     try {
+      const { encoded: encodedViewName } = encodeHelper(view.name);
       const result = await getApiRouteForCurrentDB().delete(
-        `/view/${view.name}`
+        `/view/${encodedViewName}`
       );
 
       if (result.body.error) {
