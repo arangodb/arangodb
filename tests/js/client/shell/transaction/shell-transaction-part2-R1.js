@@ -37,6 +37,6 @@ for (let suite of partSuites[1]) {
     return derived;
   });
 }
-jsunity.run(transactionDatabaseSuite)
+jsunity.run(transactionDatabaseSuite);
 
 return jsunity.done();
