@@ -1,9 +1,8 @@
 devel
 -----
 
-* FE-222: Fix - Allow additional properties in arangosearch, 
-  allow no fields in inverted index when 'includeAllFIelds'
-  is true.
+* FE-222: Fix - Allow additional properties in arangosearch, allow no fields in
+  inverted index when 'includeAllFIelds' is true.
 
 * APM-183: Support UTF-8 on UI (collection/view/index names).
 
