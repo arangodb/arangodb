@@ -133,8 +133,7 @@ export const formSchema: JSONSchemaType<FormState> = {
     },
     name: {
       nullable: false,
-      type: 'string',
-      pattern: '^[a-zA-Z][a-zA-Z0-9-_]*$'
+      type: 'string'
     },
     type: {
       type: 'string',
@@ -320,6 +319,10 @@ export const formSchema: JSONSchemaType<FormState> = {
         segmentsBytesFloor: 2097152
       },
       required: ['type']
+    },
+    optimizeTopK: {
+      type: "array",
+      nullable: true
     }
   },
   required: ['id', 'name', 'type'],
@@ -327,7 +330,7 @@ export const formSchema: JSONSchemaType<FormState> = {
 };
 
 export const ViewContext = createContext({
-  formState: {},
+  formState: {} as FormState,
   dispatch: noop,
   isAdminUser: false,
   changed: false,

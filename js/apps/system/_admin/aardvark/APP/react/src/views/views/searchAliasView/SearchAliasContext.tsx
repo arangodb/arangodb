@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { encodeHelper } from "../../../utils/encodeHelper";
 import { useIsAdminUser } from "../../../utils/usePermissions";
 import { ViewPropertiesType } from "./useFetchViewProperties";
 import {
@@ -81,8 +82,9 @@ export const SearchAliasProvider = ({
 
   const handleDelete = async () => {
     try {
+      const { encoded: encodedViewName } = encodeHelper(view.name);
       const result = await getApiRouteForCurrentDB().delete(
-        `/view/${view.name}`
+        `/view/${encodedViewName}`
       );
 
       if (result.body.error) {
