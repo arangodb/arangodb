@@ -396,7 +396,10 @@ class instance {
         'agency.size': this.agencyConfig.agencySize,
         'agency.wait-for-sync': this.agencyConfig.waitForSync,
         'agency.supervision': this.agencyConfig.supervision,
-        'agency.my-address': this.protocol + '://127.0.0.1:' + this.port
+        'agency.my-address': this.protocol + '://127.0.0.1:' + this.port,
+        // Sometimes for unknown reason the agency startup is too slow.
+        // With this log level we might have a chance to see what is going on.
+        'log.level': "agency=debug",
       });
       if (!this.args.hasOwnProperty("agency.supervision-grace-period")) {
         this.args['agency.supervision-grace-period'] = '10.0';
@@ -656,6 +659,7 @@ class instance {
       print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
 
+    process.env['ARANGODB_SERVER_DIR'] = this.rootDir;
     return executeExternal(cmd, argv, false, pu.coverageEnvironment());
   }
   // //////////////////////////////////////////////////////////////////////////////
@@ -793,7 +797,12 @@ class instance {
     if (this.pid === null) {
       return false;
     }
-    const res = statusExternal(this.pid, false);
+    let res = statusExternal(this.pid, false);
+    if (res.status === 'NOT-FOUND') {
+      print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
+      time.sleep(0.2);
+      res = statusExternal(this.pid, false);
+    }
     const running = res.status === 'RUNNING';
     if (!this.options.coreCheck && this.options.setInterruptable && !running) {
       print(`fatal exit of ${this.pid} arangod => ${JSON.stringify(res)}! Bye!`);
@@ -879,15 +888,15 @@ class instance {
     }
   }
   killWithCoreDump (message) {
+    if (this.options.enableAliveMonitor) {
+      internal.removePidFromMonitor(this.pid);
+    }
     this.getInstanceProcessStatus();
     this.serverCrashedLocal = true;
     if (this.pid === null) {
       print(`${RED}${Date()} instance already gone? ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
       this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
     } else {
-      if (this.options.enableAliveMonitor) {
-        internal.removePidFromMonitor(this.pid);
-      }
       print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
       crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
     }

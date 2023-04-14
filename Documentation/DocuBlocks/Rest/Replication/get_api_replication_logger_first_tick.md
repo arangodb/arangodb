@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_logger_first_tick
 @brief Return the first available tick value from the server
 
-@RESTHEADER{GET /_api/replication/logger-first-tick, Returns the first available tick value, handleCommandLoggerFirstTick}
+@RESTHEADER{GET /_api/replication/logger-first-tick, Returns the first available tick value, getReplicationLoggerFirstTick}
 
 @RESTDESCRIPTION
 Returns the first available tick value that can be served from the server's

@@ -56,6 +56,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
@@ -109,8 +110,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Properties/DatabaseConfiguration.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #include <thread>
 #include <absl/strings/str_cat.h>
@@ -1302,11 +1301,11 @@ Result TRI_vocbase_t::validateCollectionParameters(
       parameters, StaticStrings::DataSourceName, "");
   bool isSystem = VelocyPackHelper::getBooleanValue(
       parameters, StaticStrings::DataSourceSystem, false);
-  bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesForCollections();
-  if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, name)) {
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
-            "illegal collection name '" + name + "'"};
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res =
+          CollectionNameValidator::validateName(isSystem, extendedNames, name);
+      res.fail()) {
+    return res;
   }
 
   TRI_col_type_e collectionType =
@@ -1372,10 +1371,11 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool extendedNames = databaseFeature.extendedNamesForViews();
-  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames,
-                                        newName)) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  bool extendedNames = databaseFeature.extendedNames();
+  if (auto res = ViewNameValidator::validateName(/*allowSystem*/ false,
+                                                 extendedNames, newName);
+      res.fail()) {
+    return res;
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1445,6 +1445,13 @@ Result TRI_vocbase_t::renameCollection(DataSourceId cid,
   // check if names are actually different
   if (oldName == newName) {
     return TRI_ERROR_NO_ERROR;
+  }
+
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = CollectionNameValidator::validateName(/*allowSystem*/ false,
+                                                       extendedNames, newName);
+      res.fail()) {
+    return res;
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1585,10 +1592,10 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::createView(
     name = VelocyPackHelper::getStringValue(parameters,
                                             StaticStrings::DataSourceName, "");
 
-    bool extendedNames =
-        server().getFeature<DatabaseFeature>().extendedNamesForCollections();
-    valid &= ViewNameValidator::isAllowedName(/*allowSystem*/ false,
-                                              extendedNames, name);
+    bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
+    valid &= ViewNameValidator::validateName(/*allowSystem*/ false,
+                                             extendedNames, name)
+                 .ok();
   }
 
   if (!valid) {
@@ -1958,60 +1965,6 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   }
 }
 
-[[nodiscard]] auto TRI_vocbase_t::getDatabaseConfiguration()
-    -> DatabaseConfiguration {
-  auto& cl = server().getFeature<ClusterFeature>();
-  auto& db = server().getFeature<DatabaseFeature>();
-
-  auto config = std::invoke([&]() -> DatabaseConfiguration {
-    if (!ServerState::instance()->isCoordinator() &&
-        !ServerState::instance()->isDBServer()) {
-      return {[]() { return DataSourceId(TRI_NewTickServer()); },
-              [this](std::string const& name)
-                  -> ResultT<UserInputCollectionProperties> {
-                CollectionNameResolver resolver{*this};
-                auto c = resolver.getCollection(name);
-                if (c == nullptr) {
-                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                "Collection not found: " + name +
-                                    " in database " + this->name()};
-                }
-                return c->getCollectionProperties();
-              }};
-    } else {
-      auto& ci = cl.clusterInfo();
-      return {[&ci]() { return DataSourceId(ci.uniqid(1)); },
-              [this](std::string const& name)
-                  -> ResultT<UserInputCollectionProperties> {
-                CollectionNameResolver resolver{*this};
-                auto c = resolver.getCollection(name);
-                if (c == nullptr) {
-                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                "Collection not found: " + name +
-                                    " in database " + this->name()};
-                }
-                return c->getCollectionProperties();
-              }};
-    }
-  });
-
-  config.maxNumberOfShards = cl.maxNumberOfShards();
-  config.allowExtendedNames = db.extendedNamesForCollections();
-  config.shouldValidateClusterSettings = true;
-  config.minReplicationFactor = cl.minReplicationFactor();
-  config.maxReplicationFactor = cl.maxReplicationFactor();
-  config.enforceReplicationFactor = true;
-  config.defaultNumberOfShards = 1;
-  config.defaultReplicationFactor =
-      std::max(replicationFactor(), cl.systemReplicationFactor());
-  config.defaultWriteConcern = writeConcern();
-
-  config.isOneShardDB = cl.forceOneShard() || isOneShard();
-  if (config.isOneShardDB) {
-    config.defaultDistributeShardsLike = shardingPrototypeName();
-  } else {
-    config.defaultDistributeShardsLike = "";
-  }
-
-  return config;
-}
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

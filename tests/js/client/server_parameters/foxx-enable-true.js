@@ -27,10 +27,24 @@
 if (getOptions === true) {
   return {
     'foxx.enable': 'true',
+    'foxx.force-update-on-startup': 'true'
   };
 }
 const jsunity = require('jsunity');
+const internal = require('internal');
+const fs = require('fs');
+const path = require('path');
+const utils = require('@arangodb/foxx/manager-utils');
 const FoxxManager = require('@arangodb/foxx/manager');
+function loadFoxxIntoZip(path) {
+  let zip = utils.zipDirectory(path);
+  let content = fs.readFileSync(zip);
+  fs.remove(zip);
+  return {
+    type: 'inlinezip',
+    buffer: content
+  };
+}
 
 function testSuite() {
   const mount = "/test123";
@@ -86,21 +100,24 @@ function testSuite() {
     },
 
     testInstallAndAccessFoxxApp: function() {
-      const url = "https://github.com/arangodb-foxx/demo-itzpapalotl/archive/refs/heads/master.zip";
+      const itzpapalotlPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'itzpapalotl');
+      const itzpapalotlZip = loadFoxxIntoZip(itzpapalotlPath);
 
       try {
         // install app first
-        let res = arango.PUT(`/_admin/aardvark/foxxes/url?mount=${mount}`, { url });
-        assertFalse(res.error, { res, url });
+        let res = arango.POST('/_api/foxx?mount=' + mount,
+                              itzpapalotlZip.buffer,
+                              { 'content-type': 'application/zip' });
+        assertFalse(res.error, { res });
 
         // access Foxx app
         res = arango.GET_RAW(mount);
-        assertEqual(307, res.code, { res, url });
-        assertFalse(res.error, { res, url });
+        assertEqual(307, res.code, { res });
+        assertFalse(res.error, { res });
         
         res = arango.GET_RAW(mount + "/index");
-        assertEqual(200, res.code, { res, url });
-        assertFalse(res.error, { res, url });
+        assertEqual(200, res.code, { res});
+        assertFalse(res.error, { res });
 
       } finally {
         try {

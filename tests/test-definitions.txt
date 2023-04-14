@@ -64,11 +64,14 @@ gtest priority=1000 parallelity=3 size=medium single -- --gtest_filter=-IResearc
 # Fuerte tests are executed in single env
 fuerte priority=500 single
 
+rta_makedata single
+rta_makedata single suffix=afo -- --activeFailover true
+
 
 # Cluster Tests
 
 arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
-chaos cluster !full -- --dumpAgencyOnError true parallelity=8
+chaos cluster !coverage !full -- --dumpAgencyOnError true parallelity=8
 restart priority=1000 size=small sniff cluster -- --dumpAgencyOnError true --forceJson true
 
 load_balancing priority=500 size=small cluster -- --dumpAgencyOnError true
@@ -84,16 +87,23 @@ resilience_sharddist size=small cluster -- --dumpAgencyOnError true
 
 recovery_cluster priority=2000 size=small cluster buckets=8
 
+shell_api priority=500 cluster -- $EncryptionAtRest
+
+shell_api_multi priority=500 cluster suffix=http -- $EncryptionAtRest
+shell_api_multi priority=500 cluster suffix=https -- $EncryptionAtRest --protocol ssl
+
 shell_client_multi priority=1500 cluster suffix=http -- --http true
 shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
-shell_server_aql priority=1000 cluster buckets=16 -- --dumpAgencyOnError true
+shell_server_aql priority=1000 cluster sniff buckets=16 -- --dumpAgencyOnError true --sniffFilter graph
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true
 shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
+
+rta_makedata cluster
 
 # Common Tests
 
@@ -140,7 +150,7 @@ ldapsecondldap !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST -
 
 # Full Cluster Tests
 authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true
-chaos !windows full cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
+chaos !windows !coverage full cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
 client_resilience full cluster priority=500 -- --dumpAgencyOnError true
 resilience_failover_failure full cluster priority=500 -- --dumpAgencyOnError true
 resilience_failover_view full cluster priority=500 -- --dumpAgencyOnError true

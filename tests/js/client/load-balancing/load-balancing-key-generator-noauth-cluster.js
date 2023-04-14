@@ -55,6 +55,29 @@ function KeyGeneratorSuite() {
     return res;
   }
 
+  function waitForCoordinatorsToBeReady(name) {
+    const url = "/_db/" + cn + "/_api/collection/" + name;
+    for (let coord of coordinators) {
+      let success = false;
+      for (let i = 0; i < 10; ++i) {
+        try {
+          arango.reconnect(coord, cn, '', '');
+          const res = arango.GET_RAW(url);
+          if (res.code === 200) {
+            success = true;
+            break;
+          }
+        } catch (err) {
+          // reconnect might throw if the db is not yet known -> ignore!
+        }
+        require("internal").sleep(0.5);
+      }
+      if (!success) {
+        throw "Database or collection did not show up on coordinator " + coord + " in time";
+      }
+    }
+  }
+
   function generateCollectionAndTest(name) {
     let lastKey = null;
     let url = "/_db/" + cn + "/_api/document/" + name;
@@ -70,6 +93,8 @@ function KeyGeneratorSuite() {
       keyOptions = {keyOptions: {type: "autoincrement", offset: 4, increment: increment}};
     }
     db._create(name, keyOptions);
+    waitForCoordinatorsToBeReady(name);
+
     assertNotEqual("", db[name].properties().distributeShardsLike);
 
     for (let i = 0; i < 10000; ++i) {
@@ -116,20 +141,15 @@ function KeyGeneratorSuite() {
       }
 
       db._createDatabase(cn, {sharding: "single"});
-      // this test will connect to all coordinators in the cluster a 
-      // few lines further down. the createDatabase call will return
-      // once the current coordinator is aware of the new database. it
-      // is not guaranteed that all other coordinators are aware of the
-      // new database yet, so we better give them some time to catch up.
-      // the 4 second wait time is a guesstimate.
-      require("internal").sleep(4);
-
+      
       try {
         db._useDatabase(cn);
-
+        
         // check that the generated keys are sequential when we send the requests
         // via multiple coordinators.
         db._create(cn, {keyOptions: {type: "padded"}});
+        waitForCoordinatorsToBeReady(cn);
+        
         assertNotEqual("", db[cn].properties().distributeShardsLike);
 
         let lastKey = null;
@@ -162,13 +182,6 @@ function KeyGeneratorSuite() {
       }
       
       db._createDatabase(cn, {sharding: "single"});
-      // this test will connect to all coordinators in the cluster a 
-      // few lines further down. the createDatabase call will return
-      // once the current coordinator is aware of the new database. it
-      // is not guaranteed that all other coordinators are aware of the
-      // new database yet, so we better give them some time to catch up.
-      // the 4 second wait time is a guesstimate.
-      require("internal").sleep(4);
 
       try {
         db._useDatabase(cn);

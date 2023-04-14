@@ -256,8 +256,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::atomic<Manager::time_point::rep> _migrateRequestTime;
   std::atomic<Manager::time_point::rep> _resizeRequestTime;
 
-  basics::ReadWriteSpinLock _shutdownLock;
-
   static constexpr std::uint64_t _evictionMask =
       4095;  // check roughly every 4096 insertions
   static constexpr double _evictionRateThreshold =

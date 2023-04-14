@@ -26,11 +26,11 @@
 #include "AgentInterface.h"
 #include "Agency/Node.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 #include "RestServer/arangod.h"
 
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -202,7 +202,7 @@ class Store {
 
   /// @brief Read/Write mutex on database
   /// guard _node, _timeTable, _observerTable, _observedTable
-  mutable arangodb::Mutex _storeLock;
+  mutable std::mutex _storeLock;
 
   /// @brief My own agent
   Agent* _agent;

@@ -8,7 +8,9 @@ target_link_libraries(arango_pregel_with_actors
   PRIVATE
   arango_inspection
   arango_actor)
-
+target_link_libraries(arango_pregel_with_actors
+  PUBLIC
+  absl::flat_hash_map)
 add_library(arango_pregel STATIC
   AlgoRegistry.cpp
   ExecutionNumber.cpp
@@ -16,8 +18,7 @@ add_library(arango_pregel STATIC
   IndexHelpers.cpp
   OutgoingCache.cpp
   PregelFeature.cpp
-  PregelMetrics.cpp
-  ResolveShard.cpp)
+  PregelMetrics.cpp)
 target_link_libraries(arango_pregel
   arango
   arango_agency
@@ -35,3 +36,4 @@ add_subdirectory(Conductor)
 add_subdirectory(GraphStore)
 add_subdirectory(REST)
 add_subdirectory(Worker)
+add_subdirectory(StatusWriter)

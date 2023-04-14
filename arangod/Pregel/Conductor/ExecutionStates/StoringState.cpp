@@ -22,19 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StoringState.h"
+
 #include "Pregel/Conductor/ExecutionStates/DoneState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
+#include "Pregel/Conductor/State.h"
 
 using namespace arangodb::pregel::conductor;
 
 Storing::Storing(ConductorState& conductor) : conductor{conductor} {
-  conductor.timing.storing.start();
   // TODO GORDO-1510
   // conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_add(1);
 }
 
 Storing::~Storing() {
-  conductor.timing.storing.finish();
   // TODO GORDO-1510
   // conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
 }
@@ -51,19 +51,31 @@ auto Storing::messages()
 
 auto Storing::receive(actor::ActorPID sender,
                       message::ConductorMessages message)
-    -> std::optional<std::unique_ptr<ExecutionState>> {
+    -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::Stored>>(message)) {
-    return std::make_unique<FatalError>(conductor);
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   auto stored = std::get<ResultT<message::Stored>>(message);
   if (not stored.ok()) {
-    return std::make_unique<FatalError>(conductor);
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);
 
   if (respondedWorkers == conductor.workers) {
-    return std::make_unique<Done>(conductor);
+    auto newState = std::make_unique<Done>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::PregelFinished{.state = stateName},
+        .newState = std::move(newState)};
   }
 
   return std::nullopt;

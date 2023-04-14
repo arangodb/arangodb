@@ -468,9 +468,9 @@ function dealing_with_wal_access_apiSuite () {
         fromTick = doc.parsedBody["tick"];
 
         // create collection;
-        cid = db._create("UnitTestsReplication", {waitForSync: true});
+        cid = db._create("UnitTestsReplication", { waitForSync: true, globallyUniqueId: true });
         cuid = cid.properties()["globallyUniqueId"];
-        
+
         // create document;
         cmd = "/_api/document?collection=UnitTestsReplication";
         body = { "_key" : "test", "test" : false };

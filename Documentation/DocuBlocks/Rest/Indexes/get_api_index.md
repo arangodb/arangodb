@@ -2,7 +2,7 @@
 @startDocuBlock get_api_index
 @brief returns all indexes of a collection
 
-@RESTHEADER{GET /_api/index, Read all indexes of a collection, getIndexes}
+@RESTHEADER{GET /_api/index, Read all indexes of a collection, listIndexes}
 
 @RESTQUERYPARAMETERS
 
@@ -46,4 +46,5 @@ Return information about all indexes
     logJsonResponse(response);
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock

@@ -16,8 +16,10 @@ jobs:
       - run:
           name: Checkout
           command: |
-            git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --shallow-submodules -j 8 .
-            git reset --hard "$CIRCLE_SHA1"
+            git init
+            git remote add origin https://github.com/arangodb/arangodb.git
+            git fetch --depth 1 origin $CIRCLE_SHA1
+            git checkout $CIRCLE_SHA1
       - persist_to_workspace:
           root: .
           paths:
@@ -105,8 +107,14 @@ jobs:
       - run:
           name: Checkout ArangoDB
           command: |
-            git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
-            git reset --hard "$CIRCLE_SHA1"
+            mkdir /root/project && cd /root/project
+            git init
+            git remote add origin https://github.com/arangodb/arangodb.git
+            git fetch --depth 1 origin $CIRCLE_SHA1
+            git checkout $CIRCLE_SHA1
+            git submodule init
+            git submodule update --recursive --depth 1 --jobs 8
+
       - run:
           name: Checkout Enterprise
           command: |
@@ -171,6 +179,7 @@ jobs:
             - utils
             - UnitTests
             - 3rdParty/iresearch/tests/resources
+            - 3rdParty/rta-makedata
 
   run-tests:
     docker:

@@ -104,7 +104,7 @@ exports.debugSetFailAt = function (endpoint, failAt) {
     reconnectRetry(endpoint, db._name(), "root", "");
     let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
     if (res.parsedBody !== true) {
-      throw "Error setting failure point + " + res;
+      throw `Error setting failure point on ${endpoint}: "${res}"`;
     }
     return true;
   } finally {
@@ -190,10 +190,14 @@ exports.getChecksum = function (endpoint, name) {
 exports.getRawMetric = function (endpoint, tags) {
   const primaryEndpoint = arango.getEndpoint();
   try {
-    reconnectRetry(endpoint, db._name(), "root", "");
+    if (endpoint !== primaryEndpoint) {
+      reconnectRetry(endpoint, db._name(), "root", "");
+    }
     return arango.GET_RAW('/_admin/metrics' + tags);
   } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
+    if (endpoint !== primaryEndpoint) {
+      reconnectRetry(primaryEndpoint, db._name(), "root", "");
+    }
   }
 };
 

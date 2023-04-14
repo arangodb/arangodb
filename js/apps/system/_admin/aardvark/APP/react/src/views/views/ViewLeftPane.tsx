@@ -27,12 +27,10 @@ const AccordionHeader = ({ children }: { children: ReactNode }) => {
 };
 
 const ViewConfigForm = ({
-  name,
   formState,
   dispatch,
   isAdminUser
 }: {
-  name: string;
   formState: FormState;
   dispatch: FormDispatch<FormState>;
   isAdminUser: boolean;
@@ -47,7 +45,7 @@ const ViewConfigForm = ({
       <AccordionItem>
         <AccordionHeader>Links</AccordionHeader>
         <AccordionPanel pb={4}>
-          <LinksContent name={name} />
+          <LinksContent />
         </AccordionPanel>
       </AccordionItem>
       <AccordionItem>
@@ -96,24 +94,27 @@ const ViewConfigForm = ({
 };
 
 export const ViewLeftPane = ({
-  name,
   formState,
   dispatch,
   isAdminUser
 }: {
-  name: string;
   formState: FormState;
   dispatch: FormDispatch<FormState>;
   isAdminUser: boolean;
 }) => {
   return (
-    <Box paddingY="4" display="flex" height="full" backgroundColor="#eeeee">
+    <Box
+      minWidth="0"
+      paddingY="4"
+      display="flex"
+      height="full"
+      backgroundColor="#eeeee"
+    >
       <Box maxW="calc(100% - 48px)" marginX="auto" flexGrow={1}>
         <ViewConfigForm
           formState={formState}
           dispatch={dispatch}
           isAdminUser={isAdminUser}
-          name={name}
         />
       </Box>
     </Box>

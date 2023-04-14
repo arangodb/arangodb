@@ -54,7 +54,7 @@ function randomTestSuite() {
     do {
       try {
         let stats = pregel.status(pid);
-        if (pregelTestHelpers.runCanceled(pid)) {
+        if (pregelTestHelpers.runCanceled(stats)) {
           break;
         }
       } catch (err) {
@@ -88,6 +88,7 @@ function randomTestSuite() {
       graph._addVertexCollection(vColl);
       db._createEdgeCollection(eColl, {
         numberOfShards: 4,
+        replicationFactor: 1,
         shardKeys: ["vertex"],
         distributeShardsLike: vColl
       });
@@ -143,18 +144,6 @@ function randomTestSuite() {
 
     testPageRankRandom: function () {
       var pid = pregel.start("pagerank", graphName, { threshold: 0.0000001, resultField: "result", store: true });
-      const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
-
-      assertEqual(stats.vertexCount, n, stats);
-      assertEqual(stats.edgeCount, m * 2, stats);
-    },
-
-    testPageRankRandomMMap: function () {
-      const opts = {
-        threshold: 0.0000001, resultField: "result",
-        store: true, useMemoryMaps: true
-      };
-      var pid = pregel.start("pagerank", graphName, opts);
       const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
       assertEqual(stats.vertexCount, n, stats);
