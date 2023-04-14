@@ -147,6 +147,12 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
     return std::move(this->state);
   }
 
+  auto operator()(metrics::message::WorkerFinished msg) {
+    this->state->metrics->pregelWorkersNumber->fetch_sub(1);
+
+    return std::move(this->state);
+  }
+
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<MetricsState> {
     LOG_TOPIC("edc16", INFO, Logger::PREGEL) << fmt::format(

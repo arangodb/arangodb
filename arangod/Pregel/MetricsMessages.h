@@ -159,6 +159,7 @@ auto inspect(Inspector& f, MetricsMessages& x) {
       insp::type<WorkerStoringStarted>("WorkerStoringStarted"),
       insp::type<WorkerStoringFinished>("WorkerStoringFinished"),
       insp::type<WorkerGssStarted>("WorkerGssStarted"),
-      insp::type<WorkerGssFinished>("WorkerGssFinished"));
+      insp::type<WorkerGssFinished>("WorkerGssFinished"),
+      insp::type<WorkerFinished>("WorkerFinished"));
 }
 }  // namespace arangodb::pregel::metrics::message

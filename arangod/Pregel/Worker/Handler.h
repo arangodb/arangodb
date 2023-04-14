@@ -483,6 +483,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         this->state->spawnActor, pregel::message::SpawnCleanup{});
     this->template dispatch<pregel::conductor::message::ConductorMessages>(
         this->state->conductor, pregel::conductor::message::CleanupFinished{});
+    this->template dispatch(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerFinished{});
 
     return std::move(this->state);
   }
