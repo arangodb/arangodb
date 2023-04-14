@@ -110,6 +110,12 @@ class NetworkFeature final : public application_features::ApplicationFeature {
 
   Counter& _requestTimeouts;
   Histogram<fixed_scale_t<double>>& _requestDurations;
+
+  Counter& _delayedDequeues;
+  Counter& _unfinishedSends;
+  Counter& _delayedSends;
+  Counter& _slowResponses;
+  Histogram<fixed_scale_t<double>>& _sendDurations;
 };
 
 }  // namespace arangodb

@@ -338,6 +338,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
                                              std::size_t nwrite) {
         static_cast<H1Connection<ST>&>(*self).asyncWriteCallback(ec, nwrite);
       });
+  this->_item->request->setTimeAsyncWrite();
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: done, this=" << this << "\n";
 }
 
@@ -376,6 +377,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
   // Send succeeded
   FUERTE_LOG_HTTPTRACE << "asyncWriteCallback: send succeeded "
                        << "this=" << this << "\n";
+  this->_item->request->setTimeSent();
 
   // request is written we no longer need data for that
   _item->requestHeader.clear();
