@@ -1,5 +1,5 @@
 name: arangodb_network_send_duration
-introducedIn: "3.10.6"
+introducedIn: "3.9.11"
 help: |
   Internal request send duration in seconds.
 unit: seconds

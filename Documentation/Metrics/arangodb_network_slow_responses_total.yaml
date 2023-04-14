@@ -1,5 +1,5 @@
 name: arangodb_network_slow_responses_total
-introducedIn: "3.10.6"
+introducedIn: "3.9.11"
 help: |
   Number of internal requests that had a slow response.
 unit: number
