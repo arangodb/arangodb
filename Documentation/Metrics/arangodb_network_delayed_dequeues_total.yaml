@@ -1,0 +1,21 @@
+name: arangodb_network_delayed_dequeues_total
+introducedIn: "3.10.6"
+help: |
+  Number of internal requests that had a delay from submission to dequeuing.
+unit: number
+type: counter
+category: Network
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of internal requests that had a delay of more than 1 second
+  from submission to fuerte until they have been dequeued by the IO
+  thread.
+troubleshoot: |
+  Such delays can be caused if the I/O threads for cluster internal
+  communication are overwhelmed by traffic. Sometimes it can help to
+  increase the number of such threads with the command line option
+  `--network.io-threads`.
