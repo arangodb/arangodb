@@ -1,13 +1,39 @@
 v3.10.6 (XXXX-XX-XX)
 --------------------
 
-* BTS-1148: Fix a race when aborting/finishing a currently active query
-  on a DB-Server. This race could cause the query to remain in the server's
-  query registry longer than intended, potentially holding some locks. Such
-  queries were garbage collected eventually, but this could take a while,
-  depending on the specified TTL (10min per default).
-  This has now been fixed so that aborted/finished queries are cleaned up
-  in a timely manner.
+* BTS-1148: Fix a race when aborting/finishing a currently active query on a
+  DB-Server. This race could cause the query to remain in the server's query
+  registry longer than intended, potentially holding some locks. Such queries
+  were garbage collected eventually, but this could take a while, depending on
+  the specified TTL (10min per default).
+  This has now been fixed so that aborted/finished queries are cleaned up in a
+  timely manner.
+
+* MDS-1098: In 3.10 we have introduced an optimization on Traversals to pull
+  post-filter conditions into the traversal-statements, like the following:
+
+      FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
+        FILTER v.isRelevant == true
+        RETURN p
+
+  If the comparison side contains a variable and the same variable is used as
+  the start vertex e.g. like this:
+
+  FOR candidate IN ["vertices/1", "vertices/2"]
+    FOR v,e,p IN 1 OUTBOUND candidate GRAPH "myGraph"
+      FILTER e.MostLikedNeighbor == candidate
+      RETURN v
+
+  There is a chance that we prematurely discarded this variable (candidate in
+  the example) if it is not used later. This has lead to incorrect results.
+
+* Fixed statistics values for writes executed and writes ignored when a query is
+  executed using the rule `optimize-cluster-single-document-operations`.
+  It was always increasing the amount of writes executed, even if the operation
+  wasn't successful, and also never increasing the amount of writes ignored when
+  needed.
+
+* Added option --arangosearch.columns-cache-only-leader (EE only).
 
 * Updated arangosync to v2.16.1.
 
