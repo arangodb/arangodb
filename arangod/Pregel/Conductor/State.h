@@ -47,8 +47,7 @@ struct ConductorState {
         spawnActor{std::move(spawnActor)},
         resultActor{std::move(resultActor)},
         statusActor{std::move(statusActor)},
-        metricsActor{std::move(metricsActor)}
-        {}
+        metricsActor{std::move(metricsActor)} {}
 
   std::unique_ptr<ExecutionState> executionState;
   ConductorStatus status;
