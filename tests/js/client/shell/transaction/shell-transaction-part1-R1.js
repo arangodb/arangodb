@@ -26,12 +26,16 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const fs = require('fs');
-const { deriveTestSuite } = require('@arangodb/test-helper-common');
-const shellTransactionSuite = require('./' + fs.join('tests', 'js', 'client', 'shell', 'transaction', 'shell-transaction.inc'));
+const fs = require("fs");
+const { deriveTestSuite } = require("@arangodb/test-helper-common");
+const { partSuites } = require("./" + fs.join("tests", "js", "client", "shell", "transaction", "shell-transaction.inc"));
 
-for (let suite of shellTransactionSuite.partSuites[0]) {
-  jsunity.run(deriveTestSuite(suite({}), suite, "_V1"));
+for (let suite of partSuites[0]) {
+  let derived = {};
+  deriveTestSuite(suite({}), derived, "_V1");
+  jsunity.run(function() {
+    return derived;
+  });
 }
 
 return jsunity.done();
