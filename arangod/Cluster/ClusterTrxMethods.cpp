@@ -280,15 +280,10 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   auto* pool = state->vocbase().server().getFeature<NetworkFeature>().pool();
   std::vector<Future<network::Response>> requests;
   requests.reserve(state->knownServers().size());
-  VPackBuilder body;
   for (std::string const& server : state->knownServers()) {
     TRI_ASSERT(server.substr(0, 7) != "server:");
-    // Include an empty body:
-    VPackBuilder bodyBuilder;
-    { VPackObjectBuilder emptyBody(&bodyBuilder); }
-    requests.emplace_back(
-        network::sendRequestRetry(pool, "server:" + server, verb, path,
-                                  std::move(bodyBuilder.bufferRef()), reqOpts));
+    requests.emplace_back(network::sendRequestRetry(
+        pool, "server:" + server, verb, path, VPackBuffer<uint8_t>(), reqOpts));
   }
 
   return futures::collectAll(requests).thenValue(
