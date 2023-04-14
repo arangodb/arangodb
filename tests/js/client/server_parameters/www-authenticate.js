@@ -32,6 +32,7 @@ if (getOptions === true) {
   };
 }
 const jsunity = require('jsunity');
+const internal = require('internal');
 const crypto = require('@arangodb/crypto');
 const protocols = ["tcp", "h2"];
 const users = require("@arangodb/users");
@@ -63,44 +64,54 @@ function HttpAuthenticateSuite() {
       protocols.forEach((protocol) => {
         connectWith(protocol, user, "");
         let result = "";
-        // we put this in a try to make it sequential, because the request might be made when the password has not
+        // we put this in a while because the request might be made when the password has not
         // changed yet so it wouldn't get a 401
-        try {
+        let numSecs = 0.5;
+        while (true) {
           // need to change password, otherwise, the request will return 200
           result = users.update(user, "abc");
-        } finally {
-          assertEqual(result.code, 200, "update password returned with code " + result.code);
-          result = arango.GET_RAW("/_api/version");
-          assertEqual(401, result.code, JSON.stringify(result));
-          assertTrue(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));
-          // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
-          arango.reconnectWithNewPassword("abc");
-          users.update(user, "");
-          arango.reconnectWithNewPassword("");
+          if (result.code === 200 || numSecs >= 16) {
+            break;
+          }
+          internal.sleep(numSecs);
+          numSecs *= 2;
         }
+        assertEqual(result.code, 200, "update password returned with code " + result.code);
+        result = arango.GET_RAW("/_api/version");
+        assertEqual(401, result.code, JSON.stringify(result));
+        assertTrue(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));
+        // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
+        arango.reconnectWithNewPassword("abc");
+        users.update(user, "");
+        arango.reconnectWithNewPassword("");
       });
     },
 
-    testUnauthorizedOmit: function() {
+    testUnauthorizedOmit: function () {
       protocols.forEach(protocol => {
         print(`connecting with ${protocol}`);
         connectWith(protocol, user, "");
-        // we put this in a try to make it sequential, because the request might be made when the password has not
-        // changed yet so it wouldn't get a 401
         let result = "";
-        try {
+        // we put this in a while because the request might be made when the password has not
+        // changed yet so it wouldn't get a 401
+        let numSecs = 0.5;
+        while (true) {
           // need to change password, otherwise, the request will return 200
           result = users.update(user, "abc");
-        } finally {
-          assertEqual(result.code, 200, "update password returned with code " + result.code);
-          result = arango.GET_RAW("/_api/version", {"x-omit-www-authenticate": "abc"});
-          assertEqual(401, result.code, JSON.stringify(result));
-          assertFalse(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));
-          // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
-          arango.reconnectWithNewPassword("abc");
-          users.update(user, "");
-          arango.reconnectWithNewPassword("");
+          if (result.code === 200 || numSecs >= 16) {
+            break;
+          }
+          internal.sleep(numSecs);
+          numSecs *= 2;
         }
+        assertEqual(result.code, 200, "update password returned with code " + result.code);
+        result = arango.GET_RAW("/_api/version", {"x-omit-www-authenticate": "abc"});
+        assertEqual(401, result.code, JSON.stringify(result));
+        assertFalse(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));
+        // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
+        arango.reconnectWithNewPassword("abc");
+        users.update(user, "");
+        arango.reconnectWithNewPassword("");
       });
     },
 
