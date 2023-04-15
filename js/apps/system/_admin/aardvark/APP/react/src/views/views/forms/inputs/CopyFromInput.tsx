@@ -2,13 +2,14 @@ import { ArrowBackIcon } from "@chakra-ui/icons";
 import { Box, Button, Stack, Text } from "@chakra-ui/react";
 import { find, pick, sortBy } from "lodash";
 import React, { useEffect, useState } from "react";
-import { useHistory, useLocation } from "react-router-dom";
 import useSWRImmutable from "swr/immutable";
 import SingleSelect from "../../../../components/select/SingleSelect";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { FormProps } from "../../../../utils/constants";
+import { encodeHelper } from "../../../../utils/encodeHelper";
 import { FormState } from "../../constants";
 import { validateAndFix } from "../../helpers";
+import { useLinksContext } from "../../LinksContext";
 
 type CopyFromInputProps = {
   views: FormState[];
@@ -24,20 +25,20 @@ const filterAndSortViews = (views: FormState[]) => {
         return { value: view.name, label: view.name };
       }),
     "name"
-  ) as {value: string; label: string}[];
+  ) as { value: string; label: string }[];
 };
 
 const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
   const initalViewOptions = filterAndSortViews(views);
   const [viewOptions, setViewOptions] = useState(initalViewOptions);
   const [selectedView, setSelectedView] = useState(viewOptions[0]);
+  const { encoded: encodedSelectedView } = encodeHelper(selectedView.value);
   const { data } = useSWRImmutable(
-    `/view/${selectedView.value}/properties`,
+    `/view/${encodedSelectedView}/properties`,
     path => getApiRouteForCurrentDB().get(path)
   );
-  const location = useLocation();
-  const history = useHistory();
   const fullView = data ? data.body : selectedView;
+  const { setCurrentField } = useLinksContext();
 
   useEffect(() => {
     setViewOptions(filterAndSortViews(views));
@@ -65,9 +66,7 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
       formState: fullView as FormState
     });
     dispatch({ type: "regenRenderKey" });
-    if (location) {
-      history.push("/");
-    }
+    setCurrentField(undefined);
   };
 
   const updateSelectedView = (value: string) => {
