@@ -180,13 +180,13 @@ struct StaticStrings {
   ////////////////////////////////////////////////////////////////////////////////
   static constexpr std::string_view CollectionNameField{"collectionName"};
 
+#ifdef USE_ENTERPRISE
   // enables caching for field
   static constexpr std::string_view kCacheField{"cache"};
 
   // enables caching for primary key column
   static constexpr std::string_view kCachePrimaryKeyField{"primaryKeyCache"};
 
-#ifdef USE_ENTERPRISE
   static constexpr std::string_view kOptimizeTopKField{"optimizeTopK"};
 #endif
 
