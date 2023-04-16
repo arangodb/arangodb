@@ -1894,15 +1894,13 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 /// @brief dump the entire in-memory state to velocypack.
 /// should be used for testing only
 void State::toVelocyPack(velocypack::Builder& builder) const {
+  std::lock_guard mutexLocker{_logLock};
+
   builder.openObject();
   builder.add("current", VPackValue(_cur));
   builder.add("log", VPackValue(VPackValueType::Array));
-
-  {
-    std::lock_guard mutexLocker{_logLock};
-    for (auto const& it : _log) {
-      it.toVelocyPack(builder);
-    }
+  for (auto const& it : _log) {
+    it.toVelocyPack(builder);
   }
   builder.close();  // log
   builder.close();
