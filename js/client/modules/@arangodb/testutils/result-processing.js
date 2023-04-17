@@ -272,14 +272,14 @@ function saveToJunitXML(options, results) {
     testRunName: '',
     seenTestCases: false,
   };
-  let prefix = (options.cluster ? 'CL_' : '') + 'RX_';
+  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient)? 'EP_' : 'CO_';
   iterateTestResults(options, results, xmlState, {
     testRun: function(options, state, testRun, testRunName) {state.testRunName = testRunName;},
     testSuite: function(options, state, testSuite, testSuiteName) {
       let total = 0;
       state.seenTestCases = false;
       state.xml = buildXml();
-      state.xmlName = prefix + state.testRunName + '_' + makePathGeneric(testSuiteName).join('_');
+      state.xmlName = prefix + state.testRunName + '__' + makePathGeneric(testSuiteName).join('_');
       if (testSuite.hasOwnProperty('total')) {
         total = testSuite.total;
       }
@@ -289,15 +289,17 @@ function saveToJunitXML(options, results) {
         msg = testSuite.message;
         errors = 1;
       }
-      state.xml.elem('testsuite', {
+      let elm = {
         errors: errors,
         failures: msg,
         tests: total,
         name: state.xmlName,
+      };
+      if (testSuite.hasOwnProperty('duration')) {
         // time is in seconds
-        time: testSuite.duration / 1000
-      });
-      
+        elm['time'] =  testSuite.duration / 1000;
+      }
+      state.xml.elem('testsuite', elm);
     },
     testCase: function(options, state, testCase, testCaseName) {
       const success = (testCase.status === true);
@@ -326,9 +328,10 @@ function saveToJunitXML(options, results) {
       if (testSuite.hasOwnProperty('skipped') && testSuite.skipped) {
         state.xml.elem('testcase', {
           name:  state.xmlName,
-            time: 0
-        }, true);
-        state.xml.elem('skipped/');
+            time: 0.0
+        }, false);
+        state.xml.elem('skipped/', true);
+        state.xml.elem('/testcase');
       } else if (!state.seenTestCases) {
         if (testSuite.failed === 0) {
           state.xml.elem('testcase', {
