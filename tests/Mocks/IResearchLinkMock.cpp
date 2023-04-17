@@ -41,7 +41,7 @@ namespace arangodb::iresearch {
 
 IResearchLinkMock::IResearchLinkMock(IndexId iid, LogicalCollection& collection)
     : Index{iid, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()},
-      IResearchLink{collection.vocbase().server()} {
+      IResearchLink{collection.vocbase().server(), collection} {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
