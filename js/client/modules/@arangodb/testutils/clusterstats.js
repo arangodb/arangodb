@@ -59,15 +59,15 @@ while(true) {
     fails: []
   };
   let results = [];
-  for (let i = 0; i < 60; i++) {
-  const before = time();
+  for (let i = 0; i < 10; i++) {
+    const before = time();
     let oneSet = { state: true };
     results.push(oneSet);
     instanceManager.arangods.forEach(arangod => {
-      let serverId = arangod.role + '_' + arangod.port;
+      let serverId = arangod.instanceRole + '_' + arangod.port;
       let beforeCall = time();
       let procStats = arangod._getProcessStats();
-      if (arangod.role === "agent") {
+      if (arangod.instanceRole === "agent") {
         let reply = download(arangod.url + '/_api/version', '', opts);
         if (reply.hasOwnProperty('error') || reply.code !== 200) {
           print("fail: " + JSON.stringify(reply) +
