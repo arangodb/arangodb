@@ -56,7 +56,7 @@ let optionsDocumentation = [
 
   ' The following properties of `options` are defined:',
   '',
-  '   - `testOutput`: set the output directory for testresults, defaults to `out`',
+  '   - `testOutputDirectory`: set the output directory for testresults, defaults to `out`',
   '   - `force`: if set to true the tests are continued even if one fails',
   '',
   '   - `maxLogFileSize`: how big logs should be at max - 500k by default',
