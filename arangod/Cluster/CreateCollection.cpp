@@ -175,7 +175,8 @@ bool CreateCollection::first() {
         col->followers()->takeOverLeadership(noFollowers, nullptr);
       } else {
         TRI_IF_FAILURE("create_collection_delay_follower_sync_start") {
-          // Make a race that the shard on the follower is not in sync more likely
+          // Make a race that the shard on the follower is not in sync more
+          // likely
           std::this_thread::sleep_for(std::chrono::milliseconds(200));
         }
         col->followers()->setTheLeader(LEADER_NOT_YET_KNOWN);
