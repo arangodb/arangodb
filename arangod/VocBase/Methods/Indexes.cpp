@@ -397,7 +397,6 @@ static Result EnsureIndexLocal(
     arangodb::LogicalCollection& collection, VPackSlice definition, bool create,
     VPackBuilder& output,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
-
   return arangodb::basics::catchVoidToResult([&]() -> void {
     bool created = false;
     std::shared_ptr<arangodb::Index> idx;
