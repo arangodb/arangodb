@@ -198,6 +198,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     }
 
     outCache->flushMessages();
+    this->state->messageStats.sendCount = outCache->sendCount();
+    this->state->messageStats.receivedCount =
+        this->state->readCache->containedMessageCount();
 
     this->state->writeCache->mergeCache(inCache);
     // _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
@@ -250,7 +253,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
           .receiver = actor, .sendCount = count});
     }
     auto gssFinishedEvent = conductor::message::GlobalSuperStepFinished{
-        this->state->messageStats,
+        this->state->messageStats.sendCount,
+        this->state->messageStats.receivedCount,
         sendCountList,
         verticesProcessed.activeCount,
         this->state->magazine.numberOfVertices(),
