@@ -1,6 +1,24 @@
 devel
 -----
 
+* SEARCH-461: Added option "--arangosearch.columns-cache-only-leader". Used only
+  on EE DBServers. Default is false.
+  If set to true only leader shards have ArangoSearch caches enabled - this will
+  reduce RAM usage. In case of failover happens - in background caches are
+  populated for the new leader. Some queries that run at during a failover may
+  still run without caches.
+
+* FE-216: bugfix - make view patches async in the UI.
+
+* FE-212: bugfix: links not getting removed when copying from another view in
+  UI.
+
+* SEARCH-466 Fix leaking into individual link definition inherited properties
+  from view.
+
+* FE-222: Fix - Allow additional properties in arangosearch, allow no fields in
+  inverted index when 'includeAllFIelds' is true.
+
 * APM-183: Support UTF-8 on UI (collection/view/index names).
 
 * FE-199: Remove URL handling of fields on view screen.

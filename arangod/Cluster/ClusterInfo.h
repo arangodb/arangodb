@@ -471,7 +471,7 @@ class ClusterInfo final {
       std::string const& databaseName,
       std::vector<ClusterCollectionCreationInfo>&, double endTime,
       bool isNewDatabase,
-      std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike,
+      std::shared_ptr<LogicalCollection const> const& colToDistributeShardsLike,
       replication::Version replicationVersion);
 
   /// @brief drop collection in coordinator
@@ -675,6 +675,10 @@ class ClusterInfo final {
 
   std::shared_ptr<std::vector<ServerID> const> getResponsibleServerReplication2(
       std::string_view shardID);
+
+  enum class ShardLeadership { kLeader, kFollower, kUnclear };
+  ShardLeadership getShardLeadership(ServerID const& server,
+                                     ShardID const& shard) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given

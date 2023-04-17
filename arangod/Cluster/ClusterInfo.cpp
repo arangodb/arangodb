@@ -6311,6 +6311,31 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
   return result;
 }
 
+ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(
+    ServerID const& server, ShardID const& shard) const {
+  if (!_currentProt.isValid) {
+    return ShardLeadership::kUnclear;
+  }
+  READ_LOCKER(readLocker, _currentProt.lock);
+  auto it = _shardsToCurrentServers.find(shard);
+  if (it == _shardsToCurrentServers.end()) {
+    return ShardLeadership::kUnclear;
+  }
+  auto const& serverList = it->second;
+  if (!serverList || serverList->empty()) {
+    return ShardLeadership::kUnclear;
+  }
+  auto const& front = serverList->front();
+  TRI_ASSERT(!front.empty());
+  if (front.starts_with('_')) {
+    // This is a temporary situation in which the leader has already resigned,
+    // so we don't know exactly right now.
+    return ShardLeadership::kUnclear;
+  }
+  return front == server ? ShardLeadership::kLeader
+                         : ShardLeadership::kFollower;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief atomically find all servers who are responsible for the given
 /// shards (only the leaders).

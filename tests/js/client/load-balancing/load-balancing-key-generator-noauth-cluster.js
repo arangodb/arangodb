@@ -99,7 +99,7 @@ function KeyGeneratorSuite() {
 
     for (let i = 0; i < 10000; ++i) {
       let result = sendRequest('POST_RAW', cn, url, /*payload*/ {}, {}, i % 2 === 0);
-      assertEqual(result.code, 202);
+      assertEqual(result.code, 202, JSON.stringify(result));
       let key = result.parsedBody._key;
       assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key, lastKey});
       lastKey = key;
