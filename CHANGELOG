@@ -40,8 +40,6 @@ v3.10.6 (XXXX-XX-XX)
   wasn't successful, and also never increasing the amount of writes ignored when
   needed.
 
-* Added option --arangosearch.columns-cache-only-leader (EE only).
-
 * Updated arangosync to v2.16.1.
 
 * Fix potential thread starvation in in-memory edge cache.
