@@ -41,8 +41,12 @@ class Gauge final : public Metric {
 
   [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
 
-  void toPrometheus(std::string& result, std::string_view globals) const final {
+  void toPrometheus(std::string& result, std::string_view globals,
+                    bool ensureWhitespace) const final {
     Metric::addMark(result, name(), globals, labels());
+    if (ensureWhitespace) {
+      result.push_back(' ');
+    }
     result.append(std::to_string(load())) += '\n';
   }
 
