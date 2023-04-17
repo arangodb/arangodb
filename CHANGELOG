@@ -1,8 +1,8 @@
 devel
 -----
 
-* FE-212: bugfix: links not getting removed when 
-  copying from another view in UI.
+* FE-212: bugfix: links not getting removed when copying from another view in
+  UI.
 
 * SEARCH-466 Fix leaking into individual link definition inherited properties
   from view.
