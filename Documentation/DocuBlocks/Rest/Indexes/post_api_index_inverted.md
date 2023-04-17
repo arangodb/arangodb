@@ -260,10 +260,9 @@ If you query a View with the `SEARCH` operation in combination with a
 `SORT` expression matches one of the optimized expressions.
 
 Only sorting by highest rank is supported, that is, sorting by the result
-of a [scoring function](aql/functions-arangosearch.html#scoring-functions)
-in descending order (`DESC`). Use `@doc` in the expression where you would
-normally pass the document variable emitted by the `SEARCH` operation to the
-scoring function.
+of a scoring function in descending order (`DESC`). Use `@doc` in the expression
+where you would normally pass the document variable emitted by the `SEARCH`
+operation to the scoring function.
 
 You can define up tp 64 expressions per View.
 
