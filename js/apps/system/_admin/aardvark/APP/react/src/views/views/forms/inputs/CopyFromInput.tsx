@@ -37,7 +37,7 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
     `/view/${encodedSelectedViewName}/properties`,
     path => getApiRouteForCurrentDB().get(path)
   );
-  let viewToCopy = data ? data.body : selectedView;
+  const viewToCopy = data ? data.body : selectedView;
   const { setCurrentField } = useLinksContext();
 
   useEffect(() => {
@@ -46,7 +46,7 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
 
   const copyFormState = () => {
     validateAndFix(viewToCopy);
-    let nullifiedLinks = {} as any;
+    const nullifiedLinks = {} as any;
     if (formState.links) {
       Object.keys(formState.links).forEach(linkKey => {
         if (!viewToCopy.links[linkKey]) {
