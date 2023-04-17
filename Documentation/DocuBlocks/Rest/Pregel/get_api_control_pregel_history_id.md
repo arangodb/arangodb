@@ -52,17 +52,17 @@ var id = internal.arango.POST(url, body);
 
 const statusUrl = `${url}/${id}`;
 while (true) {
-  var status = internal.arango.GET(statusUrl);
-  if (status.error || ["done", "canceled", "fatal error"].includes(status.state)) {
-    assert(status.state == "done");
-    break;
-  } else {
-    print(`III. Waiting for Pregel job ${id} (${status.state})...`);
-    internal.sleep(0.5);
-  }
+var status = internal.arango.GET(statusUrl);
+if (status.error || ["done", "canceled", "fatal error"].includes(status.state)) {
+assert(status.state == "done");
+break;
+} else {
+print(`III. Waiting for Pregel job ${id} (${status.state})...`);
+internal.sleep(0.5);
+}
 }
 
-historyUrl = `/_api/control_pregel/history/${id}`;
+const historyUrl = `/_api/control_pregel/history/${id}`;
 var response = logCurlRequest("GET", historyUrl);
 assert(response.code === 200);
 

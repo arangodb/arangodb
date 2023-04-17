@@ -31,16 +31,16 @@ var graph = examples.loadGraph("connectedComponentsGraph");
 
 var url = "/_api/control_pregel";
 var body = {
-  algorithm: "wcc",
-  graphName: "connectedComponentsGraph",
-  params: {
-    maxGSS: graph.components.count(),
-    resultField: "component"
-  }
+algorithm: "wcc",
+graphName: "connectedComponentsGraph",
+params: {
+maxGSS: graph.components.count(),
+resultField: "component"
+}
 };
 var id = internal.arango.POST(url, body);
 
-
+const historyUrl = `/_api/control_pregel/history/${id}`;
 var response = logCurlRequest("GET", historyUrl);
 assert(response.code === 200);
 assertInstanceOf(Array, response.parsedBody);
