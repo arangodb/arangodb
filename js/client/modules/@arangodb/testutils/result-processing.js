@@ -272,7 +272,7 @@ function saveToJunitXML(options, results) {
     testRunName: '',
     seenTestCases: false,
   };
-  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient)? 'EP_' : 'CO_';
+  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient)? 'EE_' : 'CE_';
   iterateTestResults(options, results, xmlState, {
     testRun: function(options, state, testRun, testRunName) {state.testRunName = testRunName;},
     testSuite: function(options, state, testSuite, testSuiteName) {
