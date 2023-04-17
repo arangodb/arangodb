@@ -30,6 +30,10 @@ const jsunity = require("jsunity");
 const fs = require('fs');
 const internal = require('internal');
 
+/*
+ *  This test has been disabled because of https://arangodb.atlassian.net/browse/BTS-1312.
+ */
+
 function SynchronousReplicationFailLeaderSuite () {
   'use strict';
   const suite = internal.load(fs.join(internal.pathForTesting('server'), 'resilience', 'failover', 'resilience-synchronous-repl-cluster.inc'));
