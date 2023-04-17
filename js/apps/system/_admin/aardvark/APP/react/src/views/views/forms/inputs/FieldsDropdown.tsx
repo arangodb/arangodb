@@ -22,7 +22,7 @@ const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
           return;
         }
         setCurrentField({
-          fieldPath: `${currentField.fieldPath}.fields["${props.data.value}"]`
+          fieldPath: `${currentField.fieldPath}.fields[${props.data.value}]`
         });
       }}
     >

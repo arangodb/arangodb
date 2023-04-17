@@ -6,6 +6,7 @@ import useSWR from "swr";
 import MultiSelect from "../../../../components/select/MultiSelect";
 import { OptionType } from "../../../../components/select/SelectBase";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { escapeFieldDot } from "../../../../utils/fieldHelpers";
 import { FormState, ViewContext } from "../../constants";
 import { useLinksContext } from "../../LinksContext";
 
@@ -19,7 +20,7 @@ const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
       }}
       cursor="pointer"
       onClick={() => {
-        setCurrentField({ fieldPath: `links["${props.data.value}"]` });
+        setCurrentField({ fieldPath: `links[${props.data.value}]` });
       }}
     >
       <components.MultiValueLabel {...props} />
@@ -29,6 +30,7 @@ const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
 
 const CollectionsDropdown = () => {
   const viewContext = useContext(ViewContext);
+  const { setCurrentField } = useLinksContext();
   const { dispatch, formState: fs, isAdminUser } = viewContext;
   const formState = fs as FormState;
   const { data } = useSWR("/collection?excludeSystem=true", () =>
@@ -51,20 +53,22 @@ const CollectionsDropdown = () => {
   }, [data, formState.links]);
 
   const addLink = (link: string) => {
+    const newLink = escapeFieldDot(link);
     dispatch({
       type: "setField",
       field: {
-        path: `links[${link}]`,
+        path: `links[${newLink}]`,
         value: {}
       }
     });
   };
 
   const removeLink = async (link: string) => {
+    const newLink = escapeFieldDot(link);
     dispatch({
       type: "setField",
       field: {
-        path: `links[${link}]`,
+        path: `links[${newLink}]`,
         value: null
       }
     });
@@ -92,6 +96,7 @@ const CollectionsDropdown = () => {
       onChange={(_, action) => {
         if (action.action === "remove-value") {
           removeLink(action.removedValue.value);
+          setCurrentField(undefined);
           return;
         }
         if (action.action === "select-option" && action.option?.value) {
