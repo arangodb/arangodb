@@ -210,7 +210,7 @@ IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
                        .server()
                        .getFeature<EngineSelectorFeature>()
                        .engine<RocksDBEngine>()},
-      IResearchInvertedIndex{collection.vocbase().server()} {}
+      IResearchInvertedIndex{collection.vocbase().server(), collection} {}
 
 namespace {
 
