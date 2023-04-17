@@ -289,7 +289,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
-  return std::move(upgradeRes.result());
+  return std::move(upgradeRes).result();
 }
 
 // Create a database on SingleServer, DBServer,
@@ -324,7 +324,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   UpgradeResult upgradeRes =
       methods::Upgrade::createDB(*vocbase, userBuilder.slice());
 
-  return std::move(upgradeRes.result());
+  return std::move(upgradeRes).result();
 }
 
 Result Databases::create(ArangodServer& server, ExecContext const& exec,
