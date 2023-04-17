@@ -1,6 +1,11 @@
 devel
 -----
 
+* FE-216: bugfix - make view patches async in the UI.
+
+* FE-212: bugfix: links not getting removed when copying from another view in
+  UI.
+
 * SEARCH-466 Fix leaking into individual link definition inherited properties
   from view.
 
