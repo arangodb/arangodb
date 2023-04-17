@@ -6499,6 +6499,18 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
   return std::make_shared<std::vector<ShardID>>();
 }
 
+std::shared_ptr<std::vector<ServerID> const>
+ClusterInfo::getCurrentServersForShard(std::string_view shardId) {
+  READ_LOCKER(readLocker, _currentProt.lock);
+
+  if (auto it = _shardsToCurrentServers.find(shardId);
+      it != _shardsToCurrentServers.end()) {
+    return it->second;
+  } else {
+    return nullptr;
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of coordinator server names
 ////////////////////////////////////////////////////////////////////////////////
@@ -6661,7 +6673,8 @@ void ClusterInfo::setShardGroups(
 }
 
 void ClusterInfo::setShardIds(
-    containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
+    containers::FlatHashMap<ShardID,
+                            std::shared_ptr<std::vector<ServerID> const>>
         shardIds) {
   WRITE_LOCKER(writeLocker, _currentProt.lock);
   _shardsToCurrentServers = std::move(shardIds);
@@ -7169,25 +7182,20 @@ void ClusterInfo::startSyncers() {
 }
 
 void ClusterInfo::drainSyncers() {
-  {
-    std::lock_guard g(_waitPlanLock);
-    auto pit = _waitPlan.begin();
-    while (pit != _waitPlan.end()) {
+  auto clearWaitForMaps = [&](auto& mutex, auto& map) {
+    std::lock_guard g(mutex);
+    auto pit = map.begin();
+    while (pit != map.end()) {
       pit->second.setValue(Result(_syncerShutdownCode));
       ++pit;
     }
-    _waitPlan.clear();
-  }
+    map.clear();
+  };
 
-  {
-    std::lock_guard g(_waitCurrentLock);
-    auto pit = _waitCurrent.begin();
-    while (pit != _waitCurrent.end()) {
-      pit->second.setValue(Result(_syncerShutdownCode));
-      ++pit;
-    }
-    _waitCurrent.clear();
-  }
+  clearWaitForMaps(_waitPlanLock, _waitPlan);
+  clearWaitForMaps(_waitPlanVersionLock, _waitPlanVersion);
+  clearWaitForMaps(_waitCurrentLock, _waitCurrent);
+  clearWaitForMaps(_waitCurrentVersionLock, _waitCurrentVersion);
 }
 
 void ClusterInfo::shutdownSyncers() {
@@ -7445,6 +7453,24 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
           return clusterInfo.waitForPlanVersion(planVersion);
         } else {
           return futures::Future<Result>{maybePlanVersion.result()};
+        }
+      });
+}
+
+futures::Future<Result> ClusterInfo::fetchAndWaitForCurrentVersion(
+    network::Timeout timeout) const {
+  // Save the applicationServer, not the ClusterInfo, in case of shutdown.
+  return cluster::fetchCurrentVersion(timeout).thenValue(
+      [&applicationServer = server()](auto maybeCurrentVersion) {
+        if (maybeCurrentVersion.ok()) {
+          auto currentVersion = maybeCurrentVersion.get();
+
+          auto& clusterInfo =
+              applicationServer.getFeature<ClusterFeature>().clusterInfo();
+
+          return clusterInfo.waitForCurrentVersion(currentVersion);
+        } else {
+          return futures::Future<Result>{maybeCurrentVersion.result()};
         }
       });
 }

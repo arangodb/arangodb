@@ -272,6 +272,9 @@ class ClusterInfo final {
   [[nodiscard]] futures::Future<Result> fetchAndWaitForPlanVersion(
       network::Timeout timeout) const;
 
+  [[nodiscard]] futures::Future<Result> fetchAndWaitForCurrentVersion(
+      network::Timeout timeout) const;
+
   /**
    * @brief Wait for Current cache to be at the given Raft index
    * @param raftIndex Raft index to wait for
@@ -726,6 +729,14 @@ class ClusterInfo final {
       std::string_view collectionID);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the current list of (in-sync, for replication 1) servers of a
+  /// shard
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<std::vector<ServerID> const> getCurrentServersForShard(
+      std::string_view shardId);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the list of coordinator server names
   //////////////////////////////////////////////////////////////////////////////
 
@@ -774,9 +785,9 @@ class ClusterInfo final {
   void setShardGroups(
       containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>);
 
-  void setShardIds(
-      containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
-          shardIds);
+  void setShardIds(containers::FlatHashMap<
+                   ShardID, std::shared_ptr<std::vector<ServerID> const>>
+                       shardIds);
 #endif
 
   bool serverExists(std::string_view serverID) const noexcept;
@@ -1124,7 +1135,7 @@ class ClusterInfo final {
 
   // The Current state:
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
-  containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
+  containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID> const>>
       _shardsToCurrentServers;  // from Current/Collections/
 
   struct NewStuffByDatabase;

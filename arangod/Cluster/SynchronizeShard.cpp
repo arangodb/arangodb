@@ -704,7 +704,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 bool SynchronizeShard::first() {
   TRI_IF_FAILURE("SynchronizeShard::disable") { return false; }
   TRI_IF_FAILURE("SynchronizeShard::delay") {
-    // Increase the race timeout before we try to get back into sync as a follower
+    // Increase the race timeout before we try to get back into sync as a
+    // follower
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 
