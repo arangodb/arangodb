@@ -394,17 +394,16 @@ arangodb::Result Indexes::getAll(
 ////////////////////////////////////////////////////////////////////////////////
 
 static Result EnsureIndexLocal(
-    arangodb::LogicalCollection* collection, VPackSlice definition, bool create,
+    arangodb::LogicalCollection& collection, VPackSlice definition, bool create,
     VPackBuilder& output,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
-  TRI_ASSERT(collection != nullptr);
 
   return arangodb::basics::catchVoidToResult([&]() -> void {
     bool created = false;
     std::shared_ptr<arangodb::Index> idx;
 
     if (create) {
-      idx = collection->createIndex(definition, created, std::move(progress));
+      idx = collection.createIndex(definition, created, std::move(progress));
       TRI_ASSERT(idx != nullptr);
     } else {
       idx = collection.lookupIndex(definition);
@@ -440,7 +439,7 @@ Result Indexes::ensureIndexCoordinator(
 }
 
 Result Indexes::ensureIndex(
-    LogicalCollection* collection, VPackSlice input, bool create,
+    LogicalCollection& collection, VPackSlice input, bool create,
     VPackBuilder& output,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;

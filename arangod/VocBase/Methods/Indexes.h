@@ -57,7 +57,7 @@ struct Indexes {
                                       bool unique, bool sparse, bool estimates);
 
   static arangodb::Result ensureIndex(
-      LogicalCollection* collection, velocypack::Slice definition, bool create,
+      LogicalCollection& collection, velocypack::Slice definition, bool create,
       velocypack::Builder& output,
       std::shared_ptr<std::function<arangodb::Result(double)>> f = nullptr);
 
