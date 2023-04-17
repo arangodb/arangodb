@@ -40,19 +40,20 @@ Remove the persisted execution statistics of a finished Pregel job:
   };
   var id = internal.arango.POST(url, body);
 
-  var url = "/_api/control_pregel/history/" + id;
+  const statusUrl = `${url}/${id}`;
   while (true) {
-    var status = internal.arango.GET(url);
+    var status = internal.arango.GET(statusUrl);
     if (status.error || ["done", "canceled", "fatal error"].includes(status.state)) {
       assert(status.state == "done");
       break;
     } else {
-      print(`Waiting for Pregel job ${id} (${status.state})...`);
+      print(`II. Waiting for Pregel job ${id} (${status.state})...`);
       internal.sleep(0.5);
     }
   }
 
-  var response = logCurlRequest("DELETE", url);
+  const historyUrl = `/_api/control_pregel/history/${id}`
+  var response = logCurlRequest("DELETE", historyUrl);
   assert(response.code === 200);
 
   logJsonResponse(response);

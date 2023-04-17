@@ -40,8 +40,8 @@ var body = {
 };
 var id = internal.arango.POST(url, body);
 
-url = "/_api/control_pregel/history";
-var response = logCurlRequest("GET", url);
+
+var response = logCurlRequest("GET", historyUrl);
 assert(response.code === 200);
 assertInstanceOf(Array, response.parsedBody);
 assert(response.parsedBody.length > 0);
