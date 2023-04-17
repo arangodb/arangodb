@@ -3334,6 +3334,14 @@ Result ClusterInfo::createCollectionsCoordinator(
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive
   // Mutex)
   for (auto& info : infos) {
+    TRI_IF_FAILURE("ClusterInfo::requiresWaitForReplication") {
+      if (info.waitForReplication) {
+        return TRI_ERROR_DEBUG;
+      } else {
+        TRI_ASSERT(false) << "We required to have waitForReplication, but it "
+                             "was set to false";
+      }
+    }
     TRI_ASSERT(!info.name.empty());
 
     if (info.state == ClusterCollectionCreationState::DONE) {
