@@ -7454,6 +7454,24 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
       });
 }
 
+futures::Future<Result> ClusterInfo::fetchAndWaitForCurrentVersion(
+    network::Timeout timeout) const {
+  // Save the applicationServer, not the ClusterInfo, in case of shutdown.
+  return cluster::fetchCurrentVersion(timeout).thenValue(
+      [&applicationServer = server()](auto maybeCurrentVersion) {
+        if (maybeCurrentVersion.ok()) {
+          auto currentVersion = maybeCurrentVersion.get();
+
+          auto& clusterInfo =
+              applicationServer.getFeature<ClusterFeature>().clusterInfo();
+
+          return clusterInfo.waitForCurrentVersion(currentVersion);
+        } else {
+          return futures::Future<Result>{maybeCurrentVersion.result()};
+        }
+      });
+}
+
 // Debugging output no need for consistency across locks
 VPackBuilder ClusterInfo::toVelocyPack() {
   VPackBuilder dump;

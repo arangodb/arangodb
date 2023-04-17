@@ -272,6 +272,9 @@ class ClusterInfo final {
   [[nodiscard]] futures::Future<Result> fetchAndWaitForPlanVersion(
       network::Timeout timeout) const;
 
+  [[nodiscard]] futures::Future<Result> fetchAndWaitForCurrentVersion(
+      network::Timeout timeout) const;
+
   /**
    * @brief Wait for Current cache to be at the given Raft index
    * @param raftIndex Raft index to wait for
