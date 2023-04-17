@@ -266,7 +266,7 @@ operation to the scoring function.
 
 You can define up tp 64 expressions per View.
 
-Example: `["BM25(@doc)", "TFIDF(@doc, true)"]`
+Example: `["BM25(@doc) DESC", "TFIDF(@doc, true) DESC"]`
 
 Default: `[]`
 
