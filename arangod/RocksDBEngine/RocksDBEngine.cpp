@@ -2952,8 +2952,9 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   }
 
   // scan the database path for collections
+  builder.clear();
+  VPackSlice slice = VPackSlice::noneSlice();
   try {
-    VPackBuilder builder;
     auto res = getCollectionsAndIndexes(*vocbase, builder, wasCleanShutdown,
                                         isUpgrade);
 
@@ -2961,7 +2962,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    VPackSlice slice = builder.slice();
+    slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
     for (VPackSlice it : VPackArrayIterator(slice)) {
@@ -2971,12 +2972,14 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
           << "': " << it.toJson();
 
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
+      TRI_ASSERT(!it.get("deleted").isTrue());
 
       auto collection = vocbase->createCollectionObject(it, /*isAStub*/ false);
       TRI_ASSERT(collection != nullptr);
 
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(phy != nullptr);
+
       Result r = phy->meta().deserializeMeta(_db, *collection);
       if (r.fail()) {
         LOG_TOPIC("4a404", ERR, arangodb::Logger::ENGINES)
@@ -2987,18 +2990,18 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       StorageEngine::registerCollection(*vocbase, collection);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
-          << "added document collection '" << vocbase->name() << "/"
+          << "added collection '" << vocbase->name() << "/"
           << collection->name() << "'";
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)
         << "error while opening database '" << vocbase->name()
-        << "': " << ex.what();
+        << "': " << ex.what() << ", full collection data: " << slice.toJson();
     throw;
   } catch (...) {
     LOG_TOPIC("0268e", ERR, arangodb::Logger::ENGINES)
         << "error while opening database '" << vocbase->name()
-        << "': unknown exception";
+        << "': unknown exception, full collection data: " << slice.toJson();
     throw;
   }
 
