@@ -381,6 +381,13 @@ void TraversalNode::getVariablesUsedHere(VarSet& result) const {
     }
   }
 
+  for (auto const& postVar : _postFilterVariables) {
+    if (postVar != vertexOutVariable() && postVar != edgeOutVariable() &&
+        postVar != pathOutVariable()) {
+      result.emplace(postVar);
+    }
+  }
+
   if (usesInVariable()) {
     result.emplace(_inVariable);
   }

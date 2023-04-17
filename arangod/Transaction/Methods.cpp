@@ -3146,6 +3146,8 @@ Future<Result> Methods::replicateOperations(
   TRI_ASSERT(replicationData.slice().isArray());
   TRI_ASSERT(!replicationData.slice().isEmptyArray());
 
+  TRI_IF_FAILURE("replicateOperations::skip") { return Result(); }
+
   // replication2 is handled here
   if (collection->replicationVersion() == replication::Version::TWO) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
