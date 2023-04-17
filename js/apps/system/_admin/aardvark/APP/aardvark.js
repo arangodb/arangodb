@@ -309,9 +309,22 @@ authRouter.get('/query/download/:user', function (req, res) {
 `);
 
 authRouter.get('/query/result/download/:query', function (req, res) {
+  const fromBinary = (binary) => {
+    const bytes = Uint8Array.from({ length: binary.length }, (element, index) =>
+      binary.charCodeAt(index)
+    );
+    const charCodes = new Uint16Array(bytes.buffer);
+
+    let result = "";
+    charCodes.forEach((char) => {
+      result += String.fromCharCode(char);
+    });
+    return result;
+  };
+
   let query;
   try {
-    query = internal.base64Decode(req.pathParams.query);
+    query = fromBinary(req.pathParams.query);
     query = JSON.parse(query);
   } catch (e) {
     res.throw('bad request', e.message, {cause: e});
@@ -603,7 +616,7 @@ authRouter.get('/graph/:name', function (req, res) {
   var getPseudoRandomStartVertex = function () {
     for (var i = 0; i < graph._vertexCollections().length; i++) {
       var vertexCollection = graph._vertexCollections()[i];
-      let maxDoc = db[vertexCollection.name()].count();
+      let maxDoc =  db._collection(vertexCollection.name()).count();
 
       if (maxDoc === 0) {
         continue;
@@ -1093,7 +1106,7 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
     var vertexCandidates = [];
     for (var i = 0; i < graph._vertexCollections().length; i++) {
       var vertexCollection = graph._vertexCollections()[i];
-      if (db[vertexCollection.name()].count()) {
+      if (db._collection(vertexCollection.name()).count()) {
         let randomVertex = db._query(
           'FOR vertex IN @@vertexCollection SORT rand() LIMIT 1 RETURN vertex',
           {

@@ -196,6 +196,8 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
       return key != iresearch::StaticStrings::AnalyzerDefinitionsField &&
 #ifdef USE_ENTERPRISE
              key != iresearch::StaticStrings::kOptimizeTopKField &&
+             key != iresearch::StaticStrings::kPrimarySortCacheField &&
+             key != iresearch::StaticStrings::kCachePrimaryKeyField &&
 #endif
              key != iresearch::StaticStrings::PrimarySortField &&
              key != iresearch::StaticStrings::PrimarySortCompressionField &&

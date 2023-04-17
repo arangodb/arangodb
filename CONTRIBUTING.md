@@ -411,6 +411,7 @@ _Hint_: You shouldn't lean on these variables in your Foxx services.
 To debug AQL execution blocks, two steps are required:
 
 - turn on logging for queries using `--extraArgs:log.level queries=info`
+- divert this facilities logoutput into individual files: `--extraArgs --log.output queries file://@ARANGODB_SERVER_DIR@/arangod_queries.log`
 - send queries enabling block debugging: `db._query('RETURN 1', {}, { profile: 4 })`
 
 You now will get log entries with the contents being passed between the blocks.
@@ -927,7 +928,7 @@ suite (in this case `testTokens`):
 
 Testing a single test with the framework via arangosh:
 
-    scripts/unittest single_client --test tests/js/client/shell/transaction/shell-transaction.js
+    scripts/unittest single_client --test tests/js/client/shell/shell-client.js
 
 Running a test against a server you started (instead of letting the script start its own server):
 

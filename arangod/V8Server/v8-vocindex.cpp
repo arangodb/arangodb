@@ -51,8 +51,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
-#include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -86,7 +84,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
   VPackBuilder output;
-  auto res = methods::Indexes::ensureIndex(collection, builder.slice(), create,
+  auto res = methods::Indexes::ensureIndex(*collection, builder.slice(), create,
                                            output);
 
   if (res.fail()) {
@@ -152,13 +150,13 @@ static void JS_DropIndexVocbaseCol(
   VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
-  auto res = methods::Indexes::drop(collection, builder.slice());
+  auto res = methods::Indexes::drop(*collection, builder.slice());
 
-  if (res.ok()) {
-    TRI_V8_RETURN_TRUE();
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_V8_RETURN_FALSE();
+  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -190,7 +188,7 @@ static void JS_GetIndexesVocbaseCol(
   }
 
   VPackBuilder output;
-  auto res = methods::Indexes::getAll(collection, flags, withHidden, output);
+  auto res = methods::Indexes::getAll(*collection, flags, withHidden, output);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -213,19 +211,17 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDangling()) {
-    events::CreateCollection(vocbase.name(), StaticStrings::Empty,
+    events::CreateCollection(vocbase.name(), "",
                              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   } else if (args.Length() < 1 || args.Length() > 4) {
-    events::CreateCollection(vocbase.name(), StaticStrings::Empty,
-                             TRI_ERROR_BAD_PARAMETER);
+    events::CreateCollection(vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE(
         "_create(<name>, <properties>, <type>, <options>)");
   }
 
   if (!ExecContext::current().canUseDatabase(vocbase.name(), auth::Level::RW)) {
-    events::CreateCollection(vocbase.name(), StaticStrings::Empty,
-                             TRI_ERROR_FORBIDDEN);
+    events::CreateCollection(vocbase.name(), "", TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -273,44 +269,35 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
         isolate, obj, "enforceReplicationFactor", enforceReplicationFactor);
   }
 
-  auto config = vocbase.getDatabaseConfiguration();
-  config.enforceReplicationFactor = enforceReplicationFactor;
+  VPackBuilder filtered = methods::Collections::filterInput(propSlice, false);
+  propSlice = filtered.slice();
 
-  auto planCollection = CreateCollectionBody::fromCreateAPIV8(
-      propSlice, name, collectionType, config);
+  bool allowSystem = VelocyPackHelper::getBooleanValue(
+      propSlice, StaticStrings::DataSourceSystem, false);
 
-  if (planCollection.fail()) {
-    events::CreateCollection(vocbase.name(), name,
-                             planCollection.errorNumber());
-    TRI_V8_THROW_EXCEPTION(planCollection.result());
-  }
-
-  std::vector<CreateCollectionBody> collections{
-      std::move(planCollection.get())};
-
-  OperationOptions options(ExecContext::current());
   std::shared_ptr<LogicalCollection> coll;
-  auto result = methods::Collections::create(
+  OperationOptions options(ExecContext::current());
+  auto res = methods::Collections::create(
       vocbase,  // collection vocbase
-      options, collections,
+      options,
+      name,                           // collection name
+      collectionType,                 // collection type
+      propSlice,                      // collection properties
       createWaitsForSyncReplication,  // replication wait flag
-      enforceReplicationFactor,       // replication factor flag
-      /*isNewDatabase*/ false         // here always false
-  );
+      enforceReplicationFactor,
+      /*isNewDatabase*/ false,  // here always false
+      coll, allowSystem);
 
-  if (result.fail()) {
-    TRI_V8_THROW_EXCEPTION(result.result());
-  } else {
-    TRI_ASSERT(result.get().size() == 1);
-    coll = result.get().at(0);
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  v8::Handle<v8::Value> v8Result;
+  v8::Handle<v8::Value> result;
   if (coll) {
-    v8Result = WrapCollection(isolate, coll);
+    result = WrapCollection(isolate, coll);
   }
 
-  TRI_V8_RETURN(v8Result);
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

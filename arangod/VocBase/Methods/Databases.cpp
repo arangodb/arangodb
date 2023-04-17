@@ -185,11 +185,12 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   bool extendedNames =
-      info.server().getFeature<DatabaseFeature>().extendedNamesForDatabases();
+      info.server().getFeature<DatabaseFeature>().extendedNames();
 
-  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false,
-                                            extendedNames, info.getName())) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+  if (auto res = DatabaseNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames, info.getName());
+      res.fail()) {
+    return res;
   }
 
   LOG_TOPIC("56372", DEBUG, Logger::CLUSTER)
@@ -288,7 +289,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
-  return std::move(upgradeRes.result());
+  return std::move(upgradeRes).result();
 }
 
 // Create a database on SingleServer, DBServer,
@@ -323,7 +324,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   UpgradeResult upgradeRes =
       methods::Upgrade::createDB(*vocbase, userBuilder.slice());
 
-  return std::move(upgradeRes.result());
+  return std::move(upgradeRes).result();
 }
 
 Result Databases::create(ArangodServer& server, ExecContext const& exec,

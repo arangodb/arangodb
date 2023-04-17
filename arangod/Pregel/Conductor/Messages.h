@@ -63,13 +63,22 @@ auto inspect(Inspector& f, GraphLoaded& x) {
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
 
+struct SendCountPerActor {
+  actor::ActorPID receiver;
+  uint64_t sendCount;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, SendCountPerActor& x) {
+  return f.object(x).fields(f.field("receiver", x.receiver),
+                            f.field("sendCount", x.sendCount));
+}
+
 struct GlobalSuperStepFinished {
   GlobalSuperStepFinished() noexcept = default;
-  GlobalSuperStepFinished(
-      MessageStats messageStats,
-      std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor,
-      uint64_t activeCount, uint64_t vertexCount, uint64_t edgeCount,
-      VPackBuilder aggregators)
+  GlobalSuperStepFinished(MessageStats messageStats,
+                          std::vector<SendCountPerActor> sendCountPerActor,
+                          uint64_t activeCount, uint64_t vertexCount,
+                          uint64_t edgeCount, VPackBuilder aggregators)
       : messageStats{std::move(messageStats)},
         sendCountPerActor{std::move(sendCountPerActor)},
         activeCount{activeCount},
@@ -78,9 +87,6 @@ struct GlobalSuperStepFinished {
         aggregators{std::move(aggregators)} {};
   auto add(GlobalSuperStepFinished const& other) -> void {
     messageStats.accumulate(other.messageStats);
-    for (auto& [actor, count] : other.sendCountPerActor) {
-      sendCountPerActor[actor] += count;
-    }
     activeCount += other.activeCount;
     vertexCount += other.vertexCount;
     edgeCount += other.edgeCount;
@@ -97,21 +103,20 @@ struct GlobalSuperStepFinished {
   }
 
   MessageStats messageStats;
-  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
-  uint64_t activeCount;
-  uint64_t vertexCount;
-  uint64_t edgeCount;
+  std::vector<SendCountPerActor> sendCountPerActor;
+  uint64_t activeCount = 0;
+  uint64_t vertexCount = 0;
+  uint64_t edgeCount = 0;
   VPackBuilder aggregators;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
-  return f.object(x).fields(
-      f.field("messageStats", x.messageStats),
-      // f.field("sentCounts", x.sendCountPerActor), // make inspection worker
-      // with self-defined hashtable
-      f.field("activeCount", x.activeCount),
-      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
-      f.field("aggregators", x.aggregators));
+  return f.object(x).fields(f.field("messageStats", x.messageStats),
+                            f.field("sendCount", x.sendCountPerActor),
+                            f.field("activeCount", x.activeCount),
+                            f.field("vertexCount", x.vertexCount),
+                            f.field("edgeCount", x.edgeCount),
+                            f.field("aggregators", x.aggregators));
 }
 
 struct Stored {};
