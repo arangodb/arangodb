@@ -2,11 +2,11 @@ v3.10.6 (XXXX-XX-XX)
 --------------------
 
 * SEARCH-461: Added option "--arangosearch.columns-cache-only-leader". Used only
-  on EE DBServers.
-  Default is false. If set to true only leader shards have ArangoSearch caches
-  enabled - this will reduce RAM usage. In case of failover happens - in
-  background caches are populated for the new leader. But some queries that a
-  run at same time as failover may still run without caches.
+  on EE DBServers. Default is false.
+  If set to true only leader shards have ArangoSearch caches enabled - this will
+  reduce RAM usage. In case of failover happens - in background caches are
+  populated for the new leader. Some queries that run at during a failover may
+  still run without caches.
 
 * BTS-1148: Fix a race when aborting/finishing a currently active query on a
   DB-Server. This race could cause the query to remain in the server's query
