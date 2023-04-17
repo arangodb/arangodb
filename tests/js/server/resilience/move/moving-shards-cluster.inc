@@ -1291,6 +1291,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       let id = JSON.parse(result.body).id;
       assertTrue(cancelAgencyJob(id));
       assertTrue(maintenanceMode("off"));
+      while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to be killed
+        wait(0.1);
+      }
       var job = queryAgencyJob(result.json.id);
       assertEqual(job.status, "Failed");
       assertEqual(job.abort);
