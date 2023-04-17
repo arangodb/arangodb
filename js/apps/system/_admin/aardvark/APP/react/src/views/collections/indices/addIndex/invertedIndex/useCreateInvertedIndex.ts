@@ -253,10 +253,18 @@ const fieldSchema: any = Yup.object().shape({
 });
 const schema = Yup.object({
   ...commonSchema,
+  includeAllFields: Yup.boolean(),
   fields: Yup.array()
     .of(fieldSchema)
-    .min(1, "At least one field is required")
-    .required("At least one field is required")
+    .when("includeAllFields", {
+      is: false,
+      then: () =>
+        Yup.array()
+          .of(fieldSchema)
+          .min(1, "At least one field is required")
+          .required("At least one field is required"),
+      otherwise: () => Yup.array().of(fieldSchema)
+    })
 });
 
 export const useInvertedIndexFieldsData = () => {

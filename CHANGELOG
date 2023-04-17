@@ -1,6 +1,16 @@
 devel
 -----
 
+* SEARCH-466 Fix leaking into individual link definition inherited properties
+  from view.
+
+* FE-222: Fix - Allow additional properties in arangosearch, allow no fields in
+  inverted index when 'includeAllFIelds' is true.
+
+* APM-183: Support UTF-8 on UI (collection/view/index names).
+
+* FE-199: Remove URL handling of fields on view screen.
+
 * MDS-1098: In 3.10 we have introduced an optimization on Traversals to pull
   post-filter conditions into the traversal-statements, like the following:
 

@@ -616,7 +616,7 @@ authRouter.get('/graph/:name', function (req, res) {
   var getPseudoRandomStartVertex = function () {
     for (var i = 0; i < graph._vertexCollections().length; i++) {
       var vertexCollection = graph._vertexCollections()[i];
-      let maxDoc = db[vertexCollection.name()].count();
+      let maxDoc =  db._collection(vertexCollection.name()).count();
 
       if (maxDoc === 0) {
         continue;
@@ -1106,7 +1106,7 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
     var vertexCandidates = [];
     for (var i = 0; i < graph._vertexCollections().length; i++) {
       var vertexCollection = graph._vertexCollections()[i];
-      if (db[vertexCollection.name()].count()) {
+      if (db._collection(vertexCollection.name()).count()) {
         let randomVertex = db._query(
           'FOR vertex IN @@vertexCollection SORT rand() LIMIT 1 RETURN vertex',
           {
