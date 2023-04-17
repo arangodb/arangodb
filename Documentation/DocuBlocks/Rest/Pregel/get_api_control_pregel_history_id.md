@@ -37,16 +37,17 @@ Get the execution status of a Pregel job:
 @EXAMPLE_ARANGOSH_RUN{RestPregelConnectedComponentsStatisticsId}
 
 var examples = require("@arangodb/graph-examples/example-graph.js");
+print("Creating I graph");
 var graph = examples.loadGraph("connectedComponentsGraph");
 
 var url = "/_api/control_pregel";
 var body = {
-  algorithm: "wcc",
-  graphName: "connectedComponentsGraph",
-  params: {
-    maxGSS: graph.components.count(),
-    resultField: "component"
-  }
+algorithm: "wcc",
+graphName: "connectedComponentsGraph",
+params: {
+maxGSS: graph.components.count(),
+resultField: "component"
+}
 };
 var id = internal.arango.POST(url, body);
 

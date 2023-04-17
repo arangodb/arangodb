@@ -27,6 +27,7 @@ Get the status of all active and past Pregel jobs:
 
 var assertInstanceOf = require("jsunity").jsUnity.assertions.assertInstanceOf;
 var examples = require("@arangodb/graph-examples/example-graph.js");
+print("Creating III graph");
 var graph = examples.loadGraph("connectedComponentsGraph");
 
 var url = "/_api/control_pregel";
@@ -38,9 +39,10 @@ maxGSS: graph.components.count(),
 resultField: "component"
 }
 };
-var id = internal.arango.POST(url, body);
 
-const historyUrl = `/_api/control_pregel/history/${id}`;
+const id = internal.arango.POST(url, body);
+const historyUrl = `/_api/control_pregel/history`;
+
 var response = logCurlRequest("GET", historyUrl);
 assert(response.code === 200);
 assertInstanceOf(Array, response.parsedBody);
