@@ -117,9 +117,9 @@ IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
 
 IResearchInvertedClusterIndex::IResearchInvertedClusterIndex(
     IndexId iid, uint64_t /*objectId*/, LogicalCollection& collection,
-    const std::string& name)
+    std::string const& name)
     : Index{iid, collection, name, {}, false, true},
-      IResearchInvertedIndex{collection.vocbase().server()} {
+      IResearchInvertedIndex{collection.vocbase().server(), collection} {
   initClusterMetrics();
 }
 
