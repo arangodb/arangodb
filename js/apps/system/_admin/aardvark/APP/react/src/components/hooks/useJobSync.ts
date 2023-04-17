@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useInterval } from "@chakra-ui/react";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 
 export const useJobSync = ({
@@ -50,14 +50,8 @@ export const useJobSync = ({
       });
     }
   };
-  useEffect(() => {
-    window.arangoHelper.getAardvarkJobs(checkState);
 
-    let interval = window.setInterval(() => {
-      window.arangoHelper.getAardvarkJobs(checkState);
-    }, 10000);
-    return () => window.clearInterval(interval);
-    // disabled because function creation can cause re-render, and this only needs to run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useInterval(() => {
+    window.arangoHelper.getAardvarkJobs(checkState);
+  }, 10000);
 };
