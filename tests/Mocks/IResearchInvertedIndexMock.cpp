@@ -28,11 +28,11 @@ namespace arangodb::iresearch {
 
 IResearchInvertedIndexMock::IResearchInvertedIndexMock(
     IndexId iid, arangodb::LogicalCollection& collection,
-    const std::string& idxName,
+    std::string const& idxName,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
     bool unique, bool sparse)
     : Index{iid, collection, idxName, attributes, unique, sparse},
-      IResearchInvertedIndex{collection.vocbase().server()} {}
+      IResearchInvertedIndex{collection.vocbase().server(), collection} {}
 
 void IResearchInvertedIndexMock::toVelocyPack(
     velocypack::Builder& builder,

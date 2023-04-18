@@ -87,7 +87,12 @@ function chaos (options) {
       }
     }
     translateResult(testName) {
-      return `${testName}_${global.currentTestConfig.suffix}`;
+      let suffix = 'skipped';
+      if (global.hasOwnProperty('currentTestConfig') &&
+          (global.currentTestConfig !== undefined)) {
+        suffix = global.currentTestConfig.suffix;
+      }
+      return `${testName}_${suffix}`;
     }
   };
 
