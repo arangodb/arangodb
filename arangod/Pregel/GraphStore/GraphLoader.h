@@ -31,6 +31,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterTypes.h"
 #include "Pregel/GraphStore/GraphLoaderBase.h"
+#include "Pregel/GraphStore/LoadableVertexShard.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/StatusMessages.h"
 #include "Utils/DatabaseGuard.h"
@@ -72,15 +73,15 @@ struct GraphLoader : GraphLoaderBase<V, E> {
         updateCallback(updateCallback) {}
   auto load() -> futures::Future<Magazine<V, E>> override;
 
-  auto loadVertices(ShardID const& vertexShard,
-                    std::vector<ShardID> const& edgeShards)
+  auto loadVertices(LoadableVertexShard const& loadableVertexShard)
       -> std::shared_ptr<Quiver<V, E>>;
   auto loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
                  std::string_view documentID,
                  traverser::EdgeCollectionInfo& info) -> void;
 
   auto requestVertexIds(uint64_t numVertices) -> VertexIdRange;
-
+  auto computeLoadableVertexShards()
+      -> std::shared_ptr<std::vector<LoadableVertexShard>>;
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   ResourceMonitor resourceMonitor;
   std::shared_ptr<WorkerConfig const> config;

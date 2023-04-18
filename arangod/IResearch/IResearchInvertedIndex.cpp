@@ -196,7 +196,7 @@ struct CoveringValue {
 
   irs::doc_iterator::ptr itr;
   std::string_view column;
-  const irs::payload* value{};
+  irs::payload const* value{};
 };
 
 /// @brief Represents virtual "vector" of stored values in the irsesearch index
@@ -598,7 +598,7 @@ class IResearchInvertedIndexIterator final
   irs::doc_iterator::ptr _itr;
   irs::doc_iterator::ptr _pkDocItr;
   irs::document const* _doc{};
-  const irs::payload* _pkValue{};
+  irs::payload const* _pkValue{};
   size_t _readerOffset{0};
   CoveringVector _projections;
 };
@@ -863,7 +863,8 @@ Result IResearchInvertedIndex::init(
     irs::IndexReaderOptions readerOptions;
 #ifdef USE_ENTERPRISE
     setupReaderEntepriseOptions(readerOptions,
-                                index().collection().vocbase().server(), _meta);
+                                index().collection().vocbase().server(), _meta,
+                                _useSearchCache);
 #endif
     auto r = initDataStore(pathExists, initCallback,
                            static_cast<uint32_t>(_meta._version), isSorted(),

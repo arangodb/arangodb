@@ -229,7 +229,7 @@ jobs:
           when: always
           command: |
             mkdir test-results
-            find testrun -iname *xml -exec cp "{}" --target-directory=./test-results \;
+            find testrunXml -iname *xml -exec cp "{}" --target-directory=./test-results \;
       - store_artifacts:
           destination: << parameters.suiteName >>
           path: ./work/
