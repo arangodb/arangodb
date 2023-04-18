@@ -405,19 +405,10 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
   auto operator()(message::ProduceResults msg)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     auto getResults = [this, msg]() -> ResultT<PregelResults> {
-      std::function<void()> statusUpdateCallback = [] {
-        // TODO GORDO-1584 send update to status actor
-        // this->template dispatch<conductor::message::ConductorMessages>(
-        //     this->state->conductor,
-        //     conductor::message::StatusUpdate{
-        //         .executionNumber = this->state->config->executionNumber(),
-        //         .status = this->state->observeStatus()});
-      };
       try {
         auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
             msg.withID, this->state->config,
-            this->state->algorithm->inputFormat(),
-            std::move(statusUpdateCallback));
+            this->state->algorithm->inputFormat());
         storer->store(this->state->magazine).get();
         return PregelResults{*storer->stealResult()};
       } catch (std::exception const& ex) {

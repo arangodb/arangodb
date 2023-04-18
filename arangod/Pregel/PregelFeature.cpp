@@ -832,14 +832,14 @@ ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
               TRI_ERROR_HTTP_NOT_FOUND,
               fmt::format("Cannot locate results for pregel run {}.", execNr)};
         }
-        auto state = actor->second.data->get();
-        if (!state.has_value()) {
+        auto results = actor->second.data->get();
+        if (!results.has_value()) {
           return Result{
               TRI_ERROR_INTERNAL,
               fmt::format("Pregel results for run {} are not yet available.",
                           execNr)};
         }
-        return state.value();
+        return results.value();
       });
 }
 
