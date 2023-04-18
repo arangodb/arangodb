@@ -378,7 +378,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       try {
         auto storer = std::make_shared<GraphStorer<V, E>>(
             this->state->config->executionNumber(),
-            *this->state->config->vocbase(),
+            *this->state->config->vocbase(), this->state->config->parallelism(),
             this->state->algorithm->inputFormat(),
             this->state->config->globalShardIDs(),
             ActorStoringUpdate{
