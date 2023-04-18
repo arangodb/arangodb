@@ -46,7 +46,9 @@ disk into memory and to evict them from memory.
 This option is immutable.
 
 See the `--arangosearch.columns-cache-limit` startup option to control the
-memory consumption of this cache.
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTBODYPARAM{primaryKeyCache,boolean,optional,}
 If you enable this option, then the primary key columns are always cached in
@@ -58,7 +60,9 @@ memory and to evict them from memory.
 This option is immutable.
 
 See the `--arangosearch.columns-cache-limit` startup option to control the
-memory consumption of this cache.
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTBODYPARAM{optimizeTopK,array,optional,string}
 An array of strings defining sort expressions that you want to optimize.
@@ -107,7 +111,10 @@ Each object is expected in the following form:
   memory (introduced in v3.9.5, Enterprise Edition only). This can improve
   the query performance if stored values are involved. See the
   `--arangosearch.columns-cache-limit` startup option
-  to control the memory consumption of this cache.
+  to control the memory consumption of this cache. You can reduce the memory
+  usage of the column cache in cluster deployments by only using the cache for
+  leader shards, see the `--arangosearch.columns-cache-only-leader` startup
+  option (introduced in v3.10.6).
 
   You may use the following shorthand notations on View creation instead of
   an array of objects as described above. The default compression and cache
