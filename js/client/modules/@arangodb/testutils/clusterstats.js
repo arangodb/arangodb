@@ -93,7 +93,7 @@ while(true) {
         if (reply.hasOwnProperty('error') || reply.code !== 200) {
           print("fail: " + JSON.stringify(reply) +
                 " - ps before: " + JSON.stringify(procStats) +
-                " - ps now: " + JSON.stringify(pu.getProcessStats(arangod.pid)));
+                " - ps now: " + JSON.stringify(arangod._getProcessStats()));
           state.state = false;
           oneSet.state = false;
           oneSet[serverId] = {
