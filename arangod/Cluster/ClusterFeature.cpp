@@ -582,6 +582,9 @@ DECLARE_COUNTER(arangodb_sync_wrong_checksum_total,
 DECLARE_COUNTER(arangodb_sync_rebuilds_total,
                 "Number of times a follower shard needed to be completely "
                 "rebuilt because of too many synchronization failures");
+DECLARE_COUNTER(arangodb_sync_tree_rebuilds_total,
+                "Number of times a shard rebuilt its revision tree "
+                "completely because of too many synchronization failures");
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
@@ -662,6 +665,9 @@ void ClusterFeature::start() {
     _followersTotalRebuildCounter =
         server().getFeature<arangodb::MetricsFeature>().add(
             arangodb_sync_rebuilds_total{});
+    _syncTreeRebuildCounter =
+        server().getFeature<arangodb::MetricsFeature>().add(
+            arangodb_sync_tree_rebuilds_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)

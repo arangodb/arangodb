@@ -35,6 +35,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/MetricsFeature.h"
 
+#include <map>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -90,7 +91,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief Highest limit for worker threads
   static constexpr uint32_t const maxThreadLimit = 64;
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
@@ -407,6 +407,14 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief maximum number of replication error occurrences that are kept per
   /// shard.
   static constexpr size_t maxReplicationErrorsPerShard = 20;
+
+  /// @brief maximum number of replication error occurrences that are tolerated
+  /// before an auto-repair is attempted
+  static constexpr size_t maxReplicationErrorsPerShardBeforeAutoRepair =
+      maxReplicationErrorsPerShard - 3;
+
+  static_assert(maxReplicationErrorsPerShard >
+                maxReplicationErrorsPerShardBeforeAutoRepair);
 
   /// @brief maximum age of replication error occurrences that are kept per
   /// shard. error occurrences older than this max age will be removed only

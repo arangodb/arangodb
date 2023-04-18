@@ -1,6 +1,13 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* Automatically repair revision trees after several failed shard
+  synchronization attempts. This can help to get permanently out-of-sync
+  shards back into sync.
+
+  The functionality can be turned off by setting the startup option
+  `--replication.auto-repair-revision-trees` to `false` on DB-Servers.
+
 * Apply intermediate commits for replication transactions during initial sync
   phase of replication in case the follower already had documents.
   This fixes issues with large replication transactions consuming a lot of
