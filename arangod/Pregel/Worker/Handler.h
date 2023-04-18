@@ -114,19 +114,16 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
           this->template dispatch<worker::message::WorkerMessages>(actor,
                                                                    message);
         });
-    TRI_ASSERT(this->state->readCache->containedMessageCount() == 0);
-    std::swap(this->state->readCache, this->state->writeCache);
     this->state->config->_globalSuperstep = message.gss;
     this->state->config->_localSuperstep = message.gss;
-    if (message.gss == 0) {
-      // now config.gss is set explicitely to 0 and the computation started
-      this->state->computationStarted = true;
-    }
 
     this->state->workerContext->_vertexCount = message.vertexCount;
     this->state->workerContext->_edgeCount = message.edgeCount;
     if (message.gss == 0) {
       this->state->workerContext->preApplication();
+    } else {
+      TRI_ASSERT(this->state->readCache->containedMessageCount() == 0);
+      std::swap(this->state->readCache, this->state->writeCache);
     }
     this->state->workerContext->_writeAggregators->resetValues();
     this->state->workerContext->_readAggregators->setAggregatedValues(
@@ -275,8 +272,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   auto operator()(message::RunGlobalSuperStep message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    LOG_TOPIC("0f658", INFO, Logger::PREGEL)
-        << fmt::format("Worker Actor {} is computing", this->self);
+    LOG_TOPIC("0f658", INFO, Logger::PREGEL) << fmt::format(
+        "Worker Actor {} starts computing gss {}", this->self, message.gss);
 
     // check if worker is in expected gss (previous gss of conductor)
     if (message.gss != 0 &&
@@ -292,9 +289,15 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     }
 
     // check if worker received all messages send to it from other workers
-    // if not: send message back to itself such that in between it can receive
-    // missing messages
-    if (message.sendCount != this->state->writeCache->containedMessageCount()) {
+    // if not: send RunGlobalsuperstep back to itself such that in between it
+    // can receive missing messages
+    if (message.gss != 0 &&
+        message.sendCount != this->state->writeCache->containedMessageCount()) {
+      LOG_TOPIC("097be", WARN, Logger::PREGEL) << fmt::format(
+          "Worker Actor {} in gss {} is waiting for messages: received count "
+          "{} != send count {}",
+          this->self, this->state->config->_globalSuperstep, message.sendCount,
+          this->state->writeCache->containedMessageCount());
       if (not this->state->isWaitingForAllMessagesSince.has_value()) {
         this->state->isWaitingForAllMessagesSince =
             std::chrono::steady_clock::now();
@@ -320,14 +323,6 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->state->isWaitingForAllMessagesSince = std::nullopt;
 
     prepareGlobalSuperStep(std::move(message));
-
-    // resend all queued messages that were dedicatd to this gss
-    for (auto const& message : this->state->messagesForNextGss) {
-      this->template dispatch<worker::message::PregelMessage>(this->self,
-                                                              message);
-    }
-    this->state->messagesForNextGss.clear();
-
     auto verticesProcessed = processVertices();
     auto out = finishProcessing(verticesProcessed);
     this->template dispatch<conductor::message::ConductorMessages>(
@@ -340,32 +335,27 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   auto operator()(message::PregelMessage message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    LOG_TOPIC("80709", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor {} with gss {} received message for gss {}", this->self,
-        this->state->config->globalSuperstep(), message.gss);
-    if (message.gss != this->state->config->globalSuperstep() &&
-        message.gss != this->state->config->globalSuperstep() + 1) {
-      LOG_TOPIC("da39a", ERR, Logger::PREGEL)
-          << "Expected: " << this->state->config->globalSuperstep()
-          << " Got: " << message.gss;
-      this->template dispatch<conductor::message::ConductorMessages>(
-          this->state->conductor,
-          ResultT<conductor::message::GlobalSuperStepFinished>::error(
-              TRI_ERROR_BAD_PARAMETER, "Superstep out of sync"));
-    }
-    // queue message if read and write cache are not swapped yet, otherwise
-    // you will loose this message
-    if (message.gss == this->state->config->globalSuperstep() + 1 ||
-        // if config->gss == 0 and _computationStarted == false: read and
-        // write cache are not swapped yet, config->gss is currently 0 only
-        // due to its initialization
-        (this->state->config->globalSuperstep() == 0 &&
-         !this->state->computationStarted)) {
-      this->state->messagesForNextGss.push_back(message);
-    } else {
+    if (message.gss == this->state->config->globalSuperstep()) {
       this->state->writeCache->parseMessages(message);
+      return std::move(this->state);
     }
 
+    // if message is for next superstep, resend it (because this worker is still
+    // waiting for missing messages in current superstep)
+    if (message.gss == this->state->config->globalSuperstep() + 1) {
+      this->template dispatch<worker::message::WorkerMessages>(this->self,
+                                                               message);
+      return std::move(this->state);
+    }
+
+    // otherwise something bad happened
+    LOG_TOPIC("da39a", ERR, Logger::PREGEL)
+        << "Expected: " << this->state->config->globalSuperstep()
+        << " Got: " << message.gss;
+    this->template dispatch<conductor::message::ConductorMessages>(
+        this->state->conductor,
+        ResultT<conductor::message::GlobalSuperStepFinished>::error(
+            TRI_ERROR_BAD_PARAMETER, "Superstep out of sync"));
     return std::move(this->state);
   }
 

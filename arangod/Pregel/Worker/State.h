@@ -90,11 +90,6 @@ struct WorkerState {
   // only needed in computing state
   std::unique_ptr<WorkerContext> workerContext;
   std::chrono::seconds messageTimeout;
-  std::vector<worker::message::PregelMessage> messagesForNextGss;
-  // distinguishes config.globalSuperStep being initialized to 0 and
-  // config.globalSuperStep being explicitely set to 0 when the first superstep
-  // starts: needed to process incoming messages in its dedicated gss
-  bool computationStarted = false;
   std::optional<std::chrono::steady_clock::time_point>
       isWaitingForAllMessagesSince;
   std::unique_ptr<MessageFormat<M>> messageFormat;
