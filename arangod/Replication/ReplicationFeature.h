@@ -89,7 +89,9 @@ class ReplicationFeature final : public ArangodFeature {
   /// @brief automatic failover of replication using the agency
   bool isActiveFailoverEnabled() const;
 
-  bool syncByRevision() const;
+  bool syncByRevision() const noexcept;
+
+  bool autoRepairRevisionTrees() const noexcept;
 
   /// @brief track the number of (parallel) tailing operations
   /// will throw an exception if the number of concurrently running operations
@@ -137,6 +139,10 @@ class ReplicationFeature final : public ArangodFeature {
 
   /// Use the revision-based replication protocol
   bool _syncByRevision;
+
+  /// automatically repair revision trees of shards after too many failed
+  /// shard synchronization attempts
+  bool _autoRepairRevisionTrees;
 
   /// @brief cache for reusable connections
   httpclient::ConnectionCache _connectionCache;
