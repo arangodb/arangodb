@@ -60,6 +60,27 @@ This option is immutable.
 See the `--arangosearch.columns-cache-limit` startup option to control the
 memory consumption of this cache.
 
+@RESTBODYPARAM{optimizeTopK,array,optional,string}
+An array of strings defining sort expressions that you want to optimize.
+This is also known as _WAND optimization_.
+
+If you query a View with the `SEARCH` operation in combination with a
+`SORT` and `LIMIT` operation, search results can be retrieved faster if the
+`SORT` expression matches one of the optimized expressions.
+
+Only sorting by highest rank is supported, that is, sorting by the result
+of a scoring function in descending order (`DESC`). Use `@doc` in the expression
+where you would normally pass the document variable emitted by the `SEARCH`
+operation to the scoring function.
+
+You can define up tp 64 expressions per View.
+
+Example: `["BM25(@doc) DESC", "TFIDF(@doc, true) DESC"]`
+
+Default: `[]`
+
+This property is available in the Enterprise Edition only.
+
 @RESTBODYPARAM{storedValues,array,optional,object}
 An array of objects to describe which document attributes to store in the View
 index (introduced in v3.7.1). It can then cover search queries, which means the
