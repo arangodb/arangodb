@@ -36,6 +36,8 @@
   const wait = require("internal").wait;
   const suspendExternal = require("internal").suspendExternal;
   const continueExternal = require("internal").continueExternal;
+  const {waitFor} = require('@arangodb/testutils/replicated-logs-helper');
+  const {serverFailed} = require('@arangodb/testutils/replicated-logs-predicates');
 
   let cn = "UnitTestSyncRep";
   let c;
@@ -159,6 +161,12 @@
     return leader;
   }
 
+  function failLeaderAndWaitForFailed() {
+    const leader = failLeader();
+    waitFor(serverFailed(leader));
+    return leader;
+  }
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief heal the follower
   ////////////////////////////////////////////////////////////////////////////////
@@ -184,7 +192,7 @@
     if (failure.follower) {
       failFollower();
     } else {
-      failLeader();
+      failLeaderAndWaitForFailed();
     }
   }
 
