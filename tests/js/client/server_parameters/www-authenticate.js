@@ -51,6 +51,7 @@ function HttpAuthenticateSuite() {
   return {
 
     setUpAll: function() {
+      // set log level for verifying what happens to the password update
       originalLogLevel = arango.GET("/_admin/log/level").authentication;
       arango.PUT("/_admin/log/level", {authentication: "debug"});
     },
