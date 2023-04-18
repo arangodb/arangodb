@@ -788,7 +788,9 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
   }
 
   std::string const& path = req.requestPath();
-
+  LOG_TOPIC("b60b2", DEBUG, Logger::AUTHENTICATION)
+      << "canAccessPath " << path << " "
+      << _auth->userManager()->allUsers().toJson();
   auto const& ap = token.allowedPaths();
   if (!ap.empty()) {
     if (std::find(ap.begin(), ap.end(), path) == ap.end()) {
@@ -948,6 +950,14 @@ void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
 
 auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
                                                   ServerState::Mode mode) {
+  std::string headerStr;
+  for (auto const& [first, second] : req.headers()) {
+    headerStr += first + " " + second + "\n";
+  };
+
+  LOG_TOPIC("a9f6f", DEBUG, Logger::AUTHENTICATION)
+      << "chechAuthHeader as string " << headerStr;
+
   bool found;
   std::string const& authStr = req.header(StaticStrings::Authorization, found);
   if (!found) {
@@ -1003,15 +1013,22 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
 
   auto authToken =
       this->_auth->tokenCache().checkAuthentication(authMethod, mode, auth);
+  LOG_TOPIC("9e1e2", DEBUG, Logger::AUTHENTICATION)
+      << "checkAuthHeader authToken token from user " << authToken.username();
   req.setAuthenticated(authToken.authenticated());
   req.setTokenExpiry(authToken.expiry());
   req.setUser(authToken.username());  // do copy here, so that we do not
   // invalidate the member
   if (authToken.authenticated()) {
+    LOG_TOPIC("90d9c", DEBUG, Logger::AUTHENTICATION)
+        << "chechAuthHeader authenticated";
     events::Authenticated(req, authMethod);
   } else {
+    LOG_TOPIC("9e1e2", DEBUG, Logger::AUTHENTICATION)
+        << "chechAuthHeader bad credentials";
     events::CredentialsBad(req, authMethod);
   }
+
   return authToken;
 }
 
