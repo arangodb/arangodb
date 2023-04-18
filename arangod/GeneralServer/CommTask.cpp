@@ -788,9 +788,6 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
   }
 
   std::string const& path = req.requestPath();
-  LOG_TOPIC("b60b2", DEBUG, Logger::AUTHENTICATION)
-      << "canAccessPath " << path << " "
-      << _auth->userManager()->allUsers().toJson();
   auto const& ap = token.allowedPaths();
   if (!ap.empty()) {
     if (std::find(ap.begin(), ap.end(), path) == ap.end()) {
