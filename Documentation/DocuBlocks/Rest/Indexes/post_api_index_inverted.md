@@ -119,7 +119,7 @@ overwrite what features are enabled for the `analyzer`. Possible features:
 - `"offset"`
 
 Default: the features as defined by the Analyzer itself, or inherited from the
-the parent field's or top-level `features` option if no `analyzer` option is set
+parent field's or top-level `features` option if no `analyzer` option is set
 at a deeper level, closer to this option.
 
 @RESTSTRUCT{searchField,post_api_index_inverted_nested,boolean,optional,}
@@ -191,8 +191,8 @@ this case:
 - An array of arrays of strings, like `[["attr1", "attr2"]]`, to place the
   attributes into a single column of the index, or `[["attr1"], ["attr2"]]`
   to place each attribute into a separate column. You can also mix it with the
-  the full form:
-  
+  full form:
+
   ```json
   [
     ["attr1"],
@@ -248,6 +248,29 @@ Enable this option to always cache the primary key column in memory. This can
 improve the performance of queries that return many documents.
 
 Default: `false`
+
+@RESTBODYPARAM{optimizeTopK,array,optional,string}
+This option only applies if you use the inverted index in a `search-alias` Views.
+
+An array of strings defining sort expressions that you want to optimize.
+This is also known as _WAND optimization_.
+
+If you query a View with the `SEARCH` operation in combination with a
+`SORT` and `LIMIT` operation, search results can be retrieved faster if the
+`SORT` expression matches one of the optimized expressions.
+
+Only sorting by highest rank is supported, that is, sorting by the result
+of a scoring function in descending order (`DESC`). Use `@doc` in the expression
+where you would normally pass the document variable emitted by the `SEARCH`
+operation to the scoring function.
+
+You can define up tp 64 expressions per View.
+
+Example: `["BM25(@doc) DESC", "TFIDF(@doc, true) DESC"]`
+
+Default: `[]`
+
+This property is available in the Enterprise Edition only.
 
 @RESTBODYPARAM{analyzer,string,optional,string}
 The name of an Analyzer to use by default. This Analyzer is applied to the
