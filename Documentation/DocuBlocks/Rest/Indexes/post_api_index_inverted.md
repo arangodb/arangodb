@@ -119,7 +119,7 @@ overwrite what features are enabled for the `analyzer`. Possible features:
 - `"offset"`
 
 Default: the features as defined by the Analyzer itself, or inherited from the
-the parent field's or top-level `features` option if no `analyzer` option is set
+parent field's or top-level `features` option if no `analyzer` option is set
 at a deeper level, closer to this option.
 
 @RESTSTRUCT{searchField,post_api_index_inverted_nested,boolean,optional,}
@@ -191,8 +191,8 @@ this case:
 - An array of arrays of strings, like `[["attr1", "attr2"]]`, to place the
   attributes into a single column of the index, or `[["attr1"], ["attr2"]]`
   to place each attribute into a separate column. You can also mix it with the
-  the full form:
-  
+  full form:
+
   ```json
   [
     ["attr1"],
