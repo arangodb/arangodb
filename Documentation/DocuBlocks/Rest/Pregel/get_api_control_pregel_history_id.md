@@ -36,39 +36,39 @@ Get the execution status of a Pregel job:
 
 @EXAMPLE_ARANGOSH_RUN{RestPregelConnectedComponentsStatisticsId}
 
-var examples = require("@arangodb/graph-examples/example-graph.js");
-print("Creating I graph");
-var graph = examples.loadGraph("connectedComponentsGraph");
+  var examples = require("@arangodb/graph-examples/example-graph.js");
+  print("6. Creating Pregel graph");
+  var graph = examples.loadGraph("connectedComponentsGraph");
 
-var url = "/_api/control_pregel";
-var body = {
-algorithm: "wcc",
-graphName: "connectedComponentsGraph",
-params: {
-maxGSS: graph.components.count(),
-resultField: "component"
-}
-};
-var id = internal.arango.POST(url, body);
+  var url = "/_api/control_pregel";
+  var body = {
+    algorithm: "wcc",
+    graphName: "connectedComponentsGraph",
+    params: {
+      maxGSS: graph.components.count(),
+      resultField: "component"
+    }
+  };
+  var id = internal.arango.POST(url, body);
 
-const statusUrl = `${url}/${id}`;
-while (true) {
-var status = internal.arango.GET(statusUrl);
-if (status.error || ["done", "canceled", "fatal error"].includes(status.state)) {
-assert(status.state == "done");
-break;
-} else {
-print(`III. Waiting for Pregel job ${id} (${status.state})...`);
-internal.sleep(0.5);
-}
-}
+  const statusUrl = `${url}/${id}`;
+  while (true) {
+    var status = internal.arango.GET(statusUrl);
+    if (status.error || ["done", "canceled", "fatal error"].includes(status.state)) {
+      assert(status.state == "done");
+      break;
+    } else {
+      print(`6. Waiting for Pregel job ${id} (${status.state})...`);
+      internal.sleep(0.5);
+    }
+  }
 
-const historyUrl = `/_api/control_pregel/history/${id}`;
-var response = logCurlRequest("GET", historyUrl);
-assert(response.code === 200);
+  const historyUrl = `/_api/control_pregel/history/${id}`;
+  var response = logCurlRequest("GET", historyUrl);
+  assert(response.code === 200);
 
-logJsonResponse(response);
-examples.dropGraph("connectedComponentsGraph");
+  logJsonResponse(response);
+  examples.dropGraph("connectedComponentsGraph");
 
 @END_EXAMPLE_ARANGOSH_RUN
 

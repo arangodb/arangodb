@@ -25,33 +25,33 @@ Get the status of all active and past Pregel jobs:
 
 @EXAMPLE_ARANGOSH_RUN{RestPregelConnectedComponentsStatistics}
 
-var assertInstanceOf = require("jsunity").jsUnity.assertions.assertInstanceOf;
-var examples = require("@arangodb/graph-examples/example-graph.js");
-print("Creating III graph");
-var graph = examples.loadGraph("connectedComponentsGraph");
+  var assertInstanceOf = require("jsunity").jsUnity.assertions.assertInstanceOf;
+  var examples = require("@arangodb/graph-examples/example-graph.js");
+  print("5. Creating Pregel graph");
+  var graph = examples.loadGraph("connectedComponentsGraph");
 
-var url = "/_api/control_pregel";
-var body = {
-algorithm: "wcc",
-graphName: "connectedComponentsGraph",
-params: {
-maxGSS: graph.components.count(),
-resultField: "component"
-}
-};
+  var url = "/_api/control_pregel";
+  var body = {
+    algorithm: "wcc",
+    graphName: "connectedComponentsGraph",
+    params: {
+      maxGSS: graph.components.count(),
+      resultField: "component"
+    }
+  };
 
-const id = internal.arango.POST(url, body);
-const historyUrl = `/_api/control_pregel/history`;
+  const id = internal.arango.POST(url, body);
+  const historyUrl = `/_api/control_pregel/history`;
 
-var response = logCurlRequest("GET", historyUrl);
-assert(response.code === 200);
-assertInstanceOf(Array, response.parsedBody);
-assert(response.parsedBody.length > 0);
+  var response = logCurlRequest("GET", historyUrl);
+  assert(response.code === 200);
+  assertInstanceOf(Array, response.parsedBody);
+  assert(response.parsedBody.length > 0);
 
-internal.arango.DELETE(url + id);
+  internal.arango.DELETE(url + id);
 
-logJsonResponse(response);
-examples.dropGraph("connectedComponentsGraph");
+  logJsonResponse(response);
+  examples.dropGraph("connectedComponentsGraph");
 
 @END_EXAMPLE_ARANGOSH_RUN
 

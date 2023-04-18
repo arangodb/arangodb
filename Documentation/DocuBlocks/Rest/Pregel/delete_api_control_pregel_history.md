@@ -18,6 +18,7 @@ Remove the persisted execution statistics of all past Pregel jobs:
 @EXAMPLE_ARANGOSH_RUN{RestPregelConnectedComponentsRemoveStatistics}
 
   var examples = require("@arangodb/graph-examples/example-graph.js");
+  print("7. Creating Pregel graph");
   var graph = examples.loadGraph("connectedComponentsGraph");
 
   var url = "/_api/control_pregel";
@@ -38,7 +39,7 @@ Remove the persisted execution statistics of all past Pregel jobs:
       assert(status.state == "done");
       break;
     } else {
-      print(`I. Waiting for Pregel job ${id} (${status.state})...`);
+      print(`7. Waiting for Pregel job ${id} (${status.state})...`);
       internal.sleep(0.5);
     }
   }

@@ -26,18 +26,18 @@ Remove the persisted execution statistics of a finished Pregel job:
 
 @EXAMPLE_ARANGOSH_RUN{RestPregelConnectedComponentsRemoveStatisticsId}
 
-var examples = require("@arangodb/graph-examples/example-graph.js");
-print("Creating VI graph");
-var graph = examples.loadGraph("connectedComponentsGraph");
+  var examples = require("@arangodb/graph-examples/example-graph.js");
+  print("8. Creating graph");
+  var graph = examples.loadGraph("connectedComponentsGraph");
 
-var url = "/_api/control_pregel";
-var body = {
-algorithm: "wcc",
-graphName: "connectedComponentsGraph",
-params: {
-maxGSS: graph.components.count(),
-store: false
-}
+  var url = "/_api/control_pregel";
+  var body = {
+    algorithm: "wcc",
+    graphName: "connectedComponentsGraph",
+    params: {
+      maxGSS: graph.components.count(),
+      store: false
+    }
   };
   var id = internal.arango.POST(url, body);
 
@@ -48,7 +48,7 @@ store: false
       assert(status.state == "done");
       break;
     } else {
-      print(`II. Waiting for Pregel job ${id} (${status.state})...`);
+      print(`8. Waiting for Pregel job ${id} (${status.state})...`);
       internal.sleep(0.5);
     }
   }

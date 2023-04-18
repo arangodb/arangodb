@@ -37,23 +37,23 @@ started with `"store": false` and is in the done state:
 
 @EXAMPLE_ARANGOSH_RUN{RestPregelCancelConnectedComponents}
 
-var examples = require("@arangodb/graph-examples/example-graph.js");
-print("Creating II graph");
-var graph = examples.loadGraph("connectedComponentsGraph");
+  var examples = require("@arangodb/graph-examples/example-graph.js");
+  print("4. Creating Pregel graph");
+  var graph = examples.loadGraph("connectedComponentsGraph");
 
-var url = "/_api/control_pregel";
-var body = {
-algorithm: "wcc",
-graphName: "connectedComponentsGraph",
-params: {
-maxGSS: graph.components.count(),
-store: false
-}
+  var url = "/_api/control_pregel";
+  var body = {
+    algorithm: "wcc",
+    graphName: "connectedComponentsGraph",
+    params: {
+      maxGSS: graph.components.count(),
+      store: false
+    }
   };
   var id = internal.arango.POST(url, body);
 
-  var url = "/_api/control_pregel/" + id;
-  var response = logCurlRequest("DELETE", url);
+  var statusUrl = "/_api/control_pregel/" + id;
+  var response = logCurlRequest("DELETE", statusUrl);
 
   assert(response.code === 200);
 
