@@ -109,8 +109,11 @@ Each object is expected in the following form:
 
 - The optional `cache` attribute allows you to always cache stored values in
   memory (introduced in v3.9.5, Enterprise Edition only). This can improve
-  the query performance if stored values are involved. See the
-  `--arangosearch.columns-cache-limit` startup option
+  the query performance if stored values are involved. Otherwise, these values
+  are memory-mapped and it is up to the operating system to load them from disk
+  into memory and to evict them from memory.
+
+  See the `--arangosearch.columns-cache-limit` startup option
   to control the memory consumption of this cache. You can reduce the memory
   usage of the column cache in cluster deployments by only using the cache for
   leader shards, see the `--arangosearch.columns-cache-only-leader` startup
