@@ -96,9 +96,13 @@ var runInDatabase = function () {
             updateQuery.options = { ttl: 5, maxRuntime: 5 };
 
             db._query(updateQuery);
-            // db._jobs.update(job, update);
+
+            // generate unique task id (uniqueness only required during
+            // runtime of arangod process)
+            const id = "foxx-queue-worker-" + require("@arangodb/crypto").uuidv4();
 
             tasks.register({
+              id,
               command: function (cfg) {
                 var db = require('@arangodb').db;
                 var initialDatabase = db._name();
@@ -347,6 +351,7 @@ exports.run = function () {
   if (tasks.register !== undefined) {
     // move the actual foxx queue operations execution to a background task
     tasks.register({
+      id: "foxx-queue-manager",
       command: function () {
         require('@arangodb/foxx/queues/manager').manage();
       },
