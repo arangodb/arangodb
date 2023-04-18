@@ -76,6 +76,7 @@ router.get('/config.js', function (req, res) {
       ldapEnabled = true;
     }
   }
+  
   res.send(
     `var frontendConfig = ${JSON.stringify({
       basePath: basePath,
@@ -99,6 +100,7 @@ router.get('/config.js', function (req, res) {
       maxNumberOfMoveShards: internal.maxNumberOfMoveShards,
       forceOneShard: internal.forceOneShard,
       sessionTimeout: internal.sessionTimeout,
+      logoutButton: FE_LOGOUT_BUTTON,
       showMaintenanceStatus: true
     })}`
   );

@@ -3,7 +3,9 @@
     <span class="toggle"> 
       <%=_.escape(username)%>
     </span>
+    <% if (logoutButton) {%>
     <i id="userLogoutIcon" class="fa fa-power-off" aria-hidden="true"></i>
+    <% }%>
   </a>
 
   <ul id="userInfo" class="subBarDropdown">
@@ -16,35 +18,9 @@
         <% } %>
         </p>
     </li>
+    <% if (logoutButton) {%>
     <li class="dropdown-footer">
       <button id="userLogout" class="button-primary btn-small pull-right">Logout</button>
     </li>
+    <% }%>
   </ul>
-
-<!--
-<ul class="navlist" id="userBarUl">
-
-  <li class="dropdown user-menu userImg">
-    <a href="#" class="tab userImg" id="user" >
-      <img class="user-menu-img" src="<%=img%>" id="userimage" /> <b class="caret"></b>
-    </a>
-    <ul class="user-dropdown-menu" id="user_dropdown">
-      <li class="dropdown-header" style="text-transform: none">
-        <%
-        if (name) {%>
-        <%=_.escape(name)%> (<%=_.escape(username)%>)
-        <% } else {%>
-        <%=_.escape(username)%>
-        <% } %>
-      <li class="dropdown-item">
-        <a id="userProfile" class="tab" href="#user">User Profile</a>
-      </li>
-      <li class="dropdown-item">
-        <a id="userLogout" class="tab">Logout</a>
-      </li>
-    </ul>
-  </li>
-
-</ul>
-
---> 

@@ -38,6 +38,7 @@ class FrontendFeature final : public ArangodFeature {
 
  private:
   bool _versionCheck;
+  bool _logoutButton;
 };
 
 }  // namespace arangodb

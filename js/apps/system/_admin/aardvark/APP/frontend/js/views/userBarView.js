@@ -108,7 +108,8 @@
                 img: img,
                 name: name,
                 username: username,
-                active: active
+                active: active,
+                logoutButton: frontendConfig.logoutButton
               }));
 
               self.delegateEvents();

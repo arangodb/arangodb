@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added startup option `--web-interface.logout-button` to optionally hide the
+  logout button from the web interface. The option defaults to `true`, so the
+  logout button is shown.
+
 * SEARCH-461: Added option "--arangosearch.columns-cache-only-leader". Used only
   on EE DBServers. Default is false.
   If set to true only leader shards have ArangoSearch caches enabled - this will

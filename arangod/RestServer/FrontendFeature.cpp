@@ -35,7 +35,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 FrontendFeature::FrontendFeature(Server& server)
-    : ArangodFeature{server, *this}, _versionCheck(true) {
+    : ArangodFeature{server, *this}, _versionCheck(true), _logoutButton(true) {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
 }
@@ -54,11 +54,23 @@ void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                          arangodb::options::Flags::OnCoordinator,
                          arangodb::options::Flags::OnSingle,
                          arangodb::options::Flags::Uncommon));
+
+  options
+      ->addOption("--web-interface.logout-button",
+                  "Show a logout button in the web interface.",
+                  new BooleanParameter(&_logoutButton),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31100);
 }
 
 void FrontendFeature::prepare() {
   V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
   dealer.defineBoolean("FE_VERSION_CHECK", _versionCheck);
+  dealer.defineBoolean("FE_LOGOUT_BUTTON", _logoutButton);
 }
 
 }  // namespace arangodb
