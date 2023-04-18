@@ -675,6 +675,11 @@ class testRunner {
         if (this.options.extremeVerbosity) {
           print('Skipped ' + te + ' because of ' + filtered.filter);
         }
+        this.results[this.translateResult(te)] = {
+          status: true,
+          skipped: true,
+          message: filtered.filter
+        };
       }
     }
 
