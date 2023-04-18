@@ -332,6 +332,10 @@ bool auth::User::checkPassword(std::string const& password) const {
     THROW_ARANGO_EXCEPTION_MESSAGE(res,
                                    "Could not calculate hex-hash from input");
   }
+  LOG_TOPIC("65cd0", DEBUG, Logger::AUTHENTICATION)
+      << "Check password hash "
+      << " " << password << " " << (_passwordHash == hash);
+
   return _passwordHash == hash;
 }
 
@@ -342,6 +346,10 @@ void auth::User::updatePassword(std::string const& password) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res,
                                    "Could not calculate hex-hash from input");
   }
+  LOG_TOPIC("022bb", DEBUG, Logger::AUTHENTICATION)
+      << "Update password "
+      << " " << password << " " << hash << " former password hash "
+      << _passwordHash;
   _passwordHash = hash;
 }
 

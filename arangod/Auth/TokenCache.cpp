@@ -92,20 +92,30 @@ std::string auth::TokenCache::jwtSecret() const {
 auth::TokenCache::Entry auth::TokenCache::checkAuthentication(
     AuthenticationMethod authType, ServerState::Mode mode,
     std::string const& secret) {
+  LOG_TOPIC("07d66", DEBUG, Logger::AUTHENTICATION)
+      << "checkAuthentication secret " << secret;
   switch (authType) {
     case AuthenticationMethod::BASIC:
       if (mode == ServerState::Mode::STARTUP) {
+        LOG_TOPIC("861bd", DEBUG, Logger::AUTHENTICATION)
+            << "checkAuthentication startup phase unauthenticated";
         // during the startup phase, we have no access to the underlying
         // database data, so we cannot validate the credentials.
         return auth::TokenCache::Entry::Unauthenticated();
       }
+      LOG_TOPIC("70a69", DEBUG, Logger::AUTHENTICATION)
+          << "checkAuthentication basic";
       return checkAuthenticationBasic(secret);
 
     case AuthenticationMethod::JWT:
+      LOG_TOPIC("1a141", DEBUG, Logger::AUTHENTICATION)
+          << "checkAuthentication jwt";
       // JWTs work fine even during the startup phase
       return checkAuthenticationJWT(secret);
 
     default:
+      LOG_TOPIC("1ff9a", DEBUG, Logger::AUTHENTICATION)
+          << "checkAuthentication default unauthenticated";
       return auth::TokenCache::Entry::Unauthenticated();
   }
 }

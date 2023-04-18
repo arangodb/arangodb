@@ -580,6 +580,8 @@ Result auth::UserManager::updateUser(std::string const& name,
   TRI_ASSERT(!user.key().empty() && user.rev().isSet());
   Result r = func(user);
   if (r.fail()) {
+    LOG_TOPIC("4a294", DEBUG, Logger::AUTHENTICATION)
+        << "Update user " << name << " fail";
     return r;
   }
   r = storeUserInternal(user, /*replace*/ true);
@@ -605,8 +607,13 @@ Result auth::UserManager::accessUser(std::string const& user,
   READ_LOCKER(readGuard, _userCacheLock);
   UserMap::iterator const& it = _userCache.find(user);
   if (it != _userCache.end()) {
+    LOG_TOPIC("3f3b5", DEBUG, Logger::AUTHENTICATION) << "Access user " << user;
     return func(it->second);
   }
+
+  LOG_TOPIC("e1b5b", DEBUG, Logger::AUTHENTICATION)
+      << "Access user " << user << " failed";
+
   return TRI_ERROR_USER_NOT_FOUND;
 }
 
@@ -738,6 +745,9 @@ Result auth::UserManager::removeAllUsers() {
 
 bool auth::UserManager::checkPassword(std::string const& username,
                                       std::string const& password) {
+  LOG_TOPIC("0cdb3", DEBUG, Logger::AUTHENTICATION)
+      << "Check password " << username << " " << password;
+
   if (username.empty() || ::isRole(username)) {
     return false;  // we cannot authenticate during bootstrap
   }
