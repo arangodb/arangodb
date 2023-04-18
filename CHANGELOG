@@ -1,4 +1,4 @@
-v3.10.5.2 (XXXX-XX-XX)
+v3.10.5.2 (2023-04-18)
 ----------------------
 
 * MDS-1098: In 3.10 we have introduced an optimization on Traversals to pull
