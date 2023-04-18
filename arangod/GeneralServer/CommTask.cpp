@@ -1024,7 +1024,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
         << "chechAuthHeader authenticated";
     events::Authenticated(req, authMethod);
   } else {
-    LOG_TOPIC("9e1e2", DEBUG, Logger::AUTHENTICATION)
+    LOG_TOPIC("70f3f", DEBUG, Logger::AUTHENTICATION)
         << "chechAuthHeader bad credentials";
     events::CredentialsBad(req, authMethod);
   }

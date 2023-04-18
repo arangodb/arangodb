@@ -611,7 +611,7 @@ Result auth::UserManager::accessUser(std::string const& user,
     return func(it->second);
   }
 
-  LOG_TOPIC("e1b5b", DEBUG, Logger::AUTHENTICATION)
+  LOG_TOPIC("e5dd5", DEBUG, Logger::AUTHENTICATION)
       << "Access user " << user << " failed";
 
   return TRI_ERROR_USER_NOT_FOUND;
