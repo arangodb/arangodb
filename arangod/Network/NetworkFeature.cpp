@@ -319,29 +319,29 @@ void NetworkFeature::unprepare() {
   }
 }
 
-arangodb::network::ConnectionPool* NetworkFeature::pool() const {
+network::ConnectionPool* NetworkFeature::pool() const noexcept {
   return _poolPtr.load(std::memory_order_relaxed);
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-void NetworkFeature::setPoolTesting(arangodb::network::ConnectionPool* pool) {
+void NetworkFeature::setPoolTesting(network::ConnectionPool* pool) {
   _poolPtr.store(pool, std::memory_order_release);
 }
 #endif
 
-bool NetworkFeature::prepared() const { return _prepared; }
+bool NetworkFeature::prepared() const noexcept { return _prepared; }
 
-void NetworkFeature::trackForwardedRequest() { ++_forwardedRequests; }
+void NetworkFeature::trackForwardedRequest() noexcept { ++_forwardedRequests; }
 
-std::size_t NetworkFeature::requestsInFlight() const {
+std::size_t NetworkFeature::requestsInFlight() const noexcept {
   return _requestsInFlight.load();
 }
 
-bool NetworkFeature::isCongested() const {
+bool NetworkFeature::isCongested() const noexcept {
   return _requestsInFlight.load() >= (_maxInFlight * ::CongestionRatio);
 }
 
-bool NetworkFeature::isSaturated() const {
+bool NetworkFeature::isSaturated() const noexcept {
   return _requestsInFlight.load() >= _maxInFlight;
 }
 
@@ -472,6 +472,7 @@ void NetworkFeature::prepareRequest(network::ConnectionPool const& pool,
     req->timestamp(std::chrono::steady_clock::now());
   }
 }
+
 void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
                                    fuerte::Error err,
                                    std::unique_ptr<fuerte::Request> const& req,
