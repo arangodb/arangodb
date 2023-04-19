@@ -894,7 +894,7 @@ class instanceManager {
       }
     }
 
-    if (this.options.cluster && this.hasOwnProperty('clusterHealthMonitor')) {
+    if ((this.options.cluster || this.options.agency) && this.hasOwnProperty('clusterHealthMonitor')) {
       try {
         this.clusterHealthMonitor['kill'] = killExternal(this.clusterHealthMonitor.pid);
         this.clusterHealthMonitor['statusExternal'] = statusExternal(this.clusterHealthMonitor.pid, true);

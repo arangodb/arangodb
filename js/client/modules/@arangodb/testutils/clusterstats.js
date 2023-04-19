@@ -59,6 +59,7 @@ while(true) {
     fails: []
   };
   let results = [];
+  try {
   for (let i = 0; i < 10; i++) {
     const before = time();
     let oneSet = { state: true };
@@ -121,6 +122,10 @@ while(true) {
       state.fails.push(oneSet);
     }
     sleep(1);
+    catch (ex) {
+      print(`Exiting clusterstats because of: ${ex}`)
+      break;
+    }
   }
   fs.append(outfn, JSON.stringify(state) + "\n");
 
