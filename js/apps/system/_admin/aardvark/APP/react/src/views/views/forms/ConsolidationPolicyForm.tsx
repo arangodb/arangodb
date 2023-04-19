@@ -5,7 +5,7 @@ import { get } from "lodash";
 import Select from "../../../components/pure-css/form/Select";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import { getNumericFieldSetter } from "../../../utils/helpers";
-import ToolTip from "../../../components/arango/tootip";
+import ToolTip from "../../../components/arango/tooltip";
 
 
 type BytesAccumConsolidationPolicyFormProps = Omit<

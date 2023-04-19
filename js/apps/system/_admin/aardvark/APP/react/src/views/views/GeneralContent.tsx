@@ -1,5 +1,5 @@
 import React from "react";
-import ToolTip from "../../components/arango/tootip";
+import ToolTip from "../../components/arango/tooltip";
 import Textbox from "../../components/pure-css/form/Textbox";
 import { FormDispatch } from "../../utils/constants";
 import {

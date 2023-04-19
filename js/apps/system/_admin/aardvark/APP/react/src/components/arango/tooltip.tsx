@@ -1,25 +1,18 @@
 import React from "react";
+import Tippy, { TippyProps } from "@tippy.js/react";
 
-type TooltipProps = {
-  icon: string;
-  msg: string;
-  placement: string;
-  dataTippy?: string;
+type ToolTipProps = {
+  title: string;
+  setArrow: boolean;
+  children: TippyProps["children"];
 };
 
-const Tooltip: React.FC<TooltipProps> = props => {
+const ToolTip = ({ title, setArrow, children }: ToolTipProps) => {
   return (
-    <div className="tooltipDiv">
-      <a
-        className="index-tooltip"
-        data-toggle="tooltip"
-        data-placement={props.placement}
-        data-tippy={props.dataTippy}
-        data-original-title={props.msg}
-      >
-        <span className={`arangoicon" ${props.icon}`} />
-      </a>
-    </div>
+    <Tippy content={title} arrow={setArrow} placement="right">
+      {children}
+    </Tippy>
   );
 };
-export default Tooltip;
+
+export default ToolTip;
