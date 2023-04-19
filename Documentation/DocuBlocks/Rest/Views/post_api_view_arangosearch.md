@@ -119,8 +119,8 @@ Each object is expected in the following form:
   - An array of arrays of strings, like `[["attr1", "attr2"]]`, to place the
     attributes into a single column of the index, or `[["attr1"], ["attr2"]]`
     to place each attribute into a separate column. You can also mix it with the
-  the full form:
-  
+    full form:
+
   ```json
   [
     ["attr1"],
