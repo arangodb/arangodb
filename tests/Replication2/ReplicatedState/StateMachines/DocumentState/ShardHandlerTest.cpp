@@ -24,7 +24,7 @@
 //   "explicit specialization of 'std::char_traits<unsigned char>' after
 //   instantiation"
 // errors.
-#include "../3rdParty/iresearch/core/utils/string.hpp"
+#include "utils/string.hpp"
 
 #include "Basics/Exceptions.h"
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
