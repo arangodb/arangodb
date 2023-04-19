@@ -103,7 +103,7 @@ class GeneralConnection : public fuerte::Connection {
   // Start an asynchronous request.
   void sendRequest(std::unique_ptr<Request> req, RequestCallback cb) override {
     // construct RequestItem
-    req->setTimeReceived();
+    req->setTimeQueued();
     auto item = this->createRequest(std::move(req), std::move(cb));
     // set the point-in-time when this request expires
     if (item->request->timeout().count() > 0) {

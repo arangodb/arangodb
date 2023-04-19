@@ -230,15 +230,15 @@ class Request final : public Message {
   void timeout(std::chrono::milliseconds timeout) { _timeout = timeout; }
 
   // Sending time accounting:
-  void setTimeReceived() noexcept {
-    _timeReceived = std::chrono::steady_clock::now();
+  void setTimeQueued() noexcept {
+    _timeQueued = std::chrono::steady_clock::now();
   }
   void setTimeAsyncWrite() noexcept {
     _timeAsyncWrite = std::chrono::steady_clock::now();
   }
   void setTimeSent() noexcept { _timeSent = std::chrono::steady_clock::now(); }
-  std::chrono::steady_clock::time_point timeReceived() const noexcept {
-    return _timeReceived;
+  std::chrono::steady_clock::time_point timeQueued() const noexcept {
+    return _timeQueued;
   }
   std::chrono::steady_clock::time_point timeAsyncWrite() const noexcept {
     return _timeAsyncWrite;
@@ -250,7 +250,7 @@ class Request final : public Message {
  private:
   velocypack::Buffer<uint8_t> _payload;
   std::chrono::milliseconds _timeout;
-  std::chrono::steady_clock::time_point _timeReceived;
+  std::chrono::steady_clock::time_point _timeQueued;
   std::chrono::steady_clock::time_point _timeAsyncWrite;
   std::chrono::steady_clock::time_point _timeSent;
 };
