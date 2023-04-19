@@ -597,6 +597,15 @@ const updateReplicatedLogTarget = function(database, id, callback) {
   replicatedLogSetTarget(database, id, result);
 };
 
+const increaseTargetVersion = function (database, id) {
+  const {target} = readReplicatedLogAgency(database, id);
+  if (target) {
+    target.version = 1 + (target.version || 0);
+    replicatedLogSetTarget(database, id, target);
+    return target.version;
+  }
+};
+
 const sortedArrayEqualOrError = (left, right) => {
   if (_.isEqual(left, right)) {
     return true;
@@ -747,3 +756,4 @@ exports.getShardsToLogsMapping = getShardsToLogsMapping;
 exports.replaceParticipant = replaceParticipant;
 exports.createReconfigureJob = createReconfigureJob;
 exports.getAgencyJobStatus = getAgencyJobStatus;
+exports.increaseTargetVersion = increaseTargetVersion;

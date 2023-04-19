@@ -382,6 +382,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
   log.establishLeadership();
 
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+  log.setSnapshotTrue("A").setSnapshotTrue("B").setSnapshotTrue("C");
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -453,6 +454,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_wait_for_sync) {
   log.establishLeadership();
 
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+  log.setSnapshotTrue("A").setSnapshotTrue("B").setSnapshotTrue("C");
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -646,7 +648,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
   using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
                                             AgencyState, AgencyTransition>;
   //
-  // using Engine = model_checker::ActorEngine<model_checker::RandomEnumerator,
+  // using Engine =
+  // model_checker::ActorEngine<model_checker::RandomEnumerator,
   //                                          AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
@@ -702,7 +705,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
   using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
                                             AgencyState, AgencyTransition>;
   //
-  // using Engine = model_checker::ActorEngine<model_checker::RandomEnumerator,
+  // using Engine =
+  // model_checker::ActorEngine<model_checker::RandomEnumerator,
   //                                          AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
