@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/IndexNodeOptimizerRules.h"
+#include "Aql/GraphOptimizerRules.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
@@ -47,7 +48,7 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
 OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
-    : ArangodFeature{server, *this}, _parallelizeGatherWrites(true) {
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -82,11 +83,13 @@ experimental optimizer rules, which may be shipped in a disabled-by-default
 state.)");
 
   options
-      ->addOption(
+      ->addObsoleteOption(
           "--query.parallelize-gather-writes",
-          "Whether to enable write parallelization for gather nodes.",
-          new arangodb::options::BooleanParameter(&_parallelizeGatherWrites))
-      .setIntroducedIn(30600);
+          "Whether to enable write parallelization for gather nodes.", false)
+      .setIntroducedIn(30600)
+      .setLongDescription(
+          "Starting with 3.11 almost all queries support parallelization of "
+          "gather nodes, making this option obsolete.");
 }
 
 void OptimizerRulesFeature::prepare() {
@@ -316,6 +319,13 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::sortInValuesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
+  // Replaces the last element of the path on traversals, by direct output.
+  // path.vertices[-1] => v and path.edges[-1] => e
+  registerRule("optimize-traversal-last-element-access",
+               replaceLastAccessOnGraphPathRule,
+               OptimizerRule::replaceLastAccessOnGraphPathRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // merge filters into traversals
   registerRule("optimize-traversals", optimizeTraversalsRule,
                OptimizerRule::optimizeTraversalsRule,
@@ -358,6 +368,12 @@ void OptimizerRulesFeature::addRules() {
   registerRule("optimize-cluster-single-document-operations",
                substituteClusterSingleDocumentOperationsRule,
                OptimizerRule::substituteSingleDocumentOperations,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+
+  registerRule("optimize-cluster-multiple-document-operations",
+               substituteClusterMultipleDocumentOperationsRule,
+               OptimizerRule::substituteMultipleDocumentOperations,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 

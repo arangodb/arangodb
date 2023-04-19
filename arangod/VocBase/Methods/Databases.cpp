@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -64,7 +65,7 @@ using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
-std::string Databases::normalizeName(std::string const& name) {
+std::string Databases::normalizeName(std::string_view name) {
   return normalizeUtf8ToNFC(name);
 }
 
@@ -184,11 +185,12 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   bool extendedNames =
-      info.server().getFeature<DatabaseFeature>().extendedNamesForDatabases();
+      info.server().getFeature<DatabaseFeature>().extendedNames();
 
-  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false,
-                                            extendedNames, info.getName())) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+  if (auto res = DatabaseNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames, info.getName());
+      res.fail()) {
+    return res;
   }
 
   LOG_TOPIC("56372", DEBUG, Logger::CLUSTER)
@@ -287,7 +289,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
-  return std::move(upgradeRes.result());
+  return std::move(upgradeRes).result();
 }
 
 // Create a database on SingleServer, DBServer,
@@ -322,77 +324,92 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   UpgradeResult upgradeRes =
       methods::Upgrade::createDB(*vocbase, userBuilder.slice());
 
-  return std::move(upgradeRes.result());
+  return std::move(upgradeRes).result();
 }
 
 Result Databases::create(ArangodServer& server, ExecContext const& exec,
                          std::string const& dbName, VPackSlice const& users,
                          VPackSlice const& options) {
-  // Only admin users are permitted to create databases
-  if (!exec.isAdminUser() || (ServerState::readOnly() && !exec.isSuperuser())) {
-    events::CreateDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
-    return Result(TRI_ERROR_FORBIDDEN);
-  }
+  Result res = basics::catchToResult([&]() {
+    Result res;
 
-  CreateDatabaseInfo createInfo(server, exec);
-  Result res = createInfo.load(dbName, options, users);
-
-  if (!res.ok()) {
-    events::CreateDatabase(dbName, res, exec);
-    return res;
-  }
-
-  if (createInfo.getName() != dbName) {
-    // check if name after normalization will change
-    res.reset(TRI_ERROR_ARANGO_ILLEGAL_NAME,
-              "database name is not properly UTF-8 NFC-normalized");
-    events::CreateDatabase(dbName, res, exec);
-    return res;
-  }
-
-  if (createInfo.replicationVersion() == replication::Version::TWO &&
-      !replication2::EnableReplication2) {
-    using namespace std::string_view_literals;
-    auto const message =
-        R"(Replication version 2 is disabled in this binary, but trying to create a version 2 database.)"sv;
-    LOG_TOPIC("e768d", ERR, Logger::REPLICATION2) << message;
-    // Should not happen during testing
-    TRI_ASSERT(false);
-    return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
-  }
-
-  if (ServerState::instance()->isCoordinator() /* REVIEW! && !localDatabase*/) {
-    if (!createInfo.validId()) {
-      auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
-      createInfo.setId(clusterInfo.uniqid());
+    // Only admin users are permitted to create databases
+    if (!exec.isAdminUser()) {
+      return res.reset(TRI_ERROR_FORBIDDEN);
     }
-    if (server.getFeature<ClusterFeature>().forceOneShard()) {
-      createInfo.sharding("single");
+    if (ServerState::readOnly() && !exec.isSuperuser()) {
+      return res.reset(TRI_ERROR_FORBIDDEN, "server is in read-only mode");
     }
 
-    res =
-        ShardingInfo::validateShardsAndReplicationFactor(options, server, true);
-    if (res.ok()) {
-      res = createCoordinator(createInfo);
+    CreateDatabaseInfo createInfo(server, exec);
+    if (ServerState::instance()->isDBServer()) {
+      // if we are on a DB server, we are likely called by the maintenance,
+      // and validation of database creation should have happened on the
+      // coordinator already.
+      // we should not make the validation fail on the DB server only,
+      // because that can lead to all sorts of problems later on if _new_
+      // DB servers are added that validate _existing_ databases
+      // differently.
+      createInfo.strictValidation(false);
     }
 
-  } else {  // Single, DBServer, Agency
-    if (!createInfo.validId()) {
-      createInfo.setId(TRI_NewTickServer());
-    }
-    res = createOther(createInfo);
-  }
+    res = createInfo.load(dbName, options, users);
 
-  if (res.fail()) {
-    if (!res.is(TRI_ERROR_BAD_PARAMETER) &&
+    if (!res.ok()) {
+      return res;
+    }
+
+    if (createInfo.getName() != dbName) {
+      // check if name after normalization will change
+      res.reset(TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                "database name is not properly UTF-8 NFC-normalized");
+      return res;
+    }
+
+    if (createInfo.replicationVersion() == replication::Version::TWO &&
+        !replication2::EnableReplication2) {
+      using namespace std::string_view_literals;
+      auto const message =
+          R"(Replication version 2 is disabled in this binary, but trying to create a version 2 database.)"sv;
+      LOG_TOPIC("e768d", ERR, Logger::REPLICATION2) << message;
+      // Should not happen during testing
+      TRI_ASSERT(false);
+      return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
+    }
+
+    if (ServerState::instance()
+            ->isCoordinator() /* REVIEW! && !localDatabase*/) {
+      if (!createInfo.validId()) {
+        auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
+        createInfo.setId(clusterInfo.uniqid());
+      }
+      if (server.getFeature<ClusterFeature>().forceOneShard()) {
+        createInfo.sharding("single");
+      }
+
+      res = ShardingInfo::validateShardsAndReplicationFactor(options, server,
+                                                             true);
+      if (res.ok()) {
+        res = createCoordinator(createInfo);
+      }
+
+    } else {  // Single, DBServer, Agency
+      if (!createInfo.validId()) {
+        createInfo.setId(TRI_NewTickServer());
+      }
+      res = createOther(createInfo);
+    }
+
+    if (res.fail() && !res.is(TRI_ERROR_BAD_PARAMETER) &&
         !res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
       LOG_TOPIC("1964a", ERR, Logger::FIXME)
           << "Could not create database: " << res.errorMessage();
     }
-  }
+
+    return res;
+  });
 
   events::CreateDatabase(dbName, res, exec);
-
   return res;
 }
 
@@ -470,11 +487,12 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
       TRI_ClearObjectCacheV8(isolate);
 
       if (ServerState::instance()->isCoordinator()) {
-        // If we are a coordinator in a cluster, we have to behave differently:
+        // If we are a coordinator in a cluster, we have to behave
+        // differently:
         auto& df = server.getFeature<DatabaseFeature>();
         res = ::dropDBCoordinator(df, dbName);
       } else {
-        res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
+        res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
 
         if (res.fail()) {
           events::DropDatabase(dbName, res, exec);
@@ -504,7 +522,7 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
       auto& df = server.getFeature<DatabaseFeature>();
       res = ::dropDBCoordinator(df, dbName);
     } else {
-      res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
+      res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
     }
   }
 

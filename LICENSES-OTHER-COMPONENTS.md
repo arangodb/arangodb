@@ -339,8 +339,8 @@ _Enterprise Edition only_
 ### wcwidth
 
 * Name: wcwidth
-* Version: commit 27f12a21fc7f49f134d17bffcdd500bca272c550
-* Date: 2020-08-07T11:23:03+0200
+* Version: commit 911263c514237997c9c590517672c6ea729388dc
+* Date: 2022-12-16T06:51:44+0000
 * Project Home: https://github.com/termux/wcwidth
 * License: https://github.com/termux/wcwidth/blob/master/LICENSE.txt
 * License Name: MIT License

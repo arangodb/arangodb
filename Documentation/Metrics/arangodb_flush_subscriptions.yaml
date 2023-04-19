@@ -1,0 +1,16 @@
+name: arangodb_flush_subscriptions
+introducedIn: "3.9.10"
+help: |
+  Number of currently active flush subscriptions.
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exposes the number of currently active flush subscriptions.
+  Flush subscriptions can be created by `arangosearch` View links and by background
+  index creation.

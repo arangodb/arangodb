@@ -29,7 +29,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "Basics/MutexLocker.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterInfo.h"
@@ -420,6 +419,21 @@ any extra JWT checks compared to v3.7.)");
 shards operations that can be made when the **Rebalance Shards** button is
 clicked in the web interface. For backwards compatibility, the default value is
 `10`. A value of `0` disables the button.)");
+
+  options
+      ->addOption(
+          "--cluster.failed-write-concern-status-code",
+          "The HTTP status code to send if a shard has not enough in-sync "
+          "replicas to fulfill the write concern.",
+          new DiscreteValuesParameter<UInt32Parameter>(
+              &_statusCodeFailedWriteConcern, {403, 503}),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer))
+      .setIntroducedIn(31100)
+      .setLongDescription(R"(The default behavior is to return an HTTP
+`403 Forbidden` status code. You can set the option to `503` to return a
+`503 Service Unavailable`.)");
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -803,7 +817,8 @@ void ClusterFeature::start() {
       << ". Agency version: " << version << ", Agency endpoints: " << endpoints
       << ", server id: '" << myId
       << "', internal endpoint / address: " << _myEndpoint
-      << "', advertised endpoint: " << _myAdvertisedEndpoint
+      << ", advertised endpoint: "
+      << (_myAdvertisedEndpoint.empty() ? "-" : _myAdvertisedEndpoint)
       << ", role: " << ServerState::roleToString(role);
 
   auto [acb, idx] = _agencyCache->read(std::vector<std::string>{
@@ -1053,7 +1068,7 @@ void ClusterFeature::allocateMembers() {
 void ClusterFeature::addDirty(
     containers::FlatHashSet<std::string> const& databases, bool callNotify) {
   if (databases.size() > 0) {
-    MUTEX_LOCKER(guard, _dirtyLock);
+    std::lock_guard guard{_dirtyLock};
     for (auto const& database : databases) {
       if (_dirtyDatabases.emplace(database).second) {
         LOG_TOPIC("35b75", DEBUG, Logger::MAINTENANCE)
@@ -1070,7 +1085,7 @@ void ClusterFeature::addDirty(
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         databases) {
   if (databases.size() > 0) {
-    MUTEX_LOCKER(guard, _dirtyLock);
+    std::lock_guard guard{_dirtyLock};
     bool addedAny = false;
     for (auto const& database : databases) {
       if (_dirtyDatabases.emplace(database.first).second) {
@@ -1086,7 +1101,7 @@ void ClusterFeature::addDirty(
 }
 
 void ClusterFeature::addDirty(std::string const& database) {
-  MUTEX_LOCKER(guard, _dirtyLock);
+  std::lock_guard guard{_dirtyLock};
   if (_dirtyDatabases.emplace(database).second) {
     LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE)
         << "adding " << database << " to dirty databases";
@@ -1096,14 +1111,14 @@ void ClusterFeature::addDirty(std::string const& database) {
 }
 
 containers::FlatHashSet<std::string> ClusterFeature::dirty() {
-  MUTEX_LOCKER(guard, _dirtyLock);
+  std::lock_guard guard{_dirtyLock};
   containers::FlatHashSet<std::string> ret;
   ret.swap(_dirtyDatabases);
   return ret;
 }
 
 bool ClusterFeature::isDirty(std::string const& dbName) const {
-  MUTEX_LOCKER(guard, _dirtyLock);
+  std::lock_guard guard{_dirtyLock};
   return _dirtyDatabases.find(dbName) != _dirtyDatabases.end();
 }
 

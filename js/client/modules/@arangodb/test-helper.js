@@ -29,6 +29,7 @@
 
 const internal = require('internal'); // OK: processCsvFile
 const {
+  runWithRetry,
   helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
@@ -50,6 +51,7 @@ const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const isServer = require("@arangodb").isServer;
 
+exports.runWithRetry = runWithRetry;
 exports.isEnterprise = isEnterprise;
 exports.versionHas = versionHas;
 exports.helper = helper;
@@ -61,7 +63,14 @@ exports.compareStringIds = compareStringIds;
 
 let instanceInfo = null;
 
+exports.flushInstanceInfo = () => {
+  instanceInfo = null;
+};
+
 function getInstanceInfo() {
+  if (global.hasOwnProperty('instanceManger')) {
+    return global.instanceManger;
+  }
   if (instanceInfo === null) {
     instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
     if (instanceInfo.arangods.length > 2) {
@@ -95,7 +104,7 @@ exports.debugSetFailAt = function (endpoint, failAt) {
     reconnectRetry(endpoint, db._name(), "root", "");
     let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
     if (res.parsedBody !== true) {
-      throw "Error setting failure point + " + res;
+      throw `Error setting failure point on ${endpoint}: "${res}"`;
     }
     return true;
   } finally {
@@ -181,10 +190,14 @@ exports.getChecksum = function (endpoint, name) {
 exports.getRawMetric = function (endpoint, tags) {
   const primaryEndpoint = arango.getEndpoint();
   try {
-    reconnectRetry(endpoint, db._name(), "root", "");
+    if (endpoint !== primaryEndpoint) {
+      reconnectRetry(endpoint, db._name(), "root", "");
+    }
     return arango.GET_RAW('/_admin/metrics' + tags);
   } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
+    if (endpoint !== primaryEndpoint) {
+      reconnectRetry(primaryEndpoint, db._name(), "root", "");
+    }
   }
 };
 
@@ -251,10 +264,11 @@ const runShell = function(args, prefix) {
   return result.pid;
 };
 
-const buildCode = function(key, command, cn) {
+const buildCode = function(key, command, cn, duration) {
   let file = fs.getTempFile() + "-" + key;
   fs.write(file, `
 (function() {
+require('internal').SetGlobalExecutionDeadlineTo((${duration} + 10) * 1000);
 let tries = 0;
 while (true) {
   if (++tries % 3 === 0) {
@@ -296,7 +310,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
     tests.forEach(function (test) {
       let key = test[0];
       let code = test[1];
-      let client = buildCode(key, code, cn);
+      let client = buildCode(key, code, cn, duration);
       client.done = false;
       client.failed = true; // assume the worst
       clients.push(client);
@@ -312,7 +326,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
           if (status.status !== 'RUNNING') {
             client.done = true;
             client.failed = true;
-            debug(`Client ${client.pid} exited before the duration end. Aborting tests: ${status}`);
+            debug(`Client ${client.pid} exited before the duration end. Aborting tests: ${JSON.stringify(status)}`);
             count = duration + 10;
           }
         }
@@ -322,6 +336,8 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
           if (!client.done) {
             debug(`force terminating ${client.pid} since we're aborting the tests`);
             internal.killExternal(client.pid, abortSignal);
+            internal.statusExternal(client.pid, false);
+            client.failed = true;
           }
         });
       }
@@ -383,7 +399,9 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
         }
       }
       try {
-        fs.remove(logfile);
+        if (!client.failed) {
+          fs.remove(logfile);
+        }
       } catch (err) { }
 
       if (!client.done) {

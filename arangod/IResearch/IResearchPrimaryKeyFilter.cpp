@@ -41,9 +41,7 @@ IRS_FORCE_INLINE irs::doc_id_t getRemovalBoundary(irs::SubReader const&,
 #endif
 
 PrimaryKeyFilter::PrimaryKeyFilter(LocalDocumentId value, bool nested) noexcept
-    : irs::filter{irs::type<PrimaryKeyFilter>::get()},
-      _pk{DocumentPrimaryKey::encode(value)},
-      _nested{nested} {}
+    : _pk{DocumentPrimaryKey::encode(value)}, _nested{nested} {}
 
 irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     irs::ExecutionContext const& ctx) const {
@@ -66,15 +64,14 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
   irs::doc_id_t doc{irs::doc_limits::eof()};
   pkField->read_documents(pkRef, {&doc, 1});
 
-  if (irs::doc_limits::eof(doc)) {
+  if (irs::doc_limits::eof(doc) || segment.docs_mask()->contains(doc)) {
     // no such term
     return irs::doc_iterator::empty();
   }
 
   _pkIterator.reset(getRemovalBoundary(segment, doc, _nested), doc);
 
-  return irs::memory::to_managed<irs::doc_iterator, false>(
-      const_cast<PrimaryKeyIterator*>(&_pkIterator));
+  return irs::memory::to_managed<irs::doc_iterator>(_pkIterator);
 }
 
 size_t PrimaryKeyFilter::hash() const noexcept {
@@ -87,12 +84,12 @@ size_t PrimaryKeyFilter::hash() const noexcept {
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
-    irs::IndexReader const& /*index*/, irs::Order const& /*ord*/,
+    irs::IndexReader const& /*index*/, irs::Scorers const& /*ord*/,
     irs::score_t /*boost*/, irs::attribute_provider const* /*ctx*/) const {
   // optimization, since during regular runtime should have at most 1 identical
   // primary key in the entire datastore
   if (!irs::doc_limits::valid(_pkIterator.value())) {
-    return irs::memory::to_managed<const irs::filter::prepared, false>(this);
+    return irs::memory::to_managed<irs::filter::prepared const>(*this);
   }
 
   // already processed
@@ -105,7 +102,7 @@ bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilterContainer::prepare(
-    irs::IndexReader const& rdr, irs::Order const& ord, irs::score_t boost,
+    irs::IndexReader const& rdr, irs::Scorers const& ord, irs::score_t boost,
     irs::attribute_provider const* ctx) const {
   return irs::empty().prepare(rdr, ord, boost, ctx);
 }

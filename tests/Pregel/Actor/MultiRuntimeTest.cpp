@@ -41,6 +41,9 @@ struct MockScheduler {
   auto start(size_t number_of_threads) -> void{};
   auto stop() -> void{};
   auto operator()(auto fn) { fn(); }
+  auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
+    fn(true);
+  }
 };
 
 template<typename Runtime>
@@ -54,7 +57,10 @@ struct MockExternalDispatcher {
     if (receiving_runtime != std::end(runtimes)) {
       receiving_runtime->second->receive(sender, receiver, msg);
     } else {
-      auto error = ActorError{ServerNotFound{.server = receiver.server}};
+      auto error = pregel::actor::message::ActorError{
+          pregel::actor::message::NetworkError{
+              .message =
+                  fmt::format("Cannot find server {}", receiver.server)}};
       auto payload = inspection::serializeWithErrorT(error);
       if (payload.ok()) {
         runtimes[sender.server]->dispatch(receiver, sender, payload.get());
@@ -98,9 +104,10 @@ TYPED_TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
           sending_server, "RuntimeTest-sending", this->scheduler, dispatcher));
   auto sending_actor_id =
       runtimes[sending_server]->template spawn<TrivialActor>(
-          TrivialState{.state = "foo"}, TrivialStart{});
-  auto sending_actor =
-      ActorPID{.server = sending_server, .id = sending_actor_id};
+          "database", std::make_unique<TrivialState>("foo"),
+          test::message::TrivialStart{});
+  auto sending_actor = ActorPID{
+      .server = sending_server, .database = "database", .id = sending_actor_id};
 
   // Receiving Runtime
   auto receiving_server = ServerID{"B"};
@@ -110,28 +117,31 @@ TYPED_TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
                        this->scheduler, dispatcher));
   auto receiving_actor_id =
       runtimes[receiving_server]->template spawn<TrivialActor>(
-          TrivialState{.state = "foo"}, TrivialStart{});
-  auto receiving_actor =
-      ActorPID{.server = receiving_server, .id = receiving_actor_id};
+          "database", std::make_unique<TrivialState>("foo"),
+          test::message::TrivialStart{});
+  auto receiving_actor = ActorPID{.server = receiving_server,
+                                  .database = "database",
+                                  .id = receiving_actor_id};
 
   // send
   runtimes[sending_server]->dispatch(
       sending_actor, receiving_actor,
-      TrivialActor::Message{TrivialMessage("baz")});
+      TrivialActor::Message{test::message::TrivialMessage("baz")});
 
   this->scheduler->stop();
   // sending actor state did not change
   auto sending_actor_state =
       runtimes[sending_server]->template getActorStateByID<TrivialActor>(
           sending_actor_id);
-  ASSERT_EQ(sending_actor_state,
-            (TrivialActor::State{.state = "foo", .called = 1}));
+  ASSERT_EQ(sending_actor_state, (TrivialActor::State("foo", 1)));
   // receiving actor state changed
   auto receiving_actor_state =
       runtimes[receiving_server]->template getActorStateByID<TrivialActor>(
           receiving_actor_id);
-  ASSERT_EQ(receiving_actor_state,
-            (TrivialActor::State{.state = "foobaz", .called = 2}));
+  ASSERT_EQ(receiving_actor_state, (TrivialActor::State("foobaz", 2)));
+  for (auto& [_, runtime] : runtimes) {
+    runtime->softShutdown();
+  }
 }
 
 struct SomeMessage {};
@@ -164,9 +174,10 @@ TYPED_TEST(
           sending_server, "RuntimeTest-sending", this->scheduler, dispatcher));
   auto sending_actor_id =
       runtimes[sending_server]->template spawn<TrivialActor>(
-          TrivialState{.state = "foo"}, TrivialStart{});
-  auto sending_actor =
-      ActorPID{.server = sending_server, .id = sending_actor_id};
+          "database", std::make_unique<TrivialState>("foo"),
+          test::message::TrivialStart{});
+  auto sending_actor = ActorPID{
+      .server = sending_server, .database = "database", .id = sending_actor_id};
 
   // Receiving Runtime
   auto receiving_server = ServerID{"B"};
@@ -176,9 +187,11 @@ TYPED_TEST(
                        this->scheduler, dispatcher));
   auto receiving_actor_id =
       runtimes[receiving_server]->template spawn<TrivialActor>(
-          TrivialState{.state = "foo"}, TrivialStart{});
-  auto receiving_actor =
-      ActorPID{.server = receiving_server, .id = receiving_actor_id};
+          "database", std::make_unique<TrivialState>("foo"),
+          test::message::TrivialStart{});
+  auto receiving_actor = ActorPID{.server = receiving_server,
+                                  .database = "database",
+                                  .id = receiving_actor_id};
 
   // send
   runtimes[sending_server]->dispatch(sending_actor, receiving_actor,
@@ -189,8 +202,7 @@ TYPED_TEST(
   auto receiving_actor_state =
       runtimes[receiving_server]->template getActorStateByID<TrivialActor>(
           receiving_actor_id);
-  ASSERT_EQ(receiving_actor_state,
-            (TrivialActor::State{.state = "foo", .called = 1}));
+  ASSERT_EQ(receiving_actor_state, (TrivialActor::State("foo", 1)));
   // sending actor received an unknown message error after it sent wrong
   // message type
   auto sending_actor_state =
@@ -198,9 +210,11 @@ TYPED_TEST(
           sending_actor_id);
   ASSERT_EQ(
       sending_actor_state,
-      (TrivialActor::State{
-          .state = fmt::format("sent unknown message to {}", receiving_actor),
-          .called = 2}));
+      (TrivialActor::State(
+          fmt::format("sent unknown message to {}", receiving_actor), 2)));
+  for (auto& [_, runtime] : runtimes) {
+    runtime->softShutdown();
+  }
 }
 
 TYPED_TEST(
@@ -220,9 +234,10 @@ TYPED_TEST(
           sending_server, "RuntimeTest-sending", this->scheduler, dispatcher));
   auto sending_actor_id =
       runtimes[sending_server]->template spawn<TrivialActor>(
-          TrivialState{.state = "foo"}, TrivialStart{});
-  auto sending_actor =
-      ActorPID{.server = sending_server, .id = sending_actor_id};
+          "database", std::make_unique<TrivialState>("foo"),
+          test::message::TrivialStart{});
+  auto sending_actor = ActorPID{
+      .server = sending_server, .database = "database", .id = sending_actor_id};
 
   // Receiving Runtime
   auto receiving_server = ServerID{"B"};
@@ -232,10 +247,11 @@ TYPED_TEST(
                        this->scheduler, dispatcher));
 
   // send
-  auto unknown_actor = ActorPID{.server = receiving_server, .id = {999}};
+  auto unknown_actor =
+      ActorPID{.server = receiving_server, .database = "database", .id = {999}};
   runtimes[sending_server]->dispatch(
       sending_actor, unknown_actor,
-      TrivialActor::Message{TrivialMessage("baz")});
+      TrivialActor::Message{test::message::TrivialMessage("baz")});
 
   this->scheduler->stop();
   // sending actor received an actor-not-known message error
@@ -243,14 +259,16 @@ TYPED_TEST(
   ASSERT_EQ(
       runtimes[sending_server]->template getActorStateByID<TrivialActor>(
           sending_actor_id),
-      (TrivialActor::State{
-          .state = fmt::format("receiving actor {} not found", unknown_actor),
-          .called = 2}));
+      (TrivialActor::State(
+          fmt::format("receiving actor {} not found", unknown_actor), 2)));
+  for (auto& [_, runtime] : runtimes) {
+    runtime->softShutdown();
+  }
 }
 
 TYPED_TEST(
     ActorMultiRuntimeTest,
-    actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_server) {
+    actor_receives_network_error_message_after_trying_to_send_message_to_non_existent_server) {
   std::unordered_map<ServerID,
                      std::shared_ptr<typename TestFixture::MockRuntime>>
       runtimes;
@@ -265,25 +283,30 @@ TYPED_TEST(
           sending_server, "RuntimeTest-sending", this->scheduler, dispatcher));
   auto sending_actor_id =
       runtimes[sending_server]->template spawn<TrivialActor>(
-          TrivialState{.state = "foo"}, TrivialStart{});
-  auto sending_actor =
-      ActorPID{.server = sending_server, .id = sending_actor_id};
+          "database", std::make_unique<TrivialState>("foo"),
+          test::message::TrivialStart{});
+  auto sending_actor = ActorPID{
+      .server = sending_server, .database = "database", .id = sending_actor_id};
 
   // send
   auto unknown_server = ServerID{"B"};
   runtimes[sending_server]->dispatch(
-      sending_actor, ActorPID{.server = unknown_server, .id = {999}},
-      TrivialActor::Message{TrivialMessage("baz")});
+      sending_actor,
+      ActorPID{.server = unknown_server, .database = "database", .id = {999}},
+      TrivialActor::Message{test::message::TrivialMessage("baz")});
 
   this->scheduler->stop();
-  // sending actor received a server-not-known message error
-  // after it messaged to non-existing server
+  // sending actor received a network error message after it messaged
+  // to non-existing server
   ASSERT_EQ(
       runtimes[sending_server]->template getActorStateByID<TrivialActor>(
           sending_actor_id),
-      (TrivialActor::State{
-          .state = fmt::format("receiving server {} not found", unknown_server),
-          .called = 2}));
+      (TrivialActor::State(
+          fmt::format("network error: Cannot find server {}", unknown_server),
+          2)));
+  for (auto& [_, runtime] : runtimes) {
+    runtime->softShutdown();
+  }
 }
 
 TYPED_TEST(ActorMultiRuntimeTest, ping_pong_game) {
@@ -301,7 +324,8 @@ TYPED_TEST(ActorMultiRuntimeTest, ping_pong_game) {
       std::make_shared<typename TestFixture::MockRuntime>(
           pong_server, "RuntimeTest-A", this->scheduler, dispatcher));
   auto pong_actor = runtimes[pong_server]->template spawn<pong_actor::Actor>(
-      pong_actor::PongState{}, pong_actor::Start{});
+      "database", std::make_unique<pong_actor::PongState>(),
+      pong_actor::message::Start{});
 
   // Ping Runtime
   auto ping_server = ServerID{"B"};
@@ -310,9 +334,10 @@ TYPED_TEST(ActorMultiRuntimeTest, ping_pong_game) {
       std::make_shared<typename TestFixture::MockRuntime>(
           ping_server, "RuntimeTest-B", this->scheduler, dispatcher));
   auto ping_actor = runtimes[ping_server]->template spawn<ping_actor::Actor>(
-      ping_actor::PingState{},
-      ping_actor::Start{.pongActor =
-                            ActorPID{.server = pong_server, .id = pong_actor}});
+      "database", std::make_unique<ping_actor::PingState>(),
+      ping_actor::message::Start{.pongActor = ActorPID{.server = pong_server,
+                                                       .database = "database",
+                                                       .id = pong_actor}});
 
   this->scheduler->stop();
   // pong actor was called twice
@@ -326,4 +351,7 @@ TYPED_TEST(ActorMultiRuntimeTest, ping_pong_game) {
           ping_actor);
   ASSERT_EQ(ping_actor_state,
             (ping_actor::PingState{.called = 2, .message = "hello world"}));
+  for (auto& [_, runtime] : runtimes) {
+    runtime->softShutdown();
+  }
 }

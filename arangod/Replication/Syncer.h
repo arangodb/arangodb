@@ -174,7 +174,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   virtual ~Syncer();
 
   /// @brief request location rewriter (injects database name)
-  static std::string rewriteLocation(void*, std::string const&);
+  static std::string rewriteLocation(void const*, std::string const&);
 
   void setLeaderId(std::string const& leaderId) { _state.leaderId = leaderId; }
 

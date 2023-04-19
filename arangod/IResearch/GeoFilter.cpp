@@ -56,7 +56,7 @@ using Disjunction =
 
 // Return a filter matching all documents with a given geo field
 irs::filter::prepared::ptr match_all(irs::IndexReader const& index,
-                                     irs::Order const& order,
+                                     irs::Scorers const& order,
                                      std::string_view field,
                                      irs::score_t boost) {
   // Return everything we've stored
@@ -67,14 +67,19 @@ irs::filter::prepared::ptr match_all(irs::IndexReader const& index,
 }
 
 // Returns singleton S2Cap that tolerates precision errors
-inline S2Cap fromPoint(S2Point const& origin) {
+// TODO(MBkkt) Probably remove it
+inline S2Cap fromPoint(S2Point const& origin) noexcept {
   return S2Cap{origin, S1Angle::Radians(kSingletonCapEps)};
+}
+
+inline S2Cap fromPoint(S2Point origin, double distance) noexcept {
+  return {origin, S1Angle::Radians(geo::metersToRadians(distance))};
 }
 
 struct S2PointParser;
 
 template<typename Parser, typename Acceptor>
-class GeoIterator final : public irs::doc_iterator {
+class GeoIterator : public irs::doc_iterator {
   // Two phase iterator is heavier than a usual disjunction
   static constexpr irs::cost::cost_t kExtraCost = 2;
 
@@ -82,7 +87,7 @@ class GeoIterator final : public irs::doc_iterator {
   GeoIterator(doc_iterator::ptr&& approx, doc_iterator::ptr&& columnIt,
               Parser& parser, Acceptor& acceptor, irs::SubReader const& reader,
               irs::term_reader const& field, irs::byte_type const* query_stats,
-              irs::Order const& order, irs::score_t boost)
+              irs::Scorers const& order, irs::score_t boost)
       : _approx{std::move(approx)},
         _columnIt{std::move(columnIt)},
         _storedValue{irs::get<irs::payload>(*_columnIt)},
@@ -174,7 +179,7 @@ irs::doc_iterator::ptr makeIterator(
     typename Disjunction::doc_iterators_t&& itrs,
     irs::doc_iterator::ptr&& columnIt, irs::SubReader const& reader,
     irs::term_reader const& field, irs::byte_type const* query_stats,
-    irs::Order const& order, irs::score_t boost, Parser& parser,
+    irs::Scorers const& order, irs::score_t boost, Parser& parser,
     Acceptor& acceptor) {
   if (ADB_UNLIKELY(itrs.empty() || !columnIt)) {
     return irs::doc_iterator::empty();
@@ -202,7 +207,7 @@ using GeoStates = irs::StatesCache<GeoState>;
 
 // Compiled GeoFilter
 template<typename Parser, typename Acceptor>
-class GeoQuery final : public irs::filter::prepared {
+class GeoQuery : public irs::filter::prepared {
  public:
   GeoQuery(GeoStates&& states, irs::bstring&& stats, Parser&& parser,
            Acceptor&& acceptor, irs::score_t boost) noexcept
@@ -264,11 +269,13 @@ struct VPackParser {
 
   bool operator()(irs::bytes_view value, geo::ShapeContainer& shape) const {
     TRI_ASSERT(!value.empty());
-    return parseShape<Parsing::FromIndex>(slice(value), shape, _cache, _legacy);
+    return parseShape<Parsing::FromIndex>(slice(value), shape, _cache, _legacy,
+                                          geo::coding::Options::kInvalid,
+                                          nullptr);
   }
 
  private:
-  mutable std::vector<S2Point> _cache;
+  mutable std::vector<S2LatLng> _cache;
   bool _legacy;
 };
 
@@ -276,23 +283,29 @@ struct S2ShapeParser {
   bool operator()(irs::bytes_view value, geo::ShapeContainer& shape) const {
     TRI_ASSERT(!value.empty());
     Decoder decoder{value.data(), value.size()};
-    auto r = shape.Decode(decoder);
+    auto r = shape.Decode(decoder, _cache);
     TRI_ASSERT(r);
     TRI_ASSERT(decoder.avail() == 0);
     return r;
   }
+
+ private:
+  mutable std::vector<S2Point> _cache;
 };
 
 struct S2PointParser {
   bool operator()(irs::bytes_view value, geo::ShapeContainer& shape) const {
     TRI_ASSERT(!value.empty());
     TRI_ASSERT(shape.type() == geo::ShapeContainer::Type::S2_POINT);
-    auto& point =
-        basics::downCast<S2PointRegion>(*const_cast<S2Region*>(shape.region()));
     Decoder decoder{value.data(), value.size()};
-    auto r = geo::decodePoint(decoder, point);
+    S2Point point;
+    uint8_t tag = 0;
+    auto r = geo::decodePoint(decoder, point, &tag);
     TRI_ASSERT(r);
     TRI_ASSERT(decoder.avail() == 0);
+    basics::downCast<S2PointRegion>(*shape.region()) = S2PointRegion{point};
+    shape.setCoding(
+        static_cast<geo::coding::Options>(geo::coding::toPoint(tag)));
     return r;
   }
 };
@@ -336,11 +349,12 @@ irs::filter::prepared::ptr makeQuery(GeoStates&& states, irs::bstring&& stats,
       return irs::memory::make_managed<GeoQuery<VPackParser, Acceptor>>(
           std::move(states), std::move(stats), VPackParser{legacy},
           std::forward<Acceptor>(acceptor), boost);
-    case StoredType::S2Shape:
+    case StoredType::S2Region:
       return irs::memory::make_managed<GeoQuery<S2ShapeParser, Acceptor>>(
           std::move(states), std::move(stats), S2ShapeParser{},
           std::forward<Acceptor>(acceptor), boost);
     case StoredType::S2Point:
+    case StoredType::S2Centroid:
       return irs::memory::make_managed<GeoQuery<S2PointParser, Acceptor>>(
           std::move(states), std::move(stats), S2PointParser{},
           std::forward<Acceptor>(acceptor), boost);
@@ -350,7 +364,7 @@ irs::filter::prepared::ptr makeQuery(GeoStates&& states, irs::bstring&& stats,
 }
 
 std::pair<GeoStates, irs::bstring> prepareStates(
-    irs::IndexReader const& index, irs::Order const& order,
+    irs::IndexReader const& index, irs::Scorers const& order,
     std::span<const std::string> geoTerms, std::string_view field) {
   TRI_ASSERT(!geoTerms.empty());
 
@@ -403,7 +417,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
     termStates.clear();
   }
 
-  fieldStats.finish(const_cast<irs::byte_type*>(res.second.data()), index);
+  fieldStats.finish(const_cast<irs::byte_type*>(res.second.data()));
 
   return res;
 }
@@ -414,17 +428,14 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type, S2Point origin,
     return {S2Cap::Full(), true};
   }
 
-  return {
-      (0. == distance
-           ? fromPoint(origin)
-           : S2Cap(origin, S1Angle::Radians(geo::metersToRadians(distance)))),
-      irs::BoundType::INCLUSIVE == type};
+  return {(0. == distance ? fromPoint(origin) : fromPoint(origin, distance)),
+          irs::BoundType::INCLUSIVE == type};
 }
 
 irs::filter::prepared::ptr prepareOpenInterval(
-    irs::IndexReader const& index, irs::Order const& order, irs::score_t boost,
-    std::string_view field, GeoDistanceFilterOptions const& options,
-    bool greater) {
+    irs::IndexReader const& index, irs::Scorers const& order,
+    irs::score_t boost, std::string_view field,
+    GeoDistanceFilterOptions const& options, bool greater) {
   auto const& range = options.range;
   auto const& origin = options.origin;
 
@@ -527,8 +538,9 @@ irs::filter::prepared::ptr prepareOpenInterval(
 }
 
 irs::filter::prepared::ptr prepareInterval(
-    irs::IndexReader const& index, irs::Order const& order, irs::score_t boost,
-    std::string_view field, GeoDistanceFilterOptions const& options) {
+    irs::IndexReader const& index, irs::Scorers const& order,
+    irs::score_t boost, std::string_view field,
+    GeoDistanceFilterOptions const& options) {
   auto const& range = options.range;
   TRI_ASSERT(irs::BoundType::UNBOUNDED != range.min_type);
   TRI_ASSERT(irs::BoundType::UNBOUNDED != range.max_type);
@@ -539,18 +551,22 @@ irs::filter::prepared::ptr prepareInterval(
     return prepareOpenInterval(index, order, boost, field, options, false);
   }
 
+  bool const minIncl = range.min_type == irs::BoundType::INCLUSIVE;
+  bool const maxIncl = range.max_type == irs::BoundType::INCLUSIVE;
+
   if (irs::math::approx_equals(range.min, range.max)) {
-    if (irs::BoundType::INCLUSIVE != range.min_type ||
-        irs::BoundType::INCLUSIVE != range.max_type) {
+    if (!minIncl || !maxIncl) {
       return irs::filter::prepared::empty();
     }
+  } else if (range.min > range.max) {
+    return irs::filter::prepared::empty();
   }
 
   auto const& origin = options.origin;
 
   if (0. == range.max && 0. == range.min) {
-    TRI_ASSERT(irs::BoundType::INCLUSIVE == range.min_type);
-    TRI_ASSERT(irs::BoundType::INCLUSIVE == range.max_type);
+    TRI_ASSERT(minIncl);
+    TRI_ASSERT(maxIncl);
 
     S2RegionTermIndexer indexer(options.options);
     auto const geoTerms = indexer.GetQueryTerms(origin, options.prefix);
@@ -568,27 +584,21 @@ irs::filter::prepared::ptr prepareInterval(
         });
   }
 
-  auto [minBound, minIncl] = getBound(range.min_type, origin, range.min);
-  auto [maxBound, maxIncl] = getBound(range.max_type, origin, range.max);
+  auto minBound = fromPoint(origin, range.min);
+  auto maxBound = fromPoint(origin, range.max);
 
   if (!minBound.is_valid() || !maxBound.is_valid()) {
     return irs::filter::prepared::empty();
   }
 
-  // complement is not bijective => complement of singleton cap is an empty cap
-  minBound = minBound.Complement();
-
-  if ((maxIncl && !maxBound.Intersects(minBound)) ||
-      (!maxIncl && !maxBound.InteriorIntersects(minBound))) {
-    return irs::filter::prepared::empty();
-  }
-
-  TRI_ASSERT(!minBound.is_empty());
-  TRI_ASSERT(!maxBound.is_empty());
-
   S2RegionTermIndexer indexer(options.options);
   S2RegionCoverer coverer(options.options);
 
+  // max.Intersection(min.Complement()) instead of max.Difference(min) used here
+  // because we want to make conservative covering
+  minBound = minBound.Complement();
+  TRI_ASSERT(!minBound.is_empty());
+  TRI_ASSERT(!maxBound.is_empty());
   auto const ring =
       coverer.GetCovering(maxBound).Intersection(coverer.GetCovering(minBound));
   auto const geoTerms =
@@ -626,8 +636,8 @@ irs::filter::prepared::ptr prepareInterval(
 }  // namespace
 
 irs::filter::prepared::ptr GeoFilter::prepare(
-    irs::IndexReader const& index, irs::Order const& order, irs::score_t boost,
-    irs::attribute_provider const* /*ctx*/) const {
+    irs::IndexReader const& index, irs::Scorers const& order,
+    irs::score_t boost, irs::attribute_provider const* /*ctx*/) const {
   auto& shape = const_cast<geo::ShapeContainer&>(options().shape);
   if (shape.empty()) {
     return prepared::empty();
@@ -678,8 +688,8 @@ irs::filter::prepared::ptr GeoFilter::prepare(
 }
 
 irs::filter::prepared::ptr GeoDistanceFilter::prepare(
-    irs::IndexReader const& index, irs::Order const& order, irs::score_t boost,
-    irs::attribute_provider const* /*ctx*/) const {
+    irs::IndexReader const& index, irs::Scorers const& order,
+    irs::score_t boost, irs::attribute_provider const* /*ctx*/) const {
   auto const& options = this->options();
   auto const& range = options.range;
   auto const lowerBound = irs::BoundType::UNBOUNDED != range.min_type;

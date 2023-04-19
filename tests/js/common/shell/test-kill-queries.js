@@ -38,21 +38,21 @@ function GenericQueryKillSuite() { // can be either default or stream
   const databaseName = "UnitTestsDBTemp";
   const collectionName = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
   const docsPerWrite = 5;
-  const exlusiveWriteQueryString = `FOR x IN 1..${docsPerWrite} INSERT {} INTO ${collectionName} OPTIONS {exclusive: true} RETURN NEW`;
+  const exclusiveWriteQueryString = `FOR x IN 1..${docsPerWrite} INSERT {} INTO ${collectionName} OPTIONS {exclusive: true} RETURN NEW`;
 
-  let executeDefaultCursorQuery = (reportKilled) => {
+  let executeDefaultCursorQuery = (reportKilled, expectedError) => {
     // default execution
     let localQuery;
     let stateForBoth = false; // marker that we expect either a kill or a result
 
     try {
-      localQuery = db._query(exlusiveWriteQueryString);
+      localQuery = db._query(exclusiveWriteQueryString);
       if (reportKilled === 'on') {
         fail();
       }
     } catch (e) {
       stateForBoth = true;
-      assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
+      assertEqual(e.errorNum, expectedError);
     }
 
     // in case we're expecting a success here
@@ -67,13 +67,13 @@ function GenericQueryKillSuite() { // can be either default or stream
     }
   };
 
-  let executeStreamCursorQuery = (reportKilled) => {
+  let executeStreamCursorQuery = (reportKilled, expectedError) => {
     // stream execution
     let localQuery;
     let stateForBoth = false; // marker that we expect either a kill or a result
 
     try {
-      localQuery = db._query(exlusiveWriteQueryString, null, null, {stream: true});
+      localQuery = db._query(exclusiveWriteQueryString, null, null, {stream: true});
       // Make sure we free the local instance of the cursor.
       // Just to avoid that we depend on the eventual garbage collection in V8
       // to clear up our references to the cursor.
@@ -84,7 +84,7 @@ function GenericQueryKillSuite() { // can be either default or stream
       }
     } catch (e) {
       stateForBoth = true;
-      assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
+      assertEqual(e.errorNum, expectedError);
     }
 
     // in case we're expecting a success here
@@ -105,7 +105,7 @@ function GenericQueryKillSuite() { // can be either default or stream
    * stream: <string> - "on", "off" or "both"
    * reportKilled: <string> "on", "off", "both"
    */
-  const createTestCaseEntry = (failurePointName, onlyInCluster, stream, reportKilled) => {
+  const createTestCaseEntry = (failurePointName, onlyInCluster, stream, reportKilled, expectedError = internal.errors.ERROR_QUERY_KILLED.code) => {
     let error = false;
     if (typeof failurePointName !== 'string') {
       console.error("Wrong definition of failurePointName, given: " + JSON.stringify(failurePointName));
@@ -137,7 +137,8 @@ function GenericQueryKillSuite() { // can be either default or stream
       failurePointName: failurePointName,
       onlyInCluster: onlyInCluster,
       stream: stream,
-      reportKilled: reportKilled
+      reportKilled: reportKilled,
+      expectedError: expectedError,
     };
   };
 
@@ -194,6 +195,11 @@ function GenericQueryKillSuite() { // can be either default or stream
   testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", true, 'both', "both"));
+  testCases.push(createTestCaseEntry("RestAqlHandler::killWhileWaiting", true, 'both', "both"));
+  testCases.push(createTestCaseEntry("RestAqlHandler::killWhileWritingResult", true, 'both', "both"));
+  testCases.push(createTestCaseEntry("RestAqlHandler::killBeforeOpen", true, 'both', "both", internal.errors.ERROR_QUERY_NOT_FOUND.code));
+  testCases.push(createTestCaseEntry("RestAqlHandler::completeFinishBeforeOpen", true, 'both', "both", internal.errors.ERROR_QUERY_NOT_FOUND.code));
+  testCases.push(createTestCaseEntry("RestAqlHandler::prematureCommitBeforeOpen", true, 'both', "both", internal.errors.ERROR_QUERY_NOT_FOUND.code));
 
   const testSuite = {
     setUpAll: function () {
@@ -225,7 +231,8 @@ function GenericQueryKillSuite() { // can be either default or stream
       return;
     }
 
-    suite[createTestName(testCase.failurePointName, testCase.stream)] = function (failurePointName, stream, reportKilled) {
+    suite[createTestName(testCase.failurePointName, testCase.stream)] = function (testCase) {
+      const {failurePointName, stream, reportKilled} = testCase;
       try {
         internal.debugSetFailAt(failurePointName);
       } catch (e) {
@@ -235,12 +242,12 @@ function GenericQueryKillSuite() { // can be either default or stream
 
       try {
         if (stream === 'on') {
-          executeStreamCursorQuery(reportKilled);
+          executeStreamCursorQuery(reportKilled, testCase.expectedError);
         } else if (stream === 'off') {
-          executeDefaultCursorQuery(reportKilled);
+          executeDefaultCursorQuery(reportKilled, testCase.expectedError);
         } else if (stream === 'both') {
-          executeStreamCursorQuery(reportKilled);
-          executeDefaultCursorQuery(reportKilled);
+          executeStreamCursorQuery(reportKilled, testCase.expectedError);
+          executeDefaultCursorQuery(reportKilled, testCase.expectedError);
         }
       } finally {
         try {
@@ -251,7 +258,7 @@ function GenericQueryKillSuite() { // can be either default or stream
         }
       }
 
-    }.bind(this, testCase.failurePointName, testCase.stream, testCase.reportKilled, testCase.onlyInCluster);
+    }.bind(this, testCase);
   };
 
   for (const testCase of testCases) {
@@ -260,13 +267,13 @@ function GenericQueryKillSuite() { // can be either default or stream
 
   // add two regular tests (one default, one stream) without breakpoint activation
   testSuite["test_positiveStreamQueryExecution"] = function () {
-    let localQuery = db._query(exlusiveWriteQueryString, null, null, {stream: true});
+    let localQuery = db._query(exclusiveWriteQueryString, null, null, {stream: true});
     assertTrue(localQuery);
     localQuery.dispose();
   };
 
   testSuite["test_positiveDefaultQueryExecution"] = function () {
-    let localQuery = db._query(exlusiveWriteQueryString);
+    let localQuery = db._query(exclusiveWriteQueryString);
     assertTrue(localQuery);
   };
 

@@ -598,12 +598,14 @@ class TestingRunner:
             logging.error("Failed to create testreport zip: %s", str(ex))
             self.append_report_txt("Failed to create testreport zip: " + str(ex))
             self.success = False
-        try:
-            shutil.rmtree(self.cfg.run_root, ignore_errors=False)
-        except Exception as ex:
-            logging.error("Failed to clean up: %s", str(ex))
-            self.append_report_txt("Failed to clean up: " + str(ex))
-            self.success = False
+
+        # TODO - we can probably remove this since we do not need to clean up when we run inside a container
+        # try:
+        #     shutil.rmtree(self.cfg.run_root, ignore_errors=False)
+        # except Exception as ex:
+        #     logging.error("Failed to clean up: %s", str(ex))
+        #     self.append_report_txt("Failed to clean up: " + str(ex))
+        #     self.success = False
 
     def create_log_file(self):
         """create the log file with the stati"""

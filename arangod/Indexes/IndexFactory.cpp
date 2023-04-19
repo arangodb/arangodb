@@ -28,6 +28,7 @@
 #include "Basics/FloatingPoint.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
@@ -280,10 +281,13 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
       }
     }
 
-    bool extendedNames =
-        _server.getFeature<DatabaseFeature>().extendedNamesForCollections();
-    if (!IndexNameValidator::isAllowedName(extendedNames, name)) {
-      return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    if (!name.empty()) {
+      bool extendedNames =
+          _server.getFeature<DatabaseFeature>().extendedNames();
+      if (auto res = IndexNameValidator::validateName(extendedNames, name);
+          res.fail()) {
+        return res;
+      }
     }
 
     normalized.add(StaticStrings::IndexName, velocypack::Value(name));

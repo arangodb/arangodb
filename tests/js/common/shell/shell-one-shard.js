@@ -129,6 +129,36 @@ function OneShardPropertiesSuite () {
         assertEqual(props.writeConcern, undefined);
       }
     },
+
+    testCreationWithDistributeShardsLike : function () {
+      if (isCluster) {
+        assertTrue(db._createDatabase(dn, { replicationFactor: 2, writeConcern: 2, sharding: "single" }));
+        db._useDatabase(dn);
+        // We need to create a new collection that we can use as a leader
+        db._create("leading");
+        try {
+          const c = db._create("test", {distributeShardsLike: "leading"});
+          // We can create an illegal distribute shards like. For one shard
+          // it will just be ignored
+          const props = c.properties();
+          assertEqual(2, props.writeConcern);
+          assertEqual(2, props.replicationFactor);
+          assertEqual(1, props.numberOfShards);
+          assertEqual("_graphs", props.distributeShardsLike);
+        } finally {
+          db._drop("test");
+        }
+
+        // It should be allowed to create a collection following the OneShard leader (_graphs for every non _system db)
+        const c = db._create("test", {distributeShardsLike: "_graphs"});
+        const props = c.properties();
+        assertEqual(2, props.writeConcern);
+        assertEqual(2, props.replicationFactor);
+        assertEqual(1, props.numberOfShards);
+
+        checkDBServerSharding(dn, "single");
+      }
+    },
     
     testShardingFlexible : function () {
       assertTrue(db._createDatabase(dn, { sharding: "flexible" }));
@@ -157,6 +187,22 @@ function OneShardPropertiesSuite () {
       }
         
       assertTrue(db._createDatabase(dn, { replicationFactor: 2, minReplicationFactor: 2, writeConcern: 2, sharding: "flexible" }));
+    },
+    
+    testDeviatingWriteConcernAndMinReplicationFactorForCollection : function () {
+      if (!isCluster) {
+        return;
+      }
+      assertTrue(db._createDatabase(dn, { sharding: "flexible" }));
+      db._useDatabase(dn);
+      try {
+        db._create("test", { replicationFactor: 2, minReplicationFactor: 1, writeConcern: 2 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+        
+      db._create("test", { replicationFactor: 2, minReplicationFactor: 2, writeConcern: 2 });
     },
     
     testNormalDBAndTooManyServers : function () {

@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/StaticStrings.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/StorageEngine.h"
@@ -153,7 +152,8 @@ class ClusterEngine final : public StorageEngine {
     return std::vector<std::string>();
   }
 
-  Result flushWal(bool waitForSync, bool flushColumnFamilies) override {
+  Result flushWal(bool /*waitForSync*/ = false,
+                  bool /*flushColumnFamilies*/ = false) override {
     return {};
   }
 
@@ -168,7 +168,6 @@ class ClusterEngine final : public StorageEngine {
   // current recovery tick
   TRI_voc_tick_t recoveryTick() override;
 
- public:
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
 
@@ -222,6 +221,9 @@ class ClusterEngine final : public StorageEngine {
   void releaseTick(TRI_voc_tick_t) override {
     // noop
   }
+
+  bool autoRefillIndexCaches() const override { return false; }
+  bool autoRefillIndexCachesOnFollowers() const override { return false; }
 
   std::shared_ptr<StorageSnapshot> currentSnapshot() final { return nullptr; }
 

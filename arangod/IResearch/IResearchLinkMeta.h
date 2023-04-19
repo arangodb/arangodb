@@ -33,10 +33,15 @@
 #include "utils/object_pool.hpp"
 
 #include "Containers.h"
+#include "Containers/NodeHashMap.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchViewSort.h"
 #include "IResearchViewStoredValues.h"
 #include "IResearchCompression.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
+#endif
 
 namespace arangodb {
 namespace velocypack {
@@ -59,8 +64,7 @@ enum class ValueStorage : uint32_t {
 };
 
 struct FieldMeta {
-  // can't use FieldMeta as value type since it's incomplete type so far
-  using Fields = UnorderedRefKeyMap<char, UniqueHeapInstance<FieldMeta>>;
+  using Fields = containers::NodeHashMap<std::string, FieldMeta>;
 
   struct Analyzer {
     Analyzer(AnalyzerPool::ptr const& pool)
@@ -224,6 +228,7 @@ struct IResearchLinkMeta : public FieldMeta {
 #ifdef USE_ENTERPRISE
           _sortCache(mask),
           _pkCache(mask),
+          _optimizeTopK(mask),
 #endif
           _version(mask) {
     }
@@ -236,6 +241,7 @@ struct IResearchLinkMeta : public FieldMeta {
 #ifdef USE_ENTERPRISE
     bool _sortCache;
     bool _pkCache;
+    bool _optimizeTopK;
 #endif
     bool _version;
   };
@@ -243,6 +249,9 @@ struct IResearchLinkMeta : public FieldMeta {
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   IResearchViewSort _sort;
   IResearchViewStoredValues _storedValues;
+#ifdef USE_ENTERPRISE
+  IResearchOptimizeTopK _optimizeTopK;
+#endif
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
 
 #ifdef USE_ENTERPRISE

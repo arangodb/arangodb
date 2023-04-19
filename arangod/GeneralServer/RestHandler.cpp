@@ -605,6 +605,12 @@ void RestHandler::compressResponse() {
                                StaticStrings::EncodingDeflate);
         break;
 
+      case rest::EncodingType::GZIP:
+        _response->gzip();
+        _response->setHeaderNC(StaticStrings::ContentEncoding,
+                               StaticStrings::EncodingGzip);
+        break;
+
       default:
         break;
     }

@@ -566,7 +566,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
 
 function generateCrashDump (binary, instanceInfo, options, checkStr) {
   if (!options.coreCheck && !options.setInterruptable) {
-    print("fatal exit of arangod! Bye!");
+    print(`coreCheck = ${options.coreCheck}; setInterruptable = ${options.setInterruptable}; forcing fatal exit of arangod! Bye!`);
     pu.killRemainingProcesses({status: false});
     process.exit();
   }

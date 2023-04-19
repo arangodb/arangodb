@@ -39,8 +39,9 @@
 namespace arangodb::pregel::actor {
 
 template<typename S>
-concept CallableOnFunction = requires(S s) {
+concept Schedulable = requires(S s, std::chrono::seconds delay) {
   {s([]() {})};
+  {s.delay(delay, [](bool canceled) {})};
 };
 template<typename D>
 concept VPackDispatchable = requires(D d, ActorPID pid,
@@ -48,7 +49,7 @@ concept VPackDispatchable = requires(D d, ActorPID pid,
   {d(pid, pid, msg)};
 };
 
-template<CallableOnFunction Scheduler, VPackDispatchable ExternalDispatcher>
+template<Schedulable Scheduler, VPackDispatchable ExternalDispatcher>
 struct Runtime
     : std::enable_shared_from_this<Runtime<Scheduler, ExternalDispatcher>> {
   Runtime() = delete;
@@ -63,24 +64,27 @@ struct Runtime
         externalDispatcher(externalDispatcher) {}
 
   template<typename ActorConfig>
-  auto spawn(typename ActorConfig::State initialState,
+  auto spawn(DatabaseName const& database,
+             std::unique_ptr<typename ActorConfig::State> initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
     auto newId = ActorID{uniqueActorIDCounter++};
 
-    auto address = ActorPID{.server = myServerID, .id = newId};
+    auto address =
+        ActorPID{.server = myServerID, .database = database, .id = newId};
 
     auto newActor = std::make_shared<Actor<Runtime, ActorConfig>>(
-        address, this->shared_from_this(),
-        std::make_unique<typename ActorConfig::State>(initialState));
+        address, this->shared_from_this(), std::move(initialState));
     actors.add(newId, std::move(newActor));
 
     // Send initial message to newly created actor
-    dispatch(address, address, initialMessage);
+    dispatchLocally(address, address, initialMessage);
 
     return newId;
   }
 
   auto getActorIDs() -> std::vector<ActorID> { return actors.allIDs(); }
+
+  auto contains(ActorID id) const -> bool { return actors.contains(id); }
 
   template<typename ActorConfig>
   auto getActorStateByID(ActorID id) const
@@ -113,7 +117,8 @@ struct Runtime
     if (actor.has_value()) {
       actor.value()->process(sender, msg);
     } else {
-      auto error = ActorError{ActorNotFound{.actor = receiver}};
+      auto error =
+          message::ActorError{message::ActorNotFound{.actor = receiver}};
       auto payload = inspection::serializeWithErrorT(error);
       ACTOR_ASSERT(payload.ok());
       dispatch(receiver, sender, payload.get());
@@ -128,6 +133,18 @@ struct Runtime
     } else {
       dispatchExternally(sender, receiver, message);
     }
+  }
+
+  template<typename ActorMessage>
+  auto dispatchDelayed(std::chrono::seconds delay, ActorPID sender,
+                       ActorPID receiver, ActorMessage const& message) -> void {
+    scheduler->delay(delay, [self = this->weak_from_this(), sender, receiver,
+                             message](bool canceled) {
+      auto me = self.lock();
+      if (me != nullptr) {
+        me->dispatch(sender, receiver, message);
+      }
+    });
   }
 
   auto areAllActorsIdle() -> bool {
@@ -162,7 +179,8 @@ struct Runtime
   std::shared_ptr<Scheduler> scheduler;
   std::shared_ptr<ExternalDispatcher> externalDispatcher;
 
-  std::atomic<size_t> uniqueActorIDCounter{0};
+  // actor id 0 is reserved for special messages
+  std::atomic<size_t> uniqueActorIDCounter{1};
 
   ActorList actors;
 
@@ -175,7 +193,8 @@ struct Runtime
     if (actor.has_value()) {
       actor->get()->process(sender, payload);
     } else {
-      dispatch(receiver, sender, ActorError{ActorNotFound{.actor = receiver}});
+      dispatch(receiver, sender,
+               message::ActorError{message::ActorNotFound{.actor = receiver}});
     }
   }
 
@@ -187,7 +206,7 @@ struct Runtime
     (*externalDispatcher)(sender, receiver, payload.get());
   }
 };
-template<CallableOnFunction Scheduler, VPackDispatchable ExternalDispatcher,
+template<Schedulable Scheduler, VPackDispatchable ExternalDispatcher,
          typename Inspector>
 auto inspect(Inspector& f, Runtime<Scheduler, ExternalDispatcher>& x) {
   return f.object(x).fields(
@@ -198,7 +217,7 @@ auto inspect(Inspector& f, Runtime<Scheduler, ExternalDispatcher>& x) {
 
 };  // namespace arangodb::pregel::actor
 
-template<arangodb::pregel::actor::CallableOnFunction Scheduler,
+template<arangodb::pregel::actor::Schedulable Scheduler,
          arangodb::pregel::actor::VPackDispatchable ExternalDispatcher>
 struct fmt::formatter<
     arangodb::pregel::actor::Runtime<Scheduler, ExternalDispatcher>>

@@ -23,10 +23,12 @@
 
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
+#include "Aql/ProfileLevel.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Transaction/Options.h"
@@ -39,35 +41,15 @@ class Slice;
 
 namespace aql {
 
-enum class ProfileLevel : uint8_t {
-  /// no profiling information
-  None = 0,
-  /// Output timing for query stages
-  Basic = 1,
-  /// Enable instrumentation for execute calls
-  Blocks = 2,
-  /// Log tracing info for execute calls
-  TraceOne = 3,
-  /// Log tracing information including execute results
-  TraceTwo = 4
-};
-
-enum class TraversalProfileLevel : uint8_t {
-  /// no profiling information
-  None = 0,
-  /// include traversal tracing
-  Basic = 1
-};
-
 struct QueryOptions {
   QueryOptions();
-  explicit QueryOptions(arangodb::velocypack::Slice);
+  explicit QueryOptions(velocypack::Slice);
   QueryOptions(QueryOptions&&) noexcept = default;
   QueryOptions(QueryOptions const&) = default;
   TEST_VIRTUAL ~QueryOptions() = default;
 
-  void fromVelocyPack(arangodb::velocypack::Slice slice);
-  void toVelocyPack(arangodb::velocypack::Builder& builder,
+  void fromVelocyPack(velocypack::Slice slice);
+  void toVelocyPack(velocypack::Builder& builder,
                     bool disableOptimizerRules) const;
   TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; }
   TEST_VIRTUAL TraversalProfileLevel getTraversalProfileLevel() const {
@@ -80,9 +62,11 @@ struct QueryOptions {
   size_t maxNodesPerCallstack;
   size_t spillOverThresholdNumRows;
   size_t spillOverThresholdMemoryUsage;
+  size_t maxDNFConditionMembers;
   double maxRuntime;  // query has to execute within the given time or will be
                       // killed
-  double satelliteSyncWait;
+  std::chrono::duration<double> satelliteSyncWait;
+
   double ttl;  // time until query cursor expires - avoids coursors to
                // stick around for ever if client does not collect the data
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
@@ -132,6 +116,7 @@ struct QueryOptions {
   static size_t defaultMaxNodesPerCallstack;
   static size_t defaultSpillOverThresholdNumRows;
   static size_t defaultSpillOverThresholdMemoryUsage;
+  static size_t defaultMaxDNFConditionMembers;
   static double defaultMaxRuntime;
   static double defaultTtl;
   static bool defaultFailOnWarning;

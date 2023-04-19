@@ -186,6 +186,7 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
       _queryMemoryLimit(
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.2, 0.75)),
+      _maxDNFConditionMembers(aql::QueryOptions::defaultMaxDNFConditionMembers),
       _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
       _maxNodesPerCallstack(aql::QueryOptions::defaultMaxNodesPerCallstack),
@@ -667,6 +668,28 @@ amount of memory.)");
       .setLongDescription(R"(If set to `true`, all failed AQL queries are
 logged to the server log. You can use this option during development, or to
 catch unexpected failed queries in production.)");
+
+  options
+      ->addOption(
+          "--query.max-dnf-condition-members",
+          "Maximum number of OR sub-nodes in internal representation of "
+          "an AQL FILTER condition.",
+          new SizeTParameter(&_maxDNFConditionMembers),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31100)
+      .setLongDescription(R"(This option can be used to limit the computation
+time and memory usage when converting complex AQL FILTER conditions into the
+internal DNF (disjunctive normal form) format. FILTER conditions with a lot of
+logical branches (AND, OR, NOT) can take a large amount of processing time and
+memory. This startup option can be used to limit the computation time and memory
+usage for such conditions. Once the threshold value is reached during the DNF
+conversion of a FILTER condition, the conversion will be aborted, and the query
+will continue with a simplified internal representation of the condition, which
+cannot be used for index lookups.")");
 }
 
 void QueryRegistryFeature::validateOptions(
@@ -700,6 +723,7 @@ void QueryRegistryFeature::validateOptions(
   aql::QueryOptions::defaultMemoryLimit = _queryMemoryLimit;
   aql::QueryOptions::defaultMaxNumberOfPlans = _maxQueryPlans;
   aql::QueryOptions::defaultMaxNodesPerCallstack = _maxNodesPerCallstack;
+  aql::QueryOptions::defaultMaxDNFConditionMembers = _maxDNFConditionMembers;
   aql::QueryOptions::defaultMaxRuntime = _queryMaxRuntime;
   aql::QueryOptions::defaultTtl = _queryRegistryTTL;
   aql::QueryOptions::defaultFailOnWarning = _failOnWarning;

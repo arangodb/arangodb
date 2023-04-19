@@ -23,7 +23,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -92,17 +91,18 @@ RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
 #endif
 }
 
-void RebootTracker::updateServerState(State state) {
+void RebootTracker::updateServerState(ServersKnown state) {
   std::lock_guard guard{_mutex};
   LOG_TOPIC("77a6e", TRACE, Logger::CLUSTER)
       << "updating reboot server state from " << _state << " to " << state;
   // We iterate for _state, not for _callbacks,
   // because we want to log all gone or rebooted server
-  for (auto const& [serverId, oldRebootId] : _state) {
+  for (auto const& [serverId, oldState] : _state) {
     auto it = state.find(serverId);
-    auto const newRebootId = it != state.end() ? it->second : RebootId::max();
-    if (oldRebootId != newRebootId) {
-      TRI_ASSERT(oldRebootId < newRebootId);
+    auto const newRebootId =
+        it != state.end() ? it->second.rebootId : RebootId::max();
+    if (oldState.rebootId != newRebootId) {
+      TRI_ASSERT(oldState.rebootId < newRebootId);
       LOG_TOPIC("88857", INFO, Logger::CLUSTER)
           << "Server " << serverId
           << " gone or rebooted, aborting its old jobs now.";
@@ -128,8 +128,7 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState peer,
     LOG_TOPIC("76abc", INFO, Logger::CLUSTER) << error;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_SERVER_UNKNOWN, error);
   }
-  auto const currRebootId = it->second;
-  if (peer.rebootId < currRebootId) {
+  if (peer.rebootId < it->second.rebootId) {
     // If this ID is already older, schedule the callback immediately.
     queueCallback({std::move(callback), std::move(description)});
     return CallbackGuard{};
@@ -208,6 +207,12 @@ void RebootTracker::unregisterCallback(RebootTracker::PeerState const& peer,
       }
     }
   }
+}
+
+bool RebootTracker::isServerAlive(ServerID id) const {
+  std::lock_guard guard{_mutex};
+  auto it = _state.find(id);
+  return it != _state.end() && it->second.status == ServerHealth::kGood;
 }
 
 }  // namespace arangodb::cluster

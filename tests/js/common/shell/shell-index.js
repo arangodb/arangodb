@@ -139,22 +139,34 @@ function IndexSuite() {
       var res = collection.dropIndex(id.id);
       assertTrue(res);
 
-      res = collection.dropIndex(id.id);
-      assertFalse(res);
+      try {
+        collection.dropIndex(id.id);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
 
       id = collection.ensureIndex({type: "geo", fields: ["a"]});
       res = collection.dropIndex(id);
       assertTrue(res);
 
-      res = collection.dropIndex(id);
-      assertFalse(res);
+      try {
+        collection.dropIndex(id);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
 
       id = collection.ensureIndex({type: "geo", fields: ["a"]});
       res = internal.db._dropIndex(id);
       assertTrue(res);
 
-      res = internal.db._dropIndex(id);
-      assertFalse(res);
+      try {
+        collection.dropIndex(id);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,22 +179,34 @@ function IndexSuite() {
       var res = collection.dropIndex(collection.name() + "/" + id);
       assertTrue(res);
 
-      res = collection.dropIndex(collection.name() + "/" + id);
-      assertFalse(res);
+      try {
+        collection.dropIndex(collection.name() + "/" + id);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
 
       id = collection.ensureIndex({type: "geo", fields: ["a"]}).id.substr(cn.length + 1);
       res = collection.dropIndex(parseInt(id, 10));
       assertTrue(res);
 
-      res = collection.dropIndex(parseInt(id, 10));
-      assertFalse(res);
+      try {
+        collection.dropIndex(parseInt(id, 10));
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
 
       id = collection.ensureIndex({type: "geo", fields: ["a"]}).id.substr(cn.length + 1);
       res = internal.db._dropIndex(collection.name() + "/" + id);
       assertTrue(res);
 
-      res = internal.db._dropIndex(collection.name() + "/" + id);
-      assertFalse(res);
+      try {
+        collection.dropIndex(collection.name() + "/" + id);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,22 +219,34 @@ function IndexSuite() {
       var res = collection.dropIndex(collection.name() + "/" + name);
       assertTrue(res);
 
-      res = collection.dropIndex(collection.name() + "/" + name);
-      assertFalse(res);
+      try {
+        collection.dropIndex(collection.name() + "/" + name);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
 
       name = collection.ensureIndex({type: "geo", fields: ["a"]}).name;
       res = collection.dropIndex(name);
       assertTrue(res);
 
-      res = collection.dropIndex(name);
-      assertFalse(res);
+      try {
+        collection.dropIndex(name);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
 
       name = collection.ensureIndex({type: "geo", fields: ["a"]}).name;
       res = internal.db._dropIndex(collection.name() + "/" + name);
       assertTrue(res);
 
-      res = internal.db._dropIndex(collection.name() + "/" + name);
-      assertFalse(res);
+      try {
+        collection.dropIndex(collection.name() + "/" + name);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1580,53 +1616,60 @@ function ParallelIndexSuite() {
     },
 
     tearDown: function() {
-      tasks.get().forEach(function(task) {
-        if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
-          try {
-            tasks.unregister(task);
-          } catch (err) {
-          }
+      let rounds = 0;
+      while(true) {
+        const stillRunning = tasks.get().filter(function(task) {
+          return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)); });
+        if(stillRunning.length === 0) {
+          break;
         }
-      });
+        require("internal").wait(0.5, false);
+        rounds++;
+        if(rounds % 10 === 0) {
+          console.log("After %s rounds there are still the following tasks %s", rounds, JSON.stringify(stillRunning));
+        }
+      }
       internal.db._drop(cn);
     },
 
     testCreateInParallel: function() {
-      let noIndices = 80;
-      if (platform.substr(0, 3) === 'win') {
-        // Relax condition for windows - TODO: fix this.
-        noIndices = 40;
-      }
-      for (let i = 0; i < noIndices; ++i) {
-        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + i + '"] });';
-        tasks.register({name: "UnitTestsIndexCreate" + i, command: command});
-      }
+      // maximum concurrency for index creation. we need to limit the number
+      // here because otherwise the server may be overwhelmed by too many
+      // concurrent index creations being in progress.
+      const maxThreads = 7;
+      // Relax condition for windows and macOS - TODO: fix this.
+      const noIndexes = (platform.substr(0, 3) === 'win' || platform === 'darwin') ? 40 : 80;
 
       let time = require("internal").time;
       let start = time();
       while (true) {
         let indexes = require("internal").db._collection(cn).getIndexes();
-        if (indexes.length === noIndices + 1) {
+        assertTrue(indexes.length >= 1, indexes);
+        if (indexes.length === noIndexes + 1) {
           // primary index + user-defined indexes
           break;
         }
+        for (let i = indexes.length - 1; i < Math.min(noIndexes, indexes.length - 1 + maxThreads); ++i) {
+          let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + i + '"] });';
+          tasks.register({name: "UnitTestsIndexCreate" + i, command: command});
+        }
         if (time() - start > 180) {
           // wait for 3 minutes maximum
-          fail("Timeout creating " + noIndices + " indices after 3 minutes: " + JSON.stringify(indexes));
+          fail("Timeout creating " + noIndexes + " indices after 3 minutes: " + JSON.stringify(indexes));
         }
         require("internal").wait(0.5, false);
       }
 
       let indexes = require("internal").db._collection(cn).getIndexes();
-      assertEqual(noIndices + 1, indexes.length);
+      assertEqual(noIndexes + 1, indexes.length);
     },
 
     testCreateInParallelDuplicate: function() {
-      let n = 100;
-      for (let i = 0; i < n; ++i) {
-        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + (i % 4) + '"] });';
-        tasks.register({name: "UnitTestsIndexCreate" + i, command: command});
-      }
+      // maximum concurrency for index creation. we need to limit the number
+      // here because otherwise the server may be overwhelmed by too many
+      // concurrent index creations being in progress.
+      const maxThreads = 7;
+      const noIndexes = 100;
 
       let time = require("internal").time;
       let start = time();
@@ -1635,6 +1678,10 @@ function ParallelIndexSuite() {
         if (indexes.length === 4 + 1) {
           // primary index + user-defined indexes
           break;
+        }
+        for (let i = indexes.length - 1; i < Math.min(noIndexes, indexes.length - 1 + maxThreads); ++i) {
+          let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + (i % 4) + '"] });';
+          tasks.register({name: "UnitTestsIndexCreate" + i, command: command});
         }
         if (time() - start > 180) {
           // wait for 3 minutes maximum

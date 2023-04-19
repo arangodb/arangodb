@@ -38,13 +38,13 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Containers/HashSet.h"
+#include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 
-#include <Graph/Cache/RefactoredClusterTraverserCache.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -274,8 +274,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _vertexProjections{},
-      _edgeProjections{},
-      _refactor(true) {}
+      _edgeProjections{} {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
@@ -288,8 +287,7 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _maxProjections{other._maxProjections},
       _vertexProjections{other._vertexProjections},
-      _edgeProjections{other._edgeProjections},
-      _refactor(other._refactor) {
+      _edgeProjections{other._edgeProjections} {
   if (!allowAlreadyBuiltCopy) {
     TRI_ASSERT(other._baseLookupInfos.empty());
     TRI_ASSERT(other._tmpVar == nullptr);
@@ -633,7 +631,6 @@ Projections const& BaseOptions::getEdgeProjections() const {
 void BaseOptions::toVelocyPackBase(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("parallelism", VPackValue(_parallelism));
-  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
   builder.add("produceVertices", VPackValue(_produceVertices));
   builder.add(StaticStrings::MaxProjections, VPackValue(getMaxProjections()));
 
@@ -663,7 +660,4 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
       DocumentProducingNode::kMaxProjections));
   _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
   _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
-
-  _refactor = basics::VelocyPackHelper::getBooleanValue(
-      info, StaticStrings::GraphRefactorFlag, false);
 }

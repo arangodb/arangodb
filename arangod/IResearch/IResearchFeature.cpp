@@ -47,7 +47,6 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/application-exit.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
@@ -140,9 +139,9 @@ class IResearchLogTopic final : public LogTopic {
                         static_cast<arangoLogLevelType>(LogLevel::TRACE) - 1,
                 "inconsistent log level mapping");
 
-  static void log_appender(void* context, const char* function,
-                           const char* file, int line,
-                           irs::logger::level_t level, const char* message,
+  static void log_appender(void* context, char const* function,
+                           char const* file, int line,
+                           irs::logger::level_t level, char const* message,
                            size_t message_len);
   static void setIResearchLogLevel(LogLevel level) {
     if (level == LogLevel::DEFAULT) {
@@ -173,6 +172,7 @@ std::string const FAIL_ON_OUT_OF_SYNC(
     "--arangosearch.fail-queries-on-out-of-sync");
 std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
 std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
+std::string const CACHE_ONLY_LEADER("--arangosearch.columns-cache-only-leader");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
@@ -286,7 +286,7 @@ aql::AqlValue minMatchFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
   }
 
   auto matchesLeft = minMatchValue.toInt64();
-  const auto argsCount = args.size() - 1;
+  auto const argsCount = args.size() - 1;
   for (size_t i = 0; i < argsCount && matchesLeft > 0; ++i) {
     auto& currValue = args[i];
     if (currValue.toBoolean()) {
@@ -367,17 +367,16 @@ bool upgradeArangoSearchLinkCollectionName(
       ClusterMethods::realNameFromSmartName(clusterCollectionName);
 #endif
       for (auto& index : indexes) {
+        TRI_ASSERT(index != nullptr);
         if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
           auto* indexPtr = dynamic_cast<IResearchLink*>(index.get());
+          TRI_ASSERT(indexPtr != nullptr);
           auto id = indexPtr->index().id().id();
 #else
           auto* indexPtr = basics::downCast<IResearchRocksDBLink>(index.get());
           auto const id = indexPtr->id().id();
 #endif
-          if (!indexPtr) {
-            continue;
-          }
           LOG_TOPIC("d6edb", TRACE, arangodb::iresearch::TOPIC)
               << "Checking collection name '" << clusterCollectionName
               << "' for link " << id;
@@ -789,10 +788,10 @@ void registerTransactionDataSourceRegistrationCallback() {
   }
 }
 
-void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
-                                     const char* file, int line,
+void IResearchLogTopic::log_appender(void* /*context*/, char const* function,
+                                     char const* file, int line,
                                      irs::logger::level_t level,
-                                     const char* message, size_t message_len) {
+                                     char const* message, size_t message_len) {
   auto const arangoLevel = static_cast<LogLevel>(level + 1);
   std::string msg(message, message_len);
   Logger::log("9afd3", function, file, line, arangoLevel, LIBIRESEARCH.id(),
@@ -841,6 +840,7 @@ class IResearchAsync {
 #endif
   {
     TRI_IF_FAILURE("IResearchFeature::testGroupAccess") {
+      // cppcheck-suppress throwInNoexceptFunction
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -881,10 +881,12 @@ bool isFilter(aql::Function const& func) noexcept {
 }
 
 bool isScorer(aql::Function const& func) noexcept {
+  // cppcheck-suppress throwInNoexceptFunction
   return func.implementation == &dummyScorerFunc;
 }
 
 bool isOffsetInfo(aql::Function const& func) noexcept {
+  // cppcheck-suppress throwInNoexceptFunction
   return func.implementation == &offsetInfoFunc;
 }
 
@@ -1046,12 +1048,19 @@ but the returned data may be incomplete.)");
                   "The limit (in bytes) for ArangoSearch columns cache "
                   "(0 = no caching).",
                   new options::UInt64Parameter(&_columnsCacheLimit),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30905);
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnSingle,
+                                            options::Flags::OnDBServer,
+                                            options::Flags::Enterprise))
+      .setIntroducedIn(3'09'05);
+  options
+      ->addOption(CACHE_ONLY_LEADER,
+                  "Cache ArangoSearch columns only for leader shards.",
+                  new options::BooleanParameter(&_columnsCacheOnlyLeader),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnDBServer,
+                                            options::Flags::Enterprise))
+      .setIntroducedIn(3'10'06);
 #endif
 }
 
@@ -1246,6 +1255,27 @@ void IResearchFeature::unprepare() {
   _running.store(false);
 }
 
+std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+                                       TRI_vocbase_t& database) {
+  std::filesystem::path path{dbPathFeature.directory()};
+  path /= "databases";
+  path /= absl::StrCat("database-", database.id());
+  return path;
+}
+
+void cleanupDatabase(TRI_vocbase_t& database) {
+  auto const& feature = database.server().getFeature<DatabasePathFeature>();
+  auto path = getPersistedPath(feature, database);
+  std::error_code error;
+  std::filesystem::remove_all(path);
+  if (error) {
+    LOG_TOPIC("bad02", ERR, TOPIC)
+        << "Failed to remove arangosearch path for database (id '"
+        << database.id() << "' name: '" << database.name() << "') with error '"
+        << error.message() << "'";
+  }
+}
+
 void IResearchFeature::reportRecoveryProgress(arangodb::IndexId id,
                                               std::string_view phase,
                                               size_t current, size_t total) {
@@ -1388,7 +1418,7 @@ bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
   bool done = false;
   int64_t current = _columnsCacheMemoryUsed.load(std::memory_order_relaxed);
   do {
-    const auto newValue = current + diff;
+    auto const newValue = current + diff;
     if (newValue <= static_cast<int64_t>(_columnsCacheLimit)) {
       TRI_ASSERT(newValue >= 0);
       done = _columnsCacheMemoryUsed.compare_exchange_weak(current, newValue);
@@ -1397,6 +1427,11 @@ bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
     }
   } while (!done);
   return true;
+}
+
+bool IResearchFeature::columnsCacheOnlyLeaders() const noexcept {
+  TRI_ASSERT(ServerState::instance()->isDBServer() || !_columnsCacheOnlyLeader);
+  return _columnsCacheOnlyLeader;
 }
 #endif
 

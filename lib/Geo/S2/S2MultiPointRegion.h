@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include "Geo/Coding.h"
+
 #include <s2/s2region.h>
 #include <s2/s2point.h>
 #include <s2/s2shape.h>
@@ -56,8 +58,8 @@ class S2MultiPointRegion final : public S2Region {
   bool MayIntersect(S2Cell const& cell) const final;
   bool Contains(S2Point const& p) const final;
 
-  void Encode(Encoder* const encoder, s2coding::CodingHint hint) const;
-  bool Decode(Decoder* const decoder);
+  void Encode(Encoder& encoder, coding::Options options) const;
+  bool Decode(Decoder& decoder, uint8_t tag);
 
   auto& Impl() noexcept { return _impl; }
   auto const& Impl() const noexcept { return _impl; }

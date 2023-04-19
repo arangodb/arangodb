@@ -27,7 +27,8 @@
 #include <cstddef>
 #include "Basics/Common.h"
 #include "Pregel/GraphStore/Graph.h"
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/Iterators.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/WorkerContext.h"
@@ -43,15 +44,14 @@ template<typename V, typename E, typename M>
 class VertexContext {
   friend class Worker<V, E, M>;
 
+ public:
   uint64_t _gss = 0;
   uint64_t _lss = 0;
   WorkerContext* _context = nullptr;
-  GraphStore<V, E>* _graphStore = nullptr;
   AggregatorHandler* _readAggregators = nullptr;
   AggregatorHandler* _writeAggregators = nullptr;
   Vertex<V, E>* _vertexEntry = nullptr;
 
- public:
   virtual ~VertexContext() = default;
 
   template<typename T>
@@ -87,18 +87,7 @@ class VertexContext {
 
   size_t getEdgeCount() const { return _vertexEntry->getEdgeCount(); }
 
-  RangeIterator<Edge<E>> getEdges() const {
-    return _graphStore->edgeIterator(_vertexEntry);
-  }
-
-  void setVertexData(V const& val) {
-    _graphStore->replaceVertexData(_vertexEntry, (void*)(&val), sizeof(V));
-  }
-
-  /// store data, will potentially move the data around
-  void setVertexData(void const* ptr, size_t size) {
-    _graphStore->replaceVertexData(_vertexEntry, (void*)ptr, size);
-  }
+  std::vector<Edge<E>>& getEdges() const { return _vertexEntry->getEdges(); }
 
   void voteHalt() { _vertexEntry->setActive(false); }
   void voteActive() { _vertexEntry->setActive(true); }
@@ -119,13 +108,14 @@ class VertexContext {
 template<typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
-  OutCache<M>* _cache = nullptr;
 
  public:
+  OutCache<M>* _cache = nullptr;
+
   virtual ~VertexComputation() = default;
 
-  void sendMessage(Edge<E> const* edge, M const& data) {
-    _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
+  void sendMessage(Edge<E> const& edge, M const& data) {
+    _cache->appendMessage(edge.targetShard(), edge.toKey(), data);
   }
 
   void sendMessage(VertexID const& pid, M const& data) {
@@ -135,10 +125,8 @@ class VertexComputation : public VertexContext<V, E, M> {
   /// Send message along outgoing edges to all reachable neighbours
   /// TODO Multi-receiver messages
   void sendMessageToAllNeighbours(M const& data) {
-    RangeIterator<Edge<E>> edges = this->getEdges();
-    for (; edges.hasMore(); ++edges) {
-      Edge<E> const* edge = *edges;
-      _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
+    for (auto& edge : this->getEdges()) {
+      _cache->appendMessage(edge.targetShard(), edge.toKey(), data);
     }
   }
 

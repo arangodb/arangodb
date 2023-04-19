@@ -589,11 +589,13 @@ struct InsertOperationCtx {
     } else {
       userSpecifiedKey = true;
       if (keySlice.isString()) {
-        // validate the key provided by the user
-        auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
-                                                    value, isRestore);
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
+        if (!keySlice.stringView().empty()) {
+          // validate the key provided by the user
+          auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
+                                                      value, isRestore);
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
         }
       }
     }
@@ -1937,8 +1939,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Put,
-        "/_api/collection/" + p.first + "/truncate", std::move(buffer), reqOpts,
-        std::move(headers));
+        "/_api/collection/" + StringUtils::urlEncode(p.first) + "/truncate",
+        std::move(buffer), reqOpts, std::move(headers));
     futures.emplace_back(std::move(future));
   }
 
@@ -3721,7 +3723,8 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
     // Check timestamps of all dbservers:
     size_t good = 0;  // Count restarted servers
     for (auto const& dbs : dbServers) {
-      if (postServersKnown.at(dbs) != preServersKnown.at(dbs)) {
+      if (postServersKnown.at(dbs).rebootId !=
+          preServersKnown.at(dbs).rebootId) {
         ++good;
       }
     }

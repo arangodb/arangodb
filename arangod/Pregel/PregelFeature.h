@@ -27,6 +27,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -34,18 +35,43 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Pregel/ArangoExternalDispatcher.h"
+#include "Actor/Runtime.h"
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelOptions.h"
+#include "Pregel/StatusActor.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Pregel/PregelMetrics.h"
 
 struct TRI_vocbase_t;
 
+namespace arangodb {
+struct OperationResult;
+namespace rest {
+enum class RequestType;
+}
+}  // namespace arangodb
+
 namespace arangodb::pregel {
+
+struct PregelScheduler {
+  auto operator()(auto fn) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->queue(RequestLane::INTERNAL_LOW, fn);
+  }
+  auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    auto workItem = scheduler->queueDelayed(
+        "pregel-actors", RequestLane::INTERNAL_LOW, delay, fn);
+  }
+};
 
 class Conductor;
 class IWorker;
@@ -76,19 +102,21 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<Conductor> conductor(ExecutionNumber executionNumber);
 
   void garbageCollectConductors();
+  void garbageCollectActors();
 
   void addWorker(std::shared_ptr<IWorker>&&, ExecutionNumber executionNumber);
   std::shared_ptr<IWorker> worker(ExecutionNumber executionNumber);
 
   void cleanupConductor(ExecutionNumber executionNumber);
   void cleanupWorker(ExecutionNumber executionNumber);
+  [[nodiscard]] ResultT<PregelResults> getResults(ExecutionNumber execNr);
+  [[nodiscard]] ResultT<StatusState> getStatus(ExecutionNumber execNr);
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
                               VPackBuilder& outResponse);
   void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                            VPackSlice const& body, VPackBuilder& outBuilder);
-
   uint64_t numberOfActiveConductors() const;
 
   void initiateSoftShutdown() override final {
@@ -102,10 +130,13 @@ class PregelFeature final : public ArangodFeature {
   size_t defaultParallelism() const noexcept;
   size_t minParallelism() const noexcept;
   size_t maxParallelism() const noexcept;
+  size_t parallelism(VPackSlice params) const noexcept;
+
   std::string tempPath() const;
-  bool useMemoryMaps() const noexcept;
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
+
+  auto cancel(ExecutionNumber executionNumber) -> Result;
 
  private:
   void scheduleGarbageCollection();
@@ -119,18 +150,7 @@ class PregelFeature final : public ArangodFeature {
   // max parallelism usable per Pregel job
   size_t _maxParallelism;
 
-  // type of temporary directory location ("custom", "temp-directory",
-  // "database-directory")
-  std::string _tempLocationType;
-
-  // custom path for temporary directory. only populated if _tempLocationType ==
-  // "custom"
-  std::string _tempLocationCustomPath;
-
-  // default "useMemoryMaps" value per Pregel job
-  bool _useMemoryMaps;
-
-  mutable Mutex _mutex;
+  mutable std::mutex _mutex;
 
   Scheduler::WorkHandle _gcHandle;
 
@@ -148,6 +168,15 @@ class PregelFeature final : public ArangodFeature {
   std::atomic<bool> _softShutdownOngoing;
 
   std::shared_ptr<PregelMetrics> _metrics;
+
+ public:
+  std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
+      _actorRuntime;
+
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _resultActor;
+  // conductor actor is only used on the coordinator
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _conductorActor;
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _statusActors;
 };
 
 }  // namespace arangodb::pregel

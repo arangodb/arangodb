@@ -189,6 +189,7 @@ Result createSystemCollections(
   systemCollections.push_back(StaticStrings::AppsCollection);
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
   systemCollections.push_back(StaticStrings::FrontendCollection);
+  systemCollections.push_back(StaticStrings::PregelCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     VPackBuilder testOptions;
@@ -319,7 +320,7 @@ Result createSystemStatisticsCollections(
 Result createIndex(
     std::string const& name, Index::IndexType type,
     std::vector<std::string> const& fields, bool unique, bool sparse,
-    std::vector<std::shared_ptr<LogicalCollection>>& collections) {
+    std::vector<std::shared_ptr<LogicalCollection>> const& collections) {
   // Static helper function that wraps creating an index. If we fail to
   // create an index with some indices created, we clean up by removing all
   // collections later on. Find the collection by name
@@ -333,8 +334,8 @@ Result createIndex(
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
             "Collection " + name + " not found"};
   }
-  return methods::Indexes::createIndex(colIt->get(), type, fields, unique,
-                                       sparse, false /*estimates*/);
+  return methods::Indexes::createIndex(*(*colIt), type, fields, unique, sparse,
+                                       false /*estimates*/);
 }
 
 Result createSystemStatisticsIndices(

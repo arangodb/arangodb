@@ -29,6 +29,7 @@
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryOptions.h"
+#include "Aql/ProfileLevel.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
@@ -106,6 +107,7 @@ class PlanChecker
       case ExecutionNode::REMOVE:
       case ExecutionNode::GATHER:
       case ExecutionNode::REMOTESINGLE:
+      case ExecutionNode::REMOTE_MULTIPLE:
         if (node->getParents().size() > 1) {
           errors.emplace_back()
               << "#parents == " << node->getParents().size() << " at ["

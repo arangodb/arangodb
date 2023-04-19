@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <chrono>
 #include "Inspection/VPackWithErrorT.h"
 
 #include "Message.h"
@@ -42,10 +43,17 @@ struct HandlerBase {
     runtime->dispatch(self, receiver, message);
   }
 
+  template<typename ActorMessage>
+  auto dispatchDelayed(std::chrono::seconds delay, ActorPID receiver,
+                       ActorMessage const& message) -> void {
+    runtime->dispatchDelayed(delay, self, receiver, message);
+  }
+
   template<typename ActorConfig>
-  auto spawn(typename ActorConfig::State initialState,
+  auto spawn(std::unique_ptr<typename ActorConfig::State> initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
-    return runtime->template spawn<ActorConfig>(initialState, initialMessage);
+    return runtime->template spawn<ActorConfig>(
+        self.database, std::move(initialState), initialMessage);
   }
 
   auto finish() -> void { runtime->finish(self); }

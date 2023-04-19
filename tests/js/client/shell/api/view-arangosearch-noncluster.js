@@ -209,7 +209,7 @@ function renameSuite () {
       assertEqual(doc1.parsedBody['type'], "arangosearch");
 
       let cmd2 = api + '/testView/rename';
-      let body2 = { "name": "g@rb@ge" };
+      let body2 = { "name": "g/rb/ge" };
       let doc2 = arango.PUT_RAW(cmd2, body2);
 
       assertEqual(doc2.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);

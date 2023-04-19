@@ -31,6 +31,7 @@
 const internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
 const {
+  runWithRetry,
   getServerById,
   getServersByType,
   getEndpointById,
@@ -47,6 +48,7 @@ const {
 } = require('@arangodb/test-helper-common');
 const clusterInfo = global.ArangoClusterInfo;
 
+exports.runWithRetry = runWithRetry;
 exports.isEnterprise = isEnterprise;
 exports.versionHas = versionHas;
 exports.getServerById = getServerById;
@@ -133,8 +135,8 @@ exports.getMetric = function (endpoint, name) {
 };
 
 exports.getMetricSingle = function (name) {
-  let res = arango.GET_RAW("/_admin/metrics");
-  if (res.code !== 200) {
+  let res = request.get("/_admin/metrics");
+  if (res.status !== 200) {
     throw "error fetching metric";
   }
   return getMetricName(res.body, name);

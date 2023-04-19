@@ -67,18 +67,18 @@ Result getKeyAndRevision(CollectionNameResolver const& resolver,
                          std::string& rev);
 
 // Builds an object "{ _key: key }"
-void buildKeyDocument(VPackBuilder& builder, std::string const& key);
+void buildKeyDocument(velocypack::Builder& builder, std::string const& key);
 
 // Builds an object "{ _key: key, _rev: rev }" if rev is not empty, otherwise
 // "{ _key: key, _rev: null }"
-void buildKeyAndRevDocument(VPackBuilder& builder, std::string const& key,
-                            std::string const& rev);
+void buildKeyAndRevDocument(velocypack::Builder& builder,
+                            std::string const& key, std::string const& rev);
 
 // Establishes whether a write is necessary. This is only relevant for
 // SmartGraphs in the Enterprise Edition. Refer to skipForAqlWrite in
 // Enterprise Edition
 bool writeRequired(ModificationExecutorInfos const& infos,
-                   VPackSlice const& doc, std::string const& key);
+                   velocypack::Slice doc, std::string const& key);
 
 // Throws an exception if a transaction resulted in an error, and errors
 // are not ignored.
@@ -93,7 +93,7 @@ OperationOptions convertOptions(ModificationOptions const& in,
                                 Variable const* outVariableNew,
                                 Variable const* outVariableOld);
 
-AqlValue getDocumentOrNull(VPackSlice const& elm, std::string const& key);
+AqlValue getDocumentOrNull(velocypack::Slice elm, std::string const& key);
 
 }  // namespace ModificationExecutorHelpers
 }  // namespace aql

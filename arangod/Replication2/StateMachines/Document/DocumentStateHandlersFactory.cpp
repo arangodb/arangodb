@@ -68,6 +68,11 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
         << " not found during creation of snapshot handler";
     return nullptr;
   }
+  // TODO: this looks unsafe, because the vocbase that we have fetched above
+  // is just a raw pointer. there may be a concurrent thread that deletes
+  // the vocbase we just looked up.
+  // this should be improved, by using `DatabaseFeature::useDatabase()`
+  // instead, which returns a managed pointer.
   return std::make_unique<DocumentStateSnapshotHandler>(
       std::make_unique<CollectionReaderFactory>(*vocbase));
 }

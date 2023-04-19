@@ -24,26 +24,59 @@
 #pragma once
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
+#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
 
 namespace arangodb {
 namespace pregel {
 namespace algos {
 
+struct EffectiveClosenessType {
+  using Vertex = ECValue;
+  using Edge = int8_t;
+  using Message = HLLCounter;
+};
+
 /// Effective Closeness
 struct EffectiveCloseness
     : public SimpleAlgorithm<ECValue, int8_t, HLLCounter> {
-  explicit EffectiveCloseness(application_features::ApplicationServer& server,
-                              VPackSlice params)
-      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>(
-            server, "effectivecloseness", params) {}
+  explicit EffectiveCloseness(VPackSlice params)
+      : SimpleAlgorithm<ECValue, int8_t, HLLCounter>(params) {}
 
-  GraphFormat<ECValue, int8_t>* inputFormat() const override;
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "effectivecloseness";
+  };
+
+  std::shared_ptr<GraphFormat<ECValue, int8_t> const> inputFormat()
+      const override;
   MessageFormat<HLLCounter>* messageFormat() const override;
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override;
   MessageCombiner<HLLCounter>* messageCombiner() const override;
+  [[nodiscard]] auto messageCombinerUnique() const
+      -> std::unique_ptr<message_combiner> override;
 
   VertexComputation<ECValue, int8_t, HLLCounter>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
+
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 };
 }  // namespace algos
 }  // namespace pregel

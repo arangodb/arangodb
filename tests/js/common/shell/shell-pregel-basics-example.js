@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNotEqual, JSON */
+/*global assertEqual, assertTrue, assertNotEqual */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -147,11 +147,6 @@ function basicTestSuite() {
     testPageRank: function () {
       // should test correct convergence behavior, might fail if EPS is too low
       testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
-    },
-
-    testPageRankMMap: function () {
-      // should test correct convergence behavior, might fail if EPS is too low
-      testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true, useMemoryMaps: true });
     },
 
     testPageRankSeeded: function () {

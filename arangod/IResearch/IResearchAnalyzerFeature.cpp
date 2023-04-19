@@ -90,6 +90,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchAnalyzerFeature.h"
+#include "Enterprise/IResearch/GeoAnalyzerEE.h"
 #endif
 
 #include <absl/strings/str_cat.h>
@@ -128,8 +129,6 @@ REGISTER_ANALYZER_JSON(IdentityAnalyzer, IdentityAnalyzer::make_json,
                        IdentityAnalyzer::normalize_json);
 REGISTER_ANALYZER_VPACK(GeoVPackAnalyzer, GeoVPackAnalyzer::make,
                         GeoVPackAnalyzer::normalize);
-REGISTER_ANALYZER_VPACK(GeoS2Analyzer, GeoS2Analyzer::make,
-                        GeoS2Analyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make,
                         GeoPointAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack,
@@ -748,14 +747,14 @@ bool analyzerInUse(ArangodServer& server, std::string_view dbName,
     return found;
   };
 
-  TRI_vocbase_t* vocbase{};
+  VocbasePtr vocbase;
 
   // check analyzer database
 
   if (server.hasFeature<DatabaseFeature>()) {
-    vocbase = server.getFeature<DatabaseFeature>().lookupDatabase(dbName);
+    vocbase = server.getFeature<DatabaseFeature>().useDatabase(dbName);
 
-    if (checkDatabase(vocbase)) {
+    if (vocbase != nullptr && checkDatabase(vocbase.get())) {
       return true;
     }
   }
@@ -764,7 +763,7 @@ bool analyzerInUse(ArangodServer& server, std::string_view dbName,
   if (server.hasFeature<SystemDatabaseFeature>()) {
     auto sysVocbase = server.getFeature<SystemDatabaseFeature>().use();
 
-    if (sysVocbase.get() != vocbase && checkDatabase(sysVocbase.get())) {
+    if (sysVocbase.get() != vocbase.get() && checkDatabase(sysVocbase.get())) {
       return true;
     }
   }
@@ -801,9 +800,11 @@ getAnalyzerMeta(irs::analysis::analyzer const* analyzer) noexcept {
   if (type == irs::type<GeoVPackAnalyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
             AnalyzerValueType::String, &GeoVPackAnalyzer::store};
+#ifdef USE_ENTERPRISE
   } else if (type == irs::type<GeoS2Analyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
             AnalyzerValueType::String, &GeoS2Analyzer::store};
+#endif
   } else if (type == irs::type<GeoPointAnalyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
             AnalyzerValueType::String, &GeoPointAnalyzer::store};
@@ -1181,9 +1182,9 @@ Result IResearchAnalyzerFeature::createAnalyzerPool(
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  if (!AnalyzerNameValidator::isAllowedName(
-          extendedNames,
-          std::string_view(split.second.data(), split.second.size()))) {
+  if (auto res = AnalyzerNameValidator::validateName(extendedNames,
+                                                     split.second.data());
+      res.fail()) {
     return {TRI_ERROR_BAD_PARAMETER,
             absl::StrCat("invalid characters in analyzer name '", split.second,
                          "'")};
@@ -1242,11 +1243,10 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
-  if (!AnalyzerNameValidator::isAllowedName(
-          extendedNames,
-          std::string_view(split.second.data(), split.second.size()))) {
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res =
+          AnalyzerNameValidator::validateName(extendedNames, split.second);
+      res.fail()) {
     return {TRI_ERROR_BAD_PARAMETER,
             absl::StrCat("invalid characters in analyzer name '", split.second,
                          "'")};
@@ -1267,19 +1267,15 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
                          ANALYZER_PROPERTIES_SIZE_MAX, "'")};
   }
 
-  auto generator =
-      [](irs::hashed_string_view const& key,
-         AnalyzerPool::ptr const& value) -> irs::hashed_string_view {
-    auto pool = std::make_shared<AnalyzerPool>(key);  // allocate pool
-    const_cast<AnalyzerPool::ptr&>(value) =
-        pool;  // lazy-instantiate pool to avoid allocation if pool is already
-               // present
-    return pool ? irs::hashed_string_view{pool->name(), key.hash()}
-                : key;  // reuse hash but point ref at value in pool
+  bool isNew{false};
+  irs::hashed_string_view hashed_key{name};
+  auto generator = [&isNew, &hashed_key](const auto& map_ctor) {
+    isNew = true;
+    auto pool = std::make_shared<AnalyzerPool>(hashed_key);  // allocate pool
+    map_ctor(irs::hashed_string_view{pool->name(), hashed_key.hash()}, pool);
   };
-  auto emplaceRes = irs::map_utils::try_emplace_update_key(
-      analyzers, generator, irs::hashed_string_view{name});
-  auto analyzer = emplaceRes.first->second;
+  auto emplaceRes = analyzers.lazy_emplace(hashed_key, generator);
+  auto analyzer = emplaceRes->second;
 
   if (!analyzer) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -1290,13 +1286,13 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   }
 
   // new analyzer creation, validate
-  if (emplaceRes.second) {
+  if (isNew) {
     bool erase = true;  // potentially invalid insertion took place
     irs::Finally cleanup = [&erase, &analyzers, &emplaceRes]() noexcept {
       // cppcheck-suppress knownConditionTrueFalse
       if (erase) {
         // ensure no broken analyzers are left behind
-        analyzers.erase(emplaceRes.first);
+        analyzers.erase(emplaceRes->first);
       }
     };
 
@@ -1350,7 +1346,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
     return {TRI_ERROR_BAD_PARAMETER, errorText.str()};
   }
 
-  result = emplaceRes;
+  result = {emplaceRes, isNew};
 
   return {};
 }
@@ -1963,7 +1959,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
 
     auto& dbFeature = server().getFeature<DatabaseFeature>();
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-    auto* vocbase = dbFeature.lookupDatabase(database);
+    auto vocbase = dbFeature.useDatabase(database);
     if (!vocbase) {
       if (engine.inRecovery()) {
         return {};  // database might not have come up yet
@@ -2133,7 +2129,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     auto itr = _lastLoad.find(database);
 
-    auto* vocbase = dbFeature.lookupDatabase(database);
+    auto vocbase = dbFeature.useDatabase(database);
 
     if (!vocbase) {
       if (engine.inRecovery()) {

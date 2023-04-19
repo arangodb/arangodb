@@ -2209,6 +2209,12 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     return;
   }
 
+  if (type == NODE_TYPE_NOP) {
+    // not used by V8
+    buffer.append("NOP");
+    return;
+  }
+
   if (type == NODE_TYPE_ITERATOR) {
     // not used by V8
     buffer.append("_ITERATOR(");
@@ -2328,7 +2334,7 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
   std::string message("stringification not supported for node type ");
   message.append(getTypeString());
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
 }
 
 /// note that this may throw and that the caller is responsible for

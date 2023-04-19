@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Noty, Blob, window, atob, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
+/* global Noty, Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -8,9 +8,6 @@
   window.isCoordinator = function (callback) {
     if (isCoordinator === null) {
       var url = 'cluster/amICoordinator';
-      if (frontendConfig.react) {
-        url = arangoHelper.databaseUrl('/_admin/aardvark/cluster/amICoordinator');
-      }
       $.ajax(
         url,
         {
@@ -95,6 +92,23 @@
       debug: 'rgb(64, 74, 83)'
     },
 
+    // convert a Unicode string to a string in which
+    // each 16-bit unit occupies only one byte.
+    // from https://developer.mozilla.org/en-US/docs/Web/API/btoa
+    toBinary: function (string) {
+      const codeUnits = Uint16Array.from(
+        { length: string.length },
+        (element, index) => string.charCodeAt(index)
+      );
+      const charCodes = new Uint8Array(codeUnits.buffer);
+
+      let result = "";
+      charCodes.forEach((char) => {
+        result += String.fromCharCode(char);
+      });
+      return result;
+    },
+
     getCurrentJwt: function () {
       return sessionStorage.getItem('jwt');
     },
@@ -159,7 +173,7 @@
               if (!jwtParts[1]) {
                 throw "invalid token!";
               }
-              var payload = JSON.parse(atob(jwtParts[1]));
+              var payload = JSON.parse(window.atob(jwtParts[1]));
               if (payload.preferred_username === currentUser) {
                 self.setCurrentJwt(data.jwt, currentUser);
                 updated = true;
@@ -279,10 +293,9 @@
 
     calculateCenterDivHeight: function () {
       var navigation = $('.navbar').height();
-      var footer = $('.footer').height();
       var windowHeight = $(window).height();
 
-      return windowHeight - footer - navigation - 110;
+      return windowHeight - navigation - 110;
     },
 
     createTooltips: function (selector, position) {
@@ -449,7 +462,7 @@
         }
 
         $('#subNavigationBar .bottom').append(
-          '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
+          '<li class="subMenuEntry ' + cssClass + '"><a>' + arangoHelper.escapeHtml(name) + '</a></li>'
         );
         if (!menu.disabled && !disabled) {
           $('#subNavigationBar .bottom').children().last().bind('click', function () {
