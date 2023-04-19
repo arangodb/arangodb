@@ -194,7 +194,7 @@ void ReplicationFeature::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(31006);
 }
 
 void ReplicationFeature::validateOptions(
