@@ -94,6 +94,10 @@ Normalization values are computed for fields which are processed with Analyzers
 that have the `"norm"` feature enabled. These values are used to score fairer if
 the same tokens occur repeatedly, to emphasize these documents less.
 
+You can also enable this option to always cache auxiliary data used for querying
+fields that are indexed with Geo Analyzers in memory for this specific field.
+This can improve the performance of geo-spatial queries.
+
 Default: the value defined by the top-level `cache` option.
 
 This property is available in the Enterprise Edition only.
@@ -151,6 +155,14 @@ for this specific nested field. This can improve the performance of scoring and
 ranking queries. Otherwise, these values are memory-mapped and it is up to the
 operating system to load them from disk into memory and to evict them from memory.
 
+Normalization values are computed for fields which are processed with Analyzers
+that have the `"norm"` feature enabled. These values are used to score fairer if
+the same tokens occur repeatedly, to emphasize these documents less.
+
+You can also enable this option to always cache auxiliary data used for querying
+fields that are indexed with Geo Analyzers in memory for this specific nested field.
+This can improve the performance of geo-spatial queries.
+
 Default: the value defined by the top-level `cache` option.
 
 This property is available in the Enterprise Edition only.
@@ -188,6 +200,10 @@ operating system to load them from disk into memory and to evict them from memor
 Normalization values are computed for fields which are processed with Analyzers
 that have the `"norm"` feature enabled. These values are used to score fairer if
 the same tokens occur repeatedly, to emphasize these documents less.
+
+You can also enable this option to always cache auxiliary data used for querying
+fields that are indexed with Geo Analyzers in memory for all fields by default.
+This can improve the performance of geo-spatial queries.
 
 Default: `false`
 
