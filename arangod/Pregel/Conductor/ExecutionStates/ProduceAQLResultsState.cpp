@@ -42,9 +42,9 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
     auto stateName = newState->name();
 
     return StateChange{
-        .statusMessage =
-            pregel::message::Canceled{
-                .state = stateName,
+        .statusMessage = pregel::message::Canceled{.state = stateName},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
                 .prevState = pregel::metrics::message::PrevState::STORING},
         .newState = std::move(newState)};
   }
@@ -53,10 +53,10 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage =
-            pregel::message::InFatalError{
-                .state = stateName,
-                .prevState = pregel::metrics::message::PrevState::COMPUTING},
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
+                .prevState = pregel::metrics::message::PrevState::STORING},
         .newState = std::move(newState)};
   }
   responseCount++;
@@ -68,6 +68,9 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
     auto stateName = newState->name();
     return StateChange{
         .statusMessage = pregel::message::PregelFinished{.state = stateName},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
+                .prevState = pregel::metrics::message::PrevState::STORING},
         .newState = std::move(newState)};
   }
   return std::nullopt;

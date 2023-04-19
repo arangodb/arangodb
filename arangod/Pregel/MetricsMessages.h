@@ -67,7 +67,7 @@ auto inspect(Inspector& f, ConductorStoringStarted& x) {
 }
 
 struct ConductorFinished {
-  PrevState prevState;
+  PrevState prevState = PrevState::OTHER;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorFinished& x) {

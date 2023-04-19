@@ -51,9 +51,9 @@ auto Computing::receive(actor::ActorPID sender,
     auto stateName = newState->name();
 
     return StateChange{
-        .statusMessage =
-            pregel::message::Canceled{
-                .state = stateName,
+        .statusMessage = pregel::message::Canceled{.state = stateName},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
                 .prevState = pregel::metrics::message::PrevState::COMPUTING},
         .newState = std::move(newState)};
   }
@@ -64,9 +64,9 @@ auto Computing::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage =
-            pregel::message::InFatalError{
-                .state = stateName,
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
                 .prevState = pregel::metrics::message::PrevState::COMPUTING},
         .newState = std::move(newState)};
   }
@@ -76,9 +76,9 @@ auto Computing::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage =
-            pregel::message::InFatalError{
-                .state = stateName,
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
                 .prevState = pregel::metrics::message::PrevState::COMPUTING},
         .newState = std::move(newState)};
   }
@@ -107,6 +107,8 @@ auto Computing::receive(actor::ActorPID sender,
         return StateChange{
             .statusMessage =
                 pregel::message::StoringStarted{.state = stateName},
+            .metricsMessage =
+                pregel::metrics::message::ConductorStoringStarted{},
             .newState = std::move(newState)};
       }
 
@@ -114,6 +116,7 @@ auto Computing::receive(actor::ActorPID sender,
       auto stateName = newState->name();
       return StateChange{
           .statusMessage = pregel::message::StoringStarted{.state = stateName},
+          .metricsMessage = pregel::metrics::message::ConductorStoringStarted{},
           .newState = std::move(newState)};
     }
 
@@ -136,6 +139,7 @@ auto Computing::receive(actor::ActorPID sender,
                                .edgeCount = edgeCount,
                                .aggregators = std::move(aggregators),
                                .state = stateName},
+                       .metricsMessage = std::nullopt,
                        .newState = std::move(newState)};
   }
 

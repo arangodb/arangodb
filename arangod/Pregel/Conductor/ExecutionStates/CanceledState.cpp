@@ -50,6 +50,7 @@ auto Canceled::receive(actor::ActorPID sender,
     auto stateName = newState->name();
     return StateChange{
         .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }
   conductor.workers.erase(sender);

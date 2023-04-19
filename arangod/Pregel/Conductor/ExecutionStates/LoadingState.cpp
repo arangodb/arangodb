@@ -32,9 +32,9 @@ auto Loading::receive(actor::ActorPID sender,
     auto stateName = newState->name();
 
     return StateChange{
-        .statusMessage =
-            pregel::message::Canceled{
-                .state = stateName,
+        .statusMessage = pregel::message::Canceled{.state = stateName},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
                 .prevState = pregel::metrics::message::PrevState::LOADING},
         .newState = std::move(newState)};
   }
@@ -47,9 +47,9 @@ auto Loading::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage =
-            pregel::message::InFatalError{
-                .state = stateName,
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
                 .prevState = pregel::metrics::message::PrevState::LOADING},
         .newState = std::move(newState)};
   }
@@ -69,6 +69,7 @@ auto Loading::receive(actor::ActorPID sender,
     return StateChange{
         .statusMessage =
             pregel::message::ComputationStarted{.state = stateName},
+        .metricsMessage = pregel::metrics::message::ConductorComputingStarted{},
         .newState = std::move(newState)};
   }
 

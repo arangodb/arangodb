@@ -216,6 +216,10 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
         statusMessage.has_value()) {
       this->dispatch(this->state->statusActor, statusMessage.value());
     }
+    if (auto metricsMessage = std::move(stateChange.metricsMessage);
+        metricsMessage.has_value()) {
+      this->dispatch(this->state->metricsActor, metricsMessage.value());
+    }
     this->state->executionState = std::move(stateChange.newState);
     LOG_TOPIC("e3b0c", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Execution state changed to {}",

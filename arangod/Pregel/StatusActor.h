@@ -29,7 +29,6 @@
 #include "Inspection/Format.h"
 #include "Pregel/DatabaseTypes.h"
 #include "Pregel/StatusMessages.h"
-#include "Pregel/MetricsMessages.h"
 #include "fmt/core.h"
 #include "fmt/chrono.h"
 
@@ -224,9 +223,6 @@ auto inspect(Inspector& f, StatusDetails& x) {
 }
 
 struct StatusState {
-  explicit StatusState(actor::ActorPID metricsActor)
-      : metricsActor(std::move(metricsActor)) {}
-
   std::string stateName;
   ExecutionNumber id;
   std::string database;
@@ -241,8 +237,6 @@ struct StatusState {
   uint64_t vertexCount{};
   uint64_t edgeCount{};
   StatusDetails details;
-
-  actor::ActorPID metricsActor;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusState& x) {
@@ -291,9 +285,6 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->created =
         std::chrono::time_point<std::chrono::steady_clock>{duration};
 
-    this->template dispatch(this->state->metricsActor,
-                            pregel::metrics::message::ConductorStarted{});
-
     return std::move(this->state);
   }
 
@@ -301,10 +292,6 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
       -> std::unique_ptr<StatusState> {
     this->state->stateName = loading.state;
     this->state->timings.loading.setStart(loading.time);
-
-    this->template dispatch(
-        this->state->metricsActor,
-        pregel::metrics::message::ConductorLoadingStarted{});
 
     return std::move(this->state);
   }
@@ -328,10 +315,6 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->timings.loading.setStop(msg.time);
     this->state->timings.computation.setStart(msg.time);
     this->state->timings.gss.push_back(PrintableDuration::withStart(msg.time));
-
-    this->template dispatch(
-        this->state->metricsActor,
-        pregel::metrics::message::ConductorComputingStarted{});
 
     return std::move(this->state);
   }
@@ -370,10 +353,6 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
 
     this->state->timings.storing.setStart(msg.time);
 
-    this->template dispatch(
-        this->state->metricsActor,
-        pregel::metrics::message::ConductorStoringStarted{});
-
     return std::move(this->state);
   }
 
@@ -393,11 +372,6 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->timings.storing.setStop(msg.time);
     this->state->timings.totalRuntime.setStop(msg.time);
 
-    this->template dispatch(
-        this->state->metricsActor,
-        pregel::metrics::message::ConductorFinished{
-            .prevState = metrics::message::PrevState::STORING});
-
     return std::move(this->state);
   }
 
@@ -405,21 +379,12 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->stateName = msg.state;
     this->state->timings.stopAll(msg.time);
 
-    this->template dispatch(this->state->metricsActor,
-                            pregel::metrics::message::ConductorFinished{
-                                .prevState = msg.prevState});
-
-    return std::move(this->state);
     return std::move(this->state);
   }
 
   auto operator()(message::Canceled& msg) -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;
     this->state->timings.stopAll(msg.time);
-
-    this->template dispatch(this->state->metricsActor,
-                            pregel::metrics::message::ConductorFinished{
-                                .prevState = msg.prevState});
 
     return std::move(this->state);
   }

@@ -43,6 +43,7 @@ auto Initial::receive(actor::ActorPID sender,
 
     return StateChange{
         .statusMessage = pregel::message::Canceled{.state = stateName},
+        .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }
 
@@ -51,6 +52,7 @@ auto Initial::receive(actor::ActorPID sender,
     auto stateName = newState->name();
     return StateChange{
         .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }
 
@@ -59,5 +61,6 @@ auto Initial::receive(actor::ActorPID sender,
 
   return StateChange{
       .statusMessage = pregel::message::PregelStarted{.state = stateName},
+      .metricsMessage = pregel::metrics::message::ConductorStarted{},
       .newState = std::move(newState)};
 }

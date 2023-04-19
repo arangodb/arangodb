@@ -64,6 +64,7 @@ auto CreateWorkers::receive(actor::ActorPID sender,
 
     return StateChange{
         .statusMessage = pregel::message::Canceled{.state = stateName},
+        .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }
 
@@ -73,6 +74,7 @@ auto CreateWorkers::receive(actor::ActorPID sender,
     auto stateName = newState->name();
     return StateChange{
         .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }
   auto workerCreated = std::get<ResultT<message::WorkerCreated>>(message);
@@ -81,6 +83,7 @@ auto CreateWorkers::receive(actor::ActorPID sender,
     auto stateName = newState->name();
     return StateChange{
         .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }
   conductor.workers.emplace(sender);
@@ -96,6 +99,7 @@ auto CreateWorkers::receive(actor::ActorPID sender,
     auto stateName = newState->name();
     return StateChange{
         .statusMessage = pregel::message::LoadingStarted{.state = stateName},
+        .metricsMessage = pregel::metrics::message::ConductorLoadingStarted{},
         .newState = std::move(newState)};
   }
   return std::nullopt;

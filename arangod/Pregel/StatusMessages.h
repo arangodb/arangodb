@@ -171,7 +171,6 @@ auto inspect(Inspector& f, PregelFinished& x) {
 struct InFatalError {
   std::string state;
   TimingInMicroseconds time = TimingInMicroseconds::now();
-  metrics::message::PrevState prevState = metrics::message::PrevState::OTHER;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, InFatalError& x) {
@@ -181,7 +180,6 @@ auto inspect(Inspector& f, InFatalError& x) {
 struct Canceled {
   std::string state;
   TimingInMicroseconds time = TimingInMicroseconds::now();
-  metrics::message::PrevState prevState = metrics::message::PrevState::OTHER;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Canceled& x) {
