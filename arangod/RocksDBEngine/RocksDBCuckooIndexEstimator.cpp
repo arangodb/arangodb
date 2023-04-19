@@ -55,7 +55,7 @@ RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(uint64_t size)
   size *= 2;
   size = (size >= 1024) ? size : 1024;  // want 256 buckets minimum
 
-  // First find the smallest power of two that is not smaller than size:
+  // First find the smallest power of two that is not less than size:
   size /= kSlotsPerBucket;
   _size = size;
   initializeDefault();

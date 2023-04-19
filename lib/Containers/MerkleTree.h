@@ -108,7 +108,7 @@ class MerkleTreeBase {
 
   // size of each shard, in bytes.
   // note: trees with a small depth may only have a single shard which is
-  // smaller than this value
+  // less than this value
   static constexpr std::uint64_t ShardSize = (1 << 16);
 
   struct Data {

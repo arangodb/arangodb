@@ -438,7 +438,7 @@ void ShardingInfo::replicationFactor(size_t replicationFactor) {
   if (!isSatellite() && replicationFactor < _writeConcern) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "replicationFactor cannot be smaller than writeConcern (" +
+        "replicationFactor cannot be less than writeConcern (" +
             basics::StringUtils::itoa(_replicationFactor) + " < " +
             basics::StringUtils::itoa(_writeConcern) + ")");
   }

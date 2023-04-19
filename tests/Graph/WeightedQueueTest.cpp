@@ -181,7 +181,7 @@ TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
     EXPECT_EQ(queue.size(), input.size());
     // Input is required
     EXPECT_TRUE(queue.hasProcessableElement());
-    // Smaller than anything
+    // Less than anything
     double weightBefore = -1.0;
 
     // Consume everything from the queue.

@@ -748,7 +748,7 @@ std::unordered_map<
          if (increment == 0 || increment >= (1ULL << 16)) {
            THROW_ARANGO_EXCEPTION_MESSAGE(
                TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
-               "increment value must be greater than zero and smaller than "
+               "increment value must be greater than zero and less than "
                "65536");
          }
        }

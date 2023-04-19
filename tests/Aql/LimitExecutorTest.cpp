@@ -297,7 +297,7 @@ TEST_P(LimitExecutorTest, testSuite) {
         // up to the point where the Executor has actually consumed input.
         if (rowsByClient >= limit &&
             rowsToTriggerFullCountInExecutor < numInputRows) {
-          // however if the limit of the executor is smaller than the input
+          // however if the limit of the executor is less than the input
           // it will itself start counting.
           stats.incrFullCountBy(numInputRows);
         } else {

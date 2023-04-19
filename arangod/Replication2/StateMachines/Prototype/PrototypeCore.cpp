@@ -175,7 +175,7 @@ void PrototypeCore::update(LogIndex lastIndexToApply) {
   // Meta-entries are never seen by the state machine, but still increase the
   // log index, creating gaps between ongoing states. Hence,
   // lastIndexToApply could be greater than the last index of the current
-  // ongoing state, but smaller than that of the next ongoing state, in which
+  // ongoing state, but less than that of the next ongoing state, in which
   // case we prefer to keep the current one. We have to look ahead in the
   // deque to make sure this stays correct.
   while (_ongoingStates.size() > 1 &&

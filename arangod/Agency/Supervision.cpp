@@ -3151,7 +3151,7 @@ void arangodb::consensus::enforceReplicationFunctional(
 
               if (actualReplicationFactor < replicationFactor &&
                   apparentReplicationFactor < 2 + replicationFactor) {
-                // Note: If apparentReplicationFactor is smaller than
+                // Note: If apparentReplicationFactor is less than
                 // replicationFactor, then there are fewer servers in the
                 // plan than requested by the user. This means the AddFollower
                 // job is not subject to the configurable delay and is
@@ -3230,7 +3230,7 @@ void Supervision::shrinkCluster() {
     return;
   }
 
-  // Only if number of servers in target is smaller than the available
+  // Only if number of servers in target is less than the available
   if (targetNumDBServers < availServers.size()) {
     // Minimum 1 DB server must remain
     if (availServers.size() == 1) {

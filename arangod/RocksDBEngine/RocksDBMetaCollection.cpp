@@ -648,7 +648,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(
   // as possible with the property, that there are and will never be
   // any changes to the collection with a sequence number greater than
   // the sequence number of the last persisted version of the revision tree
-  // *and* smaller than s. Therefore, we can in the end move the in memory
+  // *and* less than s. Therefore, we can in the end move the in memory
   // sequence number forward of the latest serialized revision tree.
   // See below for a proof that we do not miss any transactions!
 
@@ -674,7 +674,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(
   // After that, at some stage the pending insertions and removals are
   // actually applied to the tree and its `_revisionTreeApplied` is moved
   // forward. The new tree will eventually be persisted again.
-  // Note that since `beginSeq` is always smaller than any sequence number
+  // Note that since `beginSeq` is always less than any sequence number
   // involved in the transaction (including `postCommitSeq`),
   // we always have a blocker with `beginSeq` (or smaller) whenever
   // we write operations to the WAL.
@@ -689,7 +689,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(
     // although we have not actually persisted the tree at `seq`.
     // All we have to ensure that no transaction has or will ever again
     // produce a change with a sequence number greater than
-    // `_revisionTreeSerializedSeq` and smaller than or equal to `seq`.
+    // `_revisionTreeSerializedSeq` and less than or equal to `seq`.
     // This is true, because of the following:
     // Assume some transaction that touches this collection would end up
     // with its commit marker at a sequence number between

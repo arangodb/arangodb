@@ -83,7 +83,7 @@ class RegisterInfos {
   /**
    * @brief Get the input registers the Executor is allowed to read. This has
    *        little to do with numberOfInputRegisters(), except that each input
-   *        register index returned here is smaller than
+   *        register index returned here is less than
    *        numberOfInputRegisters().
    *
    * @return The indices of the input registers.
@@ -93,8 +93,8 @@ class RegisterInfos {
   /**
    * @brief Get the output registers the Executor is allowed to write. This has
    *        little to do with numberOfOutputRegisters(), except that each output
-   *        register index returned here is smaller than
-   *        numberOfOutputRegisters(). They may or may not be smaller than the
+   *        register index returned here is less than
+   *        numberOfOutputRegisters(). They may or may not be less than the
    *        numberOfInputRegisters(), i.e. they may already be allocated in the
    *        input blocks.
    *

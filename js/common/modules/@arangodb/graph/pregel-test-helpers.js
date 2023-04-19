@@ -565,7 +565,7 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
 
       testWCC20DirectedCycles: function () {
         let componentSizes = [];
-        // cycles of length smaller than 2 cannot be produced
+        // cycles of length less than 2 cannot be produced
         for (let i = 2; i < 22; ++i) {
           componentSizes.push(i);
         }
@@ -584,7 +584,7 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
 
       testWCC20AlternatingCycles: function () {
         let componentSizes = [];
-        // cycles of length smaller than 2 cannot be produced
+        // cycles of length less than 2 cannot be produced
         for (let i = 2; i < 22; ++i) {
           componentSizes.push(i);
         }
