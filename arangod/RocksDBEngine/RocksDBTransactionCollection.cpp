@@ -60,12 +60,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
                            .getFeature<arangodb::RocksDBOptionFeature>()
                            .exclusiveWrites()) {}
 
-RocksDBTransactionCollection::~RocksDBTransactionCollection() {
-  try {
-    releaseUsage();
-  } catch (...) {
-  }
-}
+RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
 
 /// @brief whether or not any write operations for the collection happened
 bool RocksDBTransactionCollection::hasOperations() const {
@@ -129,7 +124,6 @@ void RocksDBTransactionCollection::releaseUsage() {
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
       _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
     TRI_ASSERT(!_usageLocked);
-    TRI_ASSERT(!isLocked());
     _collection = nullptr;
     return;
   }
@@ -476,7 +470,6 @@ Result RocksDBTransactionCollection::ensureCollection() {
       _usageLocked = true;
     } else {
       // use without usage-lock (lock already set externally)
-      TRI_ASSERT(!_usageLocked);
       _collection = _transaction->vocbase().lookupCollection(_cid);
 
       if (_collection == nullptr) {
