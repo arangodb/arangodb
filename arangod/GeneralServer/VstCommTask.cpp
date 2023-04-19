@@ -220,7 +220,7 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   // returns false if message gets too big
   if (!msg.addChunk(chunk)) {
     LOG_TOPIC("695fd", WARN, Logger::REQUESTS)
-        << "\"vst-request\"; chunk contents have become larger than "
+        << "\"vst-request\"; chunk contents have become greater than "
         << "allowed, this=" << this;
     return false;  // close connection
   }

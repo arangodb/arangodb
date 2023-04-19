@@ -289,7 +289,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout,
 
   // An fd_set is a fixed size buffer.
   // Executing FD_CLR() or FD_SET() with a value of fd that is negative or is
-  // equal to or larger than FD_SETSIZE
+  // equal to or greater than FD_SETSIZE
   // will result in undefined behavior. Moreover, POSIX requires fd to be a
   // valid file descriptor.
   if (fd < 0 || fd >= FD_SETSIZE) {

@@ -148,7 +148,7 @@ TEST_F(CFilesTest, tst_copyfile) {
   EXPECT_TRUE(value == FileUtils::slurp(dest));
   EXPECT_TRUE(TRI_SizeFile(source.c_str()) == TRI_SizeFile(dest.c_str()));
 
-  // copy file slightly larger than copy buffer
+  // copy file slightly greater than copy buffer
   std::string value2(128 * 1024 + 1, 'x');
   std::ignore = FileUtils::remove(source);
   std::ignore = FileUtils::remove(dest);

@@ -127,7 +127,7 @@ use the push method to transfer the count early.
 Any increments on buffers since the last push
 will not be reflected in the value reported by a load of the counter.
 The destructor does an implicit push.
-The lifetime of the counter must be strictly larger than
+The lifetime of the counter must be strictly greater than
 the lifetimes of any buffers attached to it.
 
 

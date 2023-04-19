@@ -942,7 +942,7 @@ void AqlItemBlock::validateShadowRowConsistency() const {
         TRI_ASSERT(isShadowRow(r - 1));
 
         size_t compDepth = static_cast<uint64_t>(getShadowRowDepth(r - 1));
-        // The row before can only be one less then d (result of subquery)
+        // The row before can only be one less than d (result of subquery)
         // Or greater or equal to d. (The subquery either has no result or is
         // skipped)
         TRI_ASSERT(depth - 1 <= compDepth);

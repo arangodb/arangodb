@@ -641,7 +641,7 @@ query strings and bind parameter values to a reasonable length in log files.)");
 
   options
       ->addOption("--query.log-memory-usage-threshold",
-                  "Log queries that have a peak memory usage larger than this "
+                  "Log queries that have a peak memory usage greater than this "
                   "threshold.",
                   new UInt64Parameter(&_peakMemoryUsageThreshold),
                   arangodb::options::makeFlags(

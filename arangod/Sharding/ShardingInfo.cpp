@@ -126,7 +126,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
         if (!isSatellite() && _writeConcern > _replicationFactor) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
-              "writeConcern cannot be larger than replicationFactor (" +
+              "writeConcern cannot be greater than replicationFactor (" +
                   basics::StringUtils::itoa(_writeConcern) + " > " +
                   basics::StringUtils::itoa(_replicationFactor) + ")");
         }
@@ -454,7 +454,7 @@ void ShardingInfo::writeConcern(size_t writeConcern) {
   if (!isSatellite() && writeConcern > _replicationFactor) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "writeConcern cannot be larger than replicationFactor (" +
+        "writeConcern cannot be greater than replicationFactor (" +
             basics::StringUtils::itoa(_writeConcern) + " > " +
             basics::StringUtils::itoa(_replicationFactor) + ")");
   }
@@ -466,7 +466,7 @@ void ShardingInfo::setWriteConcernAndReplicationFactor(
   if (writeConcern > replicationFactor) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "writeConcern cannot be larger than replicationFactor (" +
+        "writeConcern cannot be greater than replicationFactor (" +
             basics::StringUtils::itoa(writeConcern) + " > " +
             basics::StringUtils::itoa(replicationFactor) + ")");
   }

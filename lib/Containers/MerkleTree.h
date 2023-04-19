@@ -281,7 +281,7 @@ class MerkleTree : public MerkleTreeBase {
    * @param rangeMax Must be an offset from rangeMin of a multiple of the
    *                 number of leaf nodes. If 0, it will be  chosen using the
    *                 defaultRange method. This is just an initial value to
-   *                 prevent immediate resizing; if a key larger than rangeMax
+   *                 prevent immediate resizing; if a key greater than rangeMax
    *                 is inserted into the tree, it will be dynamically resized
    *                 so that a larger rangeMax is chosen, and adjacent nodes
    *                 merged as necessary (growRight).

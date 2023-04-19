@@ -57,7 +57,7 @@ struct ICollectionReader {
 
   /* Populates the builder with the next batch of documents.
    * The soft limit is a size limit, at least one document will be retrieved,
-   * hence the builder may be larger than the given limit.
+   * hence the builder may be greater than the given limit.
    * If there are no more documents to read, the builder will not be affected.
    */
   virtual void read(VPackBuilder& builder, std::size_t softLimit) = 0;

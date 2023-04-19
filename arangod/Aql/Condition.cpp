@@ -249,7 +249,7 @@ struct PermutationState {
 // OIS -> OTHER_CONTAINED_IN_SELF -> the right condition is a consequence of the
 // left condition
 // If a condition (A) is a consequence of another (B), the solution set of A is
-// larger than that of B
+// greater than that of B
 //  -> A can be dropped.
 
 CompareResult const ResultsTable[3][7][7] = {
@@ -337,7 +337,7 @@ CompareResult const ResultsTable[3][7][7] = {
 // OIS -> OTHER_CONTAINED_IN_SELF -> the right condition is a consequence of the
 // left condition
 // If a condition (A) is a consequence of another (B), the solution set of A is
-// larger than that of B
+// greater than that of B
 //  -> A can be dropped.
 
 CompareResult const ResultsTableMultiValued[3][7][7] = {

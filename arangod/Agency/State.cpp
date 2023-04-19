@@ -401,7 +401,7 @@ index_t State::logFollower(VPackSlice transactions) {
   //      snapshot. If the term in our log entry is smaller (cannot be
   //      larger because compaction snapshots are always committed), then
   //      our complete log must be deleted as in 1.
-  //   3. Our highest log index is larger than the snapshot index but we
+  //   3. Our highest log index is greater than the snapshot index but we
   //      no longer have an entry in the log for the snapshot index due to
   //      our own compaction. In this case we have compacted away the
   //      snapshot index, therefore we know it was committed by a majority

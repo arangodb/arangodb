@@ -275,13 +275,13 @@ auto clientCalls = testing::Values(
             true},  // hardlimit call (note this is equal to length of input
                     // data), with fullcount
     AqlCall{0, 7u, AqlCall::Infinity{},
-            false},  // softlimit call (note this is larger than length of input
+            false},  // softlimit call (note this is greater than length of input
                      // data)
     AqlCall{0, AqlCall::Infinity{}, 7u,
-            false},  // hardlimit call (note this is larger than length of input
+            false},  // hardlimit call (note this is greater than length of input
                      // data), no fullcount
     AqlCall{0, AqlCall::Infinity{}, 7u, true}
-    // hardlimit call (note this is larger than length of input data), with
+    // hardlimit call (note this is greater than length of input data), with
     // fullcount
 );
 

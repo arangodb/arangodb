@@ -3536,7 +3536,7 @@ void Supervision::checkUndoLeaderChangeActions() {
       //  - it is not yet started
       //  - the fromServer is GOOD
       //  - it is in sync for the shard (and all distributeShardsLike shards)
-      //  - its current rebootId is larger than the stored one
+      //  - its current rebootId is greater than the stored one
       auto started = entry->hasAsString("started");
       if (started) {
         continue;

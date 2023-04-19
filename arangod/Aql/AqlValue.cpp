@@ -1492,7 +1492,7 @@ AqlValue::AqlValue(AqlValueHintUInt v) noexcept {
     _data.shortNumberMeta.data.int48.val = static_cast<int64_t>(value);
     setType(AqlValueType::VPACK_INLINE_INT48);
   } else {
-    // value larger than largest int48 value
+    // value greater than largest int48 value
     _data.longNumberMeta.data.uintLittleEndian.val =
         arangodb::basics::hostToLittle(value);
     // always store as 8 byte Slice as we need full aligned value in binary

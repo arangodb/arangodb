@@ -1873,7 +1873,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
               }
             }
           } else {
-            // In all other executors the stack is 1 depth smaller then what
+            // In all other executors the stack is 1 depth smaller than what
             // we request from upstream. The top-most entry will be added
             // by the executor and is not part of the stack here.
             // However the returned skipped information is complete including

@@ -962,7 +962,7 @@ devel
   queries to the server log. The option is turned off by default.
 
 * Added startup option `--query.log-memory-usage-threshold` to optionally log
-  all AQL queries that have a peak memory usage larger than the configured
+  all AQL queries that have a peak memory usage greater than the configured
   value. The default value is 4GB.
 
 * Added startup option `--query.max-artifact-log-length` to control the
@@ -7021,7 +7021,7 @@ devel
     stored dump files.
 
 * Fixed traversal issue: If you have a traversal with different minDepth and maxDepth
-  values and filter on path elements that are larger then minDepth, in a way that a
+  values and filter on path elements that are greater than minDepth, in a way that a
   shorter path would match the condition, the shorter paths would in some cases
   not be returned, even if they are valid. e.g.
 
