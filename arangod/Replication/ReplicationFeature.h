@@ -92,6 +92,11 @@ class ReplicationFeature final
 
   bool autoRepairRevisionTrees() const noexcept;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // only used during testing
+  void autoRepairRevisionTrees(bool value) noexcept;
+#endif
+
   /// @brief track the number of (parallel) tailing operations
   /// will throw an exception if the number of concurrently running operations
   /// would exceed the configured maximum

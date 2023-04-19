@@ -319,6 +319,13 @@ bool ReplicationFeature::autoRepairRevisionTrees() const noexcept {
   return _autoRepairRevisionTrees;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// only used during testing
+void ReplicationFeature::autoRepairRevisionTrees(bool value) noexcept {
+  _autoRepairRevisionTrees = value;
+}
+#endif
+
 // start the replication applier for a single database
 void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
