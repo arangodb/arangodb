@@ -1,5 +1,5 @@
 name: arangodb_network_dequeue_duration
-introducedIn: "3.10.6"
+introducedIn: "3.9.11"
 help: |
   Internal request duration for the dequeue in seconds.
 unit: seconds

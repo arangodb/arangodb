@@ -1,5 +1,5 @@
 name: arangodb_network_response_duration
-introducedIn: "3.10.6"
+introducedIn: "3.9.11"
 help: |
   Internal request duration from fully sent till response received in seconds.
 unit: seconds
