@@ -381,10 +381,6 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   GraphNode::InputVertex sourceInput = ::prepareVertexInput(this, false);
   GraphNode::InputVertex targetInput = ::prepareVertexInput(this, true);
 
-#ifdef USE_ENTERPRISE
-  waitForSatelliteIfRequired(&engine);
-#endif
-
   // Can only be specified in ShortestPathNode.cpp - not allowed here
   TRI_ASSERT(pathType() != arangodb::graph::PathType::Type::ShortestPath);
 
