@@ -112,11 +112,10 @@ class NetworkFeature final : public ArangodFeature {
   metrics::Counter& _requestTimeouts;
   metrics::Histogram<metrics::FixScale<double>>& _requestDurations;
 
-  metrics::Counter& _delayedDequeues;
   metrics::Counter& _unfinishedSends;
-  metrics::Counter& _delayedSends;
-  metrics::Counter& _slowResponses;
+  metrics::Histogram<metrics::FixScale<double>>& _dequeueDurations;
   metrics::Histogram<metrics::FixScale<double>>& _sendDurations;
+  metrics::Histogram<metrics::FixScale<double>>& _responseDurations;
 };
 
 }  // namespace arangodb
