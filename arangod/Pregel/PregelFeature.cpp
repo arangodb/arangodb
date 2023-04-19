@@ -444,12 +444,6 @@ PregelFeature::PregelFeature(Server& server)
       _actorRuntime(nullptr) {
   static_assert(Server::isCreatedAfter<PregelFeature,
                                        arangodb::metrics::MetricsFeature>());
-  auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
-      StaticStrings::SystemDatabase, std::make_unique<MetricsState>(_metrics),
-      metrics::message::MetricsStart{});
-  _metricsActor = actor::ActorPID{.server = ServerState::instance()->getId(),
-                                  .database = StaticStrings::SystemDatabase,
-                                  .id = metricsActorID};
 
   setOptional(true);
   startsAfter<DatabaseFeature>();
@@ -651,6 +645,12 @@ void PregelFeature::start() {
       std::make_shared<ArangoExternalDispatcher>(
           "/_api/pregel/actor", server().getFeature<NetworkFeature>().pool(),
           network::Timeout{5.0 * 60}));
+  auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
+      StaticStrings::SystemDatabase, std::make_unique<MetricsState>(_metrics),
+      metrics::message::MetricsStart{});
+  _metricsActor = actor::ActorPID{.server = ServerState::instance()->getId(),
+                                  .database = StaticStrings::SystemDatabase,
+                                  .id = metricsActorID};
 }
 
 void PregelFeature::beginShutdown() {
