@@ -76,7 +76,7 @@ template<typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code,
                                      Payload&& payload) {
   resetResponse(code);
-  writeResult(std::forward<Payload>(payload), VPackOptions::Defaults);
+  writeResult(std::forward<Payload>(payload), getVPackOptions());
 }
 
 template<typename Payload>
@@ -117,7 +117,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload) {
     }
     tmp.close();
 
-    writeResult(std::move(buffer), VPackOptions::Defaults);
+    writeResult(std::move(buffer), getVPackOptions());
   } catch (...) {
     // Building the error response failed
   }
@@ -137,7 +137,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
 
     tmp = VPackCollection::merge(tmp.slice(), payload.slice(), false);
 
-    writeResult(tmp.slice(), VPackOptions::Defaults);
+    writeResult(tmp.slice(), getVPackOptions());
   } catch (...) {
     // Building the error response failed
   }
@@ -191,6 +191,10 @@ void RestBaseHandler::writeResult(Payload&& payload,
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "cannot generate output");
   }
+}
+
+VPackOptions const& RestBaseHandler::getVPackOptions() const {
+  return VPackOptions::Defaults;
 }
 
 // TODO -- rather move code to header (slower linking) or remove templates

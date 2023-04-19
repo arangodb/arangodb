@@ -40,6 +40,9 @@ class RestDocumentStateHandler : public RestVocbaseBaseHandler {
   char const* name() const final { return "RestDocumentStateHandler"; }
   RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }
 
+ protected:
+  VPackOptions const& getVPackOptions() const final { return _options; }
+
  private:
   RestStatus executeByMethod(replication2::DocumentStateMethods const& methods);
 
@@ -63,5 +66,9 @@ class RestDocumentStateHandler : public RestVocbaseBaseHandler {
       replication2::LogId const& logId,
       ResultT<replication2::replicated_state::document::SnapshotParams>&&
           params);
+
+ private:
+  std::unique_ptr<VPackCustomTypeHandler> _customTypeHandler;
+  VPackOptions _options;
 };
 }  // namespace arangodb

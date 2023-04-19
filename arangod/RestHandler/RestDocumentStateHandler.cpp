@@ -24,19 +24,48 @@
 #include "RestHandler/RestDocumentStateHandler.h"
 
 #include "Basics/ResultT.h"
-#include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMethods.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Transaction/Helpers.h"
 
 #include <optional>
+#include <velocypack/Dumper.h>
 
 namespace arangodb {
+
+namespace {
+/*
+ * CustomTypeHandler to parse the collection ID from snapshot batches.
+ */
+struct SnapshotTypeHandler final : public VPackCustomTypeHandler {
+  explicit SnapshotTypeHandler(TRI_vocbase_t& vocbase)
+      : resolver(CollectionNameResolver(vocbase)) {}
+
+  void dump(VPackSlice const& value, VPackDumper* dumper,
+            VPackSlice const& base) final {
+    dumper->appendString(toString(value, nullptr, base));
+  }
+
+  std::string toString(VPackSlice const& value, VPackOptions const* options,
+                       VPackSlice const& base) final {
+    return transaction::helpers::extractIdString(&resolver, value, base);
+  }
+
+  CollectionNameResolver resolver;
+};
+}  // namespace
 
 RestDocumentStateHandler::RestDocumentStateHandler(ArangodServer& server,
                                                    GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response) {
+  _customTypeHandler =
+      std::make_unique<SnapshotTypeHandler>(SnapshotTypeHandler(_vocbase));
+  _options = RestVocbaseBaseHandler::getVPackOptions();
+  _options.customTypeHandler = _customTypeHandler.get();
+}
 
 RestStatus RestDocumentStateHandler::execute() {
   if (!ExecContext::current().isAdminUser()) {

@@ -83,6 +83,9 @@ class RestBaseHandler : public rest::RestHandler {
   template<typename Payload>
   void writeResult(Payload&&, arangodb::velocypack::Options const& options);
 
+  /// @brief returns the VPackOptions used when writing the result
+  virtual VPackOptions const& getVPackOptions() const;
+
   /// @brief configure if outgoing responses will have the potential
   /// dirty reads header set:
   void setOutgoingDirtyReadsHeader(bool flag) { _potentialDirtyReads = flag; }
