@@ -127,8 +127,7 @@ Result RocksDBTransactionCollection::lockUsage() {
 
 void RocksDBTransactionCollection::releaseUsage() {
   // questionable, but seems to work
-  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
-      _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     TRI_ASSERT(!_usageLocked);
     TRI_ASSERT(!isLocked());
     _collection = nullptr;
@@ -451,8 +450,7 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
 Result RocksDBTransactionCollection::ensureCollection() {
   if (_collection == nullptr) {
     // open the collection
-    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
-        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
       // use and usage-lock
       LOG_TRX("b72bb", TRACE, _transaction) << "using collection " << _cid.id();
 
