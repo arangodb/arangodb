@@ -62,7 +62,8 @@ class RestBaseHandler : public rest::RestHandler {
   /// convenience function akin to generateError,
   /// renders payload in 'result' field
   /// adds proper `error`, `code` fields
-  void generateOk(rest::ResponseCode, velocypack::Slice);
+  void generateOk(rest::ResponseCode, velocypack::Slice,
+                  VPackOptions const& = VPackOptions::Defaults);
 
   /// Add `error` and `code` fields into your response
   void generateOk(rest::ResponseCode, velocypack::Builder const&);
@@ -82,9 +83,6 @@ class RestBaseHandler : public rest::RestHandler {
 
   template<typename Payload>
   void writeResult(Payload&&, arangodb::velocypack::Options const& options);
-
-  /// @brief returns the VPackOptions used when writing the result
-  virtual VPackOptions const& getVPackOptions() const;
 
   /// @brief configure if outgoing responses will have the potential
   /// dirty reads header set:

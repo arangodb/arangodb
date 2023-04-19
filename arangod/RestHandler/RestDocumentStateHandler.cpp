@@ -63,7 +63,7 @@ RestDocumentStateHandler::RestDocumentStateHandler(ArangodServer& server,
     : RestVocbaseBaseHandler(server, request, response) {
   _customTypeHandler =
       std::make_unique<SnapshotTypeHandler>(SnapshotTypeHandler(_vocbase));
-  _options = RestVocbaseBaseHandler::getVPackOptions();
+  _options = VPackOptions::Defaults;
   _options.customTypeHandler = _customTypeHandler.get();
 }
 
@@ -318,7 +318,7 @@ RestStatus RestDocumentStateHandler::processSnapshotRequest(
   if (result.fail()) {
     generateError(result.result());
   } else {
-    generateOk(rest::ResponseCode::OK, result.get().slice());
+    generateOk(rest::ResponseCode::OK, result.get().slice(), _options);
   }
   return RestStatus::DONE;
 }
