@@ -1,5 +1,5 @@
 name: arangodb_sync_tree_rebuilds_total
-introducedIn: "3.10.6"
+introducedIn: "3.9.11"
 help: |
   Number of times a revision tree for a shard was completely 
   rebuilt because of too many subsequent failures in the shard
