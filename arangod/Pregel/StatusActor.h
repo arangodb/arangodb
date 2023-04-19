@@ -445,8 +445,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] auto&& rest)
-      -> std::unique_ptr<StatusState> {
+  auto operator()(auto&& rest) -> std::unique_ptr<StatusState> {
     LOG_TOPIC("e9df2", INFO, Logger::PREGEL)
         << "Status Actor: Got unhandled message";
     return std::move(this->state);

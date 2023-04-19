@@ -43,36 +43,33 @@ auto inspect(Inspector& f, MetricsState& x) {
 
 template<typename Runtime>
 struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
-  auto operator()([[maybe_unused]] metrics::message::MetricsStart msg) {
+  auto operator()(metrics::message::MetricsStart msg) {
     LOG_TOPIC("89eac", INFO, Logger::PREGEL)
         << fmt::format("Metric Actor {} started", this->self);
 
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] metrics::message::ConductorStarted msg) {
+  auto operator()(metrics::message::ConductorStarted msg) {
     this->state->metrics->pregelConductorsNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  auto operator()(
-      [[maybe_unused]] metrics::message::ConductorLoadingStarted msg) {
+  auto operator()(metrics::message::ConductorLoadingStarted msg) {
     this->state->metrics->pregelConductorsLoadingNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  auto operator()(
-      [[maybe_unused]] metrics::message::ConductorComputingStarted msg) {
+  auto operator()(metrics::message::ConductorComputingStarted msg) {
     this->state->metrics->pregelConductorsLoadingNumber->fetch_sub(1);
     this->state->metrics->pregelConductorsRunningNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  auto operator()(
-      [[maybe_unused]] metrics::message::ConductorStoringStarted msg) {
+  auto operator()(metrics::message::ConductorStoringStarted msg) {
     this->state->metrics->pregelConductorsRunningNumber->fetch_sub(1);
     this->state->metrics->pregelConductorsStoringNumber->fetch_add(1);
 
@@ -101,20 +98,19 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] metrics::message::WorkerStarted msg) {
+  auto operator()(metrics::message::WorkerStarted msg) {
     this->state->metrics->pregelWorkersNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] metrics::message::WorkerLoadingStarted msg) {
+  auto operator()(metrics::message::WorkerLoadingStarted msg) {
     this->state->metrics->pregelWorkersLoadingNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  auto operator()(
-      [[maybe_unused]] metrics::message::WorkerLoadingFinished msg) {
+  auto operator()(metrics::message::WorkerLoadingFinished msg) {
     this->state->metrics->pregelWorkersLoadingNumber->fetch_sub(1);
 
     return std::move(this->state);
@@ -136,14 +132,13 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] metrics::message::WorkerStoringStarted msg) {
+  auto operator()(metrics::message::WorkerStoringStarted msg) {
     this->state->metrics->pregelWorkersStoringNumber->fetch_add(1);
 
     return std::move(this->state);
   }
 
-  auto operator()(
-      [[maybe_unused]] metrics::message::WorkerStoringFinished msg) {
+  auto operator()(metrics::message::WorkerStoringFinished msg) {
     this->state->metrics->pregelWorkersStoringNumber->fetch_sub(1);
 
     return std::move(this->state);
@@ -176,8 +171,7 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] auto&& rest)
-      -> std::unique_ptr<MetricsState> {
+  auto operator()(auto&& rest) -> std::unique_ptr<MetricsState> {
     LOG_TOPIC("613ba", INFO, Logger::PREGEL)
         << "Metrics Actor: Got unhandled message";
     return std::move(this->state);

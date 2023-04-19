@@ -49,7 +49,7 @@ struct VerticesProcessed {
 
 template<typename V, typename E, typename M, typename Runtime>
 struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
-  auto operator()([[maybe_unused]] message::WorkerStart start)
+  auto operator()(message::WorkerStart start)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor {} started with state {}", this->self, *this->state);
@@ -388,8 +388,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   // ------ end computing ----
 
-  auto operator()([[maybe_unused]] message::Store msg)
-      -> std::unique_ptr<WorkerState<V, E, M>> {
+  auto operator()(message::Store msg) -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("980d9", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is storing", this->self);
 
@@ -472,7 +471,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] message::Cleanup msg)
+  auto operator()(message::Cleanup msg)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("664f5", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is cleaned", this->self);
