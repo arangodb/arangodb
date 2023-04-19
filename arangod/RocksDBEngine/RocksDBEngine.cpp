@@ -2883,10 +2883,15 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       auto const slice = builder.slice();
       TRI_ASSERT(slice.isArray());
 
+      LOG_TOPIC("48f11", TRACE, arangodb::Logger::ENGINES)
+          << "processing views metadata in database '" << vocbase->name()
+          << "': " << slice.toJson();
+
       for (VPackSlice it : VPackArrayIterator(slice)) {
         if (it.get(StaticStrings::DataSourceType).stringView() != type) {
           continue;
         }
+
         // we found a view that is still active
         LOG_TOPIC("4dfdd", TRACE, arangodb::Logger::ENGINES)
             << "processing view metadata in database '" << vocbase->name()
@@ -2952,9 +2957,8 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   }
 
   // scan the database path for collections
-  builder.clear();
-  VPackSlice slice = VPackSlice::noneSlice();
   try {
+    VPackBuilder builder;
     auto res = getCollectionsAndIndexes(*vocbase, builder, wasCleanShutdown,
                                         isUpgrade);
 
@@ -2962,8 +2966,12 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    slice = builder.slice();
+    VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
+
+    LOG_TOPIC("f1275", TRACE, arangodb::Logger::ENGINES)
+        << "processing collections metadata in database '" << vocbase->name()
+        << "': " << slice.toJson();
 
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
@@ -2979,7 +2987,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(phy != nullptr);
-
       Result r = phy->meta().deserializeMeta(_db, *collection);
       if (r.fail()) {
         LOG_TOPIC("4a404", ERR, arangodb::Logger::ENGINES)
@@ -2996,12 +3003,12 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)
         << "error while opening database '" << vocbase->name()
-        << "': " << ex.what() << ", full collection data: " << slice.toJson();
+        << "': " << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC("0268e", ERR, arangodb::Logger::ENGINES)
         << "error while opening database '" << vocbase->name()
-        << "': unknown exception, full collection data: " << slice.toJson();
+        << "': unknown exception";
     throw;
   }
 
