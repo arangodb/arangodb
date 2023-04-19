@@ -328,7 +328,8 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         }
 
         LOG_CTX("d6666", DEBUG, self->loggerContext)
-            << "Trying to first batch of snapshot: " << snapshotRes->snapshotId;
+            << "Trying to get first batch of snapshot: "
+            << snapshotRes->snapshotId;
         auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
         return self->handleSnapshotTransfer(
             snapshotRes->snapshotId, std::move(leader), waitForIndex,
