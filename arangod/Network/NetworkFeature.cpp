@@ -79,13 +79,13 @@ struct NetworkFeatureScale {
 
 struct NetworkFeatureSendScaleSmall {
   static metrics::FixScale<double> scale() {
-    return {0.0, 1000.0, {0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0}};
+    return {0.0, 10.0, {0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0}};
   }
 };
 
 struct NetworkFeatureSendScaleLarge {
   static metrics::FixScale<double> scale() {
-    return {0.0, 1000.0, {0.01, 0.1, 1.0, 10.0, 100.0, 1000.0}};
+    return {0.0, 10000.0, {0.01, 0.1, 1.0, 10.0, 100.0, 1000.0}};
   }
 };
 
