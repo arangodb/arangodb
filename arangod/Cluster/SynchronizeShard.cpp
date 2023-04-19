@@ -749,7 +749,7 @@ bool SynchronizeShard::first() {
           << "SynchronizeShard: synchronizing shard '" << database << "/"
           << shard << "' for central '" << database << "/" << planId
           << "' encountered " << failuresInRow
-          << " failures in a row. now auto-repairing revision tree of follower "
+          << " failures in a row. Now auto-repairing revision tree of follower "
              "shard";
 
       // increase a metric for rebuilt revisions trees on this server
@@ -804,7 +804,7 @@ bool SynchronizeShard::first() {
           << "SynchronizeShard: synchronizing shard '" << database << "/"
           << shard << "' for central '" << database << "/" << planId
           << "' encountered " << failuresInRow
-          << " failures in a row. now auto-repairing revision tree of leader "
+          << " failures in a row. Now auto-repairing revision tree of leader "
              "shard";
 
       VPackBuffer<uint8_t> buffer;
