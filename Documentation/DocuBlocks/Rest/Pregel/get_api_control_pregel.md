@@ -23,6 +23,7 @@ Get the status of all active Pregel jobs:
 
   var assertInstanceOf = require("jsunity").jsUnity.assertions.assertInstanceOf;
   var examples = require("@arangodb/graph-examples/example-graph.js");
+  print("2. Creating Pregel graph");
   var graph = examples.loadGraph("connectedComponentsGraph");
 
   var url = "/_api/control_pregel";
