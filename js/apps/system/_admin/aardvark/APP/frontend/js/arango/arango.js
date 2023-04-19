@@ -108,6 +108,10 @@
       sessionStorage.setItem('jwtUser', username);
     },
 
+    setCurrentJwtUser: function (username) {
+      sessionStorage.setItem('jwtUser', username);
+    },
+
     checkJwt: function () {
       $.ajax({
         type: 'GET',

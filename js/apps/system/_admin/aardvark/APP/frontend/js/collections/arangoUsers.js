@@ -175,6 +175,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       url: url,
       success: function (data) {
         self.activeUser = data.user;
+        arangoHelper.setCurrentJwtUser(data.user);
         callback(false, data.user);
       },
       error: function () {
