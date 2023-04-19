@@ -97,14 +97,8 @@ DECLARE_HISTOGRAM(
     arangodb_network_request_duration_as_percentage_of_timeout,
     NetworkFeatureScale,
     "Internal request round-trip time as a percentage of timeout [%]");
-DECLARE_COUNTER(arangodb_network_delayed_dequeues_total,
-                "Number of times the dequeueing of a request was delayed");
 DECLARE_COUNTER(arangodb_network_unfinished_sends_total,
                 "Number of times the sending of a request remained unfinished");
-DECLARE_COUNTER(arangodb_network_delayed_sends_total,
-                "Number of times the sending of a request was delayed");
-DECLARE_COUNTER(arangodb_network_slow_responses_total,
-                "Number of times the response to a request was slow");
 DECLARE_HISTOGRAM(
     arangodb_network_dequeue_duration, NetworkFeatureSendScaleSmall,
     "Time to dequeue a queued network request in fuerte in seconds");
