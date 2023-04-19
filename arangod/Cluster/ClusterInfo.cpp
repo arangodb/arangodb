@@ -3334,6 +3334,14 @@ Result ClusterInfo::createCollectionsCoordinator(
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive
   // Mutex)
   for (auto& info : infos) {
+    TRI_IF_FAILURE("ClusterInfo::requiresWaitForReplication") {
+      if (info.waitForReplication) {
+        return TRI_ERROR_DEBUG;
+      } else {
+        TRI_ASSERT(false) << "We required to have waitForReplication, but it "
+                             "was set to false";
+      }
+    }
     TRI_ASSERT(!info.name.empty());
 
     if (info.state == ClusterCollectionCreationState::DONE) {
@@ -6516,6 +6524,18 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
   return std::make_shared<std::vector<ShardID>>();
 }
 
+std::shared_ptr<std::vector<ServerID> const>
+ClusterInfo::getCurrentServersForShard(std::string_view shardId) {
+  READ_LOCKER(readLocker, _currentProt.lock);
+
+  if (auto it = _shardsToCurrentServers.find(shardId);
+      it != _shardsToCurrentServers.end()) {
+    return it->second;
+  } else {
+    return nullptr;
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of coordinator server names
 ////////////////////////////////////////////////////////////////////////////////
@@ -6678,7 +6698,8 @@ void ClusterInfo::setShardGroups(
 }
 
 void ClusterInfo::setShardIds(
-    containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
+    containers::FlatHashMap<ShardID,
+                            std::shared_ptr<std::vector<ServerID> const>>
         shardIds) {
   WRITE_LOCKER(writeLocker, _currentProt.lock);
   _shardsToCurrentServers = std::move(shardIds);
@@ -7457,6 +7478,24 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
           return clusterInfo.waitForPlanVersion(planVersion);
         } else {
           return futures::Future<Result>{maybePlanVersion.result()};
+        }
+      });
+}
+
+futures::Future<Result> ClusterInfo::fetchAndWaitForCurrentVersion(
+    network::Timeout timeout) const {
+  // Save the applicationServer, not the ClusterInfo, in case of shutdown.
+  return cluster::fetchCurrentVersion(timeout).thenValue(
+      [&applicationServer = server()](auto maybeCurrentVersion) {
+        if (maybeCurrentVersion.ok()) {
+          auto currentVersion = maybeCurrentVersion.get();
+
+          auto& clusterInfo =
+              applicationServer.getFeature<ClusterFeature>().clusterInfo();
+
+          return clusterInfo.waitForCurrentVersion(currentVersion);
+        } else {
+          return futures::Future<Result>{maybeCurrentVersion.result()};
         }
       });
 }
