@@ -386,7 +386,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                                         fuerte::Error err,
                                         std::unique_ptr<fuerte::Request> req,
                                         std::unique_ptr<fuerte::Response> res) {
-    TRI_ASSERT(req->timeReceived().time_since_epoch().count() != 0);
+    TRI_ASSERT(req->timeQueued().time_since_epoch().count() != 0);
     // If this is 0, then the request was never picked up by fuerte,
     // but then this callback would never have been called.
 
@@ -399,7 +399,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
     } else {
       // From now on we know that there is a receivedTime and a start
       // send time.
-      auto dur = req->timeAsyncWrite() - req->timeReceived();
+      auto dur = req->timeAsyncWrite() - req->timeQueued();
       _dequeueDurations.count(dur.count() / 1e9);
       if (req->timeSent().time_since_epoch().count() == 0) {
         // The request sending was never finished. This could be a timeout
