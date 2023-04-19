@@ -393,9 +393,9 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
     if (req->timeAsyncWrite().time_since_epoch().count() == 0) {
       TRI_ASSERT(err == fuerte::Error::ConnectionClosed ||
                  err == fuerte::Error::CouldNotConnect);
-      // If the connection was already closed, we do not even start to
-      // send data, but otherwise, we should at least have a start time
-      // for the sending
+      // If the connection was already closed or could not be connected,
+      // we do not even start to send data, but otherwise, we should at
+      // least have a start time for the sending.
     } else {
       // From now on we know that there is a receivedTime and a start
       // send time.
