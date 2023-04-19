@@ -77,7 +77,13 @@ struct NetworkFeatureScale {
   }
 };
 
-struct NetworkFeatureSendScale {
+struct NetworkFeatureSendScaleSmall {
+  static metrics::FixScale<double> scale() {
+    return {0.0, 1000.0, {0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0}};
+  }
+};
+
+struct NetworkFeatureSendScaleLarge {
   static metrics::FixScale<double> scale() {
     return {0.0, 1000.0, {0.01, 0.1, 1.0, 10.0, 100.0, 1000.0}};
   }
@@ -91,16 +97,16 @@ DECLARE_HISTOGRAM(
     arangodb_network_request_duration_as_percentage_of_timeout,
     NetworkFeatureScale,
     "Internal request round-trip time as a percentage of timeout [%]");
-DECLARE_COUNTER(arangodb_network_delayed_dequeues_total,
-                "Number of times the dequeueing of a request was delayed");
 DECLARE_COUNTER(arangodb_network_unfinished_sends_total,
                 "Number of times the sending of a request remained unfinished");
-DECLARE_COUNTER(arangodb_network_delayed_sends_total,
-                "Number of times the sending of a request was delayed");
-DECLARE_COUNTER(arangodb_network_slow_responses_total,
-                "Number of times the response to a request was slow");
-DECLARE_HISTOGRAM(arangodb_network_send_duration, NetworkFeatureSendScale,
+DECLARE_HISTOGRAM(
+    arangodb_network_dequeue_duration, NetworkFeatureSendScaleSmall,
+    "Time to dequeue a queued network request in fuerte in seconds");
+DECLARE_HISTOGRAM(arangodb_network_send_duration, NetworkFeatureSendScaleLarge,
                   "Time to send out internal requests in seconds");
+DECLARE_HISTOGRAM(
+    arangodb_network_response_duration, NetworkFeatureSendScaleLarge,
+    "Time to wait for network response after it was sent out in seconds");
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
               "Number of outgoing internal requests in flight");
 
@@ -122,16 +128,14 @@ NetworkFeature::NetworkFeature(Server& server,
           arangodb_network_request_timeouts_total{})),
       _requestDurations(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_network_request_duration_as_percentage_of_timeout{})),
-      _delayedDequeues(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_network_delayed_dequeues_total{})),
       _unfinishedSends(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_network_unfinished_sends_total{})),
-      _delayedSends(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_network_delayed_sends_total{})),
-      _slowResponses(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_network_slow_responses_total{})),
+      _dequeueDurations(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_dequeue_duration{})),
       _sendDurations(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_network_send_duration{})) {
+          arangodb_network_send_duration{})),
+      _responseDurations(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_response_duration{})) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -362,7 +366,8 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
         << "' came from pool: " << isFromPool << " leasing took "
         << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
                .count()
-        << " seconds.";
+        << " seconds, url: " << to_string(req->header.restVerb) << " "
+        << req->header.path << ", request ptr: " << (void*)req.get();
   } else {
     LOG_TOPIC("52417", TRACE, Logger::COMMUNICATION)
         << "have leased connection to '" << endpoint
@@ -370,100 +375,77 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
         << ", url: " << to_string(req->header.restVerb) << " "
         << req->header.path << ", request ptr: " << (void*)req.get();
   }
-  conn->sendRequest(std::move(req), [this, &pool, isFromPool,
-                                     cb = std::move(cb),
-                                     endpoint = std::move(endpoint)](
-                                        fuerte::Error err,
-                                        std::unique_ptr<fuerte::Request> req,
-                                        std::unique_ptr<fuerte::Response> res) {
-    // We need to distinguish 5 cases here what could have happened:
-    // 0. Request was never posted to the queue.
-    // 1. Request was posted to queue but never dequeued.
-    // 2. Request was dequeued but it took very long.
-    // 3. Request was dequeued and asio::asyncWrite was called, but never
-    //    completed (up to the configured timeout).
-    // 4. Request was dequeued and asio::asyncWrite was called and finished,
-    //    but it took an unplausibly long time to send the data off.
-    // 5. Request was dequeued successfully and quickly sent out, but the
-    //    response took a very long time to complete.
-    if (req->timeReceived().time_since_epoch().count() == 0) {
-      LOG_TOPIC("effc0", ERR, Logger::COMMUNICATION)
-          << "Request was sent to fuerte, but was never received there, "
-             "endpoint:"
-          << endpoint << ", request ptr: " << (void*)req.get()
-          << ", response ptr: " << (void*)res.get()
-          << ", error: " << uint16_t(err);
-      TRI_ASSERT(false);  // should never happen
-    } else if (req->timeAsyncWrite().time_since_epoch().count() == 0) {
-      if (err != fuerte::Error::ConnectionClosed) {
-        // If the connection is already in closed state, we do not even
-        // queue the item, likewise, if the queue is full, but we do want
-        // to see this, if it happens.
-        LOG_TOPIC("effc1", WARN, Logger::COMMUNICATION)
-            << "Request was queued in fuerte, but the sending never started, "
-               "endpoint:"
-            << endpoint << ", request ptr: " << (void*)req.get()
-            << ", response ptr: " << (void*)res.get()
-            << ", error: " << uint16_t(err);
-      }
-    } else {
-      auto dur = req->timeAsyncWrite() - req->timeReceived();
-      if (dur > std::chrono::seconds(1)) {
-        LOG_TOPIC("effc2", WARN, Logger::COMMUNICATION)
-            << "Time to dequeue request to " << endpoint << ": "
-            << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
-                   .count()
-            << " seconds, endpoint: " << endpoint
-            << ", request ptr: " << (void*)req.get()
-            << ", response ptr: " << (void*)res.get()
-            << ", error: " << uint16_t(err);
-        _delayedDequeues.count();
-      }
-      if (req->timeSent().time_since_epoch().count() == 0) {
-        LOG_TOPIC("effc3", WARN, Logger::COMMUNICATION)
-            << "Time to dequeue request to " << endpoint << ": "
-            << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
-                   .count()
-            << " seconds, however, the sending has not yet finished so far"
-            << ", endpoint: " << endpoint
-            << ", request ptr: " << (void*)req.get()
-            << ", response ptr: " << (void*)res.get()
-            << ", error: " << uint16_t(err);
-        _unfinishedSends.count();
-      } else {
-        dur = req->timeSent() - req->timeAsyncWrite();
-        _sendDurations.count(dur.count());
-        if (dur > std::chrono::seconds(3)) {
-          LOG_TOPIC("effc4", WARN, Logger::COMMUNICATION)
-              << "Time to send request to " << endpoint << ": "
-              << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
-                     .count()
-              << " seconds, endpoint: " << endpoint
-              << ", request ptr: " << (void*)req.get()
-              << ", response ptr: " << (void*)res.get()
-              << ", error: " << uint16_t(err);
-          _delayedSends.count();
+  conn->sendRequest(
+      std::move(req),
+      [this, &pool, isFromPool, cb = std::move(cb),
+       endpoint = std::move(endpoint)](fuerte::Error err,
+                                       std::unique_ptr<fuerte::Request> req,
+                                       std::unique_ptr<fuerte::Response> res) {
+        TRI_ASSERT(req->timeQueued().time_since_epoch().count() != 0);
+        // If this is 0, then the request was never picked up by fuerte,
+        // but then this callback would never have been called.
+
+        if (req->timeAsyncWrite().time_since_epoch().count() == 0) {
+          TRI_ASSERT(err == fuerte::Error::ConnectionClosed ||
+                     err == fuerte::Error::CouldNotConnect);
+          // If the connection was already closed or could not be connected,
+          // we do not even start to send data, but otherwise, we should at
+          // least have a start time for the sending.
+        } else {
+          // From now on we know that there is a receivedTime and a start
+          // send time.
+          auto dur = std::chrono::duration_cast<std::chrono::duration<double>>(
+              req->timeAsyncWrite() - req->timeQueued());
+          _dequeueDurations.count(dur.count());
+          if (req->timeSent().time_since_epoch().count() == 0) {
+            // The request sending was never finished. This could be a timeout
+            // during the sending phase.
+            LOG_TOPIC("effc3", DEBUG, Logger::COMMUNICATION)
+                << "Time to dequeue request to " << endpoint << ": "
+                << dur.count()
+                << " seconds, however, the sending has not yet finished so far"
+                << ", endpoint: " << endpoint
+                << ", request ptr: " << (void*)req.get()
+                << ", response ptr: " << (void*)res.get()
+                << ", error: " << uint16_t(err);
+            _unfinishedSends.count();
+          } else {
+            // The request was fully sent off, we have received the callback
+            // from asio.
+            dur = std::chrono::duration_cast<std::chrono::duration<double>>(
+                req->timeSent() - req->timeAsyncWrite());
+            _sendDurations.count(dur.count());
+            // If you suspect network delays in your infrastructure, you
+            // can use the following log message to track them down and
+            // to associate them with particular requests:
+            LOG_TOPIC_IF("effc4", DEBUG, Logger::COMMUNICATION,
+                         dur > std::chrono::seconds(3))
+                << "Time to send request to " << endpoint << ": " << dur.count()
+                << " seconds, endpoint: " << endpoint
+                << ", request ptr: " << (void*)req.get()
+                << ", response ptr: " << (void*)res.get()
+                << ", error: " << uint16_t(err);
+
+            dur = std::chrono::duration_cast<std::chrono::duration<double>>(
+                std::chrono::steady_clock::now() - req->timeSent());
+            // If you suspect network delays in your infrastructure, you
+            // can use the following log message to track them down and
+            // to associate them with particular requests:
+            LOG_TOPIC_IF("effc5", DEBUG, Logger::COMMUNICATION,
+                         dur > std::chrono::seconds(61))
+                << "Time since request was sent out to " << endpoint
+                << " until now was " << dur.count()
+                << " seconds, endpoint: " << endpoint
+                << ", request ptr: " << (void*)req.get()
+                << ", response ptr: " << (void*)res.get()
+                << ", error: " << uint16_t(err);
+            _responseDurations.count(dur.count() / 1e9);
+          }
+          TRI_ASSERT(req != nullptr);
+          finishRequest(pool, err, req, res);
+          cb(err, std::move(req), std::move(res), isFromPool);
         }
-        dur = std::chrono::steady_clock::now() - req->timeSent();
-        if (dur > std::chrono::seconds(61)) {
-          LOG_TOPIC("effc5", WARN, Logger::COMMUNICATION)
-              << "Time since request was sent out to " << endpoint
-              << " until now was "
-              << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
-                     .count()
-              << " seconds, endpoint: " << endpoint
-              << ", request ptr: " << (void*)req.get()
-              << ", response ptr: " << (void*)res.get()
-              << ", error: " << uint16_t(err);
-          _slowResponses.count();
-        }
-      }
-    }
-    TRI_ASSERT(req != nullptr);
-    finishRequest(pool, err, req, res);
-    TRI_ASSERT(req != nullptr);
-    cb(err, std::move(req), std::move(res), isFromPool);
-  });
+      });
 }
 
 void NetworkFeature::prepareRequest(network::ConnectionPool const& pool,
