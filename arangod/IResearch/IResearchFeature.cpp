@@ -943,7 +943,7 @@ then the commit and consolidation thread counts are calculated as follows:
 
 - Maximum: The smaller value out of `--arangosearch.threads` and
   `arangosearch.threads-limit` divided by 2, but at least 1.
-- Minimum: the maximum divided by 2, but at least 1.\n)");
+- Minimum: the maximum divided by 2, but at least 1.)");
 
   options
       ->addOption(
