@@ -63,5 +63,9 @@ class RestDocumentStateHandler : public RestVocbaseBaseHandler {
       replication2::LogId const& logId,
       ResultT<replication2::replicated_state::document::SnapshotParams>&&
           params);
+
+ private:
+  std::unique_ptr<VPackCustomTypeHandler> _customTypeHandler;
+  VPackOptions _options;
 };
 }  // namespace arangodb
