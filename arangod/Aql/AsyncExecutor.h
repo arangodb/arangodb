@@ -77,6 +77,7 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
 
   ExecutionState _returnState = ExecutionState::HASMORE;
   AsyncState _internalState = AsyncState::Empty;
+  bool _gotWakeupWhileInprogress = false;
 };
 
 }  // namespace aql

@@ -84,13 +84,22 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
   TRI_ASSERT(_dependencies.size() == 1);
 
   if (_internalState == AsyncState::InProgress) {
+    _gotWakeupWhileInprogress = true;
     return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
   } else if (_internalState == AsyncState::GotResult) {
+    auto const gotWakeup = _gotWakeupWhileInprogress;
+    _gotWakeupWhileInprogress = false;
     if (_returnState != ExecutionState::DONE) {
       // we may not return WAITING if upstream returned DONE
       _internalState = AsyncState::Empty;
     }
-    return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
+    // If _returnState == WAITING && gotWakeup, this means some node "above" (a
+    // dependency) tried to wake itself up while this node was working. We thus
+    // must not return a stored WAITING, lest a wakeup call might be lost,
+    // possibly putting the query to sleep forever.
+    if (_returnState != ExecutionState::WAITING || !gotWakeup) {
+      return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
+    }
   } else if (_internalState == AsyncState::GotException) {
     TRI_ASSERT(_returnException != nullptr);
     std::rethrow_exception(_returnException);
