@@ -269,6 +269,23 @@ function saveToJunitXML(options, results) {
     seenTestCases: false,
   };
   let prefix = (options.cluster ? 'CL_' : '') + 'RX_';
+
+  if (results.crashed && results.hasOwnProperty('crashreport')) {
+    results['crash'] = {
+      crash_report: {
+        status: false,
+        failed: 1,
+        all: {
+          status: false,
+          failed: 1,
+          message: results.crashreport
+        }
+      },
+      staus: false,
+      failed: 1,
+    };
+  }
+
   iterateTestResults(options, results, xmlState, {
     testRun: function(options, state, testRun, testRunName) {state.testRunName = testRunName;},
     testSuite: function(options, state, testSuite, testSuiteName) {
