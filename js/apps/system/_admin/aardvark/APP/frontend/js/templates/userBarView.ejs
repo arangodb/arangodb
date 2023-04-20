@@ -23,5 +23,10 @@
         <button id="userLogout" class="button-primary btn-small pull-right">Logout</button>
       </li>
     <% }%>
+    <% if (ssoEnabled) {%>
+      <li class="dropdown-footer" style="max-width: 200px; line-height: 1.4; padding: 0 10px !important;">
+        To log out of this DB, log out of the ArangoGraph.
+      </li>
+    <% }%>
   </ul>
   
