@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added SSO support in core web UI - disabled logout when SSO is enabled, 
+  set sessionStorage "jwtUser" value when login is skipped.
+
 * SEARCH-461: Added option "--arangosearch.columns-cache-only-leader". Used only
   on EE DBServers. Default is false.
   If set to true only leader shards have ArangoSearch caches enabled - this will
