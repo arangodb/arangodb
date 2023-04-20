@@ -36,11 +36,25 @@ def generatePlaces():
     return res
 
 generatePlaces.fake = Faker()
-
 def generatePersonalData():
+
+    if len(generatePersonalData.names) == 0 or len(generatePersonalData.last_names) == 0:
+        names = set()
+        last_names = set()
+
+        while len(names) != 10 and len(last_names) != 10:
+            names.add(generatePersonalData.fake.first_name())
+            last_names.add(generatePersonalData.fake.last_name())
+        
+        generatePersonalData.names = list(names)
+        generatePersonalData.last_names = list(last_names)
+
+        print(generatePersonalData.names)
+        print(generatePersonalData.last_names)
+
     res = {}
-    res["Name"] = generatePersonalData.fake.first_name()
-    res["Familienname"] = generatePersonalData.fake.last_name()
+    res["Name"] = random.choice(generatePersonalData.names)
+    res["Familienname"] = random.choice(generatePersonalData.last_names)
     res["Geburtsdatum"] = generatePersonalData.fake.date()
     res["Setzt"] = []
 
@@ -50,6 +64,8 @@ def generatePersonalData():
 
     return res
   
+generatePersonalData.names = []
+generatePersonalData.last_names = []
 generatePersonalData.fake = Faker()
 
 def generateHaustiere():
@@ -104,7 +120,7 @@ def main():
     collectionName = "docCollection"
     numOfDocs = 100
     for i in range(numOfDocs):
-        key = str(collectionName) + "-" + str(i)
+        key = str(i)
         ids.append(collectionName + "/" + key)
         doc = {
             "_key": key,
@@ -121,6 +137,8 @@ def main():
         }
         
         members = random.choices(Familienmitglieder, k=random.randrange(0, len(Familienmitglieder)))
+        if "Mutter" not in members:
+            members.append("Mutter")
         for m in members:
             doc["Familie"][m] = generatePersonalData()
         numOfSetzt = random.randint(0, 6)
