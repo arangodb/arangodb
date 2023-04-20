@@ -292,7 +292,8 @@ ErrorCode fuerteToArangoErrorCode(network::Response const& res) {
         }
         return std::string();
       }(res)
-      << ", request ptr: " << (void*)(&res.request());
+      << ", request ptr: "
+      << (res.hasRequest() ? (void*)(&res.request()) : nullptr);
   return toArangoErrorCodeInternal(res.error);
 }
 
