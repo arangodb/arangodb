@@ -104,11 +104,13 @@
               }
 
               self.$el = $('#userBar');
+              var ssoEnabled = arangoHelper.getSSOEnabled(ssoEnabled);
               self.$el.html(self.template.render({
                 img: img,
                 name: name,
                 username: username,
-                active: active
+                active: active,
+                ssoEnabled: ssoEnabled
               }));
 
               self.delegateEvents();

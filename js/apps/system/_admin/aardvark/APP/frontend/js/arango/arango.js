@@ -111,6 +111,12 @@
     setCurrentJwtUser: function (username) {
       sessionStorage.setItem('jwtUser', username);
     },
+    setSSOEnabled: function (ssoEnabled) {
+      sessionStorage.setItem('ssoEnabled', ssoEnabled);
+    },
+    getSSOEnabled: function (ssoEnabled) {
+      return sessionStorage.getItem('ssoEnabled');
+    },
 
     checkJwt: function () {
       $.ajax({
