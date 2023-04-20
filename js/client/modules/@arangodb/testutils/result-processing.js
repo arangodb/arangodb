@@ -270,7 +270,7 @@ function saveToJunitXML(options, results) {
   };
   let prefix = (options.cluster ? 'CL_' : '') + 'RX_';
 
-  if (results.crashed && results.hasOwnProperty('crashreport')) {
+  if (results.hasOwnProperty('crashreport')) {
     results['crash'] = {
       crash_report: {
         status: false,
@@ -278,7 +278,7 @@ function saveToJunitXML(options, results) {
         all: {
           status: false,
           failed: 1,
-          message: results.crashreport
+          message: ((results.crashed)? "SUT crashed: \n": "SUT was aborted: \n") +results.crashreport
         }
       },
       staus: false,
