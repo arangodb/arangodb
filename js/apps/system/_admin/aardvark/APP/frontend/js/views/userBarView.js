@@ -110,7 +110,7 @@
                 name: name,
                 username: username,
                 active: active,
-                ssoEnabled: ssoEnabled
+                ssoEnabled: ssoEnabled === 'true'
               }));
 
               self.delegateEvents();
