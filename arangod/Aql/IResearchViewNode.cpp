@@ -720,6 +720,27 @@ std::shared_ptr<SearchMeta const> getMeta(
   return basics::downCast<Search>(*view).meta();
 }
 
+#ifdef USE_ENTERPRISE
+
+IResearchOptimizeTopK const& optimizeTopK(
+    std::shared_ptr<SearchMeta const> const& meta,
+    std::shared_ptr<LogicalView const> const& view) {
+  if (meta) {
+    TRI_ASSERT(!view || view->type() == ViewType::kSearchAlias);
+    return meta->optimizeTopK;
+  }
+  TRI_ASSERT(view);
+  TRI_ASSERT(view->type() == ViewType::kArangoSearch);
+  if (ServerState::instance()->isCoordinator()) {
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
+    return viewImpl.meta()._optimizeTopK;
+  }
+  auto const& viewImpl = basics::downCast<IResearchView>(*view);
+  return viewImpl.meta()._optimizeTopK;
+}
+
+#endif
+
 IResearchSortBase const& primarySort(
     std::shared_ptr<SearchMeta const> const& meta,
     std::shared_ptr<LogicalView const> const& view) {
@@ -754,42 +775,52 @@ IResearchViewStoredValues const& storedValues(
   return viewImpl.storedValues();
 }
 
-const char* NODE_DATABASE_PARAM = "database";
-const char* NODE_VIEW_NAME_PARAM = "view";
-const char* NODE_VIEW_ID_PARAM = "viewId";
-const char* NODE_OUT_VARIABLE_PARAM = "outVariable";
-const char* NODE_OUT_SEARCH_DOC_PARAM = "outSearchDocId";
-const char* NODE_OUT_NM_DOC_PARAM = "outNmDocId";
-const char* NODE_CONDITION_PARAM = "condition";
-const char* NODE_SCORERS_PARAM = "scorers";
-const char* NODE_SHARDS_PARAM = "shards";
-const char* NODE_INDEXES_PARAM = "indexes";
-const char* NODE_OPTIONS_PARAM = "options";
-const char* NODE_VOLATILITY_PARAM = "volatility";
-const char* NODE_PRIMARY_SORT_BUCKETS_PARAM = "primarySortBuckets";
-const char* NODE_VIEW_VALUES_VARS = "viewValuesVars";
-const char* NODE_VIEW_STORED_VALUES_VARS = "viewStoredValuesVars";
-const char* NODE_VIEW_VALUES_VAR_COLUMN_NUMBER = "columnNumber";
-const char* NODE_VIEW_VALUES_VAR_FIELD_NUMBER = "fieldNumber";
-const char* NODE_VIEW_VALUES_VAR_ID = "id";
-const char* NODE_VIEW_VALUES_VAR_NAME = "name";
-const char* NODE_VIEW_VALUES_VAR_FIELD = "field";
-const char* NODE_VIEW_NO_MATERIALIZATION = "noMaterialization";
-const char* NODE_VIEW_SCORERS_SORT = "scorersSort";
-const char* NODE_VIEW_SCORERS_SORT_INDEX = "index";
-const char* NODE_VIEW_SCORERS_SORT_ASC = "asc";
-const char* NODE_VIEW_SCORERS_SORT_LIMIT = "scorersSortLimit";
-const char* NODE_VIEW_META_FIELDS = "metaFields";
-const char* NODE_VIEW_META_SORT = "metaSort";
-const char* NODE_VIEW_META_STORED = "metaStored";
+char const* NODE_DATABASE_PARAM = "database";
+char const* NODE_VIEW_NAME_PARAM = "view";
+char const* NODE_VIEW_ID_PARAM = "viewId";
+char const* NODE_OUT_VARIABLE_PARAM = "outVariable";
+char const* NODE_OUT_SEARCH_DOC_PARAM = "outSearchDocId";
+char const* NODE_OUT_NM_DOC_PARAM = "outNmDocId";
+char const* NODE_CONDITION_PARAM = "condition";
+char const* NODE_SCORERS_PARAM = "scorers";
+char const* NODE_SHARDS_PARAM = "shards";
+char const* NODE_INDEXES_PARAM = "indexes";
+char const* NODE_OPTIONS_PARAM = "options";
+char const* NODE_VOLATILITY_PARAM = "volatility";
+char const* NODE_PRIMARY_SORT_BUCKETS_PARAM = "primarySortBuckets";
+char const* NODE_VIEW_VALUES_VARS = "viewValuesVars";
+char const* NODE_VIEW_STORED_VALUES_VARS = "viewStoredValuesVars";
+char const* NODE_VIEW_VALUES_VAR_COLUMN_NUMBER = "columnNumber";
+char const* NODE_VIEW_VALUES_VAR_FIELD_NUMBER = "fieldNumber";
+char const* NODE_VIEW_VALUES_VAR_ID = "id";
+char const* NODE_VIEW_VALUES_VAR_NAME = "name";
+char const* NODE_VIEW_VALUES_VAR_FIELD = "field";
+char const* NODE_VIEW_NO_MATERIALIZATION = "noMaterialization";
+char const* NODE_VIEW_SCORERS_SORT = "scorersSort";
+char const* NODE_VIEW_SCORERS_SORT_INDEX = "index";
+char const* NODE_VIEW_SCORERS_SORT_ASC = "asc";
+char const* NODE_VIEW_SCORERS_SORT_LIMIT = "scorersSortLimit";
+char const* NODE_VIEW_META_FIELDS = "metaFields";
+char const* NODE_VIEW_META_SORT = "metaSort";
+char const* NODE_VIEW_META_STORED = "metaStored";
+#ifdef USE_ENTERPRISE
+char const* NODE_VIEW_META_TOPK = "metaTopK";
+#endif
 
 void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
-                  bool needSort) {
+                  bool needSort, [[maybe_unused]] bool needScorerSort) {
   if (needSort) {
     VPackObjectBuilder objectScope{&node, NODE_VIEW_META_SORT};
     [[maybe_unused]] bool const result = meta.primarySort.toVelocyPack(node);
     TRI_ASSERT(result);
   }
+#ifdef USE_ENTERPRISE
+  if (needScorerSort) {
+    VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_TOPK};
+    [[maybe_unused]] bool const result = meta.optimizeTopK.toVelocyPack(node);
+    TRI_ASSERT(result);
+  }
+#endif
   {
     VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_STORED};
     [[maybe_unused]] bool const result = meta.storedValues.toVelocyPack(node);
@@ -820,6 +851,14 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
     meta.primarySort.fromVelocyPack(slice, error);
     checkError(NODE_VIEW_META_SORT);
   }
+
+#ifdef USE_ENTERPRISE
+  slice = node.get(NODE_VIEW_META_TOPK);
+  if (!slice.isNone()) {
+    meta.optimizeTopK.fromVelocyPack(slice, error);
+    checkError(NODE_VIEW_META_TOPK);
+  }
+#endif
 
   slice = node.get(NODE_VIEW_META_STORED);
   meta.storedValues.fromVelocyPack(slice, error);
@@ -1072,7 +1111,7 @@ IResearchViewNode* IResearchViewNode::getByVar(
 
 IResearchViewNode::IResearchViewNode(
     aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
-    std::shared_ptr<const LogicalView> view, aql::Variable const& outVariable,
+    std::shared_ptr<LogicalView const> view, aql::Variable const& outVariable,
     aql::AstNode* filterCondition, aql::AstNode* options,
     std::vector<SearchFunc>&& scorers)
     : aql::ExecutionNode{&plan, id},
@@ -1406,7 +1445,8 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
     nodes.add(NODE_VIEW_NO_MATERIALIZATION, VPackValue(_noMaterialization));
   }
 
-  if (!_scorersSort.empty() && _scorersSortLimit) {
+  bool const needScorerSort = !_scorersSort.empty() && _scorersSortLimit;
+  if (needScorerSort) {
     nodes.add(NODE_VIEW_SCORERS_SORT_LIMIT, VPackValue(_scorersSortLimit));
     VPackArrayBuilder scorersSort(&nodes, NODE_VIEW_SCORERS_SORT);
     for (auto const& s : _scorersSort) {
@@ -1502,7 +1542,7 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
     nodes.add(NODE_PRIMARY_SORT_BUCKETS_PARAM, VPackValue(_sortBuckets));
   }
   if (_meta) {
-    iresearch::toVelocyPack(nodes, *_meta, needSort);
+    iresearch::toVelocyPack(nodes, *_meta, needSort, needScorerSort);
   }
 }
 
@@ -1575,8 +1615,8 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   }
   node->_noMaterialization = _noMaterialization;
   node->_outNonMaterializedViewVars = std::move(outNonMaterializedViewVars);
-  node->setScorersSort(std::vector<std::pair<size_t, bool>>(_scorersSort),
-                       _scorersSortLimit);
+  node->_scorersSort = _scorersSort;
+  node->_scorersSortLimit = _scorersSortLimit;
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }
 
@@ -1896,6 +1936,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         searchDocRegId,
         std::move(scoreRegisters),
         engine.getQuery(),
+#ifdef USE_ENTERPRISE
+        optimizeTopK(_meta, _view),
+#endif
         scorers(),
         sort(),
         storedValues(_meta, _view),
@@ -1941,7 +1984,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       engineSelectorFeature.engine<RocksDBEngine>().isEncryptionEnabled();
 #endif
 
-  const auto executorIdx =
+  auto const executorIdx =
       getExecutorIndex(sorted, ordered, heapsort, emitSearchDoc);
 
   switch (materializeType) {

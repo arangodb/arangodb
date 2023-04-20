@@ -656,6 +656,7 @@ class instance {
       print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
 
+    process.env['ARANGODB_SERVER_DIR'] = this.rootDir;
     return executeExternal(cmd, argv, false, pu.coverageEnvironment());
   }
   // //////////////////////////////////////////////////////////////////////////////

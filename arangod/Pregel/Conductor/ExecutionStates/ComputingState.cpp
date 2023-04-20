@@ -17,14 +17,11 @@ Computing::Computing(
       sendCountPerActor{std::move(sendCountPerActor)} {
   // TODO GORDO-1510
   // _feature.metrics()->pregelConductorsRunningNumber->fetch_add(1);
-  conductor.timing.gss.emplace_back(Duration{
-      ._start = std::chrono::steady_clock::now(), ._finish = std::nullopt});
 }
 
 auto Computing::messages()
     -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
   if (masterContext->_globalSuperstep == 0) {
-    conductor.timing.computation.start();
     masterContext->preApplication();
   }
   masterContext->preGlobalSuperstep();
@@ -71,6 +68,9 @@ auto Computing::receive(actor::ActorPID sender,
   }
   respondedWorkers.emplace(sender);
   messageAccumulation.add(gssFinished.get());
+  for (auto const& count : gssFinished.get().sendCountPerActor) {
+    sendCountPerActorForNextGss[count.receiver] += count.sendCount;
+  }
 
   if (respondedWorkers == conductor.workers) {
     masterContext->_vertexCount = messageAccumulation.vertexCount;
@@ -84,9 +84,7 @@ auto Computing::receive(actor::ActorPID sender,
     auto postGss = _postGlobalSuperStep();
 
     if (postGss.finished) {
-      conductor.timing.gss.back().finish();
       masterContext->postApplication();
-      conductor.timing.computation.finish();
       // TODO GORDO-1510
       // conductor._feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
       if (conductor.specifications.storeResults) {
@@ -105,20 +103,23 @@ auto Computing::receive(actor::ActorPID sender,
           .newState = std::move(newState)};
     }
 
-    conductor.timing.gss.back().finish();
     masterContext->_globalSuperstep++;
     auto gss = masterContext->_globalSuperstep;
     VPackBuilder aggregators;
     aggregators.openObject();
     masterContext->_aggregators->serializeValues(aggregators);
     aggregators.close();
-    auto newState = std::make_unique<Computing>(
-        conductor, std::move(masterContext),
-        std::move(messageAccumulation.sendCountPerActor));
+    auto vertexCount = masterContext->vertexCount();
+    auto edgeCount = masterContext->edgeCount();
+    auto newState =
+        std::make_unique<Computing>(conductor, std::move(masterContext),
+                                    std::move(sendCountPerActorForNextGss));
     auto stateName = newState->name();
     return StateChange{.statusMessage =
                            pregel::message::GlobalSuperStepStarted{
                                .gss = gss,
+                               .vertexCount = vertexCount,
+                               .edgeCount = edgeCount,
                                .aggregators = std::move(aggregators),
                                .state = stateName},
                        .newState = std::move(newState)};
