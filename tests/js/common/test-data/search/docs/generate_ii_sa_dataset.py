@@ -49,9 +49,6 @@ def generatePersonalData():
         generatePersonalData.names = list(names)
         generatePersonalData.last_names = list(last_names)
 
-        print(generatePersonalData.names)
-        print(generatePersonalData.last_names)
-
     res = {}
     res["Name"] = random.choice(generatePersonalData.names)
     res["Familienname"] = random.choice(generatePersonalData.last_names)
