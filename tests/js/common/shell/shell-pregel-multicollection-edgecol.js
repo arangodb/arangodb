@@ -237,7 +237,12 @@ function multiCollectionTestSuite() {
         assertEqual(stats.vertexCount, numComponents * n, stats);
         assertEqual(stats.edgeCount, numComponents * (m + n), stats);
         assertTrue(stats.hasOwnProperty("parallelism"));
-        assertEqual(parallelism, stats.parallelism);
+        const number_of_cores = require('@arangodb/test-helper').getMetricSingle("arangodb_server_statistics_cpu_core");
+        if (number_of_cores < parallelism) {
+          assertEqual(number_of_cores, stats.parallelism);
+        } else {
+          assertEqual(parallelism, stats.parallelism);
+        }
 
         let allUniquePregelResults = new Set();
         for (let j = 0; j < cn; ++j) {

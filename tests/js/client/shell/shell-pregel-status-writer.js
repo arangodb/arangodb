@@ -44,7 +44,7 @@ function pregelStatusWriterSuiteHTTP() {
     const response = arango.GET_RAW(cmd);
     const apiPersistedState = response.parsedBody;
     assertTrue(apiPersistedState);
-    assertEqual(apiPersistedState.data.state, expectedState);
+    assertEqual(apiPersistedState.state, expectedState);
   };
 
   const verifyPersistedStatePIDNotAvailableReadHTTP = (pid) => {

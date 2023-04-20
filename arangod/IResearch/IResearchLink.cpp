@@ -156,16 +156,12 @@ Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
   irs::IndexReaderOptions readerOptions;
 #ifdef USE_ENTERPRISE
   setupReaderEntepriseOptions(readerOptions,
-                              index().collection().vocbase().server(), _meta);
+                              index().collection().vocbase().server(), _meta,
+                              _useSearchCache);
 #endif
   auto r = initDataStore(pathExists, init, _meta._version, !_meta._sort.empty(),
-#ifdef USE_ENTERPRISE
-                         _meta._hasNested,
-#else
-                         false,
-#endif
-                         _meta._storedValues.columns(), _meta._sortCompression,
-                         readerOptions);
+                         _meta.hasNested(), _meta._storedValues.columns(),
+                         _meta._sortCompression, readerOptions);
   if (r.ok() && view) {
     r = view->link(_asyncSelf);
   }

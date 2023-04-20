@@ -11,12 +11,10 @@ using namespace arangodb::pregel::conductor;
 Loading::Loading(ConductorState& conductor,
                  std::unordered_map<ShardID, actor::ActorPID> actorForShard)
     : conductor{conductor}, actorForShard{std::move(actorForShard)} {
-  conductor.timing.loading.start();
   // TODO GORDO-1510
   // _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
 }
 Loading::~Loading() {
-  conductor.timing.loading.finish();
   // TODO GORDO-1510
   // conductor._feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
 }

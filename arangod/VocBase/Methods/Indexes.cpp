@@ -38,6 +38,7 @@
 #include "Indexes.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
+#include "IResearch/IResearchCommon.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -56,6 +57,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -265,10 +267,6 @@ arangodb::Result Indexes::getAll(
       trx = std::make_shared<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(collection.vocbase()),
           collection, AccessMode::Type::READ);
-
-      // we actually need this hint here, so that the collection is not
-      // loaded if it has status unloaded.
-      trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
       Result res = trx->begin();
       if (!res.ok()) {
@@ -574,14 +572,23 @@ Result Indexes::ensureIndex(LogicalCollection& collection, VPackSlice input,
         collection.getPhysical()->flushClusterIndexEstimates();
 
         // the cluster won't set a proper id value
-        std::string iid = tmp.slice().get(StaticStrings::IndexId).copyString();
-        VPackBuilder b;
-        b.openObject();
-        b.add(StaticStrings::IndexId,
-              VPackValue(collection.name() + TRI_INDEX_HANDLE_SEPARATOR_CHR +
-                         iid));
-        b.close();
-        output = VPackCollection::merge(tmp.slice(), b.slice(), false);
+        // we don't need analyzer revision here
+        TRI_ASSERT(output.isEmpty());
+        output.openObject();
+        for (auto value : velocypack::ObjectIterator{tmp.slice()}) {
+          TRI_ASSERT(value.key.isString());
+          auto key = value.key.stringView();
+          if (key == StaticStrings::IndexId) {
+            output.add(key,
+                       velocypack::Value{absl::StrCat(
+                           collection.name(), TRI_INDEX_HANDLE_SEPARATOR_STR,
+                           value.value.stringView())});
+          } else if (key !=
+                     iresearch::StaticStrings::AnalyzerDefinitionsField) {
+            output.add(key, value.value);
+          }
+        }
+        output.close();
       }
     }
   } else {
