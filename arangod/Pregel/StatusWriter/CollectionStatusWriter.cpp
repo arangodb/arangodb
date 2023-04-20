@@ -82,6 +82,7 @@ auto CollectionStatusWriter::createResult(velocypack::Slice data)
                                   accessModeType);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
+  options.waitForSync = false;
 
   Result transactionResult = trx.begin();
   if (transactionResult.fail()) {
@@ -91,7 +92,7 @@ auto CollectionStatusWriter::createResult(velocypack::Slice data)
   auto payload = inspection::serializeWithErrorT(opData);
   return handleOperationResult(
       trx, options, transactionResult,
-      trx.insert(StaticStrings::PregelCollection, payload->slice(), {}));
+      trx.insert(StaticStrings::PregelCollection, payload->slice(), options));
 }
 
 auto CollectionStatusWriter::readResult() -> OperationResult {

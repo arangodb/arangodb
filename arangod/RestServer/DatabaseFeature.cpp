@@ -280,8 +280,8 @@ void DatabaseFeature::collectOptions(
 
   options
       ->addOption("--database.extended-names",
-                  "Allow most UTF-8 characters in database names, collection "
-                  "names, views names and index names. Once in use, "
+                  "Allow most UTF-8 characters in the names of databases, "
+                  "collections, Views, and indexes. Once in use, "
                   "this option cannot be turned off again.",
                   new options::BooleanParameter(&_extendedNames),
                   options::makeDefaultFlags(options::Flags::Uncommon,

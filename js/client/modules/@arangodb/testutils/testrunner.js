@@ -353,6 +353,7 @@ class testRunner {
     this.continueTesting = true;
     this.usersCount = 0;
     this.cleanupChecks = [ ];
+    this.cleanupChecks.push(failurePointsCheck);
     if (checkUsers) {
       this.cleanupChecks.push(usersTests);
     }
@@ -380,9 +381,7 @@ class testRunner {
     if (checkCollections) {
       this.cleanupChecks.push(graphsTest);
     }
-    this.cleanupChecks.push();
-    this.instanceManager;
-    this.cleanupChecks.push(failurePointsCheck);
+    this.instanceManager = undefined;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -675,6 +674,11 @@ class testRunner {
         if (this.options.extremeVerbosity) {
           print('Skipped ' + te + ' because of ' + filtered.filter);
         }
+        this.results[this.translateResult(te)] = {
+          status: true,
+          skipped: true,
+          message: filtered.filter
+        };
       }
     }
 

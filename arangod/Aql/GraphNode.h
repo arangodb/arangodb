@@ -106,8 +106,6 @@ class GraphNode : public ExecutionNode {
   bool isUsedAsSatellite() const;
   // Defines whether a GraphNode can fully be pushed down to a DBServer
   bool isLocalGraphNode() const;
-  // Will wait as soon as any of our collections is a satellite (in sync)
-  void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
   // Can be fully pushed down to a DBServer and is available on all DBServers
   bool isEligibleAsSatelliteTraversal() const;
 
