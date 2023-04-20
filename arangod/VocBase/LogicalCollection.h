@@ -49,6 +49,7 @@ typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
+struct UserInputCollectionProperties;
 class ComputedValues;
 class FollowerInfo;
 class Index;
@@ -212,6 +213,8 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
+
+  UserInputCollectionProperties getCollectionProperties() const noexcept;
 
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const noexcept;
