@@ -426,10 +426,10 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                 << ", error: " << uint16_t(err);
             _responseDurations.count(dur.count() / 1e9);
           }
-          TRI_ASSERT(req != nullptr);
-          finishRequest(pool, err, req, res);
-          cb(err, std::move(req), std::move(res), isFromPool);
         }
+        TRI_ASSERT(req != nullptr);
+        finishRequest(pool, err, req, res);
+        cb(err, std::move(req), std::move(res), isFromPool);
       });
 }
 
