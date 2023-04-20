@@ -170,9 +170,13 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax({
       type: 'GET',
       url: url,
-      success: function (data) {
+      success: function (data, _status, request) {
         self.activeUser = data.user;
-        arangoHelper.setCurrentJwtUser(data.user);
+        var ssoEnabled = request.getResponseHeader(
+          "x-arango-graph-sso-enabled"
+        ) === 'true';
+        arangoHelper.setSSOEnabled(ssoEnabled);
+        data.user && arangoHelper.setCurrentJwtUser(data.user);
         callback(false, data.user);
       },
       error: function () {
