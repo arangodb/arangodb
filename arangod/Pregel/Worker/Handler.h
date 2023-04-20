@@ -58,7 +58,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor, ResultT<conductor::message::WorkerCreated>{});
 
-    this->template dispatch(
+    this->template dispatch<metrics::message::MetricsMessages>(
         this->state->metricsActor,
         arangodb::pregel::metrics::message::WorkerStarted{});
 
@@ -73,7 +73,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->state->outCache->setResponsibleActorPerShard(
         msg.responsibleActorPerShard);
 
-    this->template dispatch(
+    this->template dispatch<metrics::message::MetricsMessages>(
         this->state->metricsActor,
         arangodb::pregel::metrics::message::WorkerLoadingStarted{});
 
@@ -108,7 +108,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor, graphLoaded());
 
-    this->template dispatch(
+    this->template dispatch<metrics::message::MetricsMessages>(
         this->state->metricsActor,
         arangodb::pregel::metrics::message::WorkerLoadingFinished{});
     return std::move(this->state);
@@ -284,7 +284,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("0f658", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is computing", this->self);
 
-    this->template dispatch(
+    this->template dispatch<metrics::message::MetricsMessages>(
         this->state->metricsActor,
         arangodb::pregel::metrics::message::WorkerGssStarted{.threadsAdded =
                                                                  1});
@@ -345,7 +345,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         ResultT<conductor::message::GlobalSuperStepFinished>::success(
             std::move(out)));
 
-    this->template dispatch(
+    this->template dispatch<metrics::message::MetricsMessages>(
         this->state->metricsActor,
         arangodb::pregel::metrics::message::WorkerGssFinished{
             .threadsRemoved = 1,
@@ -393,7 +393,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("980d9", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is storing", this->self);
 
-    this->template dispatch(
+    this->template dispatch<metrics::message::MetricsMessages>(
         this->state->metricsActor,
         arangodb::pregel::metrics::message::WorkerStoringStarted{});
 
@@ -422,7 +422,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       }
     };
 
-    this->template dispatch(
+    this->template dispatch<metrics::message::MetricsMessages>(
         this->state->metricsActor,
         arangodb::pregel::metrics::message::WorkerStoringFinished{});
 
@@ -483,7 +483,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         this->state->spawnActor, pregel::message::SpawnCleanup{});
     this->template dispatch<pregel::conductor::message::ConductorMessages>(
         this->state->conductor, pregel::conductor::message::CleanupFinished{});
-    this->template dispatch(
+    this->template dispatch<metrics::message::MetricsMessages>(
         this->state->metricsActor,
         arangodb::pregel::metrics::message::WorkerFinished{});
 
