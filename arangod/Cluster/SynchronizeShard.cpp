@@ -290,26 +290,24 @@ static arangodb::Result addShardFollower(
         body.add("readLockId", VPackValue(std::to_string(lockJobId)));
       }
 
-      TRI_IF_FAILURE("synchronizeShardSendTreeData") {
-        // include revision tree data (hash and count value) in the
-        // request. the leader can use this to compare its own revision
-        // tree with the revision tree of the follower.
-        // we normally don't transfer this data, because there may
-        // be buffered writes for the revision trees which are not
-        // yet applied to the tree. additionally, writes may go on
-        // on the leader so there is no good way to determine which
-        // revision tree state to use and compare on the leader.
-        auto context =
-            transaction::StandaloneContext::Create(collection->vocbase());
-        SingleCollectionTransaction trx(context, *collection,
-                                        AccessMode::Type::READ, {});
+      // include revision tree data (hash and count value) in the
+      // request. the leader can use this to compare its own revision
+      // tree with the revision tree of the follower.
+      // we normally don't transfer this data, because there may
+      // be buffered writes for the revision trees which are not
+      // yet applied to the tree. additionally, writes may go on
+      // on the leader so there is no good way to determine which
+      // revision tree state to use and compare on the leader.
+      auto context =
+          transaction::StandaloneContext::Create(collection->vocbase());
+      SingleCollectionTransaction trx(context, *collection,
+                                      AccessMode::Type::READ, {});
 
-        auto res = trx.begin();
-        if (res.ok()) {
-          auto tree = collection->getPhysical()->revisionTree(trx);
-          body.add("treeHash", VPackValue(std::to_string(tree->rootValue())));
-          body.add("treeCount", VPackValue(std::to_string(tree->count())));
-        }
+      auto res = trx.begin();
+      if (res.ok()) {
+        auto tree = collection->getPhysical()->revisionTree(trx);
+        body.add("treeHash", VPackValue(std::to_string(tree->rootValue())));
+        body.add("treeCount", VPackValue(std::to_string(tree->count())));
       }
     }
 

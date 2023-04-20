@@ -2593,7 +2593,6 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // compare hash and count values of the local revision tree in case the
   // caller posted the revision tree data as well.
   // this check is only performed during failure-testing.
@@ -2626,7 +2625,6 @@ void RestReplicationHandler::handleCommandAddFollower() {
       }
     }
   }
-#endif
 
   Result res = col->followers()->add(followerId);
 

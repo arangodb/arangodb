@@ -94,7 +94,7 @@ ReplicationFeature::ReplicationFeature(Server& server)
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false),
       _syncByRevision(true),
-      _autoRepairRevisionTrees(true),
+      _autoRepairRevisionTrees(false),
       _connectionCache{
           server.getFeature<application_features::CommunicationFeaturePhase>(),
           httpclient::ConnectionCache::Options{5}},
