@@ -375,19 +375,10 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
        endpoint = std::move(endpoint)](fuerte::Error err,
                                        std::unique_ptr<fuerte::Request> req,
                                        std::unique_ptr<fuerte::Response> res) {
-        TRI_ASSERT(req->timeQueued().time_since_epoch().count() != 0);
-        // If this is 0, then the request was never picked up by fuerte,
-        // but then this callback would never have been called.
-
-        if (req->timeAsyncWrite().time_since_epoch().count() == 0) {
-          TRI_ASSERT(err == fuerte::Error::ConnectionClosed ||
-                     err == fuerte::Error::CouldNotConnect);
-          // If the connection was already closed or could not be connected,
-          // we do not even start to send data, but otherwise, we should at
-          // least have a start time for the sending.
-        } else {
-          // From now on we know that there is a receivedTime and a start
-          // send time.
+        if (req->timeQueued().time_since_epoch().count() != 0 &&
+            req->timeAsyncWrite().time_since_epoch().count() != 0) {
+          // In the 0 cases fuerte did not even accept or start to send
+          // the request, so there is nothing to report.
           auto dur = std::chrono::duration_cast<std::chrono::duration<double>>(
               req->timeAsyncWrite() - req->timeQueued());
           _dequeueDurations.count(dur.count());
