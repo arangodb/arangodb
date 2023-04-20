@@ -1,6 +1,8 @@
 v3.10.6 (XXXX-XX-XX)
 --------------------
 
+* Fix race condition in invalidation of token cache on coordinators.
+
 * SEARCH-461: Added option "--arangosearch.columns-cache-only-leader". Used only
   on EE DBServers. Default is false.
   If set to true only leader shards have ArangoSearch caches enabled - this will
