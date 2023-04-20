@@ -61,8 +61,7 @@ RestDocumentStateHandler::RestDocumentStateHandler(ArangodServer& server,
                                                    GeneralRequest* request,
                                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {
-  _customTypeHandler =
-      std::make_unique<SnapshotTypeHandler>(_vocbase);
+  _customTypeHandler = std::make_unique<SnapshotTypeHandler>(_vocbase);
   _options = VPackOptions::Defaults;
   _options.customTypeHandler = _customTypeHandler.get();
 }
