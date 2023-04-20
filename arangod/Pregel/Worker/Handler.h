@@ -406,8 +406,6 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     // TODO GORDO-1510
     // _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
 
-    this->finish();
-
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor, graphStored());
 
