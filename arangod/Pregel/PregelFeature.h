@@ -168,7 +168,6 @@ class PregelFeature final : public ArangodFeature {
   std::atomic<bool> _softShutdownOngoing;
 
   std::shared_ptr<PregelMetrics> _metrics;
-  actor::ActorPID _metricsActor;
 
  public:
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
@@ -178,6 +177,7 @@ class PregelFeature final : public ArangodFeature {
   // conductor actor is only used on the coordinator
   Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _conductorActor;
   Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _statusActors;
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _metricsActors;
 };
 
 }  // namespace arangodb::pregel

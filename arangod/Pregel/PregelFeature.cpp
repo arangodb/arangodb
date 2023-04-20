@@ -381,6 +381,17 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
       actors.emplace(en, statusActorPID);
     });
 
+    auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
+        StaticStrings::SystemDatabase, std::make_unique<MetricsState>(_metrics),
+        metrics::message::MetricsStart{});
+    auto metricsActorPID =
+        actor::ActorPID{.server = ServerState::instance()->getId(),
+                        .database = StaticStrings::SystemDatabase,
+                        .id = metricsActorID};
+    _metricsActors.doUnderLock([&en, &metricsActorPID](auto& actors) {
+      actors.emplace(en, metricsActorPID);
+    });
+
     auto resultActorID = _actorRuntime->spawn<ResultActor>(
         vocbase.name(), std::make_unique<ResultState>(ttl),
         message::ResultMessages{message::ResultStart{}});
@@ -409,7 +420,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
             std::move(algorithm.value()), executionSpecifications,
             std::move(vocbaseLookupInfo), std::move(spawnActor),
             std::move(resultActorPID), std::move(statusActorPID),
-            _metricsActor),
+            std::move(metricsActorPID)),
         conductor::message::ConductorStart{});
     auto conductorActorPID = actor::ActorPID{.server = ss->getId(),
                                              .database = vocbase.name(),
@@ -645,12 +656,6 @@ void PregelFeature::start() {
       std::make_shared<ArangoExternalDispatcher>(
           "/_api/pregel/actor", server().getFeature<NetworkFeature>().pool(),
           network::Timeout{5.0 * 60}));
-  auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
-      StaticStrings::SystemDatabase, std::make_unique<MetricsState>(_metrics),
-      metrics::message::MetricsStart{});
-  _metricsActor = actor::ActorPID{.server = ServerState::instance()->getId(),
-                                  .database = StaticStrings::SystemDatabase,
-                                  .id = metricsActorID};
 }
 
 void PregelFeature::beginShutdown() {
