@@ -1,6 +1,9 @@
 devel
 -----
 
+* DE-22: Display collection info by default when clicking on a collection in
+  the Web UI
+
 * MDS-1098: In 3.10 we have introduced an optimization on Traversals to pull
   post-filter conditions into the traversal-statements, like the following:
 
