@@ -91,9 +91,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX("0c057", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
-             !AccessMode::isWriteOrExclusive(_type));
-
   _hints = hints;  // set hints before useCollections
 
   auto& stats = statistics();
