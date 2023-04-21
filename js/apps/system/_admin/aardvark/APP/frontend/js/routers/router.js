@@ -45,7 +45,7 @@
       'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
-      'visgraphs/:name': 'showVisGraph',
+      'graphs-v2/:name': 'showV2Graph',
       'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',
@@ -159,6 +159,8 @@
           }
 
           // react unmounting
+          const reactRoot = document.getElementById('content-react');
+          if (reactRoot) ReactDOM.unmountComponentAtNode(reactRoot);
           ReactDOM.unmountComponentAtNode(document.getElementById('content'));
         }
       }
@@ -377,10 +379,10 @@
         document.getElementById('content')));
     },
 
-    showVisGraph: function (name) {
+    showV2Graph: function (name) {
       this.checkUser();
 
-      this.init.then(() => ReactDOM.render(React.createElement(window.VisGraphReactView),
+      this.init.then(() => ReactDOM.render(React.createElement(window.GraphV2ReactView),
         document.getElementById('content'))
       );
     },
@@ -786,20 +788,20 @@
         this.arangoCollectionsStore.fetch({
           cache: false,
           success: function () {
-            if (self.indicesView) {
-              self.indicesView.remove();
-            }
-            self.indicesView = new window.IndicesView({
-              collectionName: colname,
-              collection: self.arangoCollectionsStore.findWhere({
-                name: colname
-              })
-            });
-            self.indicesView.render();
-          }
+            ReactDOM.render(
+              React.createElement(window.CollectionIndicesReactView, {
+                collectionName: colname,
+                collection: self.arangoCollectionsStore.findWhere({
+                  name: colname,
+                }),
+              }),
+              document.getElementById("content-react")
+            );
+          },
         });
       });
     },
+
 
     cSettings: function (colname) {
       const self = this;
@@ -1350,14 +1352,14 @@
 
       this.init.then(
         () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
-          document.getElementById('content')));
+          document.getElementById('content-react')));
     },
     views: function () {
       this.checkUser();
       
       this.init.then(
        () => ReactDOM.render(React.createElement(window.ViewsListReactView),
-         document.getElementById('content')));
+         document.getElementById('content-react')));
     },
 
     fetchDBS: function (callback) {

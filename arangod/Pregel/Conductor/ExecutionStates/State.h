@@ -26,9 +26,17 @@
 #include "Actor/ActorPID.h"
 #include "Cluster/ClusterTypes.h"
 #include "Pregel/Conductor/Messages.h"
+#include "Pregel/StatusMessages.h"
 #include "Pregel/Worker/Messages.h"
 
 namespace arangodb::pregel::conductor {
+
+struct ExecutionState;
+
+struct StateChange {
+  std::optional<pregel::message::StatusMessages> statusMessage = std::nullopt;
+  std::unique_ptr<ExecutionState> newState = nullptr;
+};
 
 #define LOG_PREGEL_CONDUCTOR_STATE(logId, level)              \
   LOG_TOPIC(logId, level, Logger::PREGEL)                     \
@@ -38,12 +46,16 @@ namespace arangodb::pregel::conductor {
 struct ExecutionState {
   virtual auto name() const -> std::string = 0;
   virtual auto messages()
-      -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> = 0;
+      -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
+    return {};
+  }
   virtual auto receive(actor::ActorPID sender,
                        conductor::message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> = 0;
+      -> std::optional<StateChange> {
+    return std::nullopt;
+  };
   virtual auto aqlResultsAvailable() const -> bool { return false; }
+  virtual auto canBeCanceled() const -> bool { return true; }
   virtual ~ExecutionState() = default;
 };
 

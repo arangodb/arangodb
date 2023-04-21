@@ -54,6 +54,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -291,6 +292,28 @@ static arangodb::Result addShardFollower(
       if (lockJobId != 0) {
         body.add("readLockId", VPackValue(std::to_string(lockJobId)));
       }
+
+      TRI_IF_FAILURE("synchronizeShardSendTreeData") {
+        // include revision tree data (hash and count value) in the
+        // request. the leader can use this to compare its own revision
+        // tree with the revision tree of the follower.
+        // we normally don't transfer this data, because there may
+        // be buffered writes for the revision trees which are not
+        // yet applied to the tree. additionally, writes may go on
+        // on the leader so there is no good way to determine which
+        // revision tree state to use and compare on the leader.
+        auto context =
+            transaction::StandaloneContext::Create(collection->vocbase());
+        SingleCollectionTransaction trx(context, *collection,
+                                        AccessMode::Type::READ, {});
+
+        auto res = trx.begin();
+        if (res.ok()) {
+          auto tree = collection->getPhysical()->revisionTree(trx);
+          body.add("treeHash", VPackValue(std::to_string(tree->rootValue())));
+          body.add("treeCount", VPackValue(std::to_string(tree->count())));
+        }
+      }
     }
 
     network::RequestOptions options;
@@ -316,9 +339,6 @@ static arangodb::Result addShardFollower(
       } else {
         LOG_TOPIC("abf2e", INFO, Logger::MAINTENANCE)
             << errorMessage << " with shortcut (can happen, no problem).";
-        if (result.errorNumber() == TRI_ERROR_REPLICATION_SHARD_NONEMPTY) {
-          return result;  // hand on leader protest
-        }
       }
       return arangodb::Result(
           result.errorNumber(),
@@ -703,6 +723,11 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 
 bool SynchronizeShard::first() {
   TRI_IF_FAILURE("SynchronizeShard::disable") { return false; }
+  TRI_IF_FAILURE("SynchronizeShard::delay") {
+    // Increase the race timeout before we try to get back into sync as a
+    // follower
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  }
 
   std::string const& database = getDatabase();
   std::string const& planId = _description.get(COLLECTION);
@@ -714,6 +739,133 @@ bool SynchronizeShard::first() {
                         _description.get(SYNC_BY_REVISION) == "true";
 
   size_t failuresInRow = _feature.replicationErrors(database, shard);
+
+  bool autoRepairRevisionTrees = _feature.server()
+                                     .getFeature<ReplicationFeature>()
+                                     .autoRepairRevisionTrees();
+
+  if (autoRepairRevisionTrees &&
+      failuresInRow ==
+          MaintenanceFeature::maxReplicationErrorsPerShardBeforeAutoRepair) {
+    // rebuild revision tree on follower
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
+    auto vocbase = &guard.database();
+
+    auto collection = vocbase->lookupCollection(shard);
+    if (collection != nullptr && syncByRevision &&
+        collection->useSyncByRevision()) {
+      LOG_TOPIC("7a2cf", WARN, Logger::MAINTENANCE)
+          << "SynchronizeShard: synchronizing shard '" << database << "/"
+          << shard << "' for central '" << database << "/" << planId
+          << "' encountered " << failuresInRow
+          << " failures in a row. Now auto-repairing revision tree of follower "
+             "shard";
+
+      // increase a metric for rebuilt revisions trees on this server
+      ++_feature.server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
+
+      Result res = static_cast<RocksDBCollection*>(collection->getPhysical())
+                       ->rebuildRevisionTree();
+
+      if (res.ok()) {
+        LOG_TOPIC("02969", INFO, Logger::MAINTENANCE)
+            << "SynchronizeShard: synchronizing shard '" << database << "/"
+            << shard << "' for central '" << database << "/" << planId
+            << "' successfully rebuilt revision tree for follower shard";
+        // still mark the current attempt as failed, because we are still not in
+        // sync and don't know if we will get in sync upon the next attempt
+        res.reset(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
+      } else {
+        LOG_TOPIC("dd893", WARN, Logger::MAINTENANCE)
+            << "SynchronizeShard: synchronizing shard '" << database << "/"
+            << shard << "' for central '" << database << "/" << planId
+            << "' could not rebuild revision tree for follower shard: "
+            << res.errorMessage();
+      }
+
+      // we intentionally let the shard synchronization run fail here.
+      // although we have rebuilt the revision tree now, we can't be sure
+      // that upon the next sync attempt the shard will get in sync.
+      // the reason is that the leader's revision tree could also have
+      // problems.
+      // so we simply run the synchronization another time, and then it
+      // either succeeds, or it will fail and we will rebuild the revision
+      // tree on the leader shard then.
+      TRI_ASSERT(res.fail());
+      result(res.errorNumber());
+      return false;
+    }
+  }
+
+  if (autoRepairRevisionTrees &&
+      failuresInRow ==
+          MaintenanceFeature::maxReplicationErrorsPerShardBeforeAutoRepair +
+              1) {
+    // rebuild revision tree on leader
+    auto& df = _feature.server().getFeature<DatabaseFeature>();
+    DatabaseGuard guard(df, database);
+    auto vocbase = &guard.database();
+
+    auto collection = vocbase->lookupCollection(shard);
+    if (collection != nullptr && syncByRevision &&
+        collection->useSyncByRevision()) {
+      LOG_TOPIC("614fa", WARN, Logger::MAINTENANCE)
+          << "SynchronizeShard: synchronizing shard '" << database << "/"
+          << shard << "' for central '" << database << "/" << planId
+          << "' encountered " << failuresInRow
+          << " failures in a row. Now auto-repairing revision tree of leader "
+             "shard";
+
+      VPackBuffer<uint8_t> buffer;
+      VPackBuilder tmp(buffer);
+      tmp.add(VPackSlice::emptyObjectSlice());
+
+      network::RequestOptions reqOpts;
+      reqOpts.database = database;
+      reqOpts.timeout = network::Timeout(6000.0);  // this can be slow!!!
+      reqOpts.skipScheduler = true;  // hack to speed up future.get()
+      reqOpts.param("collection", shard);
+
+      std::string const url = "/_api/replication/revisions/tree";
+
+      // send out the request
+      NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
+      network::ConnectionPool* pool = nf.pool();
+
+      auto& clusterInfo =
+          _feature.server().getFeature<ClusterFeature>().clusterInfo();
+      auto ep = clusterInfo.getServerEndpoint(leader);
+      auto future = network::sendRequest(pool, ep, fuerte::RestVerb::Post, url,
+                                         std::move(buffer), reqOpts);
+
+      network::Response const& r = future.get();
+      Result res = r.combinedResult();
+      if (res.ok()) {
+        LOG_TOPIC("ddcc1", INFO, Logger::MAINTENANCE)
+            << "SynchronizeShard: synchronizing shard '" << database << "/"
+            << shard << "' for central '" << database << "/" << planId
+            << "' successfully rebuilt revision tree for leader shard";
+        // still mark the current attempt as failed, because we are still not in
+        // sync and don't know if we will get in sync upon the next attempt
+        res.reset(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
+      } else {
+        LOG_TOPIC("29822", WARN, Logger::MAINTENANCE)
+            << "SynchronizeShard: synchronizing shard '" << database << "/"
+            << shard << "' for central '" << database << "/" << planId
+            << "' could not rebuild revision tree for leader shard: "
+            << res.errorMessage();
+      }
+
+      // we intentionally let the shard synchronization run fail here.
+      // we simply run the synchronization another time, and then it
+      // either succeeds, or it will fail again for reasons that we do
+      // not handle yet.
+      TRI_ASSERT(res.fail());
+      result(res.errorNumber());
+      return false;
+    }
+  }
 
   // from this many number of failures in a row, we will step on the brake
   constexpr size_t delayThreshold = 4;

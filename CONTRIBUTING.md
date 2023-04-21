@@ -411,6 +411,7 @@ _Hint_: You shouldn't lean on these variables in your Foxx services.
 To debug AQL execution blocks, two steps are required:
 
 - turn on logging for queries using `--extraArgs:log.level queries=info`
+- divert this facilities logoutput into individual files: `--extraArgs --log.output queries file://@ARANGODB_SERVER_DIR@/arangod_queries.log`
 - send queries enabling block debugging: `db._query('RETURN 1', {}, { profile: 4 })`
 
 You now will get log entries with the contents being passed between the blocks.
@@ -927,7 +928,7 @@ suite (in this case `testTokens`):
 
 Testing a single test with the framework via arangosh:
 
-    scripts/unittest single_client --test tests/js/client/shell/transaction/shell-transaction.js
+    scripts/unittest single_client --test tests/js/client/shell/shell-client.js
 
 Running a test against a server you started (instead of letting the script start its own server):
 
@@ -1025,7 +1026,7 @@ To aid their development, they can also be used from the ArangoDB source tree.
 
 #### MakeData / CheckData suite
 
-The [makedata framework](https://github.com/arangodb/release-test-automation#makedata--checkdata-framework)
+The [makedata framework](https://github.com/arangodb/rta-makedata) as git submodule in [3rdParty/rta-makedata](3rdParty/rta-makedata/)
 is implemented in arangosh javascript.
 It uses the respective interface to execute DDL and DML operations. 
 It facilitates a per database approach, and can be run multiple times in loops. 
@@ -1052,12 +1053,13 @@ The `rta_makedata` testsuite can be invoked with:
 - `--activefailover true` to be ran on an active failover setup.
 - `--cluster true` to be ran on a 3 db-server node cluster; one run will check resilience with 2 remaining dbservers.
 
+These combinations are also engaged via [test-definitions.txt](tests/test-definitions.txt).
+
 Invoke it like this:
 
-    ./scripts/unittest rta_makedata --cluster true --rtasource ../release-test-automation/
+    ./scripts/unittest rta_makedata --cluster true
 
-(with `--rtasource ../release-test-automation` being the default value,
-that can be overriden with another directory with a git clone of RTA)
+(you can override the 3rdParty/rta-makedata with `--rtasource ../rta-makedata` ,if you want to work with a full git clone of RTA-makedata)
 
 ### Driver tests
 

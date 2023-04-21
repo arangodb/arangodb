@@ -28,8 +28,8 @@
 #include <rocksdb/status.h>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 
+#include <mutex>
 #include <string>
 #include <string_view>
 
@@ -75,7 +75,7 @@ class ChecksumHelper {
  private:
   std::string const _rootPath;
 
-  Mutex _calculatedHashesMutex;
+  std::mutex _calculatedHashesMutex;
   std::unordered_map<std::string, std::string> _fileNamesToHashes;
 };
 

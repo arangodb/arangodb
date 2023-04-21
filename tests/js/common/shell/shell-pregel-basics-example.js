@@ -88,6 +88,8 @@ function basicTestSuite() {
       db._create(vColl, { numberOfShards: 4 });
       graph._addVertexCollection(vColl);
       db._createEdgeCollection(eColl, {
+        numberOfShards: 4,
+        replicationFactor: 1,
         shardKeys: ["vertex"],
         distributeShardsLike: vColl
       });
@@ -145,11 +147,6 @@ function basicTestSuite() {
     testPageRank: function () {
       // should test correct convergence behavior, might fail if EPS is too low
       testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
-    },
-
-    testPageRankMMap: function () {
-      // should test correct convergence behavior, might fail if EPS is too low
-      testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true, useMemoryMaps: true });
     },
 
     testPageRankSeeded: function () {

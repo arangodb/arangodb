@@ -31,6 +31,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
+const analyzers = require("@arangodb/analyzers");
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const userManager = require("@arangodb/users");
@@ -182,6 +183,55 @@ let viewsTest = {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief checks that no new analyzers were left on the SUT. 
+// //////////////////////////////////////////////////////////////////////////////
+let analyzersTest = {
+  name: 'analyzers',
+  setUp: function(obj, te) {
+    obj.analyzersBefore = [];
+    analyzers.toArray().forEach(oneAnalyzer => {
+      obj.analyzersBefore.push(oneAnalyzer.name());
+    });
+    return true;
+  },
+  runCheck: function(obj, te) {
+    let leftover = [];
+    let foundAnalyzers = [];
+    try {
+      analyzers.toArray().forEach(oneAnalyzer => {
+        let name = oneAnalyzer.name();
+        let found = obj.analyzersBefore.find(oneAnalyzer => oneAnalyzer === name);
+        if (found === name) {
+          foundAnalyzers.push(name);
+        } else {
+          leftover.push(name);
+        }
+      });
+    } catch (x) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'failed to fetch the currently available analyzers: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+      };
+      return false;
+    }
+    if (leftover.length !== 0) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'Cleanup missing - test left over analyzer:' + leftover + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+      };
+      return false;
+    } else if (foundAnalyzers.length !== obj.analyzersBefore.length) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'Cleanup remove analyzers:' + foundAnalyzers  + ' != ' + obj.analyzersBefore + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+      };
+      return false;
+    }
+    return true;
+  }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief checks that no new graphs were left on the SUT. 
 // //////////////////////////////////////////////////////////////////////////////
 let graphsTest = {
@@ -254,7 +304,7 @@ let failurePointsCheck = {
   name: 'failurepoints',
   setUp: function(obj, te) { return true; },
   runCheck: function(obj, te) {
-    let failurePoints = pu.checkServerFailurePoints(obj.instanceManager);
+    let failurePoints = obj.instanceManager.checkServerFailurePoints();
     if (failurePoints.length > 0) {
       obj.results[obj.translateResult(te)] = {
         status: false,
@@ -265,6 +315,7 @@ let failurePointsCheck = {
       };
       return false;
     }
+    return true;
   }
 };
 
@@ -302,6 +353,7 @@ class testRunner {
     this.continueTesting = true;
     this.usersCount = 0;
     this.cleanupChecks = [ ];
+    this.cleanupChecks.push(failurePointsCheck);
     if (checkUsers) {
       this.cleanupChecks.push(usersTests);
     }
@@ -321,12 +373,15 @@ class testRunner {
     if (checkCollections) {
       this.cleanupChecks.push(viewsTest);
     }
+    this.analyzersBefore = [];
+    if (checkCollections) {
+      this.cleanupChecks.push(analyzersTest);
+    }
     this.graphCount = 0;
     if (checkCollections) {
       this.cleanupChecks.push(graphsTest);
     }
-    this.cleanupChecks.push();
-    this.instanceManager;
+    this.instanceManager = undefined;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -394,7 +449,6 @@ class testRunner {
         let buf = fs.readBuffer(this.instanceManager.clusterHealthMonitorFile);
         let lineStart = 0;
         let maxBuffer = buf.length;
-
         for (let j = 0; j < maxBuffer; j++) {
           if (buf[j] === 10) { // \n
             const line = buf.asciiSlice(lineStart, j);
@@ -559,9 +613,6 @@ class testRunner {
 
           if (reply.hasOwnProperty('status')) {
             this.results[this.translateResult(te)] = reply;
-            if (!this.options.disableClusterMonitor) {
-              this.results[this.translateResult(te)]['processStats'] = this.instanceManager.getDeltaProcessStats();
-            }
 
             if (this.results[this.translateResult(te)].status === false) {
               this.results.failed ++;
@@ -583,7 +634,9 @@ class testRunner {
           }
 
           if (this.healthCheck()) {
-            if (!this.results[this.translateResult(te)].hasOwnProperty('processStats')) {
+            if (!this.options.disableClusterMonitor) {
+              this.results[this.translateResult(te)]['processStats'] = this.instanceManager.getDeltaProcessStats();
+            } else {
               this.results[this.translateResult(te)]['processStats'] = {};
             }
             this.results[this.translateResult(te)]['processStats']['netstat'] = this.instanceManager.getNetstat();
@@ -619,6 +672,11 @@ class testRunner {
         if (this.options.extremeVerbosity) {
           print('Skipped ' + te + ' because of ' + filtered.filter);
         }
+        this.results[this.translateResult(te)] = {
+          status: true,
+          skipped: true,
+          message: filtered.filter
+        };
       }
     }
 

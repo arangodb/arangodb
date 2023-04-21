@@ -22,29 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CanceledState.h"
+
 #include "Pregel/Conductor/ExecutionStates/CleanedUpState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
+#include "Pregel/Conductor/State.h"
 
 using namespace arangodb::pregel::conductor;
 
-Canceled::Canceled(ConductorState& conductor) : conductor{conductor} {
-  if (conductor.timing.loading.hasStarted() and
-      not conductor.timing.loading.hasFinished()) {
-    conductor.timing.loading.finish();
-  }
-  if (conductor.timing.computation.hasStarted() and
-      not conductor.timing.computation.hasFinished()) {
-    conductor.timing.computation.finish();
-  }
-  if (conductor.timing.storing.hasStarted() and
-      not conductor.timing.storing.hasFinished()) {
-    conductor.timing.storing.finish();
-  }
-  if (conductor.timing.total.hasStarted() and
-      not conductor.timing.total.hasFinished()) {
-    conductor.timing.total.finish();
-  }
-}
+Canceled::Canceled(ConductorState& conductor) : conductor{conductor} {}
 
 auto Canceled::messages()
     -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
@@ -58,14 +43,18 @@ auto Canceled::messages()
 
 auto Canceled::receive(actor::ActorPID sender,
                        message::ConductorMessages message)
-    -> std::optional<std::unique_ptr<ExecutionState>> {
+    -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<message::CleanupFinished>(message)) {
-    return std::make_unique<FatalError>(conductor);
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   conductor.workers.erase(sender);
   if (conductor.workers.empty()) {
-    return std::make_unique<CleanedUp>();
+    return StateChange{.newState = std::make_unique<CleanedUp>()};
   }
   return std::nullopt;
 };

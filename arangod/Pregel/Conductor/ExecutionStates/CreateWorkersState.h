@@ -23,9 +23,8 @@
 #pragma once
 
 #include <set>
-#include <unordered_map>
 #include "Actor/ActorPID.h"
-#include "Pregel/Conductor/State.h"
+#include "State.h"
 
 namespace arangodb::pregel::conductor {
 
@@ -52,13 +51,8 @@ struct CreateWorkers : ExecutionState {
    */
   auto messagesToServers()
       -> std::unordered_map<ServerID, worker::message::CreateWorker>;
-  auto messages()
-      -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> override {
-    return {};
-  }
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override;
+      -> std::optional<StateChange> override;
 
   ConductorState& conductor;
   std::unordered_map<ShardID, actor::ActorPID> actorForShard;

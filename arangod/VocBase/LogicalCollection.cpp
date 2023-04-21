@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -53,8 +52,6 @@
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/Validators.h"
-#include "velocypack/Builder.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
@@ -166,12 +163,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   TRI_ASSERT(info.isObject());
 
-  bool extendedNames = vocbase.server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
-  if (!CollectionNameValidator::isAllowedName(system(), extendedNames,
-                                              name())) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = CollectionNameValidator::validateName(system(), extendedNames,
+                                                       name());
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   if (_version < minimumVersion()) {
@@ -302,29 +299,6 @@ ShardingInfo* LogicalCollection::shardingInfo() const {
   return _sharding.get();
 }
 
-UserInputCollectionProperties LogicalCollection::getCollectionProperties()
-    const noexcept {
-  UserInputCollectionProperties props;
-  // NOTE: This implementation is NOT complete.
-  // It only contains what was absolute necessary to get distributeShardsLike
-  // to work.
-  // Longterm-Plan: A logical collection should have those properties as a
-  // member and just return a reference to them.
-  props.name = name();
-  props.id = id();
-  props.numberOfShards = numberOfShards();
-  props.writeConcern = writeConcern();
-  props.replicationFactor = replicationFactor();
-  auto distLike = distributeShardsLike();
-  if (!distLike.empty()) {
-    props.distributeShardsLikeCid = std::move(distLike);
-  }
-  props.shardKeys = shardKeys();
-  props.shardingStrategy = shardingInfo()->shardingStrategyName();
-  props.waitForSync = waitForSync();
-  return props;
-}
-
 size_t LogicalCollection::numberOfShards() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->numberOfShards();
@@ -395,7 +369,7 @@ void LogicalCollection::shardIDsToVelocyPack(
   result.add(VPackValue("shards"));
 
   std::vector<ShardID> combinedShardIDs;
-  for (auto const& s : *shardIds()) {
+  for (auto sids = shardIds(); auto const& s : *sids) {
     combinedShardIDs.push_back(s.first);
   }
   std::sort(combinedShardIDs.begin(), combinedShardIDs.end(),
@@ -869,7 +843,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   auto& engine =
       vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
-  MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
+  std::lock_guard guard{_infoLock};  // prevent simultaneous updates
 
   auto res = updateSchema(slice.get(StaticStrings::Schema));
   if (res.fail()) {

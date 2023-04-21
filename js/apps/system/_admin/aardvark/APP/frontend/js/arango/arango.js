@@ -8,9 +8,6 @@
   window.isCoordinator = function (callback) {
     if (isCoordinator === null) {
       var url = 'cluster/amICoordinator';
-      if (frontendConfig.react) {
-        url = arangoHelper.databaseUrl('/_admin/aardvark/cluster/amICoordinator');
-      }
       $.ajax(
         url,
         {
@@ -93,6 +90,23 @@
       error: 'rgb(236, 112, 99)',
       warning: '#ffb075',
       debug: 'rgb(64, 74, 83)'
+    },
+
+    // convert a Unicode string to a string in which
+    // each 16-bit unit occupies only one byte.
+    // from https://developer.mozilla.org/en-US/docs/Web/API/btoa
+    toBinary: function (string) {
+      const codeUnits = Uint16Array.from(
+        { length: string.length },
+        (element, index) => string.charCodeAt(index)
+      );
+      const charCodes = new Uint8Array(codeUnits.buffer);
+
+      let result = "";
+      charCodes.forEach((char) => {
+        result += String.fromCharCode(char);
+      });
+      return result;
     },
 
     getCurrentJwt: function () {
@@ -448,7 +462,7 @@
         }
 
         $('#subNavigationBar .bottom').append(
-          '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
+          '<li class="subMenuEntry ' + cssClass + '"><a>' + arangoHelper.escapeHtml(name) + '</a></li>'
         );
         if (!menu.disabled && !disabled) {
           $('#subNavigationBar .bottom').children().last().bind('click', function () {

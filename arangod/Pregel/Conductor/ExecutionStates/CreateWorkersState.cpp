@@ -3,14 +3,14 @@
 #include "Pregel/Conductor/ExecutionStates/CollectionLookup.h"
 #include "Pregel/Conductor/ExecutionStates/LoadingState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
+#include "Pregel/Conductor/State.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::conductor;
 
-CreateWorkers::CreateWorkers(ConductorState& conductor) : conductor{conductor} {
-  conductor.timing.total.start();
-}
+CreateWorkers::CreateWorkers(ConductorState& conductor)
+    : conductor{conductor} {}
 
 auto workerSpecification(
     std::unique_ptr<CollectionLookup> const& collectionLookup,
@@ -56,14 +56,22 @@ auto CreateWorkers::messagesToServers()
 
 auto CreateWorkers::receive(actor::ActorPID sender,
                             message::ConductorMessages message)
-    -> std::optional<std::unique_ptr<ExecutionState>> {
+    -> std::optional<StateChange> {
   if (not sentServers.contains(sender.server) or
       not std::holds_alternative<ResultT<message::WorkerCreated>>(message)) {
-    return std::make_unique<FatalError>(conductor);
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   auto workerCreated = std::get<ResultT<message::WorkerCreated>>(message);
   if (not workerCreated.ok()) {
-    return std::make_unique<FatalError>(conductor);
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   conductor.workers.emplace(sender);
 
@@ -73,7 +81,12 @@ auto CreateWorkers::receive(actor::ActorPID sender,
   responseCount++;
 
   if (responseCount == sentServers.size() and respondedServers == sentServers) {
-    return std::make_unique<Loading>(conductor, std::move(actorForShard));
+    auto newState =
+        std::make_unique<Loading>(conductor, std::move(actorForShard));
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::LoadingStarted{.state = stateName},
+        .newState = std::move(newState)};
   }
   return std::nullopt;
 };

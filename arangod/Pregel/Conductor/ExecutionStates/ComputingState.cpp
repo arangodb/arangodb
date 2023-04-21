@@ -1,8 +1,11 @@
 #include "ComputingState.h"
+
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/ExecutionStates/ProduceAQLResultsState.h"
+#include "Pregel/Conductor/ExecutionStates/State.h"
 #include "Pregel/Conductor/ExecutionStates/StoringState.h"
-#include "velocypack/Iterator.h"
+#include "Pregel/Conductor/State.h"
+#include "Pregel/MasterContext.h"
 
 using namespace arangodb::pregel::conductor;
 
@@ -14,16 +17,11 @@ Computing::Computing(
       sendCountPerActor{std::move(sendCountPerActor)} {
   // TODO GORDO-1510
   // _feature.metrics()->pregelConductorsRunningNumber->fetch_add(1);
-  conductor.timing.gss.emplace_back(Duration{
-      ._start = std::chrono::steady_clock::now(), ._finish = std::nullopt});
 }
-
-Computing::~Computing() {}
 
 auto Computing::messages()
     -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
   if (masterContext->_globalSuperstep == 0) {
-    conductor.timing.computation.start();
     masterContext->preApplication();
   }
   masterContext->preGlobalSuperstep();
@@ -49,19 +47,30 @@ auto Computing::messages()
 }
 auto Computing::receive(actor::ActorPID sender,
                         message::ConductorMessages message)
-    -> std::optional<std::unique_ptr<ExecutionState>> {
+    -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::GlobalSuperStepFinished>>(
           message)) {
-    return std::make_unique<FatalError>(conductor);
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   auto gssFinished =
       std::get<ResultT<message::GlobalSuperStepFinished>>(message);
   if (not gssFinished.ok()) {
-    return std::make_unique<FatalError>(conductor);
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);
   messageAccumulation.add(gssFinished.get());
+  for (auto const& count : gssFinished.get().sendCountPerActor) {
+    sendCountPerActorForNextGss[count.receiver] += count.sendCount;
+  }
 
   if (respondedWorkers == conductor.workers) {
     masterContext->_vertexCount = messageAccumulation.vertexCount;
@@ -75,26 +84,49 @@ auto Computing::receive(actor::ActorPID sender,
     auto postGss = _postGlobalSuperStep();
 
     if (postGss.finished) {
-      conductor.timing.gss.back().finish();
       masterContext->postApplication();
-      conductor.timing.computation.finish();
       // TODO GORDO-1510
       // conductor._feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
       if (conductor.specifications.storeResults) {
-        return std::make_unique<Storing>(conductor);
+        auto newState = std::make_unique<Storing>(conductor);
+        auto stateName = newState->name();
+        return StateChange{
+            .statusMessage =
+                pregel::message::StoringStarted{.state = stateName},
+            .newState = std::move(newState)};
       }
-      return std::make_unique<ProduceAQLResults>(conductor);
+
+      auto newState = std::make_unique<ProduceAQLResults>(conductor);
+      auto stateName = newState->name();
+      return StateChange{
+          .statusMessage = pregel::message::StoringStarted{.state = stateName},
+          .newState = std::move(newState)};
     }
 
-    conductor.timing.gss.back().finish();
     masterContext->_globalSuperstep++;
-    return std::make_unique<Computing>(
-        conductor, std::move(masterContext),
-        std::move(messageAccumulation.sendCountPerActor));
+    auto gss = masterContext->_globalSuperstep;
+    VPackBuilder aggregators;
+    aggregators.openObject();
+    masterContext->_aggregators->serializeValues(aggregators);
+    aggregators.close();
+    auto vertexCount = masterContext->vertexCount();
+    auto edgeCount = masterContext->edgeCount();
+    auto newState =
+        std::make_unique<Computing>(conductor, std::move(masterContext),
+                                    std::move(sendCountPerActorForNextGss));
+    auto stateName = newState->name();
+    return StateChange{.statusMessage =
+                           pregel::message::GlobalSuperStepStarted{
+                               .gss = gss,
+                               .vertexCount = vertexCount,
+                               .edgeCount = edgeCount,
+                               .aggregators = std::move(aggregators),
+                               .state = stateName},
+                       .newState = std::move(newState)};
   }
 
   return std::nullopt;
-};
+}
 
 auto Computing::_postGlobalSuperStep() -> PostGlobalSuperStepResult {
   // workers are done if all messages were processed and no active vertices

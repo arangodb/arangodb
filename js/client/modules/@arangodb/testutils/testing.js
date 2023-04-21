@@ -33,7 +33,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const cu = require('@arangodb/testutils/crash-utils');
 const tu = require('@arangodb/testutils/test-utils');
-const versionHas = require("@arangodb/test-helper").versionHas;
+const {versionHas, flushInstanceInfo} = require("@arangodb/test-helper");
 const internal = require('internal');
 const platform = internal.platform;
 
@@ -56,7 +56,8 @@ let optionsDocumentation = [
 
   ' The following properties of `options` are defined:',
   '',
-  '   - `testOutput`: set the output directory for testresults, defaults to `out`',
+  '   - `testOutputDirectory`: set the output directory for testresults, defaults to `out`',
+  '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `out`',
   '   - `force`: if set to true the tests are continued even if one fails',
   '',
   '   - `maxLogFileSize`: how big logs should be at max - 500k by default',
@@ -231,6 +232,7 @@ const optionsDefaults = {
   'test': undefined,
   'testBuckets': undefined,
   'testOutputDirectory': 'out',
+  'testXmlOutputDirectory': 'outXml',
   'useReconnect': true,
   'username': 'root',
   'valgrind': false,
@@ -513,6 +515,9 @@ function iterateTests(cases, options) {
   }
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
+    // required, because each different test suite may operate with a different set of servers!
+    flushInstanceInfo();
+
     const currentTest = caselist[n];
     var localOptions = _.cloneDeep(options);
     if (localOptions.failed) {

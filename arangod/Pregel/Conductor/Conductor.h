@@ -23,9 +23,10 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Scheduler/Scheduler.h"
@@ -75,7 +76,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::unique_ptr<IAlgorithm> _algorithm;
 
   ExecutionState _state = ExecutionState::DEFAULT;
-  mutable Mutex
+  mutable std::mutex
       _callbackMutex;  // prevents concurrent calls to finishedGlobalStep
   std::vector<ServerID> _dbServers;
   /// tracks the servers which responded, only used for stages where we expect

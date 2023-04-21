@@ -23,7 +23,7 @@ function record_hash(n, name)
 function gen_rule_name(name, \
 		       n)
 {
-  # Use a simple memonic: the first two letters.
+  # Use a simple mnemonic: the first two letters.
   n = substr(name, 1, 2)
   record_hash(n, name)
   # printf "# %s = %s\n", n, name
@@ -150,10 +150,19 @@ function prehash_rule_names( \
   }
 }
 
+function make_line(n, field, \
+		   f, r)
+{
+  r = field[1]
+  for (f = 2; f <= n; f++)
+    r = r " " field[f]
+  return r
+}
+
 # Process the input line LINE and save it for later output.
 
 function process_input_line(line, \
-			    field, end, i, n, startdef, \
+			    f, field, end, i, n, r, startdef, \
 			    linkline, ruleline, zoneline)
 {
   # Remove comments, normalize spaces, and append a space to each line.
@@ -218,12 +227,11 @@ function process_input_line(line, \
 
   n = split(line, field)
 
-  # Abbreviate rule names.
-  i = zoneline ? 4 : linkline ? 0 : 2
-  if (i && field[i] ~ /^[^-+0-9]/) {
-    if (!rule[field[i]])
-      rule[field[i]] = gen_rule_name(field[i])
-    field[i] = rule[field[i]]
+  # Record which rule names are used, and generate their abbreviations.
+  f = zoneline ? 4 : linkline || ruleline ? 0 : 2
+  r = field[f]
+  if (r ~ /^[^-+0-9]/) {
+    rule_used[r] = 1
   }
 
   # If this zone supersedes an earlier one, delete the earlier one
@@ -246,10 +254,38 @@ function process_input_line(line, \
   zonedef[zonename] = nout + 1
 
   # Save the line for later output.
-  line = field[1]
-  for (i = 2; i <= n; i++)
-    line = line " " field[i]
-  output_line[nout++] = line
+  output_line[nout++] = make_line(n, field)
+}
+
+function omit_unused_rules( \
+			   i, field)
+{
+  for (i = 0; i < nout; i++) {
+    split(output_line[i], field)
+    if (field[1] == "R" && !rule_used[field[2]]) {
+      output_line[i] = ""
+    }
+  }
+}
+
+function abbreviate_rule_names( \
+			       abbr, f, field, i, n, r)
+{
+  for (i = 0; i < nout; i++) {
+    n = split(output_line[i], field)
+    if (n) {
+      f = field[1] == "Z" ? 4 : field[1] == "L" ? 0 : 2
+      r = field[f]
+      if (r ~ /^[^-+0-9]/) {
+	abbr = rule[r]
+	if (!abbr) {
+	  rule[r] = abbr = gen_rule_name(r)
+	}
+	field[f] = abbr
+	output_line[i] = make_line(n, field)
+      }
+    }
+  }
 }
 
 function output_saved_lines( \
@@ -314,5 +350,7 @@ BEGIN {
 }
 
 END {
+  omit_unused_rules()
+  abbreviate_rule_names()
   output_saved_lines()
 }
