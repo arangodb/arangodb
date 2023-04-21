@@ -107,7 +107,7 @@ function makeDataWrapper (options) {
           args['server.force-json'] = true;
         }
         if (!this.options.verbose) {
-          args['log.level'] = 'warning';
+          args['log.level'] = ['warning', 'V8=debug'];
         }
         if (this.addArgs !== undefined) {
           args = Object.assign(args, this.addArgs);
