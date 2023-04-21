@@ -118,7 +118,7 @@ export const linksSchema = {
     },
     cache: {
       type: 'boolean',
-      nullable: false
+      nullable: true
     },
   },
   additionalProperties: false

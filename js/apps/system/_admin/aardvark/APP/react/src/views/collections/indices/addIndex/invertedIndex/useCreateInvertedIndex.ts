@@ -68,6 +68,7 @@ export type InvertedIndexValuesType = {
   consolidationPolicy?: ConsolidationPolicy;
   fields?: InvertedIndexFieldType[];
   primaryKeyCache?: boolean;
+  cache?: boolean;
 };
 
 const initialValues: InvertedIndexValuesType = {

@@ -41,6 +41,10 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
       nullable: true,
       type: "boolean"
     },
+    cache: {
+      type: "boolean",
+      nullable: true
+    },
     fields: {
       $id: "https://arangodb.com/schemas/views/invertedIndexFields.json",
       type: "array",
