@@ -108,14 +108,15 @@ RestStatus RestPregelHandler::execute() {
             actor::ActorPID{.server = ServerState::instance()->getId(),
                             .database = _vocbase.name(),
                             .id = resultActorID};
-        _pregel._runActors.doUnderLock([&](auto& actors) {
-          actors.emplace(spawnWorkerMsg.message.executionNumber,
-                         PregelRunActors{.user = ExecContext::current().user(),
-                                         .resultActor = resultActorPID,
-                                         .results = resultData,
-                                         .statusActor = std::nullopt,
-                                         .status = std::nullopt,
-                                         .conductor = std::nullopt});
+        _pregel._pregelRuns.doUnderLock([&](auto& actors) {
+          actors.emplace(
+              spawnWorkerMsg.message.executionNumber,
+              PregelRun{PregelRunUser(ExecContext::current().user()),
+                        PregelRunActors{.resultActor = resultActorPID,
+                                        .results = resultData,
+                                        .statusActor = std::nullopt,
+                                        .status = std::nullopt,
+                                        .conductor = std::nullopt}});
         });
         _pregel._actorRuntime->dispatch<message::ResultMessages>(
             resultActorPID, spawnWorkerMsg.resultActorOnCoordinator,

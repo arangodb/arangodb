@@ -133,6 +133,13 @@ std::vector<ShardID> getShardIds(TRI_vocbase_t& vocbase,
 
 }  // namespace
 
+auto PregelRunUser::authorized(ExecContext const& userContext) const -> bool {
+  if (userContext.isSuperuser()) {
+    return true;
+  }
+  return name == userContext.user();
+}
+
 ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
                                                        PregelOptions options) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
@@ -410,13 +417,14 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
                                              .database = vocbase.name(),
                                              .id = conductorActorID};
 
-    _runActors.doUnderLock([&](auto& actors) {
-      actors.emplace(en, PregelRunActors{.user = ExecContext::current().user(),
-                                         .resultActor = resultActorPID,
-                                         .results = resultData,
-                                         .statusActor = statusActorPID,
-                                         .status = status,
-                                         .conductor = conductorActorPID});
+    _pregelRuns.doUnderLock([&](auto& actors) {
+      actors.emplace(
+          en, PregelRun{PregelRunUser(ExecContext::current().user()),
+                        PregelRunActors{.resultActor = resultActorPID,
+                                        .results = resultData,
+                                        .statusActor = statusActorPID,
+                                        .status = status,
+                                        .conductor = conductorActorPID}});
     });
 
     return en;
@@ -742,9 +750,10 @@ void PregelFeature::garbageCollectActors() {
   _actorRuntime->garbageCollect();
 
   // clean up map
-  _runActors.doUnderLock([this](auto& items) {
+  _pregelRuns.doUnderLock([this](auto& items) {
     std::erase_if(items, [this](auto& item) {
-      auto const& [_, actors] = item;
+      auto const& [_, run] = item;
+      auto actors = run.getActorsInternally();
       return not _actorRuntime->contains(actors.resultActor.id) &&
              (actors.statusActor == std::nullopt ||
               not _actorRuntime->contains(actors.statusActor.value().id)) &&
@@ -809,7 +818,7 @@ std::shared_ptr<IWorker> PregelFeature::worker(
 }
 
 ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
-  return _runActors.doUnderLock(
+  return _pregelRuns.doUnderLock(
       [&execNr](auto const& items) -> ResultT<PregelResults> {
         auto item = items.find(execNr);
         if (item == items.end()) {
@@ -817,20 +826,24 @@ ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
               TRI_ERROR_HTTP_NOT_FOUND,
               fmt::format("Cannot locate results for pregel run {}.", execNr)};
         }
-        auto const& [_, actors] = *item;
-        auto results = actors.results->get();
-        if (!results.has_value()) {
-          return Result{
-              TRI_ERROR_INTERNAL,
-              fmt::format("Pregel results for run {} are not yet available.",
-                          execNr)};
+        auto const& [_, run] = *item;
+        if (auto actors = run.getActorsFromUser(ExecContext::current());
+            actors != std::nullopt) {
+          auto results = actors.value().results->get();
+          if (!results.has_value()) {
+            return Result{
+                TRI_ERROR_INTERNAL,
+                fmt::format("Pregel results for run {} are not yet available.",
+                            execNr)};
+          }
+          return results.value();
         }
-        return results.value();
+        return Result{TRI_ERROR_HTTP_UNAUTHORIZED, "User is not authorized."};
       });
 }
 
 ResultT<PregelStatus> PregelFeature::getStatus(ExecutionNumber execNr) {
-  return _runActors.doUnderLock(
+  return _pregelRuns.doUnderLock(
       [&execNr](auto const& items) -> ResultT<PregelStatus> {
         auto item = items.find(execNr);
         if (item == items.end()) {
@@ -838,15 +851,19 @@ ResultT<PregelStatus> PregelFeature::getStatus(ExecutionNumber execNr) {
               TRI_ERROR_HTTP_NOT_FOUND,
               fmt::format("Cannot locate status for pregel run {}.", execNr)};
         }
-        auto const& [_, actors] = *item;
-        auto state = actors.status;
-        if (not state.has_value()) {
-          return Result{
-              TRI_ERROR_HTTP_NOT_FOUND,
-              fmt::format("Status of for pregel run {} is not available.",
-                          execNr)};
+        auto const& [_, run] = *item;
+        if (auto actors = run.getActorsFromUser(ExecContext::current());
+            actors != std::nullopt) {
+          auto state = actors.value().status;
+          if (not state.has_value()) {
+            return Result{
+                TRI_ERROR_HTTP_NOT_FOUND,
+                fmt::format("Status of for pregel run {} is not available.",
+                            execNr)};
+          }
+          return *state.value();
         }
-        return *state.value();
+        return Result{TRI_ERROR_HTTP_UNAUTHORIZED, "User is not authorized."};
       });
 }
 
@@ -1181,24 +1198,29 @@ auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
   }
 
   // pregel can still have ran with actors, then the result actor would exist
-  return _runActors.doUnderLock([&executionNumber,
-                                 this](auto const& items) -> Result {
+  return _pregelRuns.doUnderLock([&executionNumber,
+                                  this](auto const& items) -> Result {
     auto item = items.find(executionNumber);
     if (item == items.end()) {
       return Result{TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid"};
     }
-    auto const& [_, actors] = *item;
-    if (_actorRuntime->contains(actors.resultActor.id)) {
-      _actorRuntime->dispatch<pregel::message::ResultMessages>(
-          actors.resultActor, actors.resultActor,
-          pregel::message::CleanupResults{});
+    auto const& [_, run] = *item;
+    if (auto actors = run.getActorsFromUser(ExecContext::current());
+        actors != std::nullopt) {
+      auto resultActor = actors.value().resultActor;
+      if (_actorRuntime->contains(resultActor.id)) {
+        _actorRuntime->dispatch<pregel::message::ResultMessages>(
+            resultActor, resultActor, pregel::message::CleanupResults{});
+      }
+      auto conductor = actors.value().conductor;
+      if (conductor != std::nullopt &&
+          _actorRuntime->contains(conductor.value().id)) {
+        _actorRuntime->dispatch<pregel::conductor::message::ConductorMessages>(
+            conductor.value(), conductor.value(),
+            pregel::conductor::message::Cancel{});
+      }
+      return Result{};
     }
-    if (actors.conductor != std::nullopt &&
-        _actorRuntime->contains(actors.conductor.value().id)) {
-      _actorRuntime->dispatch<pregel::conductor::message::ConductorMessages>(
-          actors.conductor.value(), actors.conductor.value(),
-          pregel::conductor::message::Cancel{});
-    }
-    return Result{};
+    return Result{TRI_ERROR_HTTP_UNAUTHORIZED, "User is not authorized."};
   });
 }

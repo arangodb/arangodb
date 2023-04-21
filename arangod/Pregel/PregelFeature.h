@@ -54,6 +54,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 struct OperationResult;
+class ExecContext;
 namespace rest {
 enum class RequestType;
 }
@@ -75,8 +76,14 @@ struct PregelScheduler {
   }
 };
 
+struct PregelRunUser {
+  PregelRunUser(std::string name) : name{std::move(name)} {}
+  auto authorized(ExecContext const& userContext) const -> bool;
+
+ private:
+  std::string name;
+};
 struct PregelRunActors {
-  std::string user;
   actor::ActorPID resultActor;
   std::shared_ptr<PregelResult> results;
 
@@ -84,6 +91,22 @@ struct PregelRunActors {
   std::optional<actor::ActorPID> statusActor;
   std::optional<std::shared_ptr<PregelStatus>> status;
   std::optional<actor::ActorPID> conductor;
+};
+struct PregelRun {
+  PregelRun(PregelRunUser user, PregelRunActors actors)
+      : user{std::move(user)}, actors{std::move(actors)} {}
+  auto getActorsInternally() const -> PregelRunActors { return actors; }
+  auto getActorsFromUser(ExecContext const& userContext) const
+      -> std::optional<PregelRunActors> {
+    if (not user.authorized(userContext)) {
+      return std::nullopt;
+    }
+    return actors;
+  }
+
+ private:
+  PregelRunUser user;
+  PregelRunActors actors;
 };
 
 class Conductor;
@@ -185,7 +208,7 @@ class PregelFeature final : public ArangodFeature {
  public:
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
-  Guarded<std::unordered_map<ExecutionNumber, PregelRunActors>> _runActors;
+  Guarded<std::unordered_map<ExecutionNumber, PregelRun>> _pregelRuns;
 };
 
 }  // namespace arangodb::pregel
