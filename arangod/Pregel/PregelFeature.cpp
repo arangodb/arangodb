@@ -371,17 +371,18 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
             vocbase, executionSpecifications.vertexCollections,
             executionSpecifications.edgeCollections);
 
+    auto user = ExecContext::current().user();
     auto statusStart = message::StatusMessages{message::StatusStart{
         .state = "Execution Started",
         .id = executionSpecifications.executionNumber,
+        .user = user,
         .database = vocbase.name(),
         .algorithm = executionSpecifications.algorithm,
         .ttl = executionSpecifications.ttl,
         .parallelism = executionSpecifications.parallelism}};
-    auto statusState = std::make_unique<StatusState>();
-    auto status = statusState->status;
     auto statusActorID = _actorRuntime->spawn<StatusActor>(
-        vocbase.name(), std::move(statusState), std::move(statusStart));
+        vocbase.name(), std::make_unique<StatusState>(vocbase),
+        std::move(statusStart));
     auto statusActorPID = actor::ActorPID{
         .server = ss->getId(), .database = vocbase.name(), .id = statusActorID};
 
@@ -419,11 +420,9 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
 
     _pregelRuns.doUnderLock([&](auto& actors) {
       actors.emplace(
-          en, PregelRun{PregelRunUser(ExecContext::current().user()),
+          en, PregelRun{PregelRunUser(user),
                         PregelRunActors{.resultActor = resultActorPID,
                                         .results = resultData,
-                                        .statusActor = statusActorPID,
-                                        .status = status,
                                         .conductor = conductorActorPID}});
     });
 
@@ -755,8 +754,6 @@ void PregelFeature::garbageCollectActors() {
       auto const& [_, run] = item;
       auto actors = run.getActorsInternally();
       return not _actorRuntime->contains(actors.resultActor.id) &&
-             (actors.statusActor == std::nullopt ||
-              not _actorRuntime->contains(actors.statusActor.value().id)) &&
              (actors.conductor == std::nullopt ||
               not _actorRuntime->contains(actors.conductor.value().id));
     });
@@ -837,31 +834,6 @@ ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
                             execNr)};
           }
           return results.value();
-        }
-        return Result{TRI_ERROR_HTTP_UNAUTHORIZED, "User is not authorized."};
-      });
-}
-
-ResultT<PregelStatus> PregelFeature::getStatus(ExecutionNumber execNr) {
-  return _pregelRuns.doUnderLock(
-      [&execNr](auto const& items) -> ResultT<PregelStatus> {
-        auto item = items.find(execNr);
-        if (item == items.end()) {
-          return Result{
-              TRI_ERROR_HTTP_NOT_FOUND,
-              fmt::format("Cannot locate status for pregel run {}.", execNr)};
-        }
-        auto const& [_, run] = *item;
-        if (auto actors = run.getActorsFromUser(ExecContext::current());
-            actors != std::nullopt) {
-          auto state = actors.value().status;
-          if (not state.has_value()) {
-            return Result{
-                TRI_ERROR_HTTP_NOT_FOUND,
-                fmt::format("Status of for pregel run {} is not available.",
-                            execNr)};
-          }
-          return *state.value();
         }
         return Result{TRI_ERROR_HTTP_UNAUTHORIZED, "User is not authorized."};
       });
@@ -1211,13 +1183,6 @@ auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
       if (_actorRuntime->contains(resultActor.id)) {
         _actorRuntime->dispatch<pregel::message::ResultMessages>(
             resultActor, resultActor, pregel::message::CleanupResults{});
-      }
-      auto statusActor = actors.value().statusActor;
-      if (statusActor != std::nullopt &&
-          _actorRuntime->contains(statusActor.value().id)) {
-        _actorRuntime->dispatch<pregel::message::StatusMessages>(
-            statusActor.value(), statusActor.value(),
-            pregel::message::Cleanup{});
       }
       auto conductor = actors.value().conductor;
       if (conductor != std::nullopt &&

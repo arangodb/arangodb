@@ -88,8 +88,6 @@ struct PregelRunActors {
   std::shared_ptr<PregelResult> results;
 
   // following members are only relevant on coordinator
-  std::optional<actor::ActorPID> statusActor;
-  std::optional<std::shared_ptr<PregelStatus>> status;
   std::optional<actor::ActorPID> conductor;
 };
 struct PregelRun {
@@ -146,7 +144,6 @@ class PregelFeature final : public ArangodFeature {
   void cleanupConductor(ExecutionNumber executionNumber);
   void cleanupWorker(ExecutionNumber executionNumber);
   [[nodiscard]] ResultT<PregelResults> getResults(ExecutionNumber execNr);
-  [[nodiscard]] ResultT<PregelStatus> getStatus(ExecutionNumber execNr);
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,

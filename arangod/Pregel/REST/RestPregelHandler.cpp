@@ -114,8 +114,6 @@ RestStatus RestPregelHandler::execute() {
               PregelRun{PregelRunUser(ExecContext::current().user()),
                         PregelRunActors{.resultActor = resultActorPID,
                                         .results = resultData,
-                                        .statusActor = std::nullopt,
-                                        .status = std::nullopt,
                                         .conductor = std::nullopt}});
         });
         _pregel._actorRuntime->dispatch<message::ResultMessages>(

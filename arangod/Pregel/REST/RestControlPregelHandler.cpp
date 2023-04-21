@@ -231,22 +231,9 @@ void RestControlPregelHandler::handleGetRequest() {
     }
     auto executionNumber = arangodb::pregel::ExecutionNumber{
         arangodb::basics::StringUtils::uint64(suffixes[0])};
-    auto actorStatus = _pregel.getStatus(executionNumber);
-    // if this was not an actor run, this can be a non-actor run
-    if (actorStatus.fail()) {
-      pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
-                                                           executionNumber};
-      return handlePregelHistoryResult(cWriter.readResult(), true);
-    }
-    auto serializedState = inspection::serializeWithErrorT(actorStatus.get());
-    if (!serializedState.ok()) {
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                    fmt::format("Cannot serialize status: {}",
-                                serializedState.error().error()));
-      return;
-    }
-    generateResult(rest::ResponseCode::OK, serializedState.get().slice());
-    return;
+    pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
+                                                         executionNumber};
+    return handlePregelHistoryResult(cWriter.readResult(), true);
   } else if ((suffixes.size() >= 1 || suffixes.size() <= 2) &&
              suffixes.at(0) == "history") {
     if (_pregel.isStopping()) {

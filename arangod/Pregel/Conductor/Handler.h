@@ -160,6 +160,8 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
       this->finish();
       this->template dispatch<pregel::message::SpawnMessages>(
           this->state->spawnActor, pregel::message::SpawnCleanup{});
+      this->template dispatch<pregel::message::StatusMessages>(
+          this->state->statusActor, pregel::message::Cleanup{});
     }
     return std::move(this->state);
   }
