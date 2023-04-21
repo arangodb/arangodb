@@ -1591,7 +1591,6 @@
 
       this.myQueriesTableDesc.rows = this.customQueries;
       this.myQueriesTableDesc.rows = this.sortRows(this.myQueriesTableDesc.rows);
-      this.myQueriesTableDesc.rows = this.filterRows(this.myQueriesTableDesc.rows);
       _.each(this.myQueriesTableDesc.rows, function (k) {
         k.secondRow = '<span class="spanWrapper">' +
           '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span>' +
@@ -1606,6 +1605,7 @@
         delete k.modified_at;
       });
       
+      // iterate over predefined queries
       _.each(this.queries, function (val) {
         if (val.hasOwnProperty('parameter')) {
           delete val.parameter;
@@ -1616,6 +1616,9 @@
             '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span></span>'
         });
       });
+
+      // filter based on search term, including predefined queries
+      this.myQueriesTableDesc.rows = this.filterRows(this.myQueriesTableDesc.rows);
 
       // escape all columns but the third (which contains HTML)
       this.myQueriesTableDesc.unescaped = [ false, true, true ];
