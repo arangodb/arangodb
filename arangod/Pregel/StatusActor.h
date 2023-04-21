@@ -401,6 +401,11 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
+  auto operator()(message::Cleanup& msg) -> std::unique_ptr<StatusState> {
+    this->finish();
+    return std::move(this->state);
+  }
+
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<StatusState> {
     LOG_TOPIC("eb6f2", INFO, Logger::PREGEL) << fmt::format(

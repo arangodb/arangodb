@@ -137,6 +137,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     auto stateChange = this->state->executionState->receive(this->sender, msg);
     if (stateChange.has_value()) {
       changeState(std::move(stateChange.value()));
+      sendMessagesToWorkers();
     }
 
     this->template dispatch<pregel::message::ResultMessages>(

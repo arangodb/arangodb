@@ -1212,6 +1212,13 @@ auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
         _actorRuntime->dispatch<pregel::message::ResultMessages>(
             resultActor, resultActor, pregel::message::CleanupResults{});
       }
+      auto statusActor = actors.value().statusActor;
+      if (statusActor != std::nullopt &&
+          _actorRuntime->contains(statusActor.value().id)) {
+        _actorRuntime->dispatch<pregel::message::StatusMessages>(
+            statusActor.value(), statusActor.value(),
+            pregel::message::Cleanup{});
+      }
       auto conductor = actors.value().conductor;
       if (conductor != std::nullopt &&
           _actorRuntime->contains(conductor.value().id)) {

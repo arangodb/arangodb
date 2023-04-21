@@ -188,17 +188,23 @@ auto inspect(Inspector& f, Canceled& x) {
   return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
 }
 
+struct Cleanup {};
+template<typename Inspector>
+auto inspect(Inspector& f, Cleanup& x) {
+  return f.object(x).fields();
+}
+
 struct StatusMessages
     : std::variant<StatusStart, PregelStarted, LoadingStarted,
                    GraphLoadingUpdate, ComputationStarted,
                    GlobalSuperStepStarted, GlobalSuperStepUpdate,
                    StoringStarted, GraphStoringUpdate, PregelFinished,
-                   InFatalError, Canceled> {
+                   InFatalError, Canceled, Cleanup> {
   using std::variant<StatusStart, PregelStarted, LoadingStarted,
                      GraphLoadingUpdate, ComputationStarted,
                      GlobalSuperStepStarted, GlobalSuperStepUpdate,
                      StoringStarted, GraphStoringUpdate, PregelFinished,
-                     InFatalError, Canceled>::variant;
+                     InFatalError, Canceled, Cleanup>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusMessages& x) {
@@ -216,7 +222,8 @@ auto inspect(Inspector& f, StatusMessages& x) {
       arangodb::inspection::type<GraphStoringUpdate>("GraphStoringUpdate"),
       arangodb::inspection::type<PregelFinished>("PregelFinished"),
       arangodb::inspection::type<InFatalError>("InFatalError"),
-      arangodb::inspection::type<Canceled>("Canceled"));
+      arangodb::inspection::type<Canceled>("Canceled"),
+      arangodb::inspection::type<Cleanup>("Cleanup"));
 }
 
 }  // namespace arangodb::pregel::message
