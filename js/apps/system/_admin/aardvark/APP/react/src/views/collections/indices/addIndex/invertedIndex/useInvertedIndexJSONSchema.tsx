@@ -77,6 +77,10 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
             type: "boolean",
             nullable: true
           },
+          cache: {
+            type: "boolean",
+            nullable: true
+          },
           nested: {
             type: "array",
             $ref: "invertedIndexFields.json",
@@ -119,6 +123,10 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
           type: "string",
           enum: ["lz4", "none"],
           default: "lz4"
+        },
+        cache: {
+          type: "boolean",
+          nullable: true
         }
       },
       required: ["compression", "fields"]
@@ -235,6 +243,10 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
       nullable: true,
       minimum: 0,
       default: 33554432
+    },
+    primaryKeyCache: {
+      type: "boolean",
+      nullable: true
     }
   },
   required: ["type"],
