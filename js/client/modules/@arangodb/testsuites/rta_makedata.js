@@ -110,7 +110,7 @@ function makeDataWrapper (options) {
           args['log.level'] = ['warning', 'V8=debug'];
         } else if (!this.options.verbose) {
           args['log.level'] = 'warning';
-        }          
+        }
         if (this.addArgs !== undefined) {
           args = Object.assign(args, this.addArgs);
         }
