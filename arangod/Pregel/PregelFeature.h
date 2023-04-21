@@ -75,13 +75,15 @@ struct PregelScheduler {
   }
 };
 
-struct ResultActorReference {
-  actor::ActorPID pid;
-  std::shared_ptr<PregelResult> data;
-};
-struct StatusActorReference {
-  actor::ActorPID pid;
-  std::shared_ptr<PregelStatus> status;
+struct PregelRunActors {
+  std::string user;
+  actor::ActorPID resultActor;
+  std::shared_ptr<PregelResult> results;
+
+  // following members are only relevant on coordinator
+  std::optional<actor::ActorPID> statusActor;
+  std::optional<std::shared_ptr<PregelStatus>> status;
+  std::optional<actor::ActorPID> conductor;
 };
 
 class Conductor;
@@ -183,13 +185,7 @@ class PregelFeature final : public ArangodFeature {
  public:
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
-
-  Guarded<std::unordered_map<ExecutionNumber, ResultActorReference>>
-      _resultActor;
-  // conductor and status actors are only used on the coordinator
-  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _conductorActor;
-  Guarded<std::unordered_map<ExecutionNumber, StatusActorReference>>
-      _statusActors;
+  Guarded<std::unordered_map<ExecutionNumber, PregelRunActors>> _runActors;
 };
 
 }  // namespace arangodb::pregel
