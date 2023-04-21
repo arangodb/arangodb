@@ -1,6 +1,13 @@
 devel
 -----
 
+* Adjusted timeouts for cluster internal commit and abort requests to withstand
+  network delays better. This fixes some problems when the networking
+  infrastructure delays requests.
+
+* Added sent time accounting and some metrics to fuerte and the NetworkFeature.
+  This can detect delays in the network infrastructure.
+
 * Added startup option `--server.ensure-whitespace-metrics-format`, which
   controls whether additional whitespace is used in the metrics output 
   format. If set to `true`, then whitespace is emitted between the exported
