@@ -1,12 +1,20 @@
 v3.10.6 (XXXX-XX-XX)
 --------------------
 
-* Automatically repair revision trees after several failed shard
-  synchronization attempts. This can help to get permanently out-of-sync
-  shards back into sync.
+* Automatically repair revision trees after several failed shard synchronization
+  attempts. This can help to get permanently out-of-sync shards back into sync.
 
   The functionality can be turned off by setting the startup option
   `--replication.auto-repair-revision-trees` to `false` on DB-Servers.
+
+* Added startup option `--server.ensure-whitespace-metrics-format`, which
+  controls whether additional whitespace is used in the metrics output format.
+  If set to `true`, then whitespace is emitted between the exported metric value
+  and the preceeding token (metric name or labels).
+  Using whitespace may be required to make the metrics output compatible with
+  some processing tools, although Prometheus itself doesn't need it.
+
+  The option defaults to `true`, which adds additional whitespace by default.
 
 * SEARCH-461: Added option "--arangosearch.columns-cache-only-leader". Used only
   on EE DBServers. Default is false.
