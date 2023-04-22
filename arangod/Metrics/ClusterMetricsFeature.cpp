@@ -321,7 +321,8 @@ void ClusterMetricsFeature::add(std::string_view metric, MapReduce mapReduce,
 }
 
 void ClusterMetricsFeature::toPrometheus(std::string& result,
-                                         std::string_view globals) const {
+                                         std::string_view globals,
+                                         bool ensureWhitespace) const {
   auto data = getData();
   if (!data) {
     return;
@@ -339,7 +340,8 @@ void ClusterMetricsFeature::toPrometheus(std::string& result,
       }
     }
     if (it != _toPrometheus.end()) {
-      it->second(result, globals, metricName, key.labels, value);
+      it->second(result, globals, metricName, key.labels, value,
+                 ensureWhitespace);
     }
   }
 }
