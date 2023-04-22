@@ -120,7 +120,8 @@ class Histogram : public Metric {
 
   size_t size() const { return _c.size(); }
 
-  void toPrometheus(std::string& result, std::string_view globals) const final {
+  void toPrometheus(std::string& result, std::string_view globals,
+                    bool ensureWhitespace) const final {
     std::string ls;
     auto const globals_size = globals.size();
     auto const labels_size = labels().size();
@@ -138,11 +139,20 @@ class Histogram : public Metric {
         result.append(ls) += ',';
       }
       result.append("le=\"").append(_scale.delim(i)).append("\"}");
+      if (ensureWhitespace) {
+        result.push_back(' ');
+      }
       result.append(std::to_string(sum)) += '\n';
     }
     (result.append(name()).append("_count") += '{').append(ls) += '}';
+    if (ensureWhitespace) {
+      result.push_back(' ');
+    }
     result.append(std::to_string(sum)) += '\n';
     (result.append(name()).append("_sum") += '{').append(ls) += '}';
+    if (ensureWhitespace) {
+      result.push_back(' ');
+    }
     result.append(std::to_string(_sum.load(std::memory_order_relaxed))) += '\n';
   }
 
