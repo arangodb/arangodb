@@ -391,7 +391,7 @@ index_t State::logFollower(VPackSlice transactions) {
   std::lock_guard logLock{_logLock};
 
   // In case of a snapshot, there are three possibilities:
-  //   1. Our highest log index is smaller than the snapshot index, in this
+  //   1. Our highest log index is less than the snapshot index, in this
   //      case we must throw away our complete local log and start from the
   //      snapshot (note that snapshot indexes are always committed by a
   //      majority).
@@ -401,7 +401,7 @@ index_t State::logFollower(VPackSlice transactions) {
   //      snapshot. If the term in our log entry is smaller (cannot be
   //      larger because compaction snapshots are always committed), then
   //      our complete log must be deleted as in 1.
-  //   3. Our highest log index is larger than the snapshot index but we
+  //   3. Our highest log index is greater than the snapshot index but we
   //      no longer have an entry in the log for the snapshot index due to
   //      our own compaction. In this case we have compacted away the
   //      snapshot index, therefore we know it was committed by a majority
@@ -616,7 +616,7 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
   }
 
   // start must be greater than or equal to the lowest index
-  // and smaller than or equal to the largest index
+  // and less than or equal to the largest index
   if (start < _log[0].index) {
     start = _log.front().index;
   } else if (start > _log.back().index) {
@@ -624,7 +624,7 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
   }
 
   // end must be greater than or equal to start
-  // and smaller than or equal to the largest index
+  // and less than or equal to the largest index
   if (end <= start) {
     end = start;
   } else if (end == (std::numeric_limits<uint64_t>::max)() ||

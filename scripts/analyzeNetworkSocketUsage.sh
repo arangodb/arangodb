@@ -17,7 +17,7 @@ if test "$C" -gt 1024; then
         # count the connections to one ip:port
 	SC=$(grep "$sockets" $F |wc -l)
 	if test "$SC" -gt "16"; then
-            # if the connection outoes a sane figure, we want to count & output them:
+            # if the connection outputs a sane figure, we want to count & output them:
 	    echo "$sockets - $SC"
             # and here we want to know which processes are attached to them.
             # this will output one line per active connection, so this may become much:

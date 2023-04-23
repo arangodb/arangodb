@@ -483,7 +483,7 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::uint64_t depth,
   }
 
   if (rangeMax <= rangeMin) {
-    throw std::invalid_argument("rangeMax must be larger than rangeMin");
+    throw std::invalid_argument("rangeMax must be greater than rangeMin");
   }
   if (!NumberUtils::isPowerOf2(rangeMax - rangeMin)) {
     throw std::invalid_argument(

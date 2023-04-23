@@ -120,7 +120,7 @@ function ShardDistributionTest({replVersion}) {
   };
 
   const replicationFactor = 3;
-  // Note here: We have to make sure that numberOfShards * replicationFactor is not disible by the number of DBServers
+  // Note here: We have to make sure that numberOfShards * replicationFactor is not divisible by the number of DBServers
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief order the cluster to clean out a server:

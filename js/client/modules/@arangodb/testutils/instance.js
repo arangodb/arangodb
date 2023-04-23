@@ -93,7 +93,7 @@ class portManager {
     }
 
     if (this.maxPort - this.minPort < 0) {
-      throw new Error('minPort ' + this.minPort + ' is smaller than maxPort ' + this.maxPort);
+      throw new Error('minPort ' + this.minPort + ' is less than maxPort ' + this.maxPort);
     }
   }
   deregister(port) {

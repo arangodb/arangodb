@@ -433,7 +433,7 @@ the block cache size configuration option to limit memory usage.
 
 If set to `0`, the memory usage is not limited.
 
-If set to a value larger than `0`, this caps memory usage for write buffers but
+If set to a value greater than `0`, this caps memory usage for write buffers but
 may have an effect on performance. If there is more than 4 GiB of RAM in the
 system, the default value is `(system RAM size - 2 GiB) * 0.5`.
 

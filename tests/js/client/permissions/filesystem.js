@@ -500,7 +500,7 @@ function testSuite() {
       let absolute = fs.copyRecursive(sn, tn);
       fail();
     } catch (err) {
-      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'CopyRecursiveing of ' + sn + ' to ' + tn + ' wasn\'t forbidden: ' + err);
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'CopyRecursive of ' + sn + ' to ' + tn + ' wasn\'t forbidden: ' + err);
     }
   }
   function tryCopyRecursiveFileAllowed(sn, tn) {

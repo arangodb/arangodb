@@ -985,7 +985,7 @@ devel
   queries to the server log. The option is turned off by default.
 
 * Added startup option `--query.log-memory-usage-threshold` to optionally log
-  all AQL queries that have a peak memory usage larger than the configured
+  all AQL queries that have a peak memory usage greater than the configured
   value. The default value is 4GB.
 
 * Added startup option `--query.max-artifact-log-length` to control the
@@ -3773,7 +3773,7 @@ devel
 * Add 3 AQL functions: DECAY_GAUSS, DECAY_EXP and DECAY_LINEAR.
 
 * Fix URL request parsing in case data is handed in in small chunks.
-  Previously the URL could be cut off if the chunk size was smaller than
+  Previously the URL could be cut off if the chunk size was less than
   the URL size.
 
 * Backport bugfix from upstream rocksdb repository for calculating the
@@ -7044,7 +7044,7 @@ devel
     stored dump files.
 
 * Fixed traversal issue: If you have a traversal with different minDepth and maxDepth
-  values and filter on path elements that are larger then minDepth, in a way that a
+  values and filter on path elements that are greater than minDepth, in a way that a
   shorter path would match the condition, the shorter paths would in some cases
   not be returned, even if they are valid. e.g.
 
@@ -21877,7 +21877,7 @@ v1.0.beta3 (2012-08-10)
 * fix for issue #151: Memleak, collection data not removed
 
 * value of --database.maximal-journal-size parameter is now validated on startup. If
-  value is smaller than the minimum value (currently 1048576), an error is thrown and
+  value is less than the minimum value (currently 1048576), an error is thrown and
   the server will not start. Before this change, the global value of maximal journal
   size was not validated at server start, but only on collection level
 

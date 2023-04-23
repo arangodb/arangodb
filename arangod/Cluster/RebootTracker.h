@@ -102,7 +102,7 @@ class RebootTracker {
   ///    (though not necessarily the other way round).
   ///  - None of the nested maps is empty
   ///  - The RebootIds used as index in the inner map are expected to not be
-  ///    smaller than the corresponding ones in _state
+  ///    less than the corresponding ones in _state
   Callbacks _callbacks;
 };
 

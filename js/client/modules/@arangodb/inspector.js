@@ -641,7 +641,7 @@ function getServerData(arango) {
       arango.reconnect(current, '_system');
     }
   }
-  INFO('... dignostics collected.');
+  INFO('... diagnostics collected.');
   return report;
 }
 

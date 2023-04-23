@@ -3339,7 +3339,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
       totalCount++;
     }
 
-    if (((uCount != nrResults)) ||  // fetch any / found less then N
+    if (((uCount != nrResults)) ||  // fetch any / found less than N
         ((limitNumber >= 0) && (totalCount >= limitNumber))) {  // fetch N
       break;
     }
@@ -3551,7 +3551,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
       totalCount++;
     }
 
-    if (uCount != nrResults ||  // fetch any / found less then N
+    if (uCount != nrResults ||  // fetch any / found less than N
         (limitNumber >= 0 && totalCount >= limitNumber)) {  // fetch N
       break;
     }

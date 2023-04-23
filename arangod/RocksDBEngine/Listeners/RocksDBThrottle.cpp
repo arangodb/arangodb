@@ -183,7 +183,7 @@ void RocksDBThrottle::setThrottleWriteRate(std::chrono::microseconds micros,
                                            uint64_t keys, uint64_t bytes,
                                            bool isLevel0) {
   TRI_ASSERT(micros.count() >= 0);
-  // throw out anything smaller than 32Mbytes ... be better if this
+  // throw out anything less than 32Mbytes ... be better if this
   //  was calculated against write_buffer_size, but that varies by column family
   if ((64 << 19) < bytes) {
     // lock _threadMutex while we update _throttleData

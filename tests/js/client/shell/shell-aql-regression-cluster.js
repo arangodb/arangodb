@@ -35,7 +35,7 @@ function ShellAqlRegressionSuite () {
 
   return {
     setUpAll: function () {
-      // Create two shards, in one of them all `.value`s are smaller than all in the other.
+      // Create two shards, in one of them all `.value`s are less than all in the other.
       const numberOfShards = 2;
       const col = db._create(colName, {numberOfShards, shardKeys: ["shardKey"]});
       const shardToKey = new Map();

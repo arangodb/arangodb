@@ -2417,7 +2417,7 @@ void fetchVerticesFromEngines(
   // TODO map id => ServerID if possible
   // And go fast-path
 
-  // slow path, sharding not deducable from _id
+  // slow path, sharding not deducible from _id
   transaction::BuilderLeaser leased(&trx);
   leased->openObject();
   leased->add("keys", VPackValue(VPackValueType::Array));

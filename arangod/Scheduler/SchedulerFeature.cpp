@@ -289,7 +289,7 @@ void SchedulerFeature::validateOptions(
   }
 
   if (_queueSize == 0) {
-    // Note that this is way smaller than the default of 4096!
+    // Note that this is way less than the default of 4096!
     TRI_ASSERT(_nrMaximalThreads > 0);
     _queueSize = _nrMaximalThreads * 8;
     TRI_ASSERT(_queueSize > 0);

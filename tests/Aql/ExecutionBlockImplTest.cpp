@@ -248,7 +248,7 @@ class SharedExecutionBlockImplTest {
    *        In addition we have the following assertions:
    *        1. Whenever this produce is called, it asserts that is called with
    * the expectedCall
-   *        2. This call has been called less then 10 times (emergency bailout
+   *        2. This call has been called less than 10 times (emergency bailout
    * against infinite loop)
    *        3. If there is an input row, this row is valid.
    *        4. If called with empty input, we still have exactly
@@ -313,7 +313,7 @@ class SharedExecutionBlockImplTest {
    *        In addition we have the following assertions:
    *        1. Whenever this produce is called, it asserts that is called with
    * the expectedCall
-   *        2. This call has been called less then 10 times (emergency bailout
+   *        2. This call has been called less than 10 times (emergency bailout
    * against infinite loop)
    *        3. If there is an input row, this row is valid.
    *
@@ -1903,7 +1903,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
 TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls) {
   // The WAITING block mock can only stop returning after a full block.
   // As the used calls have "random" sizes, we simply create 1 line blocks only.
-  // This is less then optimal, but we will have an easily predictable result,
+  // This is less than optimal, but we will have an easily predictable result,
   // with a complex internal structure
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   auto builder = std::make_shared<VPackBuilder>();
@@ -1960,7 +1960,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
        test_multiple_upstream_calls_passthrough) {
   // The WAITING block mock can only stop returning after a full block.
   // As the used calls have "random" sizes, we simply create 1 line blocks only.
-  // This is less then optimal, but we will have an easily predictable result,
+  // This is less than optimal, but we will have an easily predictable result,
   // with a complex internal structure
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   auto builder = std::make_shared<VPackBuilder>();

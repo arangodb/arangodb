@@ -36,7 +36,7 @@ namespace arangodb::pregel::algos {
 /// 2. Remove vertices which cannot be in a SCC (no incoming or no outgoing
 /// edges)
 /// 3. Propagate the color forward from each vertex, accept a neighbor's color
-/// if it's smaller than yours.
+/// if it's less than yours.
 ///    At convergence, vertices with the same color represents all nodes that
 ///    are visitable from the root of that color.
 /// 4. Reverse the graph.

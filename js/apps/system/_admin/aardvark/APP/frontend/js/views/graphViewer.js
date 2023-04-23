@@ -1704,7 +1704,7 @@
       if (newNodeCounter > 0 || newEdgeCounter > 0) {
         if (self.algorithm === 'force') {
           self.startLayout(true, origin);
-        } else if (self.algorithm === 'fruchtermann') {
+        } else if (self.algorithm === 'fruchterman') {
           sigma.layouts.fruchtermanReingold.start(self.currentGraph);
           self.currentGraph.refresh();
           self.cameraToNode(origin, 1000);
@@ -2074,7 +2074,7 @@
         self.renderer = 'canvas';
 
         if (graph.nodes.length < 500) {
-          self.algorithm = 'fruchtermann';
+          self.algorithm = 'fruchterman';
         } else {
           settings.scalingMode = 'outside';
         }
@@ -2130,7 +2130,7 @@
           if (e.type === 'interpolate') {
           }
         });
-      } else if (self.algorithm === 'fruchtermann') {
+      } else if (self.algorithm === 'fruchterman') {
         var frListener = sigma.layouts.fruchtermanReingold.configure(s, {
           iterations: 100,
           easing: 'quadraticInOut',
@@ -2401,7 +2401,7 @@
         window.setTimeout(function () {
           self.stopLayout();
         }, duration);
-      } else if (self.algorithm === 'fruchtermann') {
+      } else if (self.algorithm === 'fruchterman') {
         // Start the Fruchterman-Reingold algorithm:
         sigma.layouts.fruchtermanReingold.start(s);
       }

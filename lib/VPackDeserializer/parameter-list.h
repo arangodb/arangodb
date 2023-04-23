@@ -32,7 +32,7 @@ namespace velocypack {
 namespace deserializer {
 
 /*
- * parameter_list is used to specifiy a list of object fields that are decoded
+ * parameter_list is used to specify a list of object fields that are decoded
  * and used as parameters to the factory. Possible types in `T` are
  * - factory_simple_parameter
  * - factory_slice_parameter

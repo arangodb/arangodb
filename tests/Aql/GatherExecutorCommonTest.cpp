@@ -413,7 +413,7 @@ class CommonGatherExecutorTest
 
   /**
    * @brief Generate the data values.
-   *        Every entry in the vector is a seperate subquery run
+   *        Every entry in the vector is a separate subquery run
    *        in the set every possible value is stored exactly once.
    *
    * @param block The block where we inject dependencies

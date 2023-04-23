@@ -114,7 +114,7 @@ struct DMIDComputation
       /**
        * TODO: Integrate a precision factor for the random walk phase. The
        * phase ends when the infinity norm of the difference between the
-       * updated vector and the previous one is smaller than this factor.
+       * updated vector and the previous one is less than this factor.
        */
       superstepRW(messages);
     }

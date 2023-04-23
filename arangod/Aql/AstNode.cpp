@@ -260,9 +260,9 @@ static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
 
 /// @brief compare two nodes
 /// @return range from -1 to +1 depending:
-///  - -1 LHS being  less then   RHS,
+///  - -1 LHS being  less than   RHS,
 ///  -  0 LHS being     equal    RHS
-///  -  1 LHS being greater then RHS
+///  -  1 LHS being greater than RHS
 template<bool resolveAttributeAccess>
 int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   TRI_ASSERT(lhs != nullptr);

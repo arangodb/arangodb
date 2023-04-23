@@ -229,7 +229,7 @@ class Scheduler {
  private:
   // The priority queue is managed by a CronThread. It wakes up on a regular
   // basis (10ms currently) and looks at queue.top(). It the _expire time is
-  // smaller than now() and the task is not canceled it is posted on the
+  // less than now() and the task is not canceled it is posted on the
   // scheduler. The next sleep time is computed depending on queue top.
   //
   // Note that tasks that have a delay of less than 1ms are posted directly.

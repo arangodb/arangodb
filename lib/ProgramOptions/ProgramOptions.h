@@ -33,7 +33,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace aragndob::velocypack {
+namespace arangodb::velocypack {
 class Builder;
 }
 

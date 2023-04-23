@@ -115,8 +115,7 @@ struct QueryParams {
   bool minInclusive = false;
 
   /// entire earth (halfaround in each direction),
-  /// may not be larger than half earth circumference or larger
-  /// than the bounding cap of the filter region (see _filter)
+  /// may not be greater than half earth circumference or greater than the bounding cap of the filter region (see _filter)
   double maxDistance = kMaxDistanceBetweenPoints;
   bool maxInclusive = false;
 

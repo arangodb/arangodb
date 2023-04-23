@@ -43,7 +43,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
     return Result(TRI_ERROR_TYPE_ERROR,
-                  "When deserializating AqlCall: Expected object, got "s +
+                  "When deserializing AqlCall: Expected object, got "s +
                       slice.typeName());
   }
 

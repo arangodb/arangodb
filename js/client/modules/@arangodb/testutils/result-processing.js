@@ -641,7 +641,7 @@ function unitTestTabularPrintResults (options, results, otherResults) {
     'importing',
     'gtest',
     'dump',
-    'authentification',
+    'authentication',
     'arangobench',
     'arangosh',
     'export',

@@ -108,7 +108,7 @@ class MerkleTreeBase {
 
   // size of each shard, in bytes.
   // note: trees with a small depth may only have a single shard which is
-  // smaller than this value
+  // less than this value
   static constexpr std::uint64_t ShardSize = (1 << 16);
 
   struct Data {
@@ -281,7 +281,7 @@ class MerkleTree : public MerkleTreeBase {
    * @param rangeMax Must be an offset from rangeMin of a multiple of the
    *                 number of leaf nodes. If 0, it will be  chosen using the
    *                 defaultRange method. This is just an initial value to
-   *                 prevent immediate resizing; if a key larger than rangeMax
+   *                 prevent immediate resizing; if a key greater than rangeMax
    *                 is inserted into the tree, it will be dynamically resized
    *                 so that a larger rangeMax is chosen, and adjacent nodes
    *                 merged as necessary (growRight).

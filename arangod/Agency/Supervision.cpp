@@ -3151,7 +3151,7 @@ void arangodb::consensus::enforceReplicationFunctional(
 
               if (actualReplicationFactor < replicationFactor &&
                   apparentReplicationFactor < 2 + replicationFactor) {
-                // Note: If apparentReplicationFactor is smaller than
+                // Note: If apparentReplicationFactor is less than
                 // replicationFactor, then there are fewer servers in the
                 // plan than requested by the user. This means the AddFollower
                 // job is not subject to the configurable delay and is
@@ -3230,7 +3230,7 @@ void Supervision::shrinkCluster() {
     return;
   }
 
-  // Only if number of servers in target is smaller than the available
+  // Only if number of servers in target is less than the available
   if (targetNumDBServers < availServers.size()) {
     // Minimum 1 DB server must remain
     if (availServers.size() == 1) {
@@ -3536,7 +3536,7 @@ void Supervision::checkUndoLeaderChangeActions() {
       //  - it is not yet started
       //  - the fromServer is GOOD
       //  - it is in sync for the shard (and all distributeShardsLike shards)
-      //  - its current rebootId is larger than the stored one
+      //  - its current rebootId is greater than the stored one
       auto started = entry->hasAsString("started");
       if (started) {
         continue;

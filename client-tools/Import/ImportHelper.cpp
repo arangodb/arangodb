@@ -447,7 +447,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   }
 
   // trailing buffer items than can be accumulated because buffer length is
-  // smaller than batch size, so we send the data at the end of the parsing
+  // less than batch size, so we send the data at the end of the parsing
   handleCsvBuffer(0);
 
   TRI_DestroyCsvParser(&parser);

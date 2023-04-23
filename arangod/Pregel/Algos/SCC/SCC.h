@@ -43,7 +43,7 @@ namespace arangodb::pregel::algos {
  * 2. Remove vertices which cannot be in an SCC (no incoming or no outgoing
  * edges).
  * 3. Propagate the color forward from each vertex, accept a predecessor's color
- *    if it's smaller than yours. For the propagation, a vertex sends its color
+ *    if it's less than yours. For the propagation, a vertex sends its color
  *    to all its out-neighbors.
  *    When the fixed point is reached, vertices with the same color are exactly
  *    those reachable from the root of that color. Each vertex obtains the
@@ -54,7 +54,7 @@ namespace arangodb::pregel::algos {
  *    its in-neighbors and becomes inactive.
 
  *    When the fixed point is reached, every SCC that cannot be reached from a
- *    vertex with an Id smaller than all Ids in the SCC is identified: all its
+ *    vertex with an Id less than all Ids in the SCC is identified: all its
  *    vertices are inactive (and will not become active any more) and they all
  *    have the same color. The colors of all other vertices will be reset in the
  *    next round and will never become the color of the SCC.

@@ -57,7 +57,7 @@ class ShortestPathPriorityQueue {
   //   get and erase smallest:  O(log(n))   (but see below)
   //   lower weight by key      O(log(n))   (but see below)
   // Additionally, if we only ever insert pairs whose value is not
-  // smaller than any other value that is already in the structure,
+  // less than any other value that is already in the structure,
   // and if we do not use lower weight by key, then we even get:
   //   insert:                  O(1)
   //   get and erase smallest:  O(1)
