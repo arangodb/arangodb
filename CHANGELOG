@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-236: bugfix - remove unused files, use new tooltip in views UI.
+
 * Automatically repair revision trees after several failed shard
   synchronization attempts. This can help to get permanently out-of-sync
   shards back into sync.
