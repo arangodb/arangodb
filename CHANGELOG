@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE 242, FE-244: bugfix - add support for cache fields, 
+  fix inverted index name undefined.
+
 * Automatically repair revision trees after several failed shard
   synchronization attempts. This can help to get permanently out-of-sync
   shards back into sync.
