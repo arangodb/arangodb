@@ -125,7 +125,7 @@ class Constituent : public Thread {
   std::string endpoint(std::string) const;
 
   // Run for leadership
-  void candidate();
+  void candidateNoLock();
 
   // Become leader
   void lead(term_t);
