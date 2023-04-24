@@ -26,15 +26,20 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const isEnterprise = require("internal").isEnterprise();
+const dbName = "testOptimizeTopK"
 
 function testOptimizeTopK() {
   const names = ["v_alias_tfidf", "v_alias_bm25", "v_search_tfidf", "v_search_bm25"];
 
   return {
     setUpAll: function () {
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
       let docs = [];
-      for (let i = 0; i < 1000; ++i) {
-        docs.push({f: "a"});
+      for (let i = 0; i < 600; ++i) {
+        docs.push({ f: "a", c: "b", x: "c" });
+        docs.push({ f: "f", c: "c", x: "x" });
       }
 
       db._create("c");
@@ -44,18 +49,18 @@ function testOptimizeTopK() {
       }
 
       db._createView("v_search_tfidf", "arangosearch", {
-        links: {"c": {fields: {"f": {}}}},
+        links: { "c": { fields: { "f": {}, "a": {}, "x": {} } } },
         optimizeTopK: ["TFIDF(@doc) DESC"]
       });
 
-      db.c.ensureIndex({name: "i_bm25", type: "inverted", fields: ["f"], optimizeTopK: ["BM25(@doc) DESC"]});
-      db._createView("v_alias_bm25", "search-alias", {indexes: [{collection: "c", index: "i_bm25"}]});
+      db.c.ensureIndex({ name: "i_bm25", type: "inverted", fields: ["f", "a", "x"], optimizeTopK: ["BM25(@doc) DESC"] });
+      db._createView("v_alias_bm25", "search-alias", { indexes: [{ collection: "c", index: "i_bm25" }] });
 
-      db.c.ensureIndex({name: "i_tfidf", type: "inverted", fields: ["f"], optimizeTopK: ["TFIDF(@doc) DESC"]});
-      db._createView("v_alias_tfidf", "search-alias", {indexes: [{collection: "c", index: "i_tfidf"}]});
+      db.c.ensureIndex({ name: "i_tfidf", type: "inverted", fields: ["f", "a", "x"], optimizeTopK: ["TFIDF(@doc) DESC"] });
+      db._createView("v_alias_tfidf", "search-alias", { indexes: [{ collection: "c", index: "i_tfidf" }] });
 
       db._createView("v_search_bm25", "arangosearch", {
-        links: {"c": {fields: {"f": {}}}},
+        links: { "c": { fields: { "f": {}, "a": {}, "x": {} } } },
         optimizeTopK: ["BM25(@doc) DESC"]
       });
 
@@ -66,23 +71,19 @@ function testOptimizeTopK() {
       // testWithoutScore
       for (const v of names) {
         const query = "FOR d IN " + v + " SEARCH d.f == 'a' OPTIONS {waitForSync:true} LIMIT 10 RETURN d";
-        print(query);
         let res = db._query(query).toArray();
         assertEqual(res.length, 10);
       }
     },
 
     tearDownAll: function () {
-      for (const v of names) {
-        db._dropView(v);
-      }
-      db._drop("c");
+      db._useDatabase('_system');
+      try { db._dropDatabase(dbName); } catch (err) { }
     },
 
     testWithTFIDF: function () {
       for (const v of names) {
         const query = "FOR d IN " + v + " SEARCH d.f == 'a' SORT TFIDF(d) LIMIT 10 RETURN d";
-        print(query);
         let res = db._query(query).toArray();
         assertEqual(res.length, 10);
       }
@@ -91,11 +92,65 @@ function testOptimizeTopK() {
     testWithBM25: function () {
       for (const v of names) {
         const query = "FOR d IN " + v + " SEARCH d.f == 'a' SORT BM25(d) LIMIT 10 RETURN d";
-        print(query);
         let res = db._query(query).toArray();
         assertEqual(res.length, 10);
       }
     },
+
+    testNegativeScenarios: function () {
+
+      // Malformed scorers definitions
+      {
+        let scorers = [];
+        for (let i = 0; i < 65; ++i) {
+          scorers.push(`bm25(@doc, ${i}, ${i}) DESC`);
+        }
+
+        [
+          scorers,
+          ["bm25(@doc) DESC", 2, "tfidf(@doc) DESC"],
+          ["bm25(@doc) ASC"],
+          ["bm25(@doc) DESC"],
+          ["bm25(@doc, true, true) DESC"],
+          ["bm25(@doc, 1,1,1) DESC"],
+
+          ["tfidf(@doc) ASC"],
+          ["tfidf(@doc, 1) DESC"],
+          ["tfidf(@doc, true, true) DESC"],
+          ["abc"],
+        ].forEach(t => {
+          try {
+            db._createView("fail", "arangosearch", {
+              links: { "c": { fields: { "f": {} } } },
+              optimizeTopK: t
+            });
+            assertTrue(false);
+          } catch (err) { }
+
+          try {
+            db.c.ensureIndex({ name: "fail", type: "inverted", fields: ["f"], optimizeTopK: t });
+            assertTrue(false);
+          } catch (err) { }
+        });
+      }
+
+      // Try to cover with search-alias different optimizeTopK values
+      {
+        db.c.ensureIndex({ name: "i1", type: "inverted", fields: ["f", "a"], optimizeTopK: ["tfidf(@doc) desc"] });
+        db.c.ensureIndex({ name: "i2", type: "inverted", fields: ["f", "b"], optimizeTopK: ["bm25(@doc) desc"] });
+
+        try {
+          db._createView("fail", "search-alias", { indexes: [{ collection: "c", index: "i1" }, { collection: "c", index: "i2" }] });
+          assertTrue(false);
+        } catch (err) { }
+      }
+
+      // try to update arangosearch view. No changes should apply
+      {
+        db._view("v_search_tfidf").properties({optimizeTopK: ["BM25(@doc) DESC"]}, true);
+        assertEqual(db._view("v_search_tfidf").properties()["optimizeTopK"], ["TFIDF(@doc) DESC"]);
+      }
+    }
   };
 }
 
