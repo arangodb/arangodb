@@ -39,7 +39,7 @@ const ERRORS = require("@arangodb").errors;
 
 function KeyGeneratorSuite() {
   'use strict';
-  const cn = 'UnitTestsCollection';
+  let cn = 'UnitTestsCollection';
   let coordinators = [];
 
   function sendRequest(method, db, endpoint, body, headers, usePrimary) {
@@ -112,6 +112,11 @@ function KeyGeneratorSuite() {
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
+    },
+
+    setUp: function (name) {
+      // make database name for each test unique
+      cn = 'UnitTestsCollection_' + name;
     },
 
     testPadded: function() {
