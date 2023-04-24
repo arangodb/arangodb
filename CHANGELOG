@@ -1,8 +1,10 @@
 devel
 -----
 
-* FE 242, FE-244: bugfix - add support for cache fields, 
-  fix inverted index name undefined.
+* FE-247: bugfix - missing storedValues field in persistent index form.
+
+* FE 242, FE-244: bugfix - add support for cache fields, fix inverted index name
+  undefined.
 
 * FE-241: bugfix - filter predefined queries based on search term.
 
