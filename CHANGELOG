@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-349: bugfix - filter out empty primarySort field in UI.
+
 * Adjusted timeouts for cluster internal commit and abort requests to withstand
   network delays better. This fixes some problems when the networking
   infrastructure delays requests.
