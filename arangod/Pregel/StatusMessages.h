@@ -39,6 +39,13 @@ struct TimingInMicroseconds {
                 std::chrono::steady_clock::now().time_since_epoch())
                 .count())};
   }
+  static auto systemNow() -> TimingInMicroseconds {
+    return TimingInMicroseconds{
+        .value = static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch())
+                .count())};
+  }
 };
 template<typename Inspector>
 auto inspect(Inspector& f, TimingInMicroseconds& x) {
@@ -73,7 +80,7 @@ auto inspect(Inspector& f, StatusStart& x) {
 
 struct PregelStarted {
   std::string state;
-  TimingInMicroseconds time = TimingInMicroseconds::now();
+  TimingInMicroseconds time = TimingInMicroseconds::systemNow();
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PregelStarted& x) {

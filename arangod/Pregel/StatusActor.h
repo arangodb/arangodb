@@ -25,6 +25,7 @@
 #include <chrono>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
+#include "Basics/TimeString.h"
 #include "Inspection/Status.h"
 #include "Inspection/Format.h"
 #include "Inspection/VPackWithErrorT.h"
@@ -228,15 +229,38 @@ auto inspect(Inspector& f, StatusDetails& x) {
                             f.field("perWorker", x.perWorker));
 }
 
+struct PregelDate {
+  std::chrono::system_clock::time_point time_point{};
+};
+template<class Inspector>
+auto inspect(Inspector& f, PregelDate& x) {
+  if constexpr (Inspector::isLoading) {
+    return inspection::Status{};
+  } else {
+    return f.apply(timepointToString(x.time_point));
+  }
+}
+struct ExecutionNumberAsString {
+  ExecutionNumber number;
+};
+template<class Inspector>
+auto inspect(Inspector& f, ExecutionNumberAsString& x) {
+  if constexpr (Inspector::isLoading) {
+    return inspection::Status{};
+  } else {
+    return f.apply(std::to_string(x.number.value));
+  }
+}
+
 struct PregelStatus {
   std::string stateName;
   std::optional<std::string> errorMessage;
-  ExecutionNumber id;
+  ExecutionNumberAsString id;
   std::string user;
   std::string database;
   std::string algorithm;
-  std::chrono::steady_clock::time_point created;
-  std::optional<std::chrono::steady_clock::time_point> expires;
+  PregelDate created;
+  std::optional<PregelDate> expires;
   TTL ttl;
   size_t parallelism;
   PregelTimings timings;
@@ -248,21 +272,13 @@ struct PregelStatus {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PregelStatus& x) {
-  // TODO: Fix formatting.
-  auto formatted_created = fmt::format("{}", x.created.time_since_epoch());
-  auto formatted_expires =
-      x.expires.has_value()
-          ? fmt::format("{}", x.expires.value().time_since_epoch())
-          : "0";
-
   return f.object(x).fields(
       f.field("state", x.stateName), f.field("errorMessage", x.errorMessage),
       f.field("id", x.id), f.field("user", x.user),
       f.field("database", x.database), f.field("algorithm", x.algorithm),
-      f.field("created", formatted_created),
-      f.field("expires", formatted_expires), f.field("ttl", x.ttl),
-      f.field("parallelism", x.parallelism), f.embedFields(x.timings),
-      f.field("gss", x.gss),
+      f.field("created", x.created), f.field("expires", x.expires),
+      f.field("ttl", x.ttl), f.field("parallelism", x.parallelism),
+      f.embedFields(x.timings), f.field("gss", x.gss),
 
       // TODO embed aggregators field (it already has "aggregators" as key)
       f.field("aggregators", x.aggregators),
@@ -285,7 +301,7 @@ template<typename Runtime>
 struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
   auto updateStatusDocument() {
     statuswriter::CollectionStatusWriter cWriter{
-        this->state->vocbaseGuard.database(), this->state->status->id};
+        this->state->vocbaseGuard.database(), this->state->status->id.number};
     auto serializedStatus =
         inspection::serializeWithErrorT(this->state->status);
     if (serializedStatus.ok()) {
@@ -293,17 +309,17 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
       if (updateResult.ok()) {
         LOG_TOPIC("a63f3", TRACE, Logger::PREGEL)
             << fmt::format("Updated status document of pregel run {}",
-                           this->state->status->id);
+                           inspection::json(this->state->status->id));
       } else {
         LOG_TOPIC("b63f3", TRACE, Logger::PREGEL)
             << fmt::format("Could not update status document of pregel run {}",
-                           this->state->status->id);
+                           inspection::json(this->state->status->id));
       }
     }
   }
   auto createStatusDocument() {
     statuswriter::CollectionStatusWriter cWriter{
-        this->state->vocbaseGuard.database(), this->state->status->id};
+        this->state->vocbaseGuard.database(), this->state->status->id.number};
     auto serializedStatus =
         inspection::serializeWithErrorT(this->state->status);
     if (serializedStatus.ok()) {
@@ -311,18 +327,18 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
       if (createResult.ok()) {
         LOG_TOPIC("c63f3", TRACE, Logger::PREGEL)
             << fmt::format("Created status document of pregel run {}",
-                           this->state->status->id);
+                           inspection::json(this->state->status->id));
       } else {
         LOG_TOPIC("d63f3", TRACE, Logger::PREGEL)
             << fmt::format("Could not create status document of pregel run {}",
-                           this->state->status->id);
+                           inspection::json(this->state->status->id));
       }
     }
   }
 
   auto operator()(message::StatusStart& msg) -> std::unique_ptr<StatusState> {
     this->state->status->stateName = msg.state;
-    this->state->status->id = msg.id;
+    this->state->status->id = ExecutionNumberAsString{.number = msg.id};
     this->state->status->user = msg.user;
     this->state->status->database = msg.database;
     this->state->status->algorithm = msg.algorithm;
@@ -384,8 +400,9 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->status->timings.totalRuntime.setStart(msg.time);
 
     auto duration = std::chrono::microseconds{msg.time.value};
-    this->state->status->created =
-        std::chrono::time_point<std::chrono::steady_clock>{duration};
+    this->state->status->created = PregelDate{
+        .time_point =
+            std::chrono::time_point<std::chrono::system_clock>{duration}};
 
     updateStatusDocument();
 
@@ -442,7 +459,8 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
       -> std::unique_ptr<StatusState> {
     this->state->status->stateName = msg.state;
     this->state->status->expires =
-        std::chrono::steady_clock::now() + this->state->status->ttl.duration;
+        PregelDate{.time_point = std::chrono::system_clock::now() +
+                                 this->state->status->ttl.duration};
     this->state->status->timings.storing.setStop(msg.time);
     this->state->status->timings.totalRuntime.setStop(msg.time);
 
