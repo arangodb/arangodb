@@ -122,6 +122,13 @@ struct ShardStatistics {
 
 namespace {
 
+struct CreateCollectionReport {
+  std::optional<ErrorCode> dbServerResult{std::nullopt};
+  size_t nrDone{0};
+  std::string errMsg{StaticStrings::Empty};
+  bool isCleaned{false};
+};
+
 std::string const kMetricsServerId = "Plan/Metrics/ServerId";
 std::string const kMetricsRebootId = "Plan/Metrics/RebootId";
 
@@ -3287,17 +3294,14 @@ Result ClusterInfo::createCollectionsCoordinator(
       << " isNewDatabase: " << isNewDatabase
       << " first collection name: " << infos[0].name;
 
-  // The following three are used for synchronization between the callback
+  // The following are used for synchronization between the callback
   // closure and the main thread executing this function. Note that it can
   // happen that the callback is called only after we return from this
   // function!
-  auto dbServerResult =
-      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
-  auto nrDone = std::make_shared<std::atomic<size_t>>(0);
-  auto errMsg = std::make_shared<std::string>();
-  auto cacheMutex = std::make_shared<std::mutex>();
-  auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>();
-  auto isCleaned = std::make_shared<bool>(false);
+  // Also note: We will use this guarded structure to protect access into state
+  // entries inside the infos list, as tehy can be modified concurrently.
+  auto report = std::make_shared<Guarded<CreateCollectionReport>>(
+      CreateCollectionReport{});
 
   AgencyComm ac(_server);
   std::vector<std::shared_ptr<AgencyCallback>> agencyCallbacks;
@@ -3314,8 +3318,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       // owned by the callback d) info might be deleted, so we cannot use it. e)
       // If the callback is ongoing during cleanup, the callback will
       //    hold the Mutex and delay the cleanup.
-      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
-      *isCleaned = true;
+      report->doUnderLock(
+          [](CreateCollectionReport& report) { report.isCleaned = true; });
       for (auto& cb : agencyCallbacks) {
         _agencyCallbackRegistry->unregisterCallback(cb);
       }
@@ -3346,7 +3350,8 @@ Result ClusterInfo::createCollectionsCoordinator(
 
     if (info.state == ClusterCollectionCreationState::DONE) {
       // This is possible in Enterprise / Smart Collection situation
-      (*nrDone)++;
+      report->doUnderLock(
+          [](CreateCollectionReport& report) { report.nrDone++; });
     }
 
     std::map<ShardID, std::vector<ServerID>> shardServers;
@@ -3370,22 +3375,27 @@ Result ClusterInfo::createCollectionsCoordinator(
     // this here is ok as ClusterInfo is not destroyed
     // for &info it should have ensured lifetime somehow. OR ensured that
     // callback is noop in case it is triggered too late.
-    auto closure = [cacheMutex, cacheMutexOwner, &info, dbServerResult, errMsg,
-                    nrDone, isCleaned, shardServers, this](VPackSlice result) {
+    auto closure = [report, &info, shardServers, this](VPackSlice result) {
       // NOTE: This ordering here is important to cover against a race in
       // cleanup. a) The Guard get's the Mutex, sets isCleaned == true, then
       // removes the callback b) If the callback is acquired it is saved in a
       // shared_ptr, the Mutex will be acquired first, then it will check if it
       // isCleaned
-      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
-      if (*isCleaned) {
-        return true;
-      }
-      TRI_ASSERT(!info.name.empty());
-      if (info.state != ClusterCollectionCreationState::INIT) {
-        // All leaders have reported either good or bad
-        // We might be called by followers if they get in sync fast enough
-        // In this IF we are in the followers case, we can safely ignore
+      if (report->doUnderLock(
+              [&info](CreateCollectionReport const& report) -> bool {
+                if (report.isCleaned) {
+                  return true;
+                }
+                TRI_ASSERT(!info.name.empty());
+                if (info.state != ClusterCollectionCreationState::INIT) {
+                  // All leaders have reported either good or bad
+                  // We might be called by followers if they get in sync fast
+                  // enough In this IF we are in the followers case, we can
+                  // safely ignore
+                  return true;
+                }
+                return false;
+              })) {
         return true;
       }
 
@@ -3427,15 +3437,20 @@ Result ClusterInfo::createCollectionsCoordinator(
                     << "Did not find shard in _shardServers: "
                     << p.key.copyString()
                     << ". Maybe the collection is already dropped.";
-                *errMsg =
-                    "Error in creation of collection: " + p.key.copyString() +
-                    ". Collection already dropped. " + __FILE__ + ":" +
-                    std::to_string(__LINE__);
-                dbServerResult->store(
-                    TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
-                    std::memory_order_release);
-                TRI_ASSERT(info.state != ClusterCollectionCreationState::DONE);
-                info.state = ClusterCollectionCreationState::FAILED;
+                report->doUnderLock([&p,
+                                     &info](CreateCollectionReport& report) {
+                  report.errMsg =
+                      "Error in creation of collection: " + p.key.copyString() +
+                      ". Collection already dropped. " + __FILE__ + ":" +
+                      std::to_string(__LINE__);
+                  report.dbServerResult =
+                      TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+
+                  TRI_ASSERT(info.state !=
+                             ClusterCollectionCreationState::DONE);
+                  info.state = ClusterCollectionCreationState::FAILED;
+                });
+
                 return true;
               }
             }
@@ -3444,10 +3459,10 @@ Result ClusterInfo::createCollectionsCoordinator(
               LOG_TOPIC("a0a76", DEBUG, Logger::CLUSTER)
                   << "This should never have happened, Plan empty. Dumping "
                      "_shards in Plan:";
-              for (auto const& p : _shards) {
+              for (auto const& [shard, servers] : _shards) {
                 LOG_TOPIC("60c7d", DEBUG, Logger::CLUSTER)
-                    << "Shard: " << p.first;
-                for (auto const& q : *(p.second)) {
+                    << "Shard: " << shard;
+                for (auto const& q : *(servers)) {
                   LOG_TOPIC("c7363", DEBUG, Logger::CLUSTER)
                       << "  Server: " << q;
                 }
@@ -3477,20 +3492,26 @@ Result ClusterInfo::createCollectionsCoordinator(
           }
         }
         if (!tmpError.empty()) {
-          *errMsg = "Error in creation of collection:" + tmpError + " " +
-                    __FILE__ + std::to_string(__LINE__);
-          dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
-                                std::memory_order_release);
-          // We cannot get into bad state after a collection was created
-          TRI_ASSERT(info.state != ClusterCollectionCreationState::DONE);
-          info.state = ClusterCollectionCreationState::FAILED;
+          report->doUnderLock(
+              [&tmpError, &info](CreateCollectionReport& report) {
+                report.errMsg = "Error in creation of collection:" + tmpError +
+                                " " + __FILE__ + std::to_string(__LINE__);
+                report.dbServerResult =
+                    TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+                // We cannot get into bad state after a collection was created
+                TRI_ASSERT(info.state != ClusterCollectionCreationState::DONE);
+                info.state = ClusterCollectionCreationState::FAILED;
+              });
+
         } else {
           // We can have multiple calls to this callback, one per leader and one
           // per follower As soon as all leaders are done we are either FAILED
           // or DONE, this cannot be altered later.
-          TRI_ASSERT(info.state != ClusterCollectionCreationState::FAILED);
-          info.state = ClusterCollectionCreationState::DONE;
-          (*nrDone)++;
+          report->doUnderLock([&info](CreateCollectionReport& report) {
+            TRI_ASSERT(info.state != ClusterCollectionCreationState::FAILED);
+            info.state = ClusterCollectionCreationState::DONE;
+            report.nrDone++;
+          });
         }
       }
       return true;
@@ -3729,7 +3750,6 @@ Result ClusterInfo::createCollectionsCoordinator(
       // using loadPlan, this is necessary for the callback closure to
       // see the new planned state for this collection. Otherwise it cannot
       // recognize completion of the create collection operation properly:
-      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
       auto res = ac.sendTransactionWithFailover(transaction);
       // Only if not precondition failed
       if (!res.successful()) {
@@ -3789,7 +3809,10 @@ Result ClusterInfo::createCollectionsCoordinator(
   });
 
   do {
-    auto tmpRes = dbServerResult->load(std::memory_order_acquire);
+    auto tmpRes = report->doUnderLock(
+        [](CreateCollectionReport const& report) -> std::optional<ErrorCode> {
+          return report.dbServerResult;
+        });
     if (TRI_microtime() > endTime) {
       for (auto const& info : infos) {
         LOG_TOPIC("f6b57", ERR, Logger::CLUSTER)
@@ -3813,7 +3836,11 @@ Result ClusterInfo::createCollectionsCoordinator(
       }
     }
 
-    if (nrDone->load(std::memory_order_acquire) == infos.size() &&
+    auto nrDone =
+        report->doUnderLock([](CreateCollectionReport const& report) -> size_t {
+          return report.nrDone;
+        });
+    if (nrDone == infos.size() &&
         (replicationVersion == replication::Version::ONE ||
          replicatedStatesWait.isReady())) {
       if (replicationVersion == replication::Version::TWO) {
@@ -3899,7 +3926,10 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Report if this operation worked, if it failed collections will be
       // cleaned up by deleteCollectionGuard.
       for (auto const& info : infos) {
-        TRI_ASSERT(info.state == ClusterCollectionCreationState::DONE);
+        TRI_ASSERT(report->doUnderLock(
+                       [&info](auto const&) -> ClusterCollectionCreationState {
+                         return info.state;
+                       }) == ClusterCollectionCreationState::DONE);
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
 
@@ -3932,7 +3962,11 @@ Result ClusterInfo::createCollectionsCoordinator(
           << " isNewDatabase: " << isNewDatabase
           << " first collection name: " << infos[0].name
           << " result: " << *tmpRes;
-      return {*tmpRes, *errMsg};
+      auto errMsg = report->doUnderLock(
+          [](CreateCollectionReport const& report) -> std::string {
+            return report.errMsg;
+          });
+      return {*tmpRes, std::move(errMsg)};
     }
 
     // If we get here we have not tried anything.
