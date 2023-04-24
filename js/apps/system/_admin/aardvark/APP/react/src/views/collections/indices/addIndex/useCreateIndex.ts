@@ -24,7 +24,6 @@ export const useCreateIndex = <
   const { collectionName, collectionId, onCloseForm } =
     useCollectionIndicesContext();
   const { encoded: encodedCollectionName } = encodeHelper(collectionName);
-
   const onCreate = async (values: TValues) => {
     window.arangoHelper.checkDatabasePermissions(
       function () {
@@ -39,7 +38,7 @@ export const useCreateIndex = <
             `index`,
             {
               ...values,
-              name: String(values.name)?.normalize() || undefined
+              name: values.name ? String(values.name)?.normalize() : undefined
             },
             `collection=${encodedCollectionName}`,
             {
