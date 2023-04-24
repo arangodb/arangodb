@@ -50,6 +50,7 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function exportTest (options) {
+  let ret;
   const tmpPath = fs.join(options.testOutputDirectory, 'export');
   const DOMParser = new xmldom.DOMParser({
     locator: {},
@@ -513,10 +514,12 @@ function exportTest (options) {
     args['query-max-runtime'] = '2.0';
 
     testName = "exportQueryMaxRuntimeFail" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+    ret = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
     // we expect a failure here!
-    results[testName].status = !results[testName].status;
-    results[testName].failed = results[testName].status ? 0 : 1;
+    results[testName] = {
+      status: !ret.status,
+      failed: ret.status ? 0 : 1
+    };
     delete args['query-max-runtime'];
     
     print(CYAN + Date() + ': Export query (maxRuntime, ok)' + RESET);

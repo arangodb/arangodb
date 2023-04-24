@@ -1,3 +1,4 @@
+
 /* jshint strict: false, sub: true */
 /* global print */
 'use strict';
@@ -422,14 +423,16 @@ function importing (options) {
     for (let i = 0; i < impTodos.length; i++) {
       const impTodo = impTodos[i];
 
-      result[impTodo.id] = pu.run.arangoImport(options, instanceInfo, impTodo, options.coreCheck);
-      result[impTodo.id].failed = 0;
-
-      if (impTodo.expectFailure) {
+      let ret = pu.run.arangoImport(options, instanceInfo, impTodo, options.coreCheck);
+      if (!impTodo.expectFailure) {
+        result[impTodo.id] = ret;
+      } else {
+        result[impTodo.id] = {};
         // if status === false, we make true out of it
         // if status === true, we make false out of it
         result[impTodo.id].status = !result[impTodo.id].status;
       }
+      result[impTodo.id].failed = 0;
 
       if (result[impTodo.id].status !== true && !options.force) {
         result[impTodo.id].failed = 1;
