@@ -75,10 +75,12 @@ const char* arangodb::pregel::ExecutionStateNames[9] = {
     "none", "loading", "running", "storing", "done", "canceled", "fatal error"};
 
 Conductor::Conductor(ExecutionSpecifications const& specifications,
-                     TRI_vocbase_t& vocbase, PregelFeature& feature)
+                     std::string user, TRI_vocbase_t& vocbase,
+                     PregelFeature& feature)
     : _feature(feature),
       _vocbaseGuard(vocbase),
       _specifications(specifications),
+      _user(std::move(user)),
       _algorithm(AlgoRegistry::createAlgorithm(
           specifications.algorithm, specifications.userParameters.slice())),
       _created(std::chrono::system_clock::now()) {
@@ -763,12 +765,7 @@ void Conductor::persistPregelState(ExecutionState state) {
 
     // Additional attributes added during actor rework
     stateBuilder.add("graphLoaded", VPackValue(_graphLoaded));
-    std::string user = ExecContext::current().user();
-    if (!user.empty()) {
-      stateBuilder.add("user", VPackValue(user));
-    } else {
-      stateBuilder.add("user", VPackSlice::nullSlice());
-    }
+    stateBuilder.add("user", VPackValue(_user));
   };
 
   auto addAdditionalOutputToBuilder = [&](VPackBuilder& builder) -> void {
