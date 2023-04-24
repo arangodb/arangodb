@@ -124,7 +124,7 @@ function checkCoordinators(coordinators, mode) {
       internal.sleep(numSecs);
       numSecs *= 2;
     }
-    assertTrue(txt.includes("arangodb_search_num_docs"));
+    assertTrue(txt.includes("arangodb_search_num_docs"), "couldn't acquire document related metrics info");
     checkRawMetrics(txt, false);
   }
 }
