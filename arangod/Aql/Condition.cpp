@@ -1018,8 +1018,9 @@ void Condition::collectOverlappingMembers(
               otherAndNode->numMembers() == 1 &&
               otherAndNode->getMemberUnchecked(0)->type ==
                   NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
-              aql::AstNode::toString(operand) ==
-                  aql::AstNode::toString(otherAndNode->getMemberUnchecked(0))) {
+              aql::AstNode::toString(operand, /*verbose*/ true) ==
+                  aql::AstNode::toString(otherAndNode->getMemberUnchecked(0),
+                                         /*verbose*/ true)) {
             toRemove.emplace(i);
           } else {
             ConditionPart current(variable, result.second, operand,

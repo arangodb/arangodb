@@ -884,9 +884,9 @@ std::string_view AstNode::getValueTypeString() const {
 }
 
 /// @brief stringify the AstNode
-std::string AstNode::toString(AstNode const* node) {
+std::string AstNode::toString(AstNode const* node, bool verbose) {
   VPackBuilder builder;
-  node->toVelocyPack(builder, false);
+  node->toVelocyPack(builder, verbose);
   return builder.toJson();
 }
 

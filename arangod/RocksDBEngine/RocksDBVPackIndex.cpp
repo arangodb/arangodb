@@ -120,8 +120,6 @@ using VPackIndexCacheType = cache::TransactionalCache<cache::VPackKeyHasher>;
 namespace arangodb {
 
 class RocksDBVPackIndexArrayInIterator final : public IndexIterator {
-  //        return std::make_unique<RocksDBVPackIndexArrayInIterator>(monitor,
-  //        &_collection, trx, this, sub->getMember(0), readOwnWrites);
  public:
   RocksDBVPackIndexArrayInIterator(ResourceMonitor& monitor,
                                    LogicalCollection* collection,
