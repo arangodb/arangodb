@@ -1590,6 +1590,7 @@
       this.updateLocalQueries();
 
       this.myQueriesTableDesc.rows = this.customQueries;
+      // sort only custom queries (not predefined ones)
       this.myQueriesTableDesc.rows = this.sortRows(this.myQueriesTableDesc.rows);
       _.each(this.myQueriesTableDesc.rows, function (k) {
         k.secondRow = '<span class="spanWrapper">' +
