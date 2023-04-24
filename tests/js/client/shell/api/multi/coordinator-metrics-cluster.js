@@ -111,21 +111,10 @@ function checkCoordinators(coordinators, mode) {
   assertTrue(coordinators.length > 1);
   for (let i = 1; i < coordinators.length; i++) {
     let c = coordinators[i];
-    let txt;
-    let numSecs = 0.5;
-    // this loop is for checking that the document metrics from iresearch are present in the metrics, otherwise, we retry
-    // or else, in the checkRawMetrics() function, the parsing of the document fields in the metrics object would return
-    // undefined
-    while (true) {
-      txt = getAllMetric(c, mode);
-      if (txt.includes("arangodb_search_num_docs") || numSecs >= 20) {
-        break;
-      }
-      internal.sleep(numSecs);
-      numSecs *= 2;
-    }
-    assertTrue(txt.includes("arangodb_search_num_docs"), "couldn't acquire document related metrics info");
-    checkRawMetrics(txt, false);
+    checkIndexMetrics(function() {
+      let txt = getAllMetric(c, mode);
+      checkRawMetrics(txt, false);
+    });
   }
 }
 
