@@ -140,10 +140,11 @@ void EnvironmentFeature::prepare() {
           }
         }
         while (end < cpuAlignment.size()) {
-          ++end;
           if (cpuAlignment[end] < '0' || cpuAlignment[end] > '9') {
+            ++end;
             break;
           }
+          ++end;
         }
 
         int64_t alignment =
