@@ -34,7 +34,7 @@
     "formik": "^2.2.9",
     "framer-motion": "^4.1.17",
     "highlight.js": "^9.18.5",
-    "jquery": "^3.6.4",
+    "jquery": "3.6.4",
     "jquery-ui": "^1.13.2",
     "jsoneditor": "^9.10.0",
     "jsoneditor-react": "^3.1.2",
