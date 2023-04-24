@@ -84,22 +84,14 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
   TRI_ASSERT(_dependencies.size() == 1);
 
   if (_internalState == AsyncState::InProgress) {
-    _gotWakeupWhileInprogress = true;
+    ++_numWakeupsQueued;
     return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
   } else if (_internalState == AsyncState::GotResult) {
-    auto const gotWakeup = _gotWakeupWhileInprogress;
-    _gotWakeupWhileInprogress = false;
     if (_returnState != ExecutionState::DONE) {
       // we may not return WAITING if upstream returned DONE
       _internalState = AsyncState::Empty;
     }
-    // If _returnState == WAITING && gotWakeup, this means some node "above" (a
-    // dependency) tried to wake itself up while this node was working. We thus
-    // must not return a stored WAITING, lest a wakeup call might be lost,
-    // possibly putting the query to sleep forever.
-    if (_returnState != ExecutionState::WAITING || !gotWakeup) {
-      return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
-    }
+    return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
   } else if (_internalState == AsyncState::GotException) {
     TRI_ASSERT(_returnException != nullptr);
     std::rethrow_exception(_returnException);
@@ -110,7 +102,7 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
 
   _internalState = AsyncState::InProgress;
   bool queued =
-      _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
+      _sharedState->asyncExecuteAndWakeup([this, stack](bool const isAsync) {
         std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
 
         try {
@@ -123,6 +115,27 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
             TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
             TRI_ASSERT(_isBlockInUse);
 #endif
+          }
+
+          // If we got woken up while in progress, wake up our dependency now.
+          // This is necessary so the query will always wake up from sleep. See
+          // https://arangodb.atlassian.net/browse/BTS-1325
+          // and
+          // https://github.com/arangodb/arangodb/pull/18729
+          // for details.
+          while (state == ExecutionState::WAITING && _numWakeupsQueued > 0) {
+            --_numWakeupsQueued;
+            TRI_ASSERT(skip.nothingSkipped());
+            TRI_ASSERT(block == nullptr);
+            // isAsync => guard.owns_lock()
+            TRI_ASSERT(!isAsync || guard.owns_lock());
+            if (isAsync) {
+              guard.release();
+            }
+            std::tie(state, skip, block) = _dependencies[0]->execute(stack);
+            if (isAsync) {
+              guard.lock();
+            }
           }
           _returnState = state;
           _returnSkip = std::move(skip);
