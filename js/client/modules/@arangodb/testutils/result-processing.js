@@ -273,8 +273,6 @@ function saveToJunitXML(options, results) {
     seenTestCases: false,
   };
 
-  let prefix = (options.cluster ? 'CL_' : '') + 'RX_';
-
   if (results.hasOwnProperty('crashreport')) {
     results['crash'] = {
       crash_report: {
