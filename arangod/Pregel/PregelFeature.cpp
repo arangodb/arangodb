@@ -1174,6 +1174,8 @@ auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
                                   this](auto const& items) -> Result {
     auto item = items.find(executionNumber);
     if (item == items.end()) {
+      // TODO GOROD-1634 if historic collection has executionNumber entry,
+      // return Result{} or a different error message
       return Result{TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid"};
     }
     auto const& [_, run] = *item;
