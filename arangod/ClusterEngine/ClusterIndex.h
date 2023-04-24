@@ -107,11 +107,17 @@ class ClusterIndex : public Index {
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override;
 
+ private:
+  bool supportsArrayOperations() const noexcept {
+    return _supportsArrayOperations;
+  }
+
  protected:
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
   velocypack::Builder _info;
   bool _estimates;
+  bool _supportsArrayOperations;
   double _clusterSelectivity;
 
   // Only used in RocksDB edge index.

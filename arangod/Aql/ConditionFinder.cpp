@@ -249,8 +249,7 @@ bool ConditionFinder::handleFilterCondition(
   if (conditionIsImpossible) {
     // condition is always false
     for (auto const& x : en->getParents()) {
-      auto noRes = new NoResultsNode(_plan, _plan->nextId());
-      _plan->registerNode(noRes);
+      auto noRes = _plan->createNode<NoResultsNode>(_plan, _plan->nextId());
       _plan->insertDependency(x, noRes);
       _producesEmptyResult = true;
     }
@@ -274,11 +273,11 @@ void ConditionFinder::handleSortCondition(
     std::unique_ptr<SortCondition>& sortCondition) {
   if (!en->isInInnerLoop()) {
     // we cannot optimize away a sort if we're in an inner loop ourselves
-    sortCondition.reset(new SortCondition(
+    sortCondition = std::make_unique<SortCondition>(
         _plan, _sorts, condition->getConstAttributes(outVar, false),
-        condition->getNonNullAttributes(outVar), _variableDefinitions));
+        condition->getNonNullAttributes(outVar), _variableDefinitions);
   } else {
-    sortCondition.reset(new SortCondition());
+    sortCondition = std::make_unique<SortCondition>();
   }
 }
 
