@@ -110,7 +110,7 @@ function testOptimizeTopK() {
           scorers,
           ["bm25(@doc) DESC", 2, "tfidf(@doc) DESC"],
           ["bm25(@doc) ASC"],
-          ["bm25(@doc) DESC"],
+          ["bm25(@doc, 'abc') DESC"],
           ["bm25(@doc, true, true) DESC"],
           ["bm25(@doc, 1,1,1) DESC"],
 
@@ -132,6 +132,8 @@ function testOptimizeTopK() {
             assertTrue(false);
           } catch (err) { }
         });
+
+        assertEqual(db._view("fail"), null);
       }
 
       // Try to cover with search-alias different optimizeTopK values
@@ -143,6 +145,8 @@ function testOptimizeTopK() {
           db._createView("fail", "search-alias", { indexes: [{ collection: "c", index: "i1" }, { collection: "c", index: "i2" }] });
           assertTrue(false);
         } catch (err) { }
+
+        assertEqual(db._view("fail"), null);
       }
 
       // try to update arangosearch view. No changes should apply
