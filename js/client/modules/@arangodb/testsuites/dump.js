@@ -112,7 +112,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   destructor(cleanup) {
-const yaml = require('js-yaml');
     if (this.fn !== undefined && fs.exists(this.fn)) {
       fs.remove(this.fn);
     }
