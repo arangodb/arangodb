@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-241: bugfix - filter predefined queries based on search term.
+
 * Automatically repair revision trees after several failed shard
   synchronization attempts. This can help to get permanently out-of-sync
   shards back into sync.
