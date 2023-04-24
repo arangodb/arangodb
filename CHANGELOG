@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-241: bugfix - filter predefined queries based on search term.
+
 * Adjusted timeouts for cluster internal commit and abort requests to withstand
   network delays better. This fixes some problems when the networking
   infrastructure delays requests.
