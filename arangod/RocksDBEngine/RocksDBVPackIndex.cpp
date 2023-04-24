@@ -180,12 +180,12 @@ class RocksDBVPackIndexArrayInIterator final : public IndexIterator {
       aql::AstNode const* current = _searchValues->getMember(_searchValueIndex);
 
       leftSearch.clear();
-      leftSearch.openArray();
+      leftSearch.openArray(/*allowUnindexed*/ true);
       current->toVelocyPackValue(leftSearch);
       leftSearch.close();
 
       rightSearch.clear();
-      rightSearch.openArray();
+      rightSearch.openArray(/*allowUnindexed*/ true);
       current->toVelocyPackValue(rightSearch);
       rightSearch.close();
 
@@ -2052,7 +2052,7 @@ void RocksDBVPackIndex::handleCacheInvalidation(transaction::Methods& trx,
 }
 
 bool RocksDBVPackIndex::supportsArrayOperations() const noexcept {
-  return _hasExpansion && _deduplicate && !_unique && _fields.size() == 1 &&
+  return _hasExpansion && !_unique && _fields.size() == 1 &&
          _fields[0].size() == 1;
 }
 
@@ -2499,7 +2499,6 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
             monitor, &_collection, trx, this, sub->getMember(0), readOwnWrites);
       }
     }
-    LOG_DEVEL << aql::AstNode::toString(node);
   }
 
   transaction::BuilderLeaser searchValues(trx);

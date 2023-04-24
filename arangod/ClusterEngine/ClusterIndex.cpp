@@ -101,8 +101,8 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
   if (_indexType == TRI_IDX_TYPE_HASH_INDEX ||
       _indexType == TRI_IDX_TYPE_SKIPLIST_INDEX ||
       _indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
-    if (!_unique && !info.get("deduplicate").isTrue() && _fields.size() == 1 &&
-        _fields[0].size() == 1 && _fields[0][0].shouldExpand) {
+    if (!_unique && _fields.size() == 1 && _fields[0].size() == 1 &&
+        _fields[0][0].shouldExpand) {
       _supportsArrayOperations = true;
     }
   }
