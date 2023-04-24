@@ -53,7 +53,7 @@ auto Storing::receive(actor::ActorPID sender,
         .statusMessage = pregel::message::Canceled{.state = stateName},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
-                .prevState = pregel::metrics::message::PrevState::STORING},
+                .previousState = pregel::metrics::message::PreviousState::STORING},
         .newState = std::move(newState)};
   }
 
@@ -65,7 +65,7 @@ auto Storing::receive(actor::ActorPID sender,
         .statusMessage = pregel::message::InFatalError{.state = stateName},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
-                .prevState = pregel::metrics::message::PrevState::STORING},
+                .previousState = pregel::metrics::message::PreviousState::STORING},
         .newState = std::move(newState)};
   }
   auto stored = std::get<ResultT<message::Stored>>(message);
@@ -76,7 +76,7 @@ auto Storing::receive(actor::ActorPID sender,
         .statusMessage = pregel::message::InFatalError{.state = stateName},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
-                .prevState = pregel::metrics::message::PrevState::STORING},
+                .previousState = pregel::metrics::message::PreviousState::STORING},
         .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);
@@ -88,7 +88,7 @@ auto Storing::receive(actor::ActorPID sender,
         .statusMessage = pregel::message::PregelFinished{.state = stateName},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
-                .prevState = pregel::metrics::message::PrevState::STORING},
+                .previousState = pregel::metrics::message::PreviousState::STORING},
         .newState = std::move(newState)};
   }
 

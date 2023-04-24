@@ -54,7 +54,7 @@ auto Computing::receive(actor::ActorPID sender,
         .statusMessage = pregel::message::Canceled{.state = stateName},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
-                .prevState = pregel::metrics::message::PrevState::COMPUTING},
+                .previousState = pregel::metrics::message::PreviousState::COMPUTING},
         .newState = std::move(newState)};
   }
 
@@ -67,7 +67,7 @@ auto Computing::receive(actor::ActorPID sender,
         .statusMessage = pregel::message::InFatalError{.state = stateName},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
-                .prevState = pregel::metrics::message::PrevState::COMPUTING},
+                .previousState = pregel::metrics::message::PreviousState::COMPUTING},
         .newState = std::move(newState)};
   }
   auto gssFinished =
@@ -79,7 +79,7 @@ auto Computing::receive(actor::ActorPID sender,
         .statusMessage = pregel::message::InFatalError{.state = stateName},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
-                .prevState = pregel::metrics::message::PrevState::COMPUTING},
+                .previousState = pregel::metrics::message::PreviousState::COMPUTING},
         .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);

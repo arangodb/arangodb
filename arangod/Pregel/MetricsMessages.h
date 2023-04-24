@@ -28,12 +28,12 @@
 #include "Inspection/Types.h"
 
 namespace arangodb::pregel::metrics::message {
-enum class PrevState { LOADING, COMPUTING, STORING, OTHER };
+enum class PreviousState { LOADING, COMPUTING, STORING, OTHER };
 template<typename Inspector>
-auto inspect(Inspector& f, PrevState& x) {
+auto inspect(Inspector& f, PreviousState& x) {
   return f.enumeration(x).values(
-      PrevState::LOADING, "LOADING", PrevState::COMPUTING, "COMPUTING",
-      PrevState::STORING, "STORING", PrevState::OTHER, "OTHER");
+      PreviousState::LOADING, "LOADING", PreviousState::COMPUTING, "COMPUTING",
+      PreviousState::STORING, "STORING", PreviousState::OTHER, "OTHER");
 }
 
 struct MetricsStart {};
@@ -67,11 +67,11 @@ auto inspect(Inspector& f, ConductorStoringStarted& x) {
 }
 
 struct ConductorFinished {
-  PrevState prevState = PrevState::OTHER;
+  PreviousState previousState = PreviousState::OTHER;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorFinished& x) {
-  return f.object(x).fields(f.field("prevState", x.prevState));
+  return f.object(x).fields(f.field("previousState", x.previousState));
 }
 
 struct WorkerStarted {};

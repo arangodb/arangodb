@@ -79,17 +79,17 @@ struct MetricsHandler : actor::HandlerBase<Runtime, MetricsState> {
   auto operator()(metrics::message::ConductorFinished msg) {
     this->state->metrics->pregelConductorsNumber->fetch_sub(1);
 
-    switch (msg.prevState) {
-      case metrics::message::PrevState::LOADING:
+    switch (msg.previousState) {
+      case metrics::message::PreviousState::LOADING:
         this->state->metrics->pregelConductorsLoadingNumber->fetch_sub(1);
         break;
-      case metrics::message::PrevState::COMPUTING:
+      case metrics::message::PreviousState::COMPUTING:
         this->state->metrics->pregelConductorsRunningNumber->fetch_sub(1);
         break;
-      case metrics::message::PrevState::STORING:
+      case metrics::message::PreviousState::STORING:
         this->state->metrics->pregelConductorsStoringNumber->fetch_sub(1);
         break;
-      case metrics::message::PrevState::OTHER:
+      case metrics::message::PreviousState::OTHER:
         break;
     }
 
