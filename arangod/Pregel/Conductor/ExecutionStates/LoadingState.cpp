@@ -35,7 +35,8 @@ auto Loading::receive(actor::ActorPID sender,
         .statusMessage = pregel::message::Canceled{.state = stateName},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
-                .previousState = pregel::metrics::message::PreviousState::LOADING},
+                .previousState =
+                    pregel::metrics::message::PreviousState::LOADING},
         .newState = std::move(newState)};
   }
 
@@ -50,7 +51,8 @@ auto Loading::receive(actor::ActorPID sender,
         .statusMessage = pregel::message::InFatalError{.state = stateName},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
-                .previousState = pregel::metrics::message::PreviousState::LOADING},
+                .previousState =
+                    pregel::metrics::message::PreviousState::LOADING},
         .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);
