@@ -3,6 +3,10 @@ v3.11.0 (XXXX-XX-XX)
 
 * Fix unstable test setting the desired number of dbservers.
 
+* FE-162: Fix display of geodesic lines
+
+* FE-233: bugfix - fix query spotlight search not working.
+
 * FE-253: bugfix - validate JSON, show errors & disable save when error.
 
 * FE-254: bugfix - filter out empty storedValues for persistent index.
