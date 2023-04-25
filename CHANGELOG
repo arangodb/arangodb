@@ -3,7 +3,7 @@ v3.11.0 (XXXX-XX-XX)
 
 * Fix unstable test setting the desired number of dbservers.
 
-* DE-22: Display collection info by default when clicking on a collection in
+* FE-22: Display collection info by default when clicking on a collection in
   the Web UI
 
 * MDS-1098: In 3.10 we have introduced an optimization on Traversals to pull
