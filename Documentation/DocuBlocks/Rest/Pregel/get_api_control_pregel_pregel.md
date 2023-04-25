@@ -33,6 +33,7 @@ Get the execution status of a Pregel job:
 @EXAMPLE_ARANGOSH_RUN{RestPregelStatusConnectedComponents}
 
   var examples = require("@arangodb/graph-examples/example-graph.js");
+  print("3. Creating Pregel graph");
   var graph = examples.loadGraph("connectedComponentsGraph");
 
   var url = "/_api/control_pregel";
@@ -52,7 +53,7 @@ Get the execution status of a Pregel job:
       assert(status.state == "done");
       break;
     } else {
-      print(`Waiting for Pregel job ${id} (${status.state})...`);
+      print(`3. Waiting for Pregel job ${id} (${status.state})...`);
       internal.sleep(0.5);
     }
   }
