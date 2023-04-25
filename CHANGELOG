@@ -1,7 +1,11 @@
 v3.10.6 (XXXX-XX-XX)
 --------------------
 
+* FE-162: Fix display of geodesic lines
+
 * Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
+
+* FE-233: bugfix - fix query spotlight search not working.
 
 * Automatically repair revision trees after several failed shard synchronization
   attempts. This can help to get permanently out-of-sync shards back into sync.
