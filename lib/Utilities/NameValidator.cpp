@@ -76,7 +76,7 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
   }
 
   if (extendedNames && !name.empty()) {
-    unsigned char c = static_cast<unsigned char>(name[0]);
+    char c = name.front();
     // a database name must not start with a digit, because then it can be
     // confused with numeric database ids
     bool ok = (c < '0' || c > '9');
@@ -92,7 +92,7 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
     ok &= (c != ' ');
 
     // trailing spaces are not allowed
-    c = static_cast<unsigned char>(name.back());
+    c = name.back();
     ok &= (c != ' ');
 
     // new naming convention allows Unicode characters. we need to
@@ -157,7 +157,7 @@ bool CollectionNameValidator::isAllowedName(bool allowSystem,
   }
 
   if (extendedNames && !name.empty()) {
-    unsigned char c = static_cast<unsigned char>(name[0]);
+    char c = name.front();
     // a collection name must not start with a digit, because then it can be
     // confused with numeric collection ids
     bool ok = (c < '0' || c > '9');
@@ -173,7 +173,7 @@ bool CollectionNameValidator::isAllowedName(bool allowSystem,
     ok &= (c != ' ');
 
     // trailing spaces are not allowed
-    c = static_cast<unsigned char>(name.back());
+    c = name.back();
     ok &= (c != ' ');
 
     // new naming convention allows Unicode characters. we need to
@@ -238,7 +238,7 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
   }
 
   if (extendedNames && !name.empty()) {
-    unsigned char c = static_cast<unsigned char>(name[0]);
+    char c = name.front();
     // a view name must not start with a digit, because then it can be
     // confused with numeric collection ids
     bool ok = (c < '0' || c > '9');
@@ -254,7 +254,7 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
     ok &= (c != ' ');
 
     // trailing spaces are not allowed
-    c = static_cast<unsigned char>(name.back());
+    c = name.back();
     ok &= (c != ' ');
 
     // new naming convention allows Unicode characters. we need to
@@ -317,7 +317,7 @@ bool IndexNameValidator::isAllowedName(bool extendedNames,
   }
 
   if (extendedNames && !name.empty()) {
-    unsigned char c = static_cast<unsigned char>(name[0]);
+    char c = name.front();
     // an index name must not start with a digit, because then it can be
     // confused with numeric collection ids
     bool ok = (c < '0' || c > '9');
@@ -326,7 +326,7 @@ bool IndexNameValidator::isAllowedName(bool extendedNames,
     ok &= (c != ' ');
 
     // trailing spaces are not allowed
-    c = static_cast<unsigned char>(name.back());
+    c = name.back();
     ok &= (c != ' ');
 
     // new naming convention allows Unicode characters. we need to
