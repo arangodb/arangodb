@@ -30,8 +30,12 @@
 namespace arangodb::replication2::replicated_state::document {
 
 ReplicatedOperation::DocumentOperation::DocumentOperation(
-    TransactionId tid, ShardID shard, velocypack::SharedSlice payload)
-    : tid{tid}, shard{std::move(shard)}, payload{std::move(payload)} {}
+    TransactionId tid, ShardID shard, velocypack::SharedSlice payload,
+    bool explicitCommit)
+    : tid{tid},
+      shard{std::move(shard)},
+      payload{std::move(payload)},
+      explicitCommit{explicitCommit} {}
 
 template<typename... Args>
 ReplicatedOperation::ReplicatedOperation(std::in_place_t,
@@ -85,24 +89,29 @@ auto ReplicatedOperation::buildDropShardOperation(
 
 auto ReplicatedOperation::buildDocumentOperation(
     TRI_voc_document_operation_e const& op, TransactionId tid, ShardID shard,
-    velocypack::SharedSlice payload) noexcept -> ReplicatedOperation {
+    velocypack::SharedSlice payload, bool explicitCommit) noexcept
+    -> ReplicatedOperation {
   switch (op) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       return ReplicatedOperation{
           std::in_place,
-          Insert{DocumentOperation(tid, std::move(shard), std::move(payload))}};
+          Insert{DocumentOperation(tid, std::move(shard), std::move(payload),
+                                   explicitCommit)}};
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       return ReplicatedOperation{
           std::in_place,
-          Update{DocumentOperation(tid, std::move(shard), std::move(payload))}};
+          Update{DocumentOperation(tid, std::move(shard), std::move(payload),
+                                   explicitCommit)}};
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
       return ReplicatedOperation{
-          std::in_place, Replace{DocumentOperation(tid, std::move(shard),
-                                                   std::move(payload))}};
+          std::in_place,
+          Replace{DocumentOperation(tid, std::move(shard), std::move(payload),
+                                    explicitCommit)}};
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
       return ReplicatedOperation{
           std::in_place,
-          Remove{DocumentOperation(tid, std::move(shard), std::move(payload))}};
+          Remove{DocumentOperation(tid, std::move(shard), std::move(payload),
+                                   explicitCommit)}};
     default:
       ADB_PROD_ASSERT(false) << "Unexpected document operation " << op;
   }

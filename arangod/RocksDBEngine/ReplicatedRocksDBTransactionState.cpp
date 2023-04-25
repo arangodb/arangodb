@@ -374,5 +374,10 @@ rocksdb::SequenceNumber ReplicatedRocksDBTransactionState::beginSeq() const {
 
 bool ReplicatedRocksDBTransactionState::mustBeReplicated() const {
   auto isIndexCreation = _hints.has(transaction::Hints::Hint::INDEX_CREATION);
-  return !isReadOnlyTransaction() && !isIndexCreation;
+
+  // For simple document operations, the followers can commit directly.
+  bool explicitCommit = _hints.has(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+                        _hints.has(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+
+  return !isReadOnlyTransaction() && !isIndexCreation && explicitCommit;
 }

@@ -43,10 +43,12 @@ struct ReplicatedOperation {
     TransactionId tid;
     ShardID shard;
     velocypack::SharedSlice payload;
+    bool explicitCommit;
 
     explicit DocumentOperation() = default;
     explicit DocumentOperation(TransactionId tid, ShardID shard,
-                               velocypack::SharedSlice payload);
+                               velocypack::SharedSlice payload,
+                               bool explicitCommit);
 
     friend auto operator==(DocumentOperation const& a,
                            DocumentOperation const& b) -> bool {
@@ -82,6 +84,9 @@ struct ReplicatedOperation {
   struct Truncate {
     TransactionId tid;
     ShardID shard;
+    // This is a bit of a hack, as currently truncate does not support implicit
+    // commits. But we need this field for visitors.
+    bool explicitCommit = true;
 
     friend auto operator==(Truncate const&, Truncate const&) -> bool = default;
   };
@@ -138,7 +143,8 @@ struct ReplicatedOperation {
       -> ReplicatedOperation;
   static auto buildDocumentOperation(TRI_voc_document_operation_e const& op,
                                      TransactionId tid, ShardID shard,
-                                     velocypack::SharedSlice payload) noexcept
+                                     velocypack::SharedSlice payload,
+                                     bool explicitCommit = true) noexcept
       -> ReplicatedOperation;
 
   friend auto operator==(ReplicatedOperation const&, ReplicatedOperation const&)
@@ -166,7 +172,8 @@ concept FinishesUserTransaction =
     std::is_same_v<T, ReplicatedOperation::Abort>;
 
 template<class T>
-concept FinishesUserTransactionOrIntermediate = FinishesUserTransaction<T> ||
+concept FinishesUserTransactionOrIntermediate =
+    FinishesUserTransaction<T> ||
     std::is_same_v<T, ReplicatedOperation::IntermediateCommit>;
 
 template<class T>

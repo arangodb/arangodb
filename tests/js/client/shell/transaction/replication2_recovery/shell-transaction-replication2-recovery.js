@@ -88,6 +88,35 @@ function transactionReplication2Recovery() {
     }),
 
     /*
+     * Check that a basic ElCheapo transaction works as expected.
+     */
+    testElCheapoTransaction() {
+      const logs = lhttp.listLogs(coordinator, dbn).result;
+      const participants = logs[logId];
+
+      try {
+        let trx = db._createTransaction({
+          collections: { write: c.name() }
+        });
+        let tc = trx.collection(c.name());
+        tc.insert({ _key: "foo" });
+
+        trx.commit();
+      } catch (err) {
+        let logContents = lh.dumpLogHead(logId);
+        fail(`Transaction failed with: ${JSON.stringify(err)}.` +
+          ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
+      }
+
+      // Expect "foo" to be found on all servers.
+      const servers = Object.assign({}, ...participants.map(
+        (serverId) => ({ [serverId]: lh.getServerUrl(serverId) })));
+      for (const [_, endpoint] of Object.entries(servers)) {
+        lh.waitFor(dh.localKeyStatus(endpoint, dbn, shardId, "foo", true));
+      }
+    },
+
+    /*
      * Stop the leader in the middle of a transaction.
      */
     testFailoverDuringTransaction: function () {

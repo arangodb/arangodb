@@ -487,8 +487,18 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     return res;
   }
 
-  // We don't need to update the release index after such operations.
-  return ResultT<std::optional<LogIndex>>::success(std::nullopt);
+  if (op.explicitCommit) {
+    // We don't need to update the release index after such operations.
+    return ResultT<std::optional<LogIndex>>::success(std::nullopt);
+  } else {
+    // Commit immediately
+    auto commitOp = ReplicatedOperation::buildCommitOperation(op.tid);
+    return std::visit(
+        [this, index](auto&& op) -> ResultT<std::optional<LogIndex>> {
+          return this->applyEntry(op, index);
+        },
+        commitOp.operation);
+  }
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(

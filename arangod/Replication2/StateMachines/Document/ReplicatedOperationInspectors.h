@@ -28,7 +28,8 @@ namespace arangodb::replication2::replicated_state::document {
 template<class Inspector>
 auto inspect(Inspector& f, ReplicatedOperation::DocumentOperation& x) {
   return f.object(x).fields(f.field("tid", x.tid), f.field("shard", x.shard),
-                            f.field("payload", x.payload));
+                            f.field("payload", x.payload),
+                            f.field("explicitCommit", x.explicitCommit));
 }
 
 template<class Inspector>

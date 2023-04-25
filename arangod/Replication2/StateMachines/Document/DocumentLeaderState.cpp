@@ -126,8 +126,17 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                 } else if (res.fail()) {
                   return res;
                 }
-                activeTransactions.insert(op.tid);
-                return data.transactionHandler->applyEntry(op);
+
+                if (op.explicitCommit) {
+                  activeTransactions.insert(op.tid);
+                  return data.transactionHandler->applyEntry(op);
+                } else {
+                  // Commit immediately
+                  TRI_ASSERT(data.transactionHandler->applyEntry(op).ok());
+                  auto commitOp =
+                      ReplicatedOperation::buildCommitOperation(op.tid);
+                  return data.transactionHandler->applyEntry(commitOp);
+                }
               },
               [&](FinishesUserTransactionOrIntermediate auto& op) -> Result {
                 // There are two cases where we can end up here:

@@ -3149,27 +3149,33 @@ Future<Result> Methods::replicateOperations(
 
   // replication2 is handled here
   if (collection->replicationVersion() == replication::Version::TWO) {
+    auto* trxState = state();
+    bool explicitCommit = trxState->hasHint(Hints::Hint::GLOBAL_MANAGED) ||
+                          trxState->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL);
+    // Simple transactions (!ElCheapo && !AQL) can be applied immediately on
+    // followers. But in that case, we wait for them to be replicated.
+    auto replicationOptions =
+        replication2::replicated_state::document::ReplicationOptions{
+            .waitForCommit = !explicitCommit};
+
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
         transactionCollection);
     auto leaderState = rtc.leaderState();
     auto replicatedOp = replication2::replicated_state::document::
         ReplicatedOperation::buildDocumentOperation(
-            operation, state()->id(), rtc.collectionName(),
-            replicationData.sharedSlice());
-    // Should finish immediately
+            operation, trxState->id(), rtc.collectionName(),
+            replicationData.sharedSlice(), explicitCommit);
     auto replicationFut = leaderState->replicateOperation(
-        std::move(replicatedOp),
-        replication2::replicated_state::document::ReplicationOptions{});
-
-    // Should finish immediately, because we are not waiting the operation to be
-    // committed in the replicated log
-    TRI_ASSERT(replicationFut.isReady());
-
-    auto replicationRes = replicationFut.get();
-    if (replicationRes.fail()) {
-      return replicationRes.result();
-    }
-    return performIntermediateCommitIfRequired(collection->id());
+        std::move(replicatedOp), replicationOptions);
+    return std::move(replicationFut)
+        .then([this, id = transactionCollection.collection()->id()](
+                  auto&& tryRes) -> futures::Future<Result> {
+          auto res = basics::catchToResultT([&] { return tryRes.get(); });
+          if (res.fail()) {
+            return res.result();
+          }
+          return performIntermediateCommitIfRequired(id);
+        });
   }
 
   // path and requestType are different for insert/remove/modify.
@@ -3663,7 +3669,8 @@ Future<OperationResult> Methods::updateInternal(
                           TRI_VOC_DOCUMENT_OPERATION_UPDATE, api);
   } else {
     OperationOptions optionsCopy = options;
-    f = modifyLocal(collectionName, newValue, optionsCopy, /*isUpdate*/ true);
+    f = modifyLocal(collectionName, newValue, optionsCopy,
+                    /*isUpdate*/ true);
   }
   return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
     events::ModifyDocument(vocbase().name(), collectionName, newValue,
@@ -3695,7 +3702,8 @@ Future<OperationResult> Methods::replaceInternal(
                           TRI_VOC_DOCUMENT_OPERATION_REPLACE, api);
   } else {
     OperationOptions optionsCopy = options;
-    f = modifyLocal(collectionName, newValue, optionsCopy, /*isUpdate*/ false);
+    f = modifyLocal(collectionName, newValue, optionsCopy,
+                    /*isUpdate*/ false);
   }
   return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
     events::ReplaceDocument(vocbase().name(), collectionName, newValue,
@@ -3762,8 +3770,8 @@ futures::Future<OperationResult> Methods::countInternal(
   }
 
   if (type == CountType::Detailed) {
-    // we are a single-server... we cannot provide detailed per-shard counts,
-    // so just downgrade the request to a normal request
+    // we are a single-server... we cannot provide detailed per-shard
+    // counts, so just downgrade the request to a normal request
     type = CountType::Normal;
   }
 
