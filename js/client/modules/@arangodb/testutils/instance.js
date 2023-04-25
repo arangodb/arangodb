@@ -862,10 +862,13 @@ class instance {
     }
     throw new Error(`unable to connect in ${count}s`);
   }
-  getAgent(path, method) {
+  getAgent(path, method, body = null) {
     let opts = {
       method: method
     };
+    if (body === null) {
+      body = (method === 'POST') ? '[["/"]]' : '';
+    }
 
     if (this.args.hasOwnProperty('authOpts')) {
       opts['jwt'] = crypto.jwtEncode(this.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
@@ -874,7 +877,7 @@ class instance {
     } else if (this.jwtFiles) {
       opts['jwt'] = crypto.jwtEncode(fs.read(this.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
     }
-    return download(this.url + path, method === 'POST' ? '[["/"]]' : '', opts);
+    return download(this.url + path, body, opts);
   }
 
   dumpAgent(path, method, fn, dumpdir) {

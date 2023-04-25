@@ -61,6 +61,7 @@ export type LinkProperties = {
   trackListPositions?: boolean;
   storeValues?: 'none' | 'id';
   inBackground?: boolean;
+  cache?: boolean;
 };
 
 type BaseFormState = {
@@ -114,7 +115,11 @@ export const linksSchema = {
     inBackground: {
       type: 'boolean',
       nullable: false
-    }
+    },
+    cache: {
+      type: 'boolean',
+      nullable: true
+    },
   },
   additionalProperties: false
 };
@@ -325,9 +330,7 @@ export const formSchema: JSONSchemaType<FormState> = {
       nullable: true
     }
   },
-  required: ['id', 'name', 'type'],
-  additionalProperties: false
-};
+  required: ['id', 'name', 'type']};
 
 export const ViewContext = createContext({
   formState: {} as FormState,

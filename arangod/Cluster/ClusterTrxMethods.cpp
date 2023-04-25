@@ -243,6 +243,18 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   TRI_ASSERT(!state->isDBServer() || !state->id().isFollowerTransactionId());
 
   network::RequestOptions reqOpts;
+  // We intentionally choose the timeout to be 14 minutes on coordinators
+  // and 13 minutes on dbservers. It needs to be longer on the coordinator
+  // to give the leader a chance to time out earlier than the coordinator.
+  // In this case we need to drop a follower, but can proceed with the
+  // transaction. Both timeouts are intentionally smaller than the standard
+  // intra-cluster timeout of 15 minutes, but are large enough to withstand
+  // delays in the network infrastructure.
+  if (state->isCoordinator()) {
+    reqOpts.timeout = arangodb::network::Timeout(std::chrono::minutes(14));
+  } else {
+    reqOpts.timeout = arangodb::network::Timeout(std::chrono::minutes(13));
+  }
   reqOpts.database = state->vocbase().name();
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 

@@ -51,7 +51,7 @@ const dbservers = (function () {
 
 function delaySupervisionFailoverActions(value) {
   let agents = global.instanceManager.arangods.filter(
-    arangod => arangod.role === "agent").map(
+    arangod => arangod.instanceRole === "agent").map(
     arangod => arangod.url);
   for (let a of agents) {
     const res = request({url: a + "/_api/agency/config",
@@ -1291,6 +1291,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       let id = JSON.parse(result.body).id;
       assertTrue(cancelAgencyJob(id));
       assertTrue(maintenanceMode("off"));
+      while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to be killed
+        wait(0.1);
+      }
       var job = queryAgencyJob(result.json.id);
       assertEqual(job.status, "Failed");
       assertEqual(job.abort);

@@ -24,9 +24,9 @@ It must be specified in bytes. The *chunkSize* value will only be honored
 approximately. Otherwise a too low *chunkSize* value could cause the server
 to not be able to put just one entry into the result and return it.
 Therefore, the *chunkSize* value will only be consulted after an entry has
-been written into the result. If the result size is then bigger than
+been written into the result. If the result size is then greater than
 *chunkSize*, the server will respond with as many entries as there are
-in the response already. If the result size is still smaller than *chunkSize*,
+in the response already. If the result size is still less than *chunkSize*,
 the server will try to return more data if there's more data left to return.
 
 If *chunkSize* is not specified, some server-side default value will be used.

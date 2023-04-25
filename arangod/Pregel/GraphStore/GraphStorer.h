@@ -52,11 +52,13 @@ using StoringUpdateCallback =
 template<typename V, typename E>
 struct GraphStorer : GraphStorerBase<V, E> {
   explicit GraphStorer(ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
+                       size_t parallelism,
                        std::shared_ptr<GraphFormat<V, E> const> graphFormat,
                        std::vector<ShardID> globalShards,
                        StoringUpdateCallback updateCallback)
       : executionNumber(executionNumber),
         vocbaseGuard(vocbase),
+        parallelism(parallelism),
         graphFormat(graphFormat),
         globalShards(globalShards),
         updateCallback(updateCallback) {}
@@ -67,6 +69,7 @@ struct GraphStorer : GraphStorerBase<V, E> {
 
   ExecutionNumber executionNumber;
   DatabaseGuard vocbaseGuard;
+  size_t const parallelism = 1;
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   std::vector<ShardID> globalShards;
   StoringUpdateCallback updateCallback;
