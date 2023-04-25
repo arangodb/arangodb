@@ -3,7 +3,7 @@
     <span class="toggle"> 
       <%=_.escape(username)%>
     </span>
-    <% if (!ssoEnabled) {%>
+    <% if (!autoLoginEnabled) {%>
       <i id="userLogoutIcon" class="fa fa-power-off" aria-hidden="true"></i>
     <% }%>
   </a>
@@ -18,12 +18,12 @@
         <% } %>
         </p>
     </li>
-    <% if (!ssoEnabled) {%>
+    <% if (!autoLoginEnabled) {%>
       <li class="dropdown-footer">
         <button id="userLogout" class="button-primary btn-small pull-right">Logout</button>
       </li>
     <% }%>
-    <% if (ssoEnabled) {%>
+    <% if (autoLoginEnabled) {%>
       <li class="dropdown-footer" style="max-width: 200px; line-height: 1.4; padding: 0 10px !important;">
         This login is automatically managed by ArangoGraph.
       </li>
