@@ -8095,11 +8095,6 @@ launch-editor@^2.6.0:
     picocolors "^1.0.0"
     shell-quote "^1.7.3"
 
-leaflet.geodesic@^2.6.1:
-  version "2.6.1"
-  resolved "https://registry.yarnpkg.com/leaflet.geodesic/-/leaflet.geodesic-2.6.1.tgz#72604259cb4a3f3991cbc287bdc0867a8d548932"
-  integrity sha512-irHHgQUCWUDqMdSdGBj66k7F1eeYhviI8OP5aGg2s/fY8SSZrPAPmdxYuRxclWaHvFkyjwtDws8uBHMG8dtuHw==
-
 leven@^3.1.0:
   version "3.1.0"
   resolved "https://registry.npmjs.org/leven/-/leven-3.1.0.tgz"
