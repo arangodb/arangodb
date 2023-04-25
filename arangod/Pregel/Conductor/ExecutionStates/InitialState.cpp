@@ -34,19 +34,20 @@ using namespace arangodb::pregel::conductor;
 
 Initial::Initial(ConductorState& conductor) : conductor{conductor} {}
 
+auto Initial::cancel(actor::ActorPID sender, message::ConductorMessages message)
+    -> std::optional<StateChange> {
+  auto newState = std::make_unique<Canceled>(conductor);
+  auto stateName = newState->name();
+
+  return StateChange{
+      .statusMessage = pregel::message::Canceled{.state = stateName},
+      .metricsMessage = pregel::metrics::message::ConductorFinished{},
+      .newState = std::move(newState)};
+}
+
 auto Initial::receive(actor::ActorPID sender,
                       message::ConductorMessages message)
     -> std::optional<StateChange> {
-  if (std::holds_alternative<message::Cancel>(message)) {
-    auto newState = std::make_unique<Canceled>(conductor);
-    auto stateName = newState->name();
-
-    return StateChange{
-        .statusMessage = pregel::message::Canceled{.state = stateName},
-        .metricsMessage = pregel::metrics::message::ConductorFinished{},
-        .newState = std::move(newState)};
-  }
-
   if (!std::holds_alternative<message::ConductorStart>(message)) {
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();

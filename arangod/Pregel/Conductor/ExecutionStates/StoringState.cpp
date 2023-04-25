@@ -42,22 +42,24 @@ auto Storing::messages()
   return out;
 }
 
+auto Storing::cancel(arangodb::pregel::actor::ActorPID sender,
+                     message::ConductorMessages message)
+    -> std::optional<StateChange> {
+  auto newState = std::make_unique<Canceled>(conductor);
+  auto stateName = newState->name();
+
+  return StateChange{
+      .statusMessage = pregel::message::Canceled{.state = stateName},
+      .metricsMessage =
+          pregel::metrics::message::ConductorFinished{
+              .previousState =
+                  pregel::metrics::message::PreviousState::STORING},
+      .newState = std::move(newState)};
+}
+
 auto Storing::receive(actor::ActorPID sender,
                       message::ConductorMessages message)
     -> std::optional<StateChange> {
-  if (std::holds_alternative<message::Cancel>(message)) {
-    auto newState = std::make_unique<Canceled>(conductor);
-    auto stateName = newState->name();
-
-    return StateChange{
-        .statusMessage = pregel::message::Canceled{.state = stateName},
-        .metricsMessage =
-            pregel::metrics::message::ConductorFinished{
-                .previousState =
-                    pregel::metrics::message::PreviousState::STORING},
-        .newState = std::move(newState)};
-  }
-
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::Stored>>(message)) {
     auto newState = std::make_unique<FatalError>(conductor);

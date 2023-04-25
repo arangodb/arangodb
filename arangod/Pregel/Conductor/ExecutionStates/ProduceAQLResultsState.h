@@ -43,6 +43,8 @@ struct ProduceAQLResults : ExecutionState {
   auto name() const -> std::string override { return "storing"; };
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<StateChange> override;
+  auto cancel(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<StateChange> override;
 
  private:
   ConductorState& conductor;

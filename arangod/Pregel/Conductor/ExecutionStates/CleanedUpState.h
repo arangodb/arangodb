@@ -29,7 +29,6 @@ namespace arangodb::pregel::conductor {
 struct CleanedUp : ExecutionState {
   CleanedUp() = default;
   auto name() const -> std::string override { return "cleaned up"; }
-  auto canBeCanceled() const -> bool override { return false; }
 };
 
 }  // namespace arangodb::pregel::conductor

@@ -43,6 +43,8 @@ struct Computing : ExecutionState {
                             worker::message::WorkerMessages> override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<StateChange> override;
+  auto cancel(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<StateChange> override;
   struct PostGlobalSuperStepResult {
     bool finished;
   };

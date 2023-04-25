@@ -38,6 +38,8 @@ struct Loading : ExecutionState {
                             worker::message::WorkerMessages> override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<StateChange> override;
+  auto cancel(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<StateChange> override;
 
   ConductorState& conductor;
   std::unordered_map<ShardID, actor::ActorPID> actorForShard;

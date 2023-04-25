@@ -171,14 +171,11 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     LOG_TOPIC("012d3", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Run {} is canceled",
                        this->state->specifications.executionNumber);
-    if (this->state->executionState->canBeCanceled()) {
-      auto stateChange =
-          this->state->executionState->receive(this->sender, msg);
-      if (stateChange.has_value()) {
-        changeState(std::move(stateChange.value()));
-      }
-      sendMessagesToWorkers();
+    auto stateChange = this->state->executionState->cancel(this->sender, msg);
+    if (stateChange.has_value()) {
+      changeState(std::move(stateChange.value()));
     }
+    sendMessagesToWorkers();
     return std::move(this->state);
   }
 

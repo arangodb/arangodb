@@ -34,22 +34,24 @@ using namespace arangodb::pregel::conductor;
 ProduceAQLResults::ProduceAQLResults(ConductorState& conductor)
     : conductor{conductor} {}
 
+auto ProduceAQLResults::cancel(ActorPID sender,
+                               message::ConductorMessages message)
+    -> std::optional<StateChange> {
+  auto newState = std::make_unique<Canceled>(conductor);
+  auto stateName = newState->name();
+
+  return StateChange{
+      .statusMessage = pregel::message::Canceled{.state = stateName},
+      .metricsMessage =
+          pregel::metrics::message::ConductorFinished{
+              .previousState =
+                  pregel::metrics::message::PreviousState::STORING},
+      .newState = std::move(newState)};
+}
+
 auto ProduceAQLResults::receive(actor::ActorPID sender,
                                 message::ConductorMessages message)
     -> std::optional<StateChange> {
-  if (std::holds_alternative<message::Cancel>(message)) {
-    auto newState = std::make_unique<Canceled>(conductor);
-    auto stateName = newState->name();
-
-    return StateChange{
-        .statusMessage = pregel::message::Canceled{.state = stateName},
-        .metricsMessage =
-            pregel::metrics::message::ConductorFinished{
-                .previousState =
-                    pregel::metrics::message::PreviousState::STORING},
-        .newState = std::move(newState)};
-  }
-
   if (not std::holds_alternative<message::ResultCreated>(message)) {
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();

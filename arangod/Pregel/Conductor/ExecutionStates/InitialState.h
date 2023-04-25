@@ -39,6 +39,8 @@ struct Initial : ExecutionState {
   [[nodiscard]] auto name() const -> std::string override { return "initial"; };
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<StateChange> override;
+  auto cancel(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<StateChange> override;
 
   ConductorState& conductor;
 };

@@ -55,19 +55,21 @@ auto CreateWorkers::messagesToServers()
   return workerSpecifications;
 }
 
+auto CreateWorkers::cancel(actor::ActorPID sender,
+                           message::ConductorMessages message)
+    -> std::optional<StateChange> {
+  auto newState = std::make_unique<Canceled>(conductor);
+  auto stateName = newState->name();
+
+  return StateChange{
+      .statusMessage = pregel::message::Canceled{.state = stateName},
+      .metricsMessage = pregel::metrics::message::ConductorFinished{},
+      .newState = std::move(newState)};
+}
+
 auto CreateWorkers::receive(actor::ActorPID sender,
                             message::ConductorMessages message)
     -> std::optional<StateChange> {
-  if (std::holds_alternative<message::Cancel>(message)) {
-    auto newState = std::make_unique<Canceled>(conductor);
-    auto stateName = newState->name();
-
-    return StateChange{
-        .statusMessage = pregel::message::Canceled{.state = stateName},
-        .metricsMessage = pregel::metrics::message::ConductorFinished{},
-        .newState = std::move(newState)};
-  }
-
   if (not sentServers.contains(sender.server) or
       not std::holds_alternative<ResultT<message::WorkerCreated>>(message)) {
     auto newState = std::make_unique<FatalError>(conductor);
