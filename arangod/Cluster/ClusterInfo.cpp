@@ -3917,7 +3917,10 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Report if this operation worked, if it failed collections will be
       // cleaned up by deleteCollectionGuard.
       for (auto const& info : infos) {
-        TRI_ASSERT(report->getLockedGuard()->state == ClusterCollectionCreationState::DONE);
+        TRI_ASSERT(report->doUnderLock(
+                       [&info](auto const&) -> ClusterCollectionCreationState {
+                         return info.state;
+                       }) == ClusterCollectionCreationState::DONE);
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
 
