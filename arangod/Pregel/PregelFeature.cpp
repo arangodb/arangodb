@@ -382,7 +382,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
     });
 
     auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
-        StaticStrings::SystemDatabase, std::make_unique<MetricsState>(_metrics),
+        vocbase.name(), std::make_unique<MetricsState>(_metrics),
         metrics::message::MetricsStart{});
     auto metricsActorPID =
         actor::ActorPID{.server = ServerState::instance()->getId(),
