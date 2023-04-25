@@ -398,7 +398,6 @@ class testRunner {
     this.taskCount = 0;
     this.cleanupChecks = [ ];
     this.cleanupChecks.push(failurePointsCheck);
-    this.cleanupChecks.push(failurePointsCheck);
 
     if (checkCollections) {
       this.cleanupChecks.push(tasksTests);
