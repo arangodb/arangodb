@@ -26,7 +26,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const isEnterprise = require("internal").isEnterprise();
-const dbName = "testOptimizeTopK"
+const dbName = "testOptimizeTopK";
 
 function testOptimizeTopK() {
   const names = ["v_alias_tfidf", "v_alias_bm25", "v_search_tfidf", "v_search_bm25"];
