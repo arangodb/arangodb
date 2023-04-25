@@ -1501,6 +1501,12 @@ void RocksDBOptionFeature::validateOptions(
         << "disabling jemalloc allocator for RocksDB - jemalloc not compiled";
   }
 #endif
+
+  if (!_enableBlobFiles) {
+    // turn off blob garbage collection to avoid potential side effects
+    // for performance
+    _enableBlobGarbageCollection = false;
+  }
 }
 
 void RocksDBOptionFeature::prepare() {
