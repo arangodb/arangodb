@@ -386,7 +386,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         metrics::message::MetricsStart{});
     auto metricsActorPID =
         actor::ActorPID{.server = ServerState::instance()->getId(),
-                        .database = StaticStrings::SystemDatabase,
+                        .database = vocbase.name(),
                         .id = metricsActorID};
     _metricsActors.doUnderLock([&en, &metricsActorPID](auto& actors) {
       actors.emplace(en, metricsActorPID);
