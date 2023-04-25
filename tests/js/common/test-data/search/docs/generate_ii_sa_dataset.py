@@ -38,26 +38,26 @@ def generatePlaces():
 generatePlaces.fake = Faker()
 def generatePersonalData():
 
-    if len(generatePersonalData.names) == 0 or len(generatePersonalData.last_names) == 0:
-        names = set()
-        last_names = set()
+    # if len(generatePersonalData.names) == 0 or len(generatePersonalData.last_names) == 0:
+    #     names = set()
+    #     last_names = set()
 
-        while len(names) != 10 and len(last_names) != 10:
-            names.add(generatePersonalData.fake.first_name())
-            last_names.add(generatePersonalData.fake.last_name())
+    #     while len(names) != 10 and len(last_names) != 10:
+    #         names.add(generatePersonalData.fake.first_name())
+    #         last_names.add(generatePersonalData.fake.last_name())
         
-        generatePersonalData.names = list(names)
-        generatePersonalData.last_names = list(last_names)
+    #     generatePersonalData.names = list(names)
+    #     generatePersonalData.last_names = list(last_names)
 
     res = {}
-    res["Name"] = random.choice(generatePersonalData.names)
-    res["Familienname"] = random.choice(generatePersonalData.last_names)
+    res["Name"] = random.choice(["Jessica Paula", "Jessica Monika", "A B C Paula", "Molly B", "C D", "E", "F", "B Paula C", "G"])
+    res["Familienname"] = generatePersonalData.fake.last_name()
     res["Geburtsdatum"] = generatePersonalData.fake.date()
-    res["Setzt"] = []
+    res["Setzt"] = ["1", "2", "3"]
 
-    numOfSetzt = random.randint(0, 8)
-    for _ in range(numOfSetzt):
-        res["Setzt"].append(generatePlaces())
+    # numOfSetzt = random.randint(0, 8)
+    # for _ in range(numOfSetzt):
+    #     res["Setzt"].append(generatePlaces())
 
     return res
   
@@ -87,7 +87,7 @@ generateHaustiere.tieren = [
 
 def main():
 
-    filename = "ii_sa_dataset.json"
+    filename = "ii_sa_dataset_mutter.json"
     if os.path.exists(filename):
         os.remove(filename)
 
@@ -115,54 +115,36 @@ def main():
 
     docs = []
     collectionName = "docCollection"
-    numOfDocs = 100
+    numOfDocs = 150
     for i in range(numOfDocs):
-        key = str(i)
+        key = str(i + 100)
         ids.append(collectionName + "/" + key)
         doc = {
             "_key": key,
-            "Familie": {},
-            "Setzt": [],
-            "Personal": {
-                "ids": {
-                    "_system": {
-                        "magische Zahl": []
-                    }
-                }
-            },
-            "Haustiere": []
+            "Familie": {
+                "Mutter": {}
+            }
         }
         
-        members = random.choices(Familienmitglieder, k=random.randrange(0, len(Familienmitglieder)))
-        if "Mutter" not in members:
-            members.append("Mutter")
-        for m in members:
-            doc["Familie"][m] = generatePersonalData()
-        numOfSetzt = random.randint(0, 6)
-        for _ in range(numOfSetzt):
-           doc["Setzt"].append(generatePlaces())
-        
-        doc["Personal"]["ids"]["_system"]["magische Zahl"] = np.random.randint(-100,100, random.randint(0, 7)).tolist()
-        for _ in range(0, random.randint(0, 6)):
-            doc["Haustiere"].append(generateHaustiere())
+        doc["Familie"]["Mutter"] =  generatePersonalData()
         docs.append(doc)
 
     resultCollection[collectionName] = docs
 
-    edges = []
-    collectionName = "edgeCollection"
-    numOfEdges = 300    
-    for i in range(numOfEdges):
-        _from, _to =  random.choices(ids, k=2)
-        edges.append(
-            {
-                "_key": str(i),
-                "_from": _from,
-                "_to": _to,
-                "Personal": generatePersonalData()
-            }
-        )
-    resultCollection[collectionName] = edges
+    # edges = []
+    # collectionName = "edgeCollection"
+    # numOfEdges = 300    
+    # for i in range(numOfEdges):
+    #     _from, _to =  random.choices(ids, k=2)
+    #     edges.append(
+    #         {
+    #             "_key": str(i),
+    #             "_from": _from,
+    #             "_to": _to,
+    #             "Personal": generatePersonalData()
+    #         }
+    #     )
+    # resultCollection[collectionName] = edges
 
     with open(filename, 'w') as f:
         json.dump(resultCollection, f)        
