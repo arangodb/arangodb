@@ -353,6 +353,7 @@ class testRunner {
     this.continueTesting = true;
     this.usersCount = 0;
     this.cleanupChecks = [ ];
+    this.cleanupChecks.push(failurePointsCheck);
     if (checkUsers) {
       this.cleanupChecks.push(usersTests);
     }
@@ -380,9 +381,7 @@ class testRunner {
     if (checkCollections) {
       this.cleanupChecks.push(graphsTest);
     }
-    this.cleanupChecks.push();
-    this.instanceManager;
-    this.cleanupChecks.push(failurePointsCheck);
+    this.instanceManager = undefined;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -450,7 +449,6 @@ class testRunner {
         let buf = fs.readBuffer(this.instanceManager.clusterHealthMonitorFile);
         let lineStart = 0;
         let maxBuffer = buf.length;
-
         for (let j = 0; j < maxBuffer; j++) {
           if (buf[j] === 10) { // \n
             const line = buf.asciiSlice(lineStart, j);
@@ -615,9 +613,6 @@ class testRunner {
 
           if (reply.hasOwnProperty('status')) {
             this.results[this.translateResult(te)] = reply;
-            if (!this.options.disableClusterMonitor) {
-              this.results[this.translateResult(te)]['processStats'] = this.instanceManager.getDeltaProcessStats();
-            }
 
             if (this.results[this.translateResult(te)].status === false) {
               this.results.failed ++;
@@ -639,7 +634,9 @@ class testRunner {
           }
 
           if (this.healthCheck()) {
-            if (!this.results[this.translateResult(te)].hasOwnProperty('processStats')) {
+            if (!this.options.disableClusterMonitor) {
+              this.results[this.translateResult(te)]['processStats'] = this.instanceManager.getDeltaProcessStats();
+            } else {
               this.results[this.translateResult(te)]['processStats'] = {};
             }
             this.results[this.translateResult(te)]['processStats']['netstat'] = this.instanceManager.getNetstat();
@@ -675,6 +672,11 @@ class testRunner {
         if (this.options.extremeVerbosity) {
           print('Skipped ' + te + ' because of ' + filtered.filter);
         }
+        this.results[this.translateResult(te)] = {
+          status: true,
+          skipped: true,
+          message: filtered.filter
+        };
       }
     }
 

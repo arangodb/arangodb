@@ -1,6 +1,58 @@
 devel
 -----
 
+* FE-233: bugfix - fix query spotlight search not working.
+
+* FE-349: bugfix - filter out empty primarySort field in UI.
+
+* FE-247: bugfix - missing storedValues field in persistent index form.
+
+* FE 242, FE-244: bugfix - add support for cache fields, fix inverted index name
+  undefined.
+
+* FE-241: bugfix - filter predefined queries based on search term.
+
+* Adjusted timeouts for cluster internal commit and abort requests to withstand
+  network delays better. This fixes some problems when the networking
+  infrastructure delays requests.
+
+* Added sent time accounting and some metrics to fuerte and the NetworkFeature.
+  This can detect delays in the network infrastructure.
+
+* Added startup option `--server.ensure-whitespace-metrics-format`, which
+  controls whether additional whitespace is used in the metrics output 
+  format. If set to `true`, then whitespace is emitted between the exported
+  metric value and the preceeding token (metric name or labels).
+  Using whitespace may be required to make the metrics output compatible with
+  some processing tools, although Prometheus itself doesn't need it.
+
+  The option defaults to `true`, which adds additional whitespace by default.
+
+* Automatically repair revision trees after several failed shard
+  synchronization attempts. This can help to get permanently out-of-sync
+  shards back into sync.
+
+  The functionality can be turned off by setting the startup option
+  `--replication.auto-repair-revision-trees` to `false` on DB-Servers.
+
+* SEARCH-461: Added option "--arangosearch.columns-cache-only-leader". Used only
+  on EE DBServers. Default is false.
+  If set to true only leader shards have ArangoSearch caches enabled - this will
+  reduce RAM usage. In case of failover happens - in background caches are
+  populated for the new leader. Some queries that run at during a failover may
+  still run without caches.
+
+* FE-216: bugfix - make view patches async in the UI.
+
+* FE-212: bugfix: links not getting removed when copying from another view in
+  UI.
+
+* SEARCH-466 Fix leaking into individual link definition inherited properties
+  from view.
+
+* FE-222: Fix - Allow additional properties in arangosearch, allow no fields in
+  inverted index when 'includeAllFIelds' is true.
+
 * APM-183: Support UTF-8 on UI (collection/view/index names).
 
 * FE-199: Remove URL handling of fields on view screen.

@@ -2305,7 +2305,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     auto& f = _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>();
     auto [lock, batch] = f.getBatch("arangodb_search_link_stats");
     EXPECT_TRUE(batch != nullptr);
-    batch->toPrometheus(result, "");
+    batch->toPrometheus(result, "", /*ensureWhitespace*/ false);
   }
 
   double insert(uint64_t begin, uint64_t end, size_t docId,

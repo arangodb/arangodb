@@ -153,6 +153,8 @@ function OptionsTestSuite () {
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
       let task = tasks.register({
         command: function() {
+          const arangodb = require("@arangodb");
+          const ERRORS = arangodb.errors;
           let db = require("internal").db;
           db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
 
@@ -164,7 +166,19 @@ function OptionsTestSuite () {
             for (let i = 0; i < 50; ++i) {
               let db = require("internal").db;
               for (let i = 0; i < 200; ++i) {
-                db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
+                // this is made because this test can fail unpredictably when it reaches the timeout to aquire a key
+                // lock. In this loop and the loop below, there's acquisition of a lock to access the documents and
+                // update them, and there can be a conflict due to starvation in the attempt to acquire the lock because
+                // it's already being used by one of these update operations in both loops, so we retry if the error is
+                // this one, and throw if it's another error
+                try {
+                  db.UnitTestsExclusiveCollection1.update("XXX", {name: "runner1"});
+                } catch (e) {
+                  if (e.errorNum !== ERRORS.ERROR_ARANGO_CONFLICT.code) {
+                    throw e;
+                  }
+                  i--;
+                }
               }
 
               if (db.UnitTestsExclusiveCollection2.document("runner2").value) {
@@ -187,9 +201,20 @@ function OptionsTestSuite () {
         for (let i = 0; i < 50; ++i) {
           let db = require("internal").db;
           for (let i = 0; i < 200; ++i) {
-            db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+            // this is made because this test can fail unpredictably when it reaches the timeout to aquire a key
+            // lock. In this loop and the loop above, there's acquisition of a lock to access the documents and
+            // update them, and there can be a conflict due to starvation in the attempt to acquire the lock because
+            // it's already being used by one of these update operations in both loops, so we retry if the error is
+            // this one, but throw if it's another error
+            try {
+              db.UnitTestsExclusiveCollection1.update("XXX", {name: "runner2"});
+            } catch (e) {
+              if (e.errorNum !== ERRORS.ERROR_ARANGO_CONFLICT.code) {
+                throw e;
+              }
+              i--;
+            }
           }
-
           if (db.UnitTestsExclusiveCollection2.document("runner1").value) {
             break;
           }
