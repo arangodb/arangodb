@@ -4,6 +4,8 @@ v3.10.6 (XXXX-XX-XX)
 * SEARCH-466 Fix leaking into individual link definition inherited properties
   from view.
 
+* Fix race condition in invalidation of token cache on coordinators.
+
 * Adjusted timeouts for cluster internal commit and abort requests to withstand
   network delays better. This fixes some problems when the networking
   infrastructure delays requests.
