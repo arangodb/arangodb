@@ -1927,7 +1927,8 @@ void IResearchDataStore::initClusterMetrics() const {
   };
   auto batchToPrometheus = [](std::string& result, std::string_view globals,
                               std::string_view name, std::string_view labels,
-                              ClusterMetricsFeature::MetricValue const& value) {
+                              ClusterMetricsFeature::MetricValue const& value,
+                              bool ensureWhitespace) {
     Metric::addMark(result, name, globals, labels);
     absl::StrAppend(&result, std::get<uint64_t>(value), "\n");
   };

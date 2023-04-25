@@ -51,7 +51,7 @@ const dbservers = (function () {
 
 function delaySupervisionFailoverActions(value) {
   let agents = global.instanceManager.arangods.filter(
-    arangod => arangod.role === "agent").map(
+    arangod => arangod.instanceRole === "agent").map(
     arangod => arangod.url);
   for (let a of agents) {
     const res = request({url: a + "/_api/agency/config",
