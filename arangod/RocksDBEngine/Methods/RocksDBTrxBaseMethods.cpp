@@ -32,6 +32,7 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 
 #include <absl/cleanup/cleanup.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -457,7 +458,9 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
   cleanupCollTrx.cancel();
 
   // wait for sync if required
-  if (_state->waitForSync()) {
+  auto const isReplication2 =
+      _state->vocbase().replicationVersion() == replication::Version::TWO;
+  if (_state->waitForSync() && !isReplication2) {
     auto& selector =
         _state->vocbase().server().getFeature<EngineSelectorFeature>();
     auto& engine = selector.engine<RocksDBEngine>();
