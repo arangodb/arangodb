@@ -1,7 +1,7 @@
 devel
 -----
 
-* Upgraded bundled version of RocksDB to 8.1.
+* Upgraded bundled version of RocksDB to 8.2.
 
 * FE-233: bugfix - fix query spotlight search not working.
 

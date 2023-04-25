@@ -214,9 +214,6 @@ endif ()
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
 
-# we want the following definitions to be in effect for both rocksdb and arangodb
-add_definitions("-DNROCKSDB_THREAD_STATUS")
-
 # for the packages
 set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")
