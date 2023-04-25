@@ -157,7 +157,6 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
     internal.wait(0.25, false);
   }
 
-  internal.wait(0.1, false);
   db._flushCache();
 
   try {
@@ -1082,7 +1081,6 @@ function BaseTestConfig () {
             // task exists
             connectToFollower();
 
-            internal.wait(0.5, false);
             replication.applier.start();
             assertTrue(replication.applier.state().state.running);
             return 'wait';
@@ -1579,12 +1577,10 @@ function ReplicationOtherDBSuiteBase (dbName) {
   'use strict';
 
   // Setup documents to be stored on the leader.
-
+  const n = 50;
   let docs = [];
-  for (let i = 0; i < 50; ++i) {
-    docs.push({
-      value: i
-    });
+  for (let i = 0; i < n; ++i) {
+    docs.push({ value: i });
   }
   // Shared function that sets up replication
   // of the collection and inserts 50 documents.
@@ -1620,21 +1616,26 @@ function ReplicationOtherDBSuiteBase (dbName) {
     // Section - Leader
     connectToLeader();
     // Insert some documents
-    db._collection(cn).save(docs);
-    // Flush wal to trigger replication
-    internal.wal.flush(true, true);
-    internal.wait(6, false);
+    db._collection(cn).insert(docs);
     // Use counter as indicator
     let count = collectionCount(cn);
-    assertEqual(50, count);
+    assertEqual(n, count);
 
     // Section - Follower
     connectToFollower();
-
+    
     // Give it some time to sync
-    internal.wait(6, false);
+    let tries = 20;
+    while (tries-- > 0) {
+      count = collectionCount(cn);
+      if (count === n) {
+        break;
+      }
+      internal.sleep(0.5);
+    }
+
     // Now we should have the same amount of documents
-    assertEqual(count, collectionCount(cn));
+    assertEqual(n, collectionCount(cn));
   };
 
   let suite = {
@@ -1720,9 +1721,7 @@ function ReplicationOtherDBSuiteBase (dbName) {
 
     // Just write some more
     db._useDatabase(dbName);
-    db._collection(cn).save(docs);
-    internal.wal.flush(true, true);
-    internal.wait(6, false);
+    db._collection(cn).insert(docs);
 
     db._useDatabase('_system');
 
@@ -1757,33 +1756,21 @@ function ReplicationOtherDBSuiteBase (dbName) {
     // Section - Leader
     connectToLeader();
     // Insert some documents
-    db._collection(cn).save(docs);
-    // Flush wal to trigger replication
-    internal.wal.flush(true, true);
-
-    const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
+    db._collection(cn).insert(docs);
 
     // Section - Follower
     connectToFollower();
 
-    // Give it some time to sync (eventually, should not do anything...)
-    let i = 30;
-    while (i-- > 0) {
-      let state = replication.applier.state();
-      if (!state.running) {
-        console.topic('replication=error', 'follower is not running');
-        break;
-      }
-      if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
-          compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
-        console.topic('replication=error', 'follower has caught up');
-        break;
-      }
-      internal.sleep(0.5);
+    // be dumb and wait here until everything settles
+    let tries = 100;
+    while (replication.applier.state().state.running && tries-- > 0) {
+      internal.wait(0.1, false);
     }
 
     // Now should still have empty collection
     assertEqual(0, collectionCount(cn));
+      
+    assertFalse(replication.applier.state().state.running);
   };
 
   suite["testDropDatabaseOnLeaderDuringReplication_" + dbName] = function () {

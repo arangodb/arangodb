@@ -157,7 +157,6 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
     internal.wait(0.25, false);
   }
 
-  internal.wait(0.1, false);
   db._flushCache();
   followerFuncFinal(state);
 };
@@ -604,16 +603,13 @@ function BaseTestConfig () {
           replication.globalApplier.stop();
           assertFalse(replication.globalApplier.state().state.running);
 
-          internal.wait(0.5, false);
           replication.globalApplier.start();
-          internal.wait(0.5, false);
           assertTrue(replication.globalApplier.state().state.running);
 
           return true;
         },
 
         function (state) {
-          internal.wait(3, false);
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
@@ -763,7 +759,6 @@ function BaseTestConfig () {
             // task exists
             connectToFollower();
 
-            internal.wait(0.5, false);
             replication.globalApplier.start();
             assertTrue(replication.globalApplier.state().state.running);
             return 'wait';
@@ -1082,12 +1077,10 @@ function ReplicationOtherDBSuite () {
   const dbName = 'UnitTestDB';
 
   // Setup documents to be stored on the leader.
-
+  const n = 50;
   let docs = [];
-  for (let i = 0; i < 50; ++i) {
-    docs.push({
-      value: i
-    });
+  for (let i = 0; i < n; ++i) {
+    docs.push({ value: i });
   }
 
   // Shared function that sets up replication
@@ -1127,28 +1120,29 @@ function ReplicationOtherDBSuite () {
     // Section - Leader
     connectToLeader();
     // Insert some documents
-    db._collection(cn).save(docs);
-    // Flush wal to trigger replication
-    internal.wal.flush(true, true);
-    internal.wait(6, false);
+    db._collection(cn).insert(docs);
     // Use counter as indicator
     let count = collectionCount(cn);
-    assertEqual(50, count);
+    assertEqual(n, count);
 
     // Section - Follower
     connectToFollower();
 
     // Give it some time to sync
-    internal.wait(6, false);
+    let tries = 20;
+    while (tries-- > 0) {
+      count = collectionCount(cn);
+      if (count === n) {
+        break;
+      }
+      internal.sleep(0.5);
+    }
+
     // Now we should have the same amount of documents
-    assertEqual(count, collectionCount(cn));
+    assertEqual(n, count);
   };
 
   let suite = {
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
       db._useDatabase('_system');
       connectToFollower();
@@ -1174,10 +1168,6 @@ function ReplicationOtherDBSuite () {
       db._createDatabase(dbName);
       db._useDatabase(dbName);
     },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       db._useDatabase('_system');
@@ -1220,15 +1210,13 @@ function ReplicationOtherDBSuite () {
 
       // This shall not fail.
       db._dropDatabase(dbName);
-
+      
       // Section - Leader
       connectToLeader();
 
       // Just write some more
       db._useDatabase(dbName);
-      db._collection(cn).save(docs);
-      internal.wal.flush(true, true);
-      internal.wait(6, false);
+      db._collection(cn).insert(docs);
 
       db._useDatabase('_system');
 
@@ -1249,7 +1237,7 @@ function ReplicationOtherDBSuite () {
       db._useDatabase(dbName);
 
       try {
-        db._createDocumentCollection(cn);
+        db._create(cn);
       } catch (e) {
         assertFalse(true, 'Could not recreate collection on follower: ' + e);
       }
@@ -1263,15 +1251,16 @@ function ReplicationOtherDBSuite () {
       // Section - Leader
       connectToLeader();
       // Insert some documents
-      db._collection(cn).save(docs);
-      // Flush wal to trigger replication
-      internal.wal.flush(true, true);
+      db._collection(cn).insert(docs);
 
       // Section - Follower
       connectToFollower();
 
-      // Give it some time to sync (eventually, should not do anything...)
-      internal.wait(6, false);
+      // be dumb and wait here until everything settles
+      let tries = 100;
+      while (replication.globalApplier.state().state.running && tries-- > 0) {
+        internal.wait(0.1, false);
+      }
 
       // Now should still have empty collection
       assertEqual(0, collectionCount(cn));
