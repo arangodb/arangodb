@@ -264,34 +264,7 @@ inline arangodb::AgencyOperation CreateCollectionSuccess(
                                    info};
 }
 
-// make sure a collection is still in Plan
-// we are only going from *assuming* that it is present
-// to it being changed to not present.
-class CollectionWatcher
-    : public std::enable_shared_from_this<CollectionWatcher> {
- public:
-  CollectionWatcher(CollectionWatcher const&) = delete;
-  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry,
-                    LogicalCollection const& collection);
-  ~CollectionWatcher();
-
-  bool isPresent() {
-    // Make sure we did not miss a callback
-    _agencyCallback->refetchAndUpdate(true, false);
-    return _present.load();
-  }
-
- private:
-  AgencyCallbackRegistry* _agencyCallbackRegistry;
-  std::shared_ptr<AgencyCallback> _agencyCallback;
-
-  // TODO: this does not really need to be atomic: We only write to it
-  //       in the callback, and we only read it in `isPresent`; it does
-  //       not actually matter whether this value is "correct".
-  std::atomic<bool> _present;
-};
-
-constexpr frozen::unordered_map<std::string_view, ServerHealth, 4>
+const static containers::FlatHashMap<std::string_view, ServerHealth>
     kHealthStatusMap = {
         {consensus::Supervision::HEALTH_STATUS_BAD, ServerHealth::kBad},
         {consensus::Supervision::HEALTH_STATUS_FAILED, ServerHealth::kFailed},
@@ -311,17 +284,17 @@ constexpr frozen::unordered_map<std::string_view, ServerHealth, 4>
       auto status = ServerHealth::kUnclear;
       std::string serverId = it.key.copyString();
       if (ADB_LIKELY(supervisionHealth.isObject())) {
-        try {
-          auto decoded = kHealthStatusMap.find(
-              supervisionHealth.get(serverId).get("Status").stringView());
-          if (decoded != kHealthStatusMap.end()) {
-            status = decoded->second;
+        auto serverKey = supervisionHealth.get(serverId);
+        // Server may be missing from Health if it has just arrived
+        // to our cluster.
+        if (serverKey.isObject()) {
+          auto statusString = serverKey.get("Status");
+          if (statusString.isString()) {
+            auto decoded = kHealthStatusMap.find(statusString.stringView());
+            if (decoded != kHealthStatusMap.end()) {
+              status = decoded->second;
+            }
           }
-        } catch (velocypack::Exception const& ex) {
-          LOG_TOPIC("d783d", WARN, Logger::CLUSTER)
-              << "Invalid health data for server " << serverId
-              << " Error: " << ex.what()
-              << " Data: " << supervisionHealth.toString();
         }
       }
       VPackSlice const knownServerSlice = it.value;

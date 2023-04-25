@@ -30,9 +30,7 @@
 #include <string>
 
 #include "Basics/Result.h"
-==== BASE ====
 #include "Containers/FlatHashMap.h"
-==== BASE ====
 
 namespace arangodb {
 
