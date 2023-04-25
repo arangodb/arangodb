@@ -104,7 +104,7 @@ exports.debugSetFailAt = function (endpoint, failAt) {
     reconnectRetry(endpoint, db._name(), "root", "");
     let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
     if (res.parsedBody !== true) {
-      throw "Error setting failure point + " + res;
+      throw `Error setting failure point on ${endpoint}: "${res}"`;
     }
     return true;
   } finally {
@@ -215,7 +215,7 @@ function getMetricName(text, name) {
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.*{.*}([0-9.]+)$/, "$1"));
+  return Number(matches[0].replace(/^.*{.*}\s*([0-9.]+)$/, "$1"));
 }
 
 exports.getMetric = function (endpoint, name) {
