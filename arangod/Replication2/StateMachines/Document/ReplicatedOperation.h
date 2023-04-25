@@ -172,8 +172,7 @@ concept FinishesUserTransaction =
     std::is_same_v<T, ReplicatedOperation::Abort>;
 
 template<class T>
-concept FinishesUserTransactionOrIntermediate =
-    FinishesUserTransaction<T> ||
+concept FinishesUserTransactionOrIntermediate = FinishesUserTransaction<T> ||
     std::is_same_v<T, ReplicatedOperation::IntermediateCommit>;
 
 template<class T>
