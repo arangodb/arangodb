@@ -174,6 +174,10 @@ bool Cache::isResizing() const noexcept {
     return false;
   }
 
+  return isResizingFlagSet();
+}
+
+bool Cache::isResizingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing();
 }
@@ -183,17 +187,17 @@ bool Cache::isMigrating() const noexcept {
     return false;
   }
 
+  return isMigratingFlagSet();
+}
+
+bool Cache::isMigratingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isMigrating();
 }
 
-bool Cache::isBusy() const noexcept {
-  if (ADB_UNLIKELY(isShutdown())) {
-    return false;
-  }
-
+bool Cache::isMigratingOrResizingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-  return _metadata.isResizing() || _metadata.isMigrating();
+  return _metadata.isMigrating() || _metadata.isResizing();
 }
 
 void Cache::destroy(std::shared_ptr<Cache> const& cache) {
@@ -333,11 +337,8 @@ void Cache::shutdown() {
   TRI_ASSERT(handle.get() == this);
   if (!_shutdown.exchange(true)) {
     while (true) {
-      {
-        SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-        if (!_metadata.isMigrating() && !_metadata.isResizing()) {
-          break;
-        }
+      if (!isMigratingOrResizingFlagSet()) {
+        break;
       }
 
       SpinUnlocker taskUnguard(SpinUnlocker::Mode::Write, _taskLock);
@@ -373,8 +374,7 @@ bool Cache::canResize() noexcept {
     return false;
   }
 
-  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-  return !(_metadata.isResizing() || _metadata.isMigrating());
+  return !isMigratingOrResizingFlagSet();
 }
 
 /// TODO Improve freeing algorithm
@@ -390,6 +390,8 @@ bool Cache::canResize() noexcept {
 /// That way we still visit the buckets in a sufficiently random order, but we
 /// are guaranteed to make progress in a finite amount of time.
 bool Cache::freeMemory() {
+  TRI_ASSERT(isResizingFlagSet());
+
   if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
@@ -421,6 +423,8 @@ bool Cache::freeMemory() {
 }
 
 bool Cache::migrate(std::shared_ptr<Table> newTable) {
+  TRI_ASSERT(isMigratingFlagSet());
+
   if (ADB_UNLIKELY(isShutdown())) {
     // unmarking migrating flag
     SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
@@ -431,46 +435,62 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
     return false;
   }
 
-  newTable->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
-  newTable->enable();
+  bool clearMigrateFlag = true;
 
-  std::shared_ptr<cache::Table> table = this->table();
-  TRI_ASSERT(table != nullptr);
-  std::shared_ptr<Table> oldAuxiliary = table->setAuxiliary(newTable);
-  TRI_ASSERT(oldAuxiliary == nullptr);
+  try {
+    newTable->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
+    newTable->enable();
 
-  // do the actual migration
-  for (std::uint64_t i = 0; i < table->size();
-       i++) {  // need uint64 for end condition
-    migrateBucket(table->primaryBucket(static_cast<uint32_t>(i)),
-                  table->auxiliaryBuckets(static_cast<uint32_t>(i)), *newTable);
+    std::shared_ptr<cache::Table> table = this->table();
+    TRI_ASSERT(table != nullptr);
+    std::shared_ptr<Table> oldAuxiliary = table->setAuxiliary(newTable);
+    TRI_ASSERT(oldAuxiliary == nullptr);
+
+    // do the actual migration
+    for (std::uint64_t i = 0; i < table->size();
+         i++) {  // need uint64 for end condition
+      migrateBucket(table->primaryBucket(static_cast<uint32_t>(i)),
+                    table->auxiliaryBuckets(static_cast<uint32_t>(i)),
+                    *newTable);
+    }
+
+    // swap tables
+    std::shared_ptr<Table> oldTable;
+    {
+      SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
+      oldTable = this->table();
+      std::atomic_store_explicit(&_table, newTable, std::memory_order_release);
+      oldTable->setAuxiliary(std::shared_ptr<Table>());
+    }
+
+    TRI_ASSERT(oldTable != nullptr);
+
+    // unmarking migrating flag
+    {
+      SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
+      _metadata.changeTable(newTable->memoryUsage());
+      TRI_ASSERT(_metadata.isMigrating());
+      _metadata.toggleMigrating();
+      TRI_ASSERT(!_metadata.isMigrating());
+    }
+
+    clearMigrateFlag = false;
+
+    // clear out old table and release it
+    oldTable->clear();
+    _manager->reclaimTable(std::move(oldTable), false);
+
+    return true;
+  } catch (...) {
+    if (clearMigrateFlag) {
+      // we must be sure to have cleared the isMigrating() flag here
+      SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
+      TRI_ASSERT(_metadata.isMigrating());
+      _metadata.toggleMigrating();
+      TRI_ASSERT(!_metadata.isMigrating());
+    }
+    throw;
   }
-
-  // swap tables
-  std::shared_ptr<Table> oldTable;
-  {
-    SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
-    oldTable = this->table();
-    std::atomic_store_explicit(&_table, newTable, std::memory_order_release);
-    oldTable->setAuxiliary(std::shared_ptr<Table>());
-  }
-
-  TRI_ASSERT(oldTable != nullptr);
-
-  // unmarking migrating flag
-  {
-    SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
-    _metadata.changeTable(newTable->memoryUsage());
-    TRI_ASSERT(_metadata.isMigrating());
-    _metadata.toggleMigrating();
-    TRI_ASSERT(!_metadata.isMigrating());
-  }
-
-  // clear out old table and release it
-  oldTable->clear();
-  _manager->reclaimTable(std::move(oldTable), false);
-
-  return true;
 }
 
 }  // namespace arangodb::cache

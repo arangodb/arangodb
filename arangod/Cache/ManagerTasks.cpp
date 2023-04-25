@@ -53,10 +53,16 @@ bool FreeMemoryTask::dispatch() {
 }
 
 void FreeMemoryTask::run() {
-  try {
-    using basics::SpinLocker;
+  using basics::SpinLocker;
 
+  TRI_ASSERT(_cache->isResizingFlagSet());
+  bool clearResizingFlag = true;
+
+  try {
     bool ran = _cache->freeMemory();
+
+    // flag must still be set after freeMemory()
+    TRI_ASSERT(_cache->isResizingFlagSet());
 
     if (ran) {
       std::uint64_t reclaimed = 0;
@@ -64,19 +70,39 @@ void FreeMemoryTask::run() {
       Metadata& metadata = _cache->metadata();
       {
         SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
-        TRI_ASSERT(metaGuard.isLocked());
+        TRI_ASSERT(metadata.isResizing());
         reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
         metadata.adjustLimits(metadata.softUsageLimit, metadata.softUsageLimit);
         metadata.toggleResizing();
+        TRI_ASSERT(!metadata.isResizing());
       }
+
       TRI_ASSERT(_manager._globalAllocation >=
                  reclaimed + _manager._fixedAllocation);
       _manager._globalAllocation -= reclaimed;
       TRI_ASSERT(_manager._globalAllocation >= _manager._fixedAllocation);
+    } else {
+      // make sure we are always clearing the resizing flag
+      Metadata& metadata = _cache->metadata();
+      SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+      TRI_ASSERT(metadata.isResizing());
+      metadata.toggleResizing();
+      TRI_ASSERT(!metadata.isResizing());
     }
+
+    clearResizingFlag = false;
 
     _manager.unprepareTask(_environment);
   } catch (...) {
+    if (clearResizingFlag) {
+      // make sure we are always clearing the resizing flag
+      Metadata& metadata = _cache->metadata();
+      SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+      TRI_ASSERT(metadata.isResizing());
+      metadata.toggleResizing();
+      TRI_ASSERT(!metadata.isResizing());
+    }
+
     // always count down at the end
     _manager.unprepareTask(_environment);
     throw;
@@ -111,18 +137,18 @@ bool MigrateTask::dispatch() {
 
 void MigrateTask::run() {
   try {
-    using basics::SpinLocker;
+    // we must be migrating when we get here
+    TRI_ASSERT(_cache->isMigratingFlagSet());
 
     // do the actual migration
     bool ran = _cache->migrate(_table);
 
+    // migrate() must have unset the migrating flag, but we
+    // cannot check it here because another MigrateTask may
+    // have been scheduled in the meantime and have set the
+    // flag again, which would be a valid situation.
+
     if (!ran) {
-      Metadata& metadata = _cache->metadata();
-      {
-        SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
-        TRI_ASSERT(metaGuard.isLocked());
-        metadata.toggleMigrating();
-      }
       _manager.reclaimTable(std::move(_table), false);
       TRI_ASSERT(_table == nullptr);
     }
