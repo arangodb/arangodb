@@ -326,7 +326,7 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
   long err;
   std::string fileName;
   std::string msg;
-  int res = TRI_GetTempName(nullptr, fileName, true, err, msg);
+  ErrorCode res = TRI_GetTempName(nullptr, fileName, true, err, msg);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::SERVER_ERROR, res, msg);
