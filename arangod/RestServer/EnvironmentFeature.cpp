@@ -167,40 +167,45 @@ void EnvironmentFeature::prepare() {
 
     std::string const filename("/proc/cpu/alignment");
     try {
-      std::string const cpuAlignment =
-          arangodb::basics::FileUtils::slurp(filename);
-      auto start = cpuAlignment.find("User faults:");
+      if (basics::FileUtils::exists(filename)) {
+        std::string const cpuAlignment = basics::FileUtils::slurp(filename);
+        auto start = cpuAlignment.find("User faults:");
 
-      if (start != std::string::npos) {
-        start += strlen("User faults:");
-        size_t end = start;
-        while (end < cpuAlignment.size()) {
-          if (cpuAlignment[end] == ' ' || cpuAlignment[end] == '\t') {
-            ++end;
-          } else {
-            break;
+        if (start != std::string::npos) {
+          start += strlen("User faults:");
+          size_t end = start;
+          while (end < cpuAlignment.size()) {
+            if (cpuAlignment[end] == ' ' || cpuAlignment[end] == '\t') {
+              ++end;
+            } else {
+              break;
+            }
           }
-        }
-        while (end < cpuAlignment.size()) {
-          if (cpuAlignment[end] < '0' || cpuAlignment[end] > '9') {
+          while (end < cpuAlignment.size()) {
+            if (cpuAlignment[end] < '0' || cpuAlignment[end] > '9') {
+              ++end;
+              break;
+            }
             ++end;
-            break;
           }
-          ++end;
-        }
 
-        int64_t alignment =
-            std::stol(std::string(cpuAlignment.c_str() + start, end - start));
-        if ((alignment & 2) == 0) {
-          LOG_TOPIC("f1bb9", FATAL, arangodb::Logger::MEMORY)
-              << "possibly incompatible CPU alignment settings found in '"
-              << filename
-              << "'. this may cause arangod to abort with "
-                 "SIGBUS. please set the value in '"
-              << filename << "' to 2";
-          FATAL_ERROR_EXIT();
-        }
+          int64_t alignment =
+              std::stol(std::string(cpuAlignment.c_str() + start, end - start));
+          if ((alignment & 2) == 0) {
+            LOG_TOPIC("f1bb9", FATAL, arangodb::Logger::MEMORY)
+                << "possibly incompatible CPU alignment settings found in '"
+                << filename
+                << "'. this may cause arangod to abort with "
+                   "SIGBUS. please set the value in '"
+                << filename << "' to 2";
+            FATAL_ERROR_EXIT();
+          }
 
+          alignmentDetected = true;
+        }
+      } else {
+        // if the file /proc/cpu/alignment does not exist, we should not
+        // warn about it
         alignmentDetected = true;
       }
 
@@ -219,16 +224,18 @@ void EnvironmentFeature::prepare() {
              "necessary to set the value in '"
           << filename << "' to 2";
     }
+
     std::string const cpuInfoFilename("/proc/cpuinfo");
     try {
-      std::string const cpuInfo =
-          arangodb::basics::FileUtils::slurp(cpuInfoFilename);
-      auto start = cpuInfo.find("ARMv6");
+      if (basics::FileUtils::exists(cpuInfoFilename)) {
+        std::string const cpuInfo = basics::FileUtils::slurp(cpuInfoFilename);
+        auto start = cpuInfo.find("ARMv6");
 
-      if (start != std::string::npos) {
-        LOG_TOPIC("0cfa9", FATAL, arangodb::Logger::MEMORY)
-            << "possibly incompatible ARMv6 CPU detected.";
-        FATAL_ERROR_EXIT();
+        if (start != std::string::npos) {
+          LOG_TOPIC("0cfa9", FATAL, arangodb::Logger::MEMORY)
+              << "possibly incompatible ARMv6 CPU detected.";
+          FATAL_ERROR_EXIT();
+        }
       }
     } catch (...) {
       // ignore that we cannot detect the alignment
