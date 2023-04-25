@@ -111,11 +111,11 @@
     setCurrentJwtUser: function (username) {
       sessionStorage.setItem('jwtUser', username);
     },
-    setSSOEnabled: function (ssoEnabled) {
-      sessionStorage.setItem('ssoEnabled', ssoEnabled);
+    setAutoLoginEnabled: function (autoLoginEnabled) {
+      sessionStorage.setItem('autoLoginEnabled', autoLoginEnabled);
     },
-    getSSOEnabled: function (ssoEnabled) {
-      return sessionStorage.getItem('ssoEnabled');
+    getAutoLoginEnabled: function (autoLoginEnabled) {
+      return sessionStorage.getItem('autoLoginEnabled');
     },
 
     checkJwt: function () {
