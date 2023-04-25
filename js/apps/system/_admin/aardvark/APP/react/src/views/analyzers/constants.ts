@@ -17,7 +17,8 @@ export const typeNameMap = {
   classification: 'Classification',
   pipeline: 'Pipeline',
   geojson: 'GeoJSON',
-  geopoint: 'GeoPoint'
+  geopoint: 'GeoPoint',
+  geo_s2: 'Geo S2',
 };
 
 export type Feature = 'frequency' | 'norm' | 'position';
@@ -179,6 +180,14 @@ export type GeoJsonState = GeoOptionsProperty & {
   };
 };
 
+export type GeoS2State = GeoOptionsProperty & {
+  type: 'geo_s2';
+  properties: {
+    format?: 'latLngDouble' | 'latLngInt' | 's2Point'
+    type?: 'shape' | 'centroid' | 'point';
+  };
+};
+
 export type GeoPointState = GeoOptionsProperty & {
   type: 'geopoint';
   properties: {
@@ -201,7 +210,8 @@ export type AnalyzerTypeState = IdentityState
   | ClassificationState
   | PipelineStates
   | GeoJsonState
-  | GeoPointState;
+  | GeoPointState
+  | GeoS2State;
 
 export type FormState = BaseFormState & AnalyzerTypeState;
 
