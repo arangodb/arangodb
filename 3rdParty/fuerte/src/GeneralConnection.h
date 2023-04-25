@@ -64,7 +64,7 @@
 ///   `H1Connection` inheriting from `GeneralConnection<ST, RequestItem>`,
 ///   `H2Connection` inheriting from `MultiConnection<ST, Stream>` and
 ///   `VstConnection` inheriting from `MultiConnection<ST, vst::RequestItem>`.
-/// 
+///
 
 #include <fuerte/connection.h>
 #include <fuerte/types.h>
@@ -103,6 +103,7 @@ class GeneralConnection : public fuerte::Connection {
   // Start an asynchronous request.
   void sendRequest(std::unique_ptr<Request> req, RequestCallback cb) override {
     // construct RequestItem
+    req->setTimeQueued();
     auto item = this->createRequest(std::move(req), std::move(cb));
     // set the point-in-time when this request expires
     if (item->request->timeout().count() > 0) {
@@ -481,7 +482,6 @@ struct MultiConnection : public GeneralConnection<ST, RT> {
               setTimeout(/*setIOBegin*/ false);
             }
           } else if (wasWriting && me._writing && now - _lastIO > kIOTimeout) {
-
             FUERTE_LOG_DEBUG << "IO write timeout"
                              << " this=" << &me << "\n";
             me._timeoutOnReadWrite = true;
