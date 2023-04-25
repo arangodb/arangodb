@@ -265,10 +265,12 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
 
 bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   auto current = static_cast<ExecutionNode*>(&viewNode);
-  auto viewVariable = viewNode.outVariable();
+  auto const& viewVariable = viewNode.outVariable();
   auto const& scorers = viewNode.scorers();
   SortNode* sortNode = nullptr;
   LimitNode const* limitNode = nullptr;
+  QueryContext ctx{
+      .ast = plan->getAst(), .ref = &viewVariable, .isSearchQuery = true};
   while ((current = current->getFirstParent())) {
     switch (current->getType()) {
       case ExecutionNode::SORT:
@@ -304,56 +306,125 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
   // we've found all we need
   auto const& sortElements = sortNode->elements();
-  std::vector<std::pair<size_t, bool>> scoresSort;
+  std::vector<IResearchViewNode::HeapSortElement> heapSort;
+  std::vector<std::vector<aql::latematerialized::ColumnVariant<true>>>
+      usedColumns;
+  auto const& primarySort = getPrimarySort(viewNode.meta(), viewNode.view());
+  auto const& storedValues = getStoredValues(viewNode.meta(), viewNode.view());
+  auto columnsCount = storedValues.columns().size() + 1;
+  usedColumns.resize(columnsCount);
+  std::vector<aql::latematerialized::AttributeAndField<
+      aql::latematerialized::IndexFieldData>>
+      attrs;
+  // maps attribute bucket to actual sort bucket
+  containers::FlatHashMap<size_t, size_t> storedMaps;
   for (auto const& sort : sortElements) {
     TRI_ASSERT(sort.var);
-
     auto const* varSetBy = plan->getVarSetBy(sort.var->id);
     TRI_ASSERT(varSetBy);
-
-    aql::Variable const* sortVariable{};
     switch (varSetBy->getType()) {
       case ExecutionNode::CALCULATION: {
         auto* calc = ExecutionNode::castTo<CalculationNode const*>(varSetBy);
         TRI_ASSERT(calc->expression());
 
         auto const* astCalcNode = calc->expression()->node();
-        if (!astCalcNode ||
-            astCalcNode->type != AstNodeType::NODE_TYPE_REFERENCE) {
-          // Not a reference?  Seems that it is not
-          // something produced by during search function replacement.
-          // e.g. it is expected to be LET sortVar = scorerVar;
+        if (!ADB_UNLIKELY(astCalcNode)) {
           // Definately not something we could handle.
           return false;
         }
-
-        sortVariable =
-            reinterpret_cast<aql::Variable const*>(astCalcNode->getData());
-        TRI_ASSERT(sortVariable);
-        break;
-      }
-      case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-        // FIXME (Dronplane): here we should deal with stored
-        //                    values when we will support such optimization
-        [[fallthrough]];
+        switch (astCalcNode->type) {
+          case AstNodeType::NODE_TYPE_REFERENCE:
+            // something produced by during search function replacement.
+            // e.g. it is expected to be LET sortVar = scorerVar;
+            {
+              auto sortVariable = reinterpret_cast<aql::Variable const*>(
+                  astCalcNode->getData());
+              TRI_ASSERT(sortVariable);
+              auto const s = std::find_if(
+                  std::begin(scorers), std::end(scorers),
+                  [sortVariableId = sortVariable->id](auto const& t) noexcept {
+                    return t.var->id == sortVariableId;
+                  });
+              if (s == std::end(scorers)) {
+                return false;
+              }
+              heapSort.push_back(IResearchViewNode::HeapSortElement{.scorer = std::distance(scorers.begin(), s),
+                                  .ascending = sort.ascending});
+            }
+            break;
+          case AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS:
+            if (!checkAttributeAccess(astCalcNode, viewVariable, false)) {
+              return false;
+            }
+            {
+              aql::latematerialized::AttributeAndField<
+                  aql::latematerialized::IndexFieldData>
+                  af;
+              // sort.attributePath is empty so we extract the name ourselves
+              std::string name;
+              if (!nameFromAttributeAccess(name, *astCalcNode, ctx, false)) {
+                return false;
+              }
+              try {
+                TRI_ParseAttributeString(name, af.attr, false);
+              } catch (::arangodb::basics::Exception const&) {
+                return false;
+              }
+              heapSort.push_back(IResearchViewNode::HeapSortElement{.ascending = sort.ascending});
+              attrs.push_back(std::move(af));
+              storedMaps.insert(attrs.size() - 1, heapSort.size() - 1);
+            }
+            break;
+          default:
+            return false;
+        }
+      } 
+      break;
       default:
         TRI_ASSERT(false);
         return false;
     }
+  }
+  if (!attrs.empty()) {
+    if (latematerialized::attributesMatch<true>(
+            primarySort, storedValues, attrs, usedColumns, columnsCount)) {
+      aql::latematerialized::setAttributesMaxMatchedColumns<true>(usedColumns,
+                                                                  columnsCount);
+      auto const attrCount = attrs.size();
+      for (size_t i = 0; i < attrCount; ++i) {
 
-    TRI_ASSERT(sortVariable);
-    auto const s = std::find_if(
-        std::begin(scorers), std::end(scorers),
-        [sortVariableId = sortVariable->id](auto const& t) noexcept {
-          return t.var->id == sortVariableId;
-        });
-    if (s == std::end(scorers)) {
+        auto const& a = attrs[i];
+        std::string s;
+        for (auto const& ss : a.attr) {
+          s += ".";
+          s += ss.name;
+        }
+        LOG_DEVEL << " Column " << a.afData.columnNumber << ":"
+                  << a.afData.fieldNumber << " P:" << a.afData.postfix << ":"
+                  << s;
+        TRI_ASSERT(storedMaps.contains(i));
+        auto& sortBucket = heapSort[storedMaps[i]];
+        TRI_ASSERT(sortBucket.scorer == std::numeric_limits<ptrdiff_t>::max());
+        sortBucket.columnNumber = a.afData.columnNumber;
+        sortBucket.fieldNumber = a.afData.fieldNumber;
+        TRI_ASSERT(sortBucket.postfix.empty());
+        TRI_ASSERT(a.afData.field);
+        auto const fieldSize = a.afData.field->size();
+        TRI_ASSERT(fieldSize > a.afData.postfix);
+        for (size_t i = a.afData.postfix; i < fieldSize; ++i) {
+          if (i != a.afData.postfix) {
+            sortBucket.postfix += ".";
+          }
+          sortBucket.postfix += a.afData.field->at(i).name;
+        }
+        LOG_DEVEL << sortBucket.postfix;
+      }
+    } else {
       return false;
     }
-    scoresSort.emplace_back(std::distance(scorers.begin(), s), sort.ascending);
   }
   // all sort elements are covered by view's scorers
-  viewNode.setScorersSort(std::move(scoresSort),
+  viewNode.setScorersSort(std::move(heapSort),
                           limitNode->offset() + limitNode->limit());
   sortNode->_reinsertInCluster = false;
   if (!arangodb::ServerState::instance()->isCoordinator()) {

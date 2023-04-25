@@ -102,6 +102,14 @@ class IResearchViewNode final : public aql::ExecutionNode {
     bool noMaterialization{true};
   };
 
+  struct HeapSortElement {
+    ptrdiff_t scorer{std::numeric_limits<ptrdiff_t>::max()};
+    ptrdiff_t columnNumber{0};
+    size_t fieldNumber{0};
+    std::string postfix;
+    bool ascending{true};
+  };
+
   static IResearchViewNode* getByVar(aql::ExecutionPlan const& plan,
                                      aql::Variable const& var) noexcept;
 
@@ -214,16 +222,17 @@ class IResearchViewNode final : public aql::ExecutionNode {
   //   sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
-  void setScorersSort(std::vector<std::pair<size_t, bool>>&& sort,
+
+  void setScorersSort(std::vector<HeapSortElement>&& sort,
                       size_t limit) {
-    _scorersSort = std::move(sort);
+    _heapSort = std::move(sort);
     _scorersSortLimit = limit;
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   size_t getScorersSortLimit() const noexcept { return _scorersSortLimit; }
 
-  auto getScorersSort() const noexcept { return std::span(_scorersSort); }
+  auto getScorersSort() const noexcept { return std::span(_heapSort); }
 #endif
 
   // Creates corresponding ExecutionBlock.
@@ -374,7 +383,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
   Options _options;
 
   // Internal order for scorers.
-  std::vector<std::pair<size_t, bool>> _scorersSort;
+  std::vector<HeapSortElement> _heapSort;
   size_t _scorersSortLimit{0};
 
   // Volatility mask

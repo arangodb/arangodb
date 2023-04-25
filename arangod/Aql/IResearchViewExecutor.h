@@ -160,7 +160,8 @@ class IResearchViewExecutorInfos {
   iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
   iresearch::CountApproximate _countApproximate;
   iresearch::FilterOptimization _filterOptimization;
-  std::vector<std::pair<size_t, bool>> _scorersSort;
+  // FIXME (Dronplane) rename;
+  std::vector<IResearchViewNode::HeapSortElement> _heapSort;
   size_t _scorersSortLimit;
   iresearch::SearchMeta const* _meta;
   int const _depth;

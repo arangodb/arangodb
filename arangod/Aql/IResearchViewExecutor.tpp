@@ -134,16 +134,16 @@ class BufferHeapSortContext {
  public:
   explicit BufferHeapSortContext(
       size_t numScoreRegisters,
-      std::span<std::pair<size_t, bool> const> scoresSort,
+      std::span<std::pair<size_t, bool> const> heapSort,
       std::span<float_t const> scoreBuffer)
       : _numScoreRegisters(numScoreRegisters),
-        _scoresSort(scoresSort),
+        _heapSort(heapSort),
         _scoreBuffer(scoreBuffer) {}
 
   bool operator()(size_t a, size_t b) const noexcept {
     auto const* rhs_scores = &_scoreBuffer[b * _numScoreRegisters];
     auto lhs_scores = &_scoreBuffer[a * _numScoreRegisters];
-    for (auto const& cmp : _scoresSort) {
+    for (auto const& cmp : _heapSort) {
       if (lhs_scores[cmp.first] != rhs_scores[cmp.first]) {
         return cmp.second ? lhs_scores[cmp.first] < rhs_scores[cmp.first]
                           : lhs_scores[cmp.first] > rhs_scores[cmp.first];
@@ -154,7 +154,7 @@ class BufferHeapSortContext {
 
   bool compareInput(size_t lhsIdx, float_t const* rhs_scores) const noexcept {
     auto lhs_scores = &_scoreBuffer[lhsIdx * _numScoreRegisters];
-    for (auto const& cmp : _scoresSort) {
+    for (auto const& cmp : _heapSort) {
       if (lhs_scores[cmp.first] != rhs_scores[cmp.first]) {
         return cmp.second ? lhs_scores[cmp.first] < rhs_scores[cmp.first]
                           : lhs_scores[cmp.first] > rhs_scores[cmp.first];
@@ -165,7 +165,7 @@ class BufferHeapSortContext {
 
  private:
   size_t _numScoreRegisters;
-  std::span<std::pair<size_t, bool> const> _scoresSort;
+  std::span<std::pair<size_t, bool> const> _heapSort;
   std::span<float_t const> _scoreBuffer;
 };
 
@@ -390,7 +390,7 @@ template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
   std::sort(
       _rows.begin(), _rows.end(),
-      BufferHeapSortContext{_numScoreRegisters, _scoresSort, _scoreBuffer});
+      BufferHeapSortContext{_numScoreRegisters, _heapSort, _scoreBuffer});
   if (_heapSizeLeft) {
     // heap was not filled up to the limit. So fill buffer here.
     _storedValuesBuffer.resize(_keyBuffer.size() * _storedValuesCount);
@@ -401,7 +401,7 @@ template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     StorageSnapshot const& snapshot, ValueType&& value,
     std::span<float_t const> scores, irs::score_threshold* threshold) {
-  BufferHeapSortContext sortContext(_numScoreRegisters, _scoresSort,
+  BufferHeapSortContext sortContext(_numScoreRegisters, _heapSort,
                                     _scoreBuffer);
   TRI_ASSERT(_maxSize);
   TRI_ASSERT(threshold == nullptr || !scores.empty());
@@ -494,7 +494,7 @@ IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
   assertSizeCoherence();
   size_t key = _keyBaseIdx;
   if (std::is_same_v<ValueType, HeapSortExecutorValue> && !_rows.empty()) {
-    TRI_ASSERT(!_scoresSort.empty());
+    TRI_ASSERT(!_heapSort.empty());
     key = _rows[_keyBaseIdx];
   }
   IndexReadBufferEntry entry{key};
@@ -611,7 +611,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   bool const needFullCount = call.needsFullCount();
   TRI_ASSERT(_indexReadBuffer.empty() ||
-             (!this->infos().scoresSort().empty() && needFullCount));
+             (!this->infos().heapSort().empty() && needFullCount));
   auto& impl = static_cast<Impl&>(*this);
   IResearchViewStats stats{};
   while (inputRange.hasDataRow() && call.shouldSkip()) {
@@ -637,7 +637,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
       call.didSkip(impl.skipAll(stats));
     }
     // only heapsort version could possibly fetch more than skip requested
-    TRI_ASSERT(_indexReadBuffer.empty() || !this->infos().scoresSort().empty());
+    TRI_ASSERT(_indexReadBuffer.empty() || !this->infos().heapSort().empty());
 
     if (call.shouldSkip()) {
       // We still need to fetch more
@@ -979,7 +979,7 @@ IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
       _numScores{0} {
   this->_storedValuesReaders.resize(
       this->_infos.getOutNonMaterializedViewRegs().size());
-  TRI_ASSERT(infos.scoresSort().empty());
+  TRI_ASSERT(infos.heapSort().empty());
 }
 
 template<typename ExecutionTraits>
@@ -1018,7 +1018,7 @@ template<typename ExecutionTraits>
 IResearchViewHeapSortExecutor<ExecutionTraits>::IResearchViewHeapSortExecutor(
     Fetcher& fetcher, Infos& infos)
     : Base{fetcher, infos} {
-  this->_indexReadBuffer.setScoresSort(this->_infos.scoresSort());
+  this->_indexReadBuffer.setheapSort(this->_infos.heapSort());
 }
 
 template<typename ExecutionTraits>
@@ -1095,7 +1095,7 @@ void IResearchViewHeapSortExecutor<ExecutionTraits>::reset(
 #ifdef USE_ENTERPRISE
   if (!needFullCount) {
     this->_wand = this->_infos.optimizeTopK().makeWandContext(
-        this->_infos.scoresSort(), this->_scorers);
+        this->_infos.heapSort(), this->_scorers);
   }
 #endif
   _totalCount = 0;
@@ -1132,9 +1132,9 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
     return false;
   }
   _bufferFilled = true;
-  TRI_ASSERT(!this->_infos.scoresSort().empty());
+  TRI_ASSERT(!this->_infos.heapSort().empty());
   TRI_ASSERT(this->_filter != nullptr);
-  size_t const atMost = this->_infos.scoresSortLimit();
+  size_t const atMost = this->_infos.heapSortLimit();
   TRI_ASSERT(atMost);
   this->_indexReadBuffer.reset();
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
@@ -1618,7 +1618,7 @@ IResearchViewMergeExecutor<ExecutionTraits>::IResearchViewMergeExecutor(
   TRI_ASSERT(!infos.sort().first->empty());
   TRI_ASSERT(infos.sort().first->size() >= infos.sort().second);
   TRI_ASSERT(infos.sort().second);
-  TRI_ASSERT(infos.scoresSort().empty());
+  TRI_ASSERT(infos.heapSort().empty());
 }
 
 template<typename ExecutionTraits>
