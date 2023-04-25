@@ -249,7 +249,8 @@ ViewFactory const& IResearchViewCoordinator::factory() {
 
 Result IResearchViewCoordinator::link(IResearchLinkCoordinator const& link) {
   TRI_IF_FAILURE("IResearchLink::alwaysDangling") { return {}; }
-  auto const& collection = basics::downCast<IResearchLink const>(link).collection();
+  auto const& collection =
+      basics::downCast<IResearchLink const>(link).collection();
   auto const& cname = collection.name();
   if (!ClusterMethods::includeHiddenCollectionInLink(cname)) {
     return {TRI_ERROR_NO_ERROR};

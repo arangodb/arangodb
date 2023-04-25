@@ -107,7 +107,6 @@ std::ostream& operator<<(std::ostream& o, ServerHealthState const& r);
 
 using ServersKnown = containers::FlatHashMap<ServerID, ServerHealthState>;
 
-
 namespace velocypack {
 class Builder;
 class Slice;
