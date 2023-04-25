@@ -1399,6 +1399,21 @@ std::pair<bool, bool> IResearchViewNode::volatility(
                         irs::check_bit<1>(_volatilityMask));  // sort
 }
 
+aql::Collection const* IResearchViewNode::collection() const {
+  auto c = collections();
+  if (c.empty()) {
+    return nullptr;
+  }
+  return &c.front().first.get();
+}
+
+bool IResearchViewNode::isUsedAsSatellite() const {
+  return _isUsedAsSatellite;
+}
+void IResearchViewNode::useAsSatelliteOf(aql::ExecutionNodeId) {
+  _isUsedAsSatellite = true;
+}
+
 void const* IResearchViewNode::getSnapshotKey() const noexcept {
   // if (ServerState::instance()->isDBServer()) {
   // TODO We want transactional cluster, now it's not
