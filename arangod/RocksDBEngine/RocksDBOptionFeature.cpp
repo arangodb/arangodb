@@ -246,8 +246,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
 #ifdef ARANGODB_ROCKSDB8
       _blockCacheEstimatedEntryCharge(0),
 #endif
-      _minBlobSize(0),
-      _blobFileSize(1ULL << 28),
+      _minBlobSize(256),
+      _blobFileSize(1ULL << 30),
 #ifdef ARANGODB_ROCKSDB8
       _blobFileStartingLevel(0),
 #endif
@@ -311,7 +311,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _useFileLogging(false),
       _limitOpenFilesAtStartup(false),
       _allowFAllocate(true),
-      _enableBlobGarbageCollection(false),
+      _enableBlobGarbageCollection(true),
       _exclusiveWrites(false),
       _minWriteBufferNumberToMergeTouched(false),
       _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0} {
