@@ -7,8 +7,8 @@ import {
   Thead,
   Tr
 } from "@chakra-ui/react";
-import { AnalyzerDescription } from "arangojs/analyzer";
 import React from "react";
+import { useAnalyzersContext } from "./AnalyzersContext";
 
 const TABLE_HEADERS = [
   { id: "db", name: "DB" },
@@ -17,13 +17,14 @@ const TABLE_HEADERS = [
   { id: "actions", name: "Actions" }
 ];
 
-export const AnalyzersTable = ({
-  analyzers
-}: {
-  analyzers: AnalyzerDescription[] | undefined;
-}) => {
+export const AnalyzersTable = () => {
+  const { analyzers } = useAnalyzersContext();
   return (
-    <TableContainer border="1px solid" borderColor="gray.200">
+    <TableContainer
+      border="1px solid"
+      borderColor="gray.200"
+      backgroundColor="white"
+    >
       <Table whiteSpace="normal" size="sm" variant="striped" colorScheme="gray">
         <Thead>
           <Tr height="10">

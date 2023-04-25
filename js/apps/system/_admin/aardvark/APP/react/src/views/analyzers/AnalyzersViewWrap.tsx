@@ -2,6 +2,7 @@ import React from "react";
 import { ChakraCustomProvider } from "../../theme/ChakraCustomProvider";
 import { useDisableNavBar } from "../../utils/useDisableNavBar";
 import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
+import { AnalyzersProvider } from "./AnalyzersContext";
 import { AnalyzersView } from "./AnalyzersView";
 
 export const AnalyzersViewWrap = () => {
@@ -9,7 +10,9 @@ export const AnalyzersViewWrap = () => {
   useGlobalStyleReset();
   return (
     <ChakraCustomProvider>
-      <AnalyzersView />
+      <AnalyzersProvider>
+        <AnalyzersView />
+      </AnalyzersProvider>
     </ChakraCustomProvider>
   );
 };
