@@ -3300,8 +3300,7 @@ Result ClusterInfo::createCollectionsCoordinator(
   // function!
   // Also note: We will use this guarded structure to protect access into state
   // entries inside the infos list, as tehy can be modified concurrently.
-  auto report = std::make_shared<Guarded<CreateCollectionReport>>(
-      CreateCollectionReport{});
+  auto report = std::make_shared<Guarded<CreateCollectionReport>>();
 
   AgencyComm ac(_server);
   std::vector<std::shared_ptr<AgencyCallback>> agencyCallbacks;
@@ -3318,8 +3317,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // owned by the callback d) info might be deleted, so we cannot use it. e)
       // If the callback is ongoing during cleanup, the callback will
       //    hold the Mutex and delay the cleanup.
-      report->doUnderLock(
-          [](CreateCollectionReport& report) { report.isCleaned = true; });
+      report->getLockedGuard()->isCleaned = true;
       for (auto& cb : agencyCallbacks) {
         _agencyCallbackRegistry->unregisterCallback(cb);
       }
@@ -3350,8 +3348,7 @@ Result ClusterInfo::createCollectionsCoordinator(
 
     if (info.state == ClusterCollectionCreationState::DONE) {
       // This is possible in Enterprise / Smart Collection situation
-      report->doUnderLock(
-          [](CreateCollectionReport& report) { report.nrDone++; });
+      report->getLockedGuard()->nrDone++;
     }
 
     std::map<ShardID, std::vector<ServerID>> shardServers;
@@ -3809,10 +3806,7 @@ Result ClusterInfo::createCollectionsCoordinator(
   });
 
   do {
-    auto tmpRes = report->doUnderLock(
-        [](CreateCollectionReport const& report) -> std::optional<ErrorCode> {
-          return report.dbServerResult;
-        });
+    auto tmpRes = report->getLockedGuard()->dbServerResult;
     if (TRI_microtime() > endTime) {
       for (auto const& info : infos) {
         LOG_TOPIC("f6b57", ERR, Logger::CLUSTER)
@@ -3836,10 +3830,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       }
     }
 
-    auto nrDone =
-        report->doUnderLock([](CreateCollectionReport const& report) -> size_t {
-          return report.nrDone;
-        });
+    auto nrDone = report->getLockedGuard()->nrDone;
     if (nrDone == infos.size() &&
         (replicationVersion == replication::Version::ONE ||
          replicatedStatesWait.isReady())) {
@@ -3926,10 +3917,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Report if this operation worked, if it failed collections will be
       // cleaned up by deleteCollectionGuard.
       for (auto const& info : infos) {
-        TRI_ASSERT(report->doUnderLock(
-                       [&info](auto const&) -> ClusterCollectionCreationState {
-                         return info.state;
-                       }) == ClusterCollectionCreationState::DONE);
+        TRI_ASSERT(report->getLockedGuard()->state == ClusterCollectionCreationState::DONE);
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
 
@@ -3962,10 +3950,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           << " isNewDatabase: " << isNewDatabase
           << " first collection name: " << infos[0].name
           << " result: " << *tmpRes;
-      auto errMsg = report->doUnderLock(
-          [](CreateCollectionReport const& report) -> std::string {
-            return report.errMsg;
-          });
+      auto errMsg = report->getLockedGuard()->errMsg;
       return {*tmpRes, std::move(errMsg)};
     }
 
