@@ -58,8 +58,8 @@ shell_server_aql priority=750 single buckets=5
 shell_server priority=1000 single buckets=3
 
 # C++ unit tests are executed in single env
-gtest name=gtest-iresearch priority=1000 parallelity=3 size=medium single -- --gtest_filter=IResearch*
-gtest priority=1000 parallelity=3 size=medium single -- --gtest_filter=-IResearch*:LongRunning*
+gtest_iresearch priority=1000 parallelity=3 size=medium single
+gtest_arangodb priority=1000 parallelity=3 size=medium single
 
 # Fuerte tests are executed in single env
 fuerte priority=500 single
@@ -97,7 +97,7 @@ shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
-shell_server_aql priority=1000 cluster sniff buckets=16 -- --dumpAgencyOnError true --sniffFilter graph
+shell_server_aql priority=1000 size=medium+ cluster sniff buckets=16 -- --dumpAgencyOnError true --sniffFilter graph
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true

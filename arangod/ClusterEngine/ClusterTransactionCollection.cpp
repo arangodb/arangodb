@@ -77,8 +77,7 @@ Result ClusterTransactionCollection::lockUsage() {
       return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
     }
 
-    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
-        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
       // use and usage-lock
       LOG_TRX("8154f", TRACE, _transaction) << "using collection " << _cid;
     }
