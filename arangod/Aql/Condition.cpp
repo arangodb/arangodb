@@ -932,8 +932,7 @@ AstNode* Condition::createSimpleCondition(AstNode* node) const {
 void Condition::collectOverlappingMembers(
     ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
     AstNode const* otherAndNode, containers::HashSet<size_t>& toRemove,
-    Index const* index, /* may be nullptr */
-    bool isFromTraverser) {
+    Index const* index /* may be nullptr */, bool isFromTraverser) {
   bool const isSparse = (index != nullptr && index->sparse());
 
   std::pair<Variable const*, std::vector<basics::AttributeName>> result;
@@ -977,6 +976,13 @@ void Condition::collectOverlappingMembers(
                  operand->type != NODE_TYPE_OPERATOR_BINARY_NIN;
     }
 
+    if (!isFromTraverser && !allowOps &&
+        operand->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
+        aql::Quantifier::isAny(operand->getMember(2)) && index != nullptr) {
+      // TODO: fix this condition
+      allowOps = true;
+    }
+
     if (allowOps) {
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
@@ -1005,11 +1011,24 @@ void Condition::collectOverlappingMembers(
 
         if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
             result.first == variable) {
-          ConditionPart current(variable, result.second, operand,
-                                ATTRIBUTE_RIGHT, nullptr);
-
-          if (canRemove(plan, current, otherAndNode, isFromTraverser)) {
+          // TODO
+          if (!isFromTraverser &&
+              operand->type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
+              otherAndNode->type == NODE_TYPE_OPERATOR_NARY_AND &&
+              otherAndNode->numMembers() == 1 &&
+              otherAndNode->getMemberUnchecked(0)->type ==
+                  NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
+              aql::AstNode::toString(operand, /*verbose*/ true) ==
+                  aql::AstNode::toString(otherAndNode->getMemberUnchecked(0),
+                                         /*verbose*/ true)) {
             toRemove.emplace(i);
+          } else {
+            ConditionPart current(variable, result.second, operand,
+                                  ATTRIBUTE_RIGHT, nullptr);
+
+            if (canRemove(plan, current, otherAndNode, isFromTraverser)) {
+              toRemove.emplace(i);
+            }
           }
         }
       }

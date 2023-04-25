@@ -525,7 +525,7 @@ void TRI_vocbase_t::registerCollection(
       auto const& ptr = it.first->second;
       TRI_ASSERT(ptr);
       auto msg =
-          absl::StrCat("collection name '", name, "' already exist with id '",
+          absl::StrCat("collection name '", name, "' already exists with id '",
                        ptr->id().id(), "', guid '", ptr->guid(), "'");
       LOG_TOPIC("405f9", ERR, Logger::FIXME) << msg;
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_NAME,
@@ -537,7 +537,7 @@ void TRI_vocbase_t::registerCollection(
       auto const& ptr = it.first->second;
       TRI_ASSERT(ptr);
       auto msg = absl::StrCat("collection id '", id.id(),
-                              "' already exist with name '", ptr->name(),
+                              "' already exists with name '", ptr->name(),
                               "', guid '", ptr->guid(), "'");
       LOG_TOPIC("0ef12", ERR, Logger::FIXME) << msg;
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
@@ -548,9 +548,9 @@ void TRI_vocbase_t::registerCollection(
     if (auto it = _dataSourceByUuid.try_emplace(guid, collection); !it.second) {
       auto const& ptr = it.first->second;
       TRI_ASSERT(ptr);
-      auto msg =
-          absl::StrCat("collection guid '", guid, "' already exist with name '",
-                       ptr->name(), "', id '", ptr->id().id(), "'");
+      auto msg = absl::StrCat("collection guid '", guid,
+                              "' already exists with name '", ptr->name(),
+                              "', id '", ptr->id().id(), "'");
       LOG_TOPIC("d4958", ERR, Logger::FIXME) << msg;
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
                                      std::move(msg));

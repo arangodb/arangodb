@@ -274,6 +274,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
                                OperationOptions const& options,
                                rocksdb::Slice key);
 
+  bool supportsArrayOperations() const noexcept;
+
   /// @brief the attribute paths (for regular fields)
   std::vector<std::vector<std::string>> _paths;
   /// @brief the attribute paths (for stored values)
@@ -290,6 +292,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief whether or not array indexes will de-duplicate their input values
   bool const _deduplicate;
+
+  /// @brief whether or not one of the index fields uses an expansion ([*]),
+  /// so that the index is an array index
+  bool _hasExpansion;
 
   /// @brief whether or not we want to have estimates
   bool _estimates;

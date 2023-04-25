@@ -45,7 +45,8 @@ namespace SortedIndexAttributeMatcher {
 Index::FilterCosts supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::Index const* index, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex);
+    arangodb::aql::Variable const* reference, size_t itemsInIndex,
+    bool supportsArrayOperations);
 
 Index::SortCosts supportsSortCondition(
     arangodb::Index const* index,
@@ -55,7 +56,7 @@ Index::SortCosts supportsSortCondition(
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* specializeCondition(
     arangodb::Index const* index, arangodb::aql::AstNode* node,
-    arangodb::aql::Variable const* reference);
+    arangodb::aql::Variable const* reference, bool supportsArrayOperations);
 
 /// @brief matches which index attributes of index are supported by the filter
 /// condition represented by the passed-in AST node.
@@ -88,7 +89,7 @@ void matchAttributes(
         size_t, std::vector<arangodb::aql::AstNode const*>>& found,
     size_t& values,
     arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
-    bool isExecution);
+    bool isExecution, bool supportsArrayOperations);
 
 /// @brief whether or not the access fits
 bool accessFitsIndex(
@@ -98,7 +99,7 @@ bool accessFitsIndex(
     arangodb::containers::FlatHashMap<
         size_t, std::vector<arangodb::aql::AstNode const*>>& found,
     arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
-    bool isExecution);
+    bool isExecution, bool supportsArrayOperations);
 
 bool isDuplicateOperator(
     arangodb::aql::AstNodeType type,

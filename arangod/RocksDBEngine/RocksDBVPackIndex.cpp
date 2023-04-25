@@ -27,6 +27,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
+#include "Aql/Quantifier.h"
 #include "Aql/SortCondition.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
@@ -117,6 +118,159 @@ using VPackIndexCacheType = cache::TransactionalCache<cache::VPackKeyHasher>;
 /// index attributes. It uses a point lookup and no seeks
 
 namespace arangodb {
+
+class RocksDBVPackIndexArrayInIterator final : public IndexIterator {
+ public:
+  RocksDBVPackIndexArrayInIterator(ResourceMonitor& monitor,
+                                   LogicalCollection* collection,
+                                   transaction::Methods* trx,
+                                   RocksDBVPackIndex const* index,
+                                   aql::AstNode const* values,
+                                   ReadOwnWrites readOwnWrites)
+      : IndexIterator(collection, trx, readOwnWrites),
+        _resourceMonitor(monitor),
+        _index(index),
+        _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
+        _bounds(RocksDBKeyBounds::Empty()),
+        _searchValues(values),
+        _upperBound(RocksDBKeyBounds::VPackIndex(_index->objectId(),
+                                                 /*reverse*/ false)),
+        _searchValueIndex(0),
+        _memoryUsage(0) {}
+
+  ~RocksDBVPackIndexArrayInIterator() override {
+    _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
+  }
+
+  std::string_view typeName() const noexcept override {
+    return "rocksdb-vpack-index-array-in-iterator";
+  }
+
+  bool nextImpl(LocalDocumentIdCallback const& callback,
+                uint64_t limit) override {
+    if (_searchValueIndex >= _searchValues->numMembers() || limit == 0) {
+      return false;
+    }
+
+    /*
+    [1,2,3,4] ANY IN [2,3]
+
+    1 [0]       0 => 1
+    2 [1]       1 => 2
+    3 [1]       1 => 3
+    3 [2]       2 => 3
+    3 [4]       2 => 4
+    4 [2]       2 => 4
+    4 [2]       3 => 5
+    5 [3]       4 => 3
+    5 [4]       4 => 5
+    5 [7]       4 => 6
+    6 [4]       5 => 7
+    7 [5]       7 => 5
+    */
+    ensureIterator();
+
+    VPackBuilder leftSearch;
+    VPackBuilder rightSearch;
+
+    do {
+      TRI_ASSERT(_searchValueIndex < _searchValues->numMembers());
+      aql::AstNode const* current = _searchValues->getMember(_searchValueIndex);
+
+      leftSearch.clear();
+      leftSearch.openArray(/*allowUnindexed*/ true);
+      current->toVelocyPackValue(leftSearch);
+      leftSearch.close();
+
+      rightSearch.clear();
+      rightSearch.openArray(/*allowUnindexed*/ true);
+      current->toVelocyPackValue(rightSearch);
+      rightSearch.close();
+
+      _bounds.fill(RocksDBEntryType::VPackIndexValue, _index->objectId(),
+                   leftSearch.slice(), rightSearch.slice());
+
+      ++_searchValueIndex;
+
+      _iterator->Seek(_bounds.start());
+
+      if (!_iterator->Valid()) {
+        rocksutils::checkIteratorStatus(*_iterator);
+        return false;
+      }
+
+      if (_cmp->Compare(_iterator->key(), _bounds.end()) <= 0) {
+        rocksdb::Slice key = _iterator->key();
+        TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
+
+        LocalDocumentId const documentId(RocksDBKey::indexDocumentId(key));
+        if (_alreadyReturned.emplace(documentId).second) {
+          bool result = callback(documentId);
+          TRI_ASSERT(result);
+
+          if (--limit == 0) {
+            return true;
+          }
+        }
+      }
+
+      if (_searchValueIndex >= _searchValues->numMembers()) {
+        return false;
+      }
+    } while (true);
+  }
+
+  void resetImpl() override {
+    _searchValueIndex = 0;
+    _alreadyReturned.clear();
+  }
+
+  bool canRearm() const override { return false; }
+
+ private:
+  void ensureIterator() {
+    if (_iterator == nullptr) {
+      // the RocksDB iterator _iterator is only built once during the
+      // lifetime of the RocksVPackIndexIterator. so it is ok
+      // to track its expected memory usage here and only count it down
+      // when we destroy the RocksDBVPackIndexIterator object
+      ResourceUsageScope scope(_resourceMonitor, expectedIteratorMemoryUsage);
+
+      auto state = RocksDBTransactionState::toState(_trx);
+      RocksDBTransactionMethods* mthds =
+          state->rocksdbMethods(_collection->id());
+      _iterator =
+          mthds->NewIterator(_index->columnFamily(), [&](ReadOptions& options) {
+            options.iterate_upper_bound = &_rangeBound;
+            TRI_ASSERT(options.prefix_same_as_start);
+            options.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
+          });
+
+      _memoryUsage += scope.tracked();
+      // now we are responsible for tracking the memory usage
+      scope.steal();
+    }
+
+    TRI_ASSERT(_iterator != nullptr);
+  }
+
+ private:
+  // expected number of bytes that a RocksDB iterator will use.
+  // this is a guess and does not need to be fully accurate.
+  static constexpr size_t expectedIteratorMemoryUsage = 8192;
+
+  ResourceMonitor& _resourceMonitor;
+  RocksDBVPackIndex const* _index;
+  RocksDBVPackComparator const* _cmp;
+  RocksDBKeyBounds _bounds;
+  aql::AstNode const* _searchValues;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+  RocksDBKeyBounds _upperBound;
+  rocksdb::Slice _rangeBound;
+  size_t _searchValueIndex;
+  size_t _memoryUsage;
+  containers::FlatHashSet<LocalDocumentId> _alreadyReturned;
+};
 
 class RocksDBVPackIndexInIterator final : public IndexIterator {
  public:
@@ -1189,6 +1343,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
                             .autoRefill()),
       _deduplicate(basics::VelocyPackHelper::getBooleanValue(
           info, StaticStrings::IndexDeduplicate, true)),
+      _hasExpansion(false),
       _estimates(true),
       _estimator(nullptr),
       _storedValues(
@@ -1560,6 +1715,9 @@ void RocksDBVPackIndex::fillPaths(
       interior.emplace_back(att.name);
       if (att.shouldExpand) {
         expands = count;
+        if (expanding != nullptr) {
+          _hasExpansion = true;
+        }
       }
       ++count;
     }
@@ -1889,6 +2047,11 @@ void RocksDBVPackIndex::handleCacheInvalidation(transaction::Methods& trx,
     RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
         _collection.id(), id(), {slice.data(), slice.size()});
   }
+}
+
+bool RocksDBVPackIndex::supportsArrayOperations() const noexcept {
+  return _hasExpansion && !_unique && _fields.size() == 1 &&
+         _fields[0].size() == 1;
 }
 
 namespace {
@@ -2297,7 +2460,8 @@ Index::FilterCosts RocksDBVPackIndex::supportsFilterCondition(
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsFilterCondition(
-      allIndexes, this, node, reference, itemsInIndex);
+      allIndexes, this, node, reference, itemsInIndex,
+      supportsArrayOperations());
 }
 
 Index::SortCosts RocksDBVPackIndex::supportsSortCondition(
@@ -2311,8 +2475,8 @@ Index::SortCosts RocksDBVPackIndex::supportsSortCondition(
 aql::AstNode* RocksDBVPackIndex::specializeCondition(
     transaction::Methods& /*trx*/, aql::AstNode* node,
     aql::Variable const* reference) const {
-  return SortedIndexAttributeMatcher::specializeCondition(this, node,
-                                                          reference);
+  return SortedIndexAttributeMatcher::specializeCondition(
+      this, node, reference, supportsArrayOperations());
 }
 
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
@@ -2320,6 +2484,20 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
+
+  if (supportsArrayOperations() && node != nullptr &&
+      node->type == aql::NODE_TYPE_OPERATOR_NARY_AND &&
+      node->numMembers() == 1) {
+    aql::AstNode const* sub = node->getMemberUnchecked(0);
+    if (sub->type == aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
+        sub->numMembers() == 3) {
+      if (sub->getMember(2)->type == aql::NODE_TYPE_QUANTIFIER &&
+          aql::Quantifier::isAny(sub->getMember(2))) {
+        return std::make_unique<RocksDBVPackIndexArrayInIterator>(
+            monitor, &_collection, trx, this, sub->getMember(0), readOwnWrites);
+      }
+    }
+  }
 
   transaction::BuilderLeaser searchValues(trx);
   RocksDBVPackIndexSearchValueFormat format =
@@ -2419,7 +2597,8 @@ void RocksDBVPackIndex::buildSearchValuesInner(
   containers::FlatHashSet<std::string> nonNullAttributes;
   [[maybe_unused]] size_t unused = 0;
   SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
-                                               unused, nonNullAttributes, true);
+                                               unused, nonNullAttributes, true,
+                                               supportsArrayOperations());
 
   // this will be reused for multiple invocations of getValueAccess
   std::pair<aql::Variable const*, std::vector<basics::AttributeName>> paramPair;
@@ -2462,7 +2641,9 @@ void RocksDBVPackIndex::buildSearchValuesInner(
     }
 
     auto const& comp = it->second[0];
-    TRI_ASSERT(comp->numMembers() == 2);
+    TRI_ASSERT(comp->numMembers() == 2 ||
+               (comp->numMembers() == 3 &&
+                comp->type == aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN));
     aql::AstNode const* access = nullptr;
     aql::AstNode const* value = nullptr;
     getValueAccess(comp, access, value);
@@ -2488,7 +2669,8 @@ void RocksDBVPackIndex::buildSearchValuesInner(
       TRI_IF_FAILURE("HashIndex::permutationEQ") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-    } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN ||
+               comp->type == aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN) {
       // complex condition. adjust format!
       format = RocksDBVPackIndexSearchValueFormat::kOperatorsAndValues;
 

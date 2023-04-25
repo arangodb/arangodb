@@ -834,7 +834,8 @@ Index::FilterCosts RocksDBPrimaryIndex::supportsFilterCondition(
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsFilterCondition(
-      allIndexes, this, node, reference, itemsInIndex);
+      allIndexes, this, node, reference, itemsInIndex,
+      /*supportsArrayOperations*/ false);
 }
 
 Index::SortCosts RocksDBPrimaryIndex::supportsSortCondition(
@@ -1105,8 +1106,8 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
 aql::AstNode* RocksDBPrimaryIndex::specializeCondition(
     transaction::Methods& /*trx*/, aql::AstNode* node,
     aql::Variable const* reference) const {
-  return SortedIndexAttributeMatcher::specializeCondition(this, node,
-                                                          reference);
+  return SortedIndexAttributeMatcher::specializeCondition(
+      this, node, reference, /*supportsArrayOperations*/ false);
 }
 
 /// @brief create the iterator, for a single attribute, IN operator

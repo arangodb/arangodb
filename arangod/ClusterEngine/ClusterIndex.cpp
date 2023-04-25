@@ -46,6 +46,7 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       _indexType(itype),
       _info(info),
       _estimates(true),
+      _supportsArrayOperations(false),
       _clusterSelectivity(/* default */ 0.1) {
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
@@ -94,6 +95,15 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       }
     } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX) {
       _estimates = false;
+    }
+  }
+
+  if (_indexType == TRI_IDX_TYPE_HASH_INDEX ||
+      _indexType == TRI_IDX_TYPE_SKIPLIST_INDEX ||
+      _indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
+    if (!_unique && _fields.size() == 1 && _fields[0].size() == 1 &&
+        _fields[0][0].shouldExpand) {
+      _supportsArrayOperations = true;
     }
   }
 }
@@ -239,9 +249,10 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     case TRI_IDX_TYPE_PRIMARY_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::supportsFilterCondition(
-            allIndexes, this, node, reference, itemsInIndex);
+            allIndexes, this, node, reference, itemsInIndex,
+            supportsArrayOperations());
       }
-      // other...
+      // other engine (mock engine)
       std::vector<std::vector<basics::AttributeName>> fields{
           {basics::AttributeName(StaticStrings::IdString, false)},
           {basics::AttributeName(StaticStrings::KeyString, false)}};
@@ -253,24 +264,29 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
         SimpleAttributeEqualityMatcher matcher(this->_fields);
         return matcher.matchOne(this, node, reference, itemsInIndex);
       }
-      // other...
+      // other engine (mock engine)
       SimpleAttributeEqualityMatcher matcher(this->_fields);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
     case TRI_IDX_TYPE_HASH_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::supportsFilterCondition(
-            allIndexes, this, node, reference, itemsInIndex);
+            allIndexes, this, node, reference, itemsInIndex,
+            supportsArrayOperations());
       }
+      // other engine (mock engine)
       break;
     }
-
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
-    case TRI_IDX_TYPE_TTL_INDEX:
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
-      // same for both engines
       return SortedIndexAttributeMatcher::supportsFilterCondition(
-          allIndexes, this, node, reference, itemsInIndex);
+          allIndexes, this, node, reference, itemsInIndex,
+          supportsArrayOperations());
+    }
+    case TRI_IDX_TYPE_TTL_INDEX: {
+      return SortedIndexAttributeMatcher::supportsFilterCondition(
+          allIndexes, this, node, reference, itemsInIndex,
+          supportsArrayOperations());
     }
     case TRI_IDX_TYPE_GEO_INDEX:
     case TRI_IDX_TYPE_GEO1_INDEX:
@@ -349,8 +365,8 @@ aql::AstNode* ClusterIndex::specializeCondition(
   switch (_indexType) {
     case TRI_IDX_TYPE_PRIMARY_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return SortedIndexAttributeMatcher::specializeCondition(this, node,
-                                                                reference);
+        return SortedIndexAttributeMatcher::specializeCondition(
+            this, node, reference, supportsArrayOperations());
       }
       return node;
     }
@@ -366,8 +382,8 @@ aql::AstNode* ClusterIndex::specializeCondition(
     }
     case TRI_IDX_TYPE_HASH_INDEX:
       if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return SortedIndexAttributeMatcher::specializeCondition(this, node,
-                                                                reference);
+        return SortedIndexAttributeMatcher::specializeCondition(
+            this, node, reference, supportsArrayOperations());
       }
       break;
 
@@ -378,10 +394,14 @@ aql::AstNode* ClusterIndex::specializeCondition(
     }
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
-    case TRI_IDX_TYPE_TTL_INDEX:
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
-      return SortedIndexAttributeMatcher::specializeCondition(this, node,
-                                                              reference);
+      return SortedIndexAttributeMatcher::specializeCondition(
+          this, node, reference, supportsArrayOperations());
+    }
+
+    case TRI_IDX_TYPE_TTL_INDEX: {
+      return SortedIndexAttributeMatcher::specializeCondition(
+          this, node, reference, supportsArrayOperations());
     }
 
     case TRI_IDX_TYPE_ZKD_INDEX:

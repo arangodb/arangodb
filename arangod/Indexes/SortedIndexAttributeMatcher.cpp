@@ -27,21 +27,36 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Quantifier.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/vocbase.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 
 namespace {
 
+bool isSupportedArrayOperator(aql::AstNode const* op) noexcept {
+  if (op->type != aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN) {
+    return false;
+  }
+
+  TRI_ASSERT(op->numMembers() == 3);
+  TRI_ASSERT(op->getMemberUnchecked(2)->type == aql::NODE_TYPE_QUANTIFIER);
+
+  auto quantifier = static_cast<aql::Quantifier::Type>(
+      op->getMemberUnchecked(2)->getIntValue(true));
+  return quantifier == aql::Quantifier::Type::kAny;
+}
+
 std::tuple<size_t, size_t, double, double> analyzeConditions(
-    arangodb::Index const* idx,
-    arangodb::containers::FlatHashMap<
-        size_t, std::vector<arangodb::aql::AstNode const*>> const& found) {
+    Index const* idx,
+    containers::FlatHashMap<size_t, std::vector<aql::AstNode const*>> const&
+        found) {
   size_t attributesCovered = 0;
   size_t attributesCoveredByEquality = 0;
   double equalityReductionFactor = 1.0;
@@ -64,8 +79,8 @@ std::tuple<size_t, size_t, double, double> analyzeConditions(
     auto const& nodes = (*it).second;
     bool containsEquality = false;
     for (size_t j = 0; j < nodes.size(); ++j) {
-      if (nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-          nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      if (nodes[j]->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+          nodes[j]->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
         containsEquality = true;
         break;
       }
@@ -99,33 +114,32 @@ std::tuple<size_t, size_t, double, double> analyzeConditions(
 }  // namespace
 
 bool SortedIndexAttributeMatcher::accessFitsIndex(
-    arangodb::Index const* idx,            // index
-    arangodb::aql::AstNode const* access,  // attribute access
-    arangodb::aql::AstNode const* other,   // eg const value
-    arangodb::aql::AstNode const*
+    Index const* idx,            // index
+    aql::AstNode const* access,  // attribute access
+    aql::AstNode const* other,   // eg const value
+    aql::AstNode const*
         op,  // binary operation that is parent of access and other
-    arangodb::aql::Variable const* reference,  // variable used in access(es)
-    arangodb::containers::FlatHashMap<
+    aql::Variable const* reference,  // variable used in access(es)
+    containers::FlatHashMap<
         size_t /*offset in idx->fields()*/,
-        std::vector<arangodb::aql::AstNode const*> /*conjunct - operation*/>&
+        std::vector<aql::AstNode const*> /*conjunct - operation*/>&
         found,  // marks operations covered by index-fields
-    arangodb::containers::FlatHashSet<std::string>&
+    containers::FlatHashSet<std::string>&
         nonNullAttributes,  // set of stringified op-children (access other)
                             // that may not be null
-    bool isExecution        // skip usage check in execution phase
-) {
+    bool isExecution,       // skip usage check in execution phase
+    bool supportsArrayOperations) {
   if (!idx->canUseConditionPart(access, other, op, reference, nonNullAttributes,
                                 isExecution)) {
     return false;
   }
 
-  std::pair<arangodb::aql::Variable const*,
-            std::vector<arangodb::basics::AttributeName>>
+  std::pair<aql::Variable const*, std::vector<basics::AttributeName>>
       attributeData;
   bool const isPrimaryIndex =
-      idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX;
+      idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX;
 
-  if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX &&
+  if (idx->type() == Index::IndexType::TRI_IDX_TYPE_TTL_INDEX &&
       (!other->isConstant() ||
        !(other->isIntValue() || other->isDoubleValue()))) {
     // TTL index can only be used for numeric lookup values, no date strings or
@@ -134,30 +148,12 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     return false;
   }
 
-  if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    if (!access->isAttributeAccessForVariable(attributeData) ||
-        attributeData.first != reference) {
-      // this access is not referencing this collection
-      return false;
-    }
-    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second)) {
-      // doc.value[*] == 'value'
-      return false;
-    }
-    if (idx->isAttributeExpanded(attributeData.second)) {
-      // doc.value == 'value' (with an array index)
-      return false;
-    }
-  } else {
+  if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // ok, we do have an IN here... check if it's something like 'value' IN
     // doc.value[*]
-    TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
-
     if (access->isAttributeAccessForVariable(attributeData) &&
         attributeData.first == reference &&
-        !arangodb::basics::TRI_AttributeNamesHaveExpansion(
-            attributeData.second) &&
+        !basics::TRI_AttributeNamesHaveExpansion(attributeData.second) &&
         idx->attributeMatches(attributeData.second, isPrimaryIndex)) {
       // doc.value IN 'value'
       // can use this index
@@ -169,10 +165,34 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     } else {
       return false;
     }
+  } else if (supportsArrayOperations && isSupportedArrayOperator(op)) {
+    // ok, we do have an IN here... check if it's something like 'value'
+    // <quantifier> IN doc.value
+    if (access->isAttributeAccessForVariable(attributeData) &&
+        attributeData.first == reference &&
+        idx->attributeMatches(attributeData.second, isPrimaryIndex)) {
+      // doc.value IN 'value'
+      // can use this index
+    } else {
+      return false;
+    }
+  } else {
+    if (!access->isAttributeAccessForVariable(attributeData) ||
+        attributeData.first != reference) {
+      // this access is not referencing this collection
+      return false;
+    }
+    if (basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
+      // doc.value[*] == 'value'
+      return false;
+    }
+    if (idx->isAttributeExpanded(attributeData.second)) {
+      // doc.value == 'value' (with an array index)
+      return false;
+    }
   }
 
-  std::vector<arangodb::basics::AttributeName> const& fieldNames =
-      attributeData.second;
+  std::vector<basics::AttributeName> const& fieldNames = attributeData.second;
 
   for (size_t i = 0; i < idx->fields().size(); ++i) {
     if (idx->fields()[i].size() != fieldNames.size()) {
@@ -181,13 +201,14 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     }
 
     if (idx->isAttributeExpanded(i) &&
-        op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+        (op->type != aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+         op->type != aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN)) {
       // If this attribute is correct or not, it could only serve for IN
       continue;
     }
 
-    bool match = arangodb::basics::AttributeName::isIdentical(idx->fields()[i],
-                                                              fieldNames, true);
+    bool match =
+        basics::AttributeName::isIdentical(idx->fields()[i], fieldNames, true);
 
     // make exception for primary index as we do not need to match "_key, _id"
     // but can go directly for "_id"
@@ -217,40 +238,41 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
 }
 
 void SortedIndexAttributeMatcher::matchAttributes(
-    arangodb::Index const* idx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference,
-    arangodb::containers::FlatHashMap<
-        size_t, std::vector<arangodb::aql::AstNode const*>>& found,
-    size_t& values,
-    arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
-    bool isExecution) {
+    Index const* idx, aql::AstNode const* node, aql::Variable const* reference,
+    containers::FlatHashMap<size_t, std::vector<aql::AstNode const*>>& found,
+    size_t& values, containers::FlatHashSet<std::string>& nonNullAttributes,
+    bool isExecution, bool supportsArrayOperations) {
   // assert we have a properly formed condition - nary conjunction
-  TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
+  TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   // inspect the conjuncts - allowed are binary comparisons and a contains check
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMemberUnchecked(i);
 
     switch (op->type) {
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+      case aql::NODE_TYPE_OPERATOR_BINARY_NE:
+      case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      case aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      case aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      case aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      case aql::NODE_TYPE_OPERATOR_BINARY_GE: {
         TRI_ASSERT(op->numMembers() == 2);
         accessFitsIndex(idx, op->getMemberUnchecked(0),
                         op->getMemberUnchecked(1), op, reference, found,
-                        nonNullAttributes, isExecution);
+                        nonNullAttributes, isExecution,
+                        supportsArrayOperations);
         accessFitsIndex(idx, op->getMemberUnchecked(1),
                         op->getMemberUnchecked(0), op, reference, found,
-                        nonNullAttributes, isExecution);
+                        nonNullAttributes, isExecution,
+                        supportsArrayOperations);
         break;
+      }
 
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+      case aql::NODE_TYPE_OPERATOR_BINARY_IN: {
         if (accessFitsIndex(idx, op->getMemberUnchecked(0),
                             op->getMemberUnchecked(1), op, reference, found,
-                            nonNullAttributes, isExecution)) {
+                            nonNullAttributes, isExecution,
+                            supportsArrayOperations)) {
           if (op->getMemberUnchecked(1)->isAttributeAccessForVariable(
                   reference, /*indexed access*/ false)) {
             // 'abc' IN doc.attr[*]
@@ -267,6 +289,31 @@ void SortedIndexAttributeMatcher::matchAttributes(
           }
         }
         break;
+      }
+
+      case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN: {
+        if (supportsArrayOperations && isSupportedArrayOperator(op) &&
+            accessFitsIndex(idx, op->getMemberUnchecked(1),
+                            op->getMemberUnchecked(0), op, reference, found,
+                            nonNullAttributes, isExecution,
+                            supportsArrayOperations)) {
+          if (op->getMemberUnchecked(1)->isAttributeAccessForVariable(
+                  reference, /*indexed access*/ false)) {
+            // 'abc' IN doc.attr[*]
+            ++values;
+          } else {
+            size_t av =
+                SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(
+                    op->getMemberUnchecked(1));
+            if (av > 1) {
+              // attr IN [ a, b, c ]  =>  this will produce multiple items, so
+              // count them!
+              values += av - 1;
+            }
+          }
+        }
+        break;
+      }
 
       default:
         break;
@@ -275,9 +322,9 @@ void SortedIndexAttributeMatcher::matchAttributes(
 }
 
 Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
-    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-    arangodb::Index const* idx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex) {
+    std::vector<std::shared_ptr<Index>> const& allIndexes, Index const* idx,
+    aql::AstNode const* node, aql::Variable const* reference,
+    size_t itemsInIndex, bool supportsArrayOperations) {
   // mmfiles failure point compat
   if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
     TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
@@ -285,13 +332,11 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     }
   }
 
-  arangodb::containers::FlatHashMap<size_t,
-                                    std::vector<arangodb::aql::AstNode const*>>
-      found;
-  arangodb::containers::FlatHashSet<std::string> nonNullAttributes;
+  containers::FlatHashMap<size_t, std::vector<aql::AstNode const*>> found;
+  containers::FlatHashSet<std::string> nonNullAttributes;
   size_t values = 0;
-  matchAttributes(idx, node, reference, found, values, nonNullAttributes,
-                  false);
+  matchAttributes(idx, node, reference, found, values, nonNullAttributes, false,
+                  supportsArrayOperations);
 
   if (values == 0) {
     values = 1;
@@ -388,12 +433,12 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
             // the other index is a full prefix of our own index.
             // now check if the other index actually satisfies the filter
             // condition
-            arangodb::containers::FlatHashMap<
-                size_t, std::vector<arangodb::aql::AstNode const*>>
+            containers::FlatHashMap<size_t, std::vector<aql::AstNode const*>>
                 foundOther;
             [[maybe_unused]] size_t valuesOther = 0;  // ignored here
             matchAttributes(otherIdx.get(), node, reference, foundOther,
-                            valuesOther, nonNullAttributes, false);
+                            valuesOther, nonNullAttributes, false,
+                            supportsArrayOperations);
 
             auto [attributesCoveredOther, attributesCoveredByEqualityOther,
                   equalityReductionFactorOther,
@@ -441,9 +486,8 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
 }
 
 Index::SortCosts SortedIndexAttributeMatcher::supportsSortCondition(
-    arangodb::Index const* idx,
-    arangodb::aql::SortCondition const* sortCondition,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex) {
+    Index const* idx, aql::SortCondition const* sortCondition,
+    aql::Variable const* reference, size_t itemsInIndex) {
   TRI_ASSERT(sortCondition != nullptr);
 
   Index::SortCosts costs = Index::SortCosts::defaultCosts(itemsInIndex);
@@ -481,9 +525,9 @@ Index::SortCosts SortedIndexAttributeMatcher::supportsSortCondition(
 }
 
 /// @brief specializes the condition for use with the index
-arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
-    arangodb::Index const* idx, arangodb::aql::AstNode* node,
-    arangodb::aql::Variable const* reference) {
+aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
+    Index const* idx, aql::AstNode* node, aql::Variable const* reference,
+    bool supportsArrayOperations) {
   // mmfiles failure compat
   if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
     TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
@@ -494,15 +538,13 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
     }
   }
 
-  arangodb::containers::FlatHashMap<size_t,
-                                    std::vector<arangodb::aql::AstNode const*>>
-      found;
-  arangodb::containers::FlatHashSet<std::string> nonNullAttributes;
+  containers::FlatHashMap<size_t, std::vector<aql::AstNode const*>> found;
+  containers::FlatHashSet<std::string> nonNullAttributes;
   [[maybe_unused]] size_t values = 0;  // ignored here
-  matchAttributes(idx, node, reference, found, values, nonNullAttributes,
-                  false);
+  matchAttributes(idx, node, reference, found, values, nonNullAttributes, false,
+                  supportsArrayOperations);
 
-  std::vector<arangodb::aql::AstNode const*> children;
+  std::vector<aql::AstNode const*> children;
   bool lastContainsEquality = true;
 
   for (size_t i = 0; i < idx->fields().size(); ++i) {
@@ -517,31 +559,27 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
     // check if the current condition contains an equality condition
     auto& nodes = (*it).second;
     lastContainsEquality =
-        (std::find_if(
-             nodes.begin(), nodes.end(),
-             [](arangodb::aql::AstNode const* node) {
-               return (
-                   node->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-                   node->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
-             }) != nodes.end());
+        (std::find_if(nodes.begin(), nodes.end(), [](aql::AstNode const* node) {
+           return (node->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+                   node->type == aql::NODE_TYPE_OPERATOR_BINARY_IN);
+         }) != nodes.end());
 
     std::sort(nodes.begin(), nodes.end(),
-              [](arangodb::aql::AstNode const* lhs,
-                 arangodb::aql::AstNode const* rhs) -> bool {
+              [](aql::AstNode const* lhs, aql::AstNode const* rhs) -> bool {
                 return Index::sortWeight(lhs) < Index::sortWeight(rhs);
               });
 
-    ::arangodb::containers::HashSet<int> operatorsFound;
+    containers::HashSet<int> operatorsFound;
     for (auto const& it : nodes) {
-      if (it->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE) {
+      if (it->type == aql::NODE_TYPE_OPERATOR_BINARY_NE) {
         // ignore all != operators here
         continue;
       }
 
-      arangodb::aql::AstNodeType type = it->type;
-      if (arangodb::aql::Ast::IsReversibleOperator(type) &&
+      aql::AstNodeType type = it->type;
+      if (aql::Ast::IsReversibleOperator(type) &&
           it->getMember(1)->isAttributeAccessForVariable(reference, false)) {
-        type = arangodb::aql::Ast::ReverseOperator(type);
+        type = aql::Ast::ReverseOperator(type);
       }
 
       // do not let duplicate or related operators pass
@@ -549,7 +587,7 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
         continue;
       }
 
-      TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
+      TRI_ASSERT(it->type != aql::NODE_TYPE_OPERATOR_BINARY_NE);
       operatorsFound.emplace(static_cast<int>(type));
       children.emplace_back(it);
     }
@@ -561,7 +599,7 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
   node->clearMembers();
 
   for (auto& it : children) {
-    TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
+    TRI_ASSERT(it->type != aql::NODE_TYPE_OPERATOR_BINARY_NE);
     node->addMember(it);
   }
 
@@ -569,52 +607,49 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
 }
 
 bool SortedIndexAttributeMatcher::isDuplicateOperator(
-    arangodb::aql::AstNodeType type,
-    ::arangodb::containers::HashSet<int> const& operatorsFound) {
+    aql::AstNodeType type, containers::HashSet<int> const& operatorsFound) {
   if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
     // duplicate operator
     return true;
   }
 
-  if (operatorsFound.find(
-          static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
-          operatorsFound.end() ||
-      operatorsFound.find(
-          static_cast<int>(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
-          operatorsFound.end()) {
+  if (operatorsFound.find(static_cast<int>(
+          aql::NODE_TYPE_OPERATOR_BINARY_EQ)) != operatorsFound.end() ||
+      operatorsFound.find(static_cast<int>(
+          aql::NODE_TYPE_OPERATOR_BINARY_IN)) != operatorsFound.end()) {
     return true;
   }
 
   bool duplicate = false;
   switch (type) {
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE)) !=
+    case aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      duplicate = operatorsFound.find(
+                      static_cast<int>(aql::NODE_TYPE_OPERATOR_BINARY_LE)) !=
                   operatorsFound.end();
       break;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT)) !=
+    case aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      duplicate = operatorsFound.find(
+                      static_cast<int>(aql::NODE_TYPE_OPERATOR_BINARY_LT)) !=
                   operatorsFound.end();
       break;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) !=
+    case aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      duplicate = operatorsFound.find(
+                      static_cast<int>(aql::NODE_TYPE_OPERATOR_BINARY_GE)) !=
                   operatorsFound.end();
       break;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT)) !=
+    case aql::NODE_TYPE_OPERATOR_BINARY_GE:
+      duplicate = operatorsFound.find(
+                      static_cast<int>(aql::NODE_TYPE_OPERATOR_BINARY_GT)) !=
                   operatorsFound.end();
       break;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
+    case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      duplicate = operatorsFound.find(
+                      static_cast<int>(aql::NODE_TYPE_OPERATOR_BINARY_IN)) !=
                   operatorsFound.end();
       break;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-      duplicate = operatorsFound.find(static_cast<int>(
-                      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
+    case aql::NODE_TYPE_OPERATOR_BINARY_IN:
+      duplicate = operatorsFound.find(
+                      static_cast<int>(aql::NODE_TYPE_OPERATOR_BINARY_EQ)) !=
                   operatorsFound.end();
       break;
     default: {

@@ -980,7 +980,7 @@ function processQuery(query, explain, planIndex) {
       var rhs = buildExpression(node.subNodes[1]);
       if (node.subNodes.length === 3) {
         // array operator node... prepend "all" | "any" | "none" to node type
-        name = node.subNodes[2].quantifier + ' ' + name;
+        name = keyword(node.subNodes[2].quantifier.toUpperCase()) + ' ' + name;
       }
       if (node.sorted) {
         return lhs + ' ' + name + ' ' + annotation('/* sorted */') + ' ' + rhs;

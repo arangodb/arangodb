@@ -284,7 +284,7 @@ struct AstNode {
   std::string_view getValueTypeString() const;
 
   /// @brief stringify the AstNode
-  static std::string toString(AstNode const*);
+  static std::string toString(AstNode const*, bool verbose = false);
 
   /// @brief checks whether we know a type of this kind; throws exception if not
   static void validateType(int type);
