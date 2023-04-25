@@ -58,7 +58,7 @@ struct ExecutionState {
     return std::nullopt;
   };
   virtual auto cancel(actor::ActorPID sender,
-                       conductor::message::ConductorMessages message)
+                      conductor::message::ConductorMessages message)
       -> std::optional<StateChange> {
     return std::nullopt;
   };
