@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, print */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -23,12 +23,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const internal = require("internal");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const isEnterprise = require("internal").isEnterprise();
+const isEnterprise = internal.isEnterprise();
 const dbName = "testOptimizeTopK";
 
-function testOptimizeTopK() {
+function testOptimizeTopKEnterprise() {
   const names = ["v_alias_tfidf", "v_alias_bm25", "v_search_tfidf", "v_search_bm25"];
 
   return {
@@ -125,15 +126,25 @@ function testOptimizeTopK() {
               optimizeTopK: t
             });
             assertTrue(false);
-          } catch (err) { }
+          } catch (e) { 
+            assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+          }
 
           try {
             db.c.ensureIndex({ name: "fail", type: "inverted", fields: ["f"], optimizeTopK: t });
             assertTrue(false);
-          } catch (err) { }
+          } catch (e) {
+            assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+          }
         });
 
         assertEqual(db._view("fail"), null);
+        try {
+          db.c.index("fail");
+          assertTrue(false);
+        } catch (e) {
+          assertEqual(internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, e.errorNum);
+        }
       }
 
       // Try to cover with search-alias different optimizeTopK values
@@ -158,8 +169,43 @@ function testOptimizeTopK() {
   };
 }
 
+function testOptimizeTopKCommunity () {
+  return {
+    setUpAll: function () {
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+    },
+    tearDownAll: function () {
+      db._useDatabase('_system');
+      try { db._dropDatabase(dbName); } catch (err) { }
+    },
+
+    test: function () {
+      db._create("c");
+
+      db._createView("view", "arangosearch", {
+        links: { "c": { fields: { "f": {}, "a": {}, "x": {} } } },
+        optimizeTopK: ["TFIDF(@doc) DESC", "BM25(@doc) DESC", "wrong scorer"]
+      });
+      let view_props = db._view("view").properties();
+      assertFalse(view_props.hasOwnProperty("optimizeTopK"));
+
+      db.c.ensureIndex({ 
+        name: "i", 
+        type: "inverted", 
+        fields: ["f", "a", "x"], 
+        optimizeTopK: ["TFIDF(@doc) DESC", "BM25(@doc) DESC", "wrong scorer"] 
+      });
+
+      let index_props = db.c.index("i");
+      assertFalse(index_props.hasOwnProperty("optimizeTopK"));
+    }
+  };
+}
 if (isEnterprise) {
-  jsunity.run(testOptimizeTopK);
+  jsunity.run(testOptimizeTopKEnterprise);
+} else {
+  jsunity.run(testOptimizeTopKCommunity);
 }
 
 return jsunity.done();
