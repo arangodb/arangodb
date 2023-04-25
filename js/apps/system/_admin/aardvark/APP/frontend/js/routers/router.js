@@ -376,7 +376,7 @@
       this.checkUser();
 
       this.init.then(() => ReactDOM.render(React.createElement(window.AnalyzersReactView),
-        document.getElementById('content')));
+        document.getElementById('content-react')));
     },
 
     showV2Graph: function (name) {
