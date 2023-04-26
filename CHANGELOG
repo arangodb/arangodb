@@ -1,6 +1,10 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* FE-238: Added auto-login support in core web UI - disabled logout when
+  auto-login is enabled, set sessionStorage "jwtUser" value when login is
+  skipped.
+
 * Adjusted timeouts for cluster internal commit and abort requests to
   withstand network delays better. This fixes some problems when the
   networking infrastructure delays requests.
