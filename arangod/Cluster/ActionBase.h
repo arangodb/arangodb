@@ -113,8 +113,7 @@ class ActionBase {
   void endStats();
 
   /**
-   *  @brief    update progress by long running processes, while allowing to
-   *            abort the process by user.
+   *  @brief    update progress by long running processes
    *  @param  d percentage of work done
    *  @return   abort if !ok(), true if ok(), with reason to abort.
    */
