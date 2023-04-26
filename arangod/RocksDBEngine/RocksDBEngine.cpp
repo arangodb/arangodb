@@ -3115,8 +3115,14 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
 namespace {
 
-struct InMemoryLogStorageMethods : RocksDBLogStorageMethods {
+struct InMemoryLogStorageMethods final : RocksDBLogStorageMethods {
   using RocksDBLogStorageMethods::RocksDBLogStorageMethods;
+
+  ~InMemoryLogStorageMethods() final {
+    if (file) {
+      fclose(file);
+    }
+  }
 
   auto read(replication2::LogIndex first)
       -> std::unique_ptr<replication2::PersistedLogIterator> override {
@@ -3152,11 +3158,16 @@ struct InMemoryLogStorageMethods : RocksDBLogStorageMethods {
     while (auto e = ptr->next()) {
       VPackBuilder builder;
       e->toVelocyPack(builder);
-      os << builder.toJson() << "\n";
+      auto json = builder.toJson();
+      fwrite(json.data(), sizeof(char), json.size(), file);
+      fputc('\n', file);
       transient.push_back(std::move(*e));
     }
     log = transient.persistent();
-    os.sync();
+    if (true || writeOptions.waitForSync) {
+      fflush(file);
+      fdatasync(fileno(file));
+    }
     return {ResultT{SequenceNumber{0}}};
   }
   auto removeFront(replication2::LogIndex stop,
@@ -3183,9 +3194,9 @@ struct InMemoryLogStorageMethods : RocksDBLogStorageMethods {
     if (auto res = basics::FileUtils::createDirectory(path); !res) {
       LOG_DEVEL << "FAILED TO CREATE DIRECTORY!";
     }
-    os.exceptions(std::fstream::badbit | std::fstream::failbit);
     LOG_DEVEL << "try to open file " << logFile;
-    os.open(logFile, std::fstream::out | std::fstream::in | std::fstream::app);
+    file = fopen(logFile.c_str(), "a+");
+    fallocate(fileno(file), FALLOC_FL_KEEP_SIZE, 0, 1 * 1024 * 1024 * 1024);
     LOG_DEVEL << "open result = " << 0 << " filename = " << logFile;
   }
 
@@ -3193,7 +3204,7 @@ struct InMemoryLogStorageMethods : RocksDBLogStorageMethods {
   std::mutex mutex;
   replication2::LogIndex firstIndex{1};
   ContainerType log;
-  std::fstream os;
+  FILE* file = nullptr;
 };
 
 }  // namespace
