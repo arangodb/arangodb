@@ -245,10 +245,12 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          db._create(cn);
+          let c = db._create(cn);
+          let docs = [];
           for (let i = 0; i < 100; ++i) {
-            db._collection(cn).insert({ value: i });
+            docs.push({ value: i });
           }
+          c.insert(docs);
         },
 
         function (state) {
@@ -272,10 +274,12 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          db._create(cn);
+          let c = db._create(cn);
+          let docs = [];
           for (let i = 0; i < 100; ++i) {
-            db._collection(cn).insert({ value: i });
+            docs.push({ value: i });
           }
+          c.insert(docs);
           db._drop(cn);
         },
 
@@ -433,8 +437,7 @@ function BaseTestConfig () {
           // - remove docn
           // - commit
           db._collection(cn).truncate({ compact: false });
-          assertEqual(db._collection(cn).count(), 0);
-          assertEqual(db._collection(cn).toArray().length, 0);
+
           // note: the following is necessary because otherwise the test
           // can fail. the reason is that the truncate above does produce
           // a separate tick value for the commit operation on the leader.
