@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated rclone to v1.62.2 custom build with go1.20.3.
+
 * FE-236: bugfix - remove unused files, use new tooltip in views UI.
 
 * FE-238: Added auto-login support in core web UI - disabled logout when
