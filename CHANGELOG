@@ -7,6 +7,18 @@ v3.10.6 (XXXX-XX-XX)
   The functionality can be turned off by setting the startup option
   `--replication.auto-repair-revision-trees` to `false` on DB-Servers.
 
+* SEARCH-466 Fix leaking into individual link definition inherited properties
+  from view.
+
+* Fix race condition in invalidation of token cache on coordinators.
+
+* Adjusted timeouts for cluster internal commit and abort requests to withstand
+  network delays better. This fixes some problems when the networking
+  infrastructure delays requests.
+
+* Added sent time accounting and some metrics to fuerte and the NetworkFeature.
+  This can detect delays in the network infrastructure.
+
 * Added startup option `--server.ensure-whitespace-metrics-format`, which
   controls whether additional whitespace is used in the metrics output format.
   If set to `true`, then whitespace is emitted between the exported metric value
