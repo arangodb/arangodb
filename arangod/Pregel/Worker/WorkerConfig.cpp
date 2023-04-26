@@ -67,7 +67,6 @@ void WorkerConfig::updateConfig(worker::message::CreateWorker const& params) {
     for (auto const& shard : shards) {
       _localVertexShardIDs.push_back(shard);
       _localPregelShardIDs.insert(_pregelShardIDs[shard]);
-      _localPShardIDs_hash.insert(_pregelShardIDs[shard]);
       _shardToCollectionName.try_emplace(shard, collection);
     }
   }
