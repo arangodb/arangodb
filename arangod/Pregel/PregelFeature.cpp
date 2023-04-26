@@ -418,8 +418,8 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
 
     return en;
   } else {
-    auto c = std::make_shared<pregel::Conductor>(executionSpecifications,
-                                                 vocbase, *this);
+    auto c = std::make_shared<pregel::Conductor>(
+        executionSpecifications, ExecContext::current().user(), vocbase, *this);
     addConductor(std::move(c), en);
     TRI_ASSERT(conductor(en));
     conductor(en)->start();
@@ -717,7 +717,7 @@ void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  std::string user = ExecContext::current().user();
+  std::string user = c->_user;
   std::lock_guard guard{_mutex};
   _conductors.try_emplace(
       executionNumber,

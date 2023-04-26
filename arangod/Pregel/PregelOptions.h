@@ -152,7 +152,7 @@ auto inspect(Inspector& f, ExecutionSpecifications& x) {
       f.field("maxSuperstep", x.maxSuperstep),
       f.field("storeResults", x.storeResults), f.field("ttl", x.ttl),
       f.field("parallelism", x.parallelism),
-      f.field("userParamters", x.userParameters));
+      f.field("userParameters", x.userParameters));
 }
 
 }  // namespace arangodb::pregel

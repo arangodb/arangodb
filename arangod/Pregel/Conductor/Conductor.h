@@ -71,6 +71,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   PregelFeature& _feature;
   const DatabaseGuard _vocbaseGuard;
   ExecutionSpecifications _specifications;
+  std::string _user;
 
   std::unique_ptr<MasterContext> _masterContext;
   std::unique_ptr<IAlgorithm> _algorithm;
@@ -120,7 +121,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void finishedWorkerFinalize(Finished const& data);
 
  public:
-  Conductor(ExecutionSpecifications const& specifications,
+  Conductor(ExecutionSpecifications const& specifications, std::string user,
             TRI_vocbase_t& vocbase, PregelFeature& feature);
 
   ~Conductor();

@@ -56,8 +56,8 @@ class Metric {
   /// \param result toPrometheus handler response
   /// \param globals labels that all metrics have
   //////////////////////////////////////////////////////////////////////////////
-  virtual void toPrometheus(std::string& result,
-                            std::string_view globals) const = 0;
+  virtual void toPrometheus(std::string& result, std::string_view globals,
+                            bool ensureWhitespace) const = 0;
   virtual void toVPack(velocypack::Builder& builder,
                        ArangodServer& server) const;
 
