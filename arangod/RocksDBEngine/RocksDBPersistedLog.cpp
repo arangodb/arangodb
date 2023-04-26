@@ -430,8 +430,10 @@ auto RocksDBLogStorageMethods::insert(
       });
 }
 
-uint64_t RocksDBLogStorageMethods::getObjectId() { return ctx.objectId; }
-LogId RocksDBLogStorageMethods::getLogId() { return logId; }
+auto RocksDBLogStorageMethods::getObjectId() -> uint64_t {
+  return ctx.objectId;
+}
+auto RocksDBLogStorageMethods::getLogId() -> LogId { return logId; }
 
 RocksDBLogStorageMethods::RocksDBLogStorageMethods(
     uint64_t objectId, std::uint64_t vocbaseId, replication2::LogId logId,
@@ -492,4 +494,62 @@ auto RocksDBLogStorageMethods::compact() -> Result {
 
 void RocksDBLogStorageMethods::waitForCompletion() noexcept {
   ctx.waitForCompletion();
+}
+
+auto RocksDBSyncLogStorageMethods::removeFront(LogIndex stop,
+                                               WriteOptions const& opts)
+    -> futures::Future<ResultT<SequenceNumber>> {
+  MeasureTimeGuard timeGuard(*_metrics->operationLatencyRemoveFront);
+  rocksdb::WriteOptions wo;
+  wo.sync = opts.waitForSync;
+  auto bounds = RocksDBKeyBounds::LogRange(getObjectId());
+  auto last = RocksDBKey();
+  last.constructLogEntry(getObjectId(), stop);
+  auto s = db->DeleteRange(wo, logCf, bounds.start(), last.string());
+  // if (!s.ok()) {
+  //  return rocksutils::convertStatus(s);
+  //}
+  return db->GetLatestSequenceNumber();
+}
+
+auto RocksDBSyncLogStorageMethods::removeBack(LogIndex start,
+                                              WriteOptions const& opts)
+    -> futures::Future<ResultT<SequenceNumber>> {
+  MeasureTimeGuard timeGuard(*_metrics->operationLatencyRemoveBack);
+
+  rocksdb::WriteOptions wo;
+  wo.sync = opts.waitForSync;
+  auto bounds = RocksDBKeyBounds::LogRange(getObjectId());
+  auto first = RocksDBKey();
+  first.constructLogEntry(getObjectId(), start);
+  auto s = db->DeleteRange(wo, logCf, first.string(), bounds.end());
+  // if (!s.ok()) {
+  //  return rocksutils::convertStatus(s);
+  //}
+  return db->GetLatestSequenceNumber();
+}
+
+auto RocksDBSyncLogStorageMethods::insert(
+    std::unique_ptr<PersistedLogIterator> iter, WriteOptions const& opts)
+    -> futures::Future<ResultT<SequenceNumber>> {
+  MeasureTimeGuard timeGuard(*_metrics->operationLatencyInsert);
+  rocksdb::WriteOptions wo;
+  wo.sync = opts.waitForSync;
+
+  rocksdb::WriteBatch wb;
+  auto key = RocksDBKey{};
+  rocksdb::Status s;
+  while (auto entry = iter->next()) {
+    key.constructLogEntry(getObjectId(), entry->logIndex());
+    auto value = RocksDBValue::LogEntry(*entry);
+    s = wb.Put(logCf, key.string(), value.string());
+    if (!s.ok()) {
+      return rocksutils::convertStatus(s);
+    }
+  }
+  s = db->Write(wo, &wb);
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+  return db->GetLatestSequenceNumber();
 }

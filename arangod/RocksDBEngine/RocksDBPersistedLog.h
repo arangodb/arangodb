@@ -264,7 +264,7 @@ auto inspect(Inspector& f, RocksDBReplicatedStateInfo& x) {
       f.field("state", x.state));
 }
 
-struct RocksDBLogStorageMethods final
+struct RocksDBLogStorageMethods
     : replication2::replicated_state::IStorageEngineMethods {
   explicit RocksDBLogStorageMethods(
       uint64_t objectId, std::uint64_t vocbaseId, replication2::LogId logId,
@@ -307,6 +307,19 @@ struct RocksDBLogStorageMethods final
   rocksdb::ColumnFamilyHandle* const logCf;
   AsyncLogWriteContext ctx;
   std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> const _metrics;
+};
+
+struct RocksDBSyncLogStorageMethods : RocksDBLogStorageMethods {
+  using RocksDBLogStorageMethods::RocksDBLogStorageMethods;
+  [[nodiscard]] auto insert(
+      std::unique_ptr<replication2::PersistedLogIterator> ptr,
+      WriteOptions const&) -> futures::Future<ResultT<SequenceNumber>> override;
+  [[nodiscard]] auto removeFront(replication2::LogIndex stop,
+                                 WriteOptions const&)
+      -> futures::Future<ResultT<SequenceNumber>> override;
+  [[nodiscard]] auto removeBack(replication2::LogIndex start,
+                                WriteOptions const&)
+      -> futures::Future<ResultT<SequenceNumber>> override;
 };
 
 }  // namespace arangodb

@@ -3136,7 +3136,7 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
     }
 
     auto info = velocypack::deserialize<RocksDBReplicatedStateInfo>(slice);
-    auto methods = std::make_unique<RocksDBLogStorageMethods>(
+    auto methods = std::make_unique<RocksDBSyncLogStorageMethods>(
         info.objectId, vocbase.id(), info.stateId, _logPersistor, _db,
         RocksDBColumnFamilyManager::get(
             RocksDBColumnFamilyManager::Family::Definitions),
@@ -3944,7 +3944,7 @@ auto RocksDBEngine::createReplicatedState(
     -> ResultT<std::unique_ptr<
         replication2::replicated_state::IStorageEngineMethods>> {
   auto objectId = TRI_NewTickServer();
-  auto methods = std::make_unique<RocksDBLogStorageMethods>(
+  auto methods = std::make_unique<RocksDBSyncLogStorageMethods>(
       objectId, vocbase.id(), id, _logPersistor, _db,
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Definitions),
