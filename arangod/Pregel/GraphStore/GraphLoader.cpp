@@ -189,7 +189,7 @@ auto GraphLoader<V, E>::loadVertices(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto sourceShard = config->shardId(vertexShard);
+  auto sourceShard = config->graphSerdeConfig().pregelShard(vertexShard);
   auto cursor =
       trx.indexScan(resourceMonitor, vertexShard,
                     transaction::Methods::CursorType::ALL, ReadOwnWrites::no);

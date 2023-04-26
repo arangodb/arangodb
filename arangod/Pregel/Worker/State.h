@@ -64,25 +64,36 @@ struct WorkerState {
 
     if (messageCombiner) {
       readCache = std::make_unique<CombiningInCache<M>>(
-          config->localPregelShardIDs(), messageFormat.get(),
-          messageCombiner.get());
+          config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()),
+          messageFormat.get(), messageCombiner.get());
       writeCache = std::make_unique<CombiningInCache<M>>(
-          config->localPregelShardIDs(), messageFormat.get(),
-          messageCombiner.get());
+          config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()),
+          messageFormat.get(), messageCombiner.get());
       inCache = std::make_unique<CombiningInCache<M>>(
           std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
       outCache = std::make_unique<CombiningOutActorCache<M>>(
-          config, config->localPregelShardIDs(), messageFormat.get(),
-          messageCombiner.get());
+          config,
+          config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()),
+          messageFormat.get(), messageCombiner.get());
     } else {
       readCache = std::make_unique<ArrayInCache<M>>(
-          config->localPregelShardIDs(), messageFormat.get());
+          config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()),
+          messageFormat.get());
       writeCache = std::make_unique<ArrayInCache<M>>(
-          config->localPregelShardIDs(), messageFormat.get());
+          config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()),
+          messageFormat.get());
       inCache = std::make_unique<ArrayInCache<M>>(std::set<PregelShard>{},
                                                   messageFormat.get());
       outCache = std::make_unique<ArrayOutActorCache<M>>(
-          config, config->localPregelShardIDs(), messageFormat.get());
+          config,
+          config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()),
+          messageFormat.get());
     }
   }
 

@@ -32,6 +32,7 @@
 
 #include "CrashHandler/CrashHandler.h"
 #include "Assertions/ProdAssert.h"
+#include "Containers/Enumerate.h"
 
 namespace arangodb::pregel {
 
@@ -69,9 +70,24 @@ struct GraphSerdeConfig {
         return lvs.pregelShard;
       }
     }
+
     // TODO: ADB_PROD_ASSERT(false) << fmt::format("could not find PregelShard
     // for {}", responsibleShard);
     return InvalidPregelShard;
+  }
+
+  // Actual set of pregel shard id's located here
+  [[nodiscard]] auto localPregelShardIDs(ServerID server) const
+      -> std::set<PregelShard> {
+    auto result = std::set<PregelShard>{};
+
+    for (auto [idx, loadableVertexShard] :
+         enumerate(loadableVertexShards.loadableVertexShards)) {
+      if (responsibleServerMap.responsibleServerMap.at(idx) == server) {
+        result.insert(loadableVertexShard.pregelShard);
+      }
+    }
+    return result;
   }
 };
 template<typename Inspector>

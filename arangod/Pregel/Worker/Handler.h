@@ -380,7 +380,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
             this->state->config->executionNumber(),
             *this->state->config->vocbase(), this->state->config->parallelism(),
             this->state->algorithm->inputFormat(),
-            this->state->config->globalShardIDs(),
+            this->state->config->graphSerdeConfig(),
             ActorStoringUpdate{
                 .fn =
                     [this](pregel::message::GraphStoringUpdate update) -> void {
