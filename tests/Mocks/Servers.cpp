@@ -60,6 +60,7 @@
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "Network/NetworkFeature.h"
+#include "Replication/ReplicationFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -786,6 +787,11 @@ MockDBServer::MockDBServer(bool start, bool useAgencyMock)
                         arangodb::ServerState::RoleEnum::ROLE_DBSERVER) {
   addFeature<arangodb::FlushFeature>(false);        // do not start the thread
   addFeature<arangodb::MaintenanceFeature>(false);  // do not start the thread
+
+  // turn off auto-repairing of revision trees for unit tests
+  auto& rf = addFeature<arangodb::ReplicationFeature>(false);  // do not start
+  rf.autoRepairRevisionTrees(false);
+
   if (start) {
     MockDBServer::startFeatures();
     MockDBServer::createDatabase("_system");
