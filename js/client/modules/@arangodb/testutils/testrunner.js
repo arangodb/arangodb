@@ -35,6 +35,7 @@ const analyzers = require("@arangodb/analyzers");
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const userManager = require("@arangodb/users");
+const tasks = require("@arangodb/tasks");
 
 const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
@@ -44,13 +45,55 @@ const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 let didSplitBuckets = false;
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief checks no tasks were left on the SUT by tests
+// //////////////////////////////////////////////////////////////////////////////
+let tasksTests = {
+  name: 'tasks',
+  setUp: function (obj, te) {
+    try {
+      obj.taskCount = tasks.get().length;
+    } catch (x) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'failed to fetch the tasks on the system before the test: ' + x.message
+      };
+      obj.serverDead = true;
+      return false;
+    }
+    return true;
+  },
+  runCheck: function (obj, te) {
+    try {
+      if (tasks.get().length !== obj.taskCount) {
+        obj.results[obj.translateResult(te)] = {
+          status: false,
+          message: 'Cleanup of tasks missing - found tasks left over: [ ' +
+            JSON.stringify(tasks.get()) +
+            ' ] - Original test status: ' +
+            JSON.stringify(obj.results[obj.translateResult(te)])
+        };
+        return false;
+      }
+    } catch (x) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'failed to fetch the tasks on the system after the test: ' + x.message
+      };
+      obj.serverDead = true;
+      return false;
+    }
+    return true;
+  }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief checks no new users were left on the SUT by tests
 // //////////////////////////////////////////////////////////////////////////////
 let usersTests = {
   name: 'users',
   setUp: function (obj, te) {
     try {
-      this.usersCount = userManager.all().length;
+      obj.usersCount = userManager.all().length;
     } catch (x) {
       obj.results[obj.translateResult(te)] = {
         status: false,
@@ -63,7 +106,7 @@ let usersTests = {
   },
   runCheck: function (obj, te) {
     try {
-      if (userManager.all().length !== this.usersCount) {
+      if (userManager.all().length !== obj.usersCount) {
         obj.results[obj.translateResult(te)] = {
           status: false,
           message: 'Cleanup of users missing - found users left over: [ ' +
@@ -76,7 +119,7 @@ let usersTests = {
     } catch (x) {
       obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'failed to fetch the users on the system before the test: ' + x.message
+        message: 'failed to fetch the users on the system after the test: ' + x.message
       };
       obj.serverDead = true;
       return false;
@@ -352,8 +395,13 @@ class testRunner {
     this.results = {};
     this.continueTesting = true;
     this.usersCount = 0;
+    this.taskCount = 0;
     this.cleanupChecks = [ ];
     this.cleanupChecks.push(failurePointsCheck);
+
+    if (checkCollections) {
+      this.cleanupChecks.push(tasksTests);
+    }
     if (checkUsers) {
       this.cleanupChecks.push(usersTests);
     }
