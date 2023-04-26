@@ -462,7 +462,7 @@ class Index {
   void progress(double p) noexcept {
     _progress.store(p, std::memory_order_relaxed);
   }
-  double progress() noexcept {
+  double progress() const noexcept {
     return _progress.load(std::memory_order_relaxed);
   }
 
