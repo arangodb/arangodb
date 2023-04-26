@@ -249,7 +249,7 @@ struct Job {
       std::vector<shard_t> const&, std::string const& server);
   static void addPreconditionServerHealth(velocypack::Builder& pre,
                                           std::string const& server,
-                                          std::string const& health);
+                                          std::string_view health);
   static void addPreconditionShardNotBlocked(velocypack::Builder& pre,
                                              std::string const& shard);
   static void addPreconditionServerReadLockable(velocypack::Builder& pre,
