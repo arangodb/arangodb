@@ -187,7 +187,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
-    std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit,
+    std::vector<std::pair<size_t, bool>> heapSort, size_t scorersSortLimit,
     iresearch::SearchMeta const* meta)
     : _searchDocOutReg{searchDocRegister},
       _documentOutReg{outRegister},
@@ -208,7 +208,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _outNonMaterializedViewRegs{std::move(outNonMaterializedViewRegs)},
       _countApproximate{countApproximate},
       _filterOptimization{filterOptimization},
-      _scorersSort{std::move(scorersSort)},
+      _heapSort{std::move(heapSort)},
       _scorersSortLimit{scorersSortLimit},
       _meta{meta},
       _depth{depth},
