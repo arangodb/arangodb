@@ -507,7 +507,7 @@ bool ClusterIndex::inProgress() const {
       slc = slc.get(std::vector<std::string>{cid, "indexes"});
       for (auto const& index : VPackArrayIterator(slc)) {
         if (index.get("id").stringView() == std::to_string(_iid.id())) {
-          return index.hasKey("isBuilding");
+          return index.hasKey(StaticStrings::IndexIsBuilding);
         }
       }
     }
