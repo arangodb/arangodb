@@ -30,6 +30,7 @@ auto workerSpecification(
             .userParameters = specifications.userParameters,
             .coordinatorId = "",
             .parallelism = specifications.parallelism,
+            .graphSerdeConfig = specifications.graphSerdeConfig,
             .edgeCollectionRestrictions =
                 specifications.edgeCollectionRestrictions,
             .vertexShards = std::move(vertexShards),
