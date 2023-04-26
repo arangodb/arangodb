@@ -1,6 +1,10 @@
 v3.10.6 (XXXX-XX-XX)
 --------------------
 
+* FE-238: Added auto-login support in core web UI - disabled logout when
+  auto-login is enabled, set sessionStorage "jwtUser" value when login is
+  skipped.
+
 * SEARCH-466 Fix leaking into individual link definition inherited properties
   from view.
 
