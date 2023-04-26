@@ -159,10 +159,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool isMigratingFlagSet() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Check whether the cache is currently in the process of migrating
-  /// or resizing.
+  /// @brief Check whether the cache is currently in the process of resizing
+  /// or migrating.
   //////////////////////////////////////////////////////////////////////////////
-  bool isMigratingOrResizingFlagSet() const noexcept;
+  bool isResizingOrMigratingFlagSet() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begun the process of shutting down.

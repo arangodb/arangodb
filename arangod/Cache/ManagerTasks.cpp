@@ -23,6 +23,7 @@
 
 #include "ManagerTasks.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/SpinLocker.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
@@ -37,75 +38,63 @@ FreeMemoryTask::FreeMemoryTask(Manager::TaskEnvironment environment,
 FreeMemoryTask::~FreeMemoryTask() = default;
 
 bool FreeMemoryTask::dispatch() {
+  // prepareTask counts a counter up
   _manager.prepareTask(_environment);
 
-  try {
-    if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
-      // intentionally don't unprepare task
-      return true;
-    }
-    _manager.unprepareTask(_environment);
-    return false;
-  } catch (...) {
-    _manager.unprepareTask(_environment);
-    throw;
+  // make sure we count the counter down in case we
+  // did not successfully dispatch the task
+  auto unprepareGuard =
+      scopeGuard([this]() noexcept { _manager.unprepareTask(_environment); });
+
+  if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
+    // intentionally don't unprepare task
+    unprepareGuard.cancel();
+    return true;
   }
+  return false;
 }
 
 void FreeMemoryTask::run() {
   using basics::SpinLocker;
 
+  auto unprepareGuard =
+      scopeGuard([this]() noexcept { _manager.unprepareTask(_environment); });
+
   TRI_ASSERT(_cache->isResizingFlagSet());
-  bool clearResizingFlag = true;
 
-  try {
-    bool ran = _cache->freeMemory();
+  auto toggleResizingGuard = scopeGuard([this]() noexcept {
+    // make sure we are always clearing the resizing flag
+    Metadata& metadata = _cache->metadata();
+    SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+    TRI_ASSERT(metadata.isResizing());
+    metadata.toggleResizing();
+    TRI_ASSERT(!metadata.isResizing());
+  });
 
-    // flag must still be set after freeMemory()
-    TRI_ASSERT(_cache->isResizingFlagSet());
+  bool ran = _cache->freeMemory();
 
-    if (ran) {
-      std::uint64_t reclaimed = 0;
-      SpinLocker guard(SpinLocker::Mode::Write, _manager._lock);
-      Metadata& metadata = _cache->metadata();
-      {
-        SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
-        TRI_ASSERT(metadata.isResizing());
-        reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
-        metadata.adjustLimits(metadata.softUsageLimit, metadata.softUsageLimit);
-        metadata.toggleResizing();
-        TRI_ASSERT(!metadata.isResizing());
-      }
+  // flag must still be set after freeMemory()
+  TRI_ASSERT(_cache->isResizingFlagSet());
 
-      TRI_ASSERT(_manager._globalAllocation >=
-                 reclaimed + _manager._fixedAllocation);
-      _manager._globalAllocation -= reclaimed;
-      TRI_ASSERT(_manager._globalAllocation >= _manager._fixedAllocation);
-    } else {
-      // make sure we are always clearing the resizing flag
-      Metadata& metadata = _cache->metadata();
+  if (ran) {
+    std::uint64_t reclaimed = 0;
+    SpinLocker guard(SpinLocker::Mode::Write, _manager._lock);
+    Metadata& metadata = _cache->metadata();
+    {
       SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
       TRI_ASSERT(metadata.isResizing());
+      reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
+      metadata.adjustLimits(metadata.softUsageLimit, metadata.softUsageLimit);
       metadata.toggleResizing();
       TRI_ASSERT(!metadata.isResizing());
     }
+    // do not toggle the resizing flag twice
+    toggleResizingGuard.cancel();
 
-    clearResizingFlag = false;
-
-    _manager.unprepareTask(_environment);
-  } catch (...) {
-    if (clearResizingFlag) {
-      // make sure we are always clearing the resizing flag
-      Metadata& metadata = _cache->metadata();
-      SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
-      TRI_ASSERT(metadata.isResizing());
-      metadata.toggleResizing();
-      TRI_ASSERT(!metadata.isResizing());
-    }
-
-    // always count down at the end
-    _manager.unprepareTask(_environment);
-    throw;
+    TRI_ASSERT(_manager._globalAllocation >=
+               reclaimed + _manager._fixedAllocation);
+    _manager._globalAllocation -= reclaimed;
+    TRI_ASSERT(_manager._globalAllocation >= _manager._fixedAllocation);
   }
 }
 
@@ -120,44 +109,40 @@ MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager& manager,
 MigrateTask::~MigrateTask() = default;
 
 bool MigrateTask::dispatch() {
+  // prepareTask counts a counter up
   _manager.prepareTask(_environment);
 
-  try {
-    if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
-      // intentionally don't unprepare task
-      return true;
-    }
-    _manager.unprepareTask(_environment);
-    return false;
-  } catch (...) {
-    _manager.unprepareTask(_environment);
-    throw;
+  // make sure we count the counter down in case we
+  // did not successfully dispatch the task
+  auto unprepareGuard =
+      scopeGuard([this]() noexcept { _manager.unprepareTask(_environment); });
+
+  if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
+    // intentionally don't unprepare task
+    unprepareGuard.cancel();
+    return true;
   }
+  return false;
 }
 
 void MigrateTask::run() {
-  try {
-    // we must be migrating when we get here
-    TRI_ASSERT(_cache->isMigratingFlagSet());
+  auto unprepareGuard =
+      scopeGuard([this]() noexcept { _manager.unprepareTask(_environment); });
 
-    // do the actual migration
-    bool ran = _cache->migrate(_table);
+  // we must be migrating when we get here
+  TRI_ASSERT(_cache->isMigratingFlagSet());
 
-    // migrate() must have unset the migrating flag, but we
-    // cannot check it here because another MigrateTask may
-    // have been scheduled in the meantime and have set the
-    // flag again, which would be a valid situation.
+  // do the actual migration
+  bool ran = _cache->migrate(_table);
 
-    if (!ran) {
-      _manager.reclaimTable(std::move(_table), false);
-      TRI_ASSERT(_table == nullptr);
-    }
+  // migrate() must have unset the migrating flag, but we
+  // cannot check it here because another MigrateTask may
+  // have been scheduled in the meantime and have set the
+  // flag again, which would be a valid situation.
 
-    _manager.unprepareTask(_environment);
-  } catch (...) {
-    // always count down at the end
-    _manager.unprepareTask(_environment);
-    throw;
+  if (!ran) {
+    _manager.reclaimTable(std::move(_table), false);
+    TRI_ASSERT(_table == nullptr);
   }
 }
 }  // namespace arangodb::cache
