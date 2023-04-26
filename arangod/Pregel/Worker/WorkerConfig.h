@@ -121,12 +121,6 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
     return it != _pregelShardIDs.end() ? it->second : InvalidPregelShard;
   }
 
-  // index in globalShardIDs
-  inline bool isLocalVertexShard(PregelShard shardIndex) const {
-    // TODO cache this? prob small
-    return _localPShardIDs_hash.find(shardIndex) != _localPShardIDs_hash.end();
-  }
-
   // convert an arangodb document id to a pregel id
   VertexID documentIdToPregel(std::string_view documentID) const;
 
@@ -159,7 +153,6 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
   /// cache these ids as much as possible, since we access them often
   std::unordered_map<std::string, PregelShard> _pregelShardIDs;
   std::set<PregelShard> _localPregelShardIDs;
-  std::unordered_set<PregelShard> _localPShardIDs_hash;
 };
 
 }  // namespace arangodb::pregel
