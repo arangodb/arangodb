@@ -89,6 +89,26 @@ struct GraphSerdeConfig {
     }
     return result;
   }
+  //
+  [[nodiscard]] auto localShardIDs(ServerID server) const -> std::set<ShardID> {
+    auto result = std::set<ShardID>{};
+
+    for (auto [idx, loadableVertexShard] :
+         enumerate(loadableVertexShards.loadableVertexShards)) {
+      if (responsibleServerMap.responsibleServerMap.at(idx) == server) {
+        result.insert(loadableVertexShard.vertexShard);
+      }
+    }
+    return result;
+  }
+
+  [[nodiscard]] auto responsibleServerSet() const -> std::set<ServerID> {
+    auto result = std::set<ServerID>{};
+    for (auto x : responsibleServerMap.responsibleServerMap) {
+      result.insert(x);
+    }
+    return result;
+  }
 };
 template<typename Inspector>
 auto inspect(Inspector& f, GraphSerdeConfig& x) {
