@@ -56,7 +56,8 @@ let optionsDocumentation = [
 
   ' The following properties of `options` are defined:',
   '',
-  '   - `testOutput`: set the output directory for testresults, defaults to `out`',
+  '   - `testOutputDirectory`: set the output directory for testresults, defaults to `out`',
+  '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `out`',
   '   - `force`: if set to true the tests are continued even if one fails',
   '',
   "   - `skipLogAnalysis`: don't try to crawl the server logs",
@@ -226,6 +227,7 @@ const optionsDefaults = {
   'test': undefined,
   'testBuckets': undefined,
   'testOutputDirectory': 'out',
+  'testXmlOutputDirectory': 'outXml',
   'useReconnect': true,
   'username': 'root',
   'valgrind': false,
