@@ -3157,16 +3157,16 @@ struct InMemoryLogStorageMethods final : RocksDBLogStorageMethods {
     auto transient = log.transient();
     while (auto e = ptr->next()) {
       VPackBuilder builder;
-      e->toVelocyPack(builder);
-      auto json = builder.toJson();
-      fwrite(json.data(), sizeof(char), json.size(), file);
+      e->toVelocyPack(builder, {});
+      fwrite(builder.data(), builder.size(), 1, file);
       fputc('\n', file);
       transient.push_back(std::move(*e));
     }
     log = transient.persistent();
     if (true || writeOptions.waitForSync) {
-      fflush(file);
-      fdatasync(fileno(file));
+      TRI_ASSERT(fflush(file) == 0) << "failed to flush: " << strerror(errno);
+      TRI_ASSERT(fdatasync(fileno(file)) == 0)
+          << "failed to flush: " << strerror(errno);
     }
     return {ResultT{SequenceNumber{0}}};
   }
@@ -3195,7 +3195,11 @@ struct InMemoryLogStorageMethods final : RocksDBLogStorageMethods {
       LOG_DEVEL << "FAILED TO CREATE DIRECTORY!";
     }
     LOG_DEVEL << "try to open file " << logFile;
-    file = fopen(logFile.c_str(), "a+");
+    file = fopen(logFile.c_str(), "a+b");
+    if (file == nullptr) {
+      LOG_DEVEL << "failed to open file " << strerror(errno);
+      FATAL_ERROR_EXIT();
+    }
     fallocate(fileno(file), FALLOC_FL_KEEP_SIZE, 0, 1 * 1024 * 1024 * 1024);
     LOG_DEVEL << "open result = " << 0 << " filename = " << logFile;
   }
