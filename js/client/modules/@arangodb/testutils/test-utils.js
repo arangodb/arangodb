@@ -487,7 +487,9 @@ class runInArangoshRunner extends testRunnerBase{
     if (!this.options.verbose) {
       args['log.level'] = 'warning';
     }
-
+    if (this.options.extremeVerbosity === true) {
+      args['log.level'] = 'v8=debug';
+    }
     if (this.addArgs !== undefined) {
       args = Object.assign(args, this.addArgs);
     }

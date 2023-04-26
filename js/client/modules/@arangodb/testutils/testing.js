@@ -501,6 +501,9 @@ function iterateTests(cases, options) {
   let results = {};
   let cleanup = true;
 
+  if (options.extremeVerbosity === true) {
+    internal.logLevel('V8=debug');
+  }
   if (options.failed) {
     // we are applying the failed filter -> only consider cases with failed tests
     cases = _.filter(cases, c => options.failed.hasOwnProperty(c));
