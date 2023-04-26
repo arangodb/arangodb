@@ -726,6 +726,33 @@ const geojsonSchema = mergeBase({
   },
   required: ['type', 'properties']
 });
+const geoS2Schema = mergeBase({
+  properties: {
+    type: {
+      const: 'geo_s2'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
+        type: {
+          nullable: false,
+          type: 'string',
+          enum: ['shape', 'centroid', 'point']
+        },
+        format: {
+          nullable: true,
+          type: 'string',
+          enum: ['latLngDouble', 'latLngInt', 's2Point']
+        },
+        options: geoOptionsSchema
+      },
+      additionalProperties: false,
+      default: {}
+    }
+  },
+  required: ['type', 'properties']
+});
 
 const geopointSchema = mergeBase({
   properties: {
@@ -779,11 +806,12 @@ export const formSchema: JSONSchemaType<FormState> = {
     classificationSchema,
     pipelineSchema,
     geojsonSchema,
-    geopointSchema
+    geopointSchema,
+    geoS2Schema
   ],
   errorMessage: {
     discriminator: '/type should be one of "identity", "delimiter", "stem", "norm", "ngram", "text", "aql",' +
-      ' "stopwords", "collation", "segmentation", "pipeline", "geojson", "geopoint"'
+      ' "stopwords", "collation", "segmentation", "pipeline", "geojson", "geopoint", "geo_s2"'
   },
   required: ['name', 'features']
 };

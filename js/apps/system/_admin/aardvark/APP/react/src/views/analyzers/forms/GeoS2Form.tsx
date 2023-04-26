@@ -15,6 +15,15 @@ const GeoS2Form = ({ formState, dispatch, disabled }: FormProps<GeoS2State>) => 
       }
     });
   };
+  const updateFormat = (event: ChangeEvent<HTMLSelectElement>) => {
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'properties.format',
+        value: event.target.value
+      }
+    });
+  };
 
   return <Grid>
     <Cell size={'1-1'}>
@@ -26,7 +35,7 @@ const GeoS2Form = ({ formState, dispatch, disabled }: FormProps<GeoS2State>) => 
       </Select>
     </Cell>
     <Cell size={'1-1'}>
-      <Select label={'Format'} value={formState.properties.type || 'shape'} onChange={updateType}
+      <Select label={'Format'} value={formState.properties.format || 'latLngDouble'} onChange={updateFormat}
               disabled={disabled}>
         <option value={'latLngDouble'}>latLngDouble</option>
         <option value={'latLngInt'}>latLngInt</option>
