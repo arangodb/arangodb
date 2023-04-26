@@ -76,7 +76,7 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
   }
 
   if (extendedNames && !name.empty()) {
-    unsigned char c = static_cast<unsigned char>(name[0]);
+    char c = name.front();
     // a database name must not start with a digit, because then it can be
     // confused with numeric database ids
     bool ok = (c < '0' || c > '9');
@@ -92,7 +92,7 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
     ok &= (c != ' ');
 
     // trailing spaces are not allowed
-    c = static_cast<unsigned char>(name.back());
+    c = name.back();
     ok &= (c != ' ');
 
     // new naming convention allows Unicode characters. we need to
@@ -142,20 +142,6 @@ bool CollectionNameValidator::isAllowedName(bool allowSystem,
       // non visible characters below ASCII code 32 (control characters) not
       // allowed, including '\0'
       ok &= (c >= 32U);
-
-      if (length == 0) {
-        // a collection name must not start with a digit, because then it can be
-        // confused with numeric collection ids
-        ok &= (c < '0' || c > '9');
-
-        // a collection name must not start with an underscore unless it is the
-        // system collection
-        ok &= (c != '_' || allowSystem);
-
-        // finally, a collection name must not start with a dot, because this is
-        // used for hidden agency entries
-        ok &= (c != '.');
-      }
     } else {
       if (length == 0) {
         ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
@@ -171,12 +157,34 @@ bool CollectionNameValidator::isAllowedName(bool allowSystem,
     }
   }
 
-  if (extendedNames &&
-      !velocypack::Utf8Helper::isValidUtf8(
-          reinterpret_cast<std::uint8_t const*>(name.data()), name.size())) {
+  if (extendedNames && !name.empty()) {
+    char c = name.front();
+    // a collection name must not start with a digit, because then it can be
+    // confused with numeric collection ids
+    bool ok = (c < '0' || c > '9');
+    // a collection name must not start with an underscore unless it is a system
+    // collection (which is not created via any checked API)
+    ok &= (c != '_' || allowSystem);
+
+    // a collection name must not start with a dot, because this is used for
+    // hidden agency entries
+    ok &= (c != '.');
+
+    // leading spaces are not allowed
+    ok &= (c != ' ');
+
+    // trailing spaces are not allowed
+    c = name.back();
+    ok &= (c != ' ');
+
     // new naming convention allows Unicode characters. we need to
     // make sure everything is valid UTF-8 now.
-    return false;
+    ok &= velocypack::Utf8Helper::isValidUtf8(
+        reinterpret_cast<std::uint8_t const*>(name.data()), name.size());
+
+    if (!ok) {
+      return false;
+    }
   }
 
   // collection names must be within the expected length limits
@@ -216,20 +224,6 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
       // non visible characters below ASCII code 32 (control characters) not
       // allowed, including '\0'
       ok &= (c >= 32U);
-
-      if (length == 0) {
-        // a view name must not start with a digit, because then it can be
-        // confused with numeric view ids
-        ok &= (c < '0' || c > '9');
-
-        // a view name must not start with an underscore (unless it is a system
-        // view)
-        ok &= (c != '_' || allowSystem);
-
-        // finally, a view name must not start with a dot, because this is used
-        // for hidden agency entries
-        ok &= (c != '.');
-      }
     } else {
       if (length == 0) {
         ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
@@ -245,12 +239,34 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
     }
   }
 
-  if (extendedNames &&
-      !velocypack::Utf8Helper::isValidUtf8(
-          reinterpret_cast<std::uint8_t const*>(name.data()), name.size())) {
+  if (extendedNames && !name.empty()) {
+    char c = name.front();
+    // a view name must not start with a digit, because then it can be
+    // confused with numeric collection ids
+    bool ok = (c < '0' || c > '9');
+    // a view name must not start with an underscore unless it is a system
+    // view (which is not created via any checked API)
+    ok &= (c != '_' || allowSystem);
+
+    // a view name must not start with a dot, because this is used for
+    // hidden agency entries
+    ok &= (c != '.');
+
+    // leading spaces are not allowed
+    ok &= (c != ' ');
+
+    // trailing spaces are not allowed
+    c = name.back();
+    ok &= (c != ' ');
+
     // new naming convention allows Unicode characters. we need to
     // make sure everything is valid UTF-8 now.
-    return false;
+    ok &= velocypack::Utf8Helper::isValidUtf8(
+        reinterpret_cast<std::uint8_t const*>(name.data()), name.size());
+
+    if (!ok) {
+      return false;
+    }
   }
 
   // view names must be within the expected length limits
@@ -288,12 +304,6 @@ bool IndexNameValidator::isAllowedName(bool extendedNames,
       // non visible characters below ASCII code 32 (control characters) not
       // allowed, including '\0'
       ok &= (c >= 32U);
-
-      if (length == 0) {
-        // an index name must not start with a digit, because then it can be
-        // confused with numeric index ids
-        ok &= (c < '0' || c > '9');
-      }
     } else {
       if (length == 0) {
         ok &= (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
@@ -308,12 +318,27 @@ bool IndexNameValidator::isAllowedName(bool extendedNames,
     }
   }
 
-  if (extendedNames &&
-      !velocypack::Utf8Helper::isValidUtf8(
-          reinterpret_cast<std::uint8_t const*>(name.data()), name.size())) {
+  if (extendedNames && !name.empty()) {
+    char c = name.front();
+    // an index name must not start with a digit, because then it can be
+    // confused with numeric collection ids
+    bool ok = (c < '0' || c > '9');
+
+    // leading spaces are not allowed
+    ok &= (c != ' ');
+
+    // trailing spaces are not allowed
+    c = name.back();
+    ok &= (c != ' ');
+
     // new naming convention allows Unicode characters. we need to
     // make sure everything is valid UTF-8 now.
-    return false;
+    ok &= velocypack::Utf8Helper::isValidUtf8(
+        reinterpret_cast<std::uint8_t const*>(name.data()), name.size());
+
+    if (!ok) {
+      return false;
+    }
   }
 
   // index names must be within the expected length limits
