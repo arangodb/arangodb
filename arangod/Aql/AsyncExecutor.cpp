@@ -130,13 +130,26 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
             // isAsync => guard.owns_lock()
             TRI_ASSERT(!isAsync || guard.owns_lock());
             if (isAsync) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+              bool old = true;
+              TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, false));
+              TRI_ASSERT(!_isBlockInUse);
+#endif
               guard.unlock();
             }
             std::tie(state, skip, block) = _dependencies[0]->execute(stack);
             if (isAsync) {
+              TRI_ASSERT(!guard.owns_lock());
+              TRI_ASSERT(guard.mutex() != nullptr);
               guard.lock();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+              bool old = false;
+              TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
+              TRI_ASSERT(_isBlockInUse);
+#endif
             }
           }
+
           _returnState = state;
           _returnSkip = std::move(skip);
           _returnBlock = std::move(block);
@@ -152,6 +165,8 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
 #endif
         } catch (...) {
           if (isAsync) {
+            TRI_ASSERT(!guard.owns_lock());
+            TRI_ASSERT(guard.mutex() != nullptr);
             guard.lock();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
             bool old = false;
