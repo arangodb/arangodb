@@ -127,9 +127,6 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
     return _localPShardIDs_hash.find(shardIndex) != _localPShardIDs_hash.end();
   }
 
-  std::vector<ShardID> const& edgeCollectionRestrictions(
-      ShardID const& shard) const;
-
   // convert an arangodb document id to a pregel id
   VertexID documentIdToPregel(std::string_view documentID) const;
 

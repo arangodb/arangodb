@@ -84,15 +84,6 @@ void WorkerConfig::updateConfig(worker::message::CreateWorker const& params) {
   _edgeCollectionRestrictions = params.edgeCollectionRestrictions;
 }
 
-std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(
-    ShardID const& shard) const {
-  auto it = _edgeCollectionRestrictions.find(shard);
-  if (it != _edgeCollectionRestrictions.end()) {
-    return (*it).second;
-  }
-  return ::emptyEdgeCollectionRestrictions;
-}
-
 VertexID WorkerConfig::documentIdToPregel(std::string_view documentID) const {
   size_t pos = documentID.find('/');
   if (pos == std::string::npos) {
