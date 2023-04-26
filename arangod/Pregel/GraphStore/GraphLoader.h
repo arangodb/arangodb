@@ -80,8 +80,6 @@ struct GraphLoader : GraphLoaderBase<V, E> {
                  traverser::EdgeCollectionInfo& info) -> void;
 
   auto requestVertexIds(uint64_t numVertices) -> VertexIdRange;
-  auto computeLoadableVertexShards()
-      -> std::shared_ptr<std::vector<LoadableVertexShard>>;
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   ResourceMonitor resourceMonitor;
   std::shared_ptr<WorkerConfig const> config;
