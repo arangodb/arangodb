@@ -130,7 +130,7 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
             // isAsync => guard.owns_lock()
             TRI_ASSERT(!isAsync || guard.owns_lock());
             if (isAsync) {
-              guard.release();
+              guard.unlock();
             }
             std::tie(state, skip, block) = _dependencies[0]->execute(stack);
             if (isAsync) {
