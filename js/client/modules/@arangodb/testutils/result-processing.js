@@ -265,12 +265,30 @@ function saveToJunitXML(options, results) {
 
     return xml;
   }
+
   let xmlState = {
     xml: undefined,
     xmlName: '',
     testRunName: '',
     seenTestCases: false,
   };
+
+  if (results.hasOwnProperty('crashreport')) {
+    results['crash'] = {
+      crash_report: {
+        status: false,
+        failed: 1,
+        all: {
+          status: false,
+          failed: 1,
+          message: ((results.crashed)? "SUT crashed: \n": "SUT was aborted: \n") +results.crashreport
+        }
+      },
+      staus: false,
+      failed: 1,
+    };
+  }
+
   let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient)? 'EE_' : 'CE_';
   iterateTestResults(options, results, xmlState, {
     testRun: function(options, state, testRun, testRunName) {state.testRunName = testRunName;},
