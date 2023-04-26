@@ -123,15 +123,14 @@ struct ShardStatistics {
 namespace {
 
 struct CreateCollectionReport {
-
-  explicit CreateCollectionReport(size_t expected) : _nrExpected(expected){}
+  explicit CreateCollectionReport(size_t expected) : _nrExpected(expected) {}
 
   Result dbServerResult;
   bool isCleaned{false};
 
   bool allReported() const noexcept {
-    // == is expected, however if we somehow collect too many reports we do not want this
-    // to block
+    // == is expected, however if we somehow collect too many reports we do not
+    // want this to block
     TRI_ASSERT(_reports.size() <= _nrExpected);
     return _reports.size() >= _nrExpected;
   }
@@ -142,19 +141,22 @@ struct CreateCollectionReport {
   bool hasFailed(std::string const& collectionId) const noexcept {
     auto const& it = _reports.find(collectionId);
 
-    return it != _reports.end() && it->second == ClusterCollectionCreationState::FAILED;
+    return it != _reports.end() &&
+           it->second == ClusterCollectionCreationState::FAILED;
   }
 
-  void setReport(std::string const& collectionId, ClusterCollectionCreationState state) {
-    TRI_ASSERT(!hasReported(collectionId)) << "We reported twice for collection: " << collectionId;
+  void setReport(std::string const& collectionId,
+                 ClusterCollectionCreationState state) {
+    TRI_ASSERT(!hasReported(collectionId))
+        << "We reported twice for collection: " << collectionId;
     _reports.emplace(collectionId, state);
   }
 
  private:
   size_t _nrExpected;
-  // This requires specific access patterns, so let us only modify it with getter/setter
+  // This requires specific access patterns, so let us only modify it with
+  // getter/setter
   std::unordered_map<std::string, ClusterCollectionCreationState> _reports;
-
 };
 
 std::string const kMetricsServerId = "Plan/Metrics/ServerId";
@@ -3339,7 +3341,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // In order to protect against races and Use-after free
       // we disable all callbacks by setting isCleaned to true
       // furthermore in the callback created later we need to
-      // make sure all infromation is copied and not referenced
+      // make sure all information is copied and not referenced
       report->getLockedGuard()->isCleaned = true;
       for (auto& cb : agencyCallbacks) {
         _agencyCallbackRegistry->unregisterCallback(cb);
@@ -3377,7 +3379,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       TRI_ASSERT(basics::VelocyPackHelper::getBooleanValue(
           info.json, StaticStrings::IsSmart, false));
 #endif
-      report->getLockedGuard()->setReport(info.collectionID, ClusterCollectionCreationState::DONE);
+      report->getLockedGuard()->setReport(info.collectionID,
+                                          ClusterCollectionCreationState::DONE);
     }
 
     std::map<ShardID, std::vector<ServerID>> shardServers;
@@ -3393,27 +3396,35 @@ Result ClusterInfo::createCollectionsCoordinator(
       shardServers.try_emplace(std::move(shardID), std::move(serverIds));
     }
 
-    // Counts the elements of result in nrDone and checks that they match
-    // shardServers. Also checks that result matches info. Errors are stored in
-    // the database via dbServerResult, in errMsg and in info.state.
-    //
     // The AgencyCallback will copy the closure and take responsibility of it.
     // this here is ok as ClusterInfo is not destroyed
     // We need to copy every variable here, otherwise the callback may still
     // be working, while the main thread is completed and frees the structures.
+    // This closure checks, if all shards for this collection are created on a
+    // leader, and then add an entry of "DONE" to the report. In case
+    // waitForReplication is set to true, it will wait until all followers are
+    // in sync, before writing the "DONE".
+    // If one of the shards reports any kind of error, this reporting will
+    // instead report FAILED, and extract the error message. The main thread
+    // logic will wait until either one DONE entry per collection is written or
+    // any ERROR entry is write. Everything that is required to be synchronized
+    // is part of the report datastructure.
 
-    auto closure = [report, cid = info.collectionID, name = info.name, numberOfShards = info.numberOfShards, waitForReplication = info.waitForReplication, shardServers, this](VPackSlice result) {
-      // We do a short-cut to complete the callback, if the operation is completed
-      // (success or abort) or this collection has already reported.
+    auto closure = [report, cid = info.collectionID, name = info.name,
+                    numberOfShards = info.numberOfShards,
+                    waitForReplication = info.waitForReplication,
+                    shardServers](VPackSlice result) {
+      // We do a short-cut to complete the callback, if the operation is
+      // completed (success or abort) or this collection has already reported.
       if (report->doUnderLock(
               [&cid](CreateCollectionReport const& report) -> bool {
                 if (report.isCleaned) {
                   return true;
                 }
-                  // All leaders have reported either good or bad
-                  // We might be called by followers if they get in sync fast
-                  // enough In this IF we are in the followers case, we can
-                  // safely ignore
+                // All leaders have reported either good or bad
+                // We might be called by followers if they get in sync fast
+                // enough In this IF we are in the followers case, we can
+                // safely ignore
                 return report.hasReported(cid);
               })) {
         return true;
@@ -3447,43 +3458,27 @@ Result ClusterInfo::createCollectionsCoordinator(
             std::vector<ServerID> plannedServers;
             // copy all servers which are in p from shardServers to
             // plannedServers
-            {
-              READ_LOCKER(readLocker, _planProt.lock);
-              auto it = shardServers.find(p.key.copyString());
-              if (it != shardServers.end()) {
-                plannedServers = (*it).second;
-              } else {
-                LOG_TOPIC("9ed54", ERR, Logger::CLUSTER)
-                    << "Did not find shard in _shardServers: "
-                    << p.key.copyString()
-                    << ". Maybe the collection is already dropped.";
-                report->doUnderLock([&p, &cid](CreateCollectionReport& report) {
-                  report.dbServerResult = Result{
-                      TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
-                      "Error in creation of collection: " + p.key.copyString() +
-                          ". Collection already dropped. " + __FILE__ + ":" +
-                          std::to_string(__LINE__)};
-                  report.setReport(cid, ClusterCollectionCreationState::FAILED);
-                });
 
-                return true;
-              }
+            auto it = shardServers.find(p.key.copyString());
+            if (it != shardServers.end()) {
+              plannedServers = (*it).second;
+            } else {
+              LOG_TOPIC("9ed54", ERR, Logger::CLUSTER)
+                  << "Did not find shard in _shardServers: "
+                  << p.key.copyString()
+                  << ". Maybe the collection is already dropped.";
+              report->doUnderLock([&p, &cid](CreateCollectionReport& report) {
+                report.dbServerResult = Result{
+                    TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
+                    "Error in creation of collection: " + p.key.copyString() +
+                        ". Collection already dropped. " + __FILE__ + ":" +
+                        std::to_string(__LINE__)};
+                report.setReport(cid, ClusterCollectionCreationState::FAILED);
+              });
+
+              return true;
             }
-            if (plannedServers.empty()) {
-              READ_LOCKER(readLocker, _planProt.lock);
-              LOG_TOPIC("a0a76", DEBUG, Logger::CLUSTER)
-                  << "This should never have happened, Plan empty. Dumping "
-                     "_shards in Plan:";
-              for (auto const& [shard, servers] : _shards) {
-                LOG_TOPIC("60c7d", DEBUG, Logger::CLUSTER)
-                    << "Shard: " << shard;
-                for (auto const& q : *(servers)) {
-                  LOG_TOPIC("c7363", DEBUG, Logger::CLUSTER)
-                      << "  Server: " << q;
-                }
-              }
-              TRI_ASSERT(false);
-            }
+            TRI_ASSERT(!plannedServers.empty());
             std::vector<ServerID> currentServers;
             VPackSlice servers = p.value.get("servers");
             if (!servers.isArray()) {
@@ -3499,8 +3494,8 @@ Result ClusterInfo::createCollectionsCoordinator(
                                                     currentServers)) {
               TRI_ASSERT(!name.empty());
               LOG_TOPIC("16623", DEBUG, Logger::CLUSTER)
-                  << "Still waiting for all servers to ACK creation of "
-                  << name << ". Planned: " << plannedServers
+                  << "Still waiting for all servers to ACK creation of " << name
+                  << ". Planned: " << plannedServers
                   << ", Current: " << currentServers;
               return true;
             }
@@ -3509,10 +3504,10 @@ Result ClusterInfo::createCollectionsCoordinator(
         if (!tmpError.empty()) {
           report->doUnderLock(
               [&tmpError, &cid](CreateCollectionReport& report) {
-                report.dbServerResult = Result{
-                    TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
-                    "Error in creation of collection :" + tmpError + " " +
-                        __FILE__ + std::to_string(__LINE__)};
+                report.dbServerResult =
+                    Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
+                           "Error in creation of collection :" + tmpError +
+                               " " + __FILE__ + std::to_string(__LINE__)};
                 report.setReport(cid, ClusterCollectionCreationState::FAILED);
               });
 
@@ -3528,10 +3523,8 @@ Result ClusterInfo::createCollectionsCoordinator(
     };  // closure
 
     // ATTENTION: The following callback calls the above closure in a
-    // different thread. Nevertheless, the closure accesses some of our
-    // local variables. Therefore, we have to protect all accesses to them
-    // by a mutex. We use the mutex of the condition variable in the
-    // AgencyCallback for this.
+    // different thread. Nevertheless, the closure accesses the guarded
+    // report structure. Hence we use a shared ptr to it.
 
     auto agencyCallback = std::make_shared<AgencyCallback>(
         _server,
@@ -3756,10 +3749,7 @@ Result ClusterInfo::createCollectionsCoordinator(
 
     AgencyWriteTransaction transaction(opers, precs);
 
-    {  // we hold this mutex from now on until we have updated our cache
-      // using loadPlan, this is necessary for the callback closure to
-      // see the new planned state for this collection. Otherwise it cannot
-      // recognize completion of the create collection operation properly:
+    {
       auto res = ac.sendTransactionWithFailover(transaction);
       // Only if not precondition failed
       if (!res.successful()) {
@@ -3843,7 +3833,6 @@ Result ClusterInfo::createCollectionsCoordinator(
       }
     }
 
-
     if (tmpRes.fail()) {
       // We do not need to lock all condition variables
       // we are safe by using cacheMutex
@@ -3853,14 +3842,15 @@ Result ClusterInfo::createCollectionsCoordinator(
       for (auto const& info : infos) {
         // Report first error.
         // On timeout report it on all not finished ones.
-        report->doUnderLock([&info, &databaseName, &tmpRes](CreateCollectionReport const& report) {
+        report->doUnderLock([&info, &databaseName,
+                             &tmpRes](CreateCollectionReport const& report) {
           if (report.hasFailed(info.collectionID) ||
               (tmpRes.is(TRI_ERROR_CLUSTER_TIMEOUT) &&
                !report.hasReported(info.collectionID))) {
-            events::CreateCollection(databaseName, info.name, tmpRes.errorNumber());
+            events::CreateCollection(databaseName, info.name,
+                                     tmpRes.errorNumber());
           }
         });
-
       }
       LOG_TOPIC("98765", DEBUG, Logger::CLUSTER)
           << "Failed createCollectionsCoordinator for " << infos.size()
@@ -3887,8 +3877,6 @@ Result ClusterInfo::createCollectionsCoordinator(
         }
       }
 
-      // We do not need to lock all condition variables
-      // we are save by cacheMutex
       cbGuard.fire();
       // Now we need to remove the AttrIsBuilding flag and the creator in the
       // Agency
