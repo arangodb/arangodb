@@ -112,10 +112,11 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
 Result DatabaseNameValidator::validateName(bool allowSystem, bool extendedNames,
                                            std::string_view name) {
   if (!isAllowedName(allowSystem, extendedNames, name)) {
-    return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
+            "illegal name: database name invalid"};
   }
   if (extendedNames && name != normalizeUtf8ToNFC(name)) {
-    return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID,
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
             "database name is not properly UTF-8 NFC-normalized"};
   }
 
@@ -186,7 +187,8 @@ Result CollectionNameValidator::validateName(bool allowSystem,
                                              bool extendedNames,
                                              std::string_view name) {
   if (!isAllowedName(allowSystem, extendedNames, name)) {
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
+            "illegal name: collection name invalid"};
   }
   if (extendedNames && name != normalizeUtf8ToNFC(name)) {
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
@@ -258,7 +260,7 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
 Result ViewNameValidator::validateName(bool allowSystem, bool extendedNames,
                                        std::string_view name) {
   if (!isAllowedName(allowSystem, extendedNames, name)) {
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME, "illegal name: view name invalid"};
   }
   if (extendedNames && name != normalizeUtf8ToNFC(name)) {
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
@@ -321,7 +323,7 @@ bool IndexNameValidator::isAllowedName(bool extendedNames,
 Result IndexNameValidator::validateName(bool extendedNames,
                                         std::string_view name) {
   if (!isAllowedName(extendedNames, name)) {
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME, "illegal name: index name invalid"};
   }
   if (extendedNames && name != normalizeUtf8ToNFC(name)) {
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
@@ -387,7 +389,7 @@ bool AnalyzerNameValidator::isAllowedName(bool extendedNames,
 Result AnalyzerNameValidator::validateName(bool extendedNames,
                                            std::string_view name) {
   if (!isAllowedName(extendedNames, name)) {
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME, "analyzer name invalid"};
   }
   if (extendedNames && name != normalizeUtf8ToNFC(name)) {
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
