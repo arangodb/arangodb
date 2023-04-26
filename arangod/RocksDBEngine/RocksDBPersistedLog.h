@@ -264,7 +264,7 @@ auto inspect(Inspector& f, RocksDBReplicatedStateInfo& x) {
       f.field("state", x.state));
 }
 
-struct RocksDBLogStorageMethods final
+struct RocksDBLogStorageMethods
     : replication2::replicated_state::IStorageEngineMethods {
   explicit RocksDBLogStorageMethods(
       uint64_t objectId, std::uint64_t vocbaseId, replication2::LogId logId,

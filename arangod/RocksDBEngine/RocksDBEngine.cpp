@@ -131,6 +131,8 @@
 #include <limits>
 #include <utility>
 
+#include <immer/flex_vector.hpp>
+#include <immer/flex_vector_transient.hpp>
 // we will not use the multithreaded index creation that uses rocksdb's sst
 // file ingestion until rocksdb external file ingestion is fixed to have
 // correct sequence numbers for the files without gaps
@@ -3111,6 +3113,70 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   return vocbase;
 }
 
+namespace {
+
+struct InMemoryLogStorageMethods : RocksDBLogStorageMethods {
+  using RocksDBLogStorageMethods::RocksDBLogStorageMethods;
+
+  auto read(replication2::LogIndex first)
+      -> std::unique_ptr<replication2::PersistedLogIterator> override {
+    struct ContainerIterator : replication2::PersistedLogIterator {
+      explicit ContainerIterator(ContainerType log)
+          : log(std::move(log)), iter(this->log.begin()) {}
+      auto next() -> std::optional<replication2::PersistingLogEntry> override {
+        if (iter == log.end()) {
+          return std::nullopt;
+        }
+
+        auto entry = *iter;
+        ++iter;
+        return entry;
+      }
+
+      ContainerType log;
+      ContainerType::iterator iter;
+    };
+
+    std::unique_lock guard(mutex);
+    ContainerType range =
+        log.drop(first.saturatedDecrement(firstIndex.value).value);
+    return std::make_unique<ContainerIterator>(std::move(range));
+  }
+  auto insert(std::unique_ptr<replication2::PersistedLogIterator> ptr,
+              const WriteOptions& writeOptions)
+      -> futures::Future<ResultT<SequenceNumber>> override {
+    std::unique_lock guard(mutex);
+
+    auto transient = log.transient();
+    while (auto e = ptr->next()) {
+      transient.push_back(std::move(*e));
+    }
+    log = transient.persistent();
+    return {ResultT{SequenceNumber{0}}};
+  }
+  auto removeFront(replication2::LogIndex stop,
+                   const WriteOptions& writeOptions)
+      -> futures::Future<ResultT<SequenceNumber>> override {
+    std::unique_lock guard(mutex);
+    log = log.drop(stop.saturatedDecrement(stop.value).value);
+    firstIndex = std::max(firstIndex, stop);
+    return {ResultT{SequenceNumber{0}}};
+  }
+  auto removeBack(replication2::LogIndex start,
+                  const WriteOptions& writeOptions)
+      -> futures::Future<ResultT<SequenceNumber>> override {
+    std::unique_lock guard(mutex);
+    log = log.take(log.size() - (start.value - firstIndex.value));
+    return {ResultT{SequenceNumber{0}}};
+  }
+  using ContainerType = ::immer::flex_vector<replication2::PersistingLogEntry>;
+  std::mutex mutex;
+  replication2::LogIndex firstIndex{1};
+  ContainerType log;
+};
+
+}  // namespace
+
 void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
   auto* cfDefs = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Definitions);
@@ -3136,7 +3202,8 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
     }
 
     auto info = velocypack::deserialize<RocksDBReplicatedStateInfo>(slice);
-    auto methods = std::make_unique<RocksDBLogStorageMethods>(
+
+    auto methods = std::make_unique<InMemoryLogStorageMethods>(
         info.objectId, vocbase.id(), info.stateId, _logPersistor, _db,
         RocksDBColumnFamilyManager::get(
             RocksDBColumnFamilyManager::Family::Definitions),
@@ -3944,7 +4011,7 @@ auto RocksDBEngine::createReplicatedState(
     -> ResultT<std::unique_ptr<
         replication2::replicated_state::IStorageEngineMethods>> {
   auto objectId = TRI_NewTickServer();
-  auto methods = std::make_unique<RocksDBLogStorageMethods>(
+  auto methods = std::make_unique<InMemoryLogStorageMethods>(
       objectId, vocbase.id(), id, _logPersistor, _db,
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Definitions),
