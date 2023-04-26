@@ -159,19 +159,21 @@ auto GraphLoader<V, E>::computeLoadableVertexShards()
 
 template<typename V, typename E>
 auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
-  auto loadableVertexShards = computeLoadableVertexShards();
-  LOG_PREGEL("ff00f", DEBUG) << "vertex shards to be loaded: "
-                             << inspection::json(loadableVertexShards);
+  LOG_PREGEL("ff00f", DEBUG)
+      << "GraphSerdeConfig: " << inspection::json(config->graphSerdeConfig());
 
   auto loadableShardIdx = std::make_shared<std::atomic<size_t>>(0);
   auto futures = std::vector<futures::Future<Magazine<V, E>>>{};
   auto self = this->shared_from_this();
+  auto server = ServerState::instance()->getId();
 
   for (auto futureN = size_t{0}; futureN < config->parallelism(); ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
         RequestLane::INTERNAL_LOW,
-        [this, self, futureN, loadableShardIdx,
-         loadableVertexShards]() -> Magazine<V, E> {
+        [this, self, futureN, loadableShardIdx, server]() -> Magazine<V, E> {
+          auto const& serverMap =
+              config->graphSerdeConfig()
+                  .responsibleServerMap.responsibleServerMap;
           auto result = Magazine<V, E>{};
 
           LOG_PREGEL("8633a", WARN)
@@ -179,13 +181,23 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
 
           while (true) {
             auto myLoadableVertexShardIdx = loadableShardIdx->fetch_add(1);
-            if (myLoadableVertexShardIdx >= loadableVertexShards->size()) {
+            if (myLoadableVertexShardIdx >=
+                config->graphSerdeConfig().loadableVertexShards.size()) {
               break;
             }
 
             try {
               auto const& loadableVertexShard =
-                  loadableVertexShards->at(myLoadableVertexShardIdx);
+                  config->graphSerdeConfig().loadableVertexShards.at(
+                      myLoadableVertexShardIdx);
+              if (serverMap.at(myLoadableVertexShardIdx) != server) {
+                LOG_PREGEL("8643a", DEBUG) << fmt::format(
+                    "vertex loader number {} not responsible for vertex shard "
+                    "{}.",
+                    futureN, inspection::json(loadableVertexShard));
+                continue;
+              }
+
               result.emplace(loadVertices(loadableVertexShard));
             } catch (basics::Exception const& ex) {
               LOG_PREGEL("8682a", WARN)

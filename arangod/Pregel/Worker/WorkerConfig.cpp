@@ -49,6 +49,7 @@ void WorkerConfig::updateConfig(worker::message::CreateWorker const& params) {
   _globalShardIDs = params.allShards;
 
   _parallelism = params.parallelism;
+  _graphSerdeConfig = params.graphSerdeConfig;
 
   // list of all shards, equal on all workers. Used to avoid storing strings of
   // shard names

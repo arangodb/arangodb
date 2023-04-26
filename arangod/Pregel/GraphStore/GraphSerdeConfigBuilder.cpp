@@ -52,4 +52,21 @@ namespace arangodb::pregel {
   }
 }
 
+auto buildGraphSerdeConfig(TRI_vocbase_t& vocbase,
+                           GraphByCollections const& graphByCollections)
+    -> errors::ErrorT<Result, GraphSerdeConfig> {
+  auto configBuilder =
+      GraphSerdeConfigBuilderBase::construct(vocbase, graphByCollections);
+
+  ADB_PROD_ASSERT(configBuilder != nullptr);
+
+  auto loadableVertexShards = configBuilder->loadableVertexShards();
+  auto responsibleServerMap =
+      configBuilder->responsibleServerMap(loadableVertexShards);
+
+  return errors::ErrorT<Result, GraphSerdeConfig>::ok(
+      GraphSerdeConfig{.loadableVertexShards = loadableVertexShards,
+                       .responsibleServerMap = responsibleServerMap});
+}
+
 }  // namespace arangodb::pregel

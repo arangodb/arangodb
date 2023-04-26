@@ -49,8 +49,10 @@ struct GraphSerdeConfigBuilderBase {
       LoadableVertexShards const& loadableVertexShards) const
       -> ResponsibleServerMap = 0;
 
-  [[nodiscard]] virtual auto buildConfig() -> GraphSerdeConfig const;
-
+  /*
+  [[nodiscard]] virtual auto buildConfig()
+      -> ErrorT<Result, GraphSerdeConfig> const;
+*/
   [[nodiscard]] static auto construct(
       TRI_vocbase_t& vocbase, GraphByCollections const& graphByCollections)
       -> std::unique_ptr<GraphSerdeConfigBuilderBase>;
@@ -58,4 +60,7 @@ struct GraphSerdeConfigBuilderBase {
   virtual ~GraphSerdeConfigBuilderBase() = default;
 };
 
+auto buildGraphSerdeConfig(TRI_vocbase_t& vocbase,
+                           GraphByCollections const& graphByCollections)
+    -> errors::ErrorT<Result, GraphSerdeConfig>;
 }  // namespace arangodb::pregel
