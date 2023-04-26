@@ -49,12 +49,13 @@ VertexProcessor<V, E, M>::VertexProcessor(
     localMessageCache = std::make_shared<CombiningInCache<M>>(
         std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
     outCache = std::make_shared<CombiningOutCache<M>>(
-        workerConfig, messageFormat.get(), messageCombiner.get());
+        workerConfig, workerConfig->localPregelShardIDs(), messageFormat.get(),
+        messageCombiner.get());
   } else {
     localMessageCache = std::make_shared<ArrayInCache<M>>(
         std::set<PregelShard>{}, messageFormat.get());
-    outCache =
-        std::make_shared<ArrayOutCache<M>>(workerConfig, messageFormat.get());
+    outCache = std::make_shared<ArrayOutCache<M>>(
+        workerConfig, workerConfig->localPregelShardIDs(), messageFormat.get());
   }
 
   outCache->setBatchSize(messageBatchSize);
