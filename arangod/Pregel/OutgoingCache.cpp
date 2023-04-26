@@ -142,7 +142,7 @@ void ArrayOutCache<M>::flushMessages() {
     buffer.append(serialized.get().slice().begin(),
                   serialized.get().slice().byteSize());
     responses.emplace_back(network::sendRequest(
-        pool, "shard:" + this->_config->globalShardID(shard),
+        pool, "shard:" + this->_config->graphSerdeConfig().shardID(shard),
         fuerte::RestVerb::Post, this->_baseUrl + Utils::messagesPath,
         std::move(buffer), reqOpts));
 
@@ -238,7 +238,7 @@ void CombiningOutCache<M>::flushMessages() {
     buffer.append(serialized.get().slice().begin(),
                   serialized.get().slice().byteSize());
     responses.emplace_back(network::sendRequest(
-        pool, "shard:" + this->_config->globalShardID(shard),
+        pool, "shard:" + this->_config->graphSerdeConfig().shardID(shard),
         fuerte::RestVerb::Post, this->_baseUrl + Utils::messagesPath,
         std::move(buffer), reqOpts));
 
@@ -264,8 +264,8 @@ template<typename M>
 void ArrayOutActorCache<M>::appendMessage(PregelShard shard,
                                           std::string_view const& key,
                                           M const& data) {
-  _sendCountPerActor[_responsibleActorPerShard[this->_config->globalShardID(
-      shard)]]++;
+  _sendCountPerActor[_responsibleActorPerShard[this->_config->graphSerdeConfig()
+                                                   .shardID(shard)]]++;
   if (this->isLocalShard(shard)) {
     this->_localCache->storeMessageNoLock(shard, key, data);
     this->_sendCount++;
@@ -317,7 +317,9 @@ void ArrayOutActorCache<M>::flushMessages() {
         .gss = gss,
         .shard = shard,
         .messages = messages};
-    auto actor = _responsibleActorPerShard[this->_config->globalShardID(shard)];
+    auto actor =
+        _responsibleActorPerShard[this->_config->graphSerdeConfig().shardID(
+            shard)];
     _dispatch(actor, pregelMessage);
 
     this->_sendCount += shardMessageCount;
@@ -343,8 +345,9 @@ void CombiningOutActorCache<M>::appendMessage(PregelShard shard,
                                               std::string_view const& key,
                                               M const& data) {
   if (this->isLocalShard(shard)) {
-    _sendCountPerActor[_responsibleActorPerShard[this->_config->globalShardID(
-        shard)]]++;
+    _sendCountPerActor
+        [_responsibleActorPerShard[this->_config->graphSerdeConfig().shardID(
+            shard)]]++;
     this->_localCache->storeMessageNoLock(shard, key, data);
     this->_sendCount++;
   } else {
@@ -354,8 +357,9 @@ void CombiningOutActorCache<M>::appendMessage(PregelShard shard,
       auto& ref = (*it).second;   // will be modified by combine(...)
       _combiner->combine(ref, data);
     } else {  // first message for this vertex
-      _sendCountPerActor[_responsibleActorPerShard[this->_config->globalShardID(
-          shard)]]++;
+      _sendCountPerActor
+          [_responsibleActorPerShard[this->_config->graphSerdeConfig().shardID(
+              shard)]]++;
       vertexMap.try_emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
@@ -399,7 +403,9 @@ void CombiningOutActorCache<M>::flushMessages() {
         .gss = gss,
         .shard = shard,
         .messages = messagesToVPack(vertexMessageMap)};
-    auto actor = _responsibleActorPerShard[this->_config->globalShardID(shard)];
+    auto actor =
+        _responsibleActorPerShard[this->_config->graphSerdeConfig().shardID(
+            shard)];
     _dispatch(actor, pregelMessage);
 
     this->_sendCount += vertexMessageMap.size();
