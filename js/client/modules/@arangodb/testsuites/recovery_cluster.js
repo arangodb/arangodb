@@ -106,7 +106,7 @@ function runArangodRecovery (params, useEncryption) {
     }
 
     params.options.disableMonitor = true;
-    params.options =  ensureServers(params.options);
+    params.options = ensureServers(params.options);
     let args = {};
     
     // enable development debugging if extremeVerbosity is set
