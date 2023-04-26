@@ -23,11 +23,12 @@
 
 #include "Pregel/GraphStore/GraphSerdeConfigBuilderSingleServer.h"
 
+#include "Containers/Enumerate.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb::pregel {
 
-GraphSerdeConfigBuilderSingleServer::GraphLoadingSpecCalculatorSingleServer(
+GraphSerdeConfigBuilderSingleServer::GraphSerdeConfigBuilderSingleServer(
     TRI_vocbase_t& vocbase, GraphByCollections const& graphByCollections)
     : vocbase(vocbase), graphByCollections(graphByCollections) {}
 

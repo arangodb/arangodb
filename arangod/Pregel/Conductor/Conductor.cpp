@@ -473,6 +473,7 @@ ErrorCode Conductor::_initializeWorkers() {
         .userParameters = _specifications.userParameters,
         .coordinatorId = coordinatorId,
         .parallelism = _specifications.parallelism,
+        .graphSerdeConfig = _specifications.graphSerdeConfig,
         .edgeCollectionRestrictions =
             _specifications.edgeCollectionRestrictions,
         .vertexShards = vertexShardMap,

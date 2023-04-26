@@ -29,6 +29,7 @@
 #include "Inspection/Types.h"
 #include "Inspection/Format.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/GraphStore/GraphSerdeConfig.h"
 #include "velocypack/Builder.h"
 
 namespace arangodb::pregel {
@@ -120,6 +121,7 @@ auto inspect(Inspector& f, TTL& x) {
 struct ExecutionSpecifications {
   ExecutionNumber executionNumber;
   std::string algorithm;
+  GraphSerdeConfig graphSerdeConfig;
   std::vector<CollectionID> vertexCollections;
   std::vector<CollectionID> edgeCollections;
   // maps from vertex collection name to a list of edge collections that this
@@ -146,6 +148,7 @@ auto inspect(Inspector& f, ExecutionSpecifications& x) {
   return f.object(x).fields(
       f.field("executionNumber", x.executionNumber),
       f.field("algorithm", x.algorithm),
+      f.field("graphSerdeConfig", x.graphSerdeConfig),
       f.field("vertexCollections", x.vertexCollections),
       f.field("edgeCollections", x.edgeCollections),
       f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),

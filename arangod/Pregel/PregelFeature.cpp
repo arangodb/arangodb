@@ -53,6 +53,9 @@
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/Conductor/ExecutionStates/DatabaseCollectionLookup.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/GraphStore/GraphSerdeConfig.h"
+#include "Pregel/GraphStore/GraphSerdeConfigBuilder.h"
+#include "Pregel/GraphStore/GraphSourceToGraphByCollectionsResolver.h"
 #include "Pregel/StatusActor.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/ResultActor.h"
@@ -147,7 +150,51 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
     return Result{TRI_ERROR_SHUTTING_DOWN, "pregel system not available"};
   }
 
-  // // extract the collections
+  auto storeSlice = options.userParameters.slice().get("store");
+  auto wantToStoreResults = !storeSlice.isBool() || storeSlice.getBool();
+
+  auto shardKeyAttribute =
+      options.userParameters.slice().hasKey("shardKeyAttribute")
+          ? options.userParameters.slice().get("shardKeyAttribute").copyString()
+          : "vertex";
+
+  auto maxSuperstep = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      options.userParameters.slice(), Utils::maxGSS, 500);
+  // FIXME: This does not make sense, does it?
+  if (options.userParameters.slice().hasKey(Utils::maxNumIterations)) {
+    maxSuperstep = std::numeric_limits<uint64_t>::max();
+  }
+
+  auto parallelismVar = parallelism(options.userParameters.slice());
+  auto ttl = TTL{.duration = std::chrono::seconds(
+                     basics::VelocyPackHelper::getNumericValue(
+                         options.userParameters.slice(), "ttl", 600))};
+
+  auto algorithmName = std::move(options.algorithm);
+  std::transform(algorithmName.begin(), algorithmName.end(),
+                 algorithmName.begin(), ::tolower);
+
+  /* resolve the graph input parameters to a struct that
+   * contains the collection names for vertices and edges
+   * and the positive list of restrictions of vertex collections
+   * to edge collections
+   */
+  auto maybeGraphByCollections = resolveGraphSourceToGraphByCollections(
+      vocbase, options.graphSource, shardKeyAttribute);
+  if (!maybeGraphByCollections.ok()) {
+    return maybeGraphByCollections.error();
+  }
+
+  auto graphByCollections = maybeGraphByCollections.get();
+
+  auto maybeGraphSerdeConfig =
+      buildGraphSerdeConfig(vocbase, graphByCollections);
+  if (!maybeGraphSerdeConfig.ok()) {
+    return maybeGraphByCollections.error();
+  }
+  auto graphSerdeConfig = maybeGraphSerdeConfig.get();
+
+  // extract the collections
   std::vector<std::string> vertexCollections;
   std::vector<std::string> edgeCollections;
   std::unordered_map<std::string, std::vector<std::string>>
@@ -331,37 +378,18 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
     }
   }
 
-  uint64_t maxSuperstep = basics::VelocyPackHelper::getNumericValue(
-      options.userParameters.slice(), Utils::maxGSS, 500);
-  if (options.userParameters.slice().hasKey(Utils::maxNumIterations)) {
-    // set to "infinity"
-    maxSuperstep = std::numeric_limits<uint64_t>::max();
-  }
-  auto storeResults = basics::VelocyPackHelper::getBooleanValue(
-      options.userParameters.slice(), "store", true);
-
-  auto parallelismVar = parallelism(options.userParameters.slice());
-
-  // time-to-live for finished/failed Pregel jobs before garbage collection.
-  // default timeout is 10 minutes for each conductor
-  auto ttl = TTL{.duration = std::chrono::seconds(
-                     basics::VelocyPackHelper::getNumericValue(
-                         options.userParameters.slice(), "ttl", 600))};
-  auto algorithmName = std::move(options.algorithm);
-  std::transform(algorithmName.begin(), algorithmName.end(),
-                 algorithmName.begin(), ::tolower);
-
   auto en = createExecutionNumber();
 
   auto executionSpecifications = ExecutionSpecifications{
       .executionNumber = en,
       .algorithm = std::move(algorithmName),
+      .graphSerdeConfig = std::move(graphSerdeConfig),
       .vertexCollections = std::move(vertexCollections),
       .edgeCollections = std::move(edgeColls),
       .edgeCollectionRestrictions =
           std::move(edgeCollectionRestrictionsPerShard),
       .maxSuperstep = maxSuperstep,
-      .storeResults = storeResults,
+      .storeResults = wantToStoreResults,
       .ttl = ttl,
       .parallelism = parallelismVar,
       .userParameters = std::move(options.userParameters)};

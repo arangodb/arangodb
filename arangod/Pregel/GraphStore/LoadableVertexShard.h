@@ -43,6 +43,13 @@ auto inspect(Inspector& f, LoadableVertexShard& x) {
 }
 
 struct LoadableVertexShards {
+  [[nodiscard]] auto size() const -> size_t {
+    return loadableVertexShards.size();
+  }
+  [[nodiscard]] auto at(size_t pos) const -> LoadableVertexShard const& {
+    return loadableVertexShards.at(pos);
+  }
+
   std::vector<LoadableVertexShard> loadableVertexShards;
 };
 template<typename Inspector>

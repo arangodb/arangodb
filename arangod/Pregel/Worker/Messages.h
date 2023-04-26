@@ -43,6 +43,7 @@ struct CreateWorker {
   VPackBuilder userParameters;
   std::string coordinatorId;
   size_t parallelism;
+  GraphSerdeConfig graphSerdeConfig;
   std::unordered_map<CollectionID, std::vector<ShardID>>
       edgeCollectionRestrictions;
   std::map<CollectionID, std::vector<ShardID>> vertexShards;
@@ -58,6 +59,7 @@ auto inspect(Inspector& f, CreateWorker& x) {
       f.field("userParameters", x.userParameters),
       f.field("coordinatorId", x.coordinatorId),
       f.field("parallelism", x.parallelism),
+      f.field("graphSerdeConfig", x.graphSerdeConfig),
       f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
       f.field("vertexShards", x.vertexShards),
       f.field("edgeShards", x.edgeShards),

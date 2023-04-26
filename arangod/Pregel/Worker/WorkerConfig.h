@@ -35,6 +35,7 @@
 #include "Pregel/DatabaseTypes.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/GraphStore/Graph.h"
+#include "Pregel/GraphStore/GraphSerdeConfig.h"
 
 struct TRI_vocbase_t;
 
@@ -67,6 +68,8 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
 
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
   std::string const& database() const;
+
+  GraphSerdeConfig const& graphSerdeConfig() const { return _graphSerdeConfig; }
 
   // collection shards on this worker
   inline std::map<CollectionID, std::vector<ShardID>> const&
@@ -141,6 +144,8 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
 
   // parallelism. will be updated by config later
   size_t _parallelism = 1;
+
+  GraphSerdeConfig _graphSerdeConfig;
 
   std::vector<ShardID> _globalShardIDs;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
