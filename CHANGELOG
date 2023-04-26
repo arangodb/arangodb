@@ -3,6 +3,10 @@ devel
 
 * Upgraded bundled version of RocksDB to 8.2.
 
+* FE-238: Added auto-login support in core web UI - disabled logout when
+  auto-login is enabled, set sessionStorage "jwtUser" value when login is
+  skipped.
+
 * FE-233: bugfix - fix query spotlight search not working.
 
 * FE-349: bugfix - filter out empty primarySort field in UI.

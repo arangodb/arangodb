@@ -170,8 +170,13 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax({
       type: 'GET',
       url: url,
-      success: function (data) {
+      success: function (data, _status, request) {
         self.activeUser = data.user;
+        var autoLoginEnabled = request.getResponseHeader(
+          "x-arango-graph-auto-login"
+        ) === 'true';
+        arangoHelper.setAutoLoginEnabled(autoLoginEnabled);
+        data.user && arangoHelper.setCurrentJwtUser(data.user);
         callback(false, data.user);
       },
       error: function () {
