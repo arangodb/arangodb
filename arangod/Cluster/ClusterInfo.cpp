@@ -123,9 +123,8 @@ struct ShardStatistics {
 namespace {
 
 struct CreateCollectionReport {
-  std::optional<ErrorCode> dbServerResult{std::nullopt};
+  Result dbServerResult;
   size_t nrDone{0};
-  std::string errMsg{StaticStrings::Empty};
   bool isCleaned{false};
 };
 
@@ -3436,12 +3435,11 @@ Result ClusterInfo::createCollectionsCoordinator(
                     << ". Maybe the collection is already dropped.";
                 report->doUnderLock([&p,
                                      &info](CreateCollectionReport& report) {
-                  report.errMsg =
+                  report.dbServerResult = Result{
+                      TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                       "Error in creation of collection: " + p.key.copyString() +
-                      ". Collection already dropped. " + __FILE__ + ":" +
-                      std::to_string(__LINE__);
-                  report.dbServerResult =
-                      TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+                          ". Collection already dropped. " + __FILE__ + ":" +
+                          std::to_string(__LINE__)};
 
                   TRI_ASSERT(info.state !=
                              ClusterCollectionCreationState::DONE);
@@ -3491,10 +3489,10 @@ Result ClusterInfo::createCollectionsCoordinator(
         if (!tmpError.empty()) {
           report->doUnderLock(
               [&tmpError, &info](CreateCollectionReport& report) {
-                report.errMsg = "Error in creation of collection:" + tmpError +
-                                " " + __FILE__ + std::to_string(__LINE__);
-                report.dbServerResult =
-                    TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+                report.dbServerResult = Result{
+                    TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
+                    "Error in creation of collection :" + tmpError + " " +
+                        __FILE__ + std::to_string(__LINE__)};
                 // We cannot get into bad state after a collection was created
                 TRI_ASSERT(info.state != ClusterCollectionCreationState::DONE);
                 info.state = ClusterCollectionCreationState::FAILED;
@@ -3825,8 +3823,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Get a full agency dump for debugging
       logAgencyDump();
 
-      if (!tmpRes.has_value() || *tmpRes == TRI_ERROR_NO_ERROR) {
-        tmpRes = TRI_ERROR_CLUSTER_TIMEOUT;
+      if (tmpRes.ok()) {
+        tmpRes = Result{TRI_ERROR_CLUSTER_TIMEOUT};
       }
     }
 
@@ -3932,7 +3930,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           << " result: " << res.errorCode();
       return res.asResult();
     }
-    if (tmpRes.has_value() && tmpRes != TRI_ERROR_NO_ERROR) {
+    if (tmpRes.fail()) {
       // We do not need to lock all condition variables
       // we are safe by using cacheMutex
       cbGuard.fire();
@@ -3942,9 +3940,9 @@ Result ClusterInfo::createCollectionsCoordinator(
         // Report first error.
         // On timeout report it on all not finished ones.
         if (info.state == ClusterCollectionCreationState::FAILED ||
-            (tmpRes == TRI_ERROR_CLUSTER_TIMEOUT &&
+            (tmpRes.is(TRI_ERROR_CLUSTER_TIMEOUT) &&
              info.state == ClusterCollectionCreationState::INIT)) {
-          events::CreateCollection(databaseName, info.name, *tmpRes);
+          events::CreateCollection(databaseName, info.name, tmpRes.errorNumber());
         }
       }
       LOG_TOPIC("98765", DEBUG, Logger::CLUSTER)
@@ -3952,9 +3950,8 @@ Result ClusterInfo::createCollectionsCoordinator(
           << " collections in database " << databaseName
           << " isNewDatabase: " << isNewDatabase
           << " first collection name: " << infos[0].name
-          << " result: " << *tmpRes;
-      auto errMsg = report->getLockedGuard()->errMsg;
-      return {*tmpRes, std::move(errMsg)};
+          << " result: " << tmpRes.errorNumber();
+      return tmpRes;
     }
 
     // If we get here we have not tried anything.
