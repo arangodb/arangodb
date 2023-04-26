@@ -3142,6 +3142,7 @@ struct InMemoryLogStorageMethods : RocksDBLogStorageMethods {
         log.drop(first.saturatedDecrement(firstIndex.value).value);
     return std::make_unique<ContainerIterator>(std::move(range));
   }
+
   auto insert(std::unique_ptr<replication2::PersistedLogIterator> ptr,
               const WriteOptions& writeOptions)
       -> futures::Future<ResultT<SequenceNumber>> override {
@@ -3149,9 +3150,13 @@ struct InMemoryLogStorageMethods : RocksDBLogStorageMethods {
 
     auto transient = log.transient();
     while (auto e = ptr->next()) {
+      VPackBuilder builder;
+      e->toVelocyPack(builder);
+      os << builder.toJson() << "\n";
       transient.push_back(std::move(*e));
     }
     log = transient.persistent();
+    os.sync();
     return {ResultT{SequenceNumber{0}}};
   }
   auto removeFront(replication2::LogIndex stop,
@@ -3169,10 +3174,26 @@ struct InMemoryLogStorageMethods : RocksDBLogStorageMethods {
     log = log.take(log.size() - (start.value - firstIndex.value));
     return {ResultT{SequenceNumber{0}}};
   }
+
+  void prepareFile(ArangodServer const& server) {
+    auto path = server.getFeature<DatabasePathFeature>().subdirectoryName(
+        "replicated-logs");
+    auto logFile = basics::FileUtils::buildFilename(
+        path, std::to_string(this->getObjectId()) + ".jsonl");
+    if (auto res = basics::FileUtils::createDirectory(path); !res) {
+      LOG_DEVEL << "FAILED TO CREATE DIRECTORY!";
+    }
+    os.exceptions(std::fstream::badbit | std::fstream::failbit);
+    LOG_DEVEL << "try to open file " << logFile;
+    os.open(logFile, std::fstream::out | std::fstream::in | std::fstream::app);
+    LOG_DEVEL << "open result = " << 0 << " filename = " << logFile;
+  }
+
   using ContainerType = ::immer::flex_vector<replication2::PersistingLogEntry>;
   std::mutex mutex;
   replication2::LogIndex firstIndex{1};
   ContainerType log;
+  std::fstream os;
 };
 
 }  // namespace
@@ -3210,6 +3231,7 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
         RocksDBColumnFamilyManager::get(
             RocksDBColumnFamilyManager::Family::ReplicatedLogs),
         _logMetrics);
+    methods->prepareFile(vocbase.server());
     registerReplicatedState(vocbase, info.stateId, std::move(methods));
   }
 }
@@ -4018,6 +4040,7 @@ auto RocksDBEngine::createReplicatedState(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs),
       _logMetrics);
+  methods->prepareFile(vocbase.server());
   auto res = methods->updateMetadata(info);
   if (res.fail()) {
     return res;
