@@ -92,7 +92,7 @@ EnsureIndex::~EnsureIndex() = default;
 
 // For local book keeping and reporting on /_admin/actions
 arangodb::Result EnsureIndex::setProgress(double d) {
-  _progress = static_cast<uint64_t>(d);
+  _progress = d;
   return {};
 }
 
