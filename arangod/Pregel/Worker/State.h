@@ -26,6 +26,7 @@
 #include "Actor/ActorPID.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/CollectionSpecifications.h"
+#include "Pregel/GraphStore/Magazine.h"
 #include "Pregel/GraphStore/Quiver.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
@@ -69,19 +70,11 @@ struct WorkerState {
       writeCache = std::make_unique<CombiningInCache<M>>(
           config->localPregelShardIDs(), messageFormat.get(),
           messageCombiner.get());
-      inCache = std::make_unique<CombiningInCache<M>>(
-          std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
-      outCache = std::make_unique<CombiningOutActorCache<M>>(
-          config, messageFormat.get(), messageCombiner.get());
     } else {
       readCache = std::make_unique<ArrayInCache<M>>(
           config->localPregelShardIDs(), messageFormat.get());
       writeCache = std::make_unique<ArrayInCache<M>>(
           config->localPregelShardIDs(), messageFormat.get());
-      inCache = std::make_unique<ArrayInCache<M>>(std::set<PregelShard>{},
-                                                  messageFormat.get());
-      outCache =
-          std::make_unique<ArrayOutActorCache<M>>(config, messageFormat.get());
     }
   }
 
@@ -96,9 +89,8 @@ struct WorkerState {
   std::unique_ptr<MessageCombiner<M>> messageCombiner;
   std::unique_ptr<InCache<M>> readCache = nullptr;
   std::unique_ptr<InCache<M>> writeCache = nullptr;
-  std::unique_ptr<InCache<M>> inCache = nullptr;
-  std::unique_ptr<OutCache<M>> outCache = nullptr;
   uint32_t messageBatchSize = 500;
+  std::unordered_map<ShardID, actor::ActorPID> responsibleActorPerShard;
 
   const actor::ActorPID conductor;
   std::unique_ptr<Algorithm<V, E, M>> algorithm;

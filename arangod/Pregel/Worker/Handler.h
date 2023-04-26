@@ -38,6 +38,8 @@
 #include "Pregel/ResultMessages.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/StatusMessages.h"
+#include "Pregel/Worker/VertexProcessor.h"
+#include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb::pregel::worker {
 
@@ -64,8 +66,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is loading", this->self);
 
-    this->state->outCache->setResponsibleActorPerShard(
-        msg.responsibleActorPerShard);
+    this->state->responsibleActorPerShard = msg.responsibleActorPerShard;
 
     // TODO GORDO-1510
     // _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
@@ -107,13 +108,6 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
   // ----- computing -----
 
   auto prepareGlobalSuperStep(message::RunGlobalSuperStep message) -> void {
-    // write cache becomes the readable cache
-    this->state->outCache->setDispatch(
-        [this](actor::ActorPID actor,
-               worker::message::PregelMessage message) -> void {
-          this->template dispatch<worker::message::WorkerMessages>(actor,
-                                                                   message);
-        });
     this->state->config->_globalSuperstep = message.gss;
     this->state->config->_localSuperstep = message.gss;
 
@@ -123,6 +117,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       this->state->workerContext->preApplication();
     } else {
       TRI_ASSERT(this->state->readCache->containedMessageCount() == 0);
+      // write cache becomes the readable cache
       std::swap(this->state->readCache, this->state->writeCache);
     }
     this->state->workerContext->_writeAggregators->resetValues();
@@ -131,90 +126,88 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->state->workerContext->preGlobalSuperstep(message.gss);
   }
 
-  void initializeVertexContext(VertexContext<V, E, M>* ctx) {
-    ctx->_gss = this->state->config->globalSuperstep();
-    ctx->_lss = this->state->config->localSuperstep();
-    ctx->_context = this->state->workerContext.get();
-    ctx->_readAggregators = this->state->workerContext->_readAggregators.get();
-  }
-
   [[nodiscard]] auto processVertices() -> VerticesProcessed {
-    // _feature.metrics()->pregelWorkersRunningNumber->fetch_add(1);
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    auto futures = std::vector<futures::Future<ActorVertexProcessorResult>>();
+    auto quiverIdx = std::make_shared<std::atomic<size_t>>(0);
 
-    double start = TRI_microtime();
+    for (auto futureN = size_t{0}; futureN < this->state->config->parallelism();
+         ++futureN) {
+      futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+          RequestLane::INTERNAL_LOW, [this, quiverIdx, futureN]() {
+            auto processor = ActorVertexProcessor<V, E, M>(
+                this->state->config, this->state->algorithm,
+                this->state->workerContext, this->state->messageCombiner,
+                this->state->messageFormat,
+                [this](actor::ActorPID actor,
+                       worker::message::PregelMessage message) -> void {
+                  this->template dispatch<worker::message::WorkerMessages>(
+                      actor, message);
+                },
+                this->state->responsibleActorPerShard);
 
-    InCache<M>* inCache = this->state->inCache.get();
-    OutCache<M>* outCache = this->state->outCache.get();
-    outCache->setBatchSize(this->state->messageBatchSize);
-    outCache->setLocalCache(inCache);
+            while (true) {
+              auto myCurrentQuiver = quiverIdx->fetch_add(1);
+              if (myCurrentQuiver >= this->state->magazine.size()) {
+                LOG_TOPIC("eef15", DEBUG, Logger::PREGEL) << fmt::format(
+                    "No more work left in vertex processor number {}", futureN);
+                break;
+              }
+              for (auto& vertex :
+                   *this->state->magazine.quivers.at(myCurrentQuiver)) {
+                auto messages = this->state->readCache->getMessages(
+                    vertex.shard(), vertex.key());
+                auto status = processor.process(&vertex, messages);
 
-    AggregatorHandler workerAggregator(this->state->algorithm.get());
+                if (status.verticesProcessed %
+                        Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+                    0) {
+                  this->template dispatch<pregel::message::StatusMessages>(
+                      this->state->statusActor,
+                      pregel::message::GlobalSuperStepUpdate{
+                          .gss = this->state->config->globalSuperstep(),
+                          .verticesProcessed = status.verticesProcessed,
+                          .messagesSent = status.messageStats.sendCount,
+                          .messagesReceived = status.messageStats.receivedCount,
+                          .memoryBytesUsedForMessages =
+                              status.messageStats.memoryBytesUsedForMessages});
+                }
+              }
+            }
 
-    std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
-        this->state->algorithm->createComputation(this->state->config));
-    initializeVertexContext(vertexComputation.get());
-    vertexComputation->_writeAggregators = &workerAggregator;
-    vertexComputation->_cache = outCache;
+            processor.outCache->flushMessages();
+            this->state->writeCache->mergeCache(
+                processor.localMessageCache.get());
 
-    size_t verticesProcessed = 0;
-    size_t activeCount = 0;
-    for (auto& quiver : this->state->magazine) {
-      for (auto& vertexEntry : *quiver) {
-        MessageIterator<M> messages = this->state->readCache->getMessages(
-            vertexEntry.shard(), vertexEntry.key());
-        this->state->messageStats.receivedCount += messages.size();
-        // _feature.metrics()->pregelMessagesReceived->count(
-        //     _readCache->containedMessageCount());
-        this->state->messageStats.memoryBytesUsedForMessages +=
-            messages.size() * sizeof(M);
-
-        if (messages.size() > 0 || vertexEntry.active()) {
-          vertexComputation->_vertexEntry = &vertexEntry;
-          vertexComputation->compute(messages);
-          if (vertexEntry.active()) {
-            activeCount++;
-          }
-        }
-
-        this->state->messageStats.sendCount = outCache->sendCount();
-        verticesProcessed++;
-        if (verticesProcessed %
-                Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
-            0) {
-          this->template dispatch<pregel::message::StatusMessages>(
-              this->state->statusActor,
-              pregel::message::GlobalSuperStepUpdate{
-                  .gss = this->state->config->globalSuperstep(),
-                  .verticesProcessed = verticesProcessed,
-                  .messagesSent = this->state->messageStats.sendCount,
-                  .messagesReceived = this->state->messageStats.receivedCount,
-                  .memoryBytesUsedForMessages =
-                      this->state->messageStats.memoryBytesUsedForMessages});
-        }
-      }
+            return processor.result();
+          }));
     }
 
-    outCache->flushMessages();
-    this->state->messageStats.sendCount = outCache->sendCount();
-    this->state->messageStats.receivedCount =
-        this->state->readCache->containedMessageCount();
+    return futures::collectAll(std::move(futures))
+        .then([this](auto&& tryResults) {
+          auto verticesProcessed = VerticesProcessed{};
+          // TODO: exception handling
+          auto&& results = tryResults.get();
+          for (auto&& tryRes : results) {
+            // TODO: exception handling
+            auto&& res = tryRes.get();
 
-    this->state->writeCache->mergeCache(inCache);
-    // _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
+            this->state->workerContext->_writeAggregators->aggregateValues(
+                *res.workerAggregator);
+            this->state->messageStats.accumulate(res.messageStats);
+            // TODO why does the VertexProcessor not count receivedCount
+            // correctly?
+            this->state->messageStats.receivedCount =
+                this->state->readCache->containedMessageCount();
 
-    this->state->messageStats.superstepRuntimeSecs = TRI_microtime() - start;
-
-    auto out =
-        VerticesProcessed{.sendCountPerActor = outCache->sendCountPerActor(),
-                          .activeCount = activeCount};
-
-    inCache->clear();
-    outCache->clear();
-
-    this->state->workerContext->_writeAggregators->aggregateValues(
-        workerAggregator);
-
-    return out;
+            verticesProcessed.activeCount += res.activeCount;
+            for (auto const& [actor, count] : res.sendCountPerActor) {
+              verticesProcessed.sendCountPerActor[actor] += count;
+            }
+          }
+          return verticesProcessed;
+        })
+        .get();
   }
 
   [[nodiscard]] auto finishProcessing(VerticesProcessed verticesProcessed)
