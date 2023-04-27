@@ -508,7 +508,7 @@ function BaseChaosSuite(testOpts) {
       }
 
       // run the suite for 3 minutes
-      let client_ret = runParallelArangoshTests(tests, 10 * 60, coordination_cn);
+      let client_ret = runParallelArangoshTests(tests, 3 * 60, coordination_cn);
 
       print(Date() + " Finished load test; Clearing failurepoints");
       clearAllFailurePoints();
