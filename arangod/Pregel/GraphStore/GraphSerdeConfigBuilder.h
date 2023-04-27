@@ -40,19 +40,13 @@ struct GraphSerdeConfigBuilderBase {
   [[nodiscard]] virtual auto edgeCollectionRestrictionsByShard() const
       -> ShardMap = 0;
   [[nodiscard]] virtual auto checkVertexCollections() const -> Result = 0;
-  [[nodiscard]] virtual auto checkEdgeCollections() const
-      -> errors::ErrorT<Result, std::vector<CollectionID>> = 0;
+  [[nodiscard]] virtual auto checkEdgeCollections() const -> Result = 0;
 
   [[nodiscard]] virtual auto loadableVertexShards() const
       -> LoadableVertexShards = 0;
   [[nodiscard]] virtual auto responsibleServerMap(
       LoadableVertexShards const& loadableVertexShards) const
       -> ResponsibleServerMap = 0;
-
-  /*
-  [[nodiscard]] virtual auto buildConfig()
-      -> ErrorT<Result, GraphSerdeConfig> const;
-*/
   [[nodiscard]] static auto construct(
       TRI_vocbase_t& vocbase, GraphByCollections const& graphByCollections)
       -> std::unique_ptr<GraphSerdeConfigBuilderBase>;
@@ -63,4 +57,8 @@ struct GraphSerdeConfigBuilderBase {
 auto buildGraphSerdeConfig(TRI_vocbase_t& vocbase,
                            GraphByCollections const& graphByCollections)
     -> errors::ErrorT<Result, GraphSerdeConfig>;
+
+auto checkUserPermissions(ExecContext const& execContext,
+                          GraphByCollections graphByCollections,
+                          bool wantToStoreResults) -> Result;
 }  // namespace arangodb::pregel

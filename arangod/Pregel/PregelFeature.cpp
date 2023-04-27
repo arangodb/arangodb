@@ -154,8 +154,15 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   if (!maybeGraphByCollections.ok()) {
     return maybeGraphByCollections.error();
   }
-
   auto graphByCollections = maybeGraphByCollections.get();
+
+  // check the access rights to collections (yes, really)
+  ExecContext const& exec = ExecContext::current();
+  auto permissionsGranted =
+      checkUserPermissions(exec, graphByCollections, wantToStoreResults);
+  if (!permissionsGranted.ok()) {
+    return permissionsGranted;
+  }
 
   auto maybeGraphSerdeConfig =
       buildGraphSerdeConfig(vocbase, graphByCollections);
