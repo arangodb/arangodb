@@ -12,6 +12,19 @@ devel
   These loopholes are now closed, which means that any JSON inputs with 
   invalid surrogate pair data will be rejected by the server.
 
+  Note that the extended validation for surrogates can be turned off
+  along with other UTF-8 string validation by setting the server startup
+  option `--server.validate-utf8-strings` to `false`. This is not recommended
+  though, but should only be used in situations when a database is known
+  to contain invalid data and must continue supporting it.
+
+* Changed return code of APIs that create databases from previously 1229
+  (`ERROR_ARANGO_DATABASE_NOT_INVALID`) to 1208 (`ERROR_ARANGO_ILLEGAL_NAME`)
+  in case an invalid database name is used.
+  This is a downwards-incompatible change, but unifies the behavior for
+  database creation with the behavior of collection and view creation,
+  which also return error 1208 in case the specified name is invalid.
+
 * FE-236: bugfix - remove unused files, use new tooltip in views UI.
 
 * FE-238: Added auto-login support in core web UI - disabled logout when

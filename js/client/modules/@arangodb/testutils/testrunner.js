@@ -641,16 +641,23 @@ class testRunner {
             }
             this.results[this.translateResult(te)]['processStats']['netstat'] = this.instanceManager.getNetstat();
             this.continueTesting = true;
-            for (let j = 0; j < this.cleanupChecks.length; j++) {
-              if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
-                print(RED + Date() + ' server posttest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
-                moreReason += `server posttest '${this.cleanupChecks[j].name}' failed!`;
-                this.continueTesting = false;
-                j = this.cleanupChecks.length;
-                continue;
+            let j = 0;
+            try {
+              for (; j < this.cleanupChecks.length; j++) {
+                if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
+                  print(RED + Date() + ' server posttest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
+                  moreReason += `server posttest '${this.cleanupChecks[j].name}' failed!`;
+                  this.continueTesting = false;
+                  j = this.cleanupChecks.length;
+                  continue;
+                }
               }
+            } catch(ex) {
+              this.continueTesting = false;
+              print(`${RED}${Date()} server posttest "${this.cleanupChecks[j].name}" failed by throwing: ${ex}\n${ex.stack}!${RESET}`);
+              moreReason += `server posttest "${this.cleanupChecks[j].name}" failed by throwing: ${ex}`;
+              continue;
             }
-            
           } else {
             this.results[this.translateResult(te)].message = "Instance not healthy! " + JSON.stringify(reply);
             continue;

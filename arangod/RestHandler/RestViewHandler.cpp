@@ -33,6 +33,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalView.h"
 
 namespace {
@@ -194,14 +195,6 @@ void RestViewHandler::createView() {
     return;
   }
 
-  if (nameSlice.stringView() != normalizeUtf8ToNFC(nameSlice.stringView())) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME,
-                  "view name is not properly UTF-8 NFC-normalized");
-    events::CreateView(_vocbase.name(), nameSlice.copyString(),
-                       TRI_ERROR_BAD_PARAMETER);
-    return;
-  }
-
   // ...........................................................................
   // end of parameter parsing
   // ...........................................................................
@@ -285,9 +278,12 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
 
-  if (name != normalizeUtf8ToNFC(name)) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME,
-                  "view name is not properly UTF-8 NFC-normalized");
+  bool extendedNames =
+      _vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = ViewNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames, name);
+      res.fail()) {
+    generateError(res);
     return;
   }
 
@@ -452,10 +448,13 @@ void RestViewHandler::deleteView() {
 
   auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
 
-  if (name != normalizeUtf8ToNFC(name)) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME,
-                  "view name is not properly UTF-8 NFC-normalized");
-    events::DropView(_vocbase.name(), name, TRI_ERROR_BAD_PARAMETER);
+  bool extendedNames =
+      _vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = ViewNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames, name);
+      res.fail()) {
+    generateError(res);
+    events::DropView(_vocbase.name(), name, res.errorNumber());
     return;
   }
 
