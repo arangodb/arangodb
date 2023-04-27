@@ -111,6 +111,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   Counter& followersTotalRebuildCounter() {
     return _followersTotalRebuildCounter->get();
   }
+  Counter& syncTreeRebuildCounter() { return _syncTreeRebuildCounter->get(); }
 
   /**
    * @brief Add databases to dirty list
@@ -205,7 +206,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
+  // note: this metric is only there for downwards-compatibility reasons. it
+  // will always have a value of 0.
   std::optional<std::reference_wrapper<Counter>> _followersTotalRebuildCounter;
+  std::optional<std::reference_wrapper<Counter>> _syncTreeRebuildCounter;
   std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
 
   /// @brief lock for dirty database list
