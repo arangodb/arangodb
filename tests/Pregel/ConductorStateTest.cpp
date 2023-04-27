@@ -81,9 +81,13 @@ TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
   std::vector<std::vector<std::string>> amountOfServers = {
       {}, {"ServerA"}, {"ServerA", "ServerB"}};
   for (auto const& servers : amountOfServers) {
-    auto cState = ConductorState(std::make_unique<AlgorithmFake>(),
-                                 ExecutionSpecifications(), fakeActorPID,
-                                 fakeActorPID, fakeActorPID);
+    auto execSpec = ExecutionSpecifications();
+
+    execSpec.graphSerdeConfig.responsibleServerMap.responsibleServerMap =
+        servers;
+
+    auto cState = ConductorState(std::make_unique<AlgorithmFake>(), execSpec,
+                                 fakeActorPID, fakeActorPID, fakeActorPID);
     auto createWorkersState = CreateWorkers(cState);
     auto msgs = createWorkersState.messagesToServers();
     ASSERT_EQ(msgs.size(), servers.size());
@@ -97,11 +101,13 @@ TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
 TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
   auto fakeActorPID = actor::ActorPID{
       .server = "A", .database = "database", .id = actor::ActorID{4}};
-
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
-  auto cState = ConductorState(std::make_unique<AlgorithmFake>(),
-                               ExecutionSpecifications(), fakeActorPID,
-                               fakeActorPID, fakeActorPID);
+
+  auto execSpec = ExecutionSpecifications();
+  execSpec.graphSerdeConfig.responsibleServerMap.responsibleServerMap = servers;
+
+  auto cState = ConductorState(std::make_unique<AlgorithmFake>(), execSpec,
+                               fakeActorPID, fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messagesToServers();
 
@@ -132,9 +138,10 @@ TEST(CreateWorkersStateTest,
       .server = "A", .database = "database", .id = actor::ActorID{4}};
 
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
-  auto cState = ConductorState(std::make_unique<AlgorithmFake>(),
-                               ExecutionSpecifications(), fakeActorPID,
-                               fakeActorPID, fakeActorPID);
+  auto execSpec = ExecutionSpecifications();
+  execSpec.graphSerdeConfig.responsibleServerMap.responsibleServerMap = servers;
+  auto cState = ConductorState(std::make_unique<AlgorithmFake>(), execSpec,
+                               fakeActorPID, fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messagesToServers();
   ASSERT_EQ(msgs.size(), servers.size());
