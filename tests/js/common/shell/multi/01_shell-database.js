@@ -115,7 +115,7 @@ function DatabaseSuite () {
         internal.db._createDatabase(name);
         fail();
       } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
 
@@ -429,7 +429,7 @@ function DatabaseSuite () {
           internal.db._createDatabase(d);
           fail();
         } catch (err) {
-          assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum, d);
+          assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum, d);
         }
       });
     },
