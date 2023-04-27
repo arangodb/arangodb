@@ -1,6 +1,17 @@
 devel
 -----
 
+* Fixed issue #18769: Input validation allows invalid UTF-8 code points.
+  
+  This change enforces the validation of UTF-8 surrogate pairs in incoming
+  JSON data. Previously, the following loopholes existed when validating
+  UTF-8 surrogate pair data:
+  - a high surrogate, followed by something other than a low surrogate
+    (or the end of the string)
+  - a low surrogate, not preceeded by a high surrogate
+  These loopholes are now closed, which means that any JSON inputs with 
+  invalid surrogate pair data will be rejected by the server.
+
 * FE-236: bugfix - remove unused files, use new tooltip in views UI.
 
 * FE-238: Added auto-login support in core web UI - disabled logout when
