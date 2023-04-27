@@ -51,7 +51,6 @@
 #include "Pregel/Conductor/Actor.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/Conductor/Messages.h"
-#include "Pregel/Conductor/ExecutionStates/DatabaseCollectionLookup.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/GraphStore/GraphSerdeConfig.h"
 #include "Pregel/GraphStore/GraphSerdeConfigBuilder.h"
