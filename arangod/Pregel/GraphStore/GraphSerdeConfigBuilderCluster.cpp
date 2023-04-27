@@ -80,16 +80,14 @@ GraphSerdeConfigBuilderCluster::edgeCollectionRestrictionsByShard() const
 }
 
 [[nodiscard]] auto GraphSerdeConfigBuilderCluster::checkEdgeCollections() const
-    -> errors::ErrorT<Result, std::vector<CollectionID>> {
-  std::vector<CollectionID> result;
-
+    -> Result {
   for (std::string const& name : graphByCollections.edgeCollections) {
     try {
       auto coll = clusterInfo.getCollection(vocbase.name(), name);
 
       if (coll->system()) {
-        return errors::ErrorT<Result, std::vector<CollectionID>>::error(Result{
-            TRI_ERROR_BAD_PARAMETER, "Cannot use pregel on system collection"});
+        return Result{TRI_ERROR_BAD_PARAMETER,
+                      "Cannot use pregel on system collection"};
       }
 
       if (!coll->isSmart()) {
@@ -97,33 +95,26 @@ GraphSerdeConfigBuilderCluster::edgeCollectionRestrictionsByShard() const
 
         if (eKeys.size() != 1 ||
             eKeys[0] != graphByCollections.shardKeyAttribute) {
-          return errors::ErrorT<Result, std::vector<CollectionID>>::error(
-              Result{TRI_ERROR_BAD_PARAMETER,
-                     "Edge collection needs to be sharded "
-                     "by shardKeyAttribute parameter ('" +
-                         graphByCollections.shardKeyAttribute +
-                         "'), or use SmartGraphs. The current shardKey is: " +
-                         (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
+          return Result{
+              TRI_ERROR_BAD_PARAMETER,
+              "Edge collection needs to be sharded "
+              "by shardKeyAttribute parameter ('" +
+                  graphByCollections.shardKeyAttribute +
+                  "'), or use SmartGraphs. The current shardKey is: " +
+                  (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
 
-              });
+          };
         }
       }
 
       if (coll->deleted()) {
-        return errors::ErrorT<Result, std::vector<CollectionID>>::error(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name});
+        Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
       }
-
-      // smart edge collections contain multiple actual collections
-      std::vector<std::string> actual = coll->realNamesForRead();
-
-      result.insert(result.end(), actual.begin(), actual.end());
     } catch (...) {
-      return errors::ErrorT<Result, std::vector<CollectionID>>::error(
-          Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name});
+      return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
     }
   }
-  return errors::ErrorT<Result, std::vector<CollectionID>>::ok(result);
+  return Result{};
 }
 
 [[nodiscard]] auto GraphSerdeConfigBuilderCluster::loadableVertexShards() const

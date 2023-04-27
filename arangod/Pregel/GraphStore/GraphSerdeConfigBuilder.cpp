@@ -57,8 +57,17 @@ auto buildGraphSerdeConfig(TRI_vocbase_t& vocbase,
     -> errors::ErrorT<Result, GraphSerdeConfig> {
   auto configBuilder =
       GraphSerdeConfigBuilderBase::construct(vocbase, graphByCollections);
-
   ADB_PROD_ASSERT(configBuilder != nullptr);
+
+  auto vertexCollectionsOk = configBuilder->checkVertexCollections();
+  if (not vertexCollectionsOk.ok()) {
+    return errors::ErrorT<Result, GraphSerdeConfig>::error(vertexCollectionsOk);
+  }
+
+  auto edgeCollectionsOk = configBuilder->checkEdgeCollections();
+  if (not edgeCollectionsOk.ok()) {
+    return errors::ErrorT<Result, GraphSerdeConfig>::error(edgeCollectionsOk);
+  }
 
   auto loadableVertexShards = configBuilder->loadableVertexShards();
   auto responsibleServerMap =
@@ -67,6 +76,30 @@ auto buildGraphSerdeConfig(TRI_vocbase_t& vocbase,
   return errors::ErrorT<Result, GraphSerdeConfig>::ok(
       GraphSerdeConfig{.loadableVertexShards = loadableVertexShards,
                        .responsibleServerMap = responsibleServerMap});
+}
+
+// TODO: maybe this belongs into GraphSerdeConfigBuilderBase and should also be
+// called from above?
+auto checkUserPermissions(ExecContext const& execContext,
+                          GraphByCollections graphByCollections,
+                          bool wantToStoreResults) -> Result {
+  if (!execContext.isSuperuser()) {
+    for (std::string const& vc : graphByCollections.vertexCollections) {
+      bool canWrite = execContext.canUseCollection(vc, auth::Level::RW);
+      bool canRead = execContext.canUseCollection(vc, auth::Level::RO);
+      if ((wantToStoreResults && !canWrite) || !canRead) {
+        return Result{TRI_ERROR_FORBIDDEN};
+      }
+    }
+    for (std::string const& ec : graphByCollections.edgeCollections) {
+      bool canWrite = execContext.canUseCollection(ec, auth::Level::RW);
+      bool canRead = execContext.canUseCollection(ec, auth::Level::RO);
+      if ((wantToStoreResults && !canWrite) || !canRead) {
+        return Result{TRI_ERROR_FORBIDDEN};
+      }
+    }
+  }
+  return {};
 }
 
 }  // namespace arangodb::pregel

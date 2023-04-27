@@ -51,21 +51,15 @@ GraphSerdeConfigBuilderSingleServer::edgeCollectionRestrictionsByShard() const
 }
 
 [[nodiscard]] auto GraphSerdeConfigBuilderSingleServer::checkEdgeCollections()
-    const -> errors::ErrorT<Result, std::vector<CollectionID>> {
-  std::vector<CollectionID> result;
-
+    const -> Result {
   for (std::string const& name : graphByCollections.edgeCollections) {
     auto coll = vocbase.lookupCollection(name);
 
     if (coll == nullptr || coll->deleted()) {
-      return errors::ErrorT<Result, std::vector<CollectionID>>::error(
-          Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name});
+      return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
     }
-    std::vector<std::string> actual = coll->realNamesForRead();
-    result.insert(result.end(), actual.begin(), actual.end());
   }
-
-  return errors::ErrorT<Result, std::vector<CollectionID>>::ok(result);
+  return Result{};
 }
 
 [[nodiscard]] auto GraphSerdeConfigBuilderSingleServer::loadableVertexShards()
