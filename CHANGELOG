@@ -1,4 +1,4 @@
-v3.10.6 (XXXX-XX-XX)
+v3.10.6 (2023-04-27)
 --------------------
 
 * Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
