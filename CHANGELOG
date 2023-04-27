@@ -1,5 +1,6 @@
 devel
 -----
+* FE-254: bugfix - filter out empty storedValues for persistent index
 
 * Changed return code of APIs that create databases from previously 1229
   (`ERROR_ARANGO_DATABASE_NOT_INVALID`) to 1208 (`ERROR_ARANGO_ILLEGAL_NAME`)
