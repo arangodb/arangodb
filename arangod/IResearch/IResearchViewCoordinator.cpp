@@ -129,13 +129,19 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
              "arangosearch view '"
           << impl->name() << "'";
     }
-    // refresh view from Agency
-    view = ci.getView(vocbase.name(), std::to_string(impl->id().id()));
-    TRI_ASSERT(view);
+    // refresh view from Agency to get latest state with populated collections
+    view = ci.getView(vocbase.name(), absl::AlphaNum{impl->id().id()}.Piece());
+    // view might be already dropped
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
       // and original behavior of TRI_vocbase_t::createView
       view->open();
+    } else {
+      return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+              absl::StrCat("ArangoSearch view '", impl->name(),
+                           "' was dropped during creation "
+                           "from database '" +
+                               vocbase.name() + "'")};
     }
     return {};
   }
@@ -246,7 +252,9 @@ ViewFactory const& IResearchViewCoordinator::factory() {
 }
 
 Result IResearchViewCoordinator::link(IResearchLinkCoordinator const& link) {
-  auto& collection = static_cast<IResearchLink const&>(link).collection();
+  TRI_IF_FAILURE("IResearchLink::alwaysDangling") { return {}; }
+  auto const& collection =
+      basics::downCast<IResearchLink const>(link).collection();
   auto const& cname = collection.name();
   if (!ClusterMethods::includeHiddenCollectionInLink(cname)) {
     return {TRI_ERROR_NO_ERROR};

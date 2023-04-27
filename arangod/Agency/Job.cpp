@@ -804,7 +804,7 @@ void Job::addPreconditionServerNotBlocked(Builder& pre,
 }
 
 void Job::addPreconditionServerHealth(Builder& pre, std::string const& server,
-                                      std::string const& health) {
+                                      std::string_view health) {
   pre.add(VPackValue(healthPrefix + server + "/Status"));
   {
     VPackObjectBuilder serverGood(&pre);

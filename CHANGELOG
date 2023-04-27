@@ -5,6 +5,15 @@ v3.10.6 (XXXX-XX-XX)
   auto-login is enabled, set sessionStorage "jwtUser" value when login is
   skipped.
 
+* Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
+
+* Automatically repair revision trees after several failed shard synchronization
+  attempts. This can help to get permanently out-of-sync shards back into sync.
+
+  The functionality can be turned off by setting the startup option
+  `--replication.auto-repair-revision-trees` to `false` on DB-Servers.
+
+
 * SEARCH-466 Fix leaking into individual link definition inherited properties
   from view.
 

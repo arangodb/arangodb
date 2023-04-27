@@ -349,9 +349,11 @@ bool FailedLeader::start(bool& aborts) {
       {
         VPackObjectBuilder preconditions(&pending);
         // Failed condition persists
-        addPreconditionServerHealth(pending, _from, "FAILED");
+        addPreconditionServerHealth(pending, _from,
+                                    Supervision::HEALTH_STATUS_FAILED);
         // Destination server still in good condition
-        addPreconditionServerHealth(pending, _to, "GOOD");
+        addPreconditionServerHealth(pending, _to,
+                                    Supervision::HEALTH_STATUS_GOOD);
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
         // Check that Current/servers and failoverCandidates are still as

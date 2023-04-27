@@ -37,6 +37,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 
 #include <utility>
@@ -240,11 +241,16 @@ Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
     }
     // refresh view from Agency
     view = engine.getView(vocbase.name(), id);
-    TRI_ASSERT(view);
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
       // and original behavior of TRI_vocbase_t::createView
       view->open();
+    } else {
+      return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+              absl::StrCat("ArangoSearch view '", impl->name(),
+                           "' was dropped during creation "
+                           "from database '" +
+                               vocbase.name() + "'")};
     }
     return {};
   });
