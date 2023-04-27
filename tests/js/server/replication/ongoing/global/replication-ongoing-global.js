@@ -70,18 +70,6 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
   db._flushCache();
   leaderFunc(state);
 
-//  connectToLeader();
-  leaderFunc2(state);
-
-  internal.wal.flush(true, false);
-
-  // use lastLogTick as of now
-  state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
-
-  if (!applierConfiguration.hasOwnProperty('chunkSize')) {
-    applierConfiguration.chunkSize = 16384;
-  }
-
   connectToFollower();
   replication.globalApplier.stop();
   replication.globalApplier.forget();
@@ -110,9 +98,19 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
 
   assertTrue(syncResult.hasOwnProperty('lastLogTick'));
 
+  connectToLeader();
+  leaderFunc2(state);
 
+  internal.wal.flush(true, false);
 
- // connectToFollower();
+  // use lastLogTick as of now
+  state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
+
+  if (!applierConfiguration.hasOwnProperty('chunkSize')) {
+    applierConfiguration.chunkSize = 16384;
+  }
+
+  connectToFollower();
 
   replication.globalApplier.properties(applierConfiguration);
   replication.globalApplier.start(syncResult.lastLogTick, syncResult.barrierId);
@@ -161,7 +159,6 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
 
   internal.wait(0.1, false);
   db._flushCache();
-  internal.wait(0.1, false);
   followerFuncFinal(state);
 };
 

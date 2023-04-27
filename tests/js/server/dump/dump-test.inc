@@ -604,6 +604,32 @@
           assertEqual(i, doc.value);
           assertEqual({value: [i, i]}, doc.more);
         }
+        let res;
+        let numSecs = 0.5;
+        let collDistribution = {};
+        let collDistributionPlan = {};
+        let collDistributionCurrent = {};
+        while (true) {
+          const dbName = db._name();
+          const res = db._connection.GET("/_db/" + dbName + "/_admin/cluster/shardDistribution?returnAsJSON=true");
+          const colls = res["results"];
+          for (const key in colls) {
+            if (key === "UnitTestsDumpKeygen") {
+              collDistribution = colls[key];
+            }
+          }
+          assertFalse(_.isEmpty(collDistribution));
+          collDistributionPlan = collDistribution["Plan"];
+          collDistributionCurrent = collDistribution["Current"];
+          assertFalse(_.isEmpty(collDistributionPlan));
+          assertFalse(_.isEmpty(collDistributionCurrent));
+          if (_.isEqual(collDistributionPlan, collDistributionCurrent) || numSecs >= 16) {
+            break;
+          }
+          internal.sleep(numSecs);
+          numSecs *= 2;
+        }
+        assertTrue(_.isEqual(collDistributionPlan, collDistributionCurrent), "collection is not in sync");
         if (args.autoIncDocCount === 1001) {
           doc = c.save({});
           assertEqual(doc._key, "42091");
@@ -654,6 +680,32 @@
           assertEqual({value: [i, i]}, doc.more);
           lastKey = doc._key;
         }
+        let res;
+        let numSecs = 0.5;
+        let collDistribution = {};
+        let collDistributionPlan = {};
+        let collDistributionCurrent = {};
+        while (true) {
+          const dbName = db._name();
+          const res = db._connection.GET("/_db/" + dbName + "/_admin/cluster/shardDistribution?returnAsJSON=true");
+          const colls = res["results"];
+          for (const key in colls) {
+            if (key.includes("UnitTestsDumpKeygenPadded")) {
+              collDistribution = colls[key];
+            }
+          }
+         assertFalse(_.isEmpty(collDistribution));
+         collDistributionPlan = collDistribution["Plan"];
+         collDistributionCurrent = collDistribution["Current"];
+         assertFalse(_.isEmpty(collDistributionPlan));
+         assertFalse(_.isEmpty(collDistributionCurrent));
+         if (_.isEqual(collDistributionPlan, collDistributionCurrent) || numSecs >= 16) {
+           break;
+         }
+         internal.sleep(numSecs);
+         numSecs *= 2;
+        }
+        assertTrue(_.isEqual(collDistributionPlan, collDistributionCurrent), "collection is not in sync");
         if (args.paddedDocCount === 1001) {
           assertTrue(nonDeletedDoc._key > lastKey, nonDeletedDoc._key + ">" + lastKey);
           lastKey = nonDeletedDoc._key;
@@ -691,6 +743,32 @@
         let docs = [];
         for (var i = 0; i < 1000; ++i) docs.push({"a": i});
 
+       let res;
+       let numSecs = 0.5;
+       let collDistribution = {};
+       let collDistributionPlan = {};
+       let collDistributionCurrent = {};
+        while (true) {
+          const dbName = db._name();
+          const res = db._connection.GET("/_db/" + dbName + "/_admin/cluster/shardDistribution?returnAsJSON=true");
+          const colls = res["results"];
+          for (const key in colls) {
+            if (key.includes("UnitTestsDumpKeygenUuid")) {
+              collDistribution = colls[key];
+            }
+          }
+          assertFalse(_.isEmpty(collDistribution));
+          collDistributionPlan = collDistribution["Plan"];
+          collDistributionCurrent = collDistribution["Current"];
+          assertFalse(_.isEmpty(collDistributionPlan));
+          assertFalse(_.isEmpty(collDistributionCurrent));
+          if (_.isEqual(collDistributionPlan, collDistributionCurrent) || numSecs >= 16) {
+            break;
+          }
+          internal.sleep(numSecs);
+          numSecs *= 2;
+        }
+        assertTrue(_.isEqual(collDistributionPlan, collDistributionCurrent), "collection is not in sync");
         let savedDocs = c.save(docs);
         savedDocs.forEach(doc => {
           assertFalse(allDocs.hasOwnProperty(doc._key), "found " + doc._key + "!");
