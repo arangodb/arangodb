@@ -391,12 +391,6 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
       .userParameters = std::move(options.userParameters)};
 
   if (options.useActors) {
-    auto vocbaseLookupInfo =
-        std::make_unique<conductor::DatabaseCollectionLookup>(
-            vocbase, executionSpecifications.vertexCollections,
-            executionSpecifications.edgeCollections);
-
-    auto user = ExecContext::current().user();
     auto statusStart = message::StatusMessages{message::StatusStart{
         .state = "Execution Started",
         .id = executionSpecifications.executionNumber,
@@ -444,9 +438,8 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         vocbase.name(),
         std::make_unique<conductor::ConductorState>(
             std::move(algorithm.value()), executionSpecifications,
-            std::move(vocbaseLookupInfo), std::move(spawnActor),
-            std::move(resultActorPID), std::move(statusActorPID),
-            std::move(metricsActorPID)),
+            std::move(spawnActor), std::move(resultActorPID),
+            std::move(statusActorPID), std::move(metricsActorPID)),
         conductor::message::ConductorStart{});
     auto conductorActorPID = actor::ActorPID{.server = ss->getId(),
                                              .database = vocbase.name(),
