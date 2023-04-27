@@ -33,6 +33,7 @@ const { deriveTestSuite } = require('@arangodb/test-helper');
 const ERRORS = arangodb.errors;
   
 const cn = "UnitTestsCollection";
+const taskName = "UnitTestsTask";
   
 let setupCollection = (type) => {
   let c;
@@ -52,14 +53,18 @@ let setupCollection = (type) => {
 };
   
 let shutdownTask = (task) => {
-  while (true) {
-    try {
-      tasks.get(task);
-      require("internal").wait(0.25, false);
-    } catch (err) {
-      // "task not found" means the task is finished
-      break;
+  try {
+    if (task === undefined) {
+      tasks.unregister(taskName);
+    } else {
+      while (true) {
+        // will be left by exception here
+        tasks.get(task);
+        require("internal").wait(0.25, false);
+      }
     }
+  } catch (err) {
+    // "task not found" means the task is finished
   }
 };
 
@@ -77,9 +82,9 @@ function BaseTestConfig (dropCb, expectedError) {
         // scheduling. the whole test is time-based and assumes reasonable
         // scheduling, which probably isn't guaranteed on some CI servers.
         assertEqual(expectedError, err.errorNum);
+      } finally {
+        shutdownTask(task);
       }
-
-      shutdownTask(task);
     },
     
     testIndexCreationInBackgroundAborts : function () {
@@ -94,9 +99,9 @@ function BaseTestConfig (dropCb, expectedError) {
         // scheduling. the whole test is time-based and assumes reasonable
         // scheduling, which probably isn't guaranteed on some CI servers.
         assertEqual(expectedError, err.errorNum);
+      } finally {
+        shutdownTask(task);
       }
-
-      shutdownTask(task);
     },
     
     testWarmupAborts : function () {
@@ -117,9 +122,9 @@ function BaseTestConfig (dropCb, expectedError) {
         // scheduling. the whole test is time-based and assumes reasonable
         // scheduling, which probably isn't guaranteed on some CI servers.
         assertEqual(expectedError, err.errorNum);
+      } finally {
+        shutdownTask(task);
       }
-
-      shutdownTask(task);
     },
 
   };
@@ -130,6 +135,7 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
 
   let dropCb = () => {
     let task = tasks.register({
+      name: taskName,
       command: function() {
         let db = require("internal").db;
         let cn = "UnitTestsCollection";
@@ -144,15 +150,21 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
       },
     });
 
-    while (!db[cn].exists("runner1")) {
-      require("internal").sleep(0.02);
+    try {
+      while (!db[cn].exists("runner1")) {
+        require("internal").sleep(0.02);
+      }
+      db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
+      return task;
+    } catch (err) {
+      shutdownTask(task);
+      throw err;
     }
-    db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
-    return task;
   };
 
   let suite = {
     tearDown: function () {
+      shutdownTask();
       internal.debugClearFailAt();
       db._drop(cn);
     }
@@ -170,6 +182,7 @@ function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
     db._useDatabase('_system');
     try {
       let task = tasks.register({
+        name: taskName,
         command: function(params) {
           let db = require("internal").db;
           db._useDatabase(params.old);
@@ -188,12 +201,18 @@ function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
         isSystem: true,
       });
 
-      db._useDatabase(old);
-      while (!db[cn].exists("runner1")) {
-        require("internal").sleep(0.02);
+      try {
+        db._useDatabase(old);
+        while (!db[cn].exists("runner1")) {
+          require("internal").sleep(0.02);
+        }
+        db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
+        return task;
+      } catch (err) {
+        db._useDatabase(old);
+        shutdownTask(task);
+        throw err;
       }
-      db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
-      return task;
     } finally {
       db._useDatabase(old);
     }
@@ -205,6 +224,7 @@ function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
       db._useDatabase(cn);
     },
     tearDown: function () {
+      shutdownTask();
       internal.debugClearFailAt();
       db._useDatabase('_system');
       try {

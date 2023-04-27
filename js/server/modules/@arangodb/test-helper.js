@@ -124,7 +124,7 @@ function getMetricName(text, name) {
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.*{.*}([0-9.]+)$/, "$1"));
+  return Number(matches[0].replace(/^.*{.*}\s*([0-9.]+)$/, "$1"));
 }
 
 exports.getMetric = function (endpoint, name) {
@@ -135,8 +135,8 @@ exports.getMetric = function (endpoint, name) {
 };
 
 exports.getMetricSingle = function (name) {
-  let res = arango.GET_RAW("/_admin/metrics");
-  if (res.code !== 200) {
+  let res = request.get("/_admin/metrics");
+  if (res.status !== 200) {
     throw "error fetching metric";
   }
   return getMetricName(res.body, name);
