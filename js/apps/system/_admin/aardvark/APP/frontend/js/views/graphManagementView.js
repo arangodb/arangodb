@@ -1253,7 +1253,20 @@
 
         // create graph section
         title = 'Create Graph';
-
+        var nameValidation = [
+          {
+            rule: Joi.string().regex(/^[a-zA-Z0-9_\-:\.@()\+,=;$!*\%'%]+$/),
+            msg: "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %."
+          },
+          {
+            rule: Joi.string().max(254, 'utf8'),
+            msg: 'Graph name max length is 254.'
+          },
+          {
+            rule: Joi.string().required(),
+            msg: 'No graph name given.'
+          }
+        ];
         tableContent.push(
           window.modalView.createTextEntry(
             'createNewGraphName',
@@ -1261,7 +1274,8 @@
             '',
             rowDescription.graphName.description,
             rowDescription.graphName.placeholder,
-            true
+            true,
+            nameValidation
           )
         );
 

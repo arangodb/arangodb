@@ -146,7 +146,23 @@
 
           var buttons = [];
           var tableContent = [];
-
+          var extendedNames = window.frontendConfig.extendedNames;
+          var traditionalNameValidation = [{
+            rule: Joi.string().regex(/^[a-zA-Z]/),
+            msg: 'Collection name must always start with a letter.'
+          },
+          {
+            rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+            msg: 'Only symbols, "_" and "-" are allowed.'
+          }];
+          var extendedValidation = [{
+            rule: Joi.string().regex(/^(?![0-9])/),
+            msg: 'Collection name cannot start with a number.'
+          },
+          {
+            rule: Joi.string().regex(/^\S(.*\S)?$/),
+            msg: 'Collection name cannot contain leading/trailing spaces.'
+          }];
           if (!isCoordinator) {
             if (this.model.get('name').substr(0, 1) === '_') {
               tableContent.push(
@@ -158,6 +174,11 @@
                   '',
                   true,
                   [
+                    ...(!extendedNames ? traditionalNameValidation : extendedValidation),
+                    {
+                      rule: Joi.string().max(256, 'utf8'),
+                      msg: 'Collection name max length is 256.'
+                    },
                     {
                       rule: Joi.string().required(),
                       msg: 'No collection name given.'
@@ -175,6 +196,11 @@
                   '',
                   true,
                   [
+                    ...(!extendedNames ? traditionalNameValidation : extendedValidation),
+                    {
+                      rule: Joi.string().max(256, 'utf8'),
+                      msg: 'Collection name max length is 256.'
+                    },
                     {
                       rule: Joi.string().required(),
                       msg: 'No collection name given.'
