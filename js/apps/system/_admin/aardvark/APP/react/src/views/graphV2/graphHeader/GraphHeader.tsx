@@ -20,7 +20,7 @@ export const GraphHeader = () => {
       alignItems="center"
       gridTemplateColumns="1fr 1fr"
     >
-      <Box>{graphName}</Box>
+      <Box>{decodeURIComponent(graphName)}</Box>
       <RightActions />
     </Box>
   );
