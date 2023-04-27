@@ -364,11 +364,11 @@
             if (databaseLevelDefaultPermission === 'undefined') {
               if (serverLevelDefaultPermission) {
                 if (serverLevelDefaultPermission === 'rw') {
-                  $('#' + database + '-db .mid > .readWrite').first().css('box-shadow', cssShadow);
+                  $('#' + CSS.escape(database) + '-db .mid > .readWrite').first().css('box-shadow', cssShadow);
                 } else if (serverLevelDefaultPermission === 'ro') {
-                  $('#' + database + '-db .mid > .readOnly').first().css('box-shadow', cssShadow);
+                  $('#' + CSS.escape(database) + '-db .mid > .readOnly').first().css('box-shadow', cssShadow);
                 } else if (serverLevelDefaultPermission === 'none') {
-                  $('#' + database + '-db .mid > .noAccess').first().css('box-shadow', cssShadow);
+                  $('#' + CSS.escape(database) + '-db .mid > .noAccess').first().css('box-shadow', cssShadow);
                 }
               }
             }
@@ -380,11 +380,11 @@
                   // if database level wildcard is set and choose the max of it to display.
                   var calculatedCollectionPermission = getMaxPermissionAccess(databaseLevelDefaultPermission, collectionLevelDefaultPermission, serverLevelDefaultPermission);
                   if (calculatedCollectionPermission === 'rw') {
-                    $('#' + database + '-db #' + collection + '-collection .readWrite').css('box-shadow', cssShadow);
+                    $('#' + CSS.escape(database) + '-db #' + CSS.escape(collection) + '-collection .readWrite').css('box-shadow', cssShadow);
                   } else if (calculatedCollectionPermission === 'ro') {
-                    $('#' + database + '-db #' + collection + '-collection .readOnly').css('box-shadow', cssShadow);
+                    $('#' + CSS.escape(database) + '-db #' + CSS.escape(collection) + '-collection .readOnly').css('box-shadow', cssShadow);
                   } else if (calculatedCollectionPermission === 'none') {
-                    $('#' + database + '-db #' + collection + '-collection .noAccess').css('box-shadow', cssShadow);
+                    $('#' + CSS.escape(database) + '-db #' + CSS.escape(collection) + '-collection .noAccess').css('box-shadow', cssShadow);
                   }
                 }
               }
