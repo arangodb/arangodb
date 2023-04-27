@@ -24,6 +24,8 @@
 
 #include <chrono>
 #include <utility>
+#include <memory>
+
 #include "Actor/ActorPID.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/CollectionSpecifications.h"
@@ -36,6 +38,8 @@
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
 #include "Pregel/Status/Status.h"
+#include "Pregel/GraphStore/Magazine.h"
+#include "Pregel/Worker/ExecutionStates/InitialState.h"
 
 namespace arangodb::pregel::worker {
 
@@ -51,7 +55,8 @@ struct WorkerState {
               TRI_vocbase_t& vocbase, actor::ActorPID spawnActor,
               actor::ActorPID resultActor, actor::ActorPID statusActor,
               actor::ActorPID metricsActor)
-      : config{std::make_shared<WorkerConfig>(&vocbase)},
+      : executionState(std::make_unique<Initial<V, E, M>>(*this)),
+        config{std::make_shared<WorkerConfig>(&vocbase)},
         workerContext{std::move(workerContext)},
         messageTimeout{messageTimeout},
         messageFormat{std::move(newMessageFormat)},
@@ -108,6 +113,7 @@ struct WorkerState {
   std::unique_ptr<OutCache<M>> outCache = nullptr;
   uint32_t messageBatchSize = 500;
 
+  std::unique_ptr<ExecutionState> executionState;
   const actor::ActorPID conductor;
   std::unique_ptr<Algorithm<V, E, M>> algorithm;
   const DatabaseGuard vocbaseGuard;

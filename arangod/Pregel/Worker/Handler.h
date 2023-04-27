@@ -39,6 +39,7 @@
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/StatusMessages.h"
 #include "Pregel/MetricsMessages.h"
+#include "Pregel/Worker/ExecutionStates/State.h"
 
 namespace arangodb::pregel::worker {
 
@@ -49,18 +50,22 @@ struct VerticesProcessed {
 
 template<typename V, typename E, typename M, typename Runtime>
 struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
+  DispatchStatus const& dispatchStatus =
+      this->template dispatch<pregel::message::StatusMessages>;
+  DispatchMetrics const& dispatchMetrics =
+      this->template dispatch<metrics::message::MetricsMessages>;
+  DispatchConductor const& dispatchConductor =
+      this->template dispatch<conductor::message::ConductorMessages>;
+
   auto operator()(message::WorkerStart start)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor {} started with state {}", this->self, *this->state);
-    // TODO GORDO-1556
-    // _feature.metrics()->pregelWorkersNumber->fetch_add(1);
-    this->template dispatch<conductor::message::ConductorMessages>(
-        this->state->conductor, ResultT<conductor::message::WorkerCreated>{});
 
-    this->template dispatch<metrics::message::MetricsMessages>(
-        this->state->metricsActor,
-        arangodb::pregel::metrics::message::WorkerStarted{});
+    auto newState =
+        this->executionState->receive(this->sender, start, dispatchStatus,
+                                      dispatchMetrics, dispatchConductor);
+    changeState(newState);
 
     return std::move(this->state);
   }
@@ -255,6 +260,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
           aggregators);
     }
     std::vector<conductor::message::SendCountPerActor> sendCountList;
+    sendCountList.reserve(verticesProcessed.sendCountPerActor.size());
     for (auto const& [actor, count] : verticesProcessed.sendCountPerActor) {
       sendCountList.emplace_back(conductor::message::SendCountPerActor{
           .receiver = actor, .sendCount = count});
@@ -388,7 +394,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   // ------ end computing ----
 
-  auto operator()(message::Store msg) -> std::unique_ptr<WorkerState<V, E, M>> {
+  auto operator()([[maybe_unused]] message::Store msg) -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("980d9", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is storing", this->self);
 
@@ -471,7 +477,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return std::move(this->state);
   }
 
-  auto operator()(message::Cleanup msg)
+  auto operator()([[maybe_unused]] message::Cleanup msg)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("664f5", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is cleaned", this->self);
@@ -514,6 +520,15 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("8b81a", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor: Got unhandled message: {}", rest);
     return std::move(this->state);
+  }
+
+  auto changeState(std::unique_ptr<ExecutionState> newState) -> void {
+    if (newState != nullptr) {
+      this->state->executionState = std::move(newState);
+      LOG_TOPIC("b11f4", INFO, Logger::PREGEL)
+          << fmt::format("Worker Actor: Execution state changed to {}",
+                         this->state->executionState->name());
+    }
   }
 };
 
