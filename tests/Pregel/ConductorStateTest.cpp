@@ -261,7 +261,7 @@ TEST(CreateWorkersStateTest, receive_valid_error_message) {
     actor::ActorPID unknownActorPid{
         .server = servers.at(0), .database = databaseName, .id = {0}};
     auto errorMessage = arangodb::ResultT<conductor::message::WorkerCreated>(
-        TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+        TRI_ERROR_ARANGO_ILLEGAL_NAME);
     auto receiveResponse = createWorkers.receive(unknownActorPid, errorMessage);
     ASSERT_EQ(receiveResponse.value().newState->name(), "fatal error");
   }
