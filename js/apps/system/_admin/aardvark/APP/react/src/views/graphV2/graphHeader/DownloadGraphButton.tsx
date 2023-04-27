@@ -7,7 +7,7 @@ const downloadCanvas = (graphName: string) => {
   const canvas = document.getElementsByTagName("canvas")[0];
   const newCanvas = canvas.cloneNode(true) as HTMLCanvasElement;
   // set canvas background to white for screenshot download
-  const context = newCanvas.getContext('2d');
+  const context = newCanvas.getContext("2d");
   if (!context) {
     return;
   }
@@ -29,7 +29,8 @@ export const DownloadGraphButton = () => {
         onClick={() => downloadCanvas(graphName)}
         size="sm"
         icon={<Icon width="5" height="5" as={AddAPhoto} />}
-        aria-label={"Take a screenshot"} />
+        aria-label={"Take a screenshot"}
+      />
     </Tooltip>
   );
 };
