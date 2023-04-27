@@ -4,17 +4,17 @@ import { AddAPhoto } from "styled-icons/material";
 import { useGraph } from "../GraphContext";
 
 const downloadCanvas = (graphName: string) => {
-  let canvas = document.getElementsByTagName("canvas")[0];
-  var newCanvas = canvas.cloneNode(true) as HTMLCanvasElement;
+  const canvas = document.getElementsByTagName("canvas")[0];
+  const newCanvas = canvas.cloneNode(true) as HTMLCanvasElement;
   // set canvas background to white for screenshot download
-  let context = newCanvas.getContext('2d');
+  const context = newCanvas.getContext('2d');
   if (!context) {
     return;
   }
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, newCanvas.width, newCanvas.height);
   context.drawImage(canvas, 0, 0);
-  let canvasUrl = newCanvas.toDataURL("image/jpeg", 1);
+  const canvasUrl = newCanvas.toDataURL("image/jpeg", 1);
   const createEl = document.createElement("a");
   createEl.href = canvasUrl;
   createEl.download = `${graphName}`;
