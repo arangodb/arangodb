@@ -57,7 +57,8 @@ function runSetup () {
       c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
     }
   } catch (ex) {
-    if (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) {
+    if ((ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) &&
+        (ex.errorNum !== internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code)) {
       print(ex);
       throw ex;
     }
@@ -66,7 +67,8 @@ function runSetup () {
   try {
     c.save({ name: 'crashme' }, { waitForSync: true });
   } catch (ex) {
-    if (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) {
+    if ((ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) &&
+        (ex.errorNum !== internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code)) {
       print(ex);
       throw ex;
     }
