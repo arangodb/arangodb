@@ -1,3 +1,13 @@
+v3.10.5.3 (XXXX-XX-XX)
+----------------------
+
+* Fix incompatibility between 3.9 and 3.10 w.r.t. to serialization of AQL
+  array filters (i.e. `[* FILTER ...]`). The array filters were serialized in
+  a different way in 3.9 than they are serialized in 3.10. 3.10 also expected
+  the new serialization format when unserializing a plan.
+  The fix now enables support for both formats.
+
+
 v3.10.5.2 (2023-04-18)
 ----------------------
 
