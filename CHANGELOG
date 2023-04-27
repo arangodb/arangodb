@@ -13,7 +13,6 @@ v3.10.6 (XXXX-XX-XX)
   The functionality can be turned off by setting the startup option
   `--replication.auto-repair-revision-trees` to `false` on DB-Servers.
 
-
 * SEARCH-466 Fix leaking into individual link definition inherited properties
   from view.
 
