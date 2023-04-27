@@ -26,7 +26,20 @@ export const commonFieldsMap = {
   }
 };
 
+const traditionalNameSchema = Yup.string()
+  .max(256, "Index name max length is 256.")
+  .matches(/^[a-zA-Z]/, "Index name must always start with a letter.")
+  .matches(/^[a-zA-Z0-9\-_]*$/, 'Only symbols, "_" and "-" are allowed.');
+
+const extendedNameSchema = Yup.string()
+  .max(256, "Index name max length is 256.")
+  .matches(/^(?![0-9])/, "Index name cannot start with a number.")
+  .matches(/^\S(.*\S)?$/, "Index name cannot contain leading/trailing spaces.");
+
+const extendedNames = window.frontendConfig.extendedNames;
+
 export const commonSchema = {
   fields: Yup.string().required("Fields are required"),
-  inBackground: Yup.boolean()
+  inBackground: Yup.boolean(),
+  name: extendedNames ? extendedNameSchema : traditionalNameSchema
 };
