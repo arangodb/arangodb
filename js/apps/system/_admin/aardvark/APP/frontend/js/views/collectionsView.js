@@ -517,7 +517,7 @@
           },
           {
             rule: Joi.string().regex(/^(?!.*[/])/),
-            msg: 'Collection name cannot contain a forward slash (/)'
+            msg: 'Collection name cannot contain a forward slash (/).'
           }];
           tableContent.push(
             window.modalView.createTextEntry(
