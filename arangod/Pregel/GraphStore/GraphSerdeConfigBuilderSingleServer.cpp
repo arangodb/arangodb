@@ -32,12 +32,6 @@ GraphSerdeConfigBuilderSingleServer::GraphSerdeConfigBuilderSingleServer(
     TRI_vocbase_t& vocbase, GraphByCollections const& graphByCollections)
     : vocbase(vocbase), graphByCollections(graphByCollections) {}
 
-[[nodiscard]] auto
-GraphSerdeConfigBuilderSingleServer::edgeCollectionRestrictionsByShard() const
-    -> ShardMap {
-  return graphByCollections.edgeCollectionRestrictions;
-}
-
 [[nodiscard]] auto GraphSerdeConfigBuilderSingleServer::checkVertexCollections()
     const -> Result {
   for (std::string const& name : graphByCollections.vertexCollections) {
