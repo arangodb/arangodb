@@ -18,7 +18,7 @@ export const JSONErrors = ({ errors }: { errors?: ValidationError[] }) => {
     >
       {errors.map(error => {
         return (
-          <Box>{`${error.keyword} error: ${
+          <Box key={error.message}>{`${error.keyword} error: ${
             error.message
           }. Schema: ${JSON.stringify(error.params)}`}</Box>
         );
