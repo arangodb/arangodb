@@ -514,6 +514,10 @@
           {
             rule: Joi.string().regex(/^\S(.*\S)?$/),
             msg: 'Collection name cannot contain leading/trailing spaces.'
+          },
+          {
+            rule: Joi.string().regex(/^(?!.*[/])/),
+            msg: 'Collection name cannot contain a forward slash (/)'
           }];
           tableContent.push(
             window.modalView.createTextEntry(
