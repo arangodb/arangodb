@@ -337,7 +337,7 @@ function recovery (options) {
         results.status = false;
       }
     } else {
-      if (true) { //localOptions.extremeVerbosity) {
+      if (localOptions.extremeVerbosity) {
         print('Skipped ' + test + ' because of ' + filtered.filter);
       }
     }
