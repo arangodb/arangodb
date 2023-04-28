@@ -137,19 +137,32 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::pair<double, double> hitRates();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Check whether the cache is currently in the process of resizing.
+  /// @brief Check whether the cache is currently in the process of resizing
+  /// or shutting down.
   //////////////////////////////////////////////////////////////////////////////
   bool isResizing() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Check whether the cache is currently in the process of migrating.
+  /// @brief Check whether the cache is currently in the process of resizing.
+  //////////////////////////////////////////////////////////////////////////////
+  bool isResizingFlagSet() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Check whether the cache is currently in the process of migrating
+  /// or shutting down.
   //////////////////////////////////////////////////////////////////////////////
   bool isMigrating() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Chedk whether the cache is currently migrating or resizing.
+  /// @brief Check whether the cache is currently in the process of migrating.
   //////////////////////////////////////////////////////////////////////////////
-  bool isBusy() const noexcept;
+  bool isMigratingFlagSet() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Check whether the cache is currently in the process of resizing
+  /// or migrating.
+  //////////////////////////////////////////////////////////////////////////////
+  bool isResizingOrMigratingFlagSet() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begun the process of shutting down.
@@ -217,7 +230,15 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::shared_ptr<Table> table() const;
   void shutdown();
   [[nodiscard]] bool canResize() noexcept;
+
+  // called by FreeMemory async task
+  // precondition: metadata's isResizing() flag must be set
+  // postcondition: metadata's isResizing() flag is still set
   bool freeMemory();
+
+  // called by Migrate async task
+  // precondition: metadata's isMigrating() flag must be set
+  // postcondition: metadata's isMigrating() flag is not set
   bool migrate(std::shared_ptr<Table> newTable);
 
   virtual std::uint64_t freeMemoryFrom(std::uint32_t hash) = 0;
