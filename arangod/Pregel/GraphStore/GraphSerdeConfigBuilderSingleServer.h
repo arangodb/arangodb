@@ -30,8 +30,6 @@ struct GraphSerdeConfigBuilderSingleServer : GraphSerdeConfigBuilderBase {
   GraphSerdeConfigBuilderSingleServer(
       TRI_vocbase_t& vocbase, GraphByCollections const& graphByCollections);
 
-  [[nodiscard]] virtual auto edgeCollectionRestrictionsByShard() const
-      -> ShardMap override;
   [[nodiscard]] virtual auto checkVertexCollections() const -> Result override;
   [[nodiscard]] virtual auto checkEdgeCollections() const -> Result override;
   [[nodiscard]] virtual auto loadableVertexShards() const

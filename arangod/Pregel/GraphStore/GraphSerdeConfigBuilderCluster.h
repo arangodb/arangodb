@@ -33,10 +33,6 @@ namespace arangodb::pregel {
 struct GraphSerdeConfigBuilderCluster : GraphSerdeConfigBuilderBase {
   GraphSerdeConfigBuilderCluster(TRI_vocbase_t& vocbase,
                                  GraphByCollections const& graphByCollections);
-
-  [[nodiscard]] virtual auto edgeCollectionRestrictionsByShard() const
-      -> ShardMap override;
-
   [[nodiscard]] virtual auto checkVertexCollections() const -> Result override;
 
   [[nodiscard]] virtual auto checkEdgeCollections() const -> Result override;

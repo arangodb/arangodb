@@ -37,27 +37,6 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
       clusterInfo(vocbase.server().getFeature<ClusterFeature>().clusterInfo()),
       graphByCollections(graphByCollections) {}
 
-[[nodiscard]] auto
-GraphSerdeConfigBuilderCluster::edgeCollectionRestrictionsByShard() const
-    -> ShardMap {
-  std::unordered_map<std::string, std::vector<std::string>>
-      edgeCollectionRestrictionsPerShard;
-
-  for (auto const& [vertexCollection, edgeCollections] :
-       graphByCollections.edgeCollectionRestrictions) {
-    for (auto const& shardId : getShardIds(vertexCollection)) {
-      // intentionally create key in map
-      auto& restrictions = edgeCollectionRestrictionsPerShard[shardId];
-      for (auto const& edgeCollection : edgeCollections) {
-        for (auto const& edgeShardId : getShardIds(edgeCollection)) {
-          restrictions.push_back(edgeShardId);
-        }
-      }
-    }
-  }
-  return edgeCollectionRestrictionsPerShard;
-}
-
 [[nodiscard]] auto GraphSerdeConfigBuilderCluster::checkVertexCollections()
     const -> Result {
   for (std::string const& name : graphByCollections.vertexCollections) {

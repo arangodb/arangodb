@@ -34,11 +34,8 @@
 #include <unordered_map>
 
 namespace arangodb::pregel {
-using ShardMap = std::unordered_map<std::string, std::vector<std::string>>;
 
 struct GraphSerdeConfigBuilderBase {
-  [[nodiscard]] virtual auto edgeCollectionRestrictionsByShard() const
-      -> ShardMap = 0;
   [[nodiscard]] virtual auto checkVertexCollections() const -> Result = 0;
   [[nodiscard]] virtual auto checkEdgeCollections() const -> Result = 0;
 
