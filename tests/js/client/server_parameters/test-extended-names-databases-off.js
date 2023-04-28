@@ -59,7 +59,7 @@ function testSuite() {
         db._createDatabase(extendedName);
         fail();
       } catch (err) {
-        assertEqual(errors.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
+        assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
   };
