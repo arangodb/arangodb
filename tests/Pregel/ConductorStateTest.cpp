@@ -82,9 +82,14 @@ TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
       {}, {"ServerA"}, {"ServerA", "ServerB"}};
   for (auto const& servers : amountOfServers) {
     auto execSpec = ExecutionSpecifications();
-
-    execSpec.graphSerdeConfig.responsibleServerMap.responsibleServerMap =
-        servers;
+    for (auto server : servers) {
+      execSpec.graphSerdeConfig.loadableVertexShards.add(
+          LoadableVertexShard{.pregelShard = {},
+                              .vertexShard = {},
+                              .responsibleServer = server,
+                              .collectionName = {},
+                              .edgeShards = {}});
+    }
 
     auto cState = ConductorState(std::make_unique<AlgorithmFake>(), execSpec,
                                  fakeActorPID, fakeActorPID, fakeActorPID);
@@ -104,7 +109,14 @@ TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
 
   auto execSpec = ExecutionSpecifications();
-  execSpec.graphSerdeConfig.responsibleServerMap.responsibleServerMap = servers;
+  for (auto server : servers) {
+    execSpec.graphSerdeConfig.loadableVertexShards.add(
+        LoadableVertexShard{.pregelShard = {},
+                            .vertexShard = {},
+                            .responsibleServer = server,
+                            .collectionName = {},
+                            .edgeShards = {}});
+  }
 
   auto cState = ConductorState(std::make_unique<AlgorithmFake>(), execSpec,
                                fakeActorPID, fakeActorPID, fakeActorPID);
@@ -139,7 +151,15 @@ TEST(CreateWorkersStateTest,
 
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
   auto execSpec = ExecutionSpecifications();
-  execSpec.graphSerdeConfig.responsibleServerMap.responsibleServerMap = servers;
+  for (auto server : servers) {
+    execSpec.graphSerdeConfig.loadableVertexShards.add(
+        LoadableVertexShard{.pregelShard = {},
+                            .vertexShard = {},
+                            .responsibleServer = server,
+                            .collectionName = {},
+                            .edgeShards = {}});
+  }
+
   auto cState = ConductorState(std::make_unique<AlgorithmFake>(), execSpec,
                                fakeActorPID, fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);

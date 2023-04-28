@@ -70,12 +70,9 @@ auto buildGraphSerdeConfig(TRI_vocbase_t& vocbase,
   }
 
   auto loadableVertexShards = configBuilder->loadableVertexShards();
-  auto responsibleServerMap =
-      configBuilder->responsibleServerMap(loadableVertexShards);
 
   return errors::ErrorT<Result, GraphSerdeConfig>::ok(
-      GraphSerdeConfig{.loadableVertexShards = loadableVertexShards,
-                       .responsibleServerMap = responsibleServerMap});
+      GraphSerdeConfig{.loadableVertexShards = loadableVertexShards});
 }
 
 // TODO: maybe this belongs into GraphSerdeConfigBuilderBase and should also be

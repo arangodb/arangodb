@@ -78,14 +78,4 @@ GraphSerdeConfigBuilderSingleServer::GraphSerdeConfigBuilderSingleServer(
   return result;
 }
 
-[[nodiscard]] auto GraphSerdeConfigBuilderSingleServer::responsibleServerMap(
-    LoadableVertexShards const& loadableVertexShards) const
-    -> ResponsibleServerMap {
-  auto result = ResponsibleServerMap{};
-
-  result.responsibleServerMap.resize(
-      loadableVertexShards.loadableVertexShards.size(), "");
-  return result;
-}
-
 }  // namespace arangodb::pregel
