@@ -1,6 +1,8 @@
 v3.10.6 (XXXX-XX-XX)
 --------------------
 
+* Fixed unstable test setting the desired number of servers.
+
 * Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
 
 * Automatically repair revision trees after several failed shard synchronization
