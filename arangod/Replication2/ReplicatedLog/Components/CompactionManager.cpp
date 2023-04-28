@@ -28,6 +28,7 @@
 #include "Logger/LogContextKeys.h"
 #include "Replication2/coro-helper.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/dtrace-wrapper.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
@@ -60,6 +61,7 @@ auto CompactionManager::compact() noexcept -> futures::Future<CompactResult> {
   auto guard = guarded.getLockedGuard();
   auto f = guard->compactAggregator.waitFor();
   LOG_CTX("43337", INFO, loggerContext) << "triggering manual compaction";
+  DTRACE_PROBE(arangod, CompactionManager::manualCompaction);
   triggerAsyncCompaction(std::move(guard), true);
   return f;
 }
@@ -136,8 +138,11 @@ void CompactionManager::triggerAsyncCompaction(
         LOG_CTX("28d7d", TRACE, self->loggerContext)
             << "starting compaction on range " << compactionRange;
         guard.unlock();
+        DTRACE_PROBE_(arangod, CompactionManager::runCompaction::begin, index);
         auto f = store->removeFront(index);
         auto result = co_await asResult(std::move(f));
+        DTRACE_PROBE_(arangod, CompactionManager::runCompaction::end,
+                      result.errorNumber().value());
         auto cresult = CompactResult{.error = std::nullopt,
                                      .stopReason = reason,
                                      .compactedRange = compactionRange};

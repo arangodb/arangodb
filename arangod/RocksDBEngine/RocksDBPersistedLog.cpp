@@ -23,6 +23,7 @@
 
 #include <Basics/Exceptions.h>
 #include <Basics/RocksDBUtils.h>
+#include <Basics/dtrace-wrapper.h>
 #include <Basics/ScopeGuard.h>
 #include <Basics/debugging.h>
 #include <Basics/application-exit.h>
@@ -145,6 +146,8 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
       _metrics->queueLength->operator-=(pendingRequests.size());
     }
 
+    DTRACE_PROBE_(arangod, RocksDBLogWriteBatcher::WriteBatch::begin, &lane,
+                  pendingRequests.size());
     auto nextReqToWrite = pendingRequests.begin();
     auto nextReqToResolve = nextReqToWrite;
     // We sort the logs by their ids. This will make the write batch sorted
@@ -155,11 +158,14 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
               [](Request const& left, Request const& right) {
                 return left.objectId < right.objectId;
               });
-
+    DTRACE_PROBE_(arangod, RocksDBLogWriteBatcher::WriteBatch::sorting_done,
+                  &lane, pendingRequests.size());
     auto result = basics::catchToResult([&] {
       rocksdb::WriteBatch wb;
 
       while (nextReqToWrite != std::end(pendingRequests)) {
+        DTRACE_PROBE_(arangod, RocksDBLogWriteBatcher::WriteBatch::begin_batch,
+                      &lane, pendingRequests.size());
         wb.Clear();
 
         // For simplicity, a single LogIterator of a specific PersistRequest
@@ -177,23 +183,38 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
           }
           ++nextReqToWrite;
         }
+
+        DTRACE_PROBE_(arangod, RocksDBLogWriteBatcher::WriteBatch::prepared,
+                      &lane, wb.GetDataSize());
         {
           _metrics->writeBatchSize->count(wb.GetDataSize());
           {
             MeasureTimeGuard metricsGuard(*_metrics->rocksdbWriteTimeInUs);
             if (auto s = _db->Write({}, &wb); !s.ok()) {
+              DTRACE_PROBE_(arangod,
+                            RocksDBLogWriteBatcher::WriteBatch::write::error,
+                            &lane, int(s.code()));
               return rocksutils::convertStatus(s);
             }
           }
+
+          DTRACE_PROBE_(arangod, RocksDBLogWriteBatcher::WriteBatch::written,
+                        &lane);
           if (lane._waitForSync) {
             {
               MeasureTimeGuard metricsGuard(*_metrics->rocksdbSyncTimeInUs);
+              // At this point we have to make sure that every previous log
+              // entry is synced as well. Otherwise we might get holes in the
+              // log.
               if (auto s = _db->SyncWAL(); !s.ok()) {
-                // At this point we have to make sure that every previous log
-                // entry is synced as well. Otherwise we might get holes in the
-                // log.
+                DTRACE_PROBE_(arangod,
+                              RocksDBLogWriteBatcher::WriteBatch::sync::error,
+                              &lane, int(s.code()));
                 return rocksutils::convertStatus(s);
               }
+
+              DTRACE_PROBE_(arangod, RocksDBLogWriteBatcher::WriteBatch::synced,
+                            &lane);
             }
           }
         }
@@ -208,6 +229,9 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
                 reqToResolve.promise.setValue(ResultT{seq});
               });
         }
+
+        DTRACE_PROBE_(arangod,
+                      RocksDBLogWriteBatcher::WriteBatch::prom_resolved, &lane);
       }
 
       return Result{TRI_ERROR_NO_ERROR};
@@ -215,6 +239,8 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
 
     // resolve all promises with the result
     if (result.fail()) {
+      DTRACE_PROBE_(arangod, RocksDBLogWriteBatcher::WriteBatch::error, &lane,
+                    result.errorNumber().value());
       for (; nextReqToResolve != std::end(pendingRequests);
            ++nextReqToResolve) {
         // If a promise is fulfilled before (with a value), nextReqToResolve

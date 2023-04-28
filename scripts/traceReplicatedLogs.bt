@@ -1,0 +1,57 @@
+#!/usr/bin/env bpftrace
+
+// To use this you have to install bpftrace and compile with -DUSE_DTRACE.
+// Then simply execute this script. It will output a single line for each
+// DTRACE point that is currently in the source. This is basically for
+// illustration purposes only.
+
+BEGIN {
+  @START = nsecs;
+}
+
+usdt:build/bin/arangod:arangod:"LogLeader::insertLogEntry" {
+  printf("%llu LogLeader::insertLogEntry id=%lld idx=%lld\n", (nsecs-@START)/1000,
+         arg0, arg1);
+}
+
+usdt:build/bin/arangod:arangod:"LogLeader::updateCommitIndex" {
+  printf("%llu LogLeader::updateCommitIndex id=%lld idx=%lld\n", (nsecs-@START)/1000,
+         arg0, arg1);
+}
+
+usdt:build/bin/arangod:arangod:"LogLeader::sendAppendEntriesRequest" {
+  printf("%llu LogLeader::sendAppendEntriesRequest id=%lld to=%s msg-id=%lld\n", (nsecs-@START)/1000,
+         arg0, str(arg1), arg2);
+}
+
+usdt:build/bin/arangod:arangod:"LogLeader::recvAppendEntriesResponse" {
+  printf("%llu LogLeader::recvAppendEntriesResponse id=%lld to=%s msg-id=%lld\n", (nsecs-@START)/1000,
+         arg0, str(arg1), arg2);
+}
+
+usdt:build/bin/arangod:arangod:"LogLeader::LocalFollower::appendEntries::begin" {
+  printf("%llu LogLeader::LocalFollower::appendEntries::begin id=%lld msg-id=%lld\n", (nsecs-@START)/1000,
+         arg0, arg1);
+}
+
+usdt:build/bin/arangod:arangod:"LogLeader::LocalFollower::appendEntries::end" {
+  printf("%llu LogLeader::LocalFollower::appendEntries::end id=%lld msg-id=%lld\n", (nsecs-@START)/1000,
+         arg0, arg1);
+}
+
+usdt:build/bin/arangod:arangod:"RocksDBLogWriteBatcher::*" {
+  printf("%llu %s lane=%llx\n", (nsecs-@START)/1000, , arg0);
+}
+usdt:build/bin/arangod:arangod:"RocksDBLogWriteBatcher::WriteBatch::written" {
+  @sync_time_start[tid, arg0] = nsecs;
+}
+usdt:build/bin/arangod:arangod:"RocksDBLogWriteBatcher::WriteBatch::synced" {
+  @sync_time = hist((nsecs-@sync_time_start[tid, arg0]) / 1000);
+}
+usdt:build/bin/arangod:arangod:"RocksDBLogWriteBatcher::WriteBatch::prepared" {
+  @batch_data_size = hist(arg1);
+}
+
+END {
+    clear(@sync_time_start);
+}

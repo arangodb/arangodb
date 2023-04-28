@@ -99,7 +99,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] static auto construct(
       std::unique_ptr<replicated_state::IStorageEngineMethods>&&,
       std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
-      ParticipantId id, LogTerm term, LoggerContext const& logContext,
+      LogId logId, ParticipantId myself, LogTerm term,
+      LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
       std::unique_ptr<IReplicatedStateHandle>,
@@ -166,7 +167,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   LogLeader(LoggerContext logContext,
             std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-            ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
+            LogId id, ParticipantId myself, LogTerm term,
+            LogIndex firstIndexOfCurrentTerm,
             std::unique_ptr<IReplicatedStateHandle>,
             std::shared_ptr<IAbstractFollowerFactory> followerFactory,
             std::shared_ptr<IScheduler> scheduler);
@@ -187,6 +189,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::chrono::steady_clock::time_point _lastRequestStartTP{};
     std::chrono::steady_clock::time_point _errorBackoffEndTP{};
     std::shared_ptr<AbstractFollower> _impl;
+    ParticipantId const participantId;
     TermIndexPair lastAckedIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
     LogIndex nextPrevLogIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};
@@ -316,7 +319,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
   std::shared_ptr<IAbstractFollowerFactory> const _followerFactory;
   std::shared_ptr<IScheduler> const _scheduler;
-  ParticipantId const _id;
+  LogId const _logId;
+  ParticipantId const _myself;
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;
   std::shared_ptr<StorageManager> _storageManager;

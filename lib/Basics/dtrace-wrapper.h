@@ -24,9 +24,13 @@
 #pragma once
 
 #ifdef USE_DTRACE
-
+#define SDT_USE_VARIADIC 1
 #include "Basics/sdt.h"
 
+#define DTRACE_PROBE_NN(a, b, N, ...) DTRACE_PROBE##N(a, b, __VA_ARGS__)
+#define DTRACE_PROBE_N(a, b, N, ...) DTRACE_PROBE_NN(a, b, N, __VA_ARGS__)
+#define DTRACE_PROBE_(a, b, ...) \
+  DTRACE_PROBE_N(a, b, _SDT_NARG(0, ##__VA_ARGS__), ##__VA_ARGS__)
 #else
 
 #define DTRACE_PROBE1(a, b, c) \
@@ -35,5 +39,7 @@
 #define DTRACE_PROBE2(a, b, c, d) \
   do {                            \
   } while (0);
+
+#define DTRACE_PROBE_(a, b, ...)
 
 #endif

@@ -388,7 +388,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
         server.getFeature<ReplicatedLogFeature>().options(),
         std::make_shared<replicated_log::DefaultParticipantsFactory>(
             std::make_shared<NetworkFollowerFactory>(vocbase, id), sched),
-        logContext, myself);
+        id, logContext, myself);
   });
 
   auto& state = stateAndLog.state = feature.createReplicatedState(

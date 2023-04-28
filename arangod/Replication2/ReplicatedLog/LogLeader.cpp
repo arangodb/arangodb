@@ -69,6 +69,7 @@
 #include "Replication2/IScheduler.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
+#include "Basics/dtrace-wrapper.h"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -91,8 +92,8 @@ using namespace arangodb::replication2;
 
 replicated_log::LogLeader::LogLeader(
     LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-    std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    ParticipantId id, LogTerm term, LogIndex firstIndex,
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options, LogId logId,
+    ParticipantId myself, LogTerm term, LogIndex firstIndex,
     std::unique_ptr<IReplicatedStateHandle> stateHandle,
     std::shared_ptr<IAbstractFollowerFactory> followerFactory,
     std::shared_ptr<IScheduler> scheduler)
@@ -101,7 +102,8 @@ replicated_log::LogLeader::LogLeader(
       _options(std::move(options)),
       _followerFactory(std::move(followerFactory)),
       _scheduler(std::move(scheduler)),
-      _id(std::move(id)),
+      _logId(logId),
+      _myself(std::move(myself)),
       _currentTerm(term),
       _firstIndexOfCurrentTerm(firstIndex),
       _guardedLeaderData(*this, std::move(stateHandle), firstIndex) {
@@ -252,6 +254,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         // we are still in the same term.
         auto currentCommitIndex = request.leaderCommit;
         auto currentLITK = request.lowestIndexToKeep;
+        DTRACE_PROBE_(arangod, LogLeader::sendAppendEntriesRequest,
+                      logLeader->_logId.id(), follower->participantId.c_str(),
+                      messageId);
         follower->_impl->appendEntries(std::move(request))
             .thenFinal(
                 [weakParentLog = req->_parentLog, followerWeak = req->_follower,
@@ -264,6 +269,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 
                   auto self = weakParentLog.lock();
                   auto follower = followerWeak.lock();
+                  DTRACE_PROBE_(arangod, LogLeader::recvAppendEntriesResponse,
+                                self->_logId.id(),
+                                follower->participantId.c_str(), messageId);
                   if (self != nullptr && follower != nullptr) {
                     using namespace std::chrono_literals;
                     auto const duration = endTime - startTime;
@@ -316,7 +324,8 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 auto replicated_log::LogLeader::construct(
     std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
     std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
-    ParticipantId id, LogTerm term, LoggerContext const& logContext,
+    LogId id, ParticipantId myself, LogTerm term,
+    LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::unique_ptr<IReplicatedStateHandle> stateHandle,
@@ -332,7 +341,7 @@ auto replicated_log::LogLeader::construct(
         std::back_inserter(followerIds),
         [](auto const& follower) -> std::string { return follower.first; });
     auto message = basics::StringUtils::concatT(
-        "LogCore missing when constructing LogLeader, leader id: ", id,
+        "LogCore missing when constructing LogLeader, leader id: ", myself,
         "term: ", term, "effectiveWriteConcern: ", config.effectiveWriteConcern,
         "followers: ", basics::StringUtils::join(followerIds, ", "));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
@@ -345,13 +354,13 @@ auto replicated_log::LogLeader::construct(
     MakeSharedLogLeader(
         LoggerContext logContext,
         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-        std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-        ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
+        std::shared_ptr<ReplicatedLogGlobalSettings const> options, LogId id,
+        ParticipantId myself, LogTerm term, LogIndex firstIndexOfCurrentTerm,
         std::unique_ptr<IReplicatedStateHandle> stateHandle,
         std::shared_ptr<IAbstractFollowerFactory> followerFactory,
         std::shared_ptr<IScheduler> scheduler)
         : LogLeader(std::move(logContext), std::move(logMetrics),
-                    std::move(options), std::move(id), term,
+                    std::move(options), id, std::move(myself), term,
                     firstIndexOfCurrentTerm, std::move(stateHandle),
                     std::move(followerFactory), std::move(scheduler)) {}
   };
@@ -389,7 +398,7 @@ auto replicated_log::LogLeader::construct(
   // in your test?
   if (lastIndex.term >= term) {
     LOG_CTX("8ed2f", FATAL, logContext)
-        << "Failed to construct log leader " << id << ". Current term is "
+        << "Failed to construct log leader " << myself << ". Current term is "
         << term << " but spearhead is already at " << lastIndex.term;
     FATAL_ERROR_EXIT();  // This must never happen in production
   }
@@ -401,7 +410,7 @@ auto replicated_log::LogLeader::construct(
 
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
-      std::move(logMetrics), options, std::move(id), term,
+      std::move(logMetrics), options, id, std::move(myself), term,
       firstIndexOfCurrentTerm, std::move(stateHandle), followerFactory,
       scheduler);
 
@@ -572,7 +581,7 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
   std::vector<ParticipantId> followersWithSnapshot;
   followersWithSnapshot.reserve(guard->_follower.size());
   for (auto const& [pid, follower] : guard->_follower) {
-    if (pid != _id && follower->snapshotAvailable) {
+    if (pid != _myself && follower->snapshotAvailable) {
       followersWithSnapshot.emplace_back(pid);
     }
   }
@@ -602,8 +611,10 @@ auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync,
     -> LogIndex {
   auto const insertTp = InMemoryLogEntry::clock::now();
   // Currently we use a mutex. Is this the only valid semantic?
-  return _inMemoryLogManager->appendLogEntry(std::move(payload), _currentTerm,
-                                             insertTp, waitForSync);
+  auto idx = _inMemoryLogManager->appendLogEntry(
+      std::move(payload), _currentTerm, insertTp, waitForSync);
+  DTRACE_PROBE_(arangod, LogLeader::insertLogEntry, _logId.id(), idx.value);
+  return idx;
 }
 
 auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
@@ -629,7 +640,7 @@ auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
 
 auto replicated_log::LogLeader::getParticipantId() const noexcept
     -> ParticipantId const& {
-  return _id;
+  return _myself;
 }
 
 auto replicated_log::LogLeader::triggerAsyncReplication() -> void {
@@ -650,6 +661,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   LOG_CTX("a9a7e", TRACE, _self._logContext)
       << "updating commit index to " << newCommitIndex << " with quorum "
       << quorum->quorum;
+  DTRACE_PROBE_(arangod, LogLeader::updateCommitIndex, _self._logId.id(),
+                newCommitIndex.value);
   _self._inMemoryLogManager->updateCommitIndex(newCommitIndex);
   // TODO Should _lastQuorum be moved into the InMemoryLogManager?
   _lastQuorum = quorum;
@@ -821,7 +834,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   req.leaderCommit = commitIndex;
   req.lowestIndexToKeep = lowestIndexToKeep;
   req.leaderTerm = _self._currentTerm;
-  req.leaderId = _self._id;
+  req.leaderId = _self._myself;
   req.waitForSync = this->activeParticipantsConfig->config.waitForSync;
   req.messageId = ++follower.lastSentMessageId;
 
@@ -1163,6 +1176,9 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
           .with<logContextKeyPrevLogTerm>(request.prevLogEntry.term)
           .with<logContextKeyLeaderCommit>(request.leaderCommit);
 
+  DTRACE_PROBE_(arangod, LogLeader::LocalFollower::appendEntries::begin,
+                _leader._logId, request.messageId);
+
   auto returnAppendEntriesResult =
       [term = request.leaderTerm, messageId = request.messageId,
        logContext = messageLogContext,
@@ -1176,6 +1192,8 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
         }
         LOG_CTX("e0800", TRACE, logContext)
             << "local follower completed append entries";
+        DTRACE_PROBE_(arangod, LogLeader::LocalFollower::appendEntries::end,
+                      /* log id not available */ 0, messageId);
         return AppendEntriesResult{term, messageId, true};
       };
 
@@ -1205,8 +1223,8 @@ void replicated_log::LogLeader::establishLeadership(
 
   // Also make sure that this entry is written with waitForSync = true
   // to ensure that entries of the previous term are synced as well.
-  auto meta =
-      LogMetaPayload::FirstEntryOfTerm{.leader = _id, .participants = *config};
+  auto meta = LogMetaPayload::FirstEntryOfTerm{.leader = _myself,
+                                               .participants = *config};
   auto const insertTp = InMemoryLogEntry::clock::now();
   auto waitForIndex = _inMemoryLogManager->appendLogEntry(
       LogMetaPayload{std::move(meta)}, _currentTerm, insertTp, true);
@@ -1291,7 +1309,7 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
                                  std::shared_ptr<AbstractFollower>>{};
           for (auto const& participantId : additionalParticipantIds) {
             // exclude the leader
-            if (participantId != _id) {
+            if (participantId != _myself) {
               additionalFollowers_.try_emplace(
                   participantId,
                   _followerFactory->constructFollower(participantId));
@@ -1470,8 +1488,8 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
   auto [actionOuter, leaderEstablished, stateHandle] =
       _guardedLeaderData.doUnderLock([this, &localFollower = *_localFollower,
-                                      &participantId =
-                                          _id](GuardedLeaderData& leaderData) {
+                                      &participantId = _myself](
+                                         GuardedLeaderData& leaderData) {
         if (leaderData._didResign) {
           LOG_CTX("5d3b8", ERR, _logContext)
               << "Leader " << participantId << " already resigned!";
@@ -1575,6 +1593,7 @@ replicated_log::LogLeader::FollowerInfo::FollowerInfo(
     std::shared_ptr<AbstractFollower> impl, LogIndex lastLogIndex,
     LoggerContext const& logContext)
     : _impl(std::move(impl)),
+      participantId(_impl->getParticipantId()),
       nextPrevLogIndex(lastLogIndex),
       logContext(
           logContext.with<logContextKeyLogComponent>("follower-info")

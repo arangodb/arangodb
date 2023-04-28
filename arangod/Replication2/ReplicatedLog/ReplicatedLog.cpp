@@ -50,10 +50,11 @@ replicated_log::ReplicatedLog::ReplicatedLog(
     std::unique_ptr<replicated_state::IStorageEngineMethods> storage,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    std::shared_ptr<IParticipantsFactory> participantsFactory,
+    std::shared_ptr<IParticipantsFactory> participantsFactory, LogId logId,
     LoggerContext const& logContext, agency::ServerInstanceReference myself)
     :  // TODO is it possible to add myself to the
        //      logger context? even if it is changed later?
+      _logId(logId),
       _logContext(logContext.with<logContextKeyLogId>(storage->getLogId())),
       _metrics(std::move(metrics)),
       _options(std::move(options)),
@@ -148,6 +149,7 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
       std::make_shared<agency::ParticipantsConfig>(data.latest->config);
 
   ParticipantContext context = {.loggerContext = _logContext,
+                                .logId = _logId,
                                 .stateHandle = std::move(data.stateHandle),
                                 .metrics = _metrics,
                                 .options = _options};
@@ -330,10 +332,10 @@ auto DefaultParticipantsFactory::constructLeader(
     LeaderTermInfo info, ParticipantContext context)
     -> std::shared_ptr<ILogLeader> {
   return LogLeader::construct(
-      std::move(methods), std::move(info.initialConfig), std::move(info.myself),
-      info.term, context.loggerContext, std::move(context.metrics),
-      std::move(context.options), std::move(context.stateHandle),
-      followerFactory, scheduler);
+      std::move(methods), std::move(info.initialConfig), context.logId,
+      std::move(info.myself), info.term, context.loggerContext,
+      std::move(context.metrics), std::move(context.options),
+      std::move(context.stateHandle), followerFactory, scheduler);
 }
 
 DefaultParticipantsFactory::DefaultParticipantsFactory(

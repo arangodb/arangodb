@@ -31,6 +31,7 @@
 #include "Basics/Guarded.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/IScheduler.h"
+#include "Basics/dtrace-wrapper.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -201,9 +202,12 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
       }
       LOG_CTX("e0a6d", TRACE, self->loggerContext)
           << "executing storage operation";
+      DTRACE_PROBE_(arangod, StorageManager::operation::begin, 0);
       auto f = req.operation->run(*guard->methods);
       guard.unlock();
       Result result = co_await asResult(std::move(f));
+      DTRACE_PROBE_(arangod, StorageManager::operation::end,
+                    result.errorNumber().value());
       // lock guard to make effects visible
       if (result.ok()) {
         LOG_CTX("b6cbf", TRACE, self->loggerContext)

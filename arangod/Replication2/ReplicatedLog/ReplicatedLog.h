@@ -119,6 +119,7 @@ struct FollowerTermInfo {
 
 struct ParticipantContext {
   LoggerContext loggerContext;
+  LogId logId;
   std::unique_ptr<IReplicatedStateHandle> stateHandle;
   std::shared_ptr<ReplicatedLogMetrics> metrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> options;
@@ -169,7 +170,7 @@ struct alignas(64) ReplicatedLog {
       std::unique_ptr<replicated_state::IStorageEngineMethods> storage,
       std::shared_ptr<ReplicatedLogMetrics> metrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      std::shared_ptr<IParticipantsFactory> participantsFactory,
+      std::shared_ptr<IParticipantsFactory> participantsFactory, LogId logId,
       LoggerContext const& logContext, agency::ServerInstanceReference myself);
 
   ~ReplicatedLog();
@@ -226,6 +227,7 @@ struct alignas(64) ReplicatedLog {
   auto tryBuildParticipant(GuardedData& data) -> futures::Future<futures::Unit>;
   void resetParticipant(GuardedData& data);
 
+  LogId const _logId;
   LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _metrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;

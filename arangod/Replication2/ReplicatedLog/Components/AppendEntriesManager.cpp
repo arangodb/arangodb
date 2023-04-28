@@ -38,6 +38,8 @@
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Metrics/Counter.h"
+#include "Basics/dtrace-wrapper.h"
+#include "Basics/ScopeGuard.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
@@ -45,6 +47,15 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
   MeasureTimeGuard timer(*metrics->replicatedLogFollowerAppendEntriesRtUs);
   // TODO more metrics?
+  DTRACE_PROBE_(arangod, AppendEntriesManager::appendEntries::begin,
+                request.messageId);
+
+#ifdef USE_DTRACE
+  ScopeGuard dtraceGuard([&]() noexcept {
+    DTRACE_PROBE_(arangod, AppendEntriesManager::appendEntries::end,
+                  request.messageId);
+  });
+#endif
 
   LoggerContext lctx =
       loggerContext.with<logContextKeyMessageId>(request.messageId)
