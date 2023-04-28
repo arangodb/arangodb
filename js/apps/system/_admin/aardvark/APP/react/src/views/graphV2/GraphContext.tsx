@@ -50,8 +50,10 @@ type GraphContextType = {
     errorMessage?: string;
     response?: { body: { errorMessage: string } };
   };
-  expandedNodes?: string[];
-  setExpandedNodes: (newExpandedNode: string[]) => void;
+  expandedNodes: string[];
+  setExpandedNodes: React.Dispatch<
+    React.SetStateAction<string[]>
+  >;
 };
 
 const GraphContext = createContext<GraphContextType>({
@@ -85,7 +87,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const [network, setNetwork] = useState<Network>();
   const hasDrawnOnce = useRef(false);
   const [datasets, setDatasets] = useState<DatasetsType>();
-  const [expandedNodes, setExpandedNodes] = useState<string[]>(["worldVertices/country-colombia"]);
+  const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
   const [rightClickedEntity, setRightClickedEntity] =
     useState<RightClickedEntityType>();
 

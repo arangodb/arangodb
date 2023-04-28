@@ -101,7 +101,7 @@ const ExpandNodeButton = ({
 }: {
   foundNode: FullItem<NodeDataType, "id">;
 }) => {
-  const { rightClickedEntity, graphName, datasets, expandedNodes, setExpandedNodes } = useGraph();
+  const { rightClickedEntity, graphName, datasets, setExpandedNodes } = useGraph();
   const { urlParams } = useUrlParameterContext();
   const expandNode = async () => {
     if (!rightClickedEntity?.nodeId) {
@@ -127,8 +127,7 @@ const ExpandNodeButton = ({
       id: rightClickedEntity.nodeId,
       label: newLabel
     });
-    console.log(`Add ${rightClickedEntity.nodeId} to expandedNodes`);
-    setExpandedNodes(["worldVertices/country-brazil", "worldVertices/country-argentina"]);
+    setExpandedNodes((expandedNodes) => [...expandedNodes, rightClickedEntity.nodeId as string]);
     const newNodes = newData.nodes.filter((node: any) => {
       return !datasets?.nodes.get(node.id);
     });
