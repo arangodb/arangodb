@@ -258,9 +258,10 @@ function recovery (options) {
   };
   let useEncryption = isEnterprise();
 
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, localOptions
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, localOptions,
                                        // At the moment only view-tests supported by cluster recovery tests:
-                                      ).filter(testname => testname.search('search') >= 0);
+                                       function(testname) { return testname.search('search') >= 0; }
+                                      );
 
   recoveryTests = tu.splitBuckets(localOptions, recoveryTests);
 
