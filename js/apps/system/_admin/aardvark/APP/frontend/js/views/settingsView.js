@@ -165,7 +165,7 @@
           },
           {
             rule: Joi.string().regex(/^(?!.*[/])/),
-            msg: 'Collection name cannot contain a forward slash (/)'
+            msg: 'Collection name cannot contain a forward slash (/).'
           }];
           if (!isCoordinator) {
             if (this.model.get('name').substr(0, 1) === '_') {
