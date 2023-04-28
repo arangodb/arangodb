@@ -456,8 +456,10 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
 
   cleanupCollTrx.cancel();
 
+  bool const isReplication2 =
+      _state->vocbase().replicationVersion() == replication::Version::TWO;
   // wait for sync if required
-  if (_state->waitForSync()) {
+  if (_state->waitForSync() && !isReplication2) {
     auto& selector =
         _state->vocbase().server().getFeature<EngineSelectorFeature>();
     auto& engine = selector.engine<RocksDBEngine>();
