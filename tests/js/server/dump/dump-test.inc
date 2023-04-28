@@ -62,8 +62,9 @@
       const res = db._connection.GET("/_db/" + dbName + "/_admin/cluster/shardDistribution?returnAsJSON=true");
       const colls = res["results"];
       for (const key in colls) {
-        if (key.includes(collName)) {
+        if (key === collName) {
           collDistribution = colls[key];
+          break;
         }
       }
       assertFalse(_.isEmpty(collDistribution));
@@ -77,6 +78,7 @@
       internal.sleep(numSecs);
       numSecs *= 2;
     }
+    assertTrue(numSecs < 16, "reached timeout waited for collection " + collName + " to get in sync");
   }
 
   const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
