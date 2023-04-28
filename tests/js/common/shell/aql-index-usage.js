@@ -63,6 +63,7 @@ function IndexUsageSuite () {
     },
 
     testIndexUsage : function () {
+      assertTrue(1===2)
       let task = tasks.register({
         command: function(params) {
           require('jsunity').jsUnity.attachAssertions();
