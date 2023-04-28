@@ -1,6 +1,8 @@
 import { JSONSchemaType } from "ajv";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
+const extendedNames = window.frontendConfig.extendedNames;
+
 const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
   $id: "https://arangodb.com/schemas/views/invertedIndex.json",
   type: "object",
@@ -12,7 +14,8 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
     },
     name: {
       nullable: true,
-      type: "string"
+      type: "string",
+      pattern: extendedNames ? "" : "^[a-zA-Z][a-zA-Z0-9-_]*$"
     },
     analyzer: {
       nullable: true,
