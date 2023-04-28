@@ -1,5 +1,6 @@
 devel
 -----
+
 * FE-252: bugfix - canvas image screenshot breaks graph colors.
 
 * Changed return code of APIs that create databases from previously 1229
