@@ -12,8 +12,7 @@ export const NodeRightClickMenu = forwardRef(
       rightClickedEntity,
       setSelectedAction,
       onApplySettings,
-      datasets,
-      expandedNodes
+      datasets
     } = useGraph();
     const { urlParams, setUrlParams } = useUrlParameterContext();
     const foundNode =
@@ -45,9 +44,7 @@ export const NodeRightClickMenu = forwardRef(
           >
             Edit Node
           </MenuItem>
-          {
-            expandedNodes?.includes(rightClickedEntity.nodeId) ? null : <ExpandNodeButton foundNode={foundNode} />
-          }
+          <ExpandNodeButton foundNode={foundNode} />
           <MenuItem
             onClick={() => {
               if (!rightClickedEntity.nodeId) {
@@ -101,7 +98,7 @@ const ExpandNodeButton = ({
 }: {
   foundNode: FullItem<NodeDataType, "id">;
 }) => {
-  const { rightClickedEntity, graphName, datasets, setExpandedNodes } = useGraph();
+  const { rightClickedEntity, graphName, datasets, expandedNodes, setExpandedNodes } = useGraph();
   const { urlParams } = useUrlParameterContext();
   const expandNode = async () => {
     if (!rightClickedEntity?.nodeId) {
@@ -137,5 +134,5 @@ const ExpandNodeButton = ({
     datasets?.nodes.add(newNodes);
     datasets?.edges.add(newEdges);
   };
-  return <MenuItem onClick={expandNode}>Expand Node</MenuItem>;
+  return <MenuItem isDisabled={expandedNodes?.includes(foundNode.id)} onClick={expandNode}>Expand Node</MenuItem>;
 };
