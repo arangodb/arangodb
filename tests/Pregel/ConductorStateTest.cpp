@@ -83,7 +83,7 @@ TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
   for (auto const& servers : amountOfServers) {
     auto execSpec = ExecutionSpecifications();
     for (auto server : servers) {
-      execSpec.graphSerdeConfig.loadableVertexShards.add(
+      execSpec.graphSerdeConfig.loadableVertexShards.emplace_back(
           LoadableVertexShard{.pregelShard = {},
                               .vertexShard = {},
                               .responsibleServer = server,
@@ -110,7 +110,7 @@ TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
 
   auto execSpec = ExecutionSpecifications();
   for (auto server : servers) {
-    execSpec.graphSerdeConfig.loadableVertexShards.add(
+    execSpec.graphSerdeConfig.loadableVertexShards.emplace_back(
         LoadableVertexShard{.pregelShard = {},
                             .vertexShard = {},
                             .responsibleServer = server,
@@ -152,7 +152,7 @@ TEST(CreateWorkersStateTest,
   std::vector<std::string> servers = {"ServerA", "ServerB", "ServerC"};
   auto execSpec = ExecutionSpecifications();
   for (auto server : servers) {
-    execSpec.graphSerdeConfig.loadableVertexShards.add(
+    execSpec.graphSerdeConfig.loadableVertexShards.emplace_back(
         LoadableVertexShard{.pregelShard = {},
                             .vertexShard = {},
                             .responsibleServer = server,

@@ -37,25 +37,21 @@
 namespace arangodb::pregel {
 
 struct GraphSerdeConfig {
-  LoadableVertexShards loadableVertexShards;
+  std::vector<LoadableVertexShard> loadableVertexShards;
 
   [[nodiscard]] auto collectionName(PregelShard pregelShard) const
       -> std::string const& {
-    ADB_PROD_ASSERT(pregelShard.value <
-                    loadableVertexShards.loadableVertexShards.size());
-    return loadableVertexShards.loadableVertexShards.at(pregelShard.value)
-        .collectionName;
+    ADB_PROD_ASSERT(pregelShard.value < loadableVertexShards.size());
+    return loadableVertexShards.at(pregelShard.value).collectionName;
   }
 
   [[nodiscard]] auto shardID(PregelShard pregelShard) const -> ShardID {
-    ADB_PROD_ASSERT(pregelShard.value <
-                    loadableVertexShards.loadableVertexShards.size());
-    return loadableVertexShards.loadableVertexShards.at(pregelShard.value)
-        .vertexShard;
+    ADB_PROD_ASSERT(pregelShard.value < loadableVertexShards.size());
+    return loadableVertexShards.at(pregelShard.value).vertexShard;
   }
   [[nodiscard]] auto pregelShard(ShardID responsibleShard) const
       -> PregelShard {
-    for (auto const& lvs : loadableVertexShards.loadableVertexShards) {
+    for (auto const& lvs : loadableVertexShards) {
       if (lvs.vertexShard == responsibleShard) {
         return lvs.pregelShard;
       }
@@ -71,8 +67,7 @@ struct GraphSerdeConfig {
       -> std::set<PregelShard> {
     auto result = std::set<PregelShard>{};
 
-    for (auto&& loadableVertexShard :
-         loadableVertexShards.loadableVertexShards) {
+    for (auto&& loadableVertexShard : loadableVertexShards) {
       if (loadableVertexShard.responsibleServer == server) {
         result.insert(loadableVertexShard.pregelShard);
       }
@@ -84,8 +79,7 @@ struct GraphSerdeConfig {
       -> std::vector<LoadableVertexShard> {
     auto result = std::vector<LoadableVertexShard>{};
 
-    for (auto&& loadableVertexShard :
-         loadableVertexShards.loadableVertexShards) {
+    for (auto&& loadableVertexShard : loadableVertexShards) {
       if (loadableVertexShard.responsibleServer == server) {
         result.push_back(loadableVertexShard);
       }
@@ -96,8 +90,7 @@ struct GraphSerdeConfig {
   [[nodiscard]] auto localShardIDs(ServerID server) const -> std::set<ShardID> {
     auto result = std::set<ShardID>{};
 
-    for (auto&& loadableVertexShard :
-         loadableVertexShards.loadableVertexShards) {
+    for (auto&& loadableVertexShard : loadableVertexShards) {
       if (loadableVertexShard.responsibleServer == server) {
         result.insert(loadableVertexShard.vertexShard);
       }
@@ -107,8 +100,7 @@ struct GraphSerdeConfig {
 
   [[nodiscard]] auto responsibleServerSet() const -> std::set<ServerID> {
     auto result = std::set<ServerID>{};
-    for (auto&& loadableVertexShard :
-         loadableVertexShards.loadableVertexShards) {
+    for (auto&& loadableVertexShard : loadableVertexShards) {
       result.insert(loadableVertexShard.responsibleServer);
     }
     return result;

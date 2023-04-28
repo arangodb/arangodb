@@ -38,7 +38,7 @@ struct GraphSerdeConfigBuilderCluster : GraphSerdeConfigBuilderBase {
   [[nodiscard]] virtual auto checkEdgeCollections() const -> Result override;
 
   [[nodiscard]] virtual auto loadableVertexShards() const
-      -> LoadableVertexShards override;
+      -> std::vector<LoadableVertexShard> override;
 
   [[nodiscard]] auto getShardIds(ShardID collection) const
       -> std::vector<ShardID>;

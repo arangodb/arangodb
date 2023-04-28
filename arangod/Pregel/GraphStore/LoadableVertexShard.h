@@ -43,22 +43,4 @@ auto inspect(Inspector& f, LoadableVertexShard& x) {
                             f.field("collectionName", x.collectionName),
                             f.field("edgeShards", x.edgeShards));
 }
-
-struct LoadableVertexShards {
-  [[nodiscard]] auto size() const -> size_t {
-    return loadableVertexShards.size();
-  }
-  [[nodiscard]] auto at(size_t pos) const -> LoadableVertexShard const& {
-    return loadableVertexShards.at(pos);
-  }
-  auto add(LoadableVertexShard&& item) -> void {
-    loadableVertexShards.emplace_back(std::move(item));
-  }
-  std::vector<LoadableVertexShard> loadableVertexShards;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, LoadableVertexShards& x) {
-  return f.object(x).fields(f.field("vertexShards", x.loadableVertexShards));
-}
-
 }  // namespace arangodb::pregel
