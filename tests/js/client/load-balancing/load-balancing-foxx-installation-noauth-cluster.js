@@ -45,7 +45,6 @@ const loadFoxxIntoZip = (path) => {
   let zip = utils.zipDirectory(path);
   let content = fs.readFileSync(zip);
   fs.remove(zip);
-  //Content-Disposition: form-data; name="file";
   return {
     type: 'inlinezip',
     buffer: content,
