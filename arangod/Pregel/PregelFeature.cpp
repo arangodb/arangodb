@@ -130,7 +130,8 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
 
   auto maxSuperstep = basics::VelocyPackHelper::getNumericValue<uint64_t>(
       options.userParameters.slice(), Utils::maxGSS, 500);
-  // FIXME: This does not make sense, does it?
+  // If the user sets maxNumIterations, we just do as many supersteps
+  // as necessary to please the algorithm
   if (options.userParameters.slice().hasKey(Utils::maxNumIterations)) {
     maxSuperstep = std::numeric_limits<uint64_t>::max();
   }
