@@ -57,8 +57,8 @@ GraphSerdeConfigBuilderSingleServer::GraphSerdeConfigBuilderSingleServer(
 }
 
 [[nodiscard]] auto GraphSerdeConfigBuilderSingleServer::loadableVertexShards()
-    const -> LoadableVertexShards {
-  auto result = LoadableVertexShards{};
+    const -> std::vector<LoadableVertexShard> {
+  auto result = std::vector<LoadableVertexShard>{};
 
   for (auto const [idx, vertexCollection] :
        enumerate(graphByCollections.vertexCollections)) {
@@ -73,7 +73,7 @@ GraphSerdeConfigBuilderSingleServer::GraphSerdeConfigBuilderSingleServer(
         loadableVertexShard.edgeShards.emplace_back(edgeCollection);
       }
     }
-    result.loadableVertexShards.emplace_back(loadableVertexShard);
+    result.emplace_back(loadableVertexShard);
   }
   return result;
 }

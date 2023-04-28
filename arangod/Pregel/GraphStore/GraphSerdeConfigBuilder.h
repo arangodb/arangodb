@@ -40,7 +40,7 @@ struct GraphSerdeConfigBuilderBase {
   [[nodiscard]] virtual auto checkEdgeCollections() const -> Result = 0;
 
   [[nodiscard]] virtual auto loadableVertexShards() const
-      -> LoadableVertexShards = 0;
+      -> std::vector<LoadableVertexShard> = 0;
   [[nodiscard]] static auto construct(
       TRI_vocbase_t& vocbase, GraphByCollections const& graphByCollections)
       -> std::unique_ptr<GraphSerdeConfigBuilderBase>;

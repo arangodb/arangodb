@@ -97,8 +97,8 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
 }
 
 [[nodiscard]] auto GraphSerdeConfigBuilderCluster::loadableVertexShards() const
-    -> LoadableVertexShards {
-  auto result = LoadableVertexShards{};
+    -> std::vector<LoadableVertexShard> {
+  auto result = std::vector<LoadableVertexShard>{};
 
   std::vector<std::vector<ShardID>> vertexShardTable;
   std::vector<std::vector<ShardID>> edgeShardTable;
@@ -114,7 +114,7 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
     for (auto shardIdx = size_t{0}; shardIdx < vertexShardTable[collIdx].size();
          ++shardIdx) {
       auto loadableVertexShard = LoadableVertexShard{
-          .pregelShard = PregelShard(result.loadableVertexShards.size()),
+          .pregelShard = PregelShard(result.size()),
           .vertexShard = vertexShardTable[collIdx][shardIdx],
           .collectionName = graphByCollections.vertexCollections[collIdx],
           .edgeShards = {}};
@@ -128,7 +128,7 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
               edgeShardTable[edgeCollIdx][shardIdx]);
         }
       }
-      result.loadableVertexShards.emplace_back(loadableVertexShard);
+      result.emplace_back(loadableVertexShard);
     }
   }
   return result;

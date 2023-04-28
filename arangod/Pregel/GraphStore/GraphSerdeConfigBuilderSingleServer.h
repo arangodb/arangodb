@@ -33,7 +33,7 @@ struct GraphSerdeConfigBuilderSingleServer : GraphSerdeConfigBuilderBase {
   [[nodiscard]] virtual auto checkVertexCollections() const -> Result override;
   [[nodiscard]] virtual auto checkEdgeCollections() const -> Result override;
   [[nodiscard]] virtual auto loadableVertexShards() const
-      -> LoadableVertexShards override;
+      -> std::vector<LoadableVertexShard> override;
 
   TRI_vocbase_t& vocbase;
   GraphByCollections const& graphByCollections;

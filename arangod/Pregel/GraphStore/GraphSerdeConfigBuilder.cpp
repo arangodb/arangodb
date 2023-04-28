@@ -69,10 +69,8 @@ auto buildGraphSerdeConfig(TRI_vocbase_t& vocbase,
     return errors::ErrorT<Result, GraphSerdeConfig>::error(edgeCollectionsOk);
   }
 
-  auto loadableVertexShards = configBuilder->loadableVertexShards();
-
-  return errors::ErrorT<Result, GraphSerdeConfig>::ok(
-      GraphSerdeConfig{.loadableVertexShards = loadableVertexShards});
+  return errors::ErrorT<Result, GraphSerdeConfig>::ok(GraphSerdeConfig{
+      .loadableVertexShards = configBuilder->loadableVertexShards()});
 }
 
 // TODO: maybe this belongs into GraphSerdeConfigBuilderBase and should also be
