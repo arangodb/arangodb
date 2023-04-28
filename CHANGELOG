@@ -1,6 +1,8 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* Stabilize test which sets the desired number of servers.
+
 * Automatically repair revision trees after several failed shard synchronization
   attempts. This can help to get permanently out-of-sync shards back into sync.
 
