@@ -1,7 +1,8 @@
 devel
 -----
 
-* FE-251: Prohibit multiple expansions of the same node in the graph viewer.
+* FE-251: bugfix - prohibit multiple expansions of the same node in the graph
+  viewer.
 
 * FE-233: bugfix - fix query spotlight search not working.
 
