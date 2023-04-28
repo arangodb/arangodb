@@ -59,7 +59,7 @@
     let collDistributionCurrent = {};
     while (true) {
       const dbName = db._name();
-      const res = db._connection.GET("/_db/" + dbName + "/_admin/cluster/shardDistribution?returnAsJSON=true");
+      const res = db._connection.GET("/_db/" + dbName + "/_admin/cluster/shardDistribution");
       const colls = res["results"];
       for (const key in colls) {
         if (key.includes(collName)) {
