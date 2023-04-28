@@ -162,8 +162,10 @@ var logErrorResponse = function (response) {
 };
 var globalAssert = function(condition, testname, sourceFile, fnsource) {
   if (! condition) {
-    internal.output(`${hashes}\nASSERTION FAILED: \n${testname} in file ${sourceFile}\nIn this Function:\n${fnsource}\n${hashes}\n`);
-    throw new Error('assertion ' + testname + ' in file ' + sourceFile + ' failed');
+    let msg = `${hashes}\nASSERTION FAILED: \n${testname} in file ${sourceFile}\nIn this Function:\n${fnsource}\n${hashes}\n`;
+    allErrors += msg;
+    internal.output(msg);
+    throw new Error(msg);
   }
 };
 
