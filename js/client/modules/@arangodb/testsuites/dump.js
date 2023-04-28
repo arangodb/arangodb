@@ -108,6 +108,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.im2 = null;
     this.keyDir = null;
     this.otherKeyDir = null;
+    this.doCleanup = true;
   }
 
   destructor(cleanup) {
@@ -131,14 +132,21 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.results['shutdown'] &= this.im2.shutdownInstance();
     }
     print(CYAN + 'done.' + RESET);
-    let doCleanup = this.options.cleanup && (this.results.failed === 0) && cleanup;
-    if (doCleanup) {
+
+    Object.keys(this.results).forEach(key => {
+      if (this.results[key].hasOwnProperty('failed')) {
+        this.results.failed += this.results[key].failed;
+      }
+    });
+    this.doCleanup = this.options.cleanup && (this.results.failed === 0) && cleanup;
+    if (this.doCleanup) {
       if (this.im1 !== null) {
         this.im1.destructor(this.results.failed === 0);
       }
       if (this.im2 !== null) {
         this.im2.destructor(this.results.failed === 0);
       }
+
       [this.keyDir,
        this.otherKeyDir,
        this.dumpConfig.getOutputDirectory()].forEach(dir => {
@@ -975,7 +983,7 @@ function hotBackup (options) {
       !helper.restoreHotBackup() ||
       !helper.runTests(dumpCheck, 'UnitTestsDumpDst')||
       !helper.tearDown(tearDownFile)) {
-      helper.destructor(true);
+    helper.destructor(true);
     return helper.extractResults();
   }
 
@@ -1003,10 +1011,10 @@ function hotBackup (options) {
     }
   }
 
-  if (options.cleanup) {
+  helper.destructor(true);
+  if (helper.doCleanup) {
     fs.removeDirectoryRecursive(keyDir, true);
   }
-  helper.destructor(true);
   return helper.extractResults();
 }
 

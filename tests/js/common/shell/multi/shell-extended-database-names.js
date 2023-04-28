@@ -81,7 +81,7 @@ function DatabaseNamesSuite() {
           db._createDatabase(name);
           fail();
         } catch (err) {
-          assertEqual(internal.errors.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum, name);
+          assertEqual(internal.errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum, name);
         }
       });
     },
