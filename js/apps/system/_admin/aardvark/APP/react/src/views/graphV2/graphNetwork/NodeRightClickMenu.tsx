@@ -12,7 +12,8 @@ export const NodeRightClickMenu = forwardRef(
       rightClickedEntity,
       setSelectedAction,
       onApplySettings,
-      datasets
+      datasets,
+      expandedNodes
     } = useGraph();
     const { urlParams, setUrlParams } = useUrlParameterContext();
     const foundNode =
@@ -44,7 +45,9 @@ export const NodeRightClickMenu = forwardRef(
           >
             Edit Node
           </MenuItem>
-          <ExpandNodeButton foundNode={foundNode} />
+          {
+            expandedNodes?.includes(rightClickedEntity.nodeId) ? null : <ExpandNodeButton foundNode={foundNode} />
+          }
           <MenuItem
             onClick={() => {
               if (!rightClickedEntity.nodeId) {
@@ -98,7 +101,7 @@ const ExpandNodeButton = ({
 }: {
   foundNode: FullItem<NodeDataType, "id">;
 }) => {
-  const { rightClickedEntity, graphName, datasets } = useGraph();
+  const { rightClickedEntity, graphName, datasets, expandedNodes, setExpandedNodes } = useGraph();
   const { urlParams } = useUrlParameterContext();
   const expandNode = async () => {
     if (!rightClickedEntity?.nodeId) {
@@ -124,6 +127,8 @@ const ExpandNodeButton = ({
       id: rightClickedEntity.nodeId,
       label: newLabel
     });
+    console.log(`Add ${rightClickedEntity.nodeId} to expandedNodes`);
+    setExpandedNodes(["worldVertices/country-brazil", "worldVertices/country-argentina"]);
     const newNodes = newData.nodes.filter((node: any) => {
       return !datasets?.nodes.get(node.id);
     });

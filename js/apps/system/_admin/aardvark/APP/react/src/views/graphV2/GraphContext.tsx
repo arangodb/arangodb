@@ -50,6 +50,8 @@ type GraphContextType = {
     errorMessage?: string;
     response?: { body: { errorMessage: string } };
   };
+  expandedNodes?: string[];
+  setExpandedNodes: (newExpandedNode: string[]) => void;
 };
 
 const GraphContext = createContext<GraphContextType>({
@@ -83,6 +85,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const [network, setNetwork] = useState<Network>();
   const hasDrawnOnce = useRef(false);
   const [datasets, setDatasets] = useState<DatasetsType>();
+  const [expandedNodes, setExpandedNodes] = useState<string[]>(["worldVertices/country-colombia"]);
   const [rightClickedEntity, setRightClickedEntity] =
     useState<RightClickedEntityType>();
 
@@ -134,7 +137,9 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         onSelectEntity,
         onRestoreDefaults,
         hasDrawnOnce,
-        graphError
+        graphError,
+        expandedNodes,
+        setExpandedNodes
       }}
     >
       <UrlParametersContext.Provider value={{ urlParams, setUrlParams }}>
