@@ -1,4 +1,4 @@
-v3.10.5.3 (XXXX-XX-XX)
+v3.10.5.3 (2023-04-28)
 ----------------------
 
 * Fix incompatibility between 3.9 and 3.10 w.r.t. to serialization of AQL array
