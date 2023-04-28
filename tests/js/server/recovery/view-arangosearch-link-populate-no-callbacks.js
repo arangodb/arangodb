@@ -50,21 +50,12 @@ function runSetup () {
   if (global.hasOwnProperty('arango')) {
     // we intend to crash, so we should get to know quickly:
     print('setting short timeout');
-    arango.timeout(1);
+    arango.timeout(10);
   }
   try {
     for (let i = 0; i < 100000; i++) {
       c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
     }
-  } catch (ex) {
-    if ((ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) &&
-        (ex.errorNum !== internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code)) {
-      print(ex);
-      throw ex;
-    }
-  }
-
-  try {
     c.save({ name: 'crashme' }, { waitForSync: true });
   } catch (ex) {
     if ((ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) &&
