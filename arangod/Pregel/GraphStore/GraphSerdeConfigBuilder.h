@@ -41,9 +41,6 @@ struct GraphSerdeConfigBuilderBase {
 
   [[nodiscard]] virtual auto loadableVertexShards() const
       -> LoadableVertexShards = 0;
-  [[nodiscard]] virtual auto responsibleServerMap(
-      LoadableVertexShards const& loadableVertexShards) const
-      -> ResponsibleServerMap = 0;
   [[nodiscard]] static auto construct(
       TRI_vocbase_t& vocbase, GraphByCollections const& graphByCollections)
       -> std::unique_ptr<GraphSerdeConfigBuilderBase>;

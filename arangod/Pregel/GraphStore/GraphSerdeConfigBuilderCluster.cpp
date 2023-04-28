@@ -134,23 +134,6 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
   return result;
 }
 
-[[nodiscard]] auto GraphSerdeConfigBuilderCluster::responsibleServerMap(
-    LoadableVertexShards const& loadableVertexShards) const
-    -> ResponsibleServerMap {
-  auto result = ResponsibleServerMap{};
-
-  for (auto const& [idx, shard] :
-       enumerate(loadableVertexShards.loadableVertexShards)) {
-    std::shared_ptr<std::vector<ServerID> const> servers =
-        clusterInfo.getResponsibleServer(shard.vertexShard);
-    ADB_PROD_ASSERT(servers->size() > 0);
-    if (servers->size() > 0) {
-      result.responsibleServerMap.push_back(servers->at(0));
-    }
-  }
-  return result;
-}
-
 [[nodiscard]] auto GraphSerdeConfigBuilderCluster::resolveCollectionNameToIds(
     CollectionName collectionName) const -> std::vector<DataSourceId> {
   auto logicalCollection =

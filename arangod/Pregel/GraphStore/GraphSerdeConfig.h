@@ -36,18 +36,8 @@
 
 namespace arangodb::pregel {
 
-struct ResponsibleServerMap {
-  std::vector<ServerID> responsibleServerMap;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, ResponsibleServerMap& x) {
-  return f.object(x).fields(
-      f.field("responsibleServerMap", x.responsibleServerMap));
-}
-
 struct GraphSerdeConfig {
   LoadableVertexShards loadableVertexShards;
-  ResponsibleServerMap responsibleServerMap;
 
   [[nodiscard]] auto collectionName(PregelShard pregelShard) const
       -> std::string const& {
@@ -81,9 +71,9 @@ struct GraphSerdeConfig {
       -> std::set<PregelShard> {
     auto result = std::set<PregelShard>{};
 
-    for (auto [idx, loadableVertexShard] :
-         enumerate(loadableVertexShards.loadableVertexShards)) {
-      if (responsibleServerMap.responsibleServerMap.at(idx) == server) {
+    for (auto&& loadableVertexShard :
+         loadableVertexShards.loadableVertexShards) {
+      if (loadableVertexShard.responsibleServer == server) {
         result.insert(loadableVertexShard.pregelShard);
       }
     }
@@ -94,9 +84,9 @@ struct GraphSerdeConfig {
       -> std::vector<LoadableVertexShard> {
     auto result = std::vector<LoadableVertexShard>{};
 
-    for (auto [idx, loadableVertexShard] :
-         enumerate(loadableVertexShards.loadableVertexShards)) {
-      if (responsibleServerMap.responsibleServerMap.at(idx) == server) {
+    for (auto&& loadableVertexShard :
+         loadableVertexShards.loadableVertexShards) {
+      if (loadableVertexShard.responsibleServer == server) {
         result.push_back(loadableVertexShard);
       }
     }
@@ -106,9 +96,9 @@ struct GraphSerdeConfig {
   [[nodiscard]] auto localShardIDs(ServerID server) const -> std::set<ShardID> {
     auto result = std::set<ShardID>{};
 
-    for (auto [idx, loadableVertexShard] :
-         enumerate(loadableVertexShards.loadableVertexShards)) {
-      if (responsibleServerMap.responsibleServerMap.at(idx) == server) {
+    for (auto&& loadableVertexShard :
+         loadableVertexShards.loadableVertexShards) {
+      if (loadableVertexShard.responsibleServer == server) {
         result.insert(loadableVertexShard.vertexShard);
       }
     }
@@ -117,8 +107,9 @@ struct GraphSerdeConfig {
 
   [[nodiscard]] auto responsibleServerSet() const -> std::set<ServerID> {
     auto result = std::set<ServerID>{};
-    for (auto x : responsibleServerMap.responsibleServerMap) {
-      result.insert(x);
+    for (auto&& loadableVertexShard :
+         loadableVertexShards.loadableVertexShards) {
+      result.insert(loadableVertexShard.responsibleServer);
     }
     return result;
   }
@@ -126,8 +117,7 @@ struct GraphSerdeConfig {
 template<typename Inspector>
 auto inspect(Inspector& f, GraphSerdeConfig& x) {
   return f.object(x).fields(
-      f.field("loadableVertexShards", x.loadableVertexShards),
-      f.field("responsibleServerMap", x.responsibleServerMap));
+      f.field("loadableVertexShards", x.loadableVertexShards));
 }
 
 }  // namespace arangodb::pregel

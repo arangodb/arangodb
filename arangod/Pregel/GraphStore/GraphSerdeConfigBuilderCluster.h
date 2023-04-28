@@ -40,10 +40,6 @@ struct GraphSerdeConfigBuilderCluster : GraphSerdeConfigBuilderBase {
   [[nodiscard]] virtual auto loadableVertexShards() const
       -> LoadableVertexShards override;
 
-  [[nodiscard]] virtual auto responsibleServerMap(
-      LoadableVertexShards const& loadableVertexShards) const
-      -> ResponsibleServerMap override;
-
   [[nodiscard]] auto getShardIds(ShardID collection) const
       -> std::vector<ShardID>;
   [[nodiscard]] auto resolveCollectionNameToIds(CollectionName name) const
