@@ -57,6 +57,7 @@
     let collDistribution = {};
     let collDistributionPlan = {};
     let collDistributionCurrent = {};
+    const numSecsLimit = 16;
     while (true) {
       const dbName = db._name();
       const res = db._connection.GET("/_db/" + dbName + "/_admin/cluster/shardDistribution");
@@ -72,13 +73,13 @@
       collDistributionCurrent = collDistribution["Current"];
       assertFalse(_.isEmpty(collDistributionPlan));
       assertFalse(_.isEmpty(collDistributionCurrent));
-      if (_.isEqual(collDistributionPlan, collDistributionCurrent) || numSecs >= 16) {
+      if (_.isEqual(collDistributionPlan, collDistributionCurrent) || numSecs >= numSecsLimit) {
         break;
       }
       internal.sleep(numSecs);
       numSecs *= 2;
     }
-    assertTrue(numSecs < 16, "reached timeout waited for collection " + collName + " to get in sync");
+    assertTrue(numSecs < numSecsLimit, "reached timeout waited for collection " + collName + " to get in sync");
   }
 
   const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
