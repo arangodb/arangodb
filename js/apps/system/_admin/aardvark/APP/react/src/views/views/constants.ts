@@ -124,6 +124,7 @@ export const linksSchema = {
   additionalProperties: false
 };
 
+const extendedNames = window.frontendConfig.extendedNames;
 export const formSchema: JSONSchemaType<FormState> = {
   $id: 'https://arangodb.com/schemas/views/views.json',
   type: 'object',
@@ -138,7 +139,8 @@ export const formSchema: JSONSchemaType<FormState> = {
     },
     name: {
       nullable: false,
-      type: 'string'
+      type: 'string',
+      pattern: extendedNames ? "" : "^[a-zA-Z][a-zA-Z0-9-_]*$"
     },
     type: {
       type: 'string',
