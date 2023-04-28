@@ -42,7 +42,6 @@ function numberOfServersSuite () {
       // started.
       const dbservers = getDBServers();
       numberFound = dbservers.length;
-      console.error("Found", numberFound, "dbservers.");
     },
 
     setUp : function () {
