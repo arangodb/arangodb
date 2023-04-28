@@ -3,6 +3,8 @@ v3.11.0 (XXXX-XX-XX)
 
 * FE-254: bugfix - filter out empty storedValues for persistent index.
 
+* FE-252: bugfix - canvas image screenshot breaks graph colors.
+
 * Fix incompatibility between 3.9 and 3.10 w.r.t. to serialization of AQL array
   filters (i.e. `[* FILTER ...]`). The array filters were serialized in a
   different way in 3.9 than they are serialized in 3.10. 3.10 also expected the
