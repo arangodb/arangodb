@@ -172,23 +172,34 @@ GraphSerdeConfigBuilderCluster::edgeCollectionRestrictionsByShard() const
   return result;
 }
 
+[[nodiscard]] auto GraphSerdeConfigBuilderCluster::resolveCollectionNameToIds(
+    CollectionName collectionName) const -> std::vector<DataSourceId> {
+  auto logicalCollection =
+      clusterInfo.getCollection(vocbase.name(), collectionName);
+
+  if (logicalCollection->isSmart()) {
+    auto collectionIds = std::vector<DataSourceId>{};
+    for (auto&& l : logicalCollection->realNamesForRead()) {
+      auto lc2 = clusterInfo.getCollection(vocbase.name(), l);
+      collectionIds.push_back(lc2->id());
+    }
+    return collectionIds;
+  } else {
+    return {logicalCollection->id()};
+  }
+}
+
 [[nodiscard]] auto GraphSerdeConfigBuilderCluster::getShardIds(
     ShardID collection) const -> std::vector<ShardID> {
   std::vector<ShardID> result;
-  try {
-    std::shared_ptr<LogicalCollection> lc =
-        clusterInfo.getCollection(vocbase.name(), collection);
-    std::shared_ptr<std::vector<ShardID>> shardIDs =
-        clusterInfo.getShardList(std::to_string(lc->id().id()));
-    result.reserve(shardIDs->size());
-    for (auto const& it : *shardIDs) {
+
+  auto collectionIds = resolveCollectionNameToIds(collection);
+  for (auto&& collectionId : collectionIds) {
+    auto shardIds = clusterInfo.getShardList(std::to_string(collectionId.id()));
+    for (auto const& it : *shardIds) {
       result.emplace_back(it);
     }
-  } catch (...) {
-    // TODO: Lol.
-    result.clear();
   }
-
   return result;
 }
 

@@ -50,6 +50,8 @@ struct GraphSerdeConfigBuilderCluster : GraphSerdeConfigBuilderBase {
 
   [[nodiscard]] auto getShardIds(ShardID collection) const
       -> std::vector<ShardID>;
+  [[nodiscard]] auto resolveCollectionNameToIds(CollectionName name) const
+      -> std::vector<DataSourceId>;
 
   TRI_vocbase_t& vocbase;
   ClusterInfo& clusterInfo;
