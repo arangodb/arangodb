@@ -34,6 +34,7 @@ const forceJson = internal.options().hasOwnProperty('server.force-json') && inte
 const contentType = forceJson ? "application/json" :  "application/x-velocypack";
 const jsunity = require("jsunity");
 const isEnterprise = require("internal").isEnterprise();
+const isCluster = require("internal").isCluster();
 
 let api = "/_api/view";
 
@@ -274,6 +275,60 @@ function deletionSuite () {
     test_deleting_a_non_existent_view: function() {
       let cmd = api + "/foobar";
       let doc = arango.DELETE_RAW(cmd);
+
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+    },
+    
+    test_deleting_a_view_by_id: function() {
+      let body = { "name": "test", "type": "arangosearch", "properties": {} };
+      let doc = arango.POST_RAW(api, body);
+
+      assertEqual(doc.code, 201);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertEqual(doc.parsedBody['name'], "test");
+      assertEqual(doc.parsedBody['type'], "arangosearch");
+
+      doc = arango.DELETE_RAW(api + '/' + doc.parsedBody.id);
+      
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertTrue(doc.parsedBody['result']);
+      
+      // try deleting again (should fail)
+      doc = arango.DELETE_RAW(api + '/' + doc.parsedBody.id);
+
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+    },
+
+    test_deleting_a_view_by_name: function() {
+      let body = { "name": "test", "type": "arangosearch", "properties": {} };
+      let doc = arango.POST_RAW(api, body);
+
+      assertEqual(doc.code, 201);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertEqual(doc.parsedBody['name'], "test");
+      assertEqual(doc.parsedBody['type'], "arangosearch");
+
+      doc = arango.DELETE_RAW(api + '/' + doc.parsedBody.name);
+      
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertTrue(doc.parsedBody['result']);
+      
+      // try deleting again (should fail)
+      doc = arango.DELETE_RAW(api + '/' + doc.parsedBody.name);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
@@ -705,7 +760,10 @@ function modificationSuite2 () {
 }
 
 jsunity.run(creationSuite);
-jsunity.run(renameSuite);
+if (!isCluster) {
+  // rename is not available in cluster
+  jsunity.run(renameSuite);
+}
 jsunity.run(deletionSuite);
 jsunity.run(retrievalSuite);
 jsunity.run(modificationSuite);
