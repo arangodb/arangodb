@@ -89,6 +89,19 @@ struct GraphSerdeConfig {
     }
     return result;
   }
+  // Actual set of pregel shard id's located here
+  [[nodiscard]] auto loadableVertexShardsForServer(ServerID server) const
+      -> std::vector<LoadableVertexShard> {
+    auto result = std::vector<LoadableVertexShard>{};
+
+    for (auto [idx, loadableVertexShard] :
+         enumerate(loadableVertexShards.loadableVertexShards)) {
+      if (responsibleServerMap.responsibleServerMap.at(idx) == server) {
+        result.push_back(loadableVertexShard);
+      }
+    }
+    return result;
+  }
   //
   [[nodiscard]] auto localShardIDs(ServerID server) const -> std::set<ShardID> {
     auto result = std::set<ShardID>{};
