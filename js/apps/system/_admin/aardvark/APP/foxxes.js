@@ -25,6 +25,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+const arangodb = require('@arangodb');
 const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
@@ -38,6 +39,7 @@ const FoxxGenerator = require('./generator');
 const fmu = require('@arangodb/foxx/manager-utils');
 const createRouter = require('@arangodb/foxx/router');
 const joinPath = require('path').join;
+const ArangoError = arangodb.ArangoError;
 
 const DEFAULT_THUMBNAIL = module.context.fileName('default-thumbnail.png');
 
@@ -235,6 +237,13 @@ installer.put('/zip', function (req) {
         });
 
         const endpointToUse = coordinatorToEndpointMap[req.body.coordinatorId];
+        if (!endpointToUse) {
+          // if we could not map the supplied coordinatorId to a real coordinatorId, it must be invalid.
+          throw new ArangoError({
+            errorNum: errors.ERROR_ARANGO_ILLEGAL_NAME.code,
+            errorMessage: 'Supplied wrong coordinatorId'
+          });
+        }
         const forwardUrl = `${endpointToUse}/_db/${database}/_admin/aardvark/foxxes/zip?mount=${encodeURIComponent(mount)}`;
 
         // Response body will be handled in the "installer.use" section and simply be listed instead of the actual
