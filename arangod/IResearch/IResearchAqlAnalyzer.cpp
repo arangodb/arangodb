@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -315,8 +315,7 @@ bool AqlAnalyzer::isOptimized() const {
 #endif
 
 AqlAnalyzer::AqlAnalyzer(Options const& options)
-    : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
-      _options(options),
+    : _options(options),
       _query(arangodb::aql::StandaloneCalculation::buildQueryContext(
           arangodb::DatabaseFeature::getCalculationVocbase())),
       _itemBlockManager(_query->resourceMonitor(),

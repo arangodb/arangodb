@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -36,8 +37,6 @@
 #include <velocypack/Slice.h>
 
 #include "Agency/PathComponent.h"
-#include "Basics/Mutex.h"
-#include "Basics/Result.h"
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/arangod.h"
@@ -45,6 +44,7 @@
 
 namespace arangodb {
 class Endpoint;
+class Result;
 
 namespace application_features {
 class ApplicationServer;
@@ -190,7 +190,6 @@ class AgencyCommHelper {
 
  public:
   static void initialize(std::string const& prefix);
-  static void shutdown();
 
   static std::string const& path() noexcept;
   static std::string path(std::string const&);
@@ -210,7 +209,6 @@ class AgencyPrecondition {
  public:
   enum class Type { NONE, EMPTY, VALUE, TIN, NOTIN, INTERSECTION_EMPTY };
 
- public:
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
@@ -239,11 +237,9 @@ class AgencyPrecondition {
     value = builder->slice();
   }
 
- public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
 
- public:
   std::string key;
   Type type;
   bool empty;
@@ -319,12 +315,10 @@ class AgencyOperation {
                   AgencyValueOperationType opType, velocypack::Slice newValue,
                   velocypack::Slice oldValue);
 
- public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
   AgencyOperationType type() const;
 
- public:
   uint64_t _ttl = 0;
 
  private:
@@ -352,7 +346,6 @@ class AgencyCommResult {
   AgencyCommResult(AgencyCommResult&& other) noexcept;
   AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
 
- public:
   void set(rest::ResponseCode code, std::string message);
 
   [[nodiscard]] bool successful() const {
@@ -394,7 +387,6 @@ class AgencyCommResult {
                           std::optional<std::string_view>>
   parseBodyError() const;
 
- public:
   std::string _location = "";
   std::string _message = "";
 
@@ -636,14 +628,6 @@ class AgencyComm {
   AgencyCommResult unregisterCallback(std::string const& key,
                                       std::string const& endpoint);
 
-  bool lockRead(std::string const&, double, double);
-
-  bool lockWrite(std::string const&, double, double);
-
-  bool unlockRead(std::string const&, double);
-
-  bool unlockWrite(std::string const&, double);
-
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);
 
@@ -666,12 +650,10 @@ class AgencyComm {
 
   bool shouldInitializeStructure();
 
- private:
   ArangodServer& _server;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };
-}  // namespace arangodb
 
-namespace std {
-ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
-}
+std::ostream& operator<<(std::ostream& o, AgencyCommResult const& a);
+
+}  // namespace arangodb

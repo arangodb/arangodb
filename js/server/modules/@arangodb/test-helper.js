@@ -31,25 +31,31 @@
 const internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
 const {
+  runWithRetry,
   getServerById,
   getServersByType,
   getEndpointById,
   getEndpointsByType,
-  Helper,
+  helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
   typeName,
   isEqual,
   compareStringIds,
   endpointToURL,
+  versionHas,
+  isEnterprise,
 } = require('@arangodb/test-helper-common');
 const clusterInfo = global.ArangoClusterInfo;
 
+exports.runWithRetry = runWithRetry;
+exports.isEnterprise = isEnterprise;
+exports.versionHas = versionHas;
 exports.getServerById = getServerById;
 exports.getServersByType = getServersByType;
 exports.getEndpointById = getEndpointById;
 exports.getEndpointsByType = getEndpointsByType;
-exports.Helper = Helper;
+exports.helper = helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;
@@ -118,7 +124,7 @@ function getMetricName(text, name) {
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.*{.*}([0-9.]+)$/, "$1"));
+  return Number(matches[0].replace(/^.*{.*}\s*([0-9.]+)$/, "$1"));
 }
 
 exports.getMetric = function (endpoint, name) {
@@ -129,8 +135,8 @@ exports.getMetric = function (endpoint, name) {
 };
 
 exports.getMetricSingle = function (name) {
-  let res = arango.GET_RAW("/_admin/metrics");
-  if (res.code !== 200) {
+  let res = request.get("/_admin/metrics");
+  if (res.status !== 200) {
     throw "error fetching metric";
   }
   return getMetricName(res.body, name);

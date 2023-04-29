@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,6 @@
 
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
@@ -263,14 +262,13 @@ static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
 
 RestStatus RestSimpleQueryHandler::byExample() {
   bool parseSuccess = false;
-  VPackSlice const body = this->parseVPackBody(parseSuccess);
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
     return RestStatus::DONE;
   }
 
-  if (!body.isObject() || !body.hasKey("example") ||
-      !body.get("example").isObject()) {
+  if (!body.isObject() || !body.get("example").isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return RestStatus::DONE;
   }

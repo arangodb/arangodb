@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,6 +75,12 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   bool hasSelectivityEstimate() const override { return false; }
 
+  arangodb::Index::FilterCosts supportsFilterCondition(
+      transaction::Methods& trx,
+      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+      aql::AstNode const* node, aql::Variable const* reference,
+      size_t itemsInIndex) const override;
+
   void toVelocyPack(
       velocypack::Builder&,
       std::underlying_type<arangodb::Index::Serialize>::type) const override;
@@ -94,6 +100,5 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
  private:
   std::string const _typeName;
-  bool _legacyPolygons;  // indicate if geoJson is parsed with legacy polygons
 };
 }  // namespace arangodb

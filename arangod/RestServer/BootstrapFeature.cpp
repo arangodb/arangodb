@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -427,7 +427,7 @@ void BootstrapFeature::waitForHealthEntry() {
       VPackSlice value = result.slice()[0].get(std::vector<std::string>(
           {AgencyCommHelper::path(), "Supervision", "Health",
            ServerState::instance()->getId(), "Status"}));
-      if (value.isString() && !value.copyString().empty()) {
+      if (value.isString() && !value.stringView().empty()) {
         found = true;
         break;
       }

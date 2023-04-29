@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,6 +46,7 @@
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/MultipleRemoteModificationNode.h"
 #include "Aql/MutexNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
@@ -111,6 +112,8 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::ENUMERATE_PATHS), "EnumeratePathsNode"},
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
+    {static_cast<int>(ExecutionNode::REMOTE_MULTIPLE),
+     "MultipleRemoteModificationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
      "EnumerateViewNode"},
     {static_cast<int>(ExecutionNode::SUBQUERY_START), "SubqueryStartNode"},
@@ -128,6 +131,57 @@ std::unordered_map<int, std::string const> const typeNames{
 }  // namespace
 
 namespace arangodb::aql {
+
+size_t estimateListLength(ExecutionPlan const* plan, Variable const* var) {
+  // Well, what can we say? The length of the list can in general
+  // only be determined at runtime... If we were to know that this
+  // list is constant, then we could maybe multiply by the length
+  // here... For the time being, we assume 100
+  size_t length = 100;
+
+  auto setter = plan->getVarSetBy(var->id);
+
+  if (setter != nullptr) {
+    if (setter->getType() == ExecutionNode::CALCULATION) {
+      // list variable introduced by a calculation
+      auto expression =
+          ExecutionNode::castTo<CalculationNode*>(setter)->expression();
+
+      if (expression != nullptr) {
+        auto node = expression->node();
+
+        if (node->type == NODE_TYPE_ARRAY) {
+          // this one is easy
+          length = node->numMembers();
+        }
+        if (node->type == NODE_TYPE_RANGE) {
+          auto low = node->getMember(0);
+          auto high = node->getMember(1);
+
+          if (low->isConstant() && high->isConstant() &&
+              (low->isValueType(VALUE_TYPE_INT) ||
+               low->isValueType(VALUE_TYPE_DOUBLE)) &&
+              (high->isValueType(VALUE_TYPE_INT) ||
+               high->isValueType(VALUE_TYPE_DOUBLE))) {
+            // create a temporary range to determine the size
+            Range range(low->getIntValue(), high->getIntValue());
+
+            length = range.size();
+          }
+        }
+      }
+    } else if (setter->getType() == ExecutionNode::SUBQUERY) {
+      // length will be set by the subquery's cost estimator
+      CostEstimate subEstimate =
+          ExecutionNode::castTo<SubqueryNode const*>(setter)
+              ->getSubquery()
+              ->getCost();
+      length = subEstimate.estimatedNrItems;
+    }
+  }
+  return length;
+}
+
 ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice);
 
 #ifndef USE_ENTERPRISE
@@ -220,7 +274,8 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
 }
 
 ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
-                                               VPackSlice const& slice) {
+                                               velocypack::Slice slice) {
+  TRI_ASSERT(slice.get("typeID").isNumber()) << slice.toJson();
   int nodeTypeID = slice.get("typeID").getNumericValue<int>();
   validateType(nodeTypeID);
 
@@ -356,6 +411,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new EnumeratePathsNode(plan, slice);
     case REMOTESINGLE:
       return new SingleRemoteOperationNode(plan, slice);
+    case REMOTE_MULTIPLE:
+      return new MultipleRemoteModificationNode(plan, slice);
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
     case SUBQUERY_START:
@@ -413,7 +470,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
 }
 
 /// @brief create an ExecutionNode from VPackSlice
-ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
+ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
     : _id(slice.get("id").getNumericValue<size_t>()),
       _depth(slice.get("depth").getNumericValue<unsigned int>()),
       _varUsageValid(true),
@@ -1544,6 +1601,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case SHORTEST_PATH:
     case ENUMERATE_PATHS:
     case REMOTESINGLE:
+    case REMOTE_MULTIPLE:
     case ENUMERATE_IRESEARCH_VIEW:
     case DISTRIBUTE_CONSUMER:
     case SUBQUERY_START:
@@ -1669,14 +1727,6 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  if (!engine.waitForSatellites(engine.getQuery(), collection())) {
-    double maxWait = engine.getQuery().queryOptions().satelliteSyncWait;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-                                   "collection " + collection()->name() +
-                                       " did not come into sync in time (" +
-                                       std::to_string(maxWait) + ")");
-  }
-
   // check which variables are used by the node's post-filter
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
 
@@ -1770,7 +1820,8 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   if (_random) {
     // we retrieve at most one random document from the collection.
     // so the estimate is at most 1
-    estimatedNrItems = 1;
+    // estimatedNrItems = 1;
+    // Unnecessary to set, we just leave estimate.estimatedNrItems as it is.
   } else if (!doCount()) {
     // if "count" mode is active, the estimated number of items from above
     // must not be multiplied with the number of items in this collection
@@ -1780,7 +1831,9 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   // random iteration is slightly more expensive than linear iteration
   // we also penalize each EnumerateCollectionNode slightly (and do not
   // do the same for IndexNodes) so IndexNodes will be preferred
-  estimate.estimatedCost += estimatedNrItems * (_random ? 1.005 : 1.0) + 1.0;
+  estimate.estimatedCost += estimate.estimatedNrItems *
+                                (_random ? 1.005 : (hasFilter() ? 2.0 : 1.0)) +
+                            1.0;
 
   return estimate;
 }
@@ -1837,52 +1890,7 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
 
 /// @brief the cost of an enumerate list node
 CostEstimate EnumerateListNode::estimateCost() const {
-  // Well, what can we say? The length of the list can in general
-  // only be determined at runtime... If we were to know that this
-  // list is constant, then we could maybe multiply by the length
-  // here... For the time being, we assume 100
-  size_t length = 100;
-
-  auto setter = _plan->getVarSetBy(_inVariable->id);
-
-  if (setter != nullptr) {
-    if (setter->getType() == ExecutionNode::CALCULATION) {
-      // list variable introduced by a calculation
-      auto expression =
-          ExecutionNode::castTo<CalculationNode*>(setter)->expression();
-
-      if (expression != nullptr) {
-        auto node = expression->node();
-
-        if (node->type == NODE_TYPE_ARRAY) {
-          // this one is easy
-          length = node->numMembers();
-        }
-        if (node->type == NODE_TYPE_RANGE) {
-          auto low = node->getMember(0);
-          auto high = node->getMember(1);
-
-          if (low->isConstant() && high->isConstant() &&
-              (low->isValueType(VALUE_TYPE_INT) ||
-               low->isValueType(VALUE_TYPE_DOUBLE)) &&
-              (high->isValueType(VALUE_TYPE_INT) ||
-               high->isValueType(VALUE_TYPE_DOUBLE))) {
-            // create a temporary range to determine the size
-            Range range(low->getIntValue(), high->getIntValue());
-
-            length = range.size();
-          }
-        }
-      }
-    } else if (setter->getType() == ExecutionNode::SUBQUERY) {
-      // length will be set by the subquery's cost estimator
-      CostEstimate subEstimate =
-          ExecutionNode::castTo<SubqueryNode const*>(setter)
-              ->getSubquery()
-              ->getCost();
-      length = subEstimate.estimatedNrItems;
-    }
-  }
+  size_t length = estimateListLength(_plan, _inVariable);
 
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
@@ -2824,18 +2832,23 @@ ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 namespace {
-constexpr std::string_view MATERIALIZE_NODE_IN_NM_DOC_PARAM = "inNmDocId";
-constexpr std::string_view MATERIALIZE_NODE_OUT_VARIABLE_PARAM = "outVariable";
-constexpr std::string_view MATERIALIZE_NODE_MULTI_NODE_PARAM = "multiNode";
+constexpr std::string_view kMaterializeNodeInNmDocParam = "inNmDocId";
+constexpr std::string_view kMaterializeNodeOutVariableParam = "outVariable";
+constexpr std::string_view kMaterializeNodeMultiNodeParam = "multiNode";
+constexpr std::string_view kMaterializeNodeInLocalDocIdParam = "inLocalDocId";
 }  // namespace
 
 MaterializeNode* materialize::createMaterializeNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const base) {
-  auto isMulti = base.get(MATERIALIZE_NODE_MULTI_NODE_PARAM);
+  auto isMulti = base.get(kMaterializeNodeMultiNodeParam);
   if (isMulti.isBoolean() && isMulti.getBoolean()) {
     return new MaterializeMultiNode(plan, base);
   }
-  return new MaterializeSingleNode(plan, base);
+  auto inLocalDocId = base.get(kMaterializeNodeInLocalDocIdParam);
+  if (inLocalDocId.isBoolean() && inLocalDocId.getBoolean()) {
+    return new MaterializeSingleNode<true>(plan, base);
+  }
+  return new MaterializeSingleNode<false>(plan, base);
 }
 
 MaterializeNode::MaterializeNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -2849,25 +2862,17 @@ MaterializeNode::MaterializeNode(ExecutionPlan* plan,
                                  arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _inNonMaterializedDocId(aql::Variable::varFromVPack(
-          plan->getAst(), base, MATERIALIZE_NODE_IN_NM_DOC_PARAM, true)),
+          plan->getAst(), base, kMaterializeNodeInNmDocParam, true)),
       _outVariable(aql::Variable::varFromVPack(
-          plan->getAst(), base, MATERIALIZE_NODE_OUT_VARIABLE_PARAM)) {}
+          plan->getAst(), base, kMaterializeNodeOutVariableParam)) {}
 
 void MaterializeNode::doToVelocyPack(velocypack::Builder& nodes,
                                      unsigned /*flags*/) const {
-  nodes.add(VPackValue(MATERIALIZE_NODE_IN_NM_DOC_PARAM));
+  nodes.add(VPackValue(kMaterializeNodeInNmDocParam));
   _inNonMaterializedDocId->toVelocyPack(nodes);
 
-  nodes.add(VPackValue(MATERIALIZE_NODE_OUT_VARIABLE_PARAM));
+  nodes.add(VPackValue(kMaterializeNodeOutVariableParam));
   _outVariable->toVelocyPack(nodes);
-}
-
-auto MaterializeNode::getReadableInputRegisters(
-    RegisterId const inNmDocId) const -> RegIdSet {
-  // TODO (Dronplane) for index exectutor here we possibly will
-  // return additional SearchDoc register. So will keep this function for time
-  // being.
-  return RegIdSet{inNmDocId};
 }
 
 CostEstimate MaterializeNode::estimateCost() const {
@@ -2904,7 +2909,7 @@ void MaterializeMultiNode::doToVelocyPack(velocypack::Builder& nodes,
                                           unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
-  nodes.add(MATERIALIZE_NODE_MULTI_NODE_PARAM, velocypack::Value(true));
+  nodes.add(kMaterializeNodeMultiNodeParam, velocypack::Value(true));
 }
 
 std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
@@ -2926,7 +2931,7 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
     outDocumentRegId = it->second.registerId;
   }
 
-  auto readableInputRegisters = getReadableInputRegisters(inNmDocIdRegId);
+  RegIdSet readableInputRegisters{inNmDocIdRegId};
   auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
@@ -2935,7 +2940,7 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
   auto executorInfos = MaterializerExecutorInfos<void>(
       inNmDocIdRegId, outDocumentRegId, engine.getQuery());
 
-  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<void>>>(
+  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<void, false>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
@@ -2958,38 +2963,36 @@ ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-MaterializeSingleNode::MaterializeSingleNode(ExecutionPlan* plan,
-                                             ExecutionNodeId id,
-                                             aql::Collection const* collection,
-                                             aql::Variable const& inDocId,
-                                             aql::Variable const& outVariable)
+template<bool localDocumentId>
+MaterializeSingleNode<localDocumentId>::MaterializeSingleNode(
+    ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
+    aql::Variable const& inDocId, aql::Variable const& outVariable)
     : MaterializeNode(plan, id, inDocId, outVariable),
       CollectionAccessingNode(collection) {}
 
-MaterializeSingleNode::MaterializeSingleNode(
+template<bool localDocumentId>
+MaterializeSingleNode<localDocumentId>::MaterializeSingleNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : MaterializeNode(plan, base), CollectionAccessingNode(plan, base) {}
 
-void MaterializeSingleNode::doToVelocyPack(velocypack::Builder& nodes,
-                                           unsigned flags) const {
+template<bool localDocumentId>
+void MaterializeSingleNode<localDocumentId>::doToVelocyPack(
+    velocypack::Builder& nodes, unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(nodes, flags);
+  nodes.add(kMaterializeNodeInLocalDocIdParam, localDocumentId);
 }
 
-std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
+template<bool localDocumentId>
+std::unique_ptr<ExecutionBlock>
+MaterializeSingleNode<localDocumentId>::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  RegisterId inNmDocIdRegId;
-  {
-    auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    inNmDocIdRegId = it->second.registerId;
-  }
   RegisterId outDocumentRegId;
   {
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
@@ -2997,8 +3000,16 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
     outDocumentRegId = it->second.registerId;
   }
   auto const& name = collection()->name();
-
-  auto readableInputRegisters = getReadableInputRegisters(inNmDocIdRegId);
+  RegisterId inNmDocIdRegId;
+  {
+    auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    inNmDocIdRegId = it->second.registerId;
+  }
+  RegIdSet readableInputRegisters;
+  if (inNmDocIdRegId.isValid()) {
+    readableInputRegisters.emplace(inNmDocIdRegId);
+  }
   auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
@@ -3007,13 +3018,13 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
   auto executorInfos = MaterializerExecutorInfos<decltype(name)>(
       inNmDocIdRegId, outDocumentRegId, engine.getQuery(), name);
   return std::make_unique<
-      ExecutionBlockImpl<MaterializeExecutor<decltype(name)>>>(
+      ExecutionBlockImpl<MaterializeExecutor<decltype(name), localDocumentId>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan,
-                                            bool withDependencies,
-                                            bool withProperties) const {
+template<bool localDocumentId>
+ExecutionNode* MaterializeSingleNode<localDocumentId>::clone(
+    ExecutionPlan* plan, bool withDependencies, bool withProperties) const {
   TRI_ASSERT(plan);
 
   auto* outVariable = _outVariable;
@@ -3025,8 +3036,11 @@ ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan,
         plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
   }
 
-  auto c = std::make_unique<MaterializeSingleNode>(
+  auto c = std::make_unique<MaterializeSingleNode<localDocumentId>>(
       plan, _id, collection(), *inNonMaterializedDocId, *outVariable);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+
+template class arangodb::aql::materialize::MaterializeSingleNode<false>;
+template class arangodb::aql::materialize::MaterializeSingleNode<true>;

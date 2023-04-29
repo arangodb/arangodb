@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 
 #include "Basics/Result.h"
 #include "Basics/RebootId.h"
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 
@@ -41,6 +42,19 @@ typedef std::string ViewID;           // ID of a view
 typedef std::string ShardID;          // ID of a shard
 typedef uint32_t ServerShortID;       // Short ID of a server
 typedef std::string ServerShortName;  // Short name of a server
+
+enum class ServerHealth { kGood, kBad, kFailed, kUnclear };
+
+std::ostream& operator<<(std::ostream& o, ServerHealth r);
+
+struct ServerHealthState {
+  RebootId rebootId;
+  ServerHealth status;
+};
+
+std::ostream& operator<<(std::ostream& o, ServerHealthState const& r);
+
+using ServersKnown = containers::FlatHashMap<ServerID, ServerHealthState>;
 
 namespace velocypack {
 class Builder;

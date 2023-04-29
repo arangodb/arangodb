@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,10 +35,13 @@ Counter::~Counter() { _b.push(); }
 
 std::string_view Counter::type() const noexcept { return "counter"; }
 
-void Counter::toPrometheus(std::string& result,
-                           std::string_view globals) const {
+void Counter::toPrometheus(std::string& result, std::string_view globals,
+                           bool ensureWhitespace) const {
   _b.push();
   Metric::addMark(result, name(), globals, labels());
+  if (ensureWhitespace) {
+    result.push_back(' ');
+  }
   result.append(std::to_string(load())) += '\n';
 }
 

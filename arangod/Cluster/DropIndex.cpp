@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -97,7 +97,7 @@ bool DropIndex::first() {
 
     LOG_TOPIC("837c5", DEBUG, Logger::MAINTENANCE)
         << "Dropping local index " << shard << "/" << id;
-    result(Indexes::drop(col.get(), index.slice()));
+    result(Indexes::drop(*col, index.slice()));
 
   } catch (std::exception const& e) {
     std::stringstream error;

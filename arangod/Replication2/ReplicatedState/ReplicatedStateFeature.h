@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,8 +56,7 @@ struct ReplicatedStateFeature {
         std::in_place, std::forward<Args>(args)...);
     auto metrics = createMetricsObjectIndirect(name);
     auto [iter, wasInserted] = implementations.try_emplace(
-        std::move(name),
-        StateImplementation{std::move(factory), std::move(metrics)});
+        name, StateImplementation{std::move(factory), std::move(metrics)});
     assertWasInserted(name, wasInserted);
   }
 

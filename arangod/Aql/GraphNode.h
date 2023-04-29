@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/Graphs.h"
@@ -107,8 +106,6 @@ class GraphNode : public ExecutionNode {
   bool isUsedAsSatellite() const;
   // Defines whether a GraphNode can fully be pushed down to a DBServer
   bool isLocalGraphNode() const;
-  // Will wait as soon as any of our collections is a satellite (in sync)
-  void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
   // Can be fully pushed down to a DBServer and is available on all DBServers
   bool isEligibleAsSatelliteTraversal() const;
 

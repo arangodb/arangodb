@@ -31,4 +31,3 @@ target_include_directories(arango_vocbase PRIVATE
 
 add_subdirectory(Identifiers)
 add_subdirectory(Methods)
-add_subdirectory(Properties)

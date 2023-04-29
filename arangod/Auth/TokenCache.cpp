@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -129,9 +129,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
     WRITE_LOCKER(guard, _basicLock);
     _basicCache.clear();
     _basicCacheVersion.store(version, std::memory_order_release);
-  }
-
-  {
+  } else {
     READ_LOCKER(guard, _basicLock);
     auto const& it = _basicCache.find(secret);
     if (it != _basicCache.end() && !it->second.expired()) {

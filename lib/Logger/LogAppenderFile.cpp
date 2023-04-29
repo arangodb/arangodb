@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -161,6 +161,8 @@ std::string LogAppenderFile::details() const {
 }
 
 void LogAppenderFile::reopenAll() {
+  // We must not log anything in this function or in anything it calls! This
+  // is because this is called under the `_appendersLock`.
   std::unique_lock<std::mutex> guard(_openAppendersMutex);
 
   for (auto& it : _openAppenders) {

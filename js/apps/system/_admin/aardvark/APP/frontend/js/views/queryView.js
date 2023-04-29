@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, window, _, btoa */
-/* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi, Noty */
+/* global Backbone, $, L, sessionStorage, ace, Storage, localStorage, window, _ */
+/* global frontendConfig, arangoHelper, numeral, templateEngine, Joi, Noty */
 
 (function () {
   'use strict';
@@ -63,12 +63,36 @@
 
     aqlEditor: null,
     queryPreview: null,
-    sortByHistory: false,
 
     initialize: function () {
       this.refreshAQL();
     },
+    initSorting: function() {
+      if (!localStorage.getItem('queryViewSortOrder')) {
+        localStorage.setItem('queryViewSortOrder', 1);
+      }
+      if (!localStorage.getItem('queryViewSortBy')) {
+        localStorage.setItem('queryViewSortBy', 'name');
+      }
+      this.initQuerySortCheckboxes();
+    },
+    initQuerySortCheckboxes: function() {
+      var sortBy = localStorage.getItem("queryViewSortBy");
+      var sortOrder = localStorage.getItem("queryViewSortOrder");
+      if (sortOrder === "-1") {
+        $("#querySortOrder").prop("checked", true);
+      }
 
+      if (sortBy === 'dateAdded') {
+        $("#sortDateAdded").prop("checked", true);
+      }
+      if (sortBy === 'dateModified') {
+        $("#sortDateModified").prop("checked", true);
+      }
+      if (sortBy === 'name') {
+        $("#sortName").prop("checked", true);
+      }
+    },
     allowParamToggle: true,
 
     events: {
@@ -83,7 +107,9 @@
       'click .outputEditorWrapper .closeResult': 'closeResult',
       'click #toggleQueries1': 'toggleQueries',
       'click #toggleQueries2': 'toggleQueries',
-      'click #sortByHistory': 'toggleSortByHistory',
+      'click #sortName': 'sortName',
+      'click #sortDateAdded': 'sortDateAdded',
+      'click #sortDateModified': 'sortDateModified',
       'click #createNewQuery': 'createAQL',
       'click #saveCurrentQuery': 'addAQL',
       'click #updateCurrentQuery': 'updateAQL',
@@ -103,19 +129,112 @@
       'click #closeQueryModal': 'closeExportDialog',
       'click #confirmQueryImport': 'importCustomQueries',
       'click #switchTypes': 'toggleBindParams',
-      'click #arangoMyQueriesTable #runQuery': 'selectAndRunQueryFromTable'
+      'click #arangoMyQueriesTable #runQuery': 'selectAndRunQueryFromTable',
+      'change #querySearchInput': 'restrictToSearchPhrase',
+      'keydown #querySearchInput': 'restrictToSearchPhraseKey',
+      'click #sortOptionsToggle': 'toggleSortOptions',
+      'click #querySortOrder': 'sortOrder',
+    },
+    toggleSortOptions: function () {
+      $('#sortOptionsToggle').toggleClass('activated');
+      $('#sortOptionsDropdown').slideToggle(200);
+    },
+    restrictToSearchPhraseKey: function (event) {
+      if (
+        event && event.originalEvent && (
+          (
+            event.originalEvent.key &&
+            (
+              event.originalEvent.key === 'Control' || 
+              event.originalEvent.key === 'Alt' || 
+              event.originalEvent.key === 'Shift'
+            )
+          ) || 
+          event.originalEvent.ctrlKey || 
+          event.originalEvent.altKey
+        )
+      ) {
+        return;
+      }
+      // key pressed in search box
+      var self = this;
+
+      // force a new a search
+      this.resetQuerySearch();
+
+      self.searchTimeout = setTimeout(function () {
+        self.querySearch();
+      }, 200);
+    },
+    restrictToSearchPhrase: function () {
+      // force a new a search
+      this.resetQuerySearch();
+
+      // search executed
+      this.querySearch();
+    },
+    querySearch: function () {
+      var searchOptions = this.collection.searchOptions;
+      var searchPhrase = $('#querySearchInput').val();
+      if (searchPhrase === searchOptions.searchPhrase) {
+        return;
+      }
+      searchOptions.searchPhrase = searchPhrase;
+      this.updateQueryTable();
+      this.resize();
+    },
+
+    resetQuerySearch: function () {
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout);
+        this.searchTimeout = null;
+      }
+
+      var searchOptions = this.collection.searchOptions;
+      searchOptions.searchPhrase = null;
     },
 
     clearQuery: function () {
       this.aqlEditor.setValue('', 1);
     },
 
-    toggleSortByHistory: function () {
-      this.sortByHistory = !this.sortByHistory;
-      this.updateQueryTable();
-      this.resize();
+    sortName: function () {
+      var sortBy = localStorage.getItem("queryViewSortBy");
+      var newSortBy = (($('#sortName').is(':checked') === true) ? 'name' : 'dateAdded');
+      if (sortBy !== newSortBy) {
+        localStorage.setItem("queryViewSortBy", newSortBy);
+        this.updateQueryTable();
+        this.resize();
+      }
     },
+    sortDateModified: function () {
+      var sortBy = localStorage.getItem("queryViewSortBy");
+      var newSortBy = (($('#sortDateModified').is(':checked') === true) ? 'dateModified' : 'name');
+      if (sortBy !== newSortBy) {
+        localStorage.setItem("queryViewSortBy", newSortBy);
+        this.updateQueryTable();
+        this.resize();
+      }
+    },
+    sortDateAdded: function () {
+      var sortBy = localStorage.getItem("queryViewSortBy");
+      var newSortBy = (($('#sortDateAdded').is(':checked') === true) ? 'dateAdded' : 'name');
+      if (sortBy !== newSortBy) {
+        localStorage.setItem("queryViewSortBy", newSortBy);
+        this.updateQueryTable();
+        this.resize();
+      }
+    },
+    sortOrder: function () {
+      var sortOrder = localStorage.getItem("queryViewSortOrder");
 
+      const newSortOrder = (($('#querySortOrder').is(':checked') === true) ? -1 : 1);
+      if (sortOrder !== newSortOrder) {
+        localStorage.setItem("queryViewSortOrder", newSortOrder);
+        this.updateQueryTable();
+        this.resize();
+      }
+    },
     closeProfile: function (e) {
       var count = $(e.currentTarget).parent().attr('counter');
 
@@ -278,6 +397,7 @@
     toggleQueries: function (e) {
       if (e) {
         if (e.currentTarget.id === 'toggleQueries1') {
+          // this means we are viewing a single query
           this.updateQueryTable();
           $('#bindParamAceEditor').hide();
           $('#bindParamEditor').show();
@@ -286,6 +406,11 @@
           this.queryPreview.setValue('No query selected.', 1);
           this.deselect(this.queryPreview);
         } else {
+          // this means we are viewing list of queries
+          if ($('#sortOptionsDropdown').is(':visible')) { 
+            $('#sortOptionsDropdown').hide();
+            $('#sortOptionsToggle').toggleClass('activated');
+          }
           $('#updateCurrentQuery').hide();
           if (this.settings.aqlWidth === undefined) {
             $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
@@ -298,6 +423,11 @@
           }
         }
       } else {
+        // this means toggle happend due to some other reason (copy button)
+        if ($('#sortOptionsDropdown').is(':visible')) { 
+          $('#sortOptionsDropdown').hide();
+          $('#sortOptionsToggle').toggleClass('activated');
+        }
         if (this.settings.aqlWidth === undefined) {
           $('.aqlEditorWrapper').first().width($(window).width() * 0.33);
         } else {
@@ -310,7 +440,9 @@
         'aqlEditor', 'queryTable', 'previewWrapper', 'querySpotlight',
         'bindParamEditor', 'toggleQueries1', 'toggleQueries2', 'createNewQuery',
         'saveCurrentQuery', 'querySize', 'executeQuery', 'switchTypes',
-        'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery', 'sortByHistoryContainer'
+        'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery',
+        'searchQueryByNameContainer',
+        'sortOptionsToggle'
       ];
       _.each(divs, function (div) {
         $('#' + div).toggle();
@@ -515,15 +647,11 @@
       var query = this.queriesHistory[counter].sentQuery;
 
       if (query !== '' && query !== undefined && query !== null) {
-        var url;
-        if (Object.keys(this.queriesHistory[counter].bindParam).length === 0) {
-          url = 'query/result/download/' + encodeURIComponent(btoa(JSON.stringify({ query: query })));
-        } else {
-          url = 'query/result/download/' + encodeURIComponent(btoa(JSON.stringify({
-            query: query,
-            bindVars: this.queriesHistory[counter].bindParam
-          })));
+        var toEncode = { query: query };
+        if (Object.keys(this.queriesHistory[counter].bindParam).length !== 0) {
+          toEncode.bindVars = this.queriesHistory[counter].bindParam;
         }
+        var url = 'query/result/download/' + encodeURIComponent(arangoHelper.toBinary(JSON.stringify(toEncode)));
         arangoHelper.download(url);
       } else {
         arangoHelper.arangoError('Query error', 'Could not download the result.');
@@ -873,8 +1001,6 @@
       this.delegateEvents();
       this.restoreQuerySize();
       this.getCachedQueryAfterRender();
-      
-      $('#sortByHistory').prop('checked', this.sortByHistory);
     },
 
     cleanupGraphs: function () {
@@ -899,6 +1025,7 @@
       this.fillSelectBoxes();
       this.makeResizeable();
       this.initQueryImport();
+      this.initSorting();
 
       // set height of editor wrapper
       $('.inputEditorWrapper').height($(window).height() / 10 * 5 + 25);
@@ -1463,10 +1590,8 @@
       this.updateLocalQueries();
 
       this.myQueriesTableDesc.rows = this.customQueries;
-      
-      // Reverse order: Last added query shall be displayed first
-      self.customQueries.reverse();
-
+      // sort only custom queries (not predefined ones)
+      this.myQueriesTableDesc.rows = this.sortRows(this.myQueriesTableDesc.rows);
       _.each(this.myQueriesTableDesc.rows, function (k) {
         k.secondRow = '<span class="spanWrapper">' +
           '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span>' +
@@ -1478,24 +1603,10 @@
           delete k.parameter;
         }
         delete k.value;
+        delete k.modified_at;
       });
-
-      function compare (a, b) {
-        var x;
-        if (a.name < b.name) {
-          x = -1;
-        } else if (a.name > b.name) {
-          x = 1;
-        } else {
-          x = 0;
-        }
-        return x;
-      }
-
-      if(!this.sortByHistory) {
-        this.myQueriesTableDesc.rows.sort(compare);
-      }
-
+      
+      // iterate over predefined queries
       _.each(this.queries, function (val) {
         if (val.hasOwnProperty('parameter')) {
           delete val.parameter;
@@ -1507,12 +1618,95 @@
         });
       });
 
+      // filter based on search term, including predefined queries
+      this.myQueriesTableDesc.rows = this.filterRows(this.myQueriesTableDesc.rows);
+
       // escape all columns but the third (which contains HTML)
       this.myQueriesTableDesc.unescaped = [ false, true, true ];
 
       this.$(this.myQueriesId).html(this.table.render({content: this.myQueriesTableDesc}));
     },
-
+    sortRows: function(rows) { 
+      function compare (a, b) {
+        var x;
+        if (a.name < b.name) {
+          x = -1;
+        } else if (a.name > b.name) {
+          x = 1;
+        } else {
+          x = 0;
+        }
+        return x;
+      }
+      function sortByModifiedAt (a, b) {
+        var x;
+        if (!a.modified_at) {
+          return 1;
+        }
+        if (!b.modified_at) {
+          return -1;
+        }
+        if (a.modified_at > b.modified_at) {
+          return -1;
+        } else if (a.modified_at < b.modified_at) {
+          return 1;
+        }
+        return 0;
+      }
+      function sortByModifiedAtReverse (a, b) {
+        var x;
+        if (!a.modified_at) {
+          return 1;
+        }
+        if (!b.modified_at) {
+          return -1;
+        }
+        if (a.modified_at < b.modified_at) {
+          return -1;
+        } else if (a.modified_at > b.modified_at) {
+          return 1;
+        }
+        return 0;
+      }
+      const sortBy = localStorage.getItem("queryViewSortBy") || "name";
+      const sortOrder = localStorage.getItem("queryViewSortOrder") || "-1";
+      if (sortBy === 'dateModified') {
+        if (sortOrder === "1") {
+          // can't just do 'reverse()' because we need to handle missing data
+          return rows.sort(sortByModifiedAtReverse);
+        }
+        if (sortOrder === "-1") {
+          return rows.sort(sortByModifiedAt);
+        }
+      }
+      if (sortBy === 'dateAdded') {
+        if (sortOrder === "1") {
+          // Reverse order: Last added query shall be displayed first
+          return rows;
+        }
+        if (sortOrder === "-1") {
+          return rows.reverse();
+        }
+      }
+      if (sortOrder === "1") {
+        return rows.sort(compare);
+      }
+      if (sortOrder === "-1") {
+        return rows.sort(compare).reverse();
+      }
+      return rows.sort(compare);
+    },
+    filterRows: function(rows) {
+      var searchPhrase = this.collection.searchOptions.searchPhrase;
+      if (searchPhrase !== null && searchPhrase !== undefined && searchPhrase !== '') {
+        return rows.filter(row => {
+          return row.name.toLowerCase().includes(
+            this.collection.searchOptions.searchPhrase.toLowerCase()
+          );
+        });
+      }
+      return rows;
+    },
     listenKey: function (e) {
       if (e.keyCode === 13) {
         if ($('#modalButton1').html() === 'Update') {
@@ -1542,7 +1736,8 @@
         query.set('value', content);
         // SET QUERY BIND PARAMS
         query.set('parameter', this.bindParamTableObj);
-
+        // SET MODIFIED TIMESTAMP
+        query.set('modified_at', Date.now());
         var callback = function (error) {
           if (error) {
             arangoHelper.arangoError('Query', 'Could not save query');
@@ -2750,7 +2945,8 @@
         self.customQueries.push({
           name: model.get('name'),
           value: model.get('value'),
-          parameter: model.get('parameter')
+          parameter: model.get('parameter'),
+          modified_at: model.get('modified_at')
         });
       });
     },

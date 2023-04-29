@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,6 @@
 #include "Actions/actions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "V8/V8SecurityFeature.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -55,6 +54,7 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/FoxxFeature.h"
+#include "V8Server/GlobalContextMethods.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
@@ -118,7 +118,7 @@ class v8_action_t final : public TRI_action_t {
   }
 
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, GeneralRequest* request,
-                              GeneralResponse* response, Mutex* dataLock,
+                              GeneralResponse* response, std::mutex* dataLock,
                               void** data) override {
     TRI_action_result_t result;
 
@@ -151,7 +151,7 @@ class v8_action_t final : public TRI_action_t {
       // and execute it
       {
         // cppcheck-suppress redundantPointerOp
-        MUTEX_LOCKER(mutexLocker, *dataLock);
+        std::lock_guard mutexLocker{*dataLock};
 
         if (*data != nullptr) {
           result.canceled = true;
@@ -177,7 +177,7 @@ class v8_action_t final : public TRI_action_t {
 
       {
         // cppcheck-suppress redundantPointerOp
-        MUTEX_LOCKER(mutexLocker, *dataLock);
+        std::lock_guard mutexLocker{*dataLock};
         *data = nullptr;
       }
     }
@@ -185,10 +185,10 @@ class v8_action_t final : public TRI_action_t {
     return result;
   }
 
-  void cancel(Mutex* dataLock, void** data) override {
+  void cancel(std::mutex* dataLock, void** data) override {
     {
       // cppcheck-suppress redundantPointerOp
-      MUTEX_LOCKER(mutexLocker, *dataLock);
+      std::lock_guard mutexLocker{*dataLock};
 
       // either we have not yet reached the execute above or we are already done
       if (*data == nullptr) {
@@ -825,9 +825,6 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>());
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP: {
-        //  OBI FIXME - vpack
-        //  HTTP SHOULD USE vpack interface
-
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         v8::Handle<v8::Array> transformations = transformArray.As<v8::Array>();
         bool setRegularBody = !transformArray->IsArray();
@@ -853,10 +850,10 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               // set the correct content-encoding header
               response->setHeaderNC(StaticStrings::ContentEncoding,
                                     StaticStrings::Binary);
-            } else if (name == "gzip") {
+            } else if (name == StaticStrings::EncodingGzip) {
               response->setAllowCompression(true);
               setRegularBody = true;
-            } else if (name == "deflate") {
+            } else if (name == StaticStrings::EncodingDeflate) {
               response->setAllowCompression(true);
               setRegularBody = true;
             }
@@ -922,9 +919,9 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             // check available transformations
             if (name == "base64decode") {
               out = StringUtils::decodeBase64(out);
-            } else if (name == "gzip") {
+            } else if (name == StaticStrings::EncodingGzip) {
               response->setAllowCompression(true);
-            } else if (name == "deflate") {
+            } else if (name == StaticStrings::EncodingDeflate) {
               response->setAllowCompression(true);
             }
           }
@@ -1266,36 +1263,18 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief eventually executes a function in all contexts
-///
-/// @FUN{internal.executeGlobalContextFunction(@FA{function-definition})}
+/// @brief reload routing defintions in all contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ExecuteGlobalContextFunction(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ReloadRouting(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeGlobalContextFunction(<function-type>)");
-  }
-
-  // extract the action name
-  v8::String::Utf8Value utf8def(isolate, args[0]);
-
-  if (*utf8def == nullptr) {
-    TRI_V8_THROW_TYPE_ERROR("<definition> must be a UTF-8 function definition");
-  }
-
-  std::string const def = std::string(*utf8def, utf8def.length());
-
   TRI_GET_SERVER_GLOBALS(ArangodServer);
-  // and pass it to the V8 contexts
   if (!v8g->server().getFeature<V8DealerFeature>().addGlobalContextMethod(
-          def)) {
+          GlobalContextMethods::MethodType::kReloadRouting)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid action definition");
+                                   "unable to reload routing");
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -1603,9 +1582,8 @@ void TRI_InitV8Actions(v8::Isolate* isolate) {
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEFINE_ACTION"),
       JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(
-      isolate,
-      TRI_V8_ASCII_STRING(isolate, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION"),
-      JS_ExecuteGlobalContextFunction, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RELOAD_ROUTING"),
+      JS_ReloadRouting, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_GET_CURRENT_REQUEST"),
       JS_GetCurrentRequest);

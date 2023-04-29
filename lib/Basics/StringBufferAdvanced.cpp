@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,6 +45,18 @@ ErrorCode arangodb::basics::StringBuffer::deflate() {
 
   if (code == TRI_ERROR_NO_ERROR) {
     swap(&deflated);
+  }
+  return code;
+}
+
+ErrorCode arangodb::basics::StringBuffer::gzip() {
+  arangodb::basics::StringBuffer gzipped;
+
+  ErrorCode code = arangodb::encoding::gzipCompress(
+      reinterpret_cast<uint8_t const*>(data()), size(), gzipped);
+
+  if (code == TRI_ERROR_NO_ERROR) {
+    swap(&gzipped);
   }
   return code;
 }

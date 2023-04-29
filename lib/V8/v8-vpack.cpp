@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,8 +82,8 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
       v8::Local<v8::Value> sub;
       if (v.isString()) {
         char const* p = v.getString(l);
-        // value of _key, _id, _from, _to, and _rev is ASCII too
-        sub = TRI_V8_ASCII_PAIR_STRING(isolate, p, l);
+        // value of _key, _id, _from, _to, and _rev
+        sub = TRI_V8_PAIR_STRING(isolate, p, l);
       } else {
         sub = TRI_VPackToV8(isolate, v, options, &slice);
       }
@@ -350,8 +350,11 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
 
     if (context.level + 1 > VPackOptions::Defaults.nestingLimit) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "input value is nested too deep");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "input value is nested too deep - input " +
+              std::to_string(context.level) + "; max " +
+              std::to_string(VPackOptions::Defaults.nestingLimit));
     }
 
     AddValue<VPackValue, inObject>(context, attributeName,
@@ -464,8 +467,11 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
     uint32_t const n = names->Length();
 
     if (context.level + 1 > VPackOptions::Defaults.nestingLimit) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "input value is nested too deep");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "input value is nested too deep - input " +
+              std::to_string(context.level) + "; max " +
+              std::to_string(VPackOptions::Defaults.nestingLimit));
     }
 
     AddValue<VPackValue, inObject>(context, attributeName,

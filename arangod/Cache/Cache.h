@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,6 +81,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   static constexpr std::uint64_t triesGuarantee =
       std::numeric_limits<std::uint64_t>::max();
+  static constexpr std::uint64_t triesFast = 200;
+  static constexpr std::uint64_t triesSlow = 10000;
 
   // primary functionality; documented in derived classes
   virtual Finding find(void const* key, std::uint32_t keySize) = 0;
@@ -135,24 +137,37 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::pair<double, double> hitRates();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Check whether the cache is currently in the process of resizing.
+  /// @brief Check whether the cache is currently in the process of resizing
+  /// or shutting down.
   //////////////////////////////////////////////////////////////////////////////
   bool isResizing() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Check whether the cache is currently in the process of migrating.
+  /// @brief Check whether the cache is currently in the process of resizing.
+  //////////////////////////////////////////////////////////////////////////////
+  bool isResizingFlagSet() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Check whether the cache is currently in the process of migrating
+  /// or shutting down.
   //////////////////////////////////////////////////////////////////////////////
   bool isMigrating() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Chedk whether the cache is currently migrating or resizing.
+  /// @brief Check whether the cache is currently in the process of migrating.
   //////////////////////////////////////////////////////////////////////////////
-  bool isBusy() const noexcept;
+  bool isMigratingFlagSet() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Check whether the cache is currently in the process of resizing
+  /// or migrating.
+  //////////////////////////////////////////////////////////////////////////////
+  bool isResizingOrMigratingFlagSet() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begun the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
-  inline bool isShutdown() const noexcept { return _shutdown.load(); }
+  bool isShutdown() const noexcept { return _shutdown.load(); }
 
   // helper struct that takes care of inserting into the cache during
   // object construction. The insertion is not guaranteed to work. To
@@ -197,8 +212,40 @@ class Cache : public std::enable_shared_from_this<Cache> {
   };
 
  protected:
-  static constexpr std::uint64_t triesFast = 200;
-  static constexpr std::uint64_t triesSlow = 10000;
+  // shutdown cache and let its memory be reclaimed
+  static void destroy(std::shared_ptr<Cache> const& cache);
+
+  void requestGrow();
+  void requestMigrate(std::uint32_t requestedLogSize = 0);
+
+  static void freeValue(CachedValue* value) noexcept;
+  bool reclaimMemory(std::uint64_t size) noexcept;
+
+  void recordStat(Stat stat);
+
+  bool reportInsert(bool hadEviction);
+
+  // management
+  Metadata& metadata();
+  std::shared_ptr<Table> table() const;
+  void shutdown();
+  [[nodiscard]] bool canResize() noexcept;
+
+  // called by FreeMemory async task
+  // precondition: metadata's isResizing() flag must be set
+  // postcondition: metadata's isResizing() flag is still set
+  bool freeMemory();
+
+  // called by Migrate async task
+  // precondition: metadata's isMigrating() flag must be set
+  // postcondition: metadata's isMigrating() flag is not set
+  bool migrate(std::shared_ptr<Table> newTable);
+
+  virtual std::uint64_t freeMemoryFrom(std::uint32_t hash) = 0;
+  virtual void migrateBucket(void* sourcePtr,
+                             std::unique_ptr<Table::Subtable> targets,
+                             Table& newTable) = 0;
+
   static constexpr std::uint64_t findStatsCapacity = 16384;
 
   basics::ReadWriteSpinLock _taskLock;
@@ -225,6 +272,11 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // manage eviction rate
   basics::SharedCounter<64> _insertsTotal;
   basics::SharedCounter<64> _insertEvictions;
+
+  // times to wait until requesting is allowed again
+  std::atomic<Manager::time_point::rep> _migrateRequestTime;
+  std::atomic<Manager::time_point::rep> _resizeRequestTime;
+
   static constexpr std::uint64_t _evictionMask =
       4095;  // check roughly every 4096 insertions
   static constexpr double _evictionRateThreshold =
@@ -232,42 +284,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
              // evictions in past 4096
              // inserts, migrate
 
-  // times to wait until requesting is allowed again
-  std::atomic<Manager::time_point::rep> _migrateRequestTime;
-  std::atomic<Manager::time_point::rep> _resizeRequestTime;
-
   // friend class manager and tasks
   friend class FreeMemoryTask;
   friend class Manager;
   friend class MigrateTask;
-
- protected:
-  // shutdown cache and let its memory be reclaimed
-  static void destroy(std::shared_ptr<Cache> const& cache);
-
-  void requestGrow();
-  void requestMigrate(std::uint32_t requestedLogSize = 0);
-
-  static void freeValue(CachedValue* value) noexcept;
-  bool reclaimMemory(std::uint64_t size) noexcept;
-
-  void recordStat(Stat stat);
-
-  bool reportInsert(bool hadEviction);
-
-  // management
-  Metadata& metadata();
-  std::shared_ptr<Table> table() const;
-  void shutdown();
-  [[nodiscard]] bool canResize() noexcept;
-  [[nodiscard]] bool canMigrate() noexcept;
-  bool freeMemory();
-  bool migrate(std::shared_ptr<Table> newTable);
-
-  virtual std::uint64_t freeMemoryFrom(std::uint32_t hash) = 0;
-  virtual void migrateBucket(void* sourcePtr,
-                             std::unique_ptr<Table::Subtable> targets,
-                             Table& newTable) = 0;
 };
 
 }  // end namespace arangodb::cache

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -151,7 +152,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
   struct SharedState {
     SharedState() : readCompleteInputfile(false) {}
 
-    Mutex mutex;
+    std::mutex mutex;
 
     /// @brief this contains errors produced by background send operations
     /// (i.e. RestoreSendJobs)
@@ -255,10 +256,10 @@ class RestoreFeature final : public ArangoRestoreFeature {
   int& _exitCode;
   Options _options;
   Stats _stats;
-  Mutex mutable _workerErrorLock;
+  std::mutex mutable _workerErrorLock;
   std::vector<Result> _workerErrors;
 
-  Mutex _buffersLock;
+  std::mutex _buffersLock;
   std::vector<std::unique_ptr<basics::StringBuffer>> _buffers;
 };
 

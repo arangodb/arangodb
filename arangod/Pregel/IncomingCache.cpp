@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IncomingCache.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
-#include "Pregel/Worker/WorkerConfig.h"
+#include "Pregel/SenderMessage.h"
 
-#include "Basics/MutexLocker.h"
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
+#include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
+
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 
@@ -35,16 +37,18 @@
 
 #include <algorithm>
 #include <random>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
+using namespace arangodb::pregel::algos;
 
 template<typename M>
 InCache<M>::InCache(MessageFormat<M> const* format)
     : _containedMessageCount(0), _format(format) {}
 
 template<typename M>
-void InCache<M>::parseMessages(PregelMessage const& message) {
+void InCache<M>::parseMessages(worker::message::PregelMessage const& message) {
   // every packet contains one shard
   VPackValueLength i = 0;
   std::string_view key;
@@ -99,16 +103,13 @@ void InCache<M>::storeMessage(PregelShard shard, std::string_view vertexId,
 // ================== ArrayIncomingCache ==================
 
 template<typename M>
-ArrayInCache<M>::ArrayInCache(WorkerConfig const* config,
+ArrayInCache<M>::ArrayInCache(std::set<PregelShard> localShards,
                               MessageFormat<M> const* format)
-    : InCache<M>(format) {
-  if (config != nullptr) {
-    std::set<PregelShard> const& shardIDs = config->localPregelShardIDs();
-    // one mutex per shard, we will see how this scales
-    for (PregelShard shardID : shardIDs) {
-      this->_bucketLocker[shardID];
-      _shardMap[shardID];
-    }
+    : InCache<M>(format), _localShards(localShards) {
+  // one mutex per shard, we will see how this scales
+  for (PregelShard pregelShard : _localShards) {
+    this->_bucketLocker[pregelShard];
+    _shardMap[pregelShard];
   }
 }
 
@@ -120,14 +121,12 @@ void ArrayInCache<M>::_set(PregelShard shard, std::string_view const& key,
 }
 
 template<typename M>
-void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
-                                 InCache<M> const* otherCache) {
+void ArrayInCache<M>::mergeCache(InCache<M> const* otherCache) {
   ArrayInCache<M>* other = (ArrayInCache<M>*)otherCache;
   this->_containedMessageCount += other->_containedMessageCount;
 
   // ranomize access to buckets, don't wait for the lock
-  std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
-  std::vector<PregelShard> randomized(shardIDs.begin(), shardIDs.end());
+  std::vector<PregelShard> randomized(_localShards.begin(), _localShards.end());
 
   std::random_device rd;
   std::mt19937 g(rd());
@@ -181,7 +180,7 @@ MessageIterator<M> ArrayInCache<M>::getMessages(PregelShard shard,
 template<typename M>
 void ArrayInCache<M>::clear() {
   for (auto& pair : _shardMap) {  // keep the keys
-    // MUTEX_LOCKER(guard, this->_bucketLocker[pair.first]);
+    // std::lock_guard guard{this->_bucketLocker[pair.first]};
     pair.second.clear();
   }
   this->_containedMessageCount = 0;
@@ -216,17 +215,14 @@ void ArrayInCache<M>::forEach(
 // ================== CombiningIncomingCache ==================
 
 template<typename M>
-CombiningInCache<M>::CombiningInCache(WorkerConfig const* config,
+CombiningInCache<M>::CombiningInCache(std::set<PregelShard> localShards,
                                       MessageFormat<M> const* format,
                                       MessageCombiner<M> const* combiner)
-    : InCache<M>(format), _combiner(combiner) {
-  if (config != nullptr) {
-    std::set<PregelShard> const& shardIDs = config->localPregelShardIDs();
-    // one mutex per shard, we will see how this scales
-    for (PregelShard shardID : shardIDs) {
-      this->_bucketLocker[shardID];
-      _shardMap[shardID];
-    }
+    : InCache<M>(format), _combiner(combiner), _localShards(localShards) {
+  // one mutex per shard, we will see how this scales
+  for (PregelShard pregelShard : localShards) {
+    this->_bucketLocker[pregelShard];
+    _shardMap[pregelShard];
   }
 }
 
@@ -244,14 +240,16 @@ void CombiningInCache<M>::_set(PregelShard shard, std::string_view const& key,
 }
 
 template<typename M>
-void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
-                                     InCache<M> const* otherCache) {
+void CombiningInCache<M>::mergeCache(InCache<M> const* otherCache) {
   CombiningInCache<M>* other = (CombiningInCache<M>*)otherCache;
   this->_containedMessageCount += other->_containedMessageCount;
 
-  // ranomize access to buckets, don't wait for the lock
-  std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
-  std::vector<PregelShard> randomized(shardIDs.begin(), shardIDs.end());
+  if (this->_containedMessageCount == 0) {
+    return;
+  }
+
+  // randomize access to buckets, don't wait for the lock
+  std::vector<PregelShard> randomized(_localShards.begin(), _localShards.end());
   std::random_device rd;
   std::mt19937 g(rd());
   std::shuffle(randomized.begin(), randomized.end(), g);

@@ -245,7 +245,7 @@ function printRules(rules, stats) {
     }
   }
   stringBuilder.appendLine();
- 
+
   if (!stats || !stats.rules) {
     return;
   }
@@ -273,11 +273,19 @@ function printRules(rules, stats) {
     times.forEach(function(rule) {
       stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
     });
-  
+
     stringBuilder.appendLine();
   }
 
-  stringBuilder.appendLine(value(stats.rulesExecuted) + annotation(' rule(s) executed, ') + value(stats.plansCreated) + annotation(' plan(s) created'));
+  let statsLine = value(stats.rulesExecuted) + annotation(' rule(s) executed');
+  statsLine += ', ' + value(stats.plansCreated) + annotation(' plan(s) created');
+  if (stats.hasOwnProperty('peakMemoryUsage')) {
+    statsLine += ', ' + annotation('peak mem [b]') + ': ' + value(stats.peakMemoryUsage);
+  }
+  if (stats.hasOwnProperty('executionTime')) {
+    statsLine += ', ' + annotation('exec time [s]') + ': ' + value(stats.executionTime.toFixed(5));
+  }
+  stringBuilder.appendLine(statsLine);
   stringBuilder.appendLine();
 }
 
@@ -316,7 +324,7 @@ function printStats(stats, isCoord) {
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') + 
+    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') +
     header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
@@ -919,38 +927,50 @@ function processQuery(query, explain, planIndex) {
     return (node) => variableName(node);
   };
 
-  var buildRaw = function (node) {
-    if (Array.isArray(node)) {
-      // array
-      if (node.length > maxMembersToPrint) {
-        // print only the first few values from the array
-        return '[ ' + node.slice(0, maxMembersToPrint).map(buildRaw).join(', ') + ', ... ]';
-      }
-      return '[ ' + node.map(buildRaw).join(', ') + ' ]';
-    } else if (typeof node === 'object' && node !== null) {
-      // object
-      let keys = Object.keys(node);
-      let r = '{';
-      keys.slice(0, maxMembersToPrint).forEach((k, i) => {
-        if (i === 0) {
-          r += ' ';
-        } else {
-          r += ', ';
-        }
-        r += value(JSON.stringify(k)) + ' : ' + buildRaw(node[k]);
+  var unfoldRawData = function (value) {
+    let node = {};
+    if (Array.isArray(value)) {
+      node.type = 'array';
+      node.subNodes = [];
+      value.forEach((v) => {
+        node.subNodes.push(unfoldRawData(v));
       });
-      if (keys.length > maxMembersToPrint) {
-        r += ', ...';
-      }
-      r += ' }';
-      return r;
+    } else if (typeof value === 'object' && value !== null) {
+      node.type = 'object';
+      node.subNodes = [];
+      Object.keys(value).forEach((k) => {
+        node.subNodes.push({
+          type: 'object element',
+          name: k,
+          subNodes: [ unfoldRawData(value[k]) ]
+        });
+      });
+    } else {
+      node.type = 'value';
+      node.value = value;
     }
+    return node;
+  };
 
-    // anything else
-    return value(JSON.stringify(node));
+  var checkRawData = function (node) {
+    if (node.hasOwnProperty('raw')) {
+      node = unfoldRawData(node.raw);
+    } else {
+      if (Array.isArray(node.subNodes)) {
+        let s = [];
+        node.subNodes.forEach((v) => {
+          s.push(checkRawData(v));
+        });
+        node.subNodes = s;
+      }
+    }
+    return node;
   };
 
   var buildExpression = function (node) {
+    // replace "raw" value with proper subNodes
+    node = checkRawData(node);
+
     var binaryOperator = function (node, name) {
       if (name.match(/^[a-zA-Z]+$/)) {
         // make it a keyword
@@ -1001,9 +1021,6 @@ function processQuery(query, explain, planIndex) {
       case 'value':
         return value(JSON.stringify(node.value));
       case 'object':
-        if (node.hasOwnProperty('raw')) {
-          return buildRaw(node.raw);
-        }
         if (node.hasOwnProperty('subNodes')) {
           if (node.subNodes.length > maxMembersToPrint) {
             // print only the first few values from the object
@@ -1017,9 +1034,6 @@ function processQuery(query, explain, planIndex) {
       case 'calculated object element':
         return '[ ' + buildExpression(node.subNodes[0]) + ' ] : ' + buildExpression(node.subNodes[1]);
       case 'array':
-        if (node.hasOwnProperty('raw')) {
-          return buildRaw(node.raw);
-        }
         if (node.hasOwnProperty('subNodes')) {
           if (node.subNodes.length > maxMembersToPrint) {
             // print only the first few values from the array
@@ -1341,7 +1355,7 @@ function processQuery(query, explain, planIndex) {
             return keyword(' LET ') + variableName(scorer) + ' = ' + buildExpression(scorer.node);
           }).join('');
         }
-        
+
         var scorersSort = '';
         if (node.hasOwnProperty('scorersSort') && node.scorersSort.length > 0) {
           node.scorersSort.forEach(function(sort) {
@@ -1354,11 +1368,11 @@ function processQuery(query, explain, planIndex) {
               } else {
                 scorersSort += keyword(' DESC');
               }
-          
+
           });
            scorersSort = keyword(' SORT ') + scorersSort;
            scorersSort += keyword(' LIMIT ') + value('0, ' + JSON.stringify(node.scorersSortLimit));
-           
+
         }
         let viewAnnotation = '/* view query';
         if (node.hasOwnProperty('outNmDocId')) {
@@ -2031,6 +2045,19 @@ function processQuery(query, explain, planIndex) {
         }
       }
         break;
+      case 'MultipleRemoteModificationNode': {
+        modificationFlags = node.modificationFlags;
+        collectionVariables[node.inVariable.id] = node.collection;
+        let indexRef = `${variableName(node.inVariable)}`;
+        if (node.hasOwnProperty('indexes')) {
+          node.indexes.forEach(function (idx, i) {
+            iterateIndexes(idx, i, node, types, indexRef);
+          });
+        }
+        return `${keyword('FOR')} d ${keyword('IN')} ${variableName(node.inVariable)} ${keyword('INSERT')} d ${keyword('IN')} ${collection(node.collection)}`;
+      }
+        break;
+
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
@@ -2358,11 +2385,15 @@ function debug(query, bindVars, options) {
     input.options = {};
   }
   input.options.explainRegisters = true;
+  let dbProperties = db._properties();
+  delete dbProperties.id;
+  delete dbProperties.isSystem;
+  delete dbProperties.path;
 
   let result = {
     engine: db._engine(),
     version: db._version(true),
-    database: db._name(),
+    database: dbProperties,
     query: input,
     queryCache: require('@arangodb/aql/cache').properties(),
     collections: {},

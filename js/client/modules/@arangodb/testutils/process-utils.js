@@ -49,6 +49,7 @@ const download = internal.download;
 const time = internal.time;
 const wait = internal.wait;
 const sleep = internal.sleep;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 /* Constants: */
 // const BLUE = internal.COLORS.COLOR_BLUE;
@@ -425,22 +426,19 @@ function setupBinaries (builddir, buildType, configDir) {
     ARANGOSH_BIN
   ];
 
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      isEnterpriseClient = true;
-      checkFiles.push(ARANGOBACKUP_BIN);
-    }
-    ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
-      let envName = san.toUpperCase() + "_OPTIONS";
-      let fileName = san + "_arangodb_suppressions.txt";
-      if (!process.env.hasOwnProperty(envName) &&
-          fs.exists(fileName)) {
-        // print('preparing ' + san + ' environment');
-        process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
-      }
-    });
+  if (isEnterprise()) {
+    isEnterpriseClient = true;
+    checkFiles.push(ARANGOBACKUP_BIN);
   }
+  ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
+    let envName = san.toUpperCase() + "_OPTIONS";
+    let fileName = san + "_arangodb_suppressions.txt";
+    if (!process.env.hasOwnProperty(envName) &&
+        fs.exists(fileName)) {
+      // print('preparing ' + san + ' environment');
+      process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+    }
+  });
 
   for (let b = 0; b < checkFiles.length; ++b) {
     if (!fs.isFile(checkFiles[b])) {
@@ -457,8 +455,16 @@ function setupBinaries (builddir, buildType, configDir) {
 function killRemainingProcesses(results) {
   let running = internal.getExternalSpawned();
   results.status = results.status && (running.length === 0);
-  let i = 0;
-  for (i = 0; i < running.length; i++) {
+  for (let i = 0; i < running.length; i++) {
+    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
+    if (timeoutReached) {
+      print(RED + Date() + ' external deadline reached!' + RESET);
+    }
+    internal.removePidFromMonitor(running[i].pid);
+  }
+  sleep(1);
+  for (let i = 0; i < running.length; i++) {
     let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
     print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
     if (timeoutReached) {

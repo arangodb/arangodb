@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -137,6 +137,13 @@ struct log_t {
         entry(std::move(e)),
         clientId(clientId),
         timestamp(m) {}
+
+  void toVelocyPackCompact(velocypack::Builder& builder) const {
+    builder.openObject(/*allowUnindexed*/ true);
+    builder.add("index", VPackValue(index));
+    builder.add("query", VPackSlice(entry->data()));
+    builder.close();
+  }
 
   void toVelocyPack(velocypack::Builder& builder) const {
     builder.openObject();

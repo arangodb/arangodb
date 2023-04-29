@@ -38,7 +38,9 @@ const im = require('@arangodb/testutils/instance-manager');
 const toArgv = internal.toArgv;
 const executeScript = internal.executeScript;
 const executeExternalAndWait = internal.executeExternalAndWait;
+const testHelper = require("@arangodb/test-helper");
 const ArangoError = require('@arangodb').ArangoError;
+const isEnterprise = testHelper.isEnterprise;
 
 const platform = internal.platform;
 
@@ -65,18 +67,21 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
     this.info = "runInDriverTest";
   }
   run(testList) {
+    let tmpDir = fs.getTempPath();
     let beforeStart = time();
     this.continueTesting = true;
     this.testList = testList;
     let testrunStart = time();
     this.results = {
       shutdown: true,
+      status: true,
       startupTime: testrunStart - beforeStart
     };
     let serverDead = false;
     let count = 0;
     let forceTerminate = false;
     for (let i = 0; i < this.testList.length; i++) {
+      testHelper.flushInstanceInfo();
       let te = this.testList[i];
       let filtered = {};
       if (tu.filterTestcaseByOptions(te, this.options, filtered)) {
@@ -115,11 +120,12 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
                                                        paramsFirstRun,
                                                        this.friendlyName,
                                                        rootDir);
-          
+	        global.theInstanceManager = this.instanceManager;
           this.instanceManager.prepareInstance();
           this.instanceManager.launchTcpDump("");
           if (!this.instanceManager.launchInstance()) {
             this.instanceManager.destructor(false);
+            this.options.cleanup = false;
             throw new Error("failed to launch instance");
           }
           this.instanceManager.reconnect();
@@ -129,9 +135,11 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
 
             if (!executeScript(content, true, te)) {
+              this.options.cleanup = false;
               throw new Error("setup of test failed");
             }
           } catch (ex) {
+            this.options.cleanup = false;
             if (ex instanceof ArangoError &&
                 ex.errorNum === internal.errors.ERROR_DISABLED.code) {
               forceTerminate = true;
@@ -144,6 +152,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               shutdown: shutdownStatus
             };
             this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
+            this.results.status = false;
             return this.results;
           }
           if (this.instanceManager.shutdownInstance(forceTerminate)) {                                            // stop
@@ -162,6 +171,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               }
               this.instanceManager.reStartInstance(paramsSecondRun);      // restart with restricted permissions
             } catch (ex) {
+              this.options.cleanup = false;
               if (ex instanceof ArangoError &&
                   ex.errorNum === internal.errors.ERROR_DISABLED.code) {
                 forceTerminate = true;
@@ -192,7 +202,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
                                                        paramsSecondRun,
                                                        this.friendlyName,
                                                        rootDir);
-          
+          global.theInstanceManager = this.instanceManager;
           // if failurepoints are active, disable SUT-sanity checks:
           let failurePoints = paramsSecondRun.hasOwnProperty('server.failure-point');
           if (failurePoints) {
@@ -215,13 +225,14 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               return this.results;
             }
           } catch (ex) {
-              this.results[te] = {
-                message: "Aborting testrun; failed to launch instance: " +
-                  ex.message + " - " +
-                  JSON.stringify(this.instanceManager.getStructure()),
-                status: false,
-                shutdown: false
-              };
+            this.options.cleanup = false;
+            this.results[te] = {
+              message: "Aborting testrun; failed to launch instance: " +
+                ex.message + " - " +
+                JSON.stringify(this.instanceManager.getStructure()),
+              status: false,
+              shutdown: false
+            };
             this.results.shutdown = false;
             this.results.status = false;
             this.instanceManager.shutdownInstance(true);
@@ -240,14 +251,25 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           arango.reconnect(arango.getEndpoint(), '_system', "root", "", true,
                            this.instanceManager.addArgs["server.jwt-secret"]);
         }
+        this.results.status = this.results.status && this.results[te].status;
         shutdownStatus = this.instanceManager.shutdownInstance(false);
         this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
         this.instanceManager.destructor(this.results[te].status && shutdownStatus);
       } else {
-        if (this.options.extremeVerbosity !== 'silent') {
+        if (this.options.extremeVerbosity) {
           print('Skipped ' + te + ' because of ' + filtered.filter);
         }
       }
+    }
+    if (this.results.status && this.options.cleanup) {
+      fs.list(tmpDir).forEach(file => {
+        let fullfile = fs.join(tmpDir, file);
+        if (fs.isDirectory(fullfile)) {
+          fs.removeDirectoryRecursive(fullfile, true);
+        } else {
+          fs.remove(fullfile);
+        }
+      });
     }
     return this.results;
   }
@@ -283,7 +305,7 @@ function server_secrets(options) {
   let keyfileName = fs.join(keyfileDir, "server.pem");
   fs.makeDirectory(keyfileDir);
 
-  fs.copyFile("./UnitTests/server.pem", keyfileName);
+  fs.copyFile(fs.join("etc", "testing", "server.pem"), keyfileName);
 
   process.env["tls-keyfile"] = keyfileName;
 
@@ -300,10 +322,9 @@ function server_secrets(options) {
     'cluster.create-waits-for-sync-replication': false,
     'ssl.keyfile': keyfileName
   };
-  let version = global.ARANGODB_CLIENT_VERSION(true);
-  if (version.hasOwnProperty('enterprise-version')) {
+  if (isEnterprise()) {
     additionalArguments['ssl.server-name-indication']
-      = "hans.arangodb.com=./UnitTests/tls.keyfile";
+      = "hans.arangodb.com=./etc/testing/tls.keyfile";
   }
   let rc = new tu.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
   if (rc.status && options.cleanup) {

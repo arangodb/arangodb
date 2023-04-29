@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -570,6 +570,8 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
       return auth::Level::NONE;
     } else if (cname == StaticStrings::QueuesCollection) {
       return auth::Level::RO;
+    } else if (cname == StaticStrings::PregelCollection) {
+      return auth::Level::RW;
     } else if (cname == StaticStrings::FrontendCollection) {
       return auth::Level::RW;
     }

@@ -1,6 +1,5 @@
 import 'jsoneditor-react/es/editor.min.css';
 import React, { Component } from 'react';
-import 'react-autocomplete-input/dist/bundle.css';
 import ReactDOM from 'react-dom';
 
 const jsoneditor = require('jsoneditor');
@@ -13,11 +12,10 @@ const parsePrometheusTextFormat = require('parse-prometheus-text-format');
 // import new react views
 // require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');
-require('./views/views/ViewInfoReactView');
+require('./views/graphV2/GraphV2ReactView');
 require('./views/views/ViewSettingsReactView');
-require('./views/views/ViewConsolidationReactView');
-require('./views/views/ViewLinksReactView');
-require('./views/views/ViewJSONReactView');
+require('./views/views/ViewsListReactView');
+require('./views/collections/indices/CollectionIndicesReactView');
 
 // old libraries
 const jQuery = require('jquery');
@@ -59,7 +57,7 @@ require('../node_modules/noty/lib/themes/sunset.css');
 
 window.JST = {};
 
-function requireAll (context) {
+function requireAll(context) {
   context.keys().forEach(context);
   _.each(context.keys(), function (key) {
     // detect and store ejs templates
@@ -101,12 +99,6 @@ require('../../frontend/js/lib/select2.js');
 window._ = _;
 require('../../frontend/js/arango/templateEngine.js');
 require('../../frontend/js/arango/arango.js');
-
-// only set this for development
-if (window.frontendConfig && env === 'development') {
-  window.frontendConfig.basePath = process.env.REACT_APP_ARANGODB_HOST;
-  window.frontendConfig.react = true;
-}
 
 require('../../frontend/js/lib/jquery-ui-1.9.2.custom.min.js');
 require('../../frontend/js/lib/jquery.form.js');
@@ -194,10 +186,9 @@ window.randomColor = require('../../frontend/js/lib/randomColor.js');
 // require('../../frontend/src/mode-aql.js');
 
 class App extends Component {
-  // <Overview />
-  render () {
+  render() {
     return (
-      <div className="App"/>
+      <div className="App" />
     );
   }
 }

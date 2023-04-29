@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -159,12 +159,6 @@ class LogicalView : public LogicalDataSource {
  private:
   LogicalView(std::pair<ViewType, std::string_view> typeInfo,
               TRI_vocbase_t& vocbase, velocypack::Slice definition);
-
-  // TODO seems to be ugly
-  friend struct ::TRI_vocbase_t;
-  // ensure LogicalDataSource members (e.g. _deleted/_name) are not modified
-  // asynchronously
-  mutable basics::ReadWriteLock _lock;
 
   std::pair<ViewType, std::string_view> _typeInfo;
 };

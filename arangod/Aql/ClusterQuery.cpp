@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -118,7 +118,6 @@ void ClusterQuery::prepareClusterQuery(
 
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
-  // FIXME change this format to take the raw one?
   ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
   _ast->variables()->fromVelocyPack(variables);
   // creating the plan may have produced some collections
@@ -131,6 +130,10 @@ void ClusterQuery::prepareClusterQuery(
   if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
     inaccessibleCollections = _queryOptions.inaccessibleCollections;
   }
+#endif
+
+#ifdef USE_ENTERPRISE
+  waitForSatellites();
 #endif
 
   _trx = AqlTransaction::create(_transactionContext, _collections,

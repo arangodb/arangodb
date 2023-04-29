@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -192,7 +192,7 @@ IndexNode::IndexNode(ExecutionPlan* plan,
       _outNonMaterializedIndVars.second.try_emplace(var, fieldNumber);
     }
   }
-
+  _options.forLateMaterialization = isLateMaterialized();
   prepareProjections();
 }
 
@@ -323,14 +323,6 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-
-  if (!engine.waitForSatellites(engine.getQuery(), collection())) {
-    double maxWait = engine.getQuery().queryOptions().satelliteSyncWait;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-                                   "collection " + collection()->name() +
-                                       " did not come into sync in time (" +
-                                       std::to_string(maxWait) + ")");
-  }
 
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
   /// by their _condition node path indexes
@@ -555,6 +547,7 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
     _outNonMaterializedIndVars.second.try_emplace(indVars.second.var,
                                                   indVars.second.indexFieldNum);
   }
+  _options.forLateMaterialization = true;
 }
 
 transaction::Methods::IndexHandle IndexNode::getSingleIndex() const {

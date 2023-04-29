@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +32,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <unordered_map>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -568,6 +569,14 @@ auto joinT(std::string_view delim, Args&&... args) -> std::string {
       "it to an int instead.");
   return detail::joinImplStr(delim, detail::toStringOrView(args)...);
 }
+
+/// @brief Translates a set of HTTP headers into a string, which is
+/// properly escaped to put it into a log file.
+std::string headersToString(
+    std::unordered_map<std::string, std::string> const& headers);
+
+/// @brief returns the endpoint from a URL
+std::string getEndpointFromUrl(std::string const& url);
 
 }  // namespace StringUtils
 }  // namespace basics

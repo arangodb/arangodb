@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,9 +23,10 @@
 
 #pragma once
 
+#include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 #include <velocypack/Builder.h>
@@ -79,9 +80,9 @@ struct DocumentProducingFunctionContext {
 
   bool getProduceResult() const noexcept;
 
-  arangodb::aql::Projections const& getProjections() const noexcept;
+  aql::Projections const& getProjections() const noexcept;
 
-  arangodb::aql::Projections const& getFilterProjections() const noexcept;
+  aql::Projections const& getFilterProjections() const noexcept;
 
   transaction::Methods* getTrxPtr() const noexcept;
 
@@ -126,7 +127,7 @@ struct DocumentProducingFunctionContext {
     return _aqlFunctionsInternalCache;
   }
 
-  arangodb::velocypack::Builder& getBuilder() noexcept;
+  velocypack::Builder& getBuilder() noexcept;
 
  private:
   bool checkFilter(DocumentProducingExpressionContext& ctx);
@@ -138,21 +139,21 @@ struct DocumentProducingFunctionContext {
   transaction::Methods& _trx;
   PhysicalCollection& _physical;
   Expression* _filter;
-  arangodb::aql::Projections const& _projections;
-  arangodb::aql::Projections const& _filterProjections;
+  aql::Projections const& _projections;
+  aql::Projections const& _filterProjections;
   uint64_t _numScanned;
   uint64_t _numFiltered;
 
   std::unique_ptr<DocumentProducingExpressionContext> _expressionContext;
 
   /// @brief Builder that is reused to generate projection results
-  arangodb::velocypack::Builder _objectBuilder;
+  velocypack::Builder _objectBuilder;
 
   /// @brief set of already returned documents. Used to make the result distinct
   containers::FlatHashSet<LocalDocumentId> _alreadyReturned;
 
-  RegisterId const _outputRegister;
   Variable const* _outputVariable;
+  RegisterId const _outputRegister;
 
   ReadOwnWrites const _readOwnWrites;
 

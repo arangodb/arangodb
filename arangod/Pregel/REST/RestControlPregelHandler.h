@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,8 +44,19 @@ class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
 
  private:
   void startExecution();
-  void getExecutionStatus();
-  void cancelExecution();
+
+  // Handled GET requests for APIs:
+  // - /_api/control_pregel[/<id>]
+  // - /_api/control_pregel/history[/<id>]
+  void handleGetRequest();
+
+  // Handled DELETE requests for APIs:
+  // - /_api/control_pregel[/<id>]
+  // - /_api/control_pregel/history[/<id>]
+  void handleDeleteRequest();
+
+  void handlePregelHistoryResult(ResultT<OperationResult> opResult,
+                                 bool onlyReturnFirstAqlResultEntry = false);
 
   pregel::PregelFeature& _pregel;
 };

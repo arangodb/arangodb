@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,8 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utils/ClientManager.h"
+
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
@@ -83,6 +85,8 @@ ImportFeature::ImportFeature(Server& server, int* result)
   _threadCount = std::max(uint32_t(_threadCount),
                           static_cast<uint32_t>(NumberOfCores::getValue()));
 }
+
+ImportFeature::~ImportFeature() = default;
 
 void ImportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -395,11 +399,6 @@ void ImportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  _httpClient->params().setLocationRewriter(static_cast<void*>(&client),
-                                            &rewriteLocation);
-  _httpClient->params().setUserNamePassword("/", client.username(),
-                                            client.password());
-
   // must stay here in order to establish the connection
 
   auto err = TRI_ERROR_NO_ERROR;
@@ -677,7 +676,7 @@ ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client,
                                            std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
-  builder.add("name", VPackValue(normalizeUtf8ToNFC(name)));
+  builder.add("name", VPackValue(name));
   builder.add("users", VPackValue(VPackValueType::Array));
   builder.openObject();
   builder.add("username", VPackValue(client.username()));
@@ -705,14 +704,15 @@ ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client,
   if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
       returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
     // invalid authorization
-    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
-                                 false);
+    _httpClient->setErrorMessage(
+        ClientManager::getHttpErrorMessage(response.get()).errorMessage(),
+        false);
     return TRI_ERROR_FORBIDDEN;
   }
 
   // any other error
-  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
-                               false);
+  _httpClient->setErrorMessage(
+      ClientManager::getHttpErrorMessage(response.get()).errorMessage(), false);
   return TRI_ERROR_INTERNAL;
 }
 

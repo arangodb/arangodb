@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1017,7 +1017,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           documentsFound + stats.numDocsInserted -
           (stats.numDocsRemoved - numberDocumentsRemovedBeforeStart);
       uint64_t numberDocumentsDueToCounter =
-          col->numberDocuments(trx.get(), transaction::CountType::Normal);
+          physical->numberDocuments(trx.get());
       syncer.setProgress(
           std::string("number of remaining documents in collection '") +
           col->name() + "': " + std::to_string(numberDocumentsAfterSync) +

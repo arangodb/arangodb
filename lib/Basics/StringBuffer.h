@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -286,6 +286,9 @@ class StringBuffer {
 
   /// @brief compress the buffer in place, using zlib-deflate
   ErrorCode deflate();
+
+  /// @brief compress the buffer in place, using gzip compression
+  ErrorCode gzip();
 
   /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
   ErrorCode inflate(arangodb::basics::StringBuffer& out, size_t skip = 0);

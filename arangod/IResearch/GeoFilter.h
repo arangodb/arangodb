@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,16 +38,20 @@ enum class StoredType : uint8_t {
   VPackLegacy = 0,
   // Valid GeoJson as VPack or coordinates array of two S2LatLng
   VPack,
-  // Valid ShapeContainer serialized as S2Shape
-  S2Shape,
-  // Valid S2Point serialized as S2Point
+  // Valid ShapeContainer serialized as S2Region
+  S2Region,
+  // Same as S2Region, but contains only S2Point
   S2Point,
+  // Store centroid
+  S2Centroid,
 };
 
 struct GeoFilterOptionsBase {
   std::string prefix;
   S2RegionTermIndexer::Options options;
   StoredType stored{StoredType::VPack};
+  // Default value should be S2Point for bad written test
+  geo::coding::Options coding{geo::coding::Options::kInvalid};
 };
 
 enum class GeoFilterType : uint8_t {
@@ -64,7 +68,7 @@ class GeoFilter;
 struct GeoFilterOptions : GeoFilterOptionsBase {
   using filter_type = GeoFilter;
 
-  bool operator==(const GeoFilterOptions& rhs) const noexcept {
+  bool operator==(GeoFilterOptions const& rhs) const noexcept {
     return type == rhs.type && shape.equals(rhs.shape);
   }
 
@@ -95,9 +99,9 @@ class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
 
   using filter::prepare;
 
-  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Order const& ord,
+  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Scorers const& ord,
                         irs::score_t boost,
-                        irs::attribute_provider const* /*ctx*/) const override;
+                        irs::attribute_provider const* /*ctx*/) const final;
 };
 
 class GeoDistanceFilter;
@@ -133,7 +137,7 @@ class GeoDistanceFilter final
 
   using filter::prepare;
 
-  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Order const& ord,
+  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Scorers const& ord,
                         irs::score_t boost,
                         irs::attribute_provider const* /*ctx*/) const final;
 };

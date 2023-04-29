@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -130,9 +130,6 @@ class ExecutionEngine {
 
   ///  @brief collected execution stats
   void collectExecutionStats(ExecutionStats& other);
-
-  bool waitForSatellites(aql::QueryContext& query,
-                         Collection const* collection) const;
 
   std::vector<arangodb::cluster::CallbackGuard>& rebootTrackers();
 

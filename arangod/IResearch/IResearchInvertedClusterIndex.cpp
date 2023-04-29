@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -117,9 +117,9 @@ IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
 
 IResearchInvertedClusterIndex::IResearchInvertedClusterIndex(
     IndexId iid, uint64_t /*objectId*/, LogicalCollection& collection,
-    const std::string& name)
+    std::string const& name)
     : Index{iid, collection, name, {}, false, true},
-      IResearchInvertedIndex{collection.vocbase().server()} {
+      IResearchInvertedIndex{collection.vocbase().server(), collection} {
   initClusterMetrics();
 }
 

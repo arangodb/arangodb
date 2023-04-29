@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -90,9 +90,6 @@ void RocksDBTransactionState::unuse() noexcept {
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX("0c057", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
-
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
-             !AccessMode::isWriteOrExclusive(_type));
 
   _hints = hints;  // set hints before useCollections
 

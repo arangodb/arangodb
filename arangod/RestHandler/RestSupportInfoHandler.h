@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,8 +38,5 @@ class RestSupportInfoHandler : public arangodb::RestBaseHandler {
   char const* name() const override final { return "RestSupportInfoHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
-
- private:
-  void buildHostInfo(arangodb::velocypack::Builder& result);
 };
 }  // namespace arangodb

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,7 @@ RocksDBTrxMethods::~RocksDBTrxMethods() {
   // and call it ourselves here, because the call in the base class would only
   // execute the base class implementation, therefore leaking the
   // iteratorReadSnapshot.
-  cleanupTransaction();
+  RocksDBTrxMethods::cleanupTransaction();
 }
 
 Result RocksDBTrxMethods::beginTransaction() {

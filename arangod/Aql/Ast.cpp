@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,9 +20,6 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
 
 #include "Ast.h"
 
@@ -57,8 +54,12 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "V8Server/V8DealerFeature.h"
 
 #include <absl/strings/str_cat.h>
+
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -1884,12 +1885,26 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
       _functionsMayAccessDocuments = true;
     }
   } else {
-    // user-defined function
+    // user-defined function (UDF)
+    if (_query.vocbase().server().hasFeature<V8DealerFeature>() &&
+        !_query.vocbase()
+             .server()
+             .getFeature<V8DealerFeature>()
+             .allowJavaScriptUdfs()) {
+      // usage of user-defined functions is disallowed
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                     "usage of AQL user-defined functions "
+                                     "(UDFs) is disallowed via configuration");
+    }
+
     node = createNode(NODE_TYPE_FCALL_USER);
     // register the function name
     char* fname = _resources.registerString(normalized);
     node->setStringValue(fname, normalized.size());
 
+    // a JavaScript user-defined function can potentially read documents
+    // via JavaScript document or AQL APIs. we don't know for sure, so we
+    // need to assume the worst case here.
     _functionsMayAccessDocuments = true;
   }
 
@@ -2778,22 +2793,29 @@ bool Ast::getReferencedAttributesRecursive(
       // NOTE: Every [*] operator is represented as an EXPANSION
       // with 5 (or more) members.
       if (node->numMembers() >= 5) {
-        if (node->getMember(2)->type != NODE_TYPE_NOP ||
-            node->getMember(4)->type != NODE_TYPE_NOP) {
-          // expansion has a filter or a projection set, e.g.
-          // p.vertices[FILTER CURRENT.x == 1 RETURN CURRENT.y].
-          // we currently cannot handle this.
-          state.couldExtractAttributePath = false;
-          state.seen.clear();
-          return false;
+        if (!expectedAttribute.empty()) {
+          // we are looking at a traversal output variable, e.g.
+          // p.vertices[*].a
+          // here we need to take special precautions that we normally
+          // don't need
+          if (node->getMember(2)->type != NODE_TYPE_NOP ||
+              node->getMember(4)->type != NODE_TYPE_NOP) {
+            // expansion has a filter or a projection set, e.g.
+            // p.vertices[FILTER CURRENT.x == 1 RETURN CURRENT.y].
+            // we currently cannot handle this.
+            state.couldExtractAttributePath = false;
+            state.seen.clear();
+            return false;
+          }
+
+          if (node->getIntValue(true) != 1) {
+            // incompatible flattening level: p.vertices[**]...
+            state.couldExtractAttributePath = false;
+            state.seen.clear();
+            return false;
+          }
         }
 
-        if (node->getIntValue(true) != 1) {
-          // incompatible flattening level: p.vertices[**]...
-          state.couldExtractAttributePath = false;
-          state.seen.clear();
-          return false;
-        }
         AstNode const* lhs = node->getMember(0);
         TRI_ASSERT(lhs->type == NODE_TYPE_ITERATOR);
         TRI_ASSERT(lhs->numMembers() == 2);
@@ -2831,8 +2853,11 @@ bool Ast::getReferencedAttributesRecursive(
         }
       }
       state.seen.clear();
-      // don't descend into the expansion itself (already handled it)
-      return false;
+      // if we are looking at a traversal output variable, we don't
+      // descend into the expansion itself (already handled it).
+      // however, we want and must descend into subnodes in case we were
+      // not called for a traversal output variable.
+      return expectedAttribute.empty();
     }
 
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
@@ -2961,6 +2986,8 @@ AstNode* Ast::clone(AstNode const* node) {
 }
 
 AstNode* Ast::shallowCopyForModify(AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+
   AstNodeType const type = node->type;
   if (type == NODE_TYPE_NOP) {
     // nop node is a singleton
@@ -2979,7 +3006,7 @@ AstNode* Ast::shallowCopyForModify(AstNode const* node) {
   // copy payload...
   copyPayload(node, copy);
 
-  // recursively add subnodes
+  // add subnodes, non-recursively
   size_t const n = node->numMembers();
   copy->members.reserve(n);
   for (size_t i = 0; i < n; ++i) {
@@ -4227,22 +4254,20 @@ AstNode* Ast::createNode(AstNodeType type) {
 /// @brief validate the name of the given datasource
 /// in case validation fails, will throw an exception
 void Ast::validateDataSourceName(std::string_view name, bool validateStrict) {
-  bool extendedNames = _query.vocbase()
-                           .server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+  bool extendedNames =
+      _query.vocbase().server().getFeature<DatabaseFeature>().extendedNames();
 
   // common validation
-  if (name.empty() ||
-      (validateStrict && !CollectionNameValidator::isAllowedName(
-                             /*allowSystem*/ true, extendedNames, name))) {
-    // will throw
-    std::string errorMessage(TRI_errno_string(TRI_ERROR_ARANGO_ILLEGAL_NAME));
-    errorMessage.append(": ");
-    errorMessage.append(name.data(), name.size());
+  if (name.empty() || validateStrict) {
+    auto res = CollectionNameValidator::validateName(
+        /*allowSystem*/ true, extendedNames, name);
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, errorMessage);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
+
+  TRI_ASSERT(!name.empty());
 }
 
 /// @brief create an AST collection node
@@ -4362,7 +4387,7 @@ void Ast::addWriteCollection(AstNode const* node, bool isExclusiveAccess) {
   _writeCollections.emplace_back(node, isExclusiveAccess);
 }
 
-bool Ast::functionsMayAccessDocuments() const {
+bool Ast::functionsMayAccessDocuments() const noexcept {
   return _functionsMayAccessDocuments;
 }
 

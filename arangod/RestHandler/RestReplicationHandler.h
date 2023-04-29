@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -280,6 +280,11 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   void handleCommandRebuildRevisionTree();
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  /// @brief intentionally corrupt the revision of a collection
+  void handleCommandCorruptRevisionTree();
+#endif
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the requested revision ranges for a given collection, if
   ///        available
@@ -323,6 +328,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   bool prepareRevisionOperation(RevisionOperationContext&);
 
  private:
+  bool prepareCollectionForRevisionOperation(RevisionOperationContext&);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////

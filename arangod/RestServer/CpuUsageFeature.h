@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,9 +24,10 @@
 #pragma once
 
 #include "Basics/CpuUsageSnapshot.h"
-#include "Basics/Mutex.h"
 
 #include "RestServer/arangod.h"
+
+#include <mutex>
 
 namespace arangodb {
 
@@ -50,7 +51,7 @@ class CpuUsageFeature final : public ArangodFeature {
   std::unique_ptr<SnapshotProvider> _snapshotProvider;
 
   /// @brief a mutex protecting concurrent reads and writes of the snapshot
-  Mutex _snapshotMutex;
+  std::mutex _snapshotMutex;
 
   /// @brief last snapshot taken
   /// protected by _snapshotMutex

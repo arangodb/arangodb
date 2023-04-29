@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@
 using namespace arangodb;
 
 /// @brief return the context type as a string
-char const* JavaScriptSecurityContext::typeName() const {
+std::string_view JavaScriptSecurityContext::typeName() const noexcept {
   switch (_type) {
     case Type::Restricted:
       return "restricted";
@@ -39,70 +39,71 @@ char const* JavaScriptSecurityContext::typeName() const {
     case Type::Task:
       return "task";
     case Type::RestAction:
-      return "rest action";
+      return "REST action";
     case Type::RestAdminScriptAction:
-      return "rest admin script action";
+      return "REST admin script action";
   }
   // should not happen
   return "unknown";
 }
 
-void JavaScriptSecurityContext::reset() { _canUseDatabase = false; }
+void JavaScriptSecurityContext::reset() noexcept { _canUseDatabase = false; }
 
-bool JavaScriptSecurityContext::canDefineHttpAction() const {
+bool JavaScriptSecurityContext::canDefineHttpAction() const noexcept {
   return _type == Type::Internal;
 }
 
-bool JavaScriptSecurityContext::canReadFs() const {
+bool JavaScriptSecurityContext::canReadFs() const noexcept {
   return _type == Type::Internal;
 }
 
-bool JavaScriptSecurityContext::canWriteFs() const {
+bool JavaScriptSecurityContext::canWriteFs() const noexcept {
   return _type == Type::Internal;
 }
 
-bool JavaScriptSecurityContext::canControlProcesses() const {
+bool JavaScriptSecurityContext::canControlProcesses() const noexcept {
   return _type == Type::Internal || _type == Type::AdminScript ||
          _type == Type::RestAdminScriptAction;
 }
 
 /*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createRestrictedContext() {
+JavaScriptSecurityContext::createRestrictedContext() noexcept {
   JavaScriptSecurityContext context(Type::Restricted);
   context._canUseDatabase = false;
   return context;
 }
 
 /*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createInternalContext() {
+JavaScriptSecurityContext::createInternalContext() noexcept {
   JavaScriptSecurityContext context(Type::Internal);
   context._canUseDatabase = true;
   return context;
 }
 
 /*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createAdminScriptContext() {
+JavaScriptSecurityContext::createAdminScriptContext() noexcept {
   JavaScriptSecurityContext context(Type::AdminScript);
   context._canUseDatabase = true;
   return context;
 }
 
 /*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createQueryContext() {
+JavaScriptSecurityContext::createQueryContext() noexcept {
   JavaScriptSecurityContext context(Type::Query);
   context._canUseDatabase = false;
   return context;
 }
 
 /*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createTaskContext(bool allowUseDatabase) {
+JavaScriptSecurityContext::createTaskContext(bool allowUseDatabase) noexcept {
   JavaScriptSecurityContext context(Type::Task);
   context._canUseDatabase = allowUseDatabase;
   return context;
 }
 
 /*static*/ JavaScriptSecurityContext
-JavaScriptSecurityContext::createRestActionContext(bool allowUseDatabase) {
+JavaScriptSecurityContext::createRestActionContext(
+    bool allowUseDatabase) noexcept {
   JavaScriptSecurityContext context(Type::RestAction);
   context._canUseDatabase = allowUseDatabase;
   return context;
@@ -110,7 +111,7 @@ JavaScriptSecurityContext::createRestActionContext(bool allowUseDatabase) {
 
 /*static*/ JavaScriptSecurityContext
 JavaScriptSecurityContext::createRestAdminScriptActionContext(
-    bool allowUseDatabase) {
+    bool allowUseDatabase) noexcept {
   JavaScriptSecurityContext context(Type::RestAdminScriptAction);
   context._canUseDatabase = allowUseDatabase;
   return context;

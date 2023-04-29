@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,9 +33,9 @@
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
@@ -47,6 +47,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
@@ -54,13 +56,12 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FrontendFeature.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
+#include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
@@ -81,6 +82,7 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -127,13 +129,14 @@ V8DealerFeature::V8DealerFeature(Server& server)
       _gcFrequency(60.0),
       _gcInterval(2000),
       _maxContextAge(60.0),
-      _copyInstallation(false),
       _nrMaxContexts(0),
       _nrMinContexts(0),
       _nrInflightContexts(0),
       _maxContextInvocations(0),
+      _copyInstallation(false),
       _allowAdminExecute(false),
       _allowJavaScriptTransactions(true),
+      _allowJavaScriptUdfs(true),
       _allowJavaScriptTasks(true),
       _enableJS(true),
       _nextId(0),
@@ -239,6 +242,7 @@ container solution, like Docker or Kubernetes.)");
                   "executing JavaScript actions.",
                   new UInt64Parameter(&_nrMaxContexts),
                   arangodb::options::makeFlags(
+                      arangodb::options::Flags::Dynamic,
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
@@ -327,6 +331,17 @@ or teardown commands for execution on the server.)");
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800);
+
+  options
+      ->addOption(
+          "--javascript.user-defined-functions",
+          "Enable JavaScript user-defined functions (UDFs) in AQL queries.",
+          new BooleanParameter(&_allowJavaScriptUdfs),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31004);
 
   options
       ->addOption("--javascript.tasks", "Enable JavaScript tasks.",
@@ -535,12 +550,15 @@ void V8DealerFeature::start() {
 
   // try to guess a suitable number of contexts
   if (0 == _nrMaxContexts) {
-    // automatic maximum number of contexts should not be below 16
+    // use 7/8 of the available scheduler threads as the default number
+    // of available V8 contexts. only 7/8 are used to leave some headroom
+    // for important maintenance tasks.
+    // automatic maximum number of contexts should not be below 8
     // this is because the number of cores may be too few for the cluster
     // startup to properly run through with all its parallel requests
-    // and the potential need for multiple V8 contexts
-    _nrMaxContexts =
-        (std::max)(uint64_t(0 /*scheduler->concurrency()*/), uint64_t(16));
+    // and the potential need for multiple V8 contexts.
+    auto& sf = server().getFeature<SchedulerFeature>();
+    _nrMaxContexts = std::max(sf.maximalThreads() * 7 / 8, uint64_t(8));
   }
 
   if (_nrMinContexts > _nrMaxContexts) {
@@ -557,7 +575,7 @@ void V8DealerFeature::start() {
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
   // setup instances
   {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::unique_lock guard{_contextCondition.mutex};
     _contexts.reserve(static_cast<size_t>(_nrMaxContexts));
     _busyContexts.reserve(static_cast<size_t>(_nrMaxContexts));
     _idleContexts.reserve(static_cast<size_t>(_nrMaxContexts));
@@ -686,8 +704,7 @@ void V8DealerFeature::copyInstallationFiles() {
 
     auto filter = [&eslintPath, &binDirectory,
                    &copied](std::string const& filename) -> bool {
-      if (filename.size() >= 4 &&
-          filename.compare(filename.size() - 4, 4, ".map") == 0) {
+      if (filename.ends_with(".map")) {
         // filename ends with ".map". filter it out!
         return true;
       }
@@ -783,16 +800,154 @@ void V8DealerFeature::unprepare() {
   _gcThread.reset();
 }
 
-bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
+/// @brief return either the name of the database to be used as a folder name,
+/// or its id if its name contains special characters and is not fully supported
+/// in every OS
+[[nodiscard]] static std::string_view getDatabaseDirName(std::string_view name,
+                                                         std::string_view id) {
+  bool const isOldStyleName =
+      DatabaseNameValidator::validateName(
+          /*allowSystem=*/true, /*extendedNames=*/false, name)
+          .ok();
+  return (isOldStyleName || id.empty()) ? name : id;
+}
+
+void V8DealerFeature::verifyAppPaths() {
+  if (!_appPath.empty() && !TRI_IsDirectory(_appPath.c_str())) {
+    long systemError;
+    std::string errorMessage;
+    auto res = TRI_CreateRecursiveDirectory(_appPath.c_str(), systemError,
+                                            errorMessage);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC("1bf74", INFO, Logger::FIXME)
+          << "created --javascript.app-path directory '" << _appPath << "'";
+    } else {
+      LOG_TOPIC("52bd5", ERR, Logger::FIXME)
+          << "unable to create --javascript.app-path directory '" << _appPath
+          << "': " << errorMessage;
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+
+  // create subdirectory js/apps/_db if not yet present
+  auto r = createBaseApplicationDirectory(_appPath, "_db");
+
+  if (r != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("610c7", ERR, Logger::FIXME)
+        << "unable to initialize databases: " << TRI_errno_string(r);
+    THROW_ARANGO_EXCEPTION(r);
+  }
+}
+
+ErrorCode V8DealerFeature::createDatabase(std::string_view name,
+                                          std::string_view id,
+                                          bool removeExisting) {
+  // create app directory for database if it does not exist
+  std::string const dirName{getDatabaseDirName(name, id)};
+  return createApplicationDirectory(dirName, _appPath, removeExisting);
+}
+
+void V8DealerFeature::cleanupDatabase(TRI_vocbase_t& database) {
+  if (_appPath.empty()) {
+    return;
+  }
+  std::string const dirName{
+      getDatabaseDirName(database.name(), std::to_string(database.id()))};
+  std::string const path = basics::FileUtils::buildFilename(
+      basics::FileUtils::buildFilename(_appPath, "_db"), dirName);
+
+  if (TRI_IsDirectory(path.c_str())) {
+    LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
+        << "removing app directory '" << path << "' of database '"
+        << database.name() << "'";
+
+    TRI_RemoveDirectory(path.c_str());
+  }
+}
+
+ErrorCode V8DealerFeature::createApplicationDirectory(
+    std::string const& name, std::string const& basePath, bool removeExisting) {
+  if (basePath.empty()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::string const path = basics::FileUtils::buildFilename(
+      basics::FileUtils::buildFilename(basePath, "_db"), name);
+
+  if (TRI_IsDirectory(path.c_str())) {
+    // directory already exists
+    // this can happen if a database is dropped and quickly recreated
+    if (!removeExisting) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    if (!basics::FileUtils::listFiles(path).empty()) {
+      LOG_TOPIC("56fc7", INFO, arangodb::Logger::FIXME)
+          << "forcefully removing existing application directory '" << path
+          << "' for database '" << name << "'";
+      // removing is best effort. if it does not succeed, we can still
+      // go on creating the it
+      TRI_RemoveDirectory(path.c_str());
+    }
+  }
+
+  // directory does not yet exist - this should be the standard case
+  long systemError = 0;
+  std::string errorMessage;
+  auto r =
+      TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
+
+  if (r == TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("6745a", TRACE, arangodb::Logger::FIXME)
+        << "created application directory '" << path << "' for database '"
+        << name << "'";
+  } else if (r == TRI_ERROR_FILE_EXISTS) {
+    LOG_TOPIC("2a78e", INFO, arangodb::Logger::FIXME)
+        << "unable to create application directory '" << path
+        << "' for database '" << name << "': " << errorMessage;
+    r = TRI_ERROR_NO_ERROR;
+  } else {
+    LOG_TOPIC("36682", ERR, arangodb::Logger::FIXME)
+        << "unable to create application directory '" << path
+        << "' for database '" << name << "': " << errorMessage;
+  }
+
+  return r;
+}
+
+ErrorCode V8DealerFeature::createBaseApplicationDirectory(
+    std::string const& appPath, std::string const& type) {
+  auto const path = basics::FileUtils::buildFilename(appPath, type);
+  if (TRI_IsDirectory(path.c_str())) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  std::string errorMessage;
+  long systemError = 0;
+  auto r = TRI_CreateDirectory(path.c_str(), systemError, errorMessage);
+  if (r == TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("e6460", INFO, Logger::FIXME)
+        << "created base application directory '" << path << "'";
+  } else if ((r != TRI_ERROR_FILE_EXISTS) || (!TRI_IsDirectory(path.c_str()))) {
+    LOG_TOPIC("5a0b4", ERR, Logger::FIXME)
+        << "unable to create base application directory " << errorMessage;
+  } else {
+    LOG_TOPIC("0a25f", INFO, Logger::FIXME)
+        << "someone else created base application directory '" << path << "'";
+    r = TRI_ERROR_NO_ERROR;
+  }
+  return r;
+}
+
+bool V8DealerFeature::addGlobalContextMethod(
+    GlobalContextMethods::MethodType type) {
   bool result = true;
 
-  CONDITION_LOCKER(guard, _contextCondition);
+  std::lock_guard guard{_contextCondition.mutex};
 
   for (auto& context : _contexts) {
     try {
-      if (!context->addGlobalContextMethod(method)) {
-        result = false;
-      }
+      context->addGlobalContextMethod(type);
     } catch (...) {
       result = false;
     }
@@ -828,14 +983,16 @@ void V8DealerFeature::collectGarbage() {
       {
         bool gotSignal = false;
         preferFree = !preferFree;
-        CONDITION_LOCKER(guard, _contextCondition);
+        std::unique_lock guard{_contextCondition.mutex};
 
         if (_dirtyContexts.empty()) {
           uint64_t waitTime =
               useReducedWait ? reducedWaitTime : regularWaitTime;
 
           // we'll wait for a signal or a timeout
-          gotSignal = guard.wait(waitTime);
+          gotSignal = _contextCondition.cv.wait_for(
+                          guard, std::chrono::microseconds{waitTime}) ==
+                      std::cv_status::no_timeout;
         }
 
         if (preferFree && !_idleContexts.empty()) {
@@ -914,7 +1071,7 @@ void V8DealerFeature::collectGarbage() {
         context->setCleaned(lastGc);
 
         {
-          CONDITION_LOCKER(guard, _contextCondition);
+          std::unique_lock guard{_contextCondition.mutex};
 
           if (_contexts.size() > _nrMinContexts && !context->isDefault() &&
               context->shouldBeRemoved(_maxContextAge,
@@ -939,7 +1096,7 @@ void V8DealerFeature::collectGarbage() {
             } else {
               _idleContexts.insert(_idleContexts.begin(), context);
             }
-            guard.broadcast();
+            _contextCondition.cv.notify_all();
           }
         }
       } else {
@@ -955,7 +1112,7 @@ void V8DealerFeature::collectGarbage() {
 }
 
 void V8DealerFeature::unblockDynamicContextCreation() {
-  CONDITION_LOCKER(guard, _contextCondition);
+  std::lock_guard guard{_contextCondition.mutex};
 
   TRI_ASSERT(_dynamicContextCreationBlockers > 0);
   --_dynamicContextCreationBlockers;
@@ -971,11 +1128,11 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
 
   std::vector<V8Context*> contexts;
   {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::unique_lock guard{_contextCondition.mutex};
 
     while (_nrInflightContexts > 0) {
       // wait until all pending context creation requests have been satisified
-      guard.wait(10000);
+      _contextCondition.cv.wait_for(guard, std::chrono::milliseconds{10});
     }
 
     // copy the list of contexts into a local variable
@@ -993,11 +1150,11 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
 
   // now safely scan the local copy of the contexts
   for (auto& context : contexts) {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::unique_lock guard{_contextCondition.mutex};
 
     while (_busyContexts.find(context) != _busyContexts.end()) {
       // we must not enter the context if another thread is also using it...
-      guard.wait(10000);
+      _contextCondition.cv.wait_for(guard, std::chrono::milliseconds{10});
     }
 
     auto it = std::find(_dirtyContexts.begin(), _dirtyContexts.end(), context);
@@ -1113,10 +1270,10 @@ V8Context* V8DealerFeature::enterContext(
 
   // look for a free context
   {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::unique_lock guard{_contextCondition.mutex};
 
     while (_idleContexts.empty() && !_stopping) {
-      TRI_ASSERT(guard.isLocked());
+      TRI_ASSERT(guard.owns_lock());
 
       LOG_TOPIC("619ab", TRACE, arangodb::Logger::V8)
           << "waiting for unused V8 context";
@@ -1134,7 +1291,7 @@ V8Context* V8DealerFeature::enterContext(
       if (contextLimitNotExceeded && _dynamicContextCreationBlockers == 0) {
         ++_nrInflightContexts;
 
-        TRI_ASSERT(guard.isLocked());
+        TRI_ASSERT(guard.owns_lock());
         guard.unlock();
 
         try {
@@ -1150,7 +1307,7 @@ V8Context* V8DealerFeature::enterContext(
         }
 
         // must re-lock
-        TRI_ASSERT(!guard.isLocked());
+        TRI_ASSERT(!guard.owns_lock());
         guard.lock();
 
         --_nrInflightContexts;
@@ -1164,7 +1321,7 @@ V8Context* V8DealerFeature::enterContext(
           continue;
         }
 
-        TRI_ASSERT(guard.isLocked());
+        TRI_ASSERT(guard.owns_lock());
         try {
           _idleContexts.push_back(context);
           LOG_TOPIC("25f94", DEBUG, Logger::V8)
@@ -1178,11 +1335,11 @@ V8Context* V8DealerFeature::enterContext(
           ++_contextsDestroyed;
         }
 
-        guard.broadcast();
+        _contextCondition.cv.notify_all();
         continue;
       }
 
-      TRI_ASSERT(guard.isLocked());
+      TRI_ASSERT(guard.owns_lock());
 
       constexpr double maxWaitTime = 60.0;
       double const now = TRI_microtime();
@@ -1215,10 +1372,10 @@ V8Context* V8DealerFeature::enterContext(
         return nullptr;
       }
 
-      guard.wait(100000);
+      _contextCondition.cv.wait_for(guard, std::chrono::milliseconds{100});
     }
 
-    TRI_ASSERT(guard.isLocked());
+    TRI_ASSERT(guard.owns_lock());
 
     // in case we are in the shutdown phase, do not enter a context!
     // the context might have been deleted by the shutdown
@@ -1375,7 +1532,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
     }
 
     context->unlockAndExit();
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::lock_guard guard{_contextCondition.mutex};
 
     context->clearDescription();
 
@@ -1397,10 +1554,10 @@ void V8DealerFeature::exitContext(V8Context* context) {
 
     LOG_TOPIC("fc763", TRACE, arangodb::Logger::V8)
         << "returned dirty V8 context #" << context->id();
-    guard.broadcast();
+    _contextCondition.cv.notify_all();
   } else {
     context->unlockAndExit();
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::lock_guard guard{_contextCondition.mutex};
 
     context->clearDescription();
 
@@ -1411,7 +1568,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
 
     LOG_TOPIC("82410", TRACE, arangodb::Logger::V8)
         << "returned dirty V8 context #" << context->id() << " back into free";
-    guard.broadcast();
+    _contextCondition.cv.notify_all();
   }
 
   ++_contextsExited;
@@ -1422,8 +1579,8 @@ void V8DealerFeature::shutdownContexts() {
 
   // wait for all contexts to finish
   {
-    CONDITION_LOCKER(guard, _contextCondition);
-    guard.broadcast();
+    std::unique_lock guard{_contextCondition.mutex};
+    _contextCondition.cv.notify_all();
 
     for (size_t n = 0; n < 10 * 5; ++n) {
       if (_busyContexts.empty()) {
@@ -1436,13 +1593,13 @@ void V8DealerFeature::shutdownContexts() {
           << "waiting for busy V8 contexts (" << _busyContexts.size()
           << ") to finish ";
 
-      guard.wait(100 * 1000);
+      _contextCondition.cv.wait_for(guard, std::chrono::milliseconds{100});
     }
   }
 
   // send all busy contexts a terminate signal
   {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::lock_guard guard{_contextCondition.mutex};
 
     for (auto& it : _busyContexts) {
       LOG_TOPIC("e907b", WARN, arangodb::Logger::V8)
@@ -1451,16 +1608,16 @@ void V8DealerFeature::shutdownContexts() {
     }
   }
 
-  // wait for one minute
+  // wait no more than one minute
   {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::unique_lock guard{_contextCondition.mutex};
 
     for (size_t n = 0; n < 10 * 60; ++n) {
       if (_busyContexts.empty()) {
         break;
       }
 
-      guard.wait(100000);
+      _contextCondition.cv.wait_for(guard, std::chrono::milliseconds{100});
     }
   }
 
@@ -1489,7 +1646,7 @@ void V8DealerFeature::shutdownContexts() {
   {
     std::vector<V8Context*> contexts;
     {
-      CONDITION_LOCKER(guard, _contextCondition);
+      std::lock_guard guard{_contextCondition.mutex};
       contexts = _contexts;
       _contexts.clear();
     }
@@ -1654,7 +1811,7 @@ std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
                                      TRI_V8_ASCII_STRING(isolate, "APP_PATH"),
                                      TRI_V8_STD_STRING(isolate, _appPath));
 
-        for (auto j : _definedBooleans) {
+        for (auto const& j : _definedBooleans) {
           localContext->Global()
               ->DefineOwnProperty(TRI_IGETC,
                                   TRI_V8_STD_STRING(isolate, j.first),
@@ -1663,7 +1820,7 @@ std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
               .FromMaybe(false);  // Ignore it...
         }
 
-        for (auto j : _definedDoubles) {
+        for (auto const& j : _definedDoubles) {
           localContext->Global()
               ->DefineOwnProperty(
                   TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
@@ -1731,7 +1888,7 @@ std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
 }
 
 V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
-  CONDITION_LOCKER(guard, _contextCondition);
+  std::lock_guard guard{_contextCondition.mutex};
 
   return {_contexts.size(),     _busyContexts.size(), _dirtyContexts.size(),
           _idleContexts.size(), _nrMaxContexts,       _nrMinContexts};
@@ -1741,7 +1898,7 @@ std::vector<V8DealerFeature::DetailedContextStatistics>
 V8DealerFeature::getCurrentContextDetails() {
   std::vector<V8DealerFeature::DetailedContextStatistics> result;
   {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::lock_guard guard{_contextCondition.mutex};
     result.reserve(_contexts.size());
     for (auto oneCtx : _contexts) {
       auto isolate = oneCtx->_isolate;

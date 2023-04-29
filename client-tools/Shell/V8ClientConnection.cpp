@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,10 +46,11 @@
 #include "Shell/RequestFuzzer.h"
 #endif
 #include "Shell/ShellConsoleFeature.h"
+#include "Shell/ShellFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Ssl/SslInterface.h"
+#include "Utilities/NameValidator.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-deadline.h"
@@ -62,8 +63,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-
-#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -316,7 +315,7 @@ std::string V8ClientConnection::endpointSpecification() const {
 ArangoshServer& V8ClientConnection::server() { return _server; }
 
 void V8ClientConnection::setDatabaseName(std::string const& value) {
-  _databaseName = normalizeUtf8ToNFC(value);
+  _databaseName = value;
 }
 
 double V8ClientConnection::timeout() const { return _requestTimeout.count(); }
@@ -620,6 +619,11 @@ static void ClientConnection_reconnect(
 
   std::string const endpoint = TRI_ObjectToString(isolate, args[0]);
   std::string databaseName = TRI_ObjectToString(isolate, args[1]);
+
+  if (auto res = DatabaseNameValidator::validateName(true, true, databaseName);
+      res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
 
   std::string username;
 
@@ -1010,8 +1014,147 @@ static void ClientConnection_httpPostRaw(
   ClientConnection_httpPostAny(args, true);
 }
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "startTelemetrics"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_startTelemetrics(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "startTelemetrics() must be invoked on an arango connection object "
+        "instance.");
+  }
+
+  auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
+
+  shellFeature.startTelemetrics();
+
+  TRI_V8_RETURN_TRUE();
+
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "restartTelemetrics"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_restartTelemetrics(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "restartTelemetrics() must be invoked on an arango connection object "
+        "instance.");
+  }
+
+  auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
+
+  shellFeature.restartTelemetrics();
+
+  TRI_V8_RETURN_TRUE();
+
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "sendTelemetricsToEndpointTestRedirect"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_sendTelemetricsToEndpoint(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "sendTelemetricsToEndpoint() must be invoked on an arango "
+        "connection object "
+        "instance.");
+  }
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("sendTelemetricsToEndpoint(<url>)");
+  }
+
+  auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
+
+  std::string url = TRI_ObjectToString(isolate, args[0]);
+  auto builder = shellFeature.sendTelemetricsToEndpoint(url);
+
+  if (builder.isEmpty()) {
+    TRI_V8_RETURN_UNDEFINED();
+  }
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "getTelemetricsInfo"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_getTelemetricsInfo(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "getTelemetricsInfo() must be invoked on an arango connection object "
+        "instance.");
+  }
+
+  auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
+
+  VPackBuilder builder;
+  shellFeature.getTelemetricsInfo(builder);
+  if (builder.isEmpty()) {
+    TRI_V8_RETURN_UNDEFINED();
+  }
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+
+  TRI_V8_TRY_CATCH_END
+}
+#endif
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "fuzzRequests"
 ////////////////////////////////////////////////////////////////////////////////
@@ -1109,6 +1252,38 @@ static void ClientConnection_httpFuzzRequests(
   builder.close();
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method
+/// "disableAutomaticallySendTelemetricsToEndpoint"
+////////////////////////////////////////////////////////////////////////////////
+static void ClientConnection_disableAutomaticallySendTelemetricsToEndpoint(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "disableAutomaticallySendTelemetricsToEndpoint() must be invoked on an "
+        "arango connection object "
+        "instance.");
+  }
+
+  auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
+
+  shellFeature.disableAutomaticallySendTelemetricsToEndpoint();
+
+  TRI_V8_RETURN_TRUE();
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1403,14 +1578,14 @@ static void ClientConnection_importCsv(
   }
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+  auto* client = static_cast<ClientFeature*>(wrap->Value());
 
   SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
   ImportHelper ih(encryption, *client, v8connection->endpointSpecification(),
                   params, DefaultChunkSize, 1);
 
   ih.setQuote(quote);
-  ih.setSeparator(separator.c_str());
+  ih.setSeparator(separator);
 
   std::string fileName = TRI_ObjectToString(isolate, args[0]);
   std::string collectionName = TRI_ObjectToString(isolate, args[1]);
@@ -2617,6 +2792,28 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "fuzzRequests",
       v8::FunctionTemplate::New(isolate, ClientConnection_httpFuzzRequests));
+  connection_proto->Set(
+      isolate, "disableAutomaticallySendTelemetricsToEndpoint",
+      v8::FunctionTemplate::New(
+          isolate,
+          ClientConnection_disableAutomaticallySendTelemetricsToEndpoint));
+#endif
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  connection_proto->Set(
+      isolate, "getTelemetricsInfo",
+      v8::FunctionTemplate::New(isolate, ClientConnection_getTelemetricsInfo));
+
+  connection_proto->Set(
+      isolate, "startTelemetrics",
+      v8::FunctionTemplate::New(isolate, ClientConnection_startTelemetrics));
+  connection_proto->Set(
+      isolate, "restartTelemetrics",
+      v8::FunctionTemplate::New(isolate, ClientConnection_restartTelemetrics));
+  connection_proto->Set(
+      isolate, "sendTelemetricsToEndpoint",
+      v8::FunctionTemplate::New(isolate,
+                                ClientConnection_sendTelemetricsToEndpoint));
 #endif
 
   connection_proto->Set(isolate, "getEndpoint",

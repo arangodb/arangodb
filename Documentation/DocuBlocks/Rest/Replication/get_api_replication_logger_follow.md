@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_logger_follow
 @brief Fetch log lines from the server
 
-@RESTHEADER{GET /_api/replication/logger-follow, Returns log entries, handleCommandLoggerFollow}
+@RESTHEADER{GET /_api/replication/logger-follow, Returns log entries, getReplicationLoggerFollow}
 
 @HINTS
 {% hint 'warning' %}
@@ -54,9 +54,9 @@ It must be specified in bytes. The *chunkSize* value will only be honored
 approximately. Otherwise a too low *chunkSize* value could cause the server
 to not be able to put just one log entry into the result and return it.
 Therefore, the *chunkSize* value will only be consulted after a log entry has
-been written into the result. If the result size is then bigger than
+been written into the result. If the result size is then greater than
 *chunkSize*, the server will respond with as many log entries as there are
-in the response already. If the result size is still smaller than *chunkSize*,
+in the response already. If the result size is still less than *chunkSize*,
 the server will try to return more data if there's more data left to return.
 
 If *chunkSize* is not specified, some server-side default value will be used.
@@ -100,7 +100,7 @@ The response will also contain the following HTTP headers:
   events from the start of the log again).
 
 - *x-arango-replication-lasttick*: the last tick value the logger server has
-  logged (not necessarily included in the result). By comparing the the last
+  logged (not necessarily included in the result). By comparing the last
   tick and last included tick values, clients have an approximate indication of
   how many events there are still left to fetch.
 

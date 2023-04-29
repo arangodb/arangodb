@@ -44,6 +44,7 @@ bool ShortestPathExecutorInfos<FinderType>::useRegisterForTargetInput() const {
 template<class FinderType>
 RegisterId ShortestPathExecutorInfos<FinderType>::getSourceInputRegister()
     const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(useRegisterForSourceInput());
   return _source.reg;
 }
@@ -51,6 +52,7 @@ RegisterId ShortestPathExecutorInfos<FinderType>::getSourceInputRegister()
 template<class FinderType>
 RegisterId ShortestPathExecutorInfos<FinderType>::getTargetInputRegister()
     const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(useRegisterForTargetInput());
   return _target.reg;
 }
@@ -115,6 +117,7 @@ RegisterId ShortestPathExecutorInfos<FinderType>::findRegisterChecked(
 template<class FinderType>
 RegisterId ShortestPathExecutorInfos<FinderType>::getOutputRegister(
     OutputName type) const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(usesOutputRegister(type));
   return findRegisterChecked(type);
 }
@@ -173,7 +176,6 @@ auto ShortestPathExecutor<FinderType>::doSkipPath(AqlCall& call) -> size_t {
 
 template<class FinderType>
 auto ShortestPathExecutor<FinderType>::getPathLength() const -> size_t {
-  LOG_DEVEL << _pathBuilder->toJson();
   TRI_ASSERT(_pathBuilder->slice().hasKey(StaticStrings::GraphQueryVertices));
   return _pathBuilder->slice().get(StaticStrings::GraphQueryVertices).length();
 }

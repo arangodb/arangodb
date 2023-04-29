@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <csignal>
 #include <set>
 #include <string>
 #include <string_view>
@@ -106,13 +107,9 @@ void TRI_TerminateDebugging(std::string_view message) {
     // we will get here at least with ASan/UBSan.
     std::terminate();
   } else if (message == "CRASH-HANDLER-TEST-SEGFAULT") {
-    std::unique_ptr<int> x;
     // intentionally crashes the program!
-    // cppcheck-suppress *
-    int a = *x;
-    // cppcheck-suppress *
-    *x = 2;
-    TRI_ASSERT(a == 1);
+    // If we instead try to dereference a nullptr, macOS might do SIGABRT
+    raise(SIGSEGV);
   } else if (message == "CRASH-HANDLER-TEST-ASSERT") {
     int a = 1;
     // intentionally crashes the program!

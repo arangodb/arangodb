@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
+#include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
@@ -377,6 +378,13 @@ void TraversalNode::getVariablesUsedHere(VarSet& result) const {
     if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
         pruneVar != pathOutVariable()) {
       result.emplace(pruneVar);
+    }
+  }
+
+  for (auto const& postVar : _postFilterVariables) {
+    if (postVar != vertexOutVariable() && postVar != edgeOutVariable() &&
+        postVar != pathOutVariable()) {
+      result.emplace(postVar);
     }
   }
 
@@ -953,7 +961,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     /*
      * SmartGraph Traverser
      */
-    waitForSatelliteIfRequired(&engine);
     if (isSmart() && !isDisjoint()) {
       // Note: Using refactored smart graph cluster engine.
       return createBlock(engine, std::move(filterConditionVariables),

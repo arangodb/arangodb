@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,9 +30,9 @@
 
 #include "Cache/Cache.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
-#include "Basics/cpu-relax.h"
 #include "Basics/voc-errors.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -53,8 +53,7 @@ Cache::Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
              std::shared_ptr<Table> table, bool enableWindowedStats,
              std::function<Table::BucketClearer(Metadata*)> bucketClearer,
              std::size_t slotsPerBucket)
-    : _taskLock(),
-      _shutdown(false),
+    : _shutdown(false),
       _enableWindowedStats(enableWindowedStats),
       _findHits(),
       _findMisses(),
@@ -176,6 +175,10 @@ bool Cache::isResizing() const noexcept {
     return false;
   }
 
+  return isResizingFlagSet();
+}
+
+bool Cache::isResizingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing();
 }
@@ -185,15 +188,15 @@ bool Cache::isMigrating() const noexcept {
     return false;
   }
 
+  return isMigratingFlagSet();
+}
+
+bool Cache::isMigratingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isMigrating();
 }
 
-bool Cache::isBusy() const noexcept {
-  if (ADB_UNLIKELY(isShutdown())) {
-    return false;
-  }
-
+bool Cache::isResizingOrMigratingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing() || _metadata.isMigrating();
 }
@@ -335,15 +338,14 @@ void Cache::shutdown() {
   TRI_ASSERT(handle.get() == this);
   if (!_shutdown.exchange(true)) {
     while (true) {
-      {
-        SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-        if (!_metadata.isMigrating() && !_metadata.isResizing()) {
-          break;
-        }
+      if (!isResizingOrMigratingFlagSet()) {
+        break;
       }
 
       SpinUnlocker taskUnguard(SpinUnlocker::Mode::Write, _taskLock);
-      std::this_thread::sleep_for(std::chrono::microseconds(10));
+
+      // sleep a bit without holding the locks
+      std::this_thread::sleep_for(std::chrono::microseconds(20));
     }
 
     std::shared_ptr<cache::Table> table = this->table();
@@ -373,17 +375,7 @@ bool Cache::canResize() noexcept {
     return false;
   }
 
-  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-  return !(_metadata.isResizing() || _metadata.isMigrating());
-}
-
-bool Cache::canMigrate() noexcept {
-  if (ADB_UNLIKELY(isShutdown())) {
-    return false;
-  }
-
-  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-  return !_metadata.isMigrating();
+  return !isResizingOrMigratingFlagSet();
 }
 
 /// TODO Improve freeing algorithm
@@ -399,6 +391,8 @@ bool Cache::canMigrate() noexcept {
 /// That way we still visit the buckets in a sufficiently random order, but we
 /// are guaranteed to make progress in a finite amount of time.
 bool Cache::freeMemory() {
+  TRI_ASSERT(isResizingFlagSet());
+
   if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
@@ -430,7 +424,19 @@ bool Cache::freeMemory() {
 }
 
 bool Cache::migrate(std::shared_ptr<Table> newTable) {
+  TRI_ASSERT(isMigratingFlagSet());
+
+  auto migratingGuard = scopeGuard([this]() noexcept {
+    // unmarking migrating flag if necessary
+    SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
+
+    TRI_ASSERT(_metadata.isMigrating());
+    _metadata.toggleMigrating();
+    TRI_ASSERT(!_metadata.isMigrating());
+  });
+
   if (ADB_UNLIKELY(isShutdown())) {
+    // will trigger the scopeGuard
     return false;
   }
 
@@ -464,8 +470,11 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   {
     SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
     _metadata.changeTable(newTable->memoryUsage());
+    TRI_ASSERT(_metadata.isMigrating());
     _metadata.toggleMigrating();
+    TRI_ASSERT(!_metadata.isMigrating());
   }
+  migratingGuard.cancel();
 
   // clear out old table and release it
   oldTable->clear();

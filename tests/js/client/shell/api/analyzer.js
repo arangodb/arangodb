@@ -5,7 +5,7 @@
 const jsunity = require('jsunity');
 const internal = require('internal');
 const error = internal.errors;
-//const print = internal.print;
+const isEnterprise = require("internal").isEnterprise();
 
 function testSuite() {
   const endpoint = arango.getEndpoint();
@@ -258,18 +258,33 @@ function testSuite() {
 
         let col = db._create("ulfColTestLinks");
         let view = db._createView("ulfViewTestLinks", "arangosearch", {});
-        var properties = {
-          links : {
-            [col.name()] : {
-              includeAllFields : true,
-              storeValues : "id",
-              fields : {
-                text : { analyzers : [name] }
+        let meta = {};
+        if (isEnterprise) {
+          meta = {
+            links : {
+              [col.name()] : {
+                includeAllFields : true,
+                storeValues : "id",
+                fields : {
+                  text : { analyzers : [name], "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} }
+                }
               }
             }
-          }
-        };
-        view.properties(properties);
+          };
+        } else {
+          meta = {
+            links : {
+              [col.name()] : {
+                includeAllFields : true,
+                storeValues : "id",
+                fields : {
+                  text : { analyzers : [name], "fields": { "value": {}} }
+                }
+              }
+            }
+          };
+        }
+        view.properties(meta);
 
         result = arango.DELETE("/_api/analyzer/" + name);
 

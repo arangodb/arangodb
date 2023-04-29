@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -274,11 +274,11 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
           });
     } else {
       baseProviderOptions.setWeightEdgeCallback(
-          [weightAttribute = weightAttribute, defaultWeight](
-              double previousWeight, VPackSlice edge) -> double {
+          [wa = weightAttribute, defaultWeight](double previousWeight,
+                                                VPackSlice edge) -> double {
             auto const weight =
-                arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                    edge, weightAttribute, defaultWeight);
+                basics::VelocyPackHelper::getNumericValue<double>(
+                    edge, wa, defaultWeight);
             if (weight < 0.) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
             }
@@ -322,11 +322,11 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
           });
     } else {
       baseProviderOptions.setWeightEdgeCallback(
-          [weightAttribute = weightAttribute, defaultWeight](
-              double previousWeight, VPackSlice edge) -> double {
+          [wa = weightAttribute, defaultWeight](double previousWeight,
+                                                VPackSlice edge) -> double {
             auto const weight =
-                arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                    edge, weightAttribute, defaultWeight);
+                basics::VelocyPackHelper::getNumericValue<double>(
+                    edge, wa, defaultWeight);
             if (weight < 0.) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
             }

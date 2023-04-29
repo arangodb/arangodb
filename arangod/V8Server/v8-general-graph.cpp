@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -215,18 +215,15 @@ static void JS_CreateGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   builder.add("name", VPackValue(graphName));
   if (args.Length() >= 2 && !args[1]->IsNullOrUndefined()) {
     builder.add(VPackValue(StaticStrings::GraphEdgeDefinitions));
-    TRI_V8ToVPack(isolate, builder, args[1], true, true);
-    builder.close();
+    TRI_V8ToVPack(isolate, builder, args[1], false, true);
   }
   if (args.Length() >= 3 && !args[2]->IsNullOrUndefined()) {
     builder.add(VPackValue(StaticStrings::GraphOrphans));
-    TRI_V8ToVPack(isolate, builder, args[2], true, true);
-    builder.close();
+    TRI_V8ToVPack(isolate, builder, args[2], false, true);
   }
   if (args.Length() >= 4 && !args[3]->IsNullOrUndefined()) {
     builder.add(VPackValue("options"));
-    TRI_V8ToVPack(isolate, builder, args[3], true, true);
-    builder.close();
+    TRI_V8ToVPack(isolate, builder, args[3], false, true);
   }
 
   builder.close();

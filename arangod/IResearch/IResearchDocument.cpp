@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -165,8 +165,8 @@ arangodb::iresearch::FieldMeta const* findMeta(
     std::string_view key, arangodb::iresearch::FieldMeta const* context) {
   TRI_ASSERT(context);
 
-  auto const* meta = context->_fields.findPtr(key);
-  return meta ? meta->get() : context;
+  auto meta = context->_fields.find(key);
+  return meta != context->_fields.end() ? &meta->second : context;
 }
 
 bool inObjectFiltered(std::string& buffer,

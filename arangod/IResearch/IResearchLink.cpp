@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +82,7 @@ namespace {
                                                       auto&& self) -> void {
     assertAnalyzerFeatures(fieldMeta._analyzers);
     for (auto const& entry : fieldMeta._fields) {
-      self(*entry.value(), self);
+      self(entry.second, self);
     }
   };
   assertAnalyzerFeatures(meta._analyzerDefinitions);
@@ -156,16 +156,12 @@ Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
   irs::IndexReaderOptions readerOptions;
 #ifdef USE_ENTERPRISE
   setupReaderEntepriseOptions(readerOptions,
-                              index().collection().vocbase().server(), _meta);
+                              index().collection().vocbase().server(), _meta,
+                              _useSearchCache);
 #endif
   auto r = initDataStore(pathExists, init, _meta._version, !_meta._sort.empty(),
-#ifdef USE_ENTERPRISE
-                         _meta._hasNested,
-#else
-                         false,
-#endif
-                         _meta._storedValues.columns(), _meta._sortCompression,
-                         readerOptions);
+                         _meta.hasNested(), _meta._storedValues.columns(),
+                         _meta._sortCompression, readerOptions);
   if (r.ok() && view) {
     r = view->link(_asyncSelf);
   }
@@ -421,10 +417,6 @@ AnalyzerPool::ptr IResearchLink::findAnalyzer(
   }
 
   return nullptr;
-}
-
-std::string_view IResearchLink::format() const noexcept {
-  return getFormat(LinkVersion{_meta._version});
 }
 
 IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {

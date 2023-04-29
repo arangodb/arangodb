@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +23,11 @@
 
 #pragma once
 
+#include <mutex>
 #include <unordered_set>
 
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
@@ -121,6 +121,10 @@ class ClusterFeature : public ArangodFeature {
   /// - "jwt-compat" = compatibility mode = same permissions as in 3.7
   std::string const& apiJwtPolicy() const noexcept { return _apiJwtPolicy; }
 
+  std::uint32_t statusCodeFailedWriteConcern() const {
+    return _statusCodeFailedWriteConcern;
+  }
+
   metrics::Counter& followersDroppedCounter() {
     TRI_ASSERT(_followersDroppedCounter != nullptr);
     return *_followersDroppedCounter;
@@ -133,9 +137,9 @@ class ClusterFeature : public ArangodFeature {
     TRI_ASSERT(_followersWrongChecksumCounter != nullptr);
     return *_followersWrongChecksumCounter;
   }
-  metrics::Counter& followersTotalRebuildCounter() {
-    TRI_ASSERT(_followersTotalRebuildCounter != nullptr);
-    return *_followersTotalRebuildCounter;
+  metrics::Counter& syncTreeRebuildCounter() {
+    TRI_ASSERT(_syncTreeRebuildCounter != nullptr);
+    return *_syncTreeRebuildCounter;
   }
   metrics::Counter& potentiallyDirtyDocumentReadsCounter() {
     TRI_ASSERT(_potentiallyDirtyDocumentReadsCounter != nullptr);
@@ -227,6 +231,13 @@ class ClusterFeature : public ArangodFeature {
   bool _unregisterOnShutdown = false;
   bool _enableCluster = false;
   bool _requirePersistedId = false;
+  // The following value indicates what HTTP status code should be returned if
+  // a configured write concern cannot currently be fulfilled. The old
+  // behavior (currently the default) means that a 403 Forbidden
+  // with an error of 1004 ERROR_ARANGO_READ_ONLY is returned. It is possible to
+  // adjust the behavior so that an HTTP 503 Service Unavailable with an error
+  // of 1429 ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED is returned.
+  uint32_t _statusCodeFailedWriteConcern = 403;
   /// @brief coordinator timeout for index creation. defaults to 4 days
   double _indexCreationTimeout = 72.0 * 3600.0;
   std::unique_ptr<ClusterInfo> _clusterInfo;
@@ -241,13 +252,16 @@ class ClusterFeature : public ArangodFeature {
   metrics::Counter* _followersDroppedCounter = nullptr;
   metrics::Counter* _followersRefusedCounter = nullptr;
   metrics::Counter* _followersWrongChecksumCounter = nullptr;
+  // note: this metric is only there for downwards-compatibility reasons. it
+  // will always have a value of 0.
   metrics::Counter* _followersTotalRebuildCounter = nullptr;
+  metrics::Counter* _syncTreeRebuildCounter = nullptr;
   metrics::Counter* _potentiallyDirtyDocumentReadsCounter = nullptr;
   metrics::Counter* _dirtyReadQueriesCounter = nullptr;
   std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback = nullptr;
 
   /// @brief lock for dirty database list
-  mutable arangodb::Mutex _dirtyLock;
+  mutable std::mutex _dirtyLock;
   /// @brief dirty databases, where a job could not be posted)
   containers::FlatHashSet<std::string> _dirtyDatabases;
 };

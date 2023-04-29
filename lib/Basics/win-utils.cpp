@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -275,12 +275,12 @@ TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
         continue;
       } else if (err == ERROR_BROKEN_PIPE) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
-        LOG_TOPIC("87f53", ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("87f53", TRACE, arangodb::Logger::SYSCALL)
             << "cannot read, end-of-file";
         return static_cast<TRI_read_return_t>(length - remainLength);
       } else {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
-        LOG_TOPIC("c9c0d", ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("c9c0d", TRACE, arangodb::Logger::SYSCALL)
             << "cannot read: " << TRI_LAST_ERROR_STR;
         return static_cast<TRI_read_return_t>(length - remainLength);
       }

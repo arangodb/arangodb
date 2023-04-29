@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Basics/ErrorCode.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
+#include "Futures/Promise.h"
 
 #include <unordered_map>
 
@@ -96,8 +97,10 @@ class QueryRegistry {
   /// and removed regardless if it is in use by anything else. this is only
   /// safe to call if the current thread is currently using the query itself
   // cppcheck-suppress virtualCallInConstructor
-  std::shared_ptr<ClusterQuery> destroyQuery(std::string const& vocbase,
-                                             QueryId id, ErrorCode errorCode);
+  void destroyQuery(QueryId id, ErrorCode errorCode);
+
+  futures::Future<std::shared_ptr<ClusterQuery>> finishQuery(
+      QueryId id, ErrorCode errorCode);
 
   /// used for a legacy shutdown
   bool destroyEngine(EngineId engineId, ErrorCode errorCode);
@@ -126,7 +129,7 @@ class QueryRegistry {
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  bool queryIsRegistered(std::string const& dbName, QueryId id);
+  bool queryIsRegistered(QueryId id);
 #endif
 
  private:
@@ -142,13 +145,18 @@ class QueryRegistry {
 
     std::shared_ptr<ClusterQuery> _query;  // the actual query pointer
 
-    const double _timeToLive;  // in seconds
+    /// @brief promise to finish a query that was still active when we
+    /// received the finish request
+    futures::Promise<std::shared_ptr<ClusterQuery>> _promise;
+
+    double const _timeToLive;  // in seconds
     double _expires;           // UNIX UTC timestamp of expiration
     size_t _numEngines;        // used for legacy shutdown
     size_t _numOpen;
 
     ErrorCode _errorCode;
     bool const _isTombstone;
+    bool _finished = false;
 
     cluster::CallbackGuard _rebootTrackerCallbackGuard;
   };
@@ -181,11 +189,15 @@ class QueryRegistry {
     bool _isOpen;
   };
 
+  using QueryInfoMap = std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>;
+
+  auto lookupQueryForFinalization(QueryId id, ErrorCode errorCode)
+      -> QueryInfoMap::iterator;
+  void deleteQuery(QueryInfoMap::iterator queryMapIt);
+
   /// @brief _queries, the actual map of maps for the registry
   /// maps from vocbase name to list queries
-  std::unordered_map<std::string,
-                     std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>>
-      _queries;
+  QueryInfoMap _queries;
 
   std::unordered_map<EngineId, EngineInfo> _engines;
 

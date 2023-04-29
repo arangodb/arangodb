@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -101,8 +101,9 @@ void RocksDBRestWalHandler::flush() {
     return;
   }
 
-  bool waitForSync = false;
-  bool flushColumnFamilies = false;
+  bool waitForSync =
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  bool flushColumnFamilies = _request->parsedValue("waitForCollector", false);
 
   if (slice.isObject()) {
     // got a request body
@@ -119,12 +120,6 @@ void RocksDBRestWalHandler::flush() {
     } else if (value.isBoolean()) {
       flushColumnFamilies = value.getBoolean();
     }
-  } else {
-    // no request body
-    waitForSync =
-        _request->parsedValue(StaticStrings::WaitForSyncString, waitForSync);
-    flushColumnFamilies =
-        _request->parsedValue("waitForCollector", flushColumnFamilies);
   }
 
   Result res;
@@ -132,9 +127,8 @@ void RocksDBRestWalHandler::flush() {
     auto& feature = server().getFeature<ClusterFeature>();
     res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
   } else {
-    if (waitForSync) {
-      server().getFeature<EngineSelectorFeature>().engine().flushWal();
-    }
+    server().getFeature<EngineSelectorFeature>().engine().flushWal(
+        waitForSync, flushColumnFamilies);
   }
 
   if (res.fail()) {

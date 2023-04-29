@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,8 +56,8 @@ class Metric {
   /// \param result toPrometheus handler response
   /// \param globals labels that all metrics have
   //////////////////////////////////////////////////////////////////////////////
-  virtual void toPrometheus(std::string& result,
-                            std::string_view globals) const = 0;
+  virtual void toPrometheus(std::string& result, std::string_view globals,
+                            bool ensureWhitespace) const = 0;
   virtual void toVPack(velocypack::Builder& builder,
                        ArangodServer& server) const;
 

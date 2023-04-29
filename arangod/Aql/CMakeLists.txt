@@ -70,6 +70,7 @@ add_library(arango_aql STATIC
   Functions.cpp
   grammar.cpp
   GraphNode.cpp
+  GraphOptimizerRules.cpp
   Graphs.cpp
   HashedCollectExecutor.cpp
   IdExecutor.cpp
@@ -94,6 +95,8 @@ add_library(arango_aql STATIC
   ModificationOptions.cpp
   MultiAqlItemBlockInputRange.cpp
   MultiDependencySingleRowFetcher.cpp
+  MultipleRemoteModificationNode.cpp
+  MultipleRemoteModificationExecutor.cpp
   MutexExecutor.cpp
   MutexNode.cpp
   NodeFinder.cpp
@@ -213,6 +216,9 @@ if (USE_MAINTAINER_MODE AND NOT MSVC)
   )
 endif ()
 
-if (CMAKE_COMPILER_IS_GNUCC)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set_source_files_properties(tokens.cpp PROPERTIES COMPILE_FLAGS -Wno-sign-compare)
+endif ()
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  set_source_files_properties(grammar.cpp PROPERTIES COMPILE_FLAGS -Wno-unused-but-set-variable)
 endif ()

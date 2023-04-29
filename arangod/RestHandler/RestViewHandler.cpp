@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,12 +26,14 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalView.h"
 
 namespace {
@@ -275,6 +277,16 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
+
+  bool extendedNames =
+      _vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = ViewNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames, name);
+      res.fail()) {
+    generateError(res);
+    return;
+  }
+
   CollectionNameResolver resolver(_vocbase);
   auto view = resolver.getView(name);
 
@@ -286,7 +298,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   bool parseSuccess = false;
-  VPackSlice const body = this->parseVPackBody(parseSuccess);
+  VPackSlice body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;
@@ -435,6 +447,20 @@ void RestViewHandler::deleteView() {
   }
 
   auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
+
+  if (name.empty() || name[0] < '0' || name[0] > '9') {
+    // not a numeric view id. now validate view name
+    bool extendedNames =
+        _vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+    if (auto res = ViewNameValidator::validateName(
+            /*allowSystem*/ false, extendedNames, name);
+        res.fail()) {
+      generateError(res);
+      events::DropView(_vocbase.name(), name, res.errorNumber());
+      return;
+    }
+  }
+
   auto allowDropSystem =
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
   auto view = CollectionNameResolver(_vocbase).getView(name);

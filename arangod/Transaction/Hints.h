@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,6 @@ class Hints {
     NONE = 0,
     SINGLE_OPERATION = 1,
     LOCK_NEVER = 2,
-    NO_USAGE_LOCK = 4,
     NO_DLD = 8,        // disable deadlock detection, unsupported in RocksDB
     NO_INDEXING = 16,  // use DisableIndexing for RocksDB
     INTERMEDIATE_COMMITS = 32,  // enable intermediate commits in rocksdb

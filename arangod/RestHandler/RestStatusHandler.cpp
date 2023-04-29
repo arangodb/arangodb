@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -327,7 +327,7 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
   long err;
   std::string fileName;
   std::string msg;
-  int res = TRI_GetTempName(nullptr, fileName, true, err, msg);
+  ErrorCode res = TRI_GetTempName(nullptr, fileName, true, err, msg);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::SERVER_ERROR, res, msg);

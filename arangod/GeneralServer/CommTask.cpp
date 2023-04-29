@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,6 +49,9 @@
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "V8Server/FoxxFeature.h"
+
+#include <string_view>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -56,9 +59,11 @@ using namespace arangodb::rest;
 
 namespace {
 // some static URL path prefixes
-std::string const AdminAardvark("/_admin/aardvark/");
-std::string const ApiUser("/_api/user/");
-std::string const Open("/_open/");
+constexpr std::string_view pathPrefixApi("/_api/");
+constexpr std::string_view pathPrefixApiUser("/_api/user/");
+constexpr std::string_view pathPrefixAdmin("/_admin/");
+constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
+constexpr std::string_view pathPrefixOpen("/_open/");
 
 VocbasePtr lookupDatabaseFromRequest(ArangodServer& server,
                                      GeneralRequest& req) {
@@ -256,9 +261,10 @@ CommTask::Flow CommTask::prepareExecution(
     }
       [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
-      // the following paths are allowed on followers
+      // the following paths are allowed on followers in active failover
       if (!path.starts_with("/_admin/shutdown") &&
           !path.starts_with("/_admin/cluster/health") &&
+          !path.starts_with("/_admin/cluster/maintenance") &&
           path != "/_admin/compact" && !path.starts_with("/_admin/license") &&
           !path.starts_with("/_admin/log") &&
           !path.starts_with("/_admin/metrics") &&
@@ -266,6 +272,7 @@ CommTask::Flow CommTask::prepareExecution(
           !path.starts_with("/_admin/status") &&
           !path.starts_with("/_admin/statistics") &&
           !path.starts_with("/_admin/support-info") &&
+          !path.starts_with("/_admin/telemetrics") &&
           !path.starts_with("/_api/agency/agency-callbacks") &&
           !(req.requestType() == RequestType::GET &&
             path.starts_with("/_api/collection")) &&
@@ -334,6 +341,20 @@ CommTask::Flow CommTask::prepareExecution(
                       TRI_ERROR_FORBIDDEN,
                       "not authorized to execute this request");
     return Flow::Abort;
+  }
+
+  if (ServerState::instance()->isSingleServerOrCoordinator()) {
+    auto& ff = _server.server().getFeature<FoxxFeature>();
+    if (!ff.foxxEnabled() &&
+        !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
+          path.starts_with(::pathPrefixApi) ||
+          path.starts_with(::pathPrefixOpen))) {
+      sendErrorResponse(rest::ResponseCode::FORBIDDEN,
+                        req.contentTypeResponse(), req.messageId(),
+                        TRI_ERROR_FORBIDDEN,
+                        "access to Foxx apps is turned off on this instance");
+      return Flow::Abort;
+    }
   }
 
   // Step 5: Update global HLC timestamp from authenticated requests
@@ -426,21 +447,18 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   TRI_ASSERT(request != nullptr);
   TRI_ASSERT(response != nullptr);
 
+  if (request == nullptr || response == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid object setup for executeRequest");
+  }
+
   DTRACE_PROBE1(arangod, CommTaskExecuteRequest, this);
 
   response->setContentTypeRequested(request->contentTypeResponse());
   response->setGenerateBody(request->requestType() != RequestType::HEAD);
 
   // store the message id for error handling
-  uint64_t messageId = 0UL;
-  if (request) {
-    messageId = request->messageId();
-  } else if (response) {
-    messageId = response->messageId();
-  } else {
-    LOG_TOPIC("2cece", WARN, Logger::REQUESTS)
-        << "could not find corresponding request/response";
-  }
+  uint64_t messageId = request->messageId();
 
   rest::ContentType const respType = request->contentTypeResponse();
 
@@ -483,12 +501,11 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
     statistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal(
-        [self(shared_from_this()), handler(std::move(handler)),
-         messageId](futures::Try<Result>&& /*ignored*/) -> void {
-          self->sendResponse(handler->stealResponse(),
-                             self->stealStatistics(messageId));
-        });
+    std::move(res).thenFinal([self(shared_from_this()), h(std::move(handler)),
+                              messageId](
+                                 futures::Try<Result>&& /*ignored*/) -> void {
+      self->sendResponse(h->stealResponse(), self->stealStatistics(messageId));
+    });
     return;
   }
 
@@ -825,8 +842,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     if (result == Flow::Abort) {
       std::string const& username = req.user();
 
-      if (path == "/" || path.starts_with(Open) ||
-          path.starts_with(AdminAardvark) ||
+      if (path == "/" || path.starts_with(::pathPrefixOpen) ||
+          path.starts_with(::pathPrefixAdminAardvark) ||
           path == "/_admin/server/availability") {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
@@ -837,12 +854,13 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         result = Flow::Continue;
         // vc->forceReadOnly();
       } else if (req.requestType() == RequestType::POST && !username.empty() &&
-                 path.starts_with(ApiUser + username + '/')) {
+                 path.starts_with(std::string{::pathPrefixApiUser} + username +
+                                  '/')) {
         // simon: unauthorized users should be able to call
         // `/_api/users/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
-      } else if (userAuthenticated && path.starts_with(ApiUser)) {
+      } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {
         result = Flow::Continue;
       }
     }
@@ -1004,7 +1022,7 @@ bool CommTask::handleContentEncoding(GeneralRequest& req) {
     std::string_view raw = req.rawPayload();
     uint8_t* src = reinterpret_cast<uint8_t*>(const_cast<char*>(raw.data()));
     size_t len = raw.size();
-    if (encoding == "gzip") {
+    if (encoding == StaticStrings::EncodingGzip) {
       VPackBuffer<uint8_t> dst;
       if (arangodb::encoding::gzipUncompress(src, len, dst) !=
           TRI_ERROR_NO_ERROR) {
@@ -1012,7 +1030,7 @@ bool CommTask::handleContentEncoding(GeneralRequest& req) {
       }
       req.setPayload(std::move(dst));
       return true;
-    } else if (encoding == "deflate") {
+    } else if (encoding == StaticStrings::EncodingDeflate) {
       VPackBuffer<uint8_t> dst;
       if (arangodb::encoding::gzipInflate(src, len, dst) !=
           TRI_ERROR_NO_ERROR) {

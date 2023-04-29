@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -230,9 +230,6 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start,
                 generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                               TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
               }
-            })
-            .thenError<VPackException>([this](VPackException const& e) {
-              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
             })
             .thenError<std::exception>([this](std::exception const& e) {
               generateError(rest::ResponseCode::SERVER_ERROR,

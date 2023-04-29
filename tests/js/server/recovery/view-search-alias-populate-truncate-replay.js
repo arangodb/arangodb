@@ -53,6 +53,7 @@ function runSetup () {
   }
 
   c.save({ name: "crashme" }, { waitForSync: true });
+  internal.debugSetFailAt("ArangoSearch::DisableMoveTickInCommit");
   internal.debugSetFailAt("ArangoSearchTruncateFailure");
   return truncateFailure(c);
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -187,6 +187,7 @@ class SharedState {
   /// and might also synchronously execute that callback (e.g., if there is no
   /// executor or if the executor is inline).
   void setResult(Try<T>&& t) {
+    TRI_ASSERT(t.valid());
     TRI_ASSERT(!hasResult());
     // call move constructor of content
     ::new (&_result) Try<T>(std::move(t));

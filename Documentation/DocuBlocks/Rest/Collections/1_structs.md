@@ -71,14 +71,16 @@ determine the target shard for documents. _(cluster only)_
 @RESTSTRUCT{replicationFactor,collection_info,integer,optional,}
 Contains how many copies of each shard are kept on different DB-Servers.
 It is an integer number in the range of 1-10 or the string `"satellite"`
-for a SatelliteCollection (Enterprise Edition only). _(cluster only)_
+for SatelliteCollections (Enterprise Edition only). _(cluster only)_
 
 @RESTSTRUCT{writeConcern,collection_info,integer,optional,}
 Determines how many copies of each shard are required to be
-in sync on the different DB-Servers. If there are less then these many copies
-in the cluster a shard will refuse to write. Writes to shards with enough
-up-to-date copies will succeed at the same time however. The value of
-`writeConcern` cannot be larger than `replicationFactor`. _(cluster only)_
+in-sync on the different DB-Servers. If there are less than these many copies
+in the cluster, a shard refuses to write. Writes to shards with enough
+up-to-date copies succeed at the same time, however. The value of
+`writeConcern` cannot be greater than `replicationFactor`.
+For SatelliteCollections, the `writeConcern` is automatically controlled to
+equal the number of DB-Servers and has a value of `0`. _(cluster only)_
 
 @RESTSTRUCT{shardingStrategy,collection_info,string,optional,}
 The sharding strategy selected for the collection. _(cluster only)_

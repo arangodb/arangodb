@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,8 +31,6 @@
 #include <velocypack/Iterator.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/AgencyCache.h"
@@ -46,6 +44,10 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 #include "Pregel/PregelFeature.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
@@ -61,11 +63,6 @@
 #include "VocBase/vocbase.h"
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
-
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/HistogramBuilder.h"
-#include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -212,7 +209,7 @@ HeartbeatThread::HeartbeatThread(Server& server,
                                  uint64_t maxFailsBeforeWarning)
     : arangodb::ServerThread<Server>(server, "Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
-      _statusLock(std::make_shared<Mutex>()),
+      _statusLock(std::make_shared<std::mutex>()),
       _agency(server),
       _condition(),
       _myId(ServerState::instance()->getId()),
@@ -454,7 +451,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
             << "Current/Version in agency is 0.";
       } else {
         {
-          MUTEX_LOCKER(mutexLocker, *_statusLock);
+          std::lock_guard mutexLocker{*_statusLock};
           if (currentVersion > _desiredVersions->current) {
             _desiredVersions->current = currentVersion;
             LOG_TOPIC("33559", DEBUG, Logger::HEARTBEAT)
@@ -544,10 +541,11 @@ void HeartbeatThread::runDBServer() {
         break;
       }
 
-      CONDITION_LOCKER(locker, _condition);
+      std::unique_lock locker{_condition.mutex};
       auto remain = _interval - (std::chrono::steady_clock::now() - start);
       if (remain.count() > 0 && !isStopping()) {
-        locker.wait(
+        _condition.cv.wait_for(
+            locker,
             std::chrono::duration_cast<std::chrono::microseconds>(remain));
       }
 
@@ -806,10 +804,11 @@ void HeartbeatThread::runSingleServer() {
   auto start = std::chrono::steady_clock::now();
   while (!isStopping()) {
     {
-      CONDITION_LOCKER(locker, _condition);
+      std::unique_lock locker{_condition.mutex};
       auto remain = _interval - (std::chrono::steady_clock::now() - start);
       if (remain.count() > 0 && !isStopping()) {
-        locker.wait(
+        _condition.cv.wait_for(
+            locker,
             std::chrono::duration_cast<std::chrono::microseconds>(remain));
       }
     }
@@ -1053,14 +1052,12 @@ void HeartbeatThread::runSingleServer() {
         }
 
         LOG_TOPIC("04e4e", INFO, Logger::HEARTBEAT)
-            << "Starting replication from " << endpoint;
+            << "starting replication initial sync from leader " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         config._jwt = af->tokenCache().jwtToken();
         config._endpoint = endpoint;
         config._autoResync = true;
         config._autoResyncRetries = 2;
-        LOG_TOPIC("ab4a2", INFO, Logger::HEARTBEAT)
-            << "start initial sync from leader";
         config._requireFromPresent = true;
         config._incremental = true;
         config._idleMinWaitTime = 250 * 1000;       // 250ms
@@ -1179,10 +1176,11 @@ void HeartbeatThread::runCoordinator() {
             << "Have scheduled getNewsFromAgency job.";
       }
 
-      CONDITION_LOCKER(locker, _condition);
+      std::unique_lock locker{_condition.mutex};
       auto remain = _interval - (std::chrono::steady_clock::now() - start);
       if (remain.count() > 0 && !isStopping()) {
-        locker.wait(
+        _condition.cv.wait_for(
+            locker,
             std::chrono::duration_cast<std::chrono::microseconds>(remain));
       }
 
@@ -1205,9 +1203,9 @@ void HeartbeatThread::runAgent() {
   // simple loop to post dead threads every hour, no other tasks today
   while (!isStopping()) {
     try {
-      CONDITION_LOCKER(locker, _condition);
+      std::unique_lock locker{_condition.mutex};
       if (!isStopping()) {
-        locker.wait(std::chrono::hours(1));
+        _condition.cv.wait_for(locker, std::chrono::hours{1});
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("e6761", ERR, Logger::HEARTBEAT)
@@ -1266,13 +1264,13 @@ void HeartbeatThread::beginShutdown() {
   }
 
   // And now the heartbeat thread:
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
 
   // set the shutdown state in parent class
   Thread::beginShutdown();
 
   // break _condition.wait() in runDBserver
-  _condition.signal();
+  _condition.cv.notify_one();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1281,7 +1279,7 @@ void HeartbeatThread::beginShutdown() {
 
 void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
   LOG_TOPIC("f3358", DEBUG, Logger::HEARTBEAT) << "Dispatched job returned!";
-  MUTEX_LOCKER(mutexLocker, *_statusLock);
+  std::lock_guard mutexLocker{*_statusLock};
   if (result.success) {
     LOG_TOPIC("ce0db", DEBUG, Logger::HEARTBEAT)
         << "Sync request successful. Now have Plan index " << result.planIndex
@@ -1355,7 +1353,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
           TRI_ASSERT(false);
           dbName = "n/a";
         }
-        Result res = databaseFeature.dropDatabase(id, true);
+        Result res = databaseFeature.dropDatabase(id);
         events::DropDatabase(dbName, res, ExecContext::current());
       }
     }

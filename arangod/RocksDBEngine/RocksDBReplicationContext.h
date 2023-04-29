@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Containers/MerkleTree.h"
 #include "Indexes/IndexIterator.h"
 #include "Replication/SyncerId.h"
@@ -50,6 +49,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
 
 namespace rocksdb {
 class Comparator;
@@ -270,7 +270,7 @@ class RocksDBReplicationContext {
 
   RocksDBEngine& _engine;
   TRI_voc_tick_t const _id;  // batch id
-  mutable Mutex _contextLock;
+  mutable std::mutex _contextLock;
   SyncerId const _syncerId;
   ServerId const _clientId;
   std::string const _clientInfo;

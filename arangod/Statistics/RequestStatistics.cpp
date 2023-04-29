@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +23,8 @@
 
 #include "RequestStatistics.h"
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
-
 #include <iomanip>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -43,7 +41,7 @@ namespace {
 constexpr size_t kInitialQueueSize = 64;
 
 // protects statisticsItems
-Mutex statisticsMutex;
+std::mutex statisticsMutex;
 
 // a container of RequestStatistics objects. the vector is populated initially
 // with kInitialQueueSize items. It can grow at runtime. The addresses of
@@ -92,7 +90,7 @@ bool enqueueItem(boost::lockfree::queue<RequestStatistics*>& queue,
 // -----------------------------------------------------------------------------
 
 void RequestStatistics::initialize() {
-  MUTEX_LOCKER(guard, ::statisticsMutex);
+  std::lock_guard guard{::statisticsMutex};
 
   ::freeList.reserve(kInitialQueueSize * 2);
   ::finishedList.reserve(kInitialQueueSize * 2);
@@ -141,7 +139,7 @@ RequestStatistics::Item RequestStatistics::acquire() noexcept {
     // store pointer for just-created item
     statistics = cs.get();
 
-    MUTEX_LOCKER(guard, ::statisticsMutex);
+    std::lock_guard guard{::statisticsMutex};
     ::statisticsItems.emplace_back(std::move(cs));
   } catch (...) {
     statistics = nullptr;

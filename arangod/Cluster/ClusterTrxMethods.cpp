@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -144,7 +144,7 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
   TransactionId tid = state.id().child();
   TRI_ASSERT(!tid.isLegacyTransactionId());
 
-  TRI_ASSERT(server.substr(0, 7) != "server:");
+  TRI_ASSERT(!server.starts_with("server:"));
 
   double const lockTimeout = state.options().lockTimeout;
 
@@ -243,6 +243,18 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   TRI_ASSERT(!state->isDBServer() || !state->id().isFollowerTransactionId());
 
   network::RequestOptions reqOpts;
+  // We intentionally choose the timeout to be 14 minutes on coordinators
+  // and 13 minutes on dbservers. It needs to be longer on the coordinator
+  // to give the leader a chance to time out earlier than the coordinator.
+  // In this case we need to drop a follower, but can proceed with the
+  // transaction. Both timeouts are intentionally smaller than the standard
+  // intra-cluster timeout of 15 minutes, but are large enough to withstand
+  // delays in the network infrastructure.
+  if (state->isCoordinator()) {
+    reqOpts.timeout = arangodb::network::Timeout(std::chrono::minutes(14));
+  } else {
+    reqOpts.timeout = arangodb::network::Timeout(std::chrono::minutes(13));
+  }
   reqOpts.database = state->vocbase().name();
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
@@ -273,7 +285,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   std::vector<Future<network::Response>> requests;
   requests.reserve(state->knownServers().size());
   for (std::string const& server : state->knownServers()) {
-    TRI_ASSERT(server.substr(0, 7) != "server:");
+    TRI_ASSERT(!server.starts_with("server:"));
     requests.emplace_back(network::sendRequestRetry(
         pool, "server:" + server, verb, path, VPackBuffer<uint8_t>(), reqOpts));
   }
@@ -572,7 +584,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     return;
   }
 
-  TRI_ASSERT(server.substr(0, 7) != "server:");
+  TRI_ASSERT(!server.starts_with("server:"));
 
   std::string value = std::to_string(state.id().child().id());
   bool const addBegin = !state.knowsServer(server);

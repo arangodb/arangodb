@@ -383,7 +383,7 @@ auto ModifySoftWCMultipleStepsActor::expand(AgencyState const& s,
   }
 
   std::vector<AgencyTransition> actions;
-  State nextState;
+  State nextState{State::INIT};
   if (i.state == State::INIT) {
     actions = {SetSoftWriteConcernAction(setInvalidWC)};
     nextState = State::SET_TO_INVALID;

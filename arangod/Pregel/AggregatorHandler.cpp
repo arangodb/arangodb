@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,12 @@
 
 using namespace arangodb;
 using namespace arangodb::pregel;
+
+AggregatorHandler::AggregatorHandler(AggregatorHandler&& other) {
+  WRITE_LOCKER(guard, other._lock);
+  _algorithm = std::move(other._algorithm);
+  _values = std::move(other._values);
+}
 
 AggregatorHandler::~AggregatorHandler() {
   WRITE_LOCKER(guard, _lock);

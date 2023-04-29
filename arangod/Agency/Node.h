@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,8 @@
 #include <velocypack/Buffer.h>
 
 #include <cstdint>
+#include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -145,6 +147,10 @@ class Node final {
   /// @brief Child nodes
   typedef std::unordered_map<std::string, std::shared_ptr<Node>> Children;
 
+  /// @brief Split strings by forward slashes, omitting empty strings,
+  /// and ignoring multiple subsequent forward slashes
+  static std::vector<std::string> split(std::string_view str);
+
   /// @brief Construct with name
   explicit Node(std::string const& name);
 
@@ -249,16 +255,16 @@ class Node final {
   Node const* parent() const;
 
   /// @brief Part of relative path vector which exists
-  std::vector<std::string> exists(std::vector<std::string> const&) const;
+  std::vector<std::string> exists(std::vector<std::string> const& rel) const;
 
   /// @brief Part of relative path which exists
-  std::vector<std::string> exists(std::string const&) const;
+  std::vector<std::string> exists(std::string_view rel) const;
 
   /// @brief Part of relative path vector which exists
-  bool has(std::vector<std::string> const&) const;
+  bool has(std::vector<std::string> const& rel) const;
 
   /// @brief Part of relative path which exists
-  bool has(std::string const&) const;
+  bool has(std::string_view rel) const;
 
   /// @brief Is Int
   bool isInt() const;
@@ -277,6 +283,12 @@ class Node final {
 
   /// @brief Is string
   bool isString() const;
+
+  /// @brief Is array
+  bool isArray() const;
+
+  /// @brief Is object
+  bool isObject() const;
 
   /**
    * @brief Set expiry for this node
@@ -334,14 +346,17 @@ class Node final {
   //  unit tests updated.
   //
   /// @brief Get node specified by path string
-  Node& getOrCreate(std::string const& path);
+  Node& getOrCreate(std::string_view path);
 
   /// @brief Get node specified by path string
   std::optional<std::reference_wrapper<Node const>> get(
-      std::string const& path) const;
+      std::string_view path) const;
 
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::optional<std::string> getString() const;
+
+  /// @brief Get string value (throws if type NODE or if conversion fails)
+  std::optional<std::string_view> getStringView() const;
 
   /// @brief Get array value
   std::optional<Slice> getArray() const;
