@@ -1,6 +1,12 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* Fixed a race in the Maintenance, impacting leaders that have just been
+  resigned. During a MoveShard job, the old leader could sabotage the whole
+  operation by removing the newly added follower from Current. The solution
+  is to update Current using local collection information, instead of the
+  potentially outdated velocypack slice.
+
 * Automatically repair revision trees after several failed shard synchronization
   attempts. This can help to get permanently out-of-sync shards back into sync.
 
