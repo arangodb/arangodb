@@ -148,7 +148,7 @@ arangodb::Result removeRevisions(
         ++stats.numDocsRemoved;
       } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // ignore not found, we remove conflicting docs ahead of time
-        res.clear();
+        res.reset();
       } else {
         // another error. this is severe and we abort.
         break;
