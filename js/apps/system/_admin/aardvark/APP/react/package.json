@@ -9,6 +9,7 @@
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@react-hook/resize-observer": "^1.2.6",
+    "@tanstack/react-table": "^8.8.5",
     "@types/backbone": "^1.4.15",
     "@types/d3": "^5.16.4",
     "@types/jquery": "^3.5.16",
