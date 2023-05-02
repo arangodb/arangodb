@@ -25,11 +25,24 @@
 
 #include "utils/log.hpp"
 
+#include <iostream>
+
 namespace arangodb {
 namespace tests {
 
+static void LogCallback(irs::SourceLocation&& source,
+                        std::string_view message) {
+  std::cerr << source.file << ":" << source.line << ": " << source.func << ": "
+            << message << std::endl;
+}
+
 IResearchLogSuppressor::IResearchLogSuppressor() {
-  irs::logger::output_le(::irs::logger::IRL_FATAL, stderr);
+  irs::log::SetCallback(irs::log::Level::kFatal, &LogCallback);
+  irs::log::SetCallback(irs::log::Level::kError, nullptr);
+  irs::log::SetCallback(irs::log::Level::kWarn, nullptr);
+  irs::log::SetCallback(irs::log::Level::kInfo, nullptr);
+  irs::log::SetCallback(irs::log::Level::kDebug, nullptr);
+  irs::log::SetCallback(irs::log::Level::kTrace, nullptr);
 }
 
 }  // namespace tests
