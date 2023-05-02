@@ -97,7 +97,6 @@ ServerState::ServerState(ArangodServer& server)
       _shortId(0),
       _rebootId(0),
       _state(STATE_UNDEFINED),
-      _initialized(false),
       _foxxmasterSince(0),
       _foxxmasterQueueupdate(false) {
   TRI_ASSERT(Instance == nullptr);
