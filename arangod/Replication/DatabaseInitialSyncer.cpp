@@ -115,6 +115,9 @@ arangodb::Result removeRevisions(
   arangodb::Result res;
 
   if (!toRemove.empty()) {
+    TRI_ASSERT(trx.state()->hasHint(
+        arangodb::transaction::Hints::Hint::INTERMEDIATE_COMMITS));
+
     PhysicalCollection* physical = collection.getPhysical();
 
     auto indexesSnapshot = physical->getIndexesSnapshot();
@@ -143,20 +146,21 @@ arangodb::Result removeRevisions(
 
       if (res.ok()) {
         ++stats.numDocsRemoved;
-      } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // ignore not found, we remove conflicting docs ahead of time
-        stats.waitedForRemovals += TRI_microtime() - t;
+        res.clear();
+      } else {
+        // another error. this is severe and we abort.
         break;
       }
     }
 
-    TRI_ASSERT(trx.state()->hasHint(
-        arangodb::transaction::Hints::Hint::INTERMEDIATE_COMMITS));
-
-    auto fut =
-        trx.state()->performIntermediateCommitIfRequired(collection.id());
-    TRI_ASSERT(fut.isReady());
-    res = fut.get();
+    if (res.ok()) {
+      auto fut =
+          trx.state()->performIntermediateCommitIfRequired(collection.id());
+      TRI_ASSERT(fut.isReady());
+      res = fut.get();
+    }
 
     stats.waitedForRemovals += TRI_microtime() - t;
 
