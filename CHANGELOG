@@ -3,9 +3,13 @@ devel
 
 * Fixed a race in the Maintenance, impacting leaders that have just been
   resigned. During a MoveShard job, the old leader could sabotage the whole
-  operation by removing the newly added follower from Current. The solution
-  is to update Current using local collection information, instead of the
+  operation by removing the newly added follower from Current. The solution is
+  to update Current using local collection information, instead of the
   potentially outdated velocypack slice.
+
+* FE-254: bugfix - filter out empty storedValues for persistent index.
+
+* FE-253: bugfix - validate JSON, show errors & disable save when error.
 
 * FE-252: bugfix - canvas image screenshot breaks graph colors.
 
