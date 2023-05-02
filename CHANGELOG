@@ -1,5 +1,6 @@
 devel
 -----
+* FE-254: bugfix - filter out empty storedValues for persistent index
 
 * FE-252: bugfix - canvas image screenshot breaks graph colors.
 
