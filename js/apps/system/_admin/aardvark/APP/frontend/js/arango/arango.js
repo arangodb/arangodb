@@ -122,6 +122,16 @@
       sessionStorage.setItem('jwtUser', username);
     },
 
+    setCurrentJwtUser: function (username) {
+      sessionStorage.setItem('jwtUser', username);
+    },
+    setAutoLoginEnabled: function (autoLoginEnabled) {
+      sessionStorage.setItem('autoLoginEnabled', autoLoginEnabled);
+    },
+    getAutoLoginEnabled: function (autoLoginEnabled) {
+      return sessionStorage.getItem('autoLoginEnabled');
+    },
+
     checkJwt: function () {
       $.ajax({
         type: 'GET',
