@@ -51,7 +51,8 @@ auto inspect(Inspector& f, PrintableTiming& x) {
     }
     return res;
   } else {
-    return f.apply(fmt::format("{:.6f} s", x.timing.value / 1000000.));
+    return f.apply(x.timing.value / 1000000.);
+    // return f.apply(fmt::format("{:.6f} s", x.timing.value / 1000000.));
   }
 }
 struct PrintableDuration {
@@ -113,10 +114,11 @@ struct PregelTimings {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PregelTimings& x) {
-  return f.object(x).fields(
-      f.field("totalRuntime", x.totalRuntime), f.field("loading", x.loading),
-      f.field("computation", x.computation), f.field("storing", x.storing),
-      f.field("gss", x.gss));
+  return f.object(x).fields(f.field("totalRuntime", x.totalRuntime),
+                            f.field("startupTime", x.loading),
+                            f.field("computationTime", x.computation),
+                            f.field("storageTime", x.storing),
+                            f.field("gssTimes", x.gss));
 }
 
 struct GraphLoadingDetails {
@@ -224,6 +226,7 @@ auto inspect(Inspector& f, StatusDetails& x) {
 
 struct StatusState {
   std::string stateName;
+  std::optional<std::string> errorMessage;
   ExecutionNumber id;
   std::string database;
   std::string algorithm;
@@ -248,11 +251,11 @@ auto inspect(Inspector& f, StatusState& x) {
           : "0";
 
   return f.object(x).fields(
-      f.field("state", x.stateName), f.field("id", x.id),
-      f.field("database", x.database), f.field("algorithm", x.algorithm),
-      f.field("created", formatted_created),
+      f.field("state", x.stateName), f.field("errorMessage", x.errorMessage),
+      f.field("id", x.id), f.field("database", x.database),
+      f.field("algorithm", x.algorithm), f.field("created", formatted_created),
       f.field("expires", formatted_expires), f.field("ttl", x.ttl),
-      f.field("parallelism", x.parallelism), f.field("timings", x.timings),
+      f.field("parallelism", x.parallelism), f.embedFields(x.timings),
       f.field("gss", x.gss),
 
       // TODO embed aggregators field (it already has "aggregators" as key)
@@ -375,6 +378,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
 
   auto operator()(message::InFatalError& msg) -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;
+    this->state->errorMessage = msg.errorMessage;
     this->state->timings.stopAll(msg.time);
 
     return std::move(this->state);

@@ -72,7 +72,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
     auto graphLoaded = [this]() -> ResultT<conductor::message::GraphLoaded> {
       try {
-        auto loader = GraphLoader(
+        auto loader = std::make_shared<GraphLoader<V, E>>(
             this->state->config, this->state->algorithm->inputFormat(),
             ActorLoadingUpdate{
                 .fn =
@@ -80,7 +80,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                   this->template dispatch<pregel::message::StatusMessages>(
                       this->state->statusActor, update);
                 }});
-        this->state->magazine = loader.load().get();
+        this->state->magazine = loader->load().get();
 
         LOG_TOPIC("5206c", WARN, Logger::PREGEL)
             << fmt::format("Worker {} has finished loading.", this->self);
