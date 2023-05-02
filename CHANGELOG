@@ -1,6 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* Fix unstable test setting the desired number of dbservers.
+
 * FE-253: bugfix - validate JSON, show errors & disable save when error.
 
 * FE-254: bugfix - filter out empty storedValues for persistent index.
