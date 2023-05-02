@@ -1,6 +1,9 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* FE-251: bugfix - prohibit multiple expansions of the same node in the graph
+  viewer.
+
 * Fix unstable test setting the desired number of dbservers.
 
 * FE-253: bugfix - validate JSON, show errors & disable save when error.
