@@ -3164,8 +3164,9 @@ struct InMemoryLogStorageMethods final : RocksDBLogStorageMethods {
     }
     log = transient.persistent();
     if (true || writeOptions.waitForSync) {
-      TRI_ASSERT(fflush(file) == 0) << "failed to flush: " << strerror(errno);
-      TRI_ASSERT(fdatasync(fileno(file)) == 0)
+      ADB_PROD_ASSERT(fflush(file) == 0)
+          << "failed to flush: " << strerror(errno);
+      ADB_PROD_ASSERT(fdatasync(fileno(file)) == 0)
           << "failed to flush: " << strerror(errno);
     }
     return {ResultT{SequenceNumber{0}}};
@@ -3200,7 +3201,7 @@ struct InMemoryLogStorageMethods final : RocksDBLogStorageMethods {
       LOG_DEVEL << "failed to open file " << strerror(errno);
       FATAL_ERROR_EXIT();
     }
-    fallocate(fileno(file), FALLOC_FL_KEEP_SIZE, 0, 1 * 1024 * 1024 * 1024);
+    // fallocate(fileno(file), FALLOC_FL_KEEP_SIZE, 0, 1 * 1024 * 1024 * 1024);
     LOG_DEVEL << "open result = " << 0 << " filename = " << logFile;
   }
 
