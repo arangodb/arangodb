@@ -98,7 +98,7 @@ const ExpandNodeButton = ({
 }: {
   foundNode: FullItem<NodeDataType, "id">;
 }) => {
-  const { rightClickedEntity, graphName, datasets, expandedNodes, setExpandedNodes } = useGraph();
+  const { rightClickedEntity, graphName, datasets } = useGraph();
   const { urlParams } = useUrlParameterContext();
   const expandNode = async () => {
     if (!rightClickedEntity?.nodeId) {
@@ -124,7 +124,6 @@ const ExpandNodeButton = ({
       id: rightClickedEntity.nodeId,
       label: newLabel
     });
-    setExpandedNodes((expandedNodes) => [...expandedNodes, rightClickedEntity.nodeId as string]);
     const newNodes = newData.nodes.filter((node: any) => {
       return !datasets?.nodes.get(node.id);
     });
@@ -134,5 +133,5 @@ const ExpandNodeButton = ({
     datasets?.nodes.add(newNodes);
     datasets?.edges.add(newEdges);
   };
-  return <MenuItem isDisabled={expandedNodes?.includes(foundNode.id)} onClick={expandNode}>Expand Node</MenuItem>;
+  return <MenuItem isDisabled={foundNode.label?.includes(" (expanded)")} onClick={expandNode}>Expand Node</MenuItem>;
 };
