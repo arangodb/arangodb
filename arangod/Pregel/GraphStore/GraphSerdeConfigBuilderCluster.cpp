@@ -116,6 +116,7 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
       auto loadableVertexShard = LoadableVertexShard{
           .pregelShard = PregelShard(result.size()),
           .vertexShard = vertexShardTable[collIdx][shardIdx],
+          .responsibleServer = "",
           .collectionName = graphByCollections.vertexCollections[collIdx],
           .edgeShards = {}};
 

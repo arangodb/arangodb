@@ -65,6 +65,7 @@ GraphSerdeConfigBuilderSingleServer::GraphSerdeConfigBuilderSingleServer(
     auto loadableVertexShard =
         LoadableVertexShard{.pregelShard = PregelShard(idx),
                             .vertexShard = vertexCollection,
+                            .responsibleServer = "",
                             .collectionName = vertexCollection,
                             .edgeShards = {}};
     for (auto const& edgeCollection : graphByCollections.edgeCollections) {
