@@ -260,6 +260,9 @@ build directory:
 
     cmake --build . --target frontend
 
+Note that as of 3.12 the frontend target is part of the default target. To avoid building the frontend and
+skip the CMake checks for yarn and node you can disable this using `-DSKIP_FRONTEND`.
+
 For Oskar you may use the following:
 
     shellInAlpineContainer
@@ -274,7 +277,7 @@ The frontend can also be built using these commands:
 
     cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
     yarn install
-    yarn run build
+    yarn build
 
 For development purposes, go to `js/apps/system/_admin/aardvark/APP/react` and
 run:
