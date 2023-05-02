@@ -1,11 +1,13 @@
-import { createColumnHelper, Row } from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { AnalyzerDescription } from "arangojs/analyzer";
-import React from "react";
+import React, { useMemo } from "react";
 import { useAnalyzersContext } from "./AnalyzersContext";
+import { TYPE_TO_TYPE_NAME_MAP } from "./AnalyzersHelpers";
 import { FilterTable } from "./FilterTable";
 
 const columnHelper = createColumnHelper<AnalyzerDescription>();
-const TABLE_HEADERS = [
+
+const TABLE_COLUMNS = [
   columnHelper.accessor("name", {
     header: "DB",
     id: "db",
@@ -17,21 +19,43 @@ const TABLE_HEADERS = [
   columnHelper.accessor("name", {
     header: "Name"
   }),
-  columnHelper.accessor("type", { header: "Type" }),
+  columnHelper.accessor("type", {
+    header: "Type",
+    cell: info => {
+      return (
+        TYPE_TO_TYPE_NAME_MAP[info.cell.getValue()] || info.cell.getValue()
+      );
+    }
+  }),
   columnHelper.display({
     id: "actions",
     header: "Actions",
-    cell: props => {
-      return <RowActions row={props.row} />;
+    cell: () => {
+      return <RowActions />;
     }
   })
 ];
 
-const RowActions = ({ row }: { row: Row<AnalyzerDescription> }) => {
-  console.log({ row });
+const RowActions = () => {
   return <div>View Delete</div>;
 };
 export const AnalyzersTable = () => {
-  const { analyzers } = useAnalyzersContext();
-  return <FilterTable columns={TABLE_HEADERS} data={analyzers || []} />;
+  const { analyzers, showSystemAnalyzers } = useAnalyzersContext();
+  const newAnalyzers = useMemo(() => {
+    return analyzers?.filter(
+      analyzer => analyzer.name.includes("::") || showSystemAnalyzers
+    );
+  }, [analyzers, showSystemAnalyzers]);
+  return (
+    <FilterTable
+      initialSorting={[
+        {
+          id: "name",
+          desc: false
+        }
+      ]}
+      columns={TABLE_COLUMNS}
+      data={newAnalyzers || []}
+    />
+  );
 };

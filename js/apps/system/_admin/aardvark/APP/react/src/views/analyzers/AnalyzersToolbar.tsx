@@ -5,8 +5,9 @@ import { useAnalyzersContext } from "./AnalyzersContext";
 export const AnalyzersToolbar = () => {
   const { showSystemAnalyzers, setShowSystemAnalyzers } = useAnalyzersContext();
   return (
-    <Box marginTop="4">
+    <Box marginTop="4" marginBottom="4">
       <Checkbox
+        size="sm"
         onChange={() => {
           setShowSystemAnalyzers(!showSystemAnalyzers);
         }}

@@ -21,14 +21,16 @@ import * as React from "react";
 
 export type FilterTableProps<Data extends object> = {
   data: Data[];
+  initialSorting?: SortingState;
   columns: ColumnDef<Data, any>[];
 };
 
 export function FilterTable<Data extends object>({
   data,
-  columns
+  columns,
+  initialSorting = []
 }: FilterTableProps<Data>) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>(initialSorting);
   const table = useReactTable({
     columns,
     data,
