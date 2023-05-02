@@ -3,6 +3,10 @@ v3.11.0 (XXXX-XX-XX)
 
 * Fix unstable test setting the desired number of dbservers.
 
+* FE-253: bugfix - validate JSON, show errors & disable save when error.
+
+* FE-254: bugfix - filter out empty storedValues for persistent index.
+
 * FE-252: bugfix - canvas image screenshot breaks graph colors.
 
 * Fix incompatibility between 3.9 and 3.10 w.r.t. to serialization of AQL array
