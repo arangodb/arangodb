@@ -13,8 +13,6 @@ const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_TYPE_NAME_MAP).map(type => {
 });
 
 export const AddAnalyzerForm = () => {
-  const [featuresField, featuresFieldMeta, featuresFieldHelper] =
-    useField("features");
   return (
     <Grid templateColumns={"1fr 1fr"} gap="6">
       <Stack>
