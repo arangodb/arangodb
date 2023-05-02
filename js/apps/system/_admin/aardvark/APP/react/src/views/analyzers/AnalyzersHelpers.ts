@@ -1,4 +1,4 @@
-export const TYPE_TO_TYPE_NAME_MAP = {
+export const TYPE_TO_LABEL_MAP = {
   identity: "Identity",
   delimiter: "Delimiter",
   stem: "Stem",

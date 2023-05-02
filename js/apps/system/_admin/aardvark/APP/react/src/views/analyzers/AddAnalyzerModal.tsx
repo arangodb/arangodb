@@ -41,7 +41,7 @@ export const AddAnalyzerModal = ({
           name: Yup.string().required("Name is required")
         })}
         onSubmit={values => {
-          console.log({ values });
+          console.log("submit", { values });
         }}
       >
         <Form>

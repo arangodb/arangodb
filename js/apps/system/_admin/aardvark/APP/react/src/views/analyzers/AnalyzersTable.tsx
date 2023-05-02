@@ -2,7 +2,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { AnalyzerDescription } from "arangojs/analyzer";
 import React, { useMemo } from "react";
 import { useAnalyzersContext } from "./AnalyzersContext";
-import { TYPE_TO_TYPE_NAME_MAP } from "./AnalyzersHelpers";
+import { TYPE_TO_LABEL_MAP } from "./AnalyzersHelpers";
 import { FilterTable } from "./FilterTable";
 
 const columnHelper = createColumnHelper<AnalyzerDescription>();
@@ -23,7 +23,7 @@ const TABLE_COLUMNS = [
     header: "Type",
     cell: info => {
       return (
-        TYPE_TO_TYPE_NAME_MAP[info.cell.getValue()] || info.cell.getValue()
+        TYPE_TO_LABEL_MAP[info.cell.getValue()] || info.cell.getValue()
       );
     }
   }),

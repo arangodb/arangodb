@@ -3,12 +3,13 @@ import { useField } from "formik";
 import React from "react";
 import { InputControl } from "../../components/form/InputControl";
 import { SelectControl } from "../../components/form/SelectControl";
-import { TYPE_TO_TYPE_NAME_MAP } from "./AnalyzersHelpers";
+import { TYPE_TO_LABEL_MAP } from "./AnalyzersHelpers";
+import { AnalyzerTypeForm } from "./AnalyzerTypeForm";
 
-const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_TYPE_NAME_MAP).map(type => {
+const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP).map(type => {
   return {
     value: type,
-    label: TYPE_TO_TYPE_NAME_MAP[type as keyof typeof TYPE_TO_TYPE_NAME_MAP]
+    label: TYPE_TO_LABEL_MAP[type as keyof typeof TYPE_TO_LABEL_MAP]
   };
 });
 
@@ -38,6 +39,7 @@ export const AddAnalyzerForm = () => {
           <FeatureSwitch name="position" />
         </Grid>
       </Stack>
+      <AnalyzerTypeForm />
     </Grid>
   );
 };
@@ -47,6 +49,7 @@ const FEATURE_NAME_TO_LABEL_MAP = {
   norm: "Norm",
   position: "Position"
 };
+
 const FeatureSwitch = ({ name }: { name: string }) => {
   const [featuresField, , featuresFieldHelper] = useField("features");
   return (

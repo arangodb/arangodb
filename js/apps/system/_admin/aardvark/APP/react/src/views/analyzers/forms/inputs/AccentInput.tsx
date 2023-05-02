@@ -1,15 +1,6 @@
 import React from "react";
-import { FormProps } from "../../../../utils/constants";
-import { AccentProperty } from "../../constants";
-import Checkbox from "../../../../components/pure-css/form/Checkbox";
-import { getBooleanFieldSetter } from "../../../../utils/helpers";
+import { SwitchControl } from "../../../../components/form/SwitchControl";
 
-type AccentInputProps = FormProps<AccentProperty> & {
-  inline?: boolean;
+export const AccentInput = () => {
+  return <SwitchControl name="properties.accent" label="Accent" />;
 };
-
-const AccentInput = ({ formState, dispatch, disabled, inline = true }: AccentInputProps) =>
-  <Checkbox onChange={getBooleanFieldSetter('properties.accent', dispatch)} label={'Accent'} inline={inline}
-            disabled={disabled} checked={formState.properties.accent}/>;
-
-export default AccentInput;

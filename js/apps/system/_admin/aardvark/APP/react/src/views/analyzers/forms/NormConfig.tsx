@@ -1,0 +1,15 @@
+import { Grid } from "@chakra-ui/react";
+import React from "react";
+import { AccentInput } from "./inputs/AccentInput";
+import { CaseInput } from "./inputs/CaseInput";
+import { LocaleInput } from "./inputs/LocaleInput";
+
+export const NormConfig = () => {
+  return (
+    <Grid templateColumns={"1fr 1fr 1fr"} columnGap="4">
+      <LocaleInput />
+      <CaseInput />
+      <AccentInput />
+    </Grid>
+  );
+};

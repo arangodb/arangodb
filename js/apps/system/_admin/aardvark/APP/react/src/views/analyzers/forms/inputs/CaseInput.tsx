@@ -1,29 +1,22 @@
-import React, { ChangeEvent } from "react";
-import { FormProps } from "../../../../utils/constants";
-import Select from "../../../../components/pure-css/form/Select";
-import { CaseProperty } from "../../constants";
+import React from "react";
+import { SelectControl } from "../../../../components/form/SelectControl";
 
-type CaseInputProps = FormProps<CaseProperty> & {
-  defaultValue?: string;
+export const CaseInput = () => {
+  return (
+    <SelectControl
+      name="properties.case"
+      label="Case"
+      selectProps={{
+        options: [
+          { value: "lower", label: "Lower" },
+          { value: "upper", label: "Upper" },
+          { value: "none", label: "None" }
+        ],
+        defaultValue: {
+          value: "none",
+          label: "None"
+        }
+      }}
+    />
+  );
 };
-
-const CaseInput = ({ formState, dispatch, disabled, defaultValue = 'none' }: CaseInputProps) => {
-  const updateCase = (event: ChangeEvent<HTMLSelectElement>) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: 'properties.case',
-        value: event.target.value
-      }
-    });
-  };
-
-  return <Select label={'Case'} value={formState.properties.case || defaultValue} onChange={updateCase}
-                 disabled={disabled}>
-    <option value={'lower'}>Lower</option>
-    <option value={'upper'}>Upper</option>
-    <option value={'none'}>None</option>
-  </Select>;
-};
-
-export default CaseInput;
