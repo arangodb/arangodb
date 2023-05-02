@@ -1,5 +1,6 @@
 devel
 -----
+* FE-254: bugfix - filter out empty storedValues for persistent index.
 
 * FE-253: bugfix - validate JSON, show errors & disable save when error
 
