@@ -4,7 +4,8 @@
 
 
 # Single Server only Tests
-BackupAuthNoSysTests,BackupAuthSysTests,BackupNoAuthSysTests,arangosh,arangobench,permissions,paths_server,version,active_failover single name=single_server_only
+BackupAuthNoSysTests,BackupAuthSysTests,BackupNoAuthSysTests,arangosh,arangobench,permissions,version,active_failover single name=single_server_only
+# paths_server,
 
 # Single Server Replication Tests
 replication_fuzz priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
@@ -15,7 +16,7 @@ replication_ongoing_global_spec parallelity=3 size=small single -- --extraArgs:l
 replication_static priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 # TODO - we could actually use 4 buckets instead of 2, but ATM this causes issues with other tests on Jenkins
 replication_sync priority=8000 buckets=2 parallelity=3 size=medium single -- --extraArgs:log.level replication=trace
-shell_replication parallelity=3 size=small single 
+# shell_replication parallelity=3 size=small single 
 http_replication priority=500 parallelity=3 size=small single
 
 # Misc single server tests
@@ -24,7 +25,8 @@ authentication priority=1000 single
 endpoints priority=250 single -- --skipEndpointsIpv6 true
 recovery priority=2000 buckets=6 parallelity=5 size=small single
 
-shell_server_v8,shell_v8 priority=500 name=v8 single -- $EncryptionAtRest
+# shell_server_v8,
+shell_v8 priority=500 name=v8 single -- $EncryptionAtRest
 
 shell_api priority=500 single -- $EncryptionAtRest
 
@@ -53,9 +55,9 @@ shell_client_aql priority=500  single suffix=http2 -- --http2 true
 shell_client_aql priority=750  single suffix=vst -- --vst true
 shell_client_aql priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true
 
-shell_server_aql priority=750 single buckets=5
+# shell_server_aql priority=750 single buckets=5
 # execute without buckets in single server, but use 5 buckets in cluster
-shell_server priority=1000 single buckets=3
+# shell_server priority=1000 single buckets=3
 
 # C++ unit tests are executed in single env
 gtest_iresearch priority=1000 parallelity=3 size=medium single
@@ -78,12 +80,12 @@ load_balancing priority=500 size=small cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
 
 replication2_client size=small cluster
-replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
+# replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
 
-resilience_analyzers priority=500 size=small cluster -- --dumpAgencyOnError true
-resilience_failover priority=1200 size=small buckets=2 cluster -- --dumpAgencyOnError true
-resilience_move priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnError true
-resilience_sharddist size=small cluster -- --dumpAgencyOnError true
+# resilience_analyzers priority=500 size=small cluster -- --dumpAgencyOnError true
+# resilience_failover priority=1200 size=small buckets=2 cluster -- --dumpAgencyOnError true
+# resilience_move priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnError true
+# resilience_sharddist size=small cluster -- --dumpAgencyOnError true
 
 recovery_cluster priority=2000 size=small cluster buckets=8
 
@@ -97,11 +99,11 @@ shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
-shell_server_aql priority=1000 size=medium+ cluster sniff buckets=16 -- --dumpAgencyOnError true --sniffFilter graph
+# shell_server_aql priority=1000 size=medium+ cluster sniff buckets=16 -- --dumpAgencyOnError true --sniffFilter graph
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true
-shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
+# shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
 
 rta_makedata cluster
 
@@ -124,13 +126,14 @@ dump_mixed_cluster_single,dump_mixed_single_cluster name=dump_mixed -- --dumpAge
 dump_with_crashes parallelity=1 priority=2000 -- --dumpAgencyOnError true 
 
 # Audit Tests
-audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true
+audit_client enterprise name=audit -- --dumpAgencyOnError true
+#, audit_server
 
 # Full Tests Single Server
 shell_fuzzer full cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
 shell_fuzzer full single priority=500 -- --dumpAgencyOnError true
 authentication_parameters single full priority=1000
-authentication_server single full priority=1000
+# authentication_server single full priority=1000
 config single full priority=1000
 foxx_manager single full priority=500
 queryCacheAuthorization single full priority=500
@@ -152,11 +155,11 @@ ldapsecondldap !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST -
 authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true
 chaos !windows !coverage full cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
 client_resilience full cluster priority=500 -- --dumpAgencyOnError true
-resilience_failover_failure full cluster priority=500 -- --dumpAgencyOnError true
-resilience_failover_view full cluster priority=500 -- --dumpAgencyOnError true
-resilience_move_view full cluster priority=750 -- --dumpAgencyOnError true
-resilience_repair full cluster priority=500 -- --dumpAgencyOnError true
-resilience_transactions full cluster priority=500 -- --dumpAgencyOnError true
+#resilience_failover_failure full cluster priority=500 -- --dumpAgencyOnError true
+#resilience_failover_view full cluster priority=500 -- --dumpAgencyOnError true
+#resilience_move_view full cluster priority=750 -- --dumpAgencyOnError true
+#resilience_repair full cluster priority=500 -- --dumpAgencyOnError true
+#resilience_transactions full cluster priority=500 -- --dumpAgencyOnError true
 shell_client_aql full cluster priority=2500 -- --dumpAgencyOnError true
 wal_cleanup full cluster priority=2500 -- --dumpAgencyOnError true
 

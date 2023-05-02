@@ -362,6 +362,7 @@ class runOnArangodRunner extends testRunnerBase{
     this.info = "onRemoteArangod";
   }
   runOneTest(file) {
+    throw("running on server not supported anymore");
     try {
       let testCode = getTestCode(file, this.options, this.instanceManager);
       let httpOptions = _.clone(this.instanceManager.httpAuthOptions);
