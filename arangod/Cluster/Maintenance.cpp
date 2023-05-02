@@ -1008,23 +1008,21 @@ static ResultT<std::vector<ServerID>> getLocalFollowers(
     auto vocbase = &guard.database();
     auto collection = vocbase->lookupCollection(shard);
     if (collection == nullptr) {
-      auto res = Result{
+      auto res = Result(
           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          fmt::format(
-              "Maintenance::getLocalFollowers: Failed to lookup collection {}",
-              shard)};
+          "Maintenance::getLocalFollowers: Failed to lookup collection " +
+              shard);
       LOG_TOPIC("ce393", DEBUG, Logger::MAINTENANCE) << res;
       return res;
     }
     return collection->followers()->getCopy();
   } catch (std::exception const& e) {
-    auto res = Result{
-        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-        fmt::format(
-            "Maintenance::getLocalFollowers: Failed to lookup database {}, "
-            "exception: {} (this is expected if the database was recently "
-            "deleted).",
-            database, e.what())};
+    auto res =
+        Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+               "Maintenance::getLocalFollowers: Failed to lookup database " +
+                   database + ", exception: " + e.what() +
+                   " (this is expected if the database was recently "
+                   "deleted).");
     LOG_TOPIC("a4e35", WARN, Logger::MAINTENANCE) << res;
     return res;
   }
