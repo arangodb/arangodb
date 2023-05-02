@@ -103,19 +103,17 @@ auto InMemoryLogManager::appendLogEntry(
                          // for all log entries, independent of the log config.
 
     auto const index = data._inMemoryLog.getNextIndex();
+    auto const payloadSize = std::holds_alternative<LogPayload>(payload)
+                                 ? std::get<LogPayload>(payload).byteSize()
+                                 : 0;
+    bool const isMetaLogEntry = std::holds_alternative<LogMetaPayload>(payload);
 
     auto logEntry = InMemoryLogEntry(
         PersistingLogEntry(TermIndexPair{term, index}, std::move(payload)),
         waitForSync);
     logEntry.setInsertTp(insertTp);
     auto size = logEntry.entry().approxByteSize();
-
     data._inMemoryLog.appendInPlace(_logContext, std::move(logEntry));
-
-    bool const isMetaLogEntry = std::holds_alternative<LogMetaPayload>(payload);
-    auto const payloadSize = std::holds_alternative<LogPayload>(payload)
-                                 ? std::get<LogPayload>(payload).byteSize()
-                                 : 0;
 
     _metrics->replicatedLogInsertsBytes->count(payloadSize);
     _metrics->leaderNumInMemoryEntries->fetch_add(1);
