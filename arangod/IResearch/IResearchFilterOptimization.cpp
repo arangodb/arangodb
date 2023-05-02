@@ -33,8 +33,8 @@ bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
                                     std::string_view startsWith) {
   if (filter->type() == irs::type<irs::And>::id()) {
     for (auto& f : *filter) {
-      if (f.type() == irs::type<irs::by_edit_distance>::id()) {
-        auto& levenshtein = static_cast<irs::by_edit_distance&>(f);
+      if (f->type() == irs::type<irs::by_edit_distance>::id()) {
+        auto& levenshtein = static_cast<irs::by_edit_distance&>(*f);
         if (levenshtein.field() == name) {
           auto options = levenshtein.mutable_options();
           if (startsWith.size() <= options->prefix.size()) {
