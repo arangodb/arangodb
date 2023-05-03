@@ -1,6 +1,19 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed a race in a test for aborting long running operations.
+
+* FE-251: bugfix - prohibit multiple expansions of the same node in the graph
+  viewer.
+
+* FE-162: Fix display of geodesic lines.
+
+* Fixed a race in the Maintenance, impacting leaders that have just been
+  resigned. During a MoveShard job, the old leader could sabotage the whole
+  operation by removing the newly added follower from Current. The solution
+  is to update Current using local collection information, instead of the
+  potentially outdated velocypack slice.
+
 * Fix unstable test setting the desired number of dbservers.
 
 * FE-253: bugfix - validate JSON, show errors & disable save when error.
