@@ -91,8 +91,6 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
   connectToLeader();
   leaderFunc2(state);
 
-  internal.wal.flush(true, false);
-
   // use lastLogTick as of now
   let loggerState = replication.logger.state().state;
   state.lastLogTick = loggerState.lastUncommittedLogTick;
@@ -112,14 +110,14 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
   replication.applier.properties(applierConfiguration);
   replication.applier.start(syncResult.lastLogTick, syncResult.barrierId);
 
-  var printed = false;
-  var handled = false;
+  let printed = false;
+  let handled = false;
 
   let followerState;
 
   while (true) {
     if (!handled) {
-      var r = followerFuncOngoing(state);
+      let r = followerFuncOngoing(state);
       if (r === 'wait') {
         // special return code that tells us to hang on
         internal.wait(0.5, false);
@@ -157,7 +155,6 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
     internal.wait(0.25, false);
   }
 
-  internal.wait(0.1, false);
   db._flushCache();
 
   try {
@@ -201,17 +198,15 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          db._create(cn);
+          let c = db._create(cn);
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
             docs.push({ _key: "test" + i });
           }
-          db._collection(cn).insert(docs);
-          internal.wal.flush(true, true);
+          c.insert(docs);
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -229,22 +224,21 @@ function BaseTestConfig () {
 
       compare(
         function (state) {
-          db._create(cn);
+          let c = db._create(cn);
+          let docs = [];
           for (let i = 0; i < 1000; ++i) {
-            db._collection(cn).insert({ _key: "test" + i });
+            docs.push({ _key: "test" + i });
           }
-          internal.wal.flush(true, true);
+          c.insert(docs);
         },
 
         function (state) {
           for (let i = 0; i < 1000; ++i) {
             db._collection(cn).update("test" + i, { value: i });
           }
-          internal.wal.flush(true, true);
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -267,18 +261,18 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          db._create(cn);
+          let c = db._create(cn);
+          let docs = [];
           for (let i = 0; i < 1000; ++i) {
-            db._collection(cn).insert({ _key: "test" + i });
+            docs.push({ _key: "test" + i });
           }
+          c.insert(docs);
           for (let i = 0; i < 1000; ++i) {
-            db._collection(cn).remove("test" + i);
+            c.remove("test" + i);
           }
-          internal.wal.flush(true, true);
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -304,19 +298,13 @@ function BaseTestConfig () {
         function (state) {
           db._create(cn);
           db._create(cn + '2');
-          for (var i = 0; i < 100; ++i) {
-            db._collection(cn).save({
-              value: i
-            });
-            db._collection(cn + '2').save({
-              value: i
-            });
+          for (let i = 0; i < 100; ++i) {
+            db._collection(cn).insert({ value: i });
+            db._collection(cn + '2').insert({ value: i });
           }
-          internal.wal.flush(true, true);
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -343,19 +331,13 @@ function BaseTestConfig () {
         function (state) {
           db._create(cn);
           db._create(cn + '2');
-          for (var i = 0; i < 100; ++i) {
-            db._collection(cn).save({
-              value: i
-            });
-            db._collection(cn + '2').save({
-              value: i
-            });
+          for (let i = 0; i < 100; ++i) {
+            db._collection(cn).insert({ value: i });
+            db._collection(cn + '2').insert({ value: i });
           }
-          internal.wal.flush(true, true);
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -384,11 +366,9 @@ function BaseTestConfig () {
             db._collection(cn).remove("test" + i);
             db._collection(cn).insert({ _key: "test" + i, value: 42 + i });
           }
-          internal.wal.flush(true, true);
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -420,11 +400,9 @@ function BaseTestConfig () {
             tc.insert({ _key: "test" + i, value: 42 + i });
           }
           trx.commit();
-          internal.wal.flush(true, true);
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -465,7 +443,6 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -502,7 +479,6 @@ function BaseTestConfig () {
         },
 
         function(state) {
-          return true;
         },
 
         function(state) {
@@ -523,7 +499,7 @@ function BaseTestConfig () {
           db._drop(cn);
           db._create(cn);
           db[cn].ensureIndex({
-            type: 'hash',
+            type: 'persistent',
             fields: ['value'],
             unique: true
           });
@@ -544,7 +520,6 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -568,7 +543,7 @@ function BaseTestConfig () {
         function(state) {
           db._drop(cn);
           db._create(cn);
-          db[cn].ensureIndex({ type: "hash", fields: ["value"], unique: true });
+          db[cn].ensureIndex({ type: "persistent", fields: ["value"], unique: true });
         },
 
         function(state) {
@@ -588,7 +563,6 @@ function BaseTestConfig () {
         },
 
         function(state) {
-          return true;
         },
 
         function(state) {
@@ -623,17 +597,15 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          db._create(cn);
-          for (var i = 0; i < 100; ++i) {
-            db._collection(cn).save({
-              value: i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          for (let i = 0; i < 100; ++i) {
+            docs.push({ value: i });
           }
-          internal.wal.flush(true, true);
+          c.insert(docs);
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -654,18 +626,16 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          db._create(cn);
-          for (var i = 0; i < 100; ++i) {
-            db._collection(cn).save({
-              value: i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          for (let i = 0; i < 100; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
           db._drop(cn);
-          internal.wal.flush(true, true);
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -688,22 +658,21 @@ function BaseTestConfig () {
         function (state) {
           db._create(cn);
           db._collection(cn).ensureIndex({
-            type: 'hash',
+            type: 'persistent',
             fields: ['value']
           });
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
-          var col = db._collection(cn);
+          let col = db._collection(cn);
           assertNotNull(col, 'collection does not exist');
-          var idx = col.getIndexes();
+          let idx = col.getIndexes();
           assertEqual(2, idx.length);
           assertEqual('primary', idx[0].type);
-          assertEqual('hash', idx[1].type);
+          assertEqual('persistent', idx[1].type);
           assertEqual(['value'], idx[1].fields);
         }
       );
@@ -722,19 +691,18 @@ function BaseTestConfig () {
 
         function (state) {
           db._create(cn);
-          var idx = db._collection(cn).ensureIndex({
-            type: 'hash',
+          let idx = db._collection(cn).ensureIndex({
+            type: 'persistent',
             fields: ['value']
           });
           db._collection(cn).dropIndex(idx);
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
-          var idx = db._collection(cn).getIndexes();
+          let idx = db._collection(cn).getIndexes();
           assertEqual(1, idx.length);
           assertEqual('primary', idx[0].type);
         }
@@ -758,7 +726,6 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -788,7 +755,6 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -807,29 +773,44 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
+          let docs = [];
           for (let i = 0; i < 1000; i++) {
-            c.insert({
-              value: i
-            });
+            docs.push({ value: i });
           }
+          c.insert(docs);
         },
 
         function (state) {
+          // note: this truncate is executed as follows on the leader:
+          // - begin trx
+          // - remove doc1
+          // - remove doc2
+          // - ...
+          // - remove docn
+          // - commit
           db._collection(cn).truncate({ compact: false });
+          
+          // note: the following is necessary because otherwise the test
+          // can fail. the reason is that the truncate above does produce
+          // a separate tick value for the commit operation on the leader.
+          // when the follower checks if it has fully applied the operations
+          // from the leader, it will already think that is has applied all 
+          // operations successfully after carrying out the last remove
+          // operation. however, the changes are not yet committed, so there
+          // is a race between the transaction committing on the follower
+          // and the compare function checking the follower's apply
+          // progress.
+          // by adding a follow-up operation such as the following insert,
+          // this race can be avoided.
+          db._collection(cn).insert({});
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
-          const c = db._collection(cn);
-          let x = 10;
-          while (c.count() > 0 && x-- > 0) {
-            internal.sleep(1);
-          }
-          assertEqual(c.count(), 0);
-          assertEqual(c.all().toArray().length, 0);
+          assertEqual(db._collection(cn).count(), 1);
+          assertEqual(db._collection(cn).toArray().length, 1);
         }
       );
     },
@@ -846,9 +827,7 @@ function BaseTestConfig () {
           let c = db._create(cn);
           let docs = [];
           for (let i = 0; i < (32 * 1024 + 1); i++) {
-            docs.push({
-              value: i
-            });
+            docs.push({ value: i });
             if (docs.length >= 1000) {
               c.insert(docs);
               docs = [];
@@ -862,7 +841,6 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          return true;
         },
 
         function (state) {
@@ -890,17 +868,17 @@ function BaseTestConfig () {
               write: cn
             },
             action: function (params) {
-              var wait = require('internal').wait;
-              var db = require('internal').db;
-              var c = db._collection(params.cn);
+              let wait = require('internal').wait;
+              let db = require('internal').db;
+              let c = db._collection(params.cn);
 
-              for (var i = 0; i < 10; ++i) {
-                c.save({
+              for (let i = 0; i < 10; ++i) {
+                c.insert({
                   test1: i,
                   type: 'longTransactionBlocking',
                   coll: 'UnitTestsReplication'
                 });
-                c.save({
+                c.insert({
                   test2: i,
                   type: 'longTransactionBlocking',
                   coll: 'UnitTestsReplication'
@@ -928,8 +906,6 @@ function BaseTestConfig () {
 
           replication.applier.start();
           assertTrue(replication.applier.state().state.running);
-
-          return true;
         },
 
         function (state) {
@@ -952,22 +928,22 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          var func = db._executeTransaction({
+          let func = db._executeTransaction({
             collections: {
               write: cn
             },
             action: function (params) {
-              var wait = require('internal').wait;
-              var db = require('internal').db;
-              var c = db._collection(params.cn);
+              let wait = require('internal').wait;
+              let db = require('internal').db;
+              let c = db._collection(params.cn);
 
-              for (var i = 0; i < 10; ++i) {
-                c.save({
+              for (let i = 0; i < 10; ++i) {
+                c.insert({
                   test1: i,
                   type: 'longTransactionAsync',
                   coll: 'UnitTestsReplication'
                 });
-                c.save({
+                c.insert({
                   test2: i,
                   type: 'longTransactionAsync',
                   coll: 'UnitTestsReplication'
@@ -1007,7 +983,6 @@ function BaseTestConfig () {
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
             connectToFollower();
-            return true;
           }
         },
 
@@ -1031,22 +1006,22 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          var func = db._executeTransaction({
+          let func = db._executeTransaction({
             collections: {
               write: cn
             },
             action: function (params) {
-              var wait = require('internal').wait;
-              var db = require('internal').db;
-              var c = db._collection(params.cn);
+              let wait = require('internal').wait;
+              let db = require('internal').db;
+              let c = db._collection(params.cn);
 
-              for (var i = 0; i < 10; ++i) {
-                c.save({
+              for (let i = 0; i < 10; ++i) {
+                c.insert({
                   test1: i,
                   type: 'longTransactionAsyncWithFollowerRestarts',
                   coll: 'UnitTestsReplication'
                 });
-                c.save({
+                c.insert({
                   test2: i,
                   type: 'longTransactionAsyncWithFollowerRestarts',
                   coll: 'UnitTestsReplication'
@@ -1082,7 +1057,6 @@ function BaseTestConfig () {
             // task exists
             connectToFollower();
 
-            internal.wait(0.5, false);
             replication.applier.start();
             assertTrue(replication.applier.state().state.running);
             return 'wait';
@@ -1095,7 +1069,6 @@ function BaseTestConfig () {
             connectToFollower();
             replication.applier.start();
             assertTrue(replication.applier.state().state.running);
-            return true;
           }
         },
 
@@ -1330,7 +1303,7 @@ function BaseTestConfig () {
         function () { // followerFuncOngoing
         }, // followerFuncOngoing
         function (state) { // followerFuncFinal
-          var idx = db._collection(cn).getIndexes();
+          let idx = db._collection(cn).getIndexes();
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');
@@ -1400,7 +1373,7 @@ function BaseTestConfig () {
         },
         function (state) { // leaderFunc2
           const txt = 'the red foxx jumps over the pond';
-          db._collection(cn).save({
+          db._collection(cn).insert({
             _key: 'testxxx',
             'value': -1,
             'text': txt
@@ -1420,7 +1393,7 @@ function BaseTestConfig () {
         function (state) { // followerFuncFinal
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-          var idx = db._collection(cn).getIndexes();
+          let idx = db._collection(cn).getIndexes();
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');
@@ -1465,7 +1438,7 @@ function BaseTestConfig () {
         },
         function (state) { // leaderFunc2
           const txt = 'foxx';
-          db._collection(cn).save({
+          db._collection(cn).insert({
             _key: 'testxxx',
             'value': -1,
             'text': txt
@@ -1489,7 +1462,7 @@ function BaseTestConfig () {
         function (state) { // followerFuncFinal
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-          var idx = db._collection(cn).getIndexes();
+          let idx = db._collection(cn).getIndexes();
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');
@@ -1579,12 +1552,10 @@ function ReplicationOtherDBSuiteBase (dbName) {
   'use strict';
 
   // Setup documents to be stored on the leader.
-
+  const n = 50;
   let docs = [];
-  for (let i = 0; i < 50; ++i) {
-    docs.push({
-      value: i
-    });
+  for (let i = 0; i < n; ++i) {
+    docs.push({ value: i });
   }
   // Shared function that sets up replication
   // of the collection and inserts 50 documents.
@@ -1593,7 +1564,6 @@ function ReplicationOtherDBSuiteBase (dbName) {
     connectToLeader();
 
     // Create the collection
-    db._flushCache();
     db._create(cn);
 
     // Section - Follower
@@ -1620,21 +1590,26 @@ function ReplicationOtherDBSuiteBase (dbName) {
     // Section - Leader
     connectToLeader();
     // Insert some documents
-    db._collection(cn).save(docs);
-    // Flush wal to trigger replication
-    internal.wal.flush(true, true);
-    internal.wait(6, false);
+    db._collection(cn).insert(docs);
     // Use counter as indicator
     let count = collectionCount(cn);
-    assertEqual(50, count);
+    assertEqual(n, count);
 
     // Section - Follower
     connectToFollower();
-
+    
     // Give it some time to sync
-    internal.wait(6, false);
+    let tries = 20;
+    while (tries-- > 0) {
+      count = collectionCount(cn);
+      if (count === n) {
+        break;
+      }
+      internal.sleep(0.5);
+    }
+
     // Now we should have the same amount of documents
-    assertEqual(count, collectionCount(cn));
+    assertEqual(n, collectionCount(cn));
   };
 
   let suite = {
@@ -1720,9 +1695,7 @@ function ReplicationOtherDBSuiteBase (dbName) {
 
     // Just write some more
     db._useDatabase(dbName);
-    db._collection(cn).save(docs);
-    internal.wal.flush(true, true);
-    internal.wait(6, false);
+    db._collection(cn).insert(docs);
 
     db._useDatabase('_system');
 
@@ -1757,33 +1730,21 @@ function ReplicationOtherDBSuiteBase (dbName) {
     // Section - Leader
     connectToLeader();
     // Insert some documents
-    db._collection(cn).save(docs);
-    // Flush wal to trigger replication
-    internal.wal.flush(true, true);
-
-    const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
+    db._collection(cn).insert(docs);
 
     // Section - Follower
     connectToFollower();
 
-    // Give it some time to sync (eventually, should not do anything...)
-    let i = 30;
-    while (i-- > 0) {
-      let state = replication.applier.state();
-      if (!state.running) {
-        console.topic('replication=error', 'follower is not running');
-        break;
-      }
-      if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
-          compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
-        console.topic('replication=error', 'follower has caught up');
-        break;
-      }
-      internal.sleep(0.5);
+    // be dumb and wait here until everything settles
+    let tries = 100;
+    while (replication.applier.state().state.running && tries-- > 0) {
+      internal.wait(0.1, false);
     }
 
     // Now should still have empty collection
     assertEqual(0, collectionCount(cn));
+      
+    assertFalse(replication.applier.state().state.running);
   };
 
   suite["testDropDatabaseOnLeaderDuringReplication_" + dbName] = function () {
