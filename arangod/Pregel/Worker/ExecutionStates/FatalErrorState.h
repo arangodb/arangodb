@@ -33,6 +33,8 @@ struct FatalError : ExecutionState {
   // TODO: Tell the conductor that this worker has entered an error state.
   FatalError() = default;
 
-  [[nodiscard]] auto name() const -> std::string override { return "fatal error"; };
+  [[nodiscard]] auto name() const -> std::string override {
+    return "fatal error";
+  };
 };
 }  // namespace arangodb::pregel::worker

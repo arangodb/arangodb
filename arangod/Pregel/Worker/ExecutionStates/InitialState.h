@@ -31,7 +31,7 @@ struct WorkerState;
 
 template<typename V, typename E, typename M>
 struct Initial : ExecutionState {
-  explicit Initial(WorkerState<V, E, M>& worker);
+  explicit Initial(actor::ActorPID self, WorkerState<V, E, M>& worker);
   ~Initial() override = default;
 
   [[nodiscard]] auto name() const -> std::string override { return "initial"; };
@@ -40,12 +40,14 @@ struct Initial : ExecutionState {
                DispatchStatus const& dispatchStatus,
                DispatchMetrics const& dispatchMetrics,
                DispatchConductor const& dispatchConductor,
-               DispatchSelf const& dispatchSelf)
+               DispatchSelf const& dispatchSelf,
+               DispatchOther const& dispatchOther)
       -> std::unique_ptr<ExecutionState> override;
   auto cancel(actor::ActorPID const& sender,
               message::WorkerMessages const& message)
       -> std::unique_ptr<ExecutionState> override;
 
+  actor::ActorPID self;
   WorkerState<V, E, M>& worker;
 };
 }  // namespace arangodb::pregel::worker

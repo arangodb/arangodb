@@ -24,17 +24,25 @@
 #pragma once
 
 #include "State.h"
+#include "Pregel/VertexComputation.h"
 
 namespace arangodb::pregel::worker {
+struct VerticesProcessed {
+  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+  size_t activeCount;
+};
+
 template<typename V, typename E, typename M>
 struct WorkerState;
 
 template<typename V, typename E, typename M>
-struct Loading : ExecutionState {
-  explicit Loading(actor::ActorPID self, WorkerState<V, E, M>& worker);
-  ~Loading() override = default;
+struct Computing : ExecutionState {
+  explicit Computing(actor::ActorPID self, WorkerState<V, E, M>& worker);
+  ~Computing() override = default;
 
-  [[nodiscard]] auto name() const -> std::string override { return "loading"; };
+  [[nodiscard]] auto name() const -> std::string override {
+    return "computing";
+  };
   auto receive(actor::ActorPID const& sender,
                message::WorkerMessages const& message,
                DispatchStatus const& dispatchStatus,
@@ -46,6 +54,13 @@ struct Loading : ExecutionState {
   auto cancel(actor::ActorPID const& sender,
               message::WorkerMessages const& message)
       -> std::unique_ptr<ExecutionState> override;
+
+  auto prepareGlobalSuperStep(message::RunGlobalSuperStep message,
+                              DispatchOther const& dispatchOther) -> void;
+  auto processVertices(DispatchStatus const& dispatchStatus) -> VerticesProcessed;
+  auto finishProcessing(VerticesProcessed verticesProcessed, DispatchStatus const& dispatchStatus)
+      -> conductor::message::GlobalSuperStepFinished;
+  void initializeVertexContext(VertexContext<V, E, M>* ctx);
 
   actor::ActorPID self;
   WorkerState<V, E, M>& worker;

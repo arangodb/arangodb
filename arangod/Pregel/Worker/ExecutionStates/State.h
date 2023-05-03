@@ -37,6 +37,8 @@ typedef std::function<void(pregel::metrics::message::MetricsMessages)>
 typedef std::function<void(pregel::conductor::message::ConductorMessages)>
     DispatchConductor;
 typedef std::function<void(message::WorkerMessages)> DispatchSelf;
+typedef std::function<void(actor::ActorPID, message::WorkerMessages)>
+    DispatchOther;
 
 struct ExecutionState {
   virtual ~ExecutionState() = default;
@@ -47,7 +49,8 @@ struct ExecutionState {
                        DispatchStatus const& dispatchStatus,
                        DispatchMetrics const& dispatchMetrics,
                        DispatchConductor const& dispatchConductor,
-                       DispatchSelf const& dispatchSelf)
+                       DispatchSelf const& dispatchSelf,
+                       DispatchOther const& dispatchOther)
       -> std::unique_ptr<ExecutionState> {
     return nullptr;
   };

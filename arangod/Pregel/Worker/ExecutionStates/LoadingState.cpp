@@ -32,7 +32,8 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::worker;
 
 template<typename V, typename E, typename M>
-Loading<V, E, M>::Loading(WorkerState<V, E, M>& worker) : worker{worker} {}
+Loading<V, E, M>::Loading(actor::ActorPID self, WorkerState<V, E, M>& worker)
+    : self(std::move(self)), worker{worker} {}
 
 template<typename V, typename E, typename M>
 auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
@@ -40,8 +41,15 @@ auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
                                DispatchStatus const& dispatchStatus,
                                DispatchMetrics const& dispatchMetrics,
                                DispatchConductor const& dispatchConductor,
-                               DispatchSelf const& dispatchSelf)
+                               DispatchSelf const& dispatchSelf,
+                               DispatchOther const& dispatchOther)
     -> std::unique_ptr<ExecutionState> {
+  if (std::holds_alternative<worker::message::PregelMessage>(message)) {
+    dispatchSelf(message);
+
+    return nullptr;
+  }
+
   if (std::holds_alternative<worker::message::LoadGraph>(message)) {
     auto msg = std::get<worker::message::LoadGraph>(message);
     worker.outCache->setResponsibleActorPerShard(msg.responsibleActorPerShard);
@@ -61,7 +69,7 @@ auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
         worker.magazine = loader.load().get();
 
         LOG_TOPIC("5206c", WARN, Logger::PREGEL)
-            << fmt::format("Worker {} has finished loading.", this->self);
+            << fmt::format("Worker {} has finished loading.", self);
         return {conductor::message::GraphLoaded{
             .executionNumber = worker.config->executionNumber(),
             .vertexCount = worker.magazine.numberOfVertices(),
@@ -80,10 +88,10 @@ auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
     dispatchMetrics(
         arangodb::pregel::metrics::message::WorkerLoadingFinished{});
 
-    return std::make_unique<Loaded>(worker);
-  } else {
-    return std::make_unique<FatalError>();
+    return std::make_unique<Loaded>(self, worker);
   }
+
+  return std::make_unique<FatalError>();
 }
 
 template<typename V, typename E, typename M>

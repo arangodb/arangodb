@@ -30,6 +30,8 @@ namespace arangodb::pregel::worker {
 struct CleanedUp : ExecutionState {
   CleanedUp() = default;
 
-  [[nodiscard]] auto name() const -> std::string override { return "cleaned up"; };
+  [[nodiscard]] auto name() const -> std::string override {
+    return "cleaned up";
+  };
 };
 }  // namespace arangodb::pregel::worker

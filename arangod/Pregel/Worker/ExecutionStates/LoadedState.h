@@ -31,21 +31,23 @@ struct WorkerState;
 
 template<typename V, typename E, typename M>
 struct Loaded : ExecutionState {
-  explicit Loaded(WorkerState<V, E, M>& worker);
+  explicit Loaded(actor::ActorPID self, WorkerState<V, E, M>& worker);
   ~Loaded() override = default;
 
-  [[nodiscard]] auto name() const -> std::string override { return "loading"; };
+  [[nodiscard]] auto name() const -> std::string override { return "loaded"; };
   auto receive(actor::ActorPID const& sender,
                message::WorkerMessages const& message,
                DispatchStatus const& dispatchStatus,
                DispatchMetrics const& dispatchMetrics,
                DispatchConductor const& dispatchConductor,
-               DispatchSelf const& dispatchSelf)
+               DispatchSelf const& dispatchSelf,
+               DispatchOther const& dispatchOther)
       -> std::unique_ptr<ExecutionState> override;
   auto cancel(actor::ActorPID const& sender,
               message::WorkerMessages const& message)
       -> std::unique_ptr<ExecutionState> override;
 
+  actor::ActorPID self;
   WorkerState<V, E, M>& worker;
 };
 }  // namespace arangodb::pregel::worker

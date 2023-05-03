@@ -21,29 +21,27 @@
 /// @author Aditya Mukhopadhyay
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "InitialState.h"
-
-#include <utility>
+#include "LoadedState.h"
 #include "FatalErrorState.h"
 #include "Pregel/Worker/State.h"
-#include "LoadingState.h"
+#include "ComputingState.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::worker;
 
 template<typename V, typename E, typename M>
-Initial<V, E, M>::Initial(actor::ActorPID self, WorkerState<V, E, M>& worker)
+Loaded<V, E, M>::Loaded(actor::ActorPID self, WorkerState<V, E, M>& worker)
     : self(std::move(self)), worker{worker} {}
 
 template<typename V, typename E, typename M>
-auto Initial<V, E, M>::receive(actor::ActorPID const& sender,
-                               worker::message::WorkerMessages const& message,
-                               DispatchStatus const& dispatchStatus,
-                               DispatchMetrics const& dispatchMetrics,
-                               DispatchConductor const& dispatchConductor,
-                               DispatchSelf const& dispatchSelf,
-                               DispatchOther const& dispatchOther)
+auto Loaded<V, E, M>::receive(actor::ActorPID const& sender,
+                              worker::message::WorkerMessages const& message,
+                              DispatchStatus const& dispatchStatus,
+                              DispatchMetrics const& dispatchMetrics,
+                              DispatchConductor const& dispatchConductor,
+                              DispatchSelf const& dispatchSelf,
+                              DispatchOther const& dispatchOther)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::PregelMessage>(message)) {
     dispatchSelf(message);
@@ -51,25 +49,18 @@ auto Initial<V, E, M>::receive(actor::ActorPID const& sender,
     return nullptr;
   }
 
-  if (std::holds_alternative<worker::message::WorkerStart>(message)) {
-    dispatchConductor(ResultT<conductor::message::WorkerCreated>{});
-    dispatchMetrics(arangodb::pregel::metrics::message::WorkerStarted{});
-
-    return nullptr;
-  }
-
-  if (std::holds_alternative<worker::message::LoadGraph>(message)) {
+  if (std::holds_alternative<worker::message::RunGlobalSuperStep>(message)) {
     dispatchSelf(message);
 
-    return std::make_unique<Loading>(self, worker);
+    return std::make_unique<Computing>(self, worker);
   }
 
   return std::make_unique<FatalError>();
 }
 
 template<typename V, typename E, typename M>
-auto Initial<V, E, M>::cancel(actor::ActorPID const& sender,
-                              worker::message::WorkerMessages const& message)
+auto Loaded<V, E, M>::cancel(actor::ActorPID const& sender,
+                             worker::message::WorkerMessages const& message)
     -> std::unique_ptr<ExecutionState> {
   ExecutionState::cancel(sender, message);
 }
