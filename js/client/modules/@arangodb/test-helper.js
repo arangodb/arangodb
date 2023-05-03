@@ -268,7 +268,8 @@ const buildCode = function(key, command, cn, duration) {
   let file = fs.getTempFile() + "-" + key;
   fs.write(file, `
 (function() {
-require('internal').SetGlobalExecutionDeadlineTo((${duration} + 10) * 1000);
+// For chaos tests additional 10 secs might be not enough
+require('internal').SetGlobalExecutionDeadlineTo((${duration} + 60) * 1000);
 let tries = 0;
 while (true) {
   if (++tries % 3 === 0) {

@@ -26,18 +26,11 @@
 #include "Pregel/Conductor/ExecutionStates/DoneState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/State.h"
+#include "CanceledState.h"
 
 using namespace arangodb::pregel::conductor;
 
-Storing::Storing(ConductorState& conductor) : conductor{conductor} {
-  // TODO GORDO-1510
-  // conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_add(1);
-}
-
-Storing::~Storing() {
-  // TODO GORDO-1510
-  // conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
-}
+Storing::Storing(ConductorState& conductor) : conductor{conductor} {}
 
 auto Storing::messages()
     -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
@@ -47,6 +40,21 @@ auto Storing::messages()
     out.emplace(worker, worker::message::Store{});
   }
   return out;
+}
+
+auto Storing::cancel(arangodb::pregel::actor::ActorPID sender,
+                     message::ConductorMessages message)
+    -> std::optional<StateChange> {
+  auto newState = std::make_unique<Canceled>(conductor);
+  auto stateName = newState->name();
+
+  return StateChange{
+      .statusMessage = pregel::message::Canceled{.state = stateName},
+      .metricsMessage =
+          pregel::metrics::message::ConductorFinished{
+              .previousState =
+                  pregel::metrics::message::PreviousState::STORING},
+      .newState = std::move(newState)};
 }
 
 auto Storing::receive(actor::ActorPID sender,
@@ -63,6 +71,10 @@ auto Storing::receive(actor::ActorPID sender,
                 .errorMessage =
                     fmt::format("In {}: Received unexpected message {} from {}",
                                 name(), inspection::json(message), sender)},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
+                .previousState =
+                    pregel::metrics::message::PreviousState::STORING},
         .newState = std::move(newState)};
   }
   auto stored = std::get<ResultT<message::Stored>>(message);
@@ -76,6 +88,10 @@ auto Storing::receive(actor::ActorPID sender,
                 .errorMessage = fmt::format(
                     "In {}: Received error {} from {}", name(),
                     inspection::json(stored.errorMessage()), sender)},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
+                .previousState =
+                    pregel::metrics::message::PreviousState::STORING},
         .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);
@@ -85,8 +101,12 @@ auto Storing::receive(actor::ActorPID sender,
     auto stateName = newState->name();
     return StateChange{
         .statusMessage = pregel::message::PregelFinished{.state = stateName},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
+                .previousState =
+                    pregel::metrics::message::PreviousState::STORING},
         .newState = std::move(newState)};
   }
 
   return std::nullopt;
-};
+}
