@@ -1,8 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
-* FE-22: Display collection info by default when clicking on a collection in
-  the Web UI.
+* FE-22: Don't display collection content by default when clicking on a
+  collection in the Web UI.
 
 * Fixed a race in a test for aborting long running operations.
 
