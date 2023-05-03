@@ -6,6 +6,8 @@ type AnalyzersContextType = {
   analyzers: AnalyzerDescription[] | undefined;
   showSystemAnalyzers: boolean;
   setShowSystemAnalyzers: (value: boolean) => void;
+  initialValues: { [key: string]: any };
+  setInitialValues: (value: { [key: string]: any }) => void;
 };
 const AnalyzersContext = createContext<AnalyzersContextType>(
   {} as AnalyzersContextType
@@ -13,13 +15,22 @@ const AnalyzersContext = createContext<AnalyzersContextType>(
 
 export const AnalyzersProvider = ({ children }: { children: ReactNode }) => {
   const [showSystemAnalyzers, setShowSystemAnalyzers] = React.useState(false);
+  const [initialValues, setInitialValues] = React.useState<{
+    [key: string]: any;
+  }>({
+    name: "",
+    type: "identity",
+    features: []
+  });
   const { analyzers } = useFetchAnalyzers();
   return (
     <AnalyzersContext.Provider
       value={{
         analyzers,
         showSystemAnalyzers,
-        setShowSystemAnalyzers
+        setShowSystemAnalyzers,
+        initialValues,
+        setInitialValues
       }}
     >
       {children}

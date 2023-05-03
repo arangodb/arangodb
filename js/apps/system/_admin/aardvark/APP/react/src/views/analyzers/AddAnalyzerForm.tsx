@@ -5,6 +5,7 @@ import { InputControl } from "../../components/form/InputControl";
 import { SelectControl } from "../../components/form/SelectControl";
 import { TYPE_TO_LABEL_MAP } from "./AnalyzersHelpers";
 import { AnalyzerTypeForm } from "./AnalyzerTypeForm";
+import { useReinitializeForm } from "./useReinitializeForm";
 
 const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP).map(type => {
   return {
@@ -14,6 +15,7 @@ const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP).map(type => {
 });
 
 export const AddAnalyzerForm = () => {
+  useReinitializeForm();
   return (
     <Grid templateColumns={"1fr 1fr"} gap="6">
       <Stack>
@@ -54,6 +56,7 @@ const FeatureSwitch = ({ name }: { name: string }) => {
   const [featuresField, , featuresFieldHelper] = useField("features");
   return (
     <Switch
+      isChecked={featuresField.value.includes(name)}
       onChange={() => {
         if (featuresField.value.includes(name)) {
           featuresFieldHelper.setValue(
