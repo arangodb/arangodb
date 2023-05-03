@@ -73,6 +73,7 @@ function replication2Server(options) {
 
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  return; // disabled in 3.11
   Object.assign(allTestPaths, testPaths);
   testFns.replication2_client = replication2Client;
   testFns.replication2_server = replication2Server;
