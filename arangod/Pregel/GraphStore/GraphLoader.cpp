@@ -99,7 +99,7 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
   for (auto futureN = size_t{0}; futureN < config->parallelism(); ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
         RequestLane::INTERNAL_LOW,
-        [this, self, futureN, loadableShardIdx, &myLoadableVertexShards,
+        [this, self, futureN, loadableShardIdx, myLoadableVertexShards,
          server]() -> Magazine<V, E> {
           auto result = Magazine<V, E>{};
 
