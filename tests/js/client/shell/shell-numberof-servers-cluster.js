@@ -32,6 +32,7 @@
 const jsunity = require('jsunity');
 
 function numberOfServersSuite () {
+  let numberFound = 3;
   return {
     setUp : function () {
       arango.PUT("/_admin/cluster/numberOfServers", { numberOfCoordinators: null, numberOfDBServers: null });
@@ -57,20 +58,20 @@ function numberOfServersSuite () {
     }, 
     
     testPutNumberOfDBServers : function () {
-      let result = arango.PUT("/_admin/cluster/numberOfServers", { numberOfDBServers: 2 });
+      let result = arango.PUT("/_admin/cluster/numberOfServers", { numberOfDBServers: numberFound });
       assertFalse(result.error);
       assertEqual(200, result.code);
       
       result = arango.GET("/_admin/cluster/numberOfServers");
       assertFalse(result.error);
       assertEqual(200, result.code);
-      assertEqual(2, result.numberOfDBServers);
+      assertEqual(numberFound, result.numberOfDBServers);
       assertNull(result.numberOfCoordinators);
       assertEqual([], result.cleanedServers);
     }, 
     
     testPutNumberOfCoordinators : function () {
-      let result = arango.PUT("/_admin/cluster/numberOfServers", { numberOfCoordinators: 2 });
+      let result = arango.PUT("/_admin/cluster/numberOfServers", { numberOfCoordinators: numberFound });
       assertFalse(result.error);
       assertEqual(200, result.code);
       
@@ -78,7 +79,7 @@ function numberOfServersSuite () {
       assertFalse(result.error);
       assertEqual(200, result.code);
       assertNull(result.numberOfDBServers);
-      assertEqual(2, result.numberOfCoordinators);
+      assertEqual(numberFound, result.numberOfCoordinators);
       assertEqual([], result.cleanedServers);
     },
 

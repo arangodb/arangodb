@@ -3,21 +3,32 @@ v3.9.11 (XXXX-XX-XX)
 
 * Reduce memory usage for incremental sync replication.
 
-  The incremental sync protocol that was used for collections created with
-  3.8 or higher had memory usage issues in case the follower already had
-  some local data and its dataset was much larger than the leader's. For
-  example, this can happen if a follower gets disconnected, then a lot of
-  document removals happen on the leader and afterwards the follower tries
-  to get back into sync.
+  The incremental sync protocol that was used for collections created with 3.8
+  or higher had memory usage issues in case the follower already had some local
+  data and its dataset was much larger than the leader's. For example, this can
+  happen if a follower gets disconnected, then a lot of document removals happen
+  on the leader and afterwards the follower tries to get back into sync.
 
-  In this case, the follower buffered the ids of documents it had to
-  remove locally in a vector, which could grow arbitrarily large. The
-  removal of the documents contained in this vector would only happen at
-  the end, potentially even without performing intermediate commits.
+  In this case, the follower buffered the ids of documents it had to remove
+  locally in a vector, which could grow arbitrarily large. The removal of the
+  documents contained in this vector would only happen at the end, potentially
+  even without performing intermediate commits.
 
-  The change in this PR is to trigger the document removal earlier, once
-  the vector has reached some size threshold, and also to use intermediate
-  commits during the removals.
+  The change in this PR is to trigger the document removal earlier, once the
+  vector has reached some size threshold, and also to use intermediate commits
+  during the removals.
+
+* Stabilize test which sets the desired number of servers.
+
+* FE-238: Added auto-login support in core web UI - disabled logout when
+  auto-login is enabled, set sessionStorage "jwtUser" value when login is
+  skipped.
+
+* Fixed a race in the Maintenance, impacting leaders that have just been
+  resigned. During a MoveShard job, the old leader could sabotage the whole
+  operation by removing the newly added follower from Current. The solution
+  is to update Current using local collection information, instead of the
+  potentially outdated velocypack slice.
 
 * Automatically repair revision trees after several failed shard synchronization
   attempts. This can help to get permanently out-of-sync shards back into sync.
