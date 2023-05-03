@@ -3,25 +3,51 @@ v3.10.7 (XXXX-XX-XX)
 
 * Reduce memory usage for incremental sync replication.
 
-  The incremental sync protocol that was used for collections created with
-  3.8 or higher had memory usage issues in case the follower already had
-  some local data and its dataset was much larger than the leader's. For
-  example, this can happen if a follower gets disconnected, then a lot of
-  document removals happen on the leader and afterwards the follower tries
-  to get back into sync.
+  The incremental sync protocol that was used for collections created with 3.8
+  or higher had memory usage issues in case the follower already had some local
+  data and its dataset was much larger than the leader's. For example, this can
+  happen if a follower gets disconnected, then a lot of document removals happen
+  on the leader and afterwards the follower tries to get back into sync.
 
-  In this case, the follower buffered the ids of documents it had to
-  remove locally in a vector, which could grow arbitrarily large. The
-  removal of the documents contained in this vector would only happen at
-  the end, potentially even without performing intermediate commits.
+  In this case, the follower buffered the ids of documents it had to remove
+  locally in a vector, which could grow arbitrarily large. The removal of the
+  documents contained in this vector would only happen at the end, potentially
+  even without performing intermediate commits.
 
-  The change in this PR is to trigger the document removal earlier, once
-  the vector has reached some size threshold, and also to use intermediate
-  commits during the removals.
+  The change in this PR is to trigger the document removal earlier, once the
+  vector has reached some size threshold, and also to use intermediate commits
+  during the removals.
+
+* FE-22: Don't display collection content by default when clicking on a
+  collection in the Web UI.
+
+* Fix incompatibility between 3.9 and 3.10 w.r.t. to serialization of AQL array
+  filters (i.e. `[* FILTER ...]`). The array filters were serialized in a
+  different way in 3.9 than they are serialized in 3.10. 3.10 also expected the
+  new serialization format when unserializing a plan.
+  The fix now enables support for both formats.
+
+* Fixed unstable test setting the desired number of servers.
+
+* FE-238: Added auto-login support in core web UI - disabled logout when
+  auto-login is enabled, set sessionStorage "jwtUser" value when login is
+  skipped.
+
+* Fixed a race in the Maintenance, impacting leaders that have just been
+  resigned. During a MoveShard job, the old leader could sabotage the whole
+  operation by removing the newly added follower from Current. The solution is
+  to update Current using local collection information, instead of the
+  potentially outdated velocypack slice.
 
 
-v3.10.6 (XXXX-XX-XX)
+v3.10.6 (2023-04-27)
 --------------------
+
+* Fixed a race in the Maintenance, impacting leaders that have just been
+  resigned. During a MoveShard job, the old leader could sabotage the whole
+  operation by removing the newly added follower from Current. The solution
+  is to update Current using local collection information, instead of the
+  potentially outdated velocypack slice.
 
 * Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
 

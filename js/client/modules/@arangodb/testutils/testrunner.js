@@ -568,7 +568,7 @@ class testRunner {
           this.preRun(te);
           this.instanceManager.getMemProfSnapshot(this.memProfCounter++);
           
-          print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
+          print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '... ' + count, RESET);
           let reply = this.runOneTest(te);
           if (reply.hasOwnProperty('forceTerminate') && reply.forceTerminate) {
             this.results[this.translateResult(te)] = reply;
