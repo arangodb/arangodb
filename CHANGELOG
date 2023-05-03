@@ -7,6 +7,8 @@ v3.10.7 (XXXX-XX-XX)
   new serialization format when unserializing a plan.
   The fix now enables support for both formats.
 
+* Fixed unstable test setting the desired number of servers.
+
 * FE-238: Added auto-login support in core web UI - disabled logout when
   auto-login is enabled, set sessionStorage "jwtUser" value when login is
   skipped.
