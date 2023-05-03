@@ -106,7 +106,7 @@ arangodb::Result removeRevisions(
 
   arangodb::Result res;
 
-  if (toRemove.empty()) {
+  if (!toRemove.empty()) {
     TRI_ASSERT(trx.state()->hasHint(
         arangodb::transaction::Hints::Hint::INTERMEDIATE_COMMITS));
 
