@@ -1,7 +1,8 @@
 import { Button, Flex, HStack, Spinner, Stack } from "@chakra-ui/react";
-import { JsonEditor } from "jsoneditor-react";
+import { JsonEditor, ValidationError } from "jsoneditor-react";
 import { omit } from "lodash";
 import React, { useState } from "react";
+import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
 import {
   Modal,
   ModalBody,
@@ -55,20 +56,16 @@ const useUpdateNodeAction = ({
 
 export const EditNodeModal = () => {
   const { graphName, selectedAction, onClearAction } = useGraph();
-  const {
-    nodeId,
-    nodeData,
-    immutableIds,
-    isLoading,
-    updateNode
-  } = useUpdateNodeAction({
-    selectedAction,
-    graphName,
-    onSuccess: onClearAction,
-    onFailure: onClearAction
-  });
+  const { nodeId, nodeData, immutableIds, isLoading, updateNode } =
+    useUpdateNodeAction({
+      selectedAction,
+      graphName,
+      onSuccess: onClearAction,
+      onFailure: onClearAction
+    });
   const mutableNodeData = omit(nodeData, immutableIds);
   const [json, setJson] = useState(mutableNodeData);
+  const [errors, setErrors] = useState<ValidationError[]>();
 
   if (!nodeId) {
     return null;
@@ -94,13 +91,18 @@ export const EditNodeModal = () => {
             }}
             mode={"code"}
             history={true}
+            onValidationError={errors => {
+              setErrors(errors);
+            }}
           />
+          <JSONErrors errors={errors} />
         </Stack>
       </ModalBody>
       <ModalFooter>
         <HStack>
           <Button onClick={onClearAction}>Cancel</Button>
           <Button
+            isDisabled={!!(errors?.length && errors.length > 0)}
             colorScheme="green"
             onClick={() => {
               updateNode({ nodeId, updatedData: json });
