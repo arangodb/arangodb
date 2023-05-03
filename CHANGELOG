@@ -1,7 +1,7 @@
 devel
 -----
 
-* FE-162: Fix display of geodesic lines
+* FE-162: Fix display of geodesic lines.
 
 * Fixed a race in the Maintenance, impacting leaders that have just been
   resigned. During a MoveShard job, the old leader could sabotage the whole
