@@ -400,7 +400,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->status->stateName = msg.state;
     this->state->status->timings.totalRuntime.setStart(msg.time);
 
-    auto duration = std::chrono::microseconds{msg.time.value};
+    auto duration = std::chrono::microseconds{msg.systemTime.value};
     this->state->status->created = PregelDate{
         .time_point =
             std::chrono::time_point<std::chrono::system_clock>{duration}};
