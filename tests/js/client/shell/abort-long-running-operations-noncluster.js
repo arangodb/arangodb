@@ -54,7 +54,7 @@ let setupCollection = (type) => {
   
 let shutdownTask = (task) => {
   db._useDatabase("_system");   // We need to switch to the _system database
-                                // such that we are not tripped off by an
+                                // such that we are not tripped off by a
                                 // "database not found" exception. This is
                                 // only necessary for the drop database test.
   try {
