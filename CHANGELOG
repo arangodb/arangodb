@@ -1,5 +1,6 @@
 devel
 -----
+* FE-255: add validation for collection, document, graph, view and database names
 
 * FE-22: Don't display collection content by default when clicking on a
   collection in the Web UI.
