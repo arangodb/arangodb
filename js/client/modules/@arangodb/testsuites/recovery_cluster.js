@@ -249,7 +249,10 @@ function recovery (options) {
     status: true
   };
 
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options);
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options,
+                                       // At the moment only view-tests supported by cluster recovery tests:
+                                       function(testname) { return testname.search('search') >= 0; }
+                                      );
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
 
