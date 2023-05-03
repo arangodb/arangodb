@@ -6,6 +6,13 @@ export const FIELDS = [
   commonFieldsMap.fields,
   commonFieldsMap.name,
   {
+    label: "Extra stored values",
+    name: "storedValues",
+    type: "string",
+    tooltip:
+      "A comma-separated list of extra attribute paths. The values of these attributes will be stored in the index as well. They can be used for projections, but cannot be used for filtering or sorting."
+  },
+  {
     label: "Unique",
     name: "unique",
     type: "boolean",
@@ -46,6 +53,7 @@ export const INITIAL_VALUES = {
   type: "persistent",
   fields: commonFieldsMap.fields.initialValue,
   name: commonFieldsMap.fields.initialValue,
+  storedValues: "",
   unique: false,
   sparse: false,
   deduplicate: false,
@@ -58,13 +66,17 @@ export const SCHEMA = Yup.object({
   ...commonSchema
 });
 
-type ValuesType = Omit<typeof INITIAL_VALUES, "fields"> & { fields: string[] };
+type ValuesType = Omit<typeof INITIAL_VALUES, "fields" | "storedValues"> & {
+  fields: string[];
+  storedValues?: string[];
+};
 
 export const useCreatePersistentIndex = () => {
   const { onCreate: onCreateIndex } = useCreateIndex<ValuesType>();
   const onCreate = async ({ values }: { values: typeof INITIAL_VALUES }) => {
     return onCreateIndex({
       ...values,
+      storedValues: values.storedValues ? values.storedValues.split(",") : undefined,
       fields: values.fields.split(",")
     });
   };

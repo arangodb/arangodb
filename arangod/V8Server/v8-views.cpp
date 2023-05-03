@@ -35,6 +35,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
+#include "Utilities/NameValidator.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -183,11 +184,14 @@ static void JS_CreateViewVocbase(
     throw;
   }
 
-  if (name != normalizeUtf8ToNFC(name)) {
-    events::CreateView(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_ARANGO_ILLEGAL_NAME,
-        "view name is not properly UTF-8 NFC-normalized");
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = ViewNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames, name);
+      res.fail()) {
+    events::CreateView(vocbase.name(), name, res.errorNumber());
+    TRI_V8_THROW_EXCEPTION(res);
+    return;
   }
 
   // ...........................................................................
@@ -220,7 +224,7 @@ static void JS_CreateViewVocbase(
                    .loadAvailableAnalyzers(vocbase.name());
 
     if (res.fail()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      TRI_V8_THROW_EXCEPTION(res);
     }
 
     LogicalView::ptr view;
@@ -231,8 +235,7 @@ static void JS_CreateViewVocbase(
     }
 
     if (!res.ok()) {
-      // events::CreateView(vocbase.name(), name, res.errorNumber());
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      TRI_V8_THROW_EXCEPTION(res);
     }
 
     TRI_ASSERT(view);
@@ -299,11 +302,14 @@ static void JS_DropViewVocbase(
   // extract the name
   std::string const name = TRI_ObjectToString(isolate, args[0]);
 
-  if (name != normalizeUtf8ToNFC(name)) {
-    events::DropView(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_ARANGO_ILLEGAL_NAME,
-        "view name is not properly UTF-8 NFC-normalized");
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = ViewNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames, name);
+      res.fail()) {
+    events::DropView(vocbase.name(), name, res.errorNumber());
+    TRI_V8_THROW_EXCEPTION(res);
+    return;
   }
 
   // ...........................................................................
@@ -641,13 +647,13 @@ static void JS_PropertiesViewVocbase(
                    .loadAvailableAnalyzers(vocbase.name());
 
     if (res.fail()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      TRI_V8_THROW_EXCEPTION(res);
     }
 
     res = view->properties(builder.slice(), true, partialUpdate);
 
     if (!res.ok()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      TRI_V8_THROW_EXCEPTION(res);
     }
   }
 

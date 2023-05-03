@@ -1,6 +1,7 @@
 add_library(arango_tests_actor OBJECT
   ActorListTest.cpp
   ActorTest.cpp
+  EgressActorTest.cpp
   RuntimeTest.cpp
   MultiRuntimeTest.cpp
   MPSCQueueTest.cpp)
