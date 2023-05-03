@@ -53,9 +53,9 @@ struct PregelResult {
     {
       VPackArrayBuilder ab(&newResultsBuilder);
       // Add existing results to new builder
-      if (!moreResults.get().results.isEmpty()) {
+      if (!results.get().results.isEmpty()) {
         newResultsBuilder.add(
-            VPackArrayIterator(moreResults.get().results.slice()));
+            VPackArrayIterator(results.get().results.slice()));
       }
       // add new results from message to builder
       newResultsBuilder.add(

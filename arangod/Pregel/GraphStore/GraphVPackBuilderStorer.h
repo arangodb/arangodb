@@ -54,13 +54,11 @@ template<typename V, typename E>
 struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
   explicit GraphVPackBuilderStorer(
       bool withId, std::shared_ptr<WorkerConfig> config,
-      std::shared_ptr<GraphFormat<V, E> const> graphFormat,
-      std::function<void()> const& statusUpdateCallback)
+      std::shared_ptr<GraphFormat<V, E> const> graphFormat)
       : result(std::make_unique<VPackBuilder>()),
         withId(withId),
         graphFormat(graphFormat),
-        config(config),
-        statusUpdateCallback(statusUpdateCallback) {
+        config(config) {
     result->openArray(/*unindexed*/ true);
   }
 
@@ -76,7 +74,6 @@ struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
 
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   std::shared_ptr<WorkerConfig const> config;
-  std::function<void()> const& statusUpdateCallback;
 };
 
 }  // namespace arangodb::pregel

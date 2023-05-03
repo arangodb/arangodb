@@ -70,7 +70,7 @@ auto Loading::receive(actor::ActorPID sender,
         conductor.specifications.userParameters.slice());
     auto newState = std::make_unique<Computing>(
         conductor, std::move(masterContext),
-        std::unordered_map<actor::ActorPID, uint64_t>{});
+        std::unordered_map<actor::ActorPID, uint64_t>{}, 0, 0);
     auto stateName = newState->name();
     return StateChange{
         .statusMessage =

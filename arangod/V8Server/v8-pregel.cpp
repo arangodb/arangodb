@@ -217,23 +217,9 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto executionNum = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
-  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
-  auto actorStatus = pregel.getStatus(executionNum);
-  // if this was not an actor run, this can be a non-actor run
-  if (actorStatus.fail()) {
-    pregel::statuswriter::CollectionStatusWriter cWriter{vocbase, executionNum};
-    handlePregelHistoryV8Result(cWriter.readResult(), true);
-    return;
-  }
-  auto serializedState = inspection::serializeWithErrorT(actorStatus.get());
-  if (!serializedState.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_CURSOR_NOT_FOUND,
-        fmt::format("Cannot serialize status {}",
-                    serializedState.error().error()));
-    return;
-  }
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, serializedState.get().slice()));
+  pregel::statuswriter::CollectionStatusWriter cWriter{vocbase, executionNum};
+  handlePregelHistoryV8Result(cWriter.readResult(), true);
+  return;
 
   return;
   TRI_V8_TRY_CATCH_END

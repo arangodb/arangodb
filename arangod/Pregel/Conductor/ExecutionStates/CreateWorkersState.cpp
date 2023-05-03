@@ -49,7 +49,6 @@ auto CreateWorkers::messagesToServers()
     servers.emplace_back(server);
     sentServers.emplace(server);
   }
-  conductor.status = ConductorStatus::forWorkers(servers);
 
   return workerSpecifications;
 }

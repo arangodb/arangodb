@@ -133,6 +133,13 @@ std::vector<ShardID> getShardIds(TRI_vocbase_t& vocbase,
 
 }  // namespace
 
+auto PregelRunUser::authorized(ExecContext const& userContext) const -> bool {
+  if (userContext.isSuperuser()) {
+    return true;
+  }
+  return name == userContext.user();
+}
+
 ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
                                                        PregelOptions options) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
@@ -364,23 +371,20 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
             vocbase, executionSpecifications.vertexCollections,
             executionSpecifications.edgeCollections);
 
+    auto user = ExecContext::current().user();
     auto statusStart = message::StatusMessages{message::StatusStart{
         .state = "Execution Started",
         .id = executionSpecifications.executionNumber,
+        .user = user,
         .database = vocbase.name(),
         .algorithm = executionSpecifications.algorithm,
         .ttl = executionSpecifications.ttl,
         .parallelism = executionSpecifications.parallelism}};
-    auto statusState = std::make_unique<StatusState>();
-    auto status = statusState->status;
     auto statusActorID = _actorRuntime->spawn<StatusActor>(
-        vocbase.name(), std::move(statusState), std::move(statusStart));
+        vocbase.name(), std::make_unique<StatusState>(vocbase),
+        std::move(statusStart));
     auto statusActorPID = actor::ActorPID{
         .server = ss->getId(), .database = vocbase.name(), .id = statusActorID};
-    _statusActors.doUnderLock([&en, &statusActorPID, status](auto& actors) {
-      actors.emplace(
-          en, StatusActorReference{.pid = statusActorPID, .status = status});
-    });
 
     auto resultState = std::make_unique<ResultState>(ttl);
     auto resultData = resultState->data;
@@ -389,10 +393,6 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         message::ResultMessages{message::ResultStart{}});
     auto resultActorPID = actor::ActorPID{
         .server = ss->getId(), .database = vocbase.name(), .id = resultActorID};
-    _resultActor.doUnderLock([&en, &resultActorPID, resultData](auto& actors) {
-      actors.emplace(
-          en, ResultActorReference{.pid = resultActorPID, .data = resultData});
-    });
 
     auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
         vocbase.name(), std::make_unique<SpawnState>(vocbase, resultActorPID),
@@ -417,8 +417,13 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
     auto conductorActorPID = actor::ActorPID{.server = ss->getId(),
                                              .database = vocbase.name(),
                                              .id = conductorActorID};
-    _conductorActor.doUnderLock([&en, &conductorActorPID](auto& actors) {
-      actors.emplace(en, conductorActorPID);
+
+    _pregelRuns.doUnderLock([&](auto& actors) {
+      actors.emplace(
+          en, PregelRun{PregelRunUser(user),
+                        PregelRunActors{.resultActor = resultActorPID,
+                                        .results = resultData,
+                                        .conductor = conductorActorPID}});
     });
 
     return en;
@@ -743,30 +748,16 @@ void PregelFeature::garbageCollectActors() {
   // garbage collect all finished actors
   _actorRuntime->garbageCollect();
 
-  // clean up maps
-  _resultActor.doUnderLock(
-      [this](
-          std::unordered_map<ExecutionNumber, ResultActorReference>& actors) {
-        std::erase_if(actors, [this](auto& item) {
-          auto const& [_, actor] = item;
-          return not _actorRuntime->contains(actor.pid.id);
-        });
-      });
-  _conductorActor.doUnderLock(
-      [this](std::unordered_map<ExecutionNumber, actor::ActorPID>& actors) {
-        std::erase_if(actors, [this](const auto& item) {
-          auto const& [_, actor] = item;
-          return not _actorRuntime->contains(actor.id);
-        });
-      });
-  _statusActors.doUnderLock(
-      [this](
-          std::unordered_map<ExecutionNumber, StatusActorReference>& actors) {
-        std::erase_if(actors, [this](auto& item) {
-          auto const& [_, actor] = item;
-          return not _actorRuntime->contains(actor.pid.id);
-        });
-      });
+  // clean up map
+  _pregelRuns.doUnderLock([this](auto& items) {
+    std::erase_if(items, [this](auto& item) {
+      auto const& [_, run] = item;
+      auto actors = run.getActorsInternally();
+      return not _actorRuntime->contains(actors.resultActor.id) &&
+             (actors.conductor == std::nullopt ||
+              not _actorRuntime->contains(actors.conductor.value().id));
+    });
+  });
 }
 
 void PregelFeature::garbageCollectConductors() try {
@@ -824,36 +815,27 @@ std::shared_ptr<IWorker> PregelFeature::worker(
 }
 
 ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
-  return _resultActor.doUnderLock(
-      [&execNr](auto const& actors) -> ResultT<PregelResults> {
-        auto actor = actors.find(execNr);
-        if (actor == actors.end()) {
+  return _pregelRuns.doUnderLock(
+      [&execNr](auto const& items) -> ResultT<PregelResults> {
+        auto item = items.find(execNr);
+        if (item == items.end()) {
           return Result{
               TRI_ERROR_HTTP_NOT_FOUND,
               fmt::format("Cannot locate results for pregel run {}.", execNr)};
         }
-        auto state = actor->second.data->get();
-        if (!state.has_value()) {
-          return Result{
-              TRI_ERROR_INTERNAL,
-              fmt::format("Pregel results for run {} are not yet available.",
-                          execNr)};
+        auto const& [_, run] = *item;
+        if (auto actors = run.getActorsFromUser(ExecContext::current());
+            actors != std::nullopt) {
+          auto results = actors.value().results->get();
+          if (!results.has_value()) {
+            return Result{
+                TRI_ERROR_INTERNAL,
+                fmt::format("Pregel results for run {} are not yet available.",
+                            execNr)};
+          }
+          return results.value();
         }
-        return state.value();
-      });
-}
-
-ResultT<PregelStatus> PregelFeature::getStatus(ExecutionNumber execNr) {
-  return _statusActors.doUnderLock(
-      [&execNr](auto const& actors) -> ResultT<PregelStatus> {
-        auto actor = actors.find(execNr);
-        if (actor == actors.end()) {
-          return Result{
-              TRI_ERROR_HTTP_NOT_FOUND,
-              fmt::format("Cannot locate status for pregel run {}.", execNr)};
-        }
-        auto state = actor->second.status;
-        return *state;
+        return Result{TRI_ERROR_HTTP_UNAUTHORIZED, "User is not authorized."};
       });
 }
 
@@ -1188,33 +1170,31 @@ auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
   }
 
   // pregel can still have ran with actors, then the result actor would exist
-  auto resultActorCanceled = _resultActor.doUnderLock([&executionNumber,
-                                                       this](auto const& actors)
-                                                          -> Result {
-    auto actor = actors.find(executionNumber);
-    if (actor == actors.end()) {
+  return _pregelRuns.doUnderLock([&executionNumber,
+                                  this](auto const& items) -> Result {
+    auto item = items.find(executionNumber);
+    if (item == items.end()) {
+      // TODO GOROD-1634 if historic collection has executionNumber entry,
+      // return Result{} or a different error message
       return Result{TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid"};
     }
-    if (_actorRuntime->contains(actor->second.pid.id)) {
-      _actorRuntime->dispatch<pregel::message::ResultMessages>(
-          actor->second.pid, actor->second.pid,
-          pregel::message::CleanupResults{});
+    auto const& [_, run] = *item;
+    if (auto actors = run.getActorsFromUser(ExecContext::current());
+        actors != std::nullopt) {
+      auto resultActor = actors.value().resultActor;
+      if (_actorRuntime->contains(resultActor.id)) {
+        _actorRuntime->dispatch<pregel::message::ResultMessages>(
+            resultActor, resultActor, pregel::message::CleanupResults{});
+      }
+      auto conductor = actors.value().conductor;
+      if (conductor != std::nullopt &&
+          _actorRuntime->contains(conductor.value().id)) {
+        _actorRuntime->dispatch<pregel::conductor::message::ConductorMessages>(
+            conductor.value(), conductor.value(),
+            pregel::conductor::message::Cancel{});
+      }
+      return Result{};
     }
-    return Result{};
+    return Result{TRI_ERROR_HTTP_UNAUTHORIZED, "User is not authorized."};
   });
-  if (not resultActorCanceled.ok()) {
-    return resultActorCanceled;
-  }
-
-  _conductorActor.doUnderLock([&executionNumber, this](auto const& actors) {
-    auto actor = actors.find(executionNumber);
-    if (actor == actors.end()) {
-      return;
-    }
-    if (_actorRuntime->contains(actor->second.id)) {
-      _actorRuntime->dispatch<pregel::conductor::message::ConductorMessages>(
-          actor->second, actor->second, pregel::conductor::message::Cancel{});
-    }
-  });
-  return Result{};
 }

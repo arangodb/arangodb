@@ -77,4 +77,52 @@ struct VertexProcessor {
   uint32_t messageBatchSize = 500;
 };
 
+struct ActorVertexProcessorResult {
+  uint64_t activeCount;
+  std::unique_ptr<AggregatorHandler> workerAggregator;
+  MessageStats messageStats;
+  size_t verticesProcessed;
+  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+};
+struct ActorVertexProcessorStatus {
+  MessageStats messageStats;
+  size_t verticesProcessed;
+};
+// this vertex processor is used for pregel with actors
+template<typename V, typename E, typename M>
+struct ActorVertexProcessor {
+  ActorVertexProcessor(
+      std::shared_ptr<WorkerConfig const> workerConfig,
+      std::unique_ptr<Algorithm<V, E, M>>& algorithm,
+      std::unique_ptr<WorkerContext>& workerContext,
+      std::unique_ptr<MessageCombiner<M>>& messageCombiner,
+      std::unique_ptr<MessageFormat<M>>& messageFormat,
+      std::function<void(actor::ActorPID receiver,
+                         worker::message::PregelMessage message)>
+          dispatch,
+      std::unordered_map<ShardID, actor::ActorPID> const&
+          responsibleActorPerShard);
+  ~ActorVertexProcessor();
+
+  auto process(Vertex<V, E>* vertexEntry, MessageIterator<M> messages)
+      -> ActorVertexProcessorStatus;
+  [[nodiscard]] auto result() -> ActorVertexProcessorResult;
+
+  // aggregators
+  size_t activeCount = 0;
+  size_t messagesReceived = 0;
+  size_t memoryBytesUsedForMessages = 0;
+  size_t verticesProcessed = 0;
+
+  std::shared_ptr<OutCache<M>> outCache;
+  // The outCache handles dispatching messages and will
+  // queue messages that go to shards deemed local into
+  // the localMessageCache
+  std::shared_ptr<InCache<M>> localMessageCache;
+  std::shared_ptr<VertexComputation<V, E, M>> vertexComputation;
+  std::unique_ptr<AggregatorHandler> workerAggregator;
+
+  uint32_t messageBatchSize = 500;
+};
+
 }  // namespace arangodb::pregel
