@@ -1828,7 +1828,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       if (toFetch.size() >= 250000) {
         res = ::fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
                                encodeAsHLC, toFetch, stats);
-        toFetch.clear();
+        TRI_ASSERT(res.fail() || toFetch.empty());
       }
       return res;
     };
@@ -1846,7 +1846,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       // much in memory
       if (toRemove.size() >= options.intermediateCommitCount) {
         res = ::removeRevisions(*trx, *coll, toRemove, stats);
-        toRemove.clear();
+        TRI_ASSERT(res.fail() || toRemove.empty());
       }
       return res;
     };
@@ -2058,17 +2058,17 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       }
 
       Result res = ::removeRevisions(*trx, *coll, toRemove, stats);
+      TRI_ASSERT(res.fail() || toRemove.empty());
       if (res.fail()) {
         return res;
       }
-      TRI_ASSERT(toRemove.empty());
 
       res = ::fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
                              encodeAsHLC, toFetch, stats);
+      TRI_ASSERT(res.fail() || toFetch.empty());
       if (res.fail()) {
         return res;
       }
-      TRI_ASSERT(toFetch.empty());
     }
 
     // adjust counts
