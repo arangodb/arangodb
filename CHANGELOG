@@ -1,6 +1,9 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* FE-22: Don't display collection content by default when clicking on a
+  collection in the Web UI.
+
 * Fixed a race in a test for aborting long running operations.
 
 * FE-251: bugfix - prohibit multiple expansions of the same node in the graph
