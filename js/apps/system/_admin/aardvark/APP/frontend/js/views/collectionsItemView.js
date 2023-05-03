@@ -46,7 +46,7 @@
       }
 
       window.App.navigate(
-        'collection/' + encodeURIComponent(this.model.get('name')) + '/documents/1', {trigger: true}
+        'cInfo/' + encodeURIComponent(this.model.get('name')), {trigger: true}
       );
     },
 
