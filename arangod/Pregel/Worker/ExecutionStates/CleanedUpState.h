@@ -26,26 +26,10 @@
 #include "State.h"
 
 namespace arangodb::pregel::worker {
-template<typename V, typename E, typename M>
-struct WorkerState;
 
-template<typename V, typename E, typename M>
-struct Initial : ExecutionState {
-  explicit Initial(WorkerState<V, E, M>& worker);
-  ~Initial() override = default;
+struct CleanedUp : ExecutionState {
+  CleanedUp() = default;
 
-  [[nodiscard]] auto name() const -> std::string override { return "initial"; };
-  auto receive(actor::ActorPID const& sender,
-               message::WorkerMessages const& message,
-               DispatchStatus const& dispatchStatus,
-               DispatchMetrics const& dispatchMetrics,
-               DispatchConductor const& dispatchConductor,
-               DispatchSelf const& dispatchSelf)
-      -> std::unique_ptr<ExecutionState> override;
-  auto cancel(actor::ActorPID const& sender,
-              message::WorkerMessages const& message)
-      -> std::unique_ptr<ExecutionState> override;
-
-  WorkerState<V, E, M>& worker;
+  [[nodiscard]] auto name() const -> std::string override { return "cleaned up"; };
 };
 }  // namespace arangodb::pregel::worker

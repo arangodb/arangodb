@@ -40,6 +40,7 @@
 #include "Pregel/StatusMessages.h"
 #include "Pregel/MetricsMessages.h"
 #include "Pregel/Worker/ExecutionStates/State.h"
+#include "Pregel/Worker/ExecutionStates/CleanedUpState.h"
 
 namespace arangodb::pregel::worker {
 
@@ -51,20 +52,33 @@ struct VerticesProcessed {
 template<typename V, typename E, typename M, typename Runtime>
 struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
   DispatchStatus const& dispatchStatus =
-      this->template dispatch<pregel::message::StatusMessages>;
+      [this](pregel::message::StatusMessages message) -> void {
+    this->template dispatch<pregel::message::StatusMessages>(
+        this->state->statusActor, message);
+  };
   DispatchMetrics const& dispatchMetrics =
-      this->template dispatch<metrics::message::MetricsMessages>;
+      [this](metrics::message::MetricsMessages message) -> void {
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor, message);
+  };
   DispatchConductor const& dispatchConductor =
-      this->template dispatch<conductor::message::ConductorMessages>;
+      [this](conductor::message::ConductorMessages message) -> void {
+    this->template dispatch<conductor::message::ConductorMessages>(
+        this->state->conductor, message);
+  };
+  DispatchSelf const& dispatchSelf =
+      [this](message::WorkerMessages message) -> void {
+    this->template dispatch<message::WorkerMessages>(this->self, message);
+  };
 
   auto operator()(message::WorkerStart start)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor {} started with state {}", this->self, *this->state);
 
-    auto newState =
-        this->executionState->receive(this->sender, start, dispatchStatus,
-                                      dispatchMetrics, dispatchConductor);
+    auto newState = this->executionState->receive(
+        this->sender, start, dispatchStatus, dispatchMetrics, dispatchConductor,
+        dispatchSelf);
     changeState(newState);
 
     return std::move(this->state);
@@ -75,47 +89,11 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is loading", this->self);
 
-    this->state->outCache->setResponsibleActorPerShard(
-        msg.responsibleActorPerShard);
+    auto newState = this->executionState->receive(
+        this->sender, msg, dispatchStatus, dispatchMetrics, dispatchConductor,
+        dispatchSelf);
+    changeState(newState);
 
-    this->template dispatch<metrics::message::MetricsMessages>(
-        this->state->metricsActor,
-        arangodb::pregel::metrics::message::WorkerLoadingStarted{});
-
-    auto graphLoaded = [this]() -> ResultT<conductor::message::GraphLoaded> {
-      try {
-        auto loader = GraphLoader(
-            this->state->config, this->state->algorithm->inputFormat(),
-            ActorLoadingUpdate{
-                .fn =
-                    [this](pregel::message::GraphLoadingUpdate update) -> void {
-                  this->template dispatch<pregel::message::StatusMessages>(
-                      this->state->statusActor, update);
-                }});
-        this->state->magazine = loader.load().get();
-
-        LOG_TOPIC("5206c", WARN, Logger::PREGEL)
-            << fmt::format("Worker {} has finished loading.", this->self);
-        return {conductor::message::GraphLoaded{
-            .executionNumber = this->state->config->executionNumber(),
-            .vertexCount = this->state->magazine.numberOfVertices(),
-            .edgeCount = this->state->magazine.numberOfEdges()}};
-      } catch (std::exception const& ex) {
-        return Result{
-            TRI_ERROR_INTERNAL,
-            fmt::format("caught exception when loading graph: {}", ex.what())};
-      } catch (...) {
-        return Result{TRI_ERROR_INTERNAL,
-                      "caught unknown exception when loading graph"};
-      }
-    };
-
-    this->template dispatch<conductor::message::ConductorMessages>(
-        this->state->conductor, graphLoaded());
-
-    this->template dispatch<metrics::message::MetricsMessages>(
-        this->state->metricsActor,
-        arangodb::pregel::metrics::message::WorkerLoadingFinished{});
     return std::move(this->state);
   }
 
@@ -394,7 +372,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   // ------ end computing ----
 
-  auto operator()([[maybe_unused]] message::Store msg) -> std::unique_ptr<WorkerState<V, E, M>> {
+  auto operator()([[maybe_unused]] message::Store msg)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("980d9", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is storing", this->self);
 
@@ -479,10 +458,10 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   auto operator()([[maybe_unused]] message::Cleanup msg)
       -> std::unique_ptr<WorkerState<V, E, M>> {
+    this->finish();
+
     LOG_TOPIC("664f5", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is cleaned", this->self);
-
-    this->finish();
 
     this->template dispatch<pregel::message::SpawnMessages>(
         this->state->spawnActor, pregel::message::SpawnCleanup{});
@@ -491,6 +470,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->template dispatch<metrics::message::MetricsMessages>(
         this->state->metricsActor,
         arangodb::pregel::metrics::message::WorkerFinished{});
+
+    changeState(std::make_unique<CleanedUp>());
 
     return std::move(this->state);
   }

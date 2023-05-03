@@ -31,14 +31,12 @@
 
 namespace arangodb::pregel::worker {
 
-typedef std::function<void(actor::ActorPID, pregel::message::StatusMessages)>
-    DispatchStatus;
-typedef std::function<void(actor::ActorPID,
-                           pregel::metrics::message::MetricsMessages)>
+typedef std::function<void(pregel::message::StatusMessages)> DispatchStatus;
+typedef std::function<void(pregel::metrics::message::MetricsMessages)>
     DispatchMetrics;
-typedef std::function<void(actor::ActorPID,
-                           pregel::conductor::message::ConductorMessages)>
+typedef std::function<void(pregel::conductor::message::ConductorMessages)>
     DispatchConductor;
+typedef std::function<void(message::WorkerMessages)> DispatchSelf;
 
 struct ExecutionState {
   virtual ~ExecutionState() = default;
@@ -48,7 +46,8 @@ struct ExecutionState {
                        worker::message::WorkerMessages const& message,
                        DispatchStatus const& dispatchStatus,
                        DispatchMetrics const& dispatchMetrics,
-                       DispatchConductor const& dispatchConductor)
+                       DispatchConductor const& dispatchConductor,
+                       DispatchSelf const& dispatchSelf)
       -> std::unique_ptr<ExecutionState> {
     return nullptr;
   };

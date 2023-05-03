@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitialState.h"
+#include "FatalErrorState.h"
 #include "Pregel/Worker/State.h"
+#include "LoadingState.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -36,14 +38,21 @@ auto Initial<V, E, M>::receive(actor::ActorPID const& sender,
                                worker::message::WorkerMessages const& message,
                                DispatchStatus const& dispatchStatus,
                                DispatchMetrics const& dispatchMetrics,
-                               DispatchConductor const& dispatchConductor)
+                               DispatchConductor const& dispatchConductor,
+                               DispatchSelf const& dispatchSelf)
     -> std::unique_ptr<ExecutionState> {
-  dispatchConductor(worker.conductor,
-                    ResultT<conductor::message::WorkerCreated>{});
-  dispatchMetrics(worker.metricsActor,
-                  arangodb::pregel::metrics::message::WorkerStarted{});
+  if (std::holds_alternative<worker::message::WorkerStart>(message)) {
+    dispatchConductor(ResultT<conductor::message::WorkerCreated>{});
+    dispatchMetrics(arangodb::pregel::metrics::message::WorkerStarted{});
 
-  return nullptr;
+    return nullptr;
+  } else if (std::holds_alternative<worker::message::LoadGraph>(message)) {
+    dispatchSelf(message);
+
+    return std::make_unique<Loading>(worker);
+  } else {
+    return std::make_unique<FatalError>();
+  }
 }
 
 template<typename V, typename E, typename M>
