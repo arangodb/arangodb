@@ -35,7 +35,7 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
-
+#include <absl/hash/hash.h>
 #include <atomic>
 #include <functional>
 #include <unordered_map>
@@ -259,7 +259,7 @@ class Manager final : public IManager {
 
   /// @brief hashes the transaction id into a bucket
   inline size_t getBucket(TransactionId tid) const noexcept {
-    return std::hash<TransactionId>()(tid) % numBuckets;
+    return absl::Hash<uint64_t>()(tid.id()) % numBuckets;
   }
 
   std::shared_ptr<ManagedContext> buildManagedContextUnderLock(

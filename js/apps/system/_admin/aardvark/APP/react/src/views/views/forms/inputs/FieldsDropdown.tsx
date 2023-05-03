@@ -1,25 +1,33 @@
+import { Box } from "@chakra-ui/react";
 import React, { useContext } from "react";
-import { Link, useRouteMatch } from "react-router-dom";
 import { components, MultiValueGenericProps } from "react-select";
-import CreatableMultiSelect, {
-  OptionType
-} from "../../../../components/pure-css/form/CreatableMultiSelect";
+import CreatableMultiSelect from "../../../../components/select/CreatableMultiSelect";
+import { OptionType } from "../../../../components/select/SelectBase";
 import { escapeFieldDot } from "../../../../utils/fieldHelpers";
 import { LinkProperties, ViewContext } from "../../constants";
+import { useLinksContext } from "../../LinksContext";
 
 const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
-  const match = useRouteMatch();
+  const { setCurrentField, currentField } = useLinksContext();
   return (
-    <Link
-      to={`${match.url}/${props.data.value}`}
+    <Box
       style={{
         textDecoration: "underline",
         minWidth: 0 // because parent is flex
       }}
+      cursor="pointer"
       title={props.data.label}
+      onClick={() => {
+        if (!currentField) {
+          return;
+        }
+        setCurrentField({
+          fieldPath: `${currentField.fieldPath}.fields[${props.data.value}]`
+        });
+      }}
     >
       <components.MultiValueLabel {...props} />
-    </Link>
+    </Box>
   );
 };
 
@@ -69,16 +77,17 @@ export const FieldsDropdown = ({
     <CreatableMultiSelect
       value={fields}
       isClearable={false}
+      noOptionsMessage={() => null}
       components={{
         MultiValueLabel
       }}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
-          removeField((action.removedValue as any).value as string);
+          removeField(action.removedValue.value);
           return;
         }
         if (action.action === "create-option") {
-          addField((action.option as any).value as string);
+          addField(action.option.value);
         }
       }}
       isDisabled={isDisabled}

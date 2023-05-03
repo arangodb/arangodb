@@ -1,18 +1,16 @@
 import { Box } from "@chakra-ui/react";
 import React from "react";
 import { FormProps } from "../../utils/constants";
-import { DeleteButton, SaveButton } from "./Actions";
+import { DeleteButtonWrap } from "./Actions";
 import { FormState } from "./constants";
-import { EditableViewName } from "./EditableViewName";
 import CopyFromInput from "./forms/inputs/CopyFromInput";
+import { SaveArangoSearchViewButton } from "./arangoSearchView/SaveArangoSearchViewButton";
+import { EditableViewNameField } from "./searchAliasView/EditableViewNameField";
+import { ViewPropertiesType } from "./searchAliasView/useFetchViewProperties";
 
 export const ViewHeader = ({
-  editName,
   formState,
-  handleEditName,
   updateName,
-  nameEditDisabled,
-  closeEditName,
   isAdminUser,
   views,
   dispatch,
@@ -20,12 +18,8 @@ export const ViewHeader = ({
   name,
   setChanged
 }: {
-  editName: boolean;
   formState: FormState;
-  handleEditName: () => void;
-  updateName: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  nameEditDisabled: boolean;
-  closeEditName: () => void;
+  updateName: (name: string) => void;
   isAdminUser: boolean;
   views: FormState[];
   changed: boolean;
@@ -42,34 +36,32 @@ export const ViewHeader = ({
       padding="4"
       zIndex="900"
     >
-      <EditableViewName
-        isAdminUser={isAdminUser}
-        editName={editName}
-        formState={formState}
-        handleEditName={handleEditName}
-        updateName={updateName}
-        nameEditDisabled={nameEditDisabled}
-        closeEditName={closeEditName}
-      />
-      {isAdminUser && views.length ? (
-        <Box display="flex">
-          <CopyFromInput
-            views={views}
-            dispatch={dispatch}
-            formState={formState}
-          />
-          <Box display="flex" ml="auto" flexWrap="wrap">
-            <SaveButton
-              view={formState}
-              oldName={name}
-              menu={"json"}
-              setChanged={setChanged}
-              disabled={!isAdminUser || !changed}
+      <Box display="grid" gap="4" gridTemplateRows={"30px 1fr"}>
+        <EditableViewNameField
+          isAdminUser={isAdminUser}
+          isCluster={window.frontendConfig.isCluster}
+          setCurrentName={updateName}
+          view={formState as ViewPropertiesType}
+        />
+        {isAdminUser && views.length ? (
+          <Box display="flex" alignItems="center">
+            <CopyFromInput
+              views={views}
+              dispatch={dispatch}
+              formState={formState}
             />
-            <DeleteButton view={formState} />
+            <Box display="flex" ml="auto" flexWrap="wrap">
+              <SaveArangoSearchViewButton
+                view={formState}
+                oldName={name}
+                setChanged={setChanged}
+                disabled={!isAdminUser || !changed}
+              />
+              <DeleteButtonWrap disabled={!isAdminUser} view={formState} />
+            </Box>
           </Box>
-        </Box>
-      ) : null}
+        ) : null}
+      </Box>
     </Box>
   );
 };

@@ -2,7 +2,7 @@
 @startDocuBlock post_api_index_zkd
 @brief creates a multi-dimensional index
 
-@RESTHEADER{POST /_api/index#multi-dim, Create multi-dimensional index, createIndex#multi-dim}
+@RESTHEADER{POST /_api/index#zkd, Create multi-dimensional index, createIndexZkd}
 
 @RESTQUERYPARAMETERS
 

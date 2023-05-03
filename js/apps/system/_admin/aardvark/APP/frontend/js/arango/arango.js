@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Noty, Blob, window, atob, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
+/* global Noty, Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -8,9 +8,6 @@
   window.isCoordinator = function (callback) {
     if (isCoordinator === null) {
       var url = 'cluster/amICoordinator';
-      if (frontendConfig.react) {
-        url = arangoHelper.databaseUrl('/_admin/aardvark/cluster/amICoordinator');
-      }
       $.ajax(
         url,
         {
@@ -95,6 +92,23 @@
       debug: 'rgb(64, 74, 83)'
     },
 
+    // convert a Unicode string to a string in which
+    // each 16-bit unit occupies only one byte.
+    // from https://developer.mozilla.org/en-US/docs/Web/API/btoa
+    toBinary: function (string) {
+      const codeUnits = Uint16Array.from(
+        { length: string.length },
+        (element, index) => string.charCodeAt(index)
+      );
+      const charCodes = new Uint8Array(codeUnits.buffer);
+
+      let result = "";
+      charCodes.forEach((char) => {
+        result += String.fromCharCode(char);
+      });
+      return result;
+    },
+
     getCurrentJwt: function () {
       return sessionStorage.getItem('jwt');
     },
@@ -106,6 +120,16 @@
     setCurrentJwt: function (jwt, username) {
       sessionStorage.setItem('jwt', jwt);
       sessionStorage.setItem('jwtUser', username);
+    },
+
+    setCurrentJwtUser: function (username) {
+      sessionStorage.setItem('jwtUser', username);
+    },
+    setAutoLoginEnabled: function (autoLoginEnabled) {
+      sessionStorage.setItem('autoLoginEnabled', autoLoginEnabled);
+    },
+    getAutoLoginEnabled: function (autoLoginEnabled) {
+      return sessionStorage.getItem('autoLoginEnabled');
     },
 
     checkJwt: function () {
@@ -159,7 +183,7 @@
               if (!jwtParts[1]) {
                 throw "invalid token!";
               }
-              var payload = JSON.parse(atob(jwtParts[1]));
+              var payload = JSON.parse(window.atob(jwtParts[1]));
               if (payload.preferred_username === currentUser) {
                 self.setCurrentJwt(data.jwt, currentUser);
                 updated = true;
@@ -448,7 +472,7 @@
         }
 
         $('#subNavigationBar .bottom').append(
-          '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
+          '<li class="subMenuEntry ' + cssClass + '"><a>' + arangoHelper.escapeHtml(name) + '</a></li>'
         );
         if (!menu.disabled && !disabled) {
           $('#subNavigationBar .bottom').children().last().bind('click', function () {
@@ -597,14 +621,14 @@
       var defaultRoute = '#collection/' + encodeURIComponent(collectionName);
 
       var menus = {
+        "Info": {
+          route: '#cInfo/' + encodeURIComponent(collectionName)
+        },
         "Content": {
           route: defaultRoute + '/documents/1'
         },
         "Indexes": {
           route: '#cIndices/' + encodeURIComponent(collectionName)
-        },
-        "Info": {
-          route: '#cInfo/' + encodeURIComponent(collectionName)
         },
         "Settings": {
           route: '#cSettings/' + encodeURIComponent(collectionName)

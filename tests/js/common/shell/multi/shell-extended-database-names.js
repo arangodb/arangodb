@@ -81,7 +81,7 @@ function DatabaseNamesSuite() {
           db._createDatabase(name);
           fail();
         } catch (err) {
-          assertEqual(internal.errors.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum, name);
+          assertEqual(internal.errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum, name);
         }
       });
     },
@@ -181,18 +181,19 @@ function DatabaseNamesSuite() {
       names.forEach((name) => {
         console.warn("creating database '" + name + "'");
         db._useDatabase("_system");
+        name = NORMALIZE_STRING(name);
         let d = db._createDatabase(name);
         try {
           assertTrue(d);
 
-          assertNotEqual(-1, db._databases().indexOf(NORMALIZE_STRING(name)), NORMALIZE_STRING(name));
+          assertNotEqual(-1, db._databases().indexOf(name), name);
 
           db._useDatabase(name);
-          assertEqual(NORMALIZE_STRING(db._name()), NORMALIZE_STRING(name));
+          assertEqual(db._name(), name);
           
           db._useDatabase("_system");
           db._dropDatabase(name);
-          assertEqual(-1, db._databases().indexOf(name), NORMALIZE_STRING(name));
+          assertEqual(-1, db._databases().indexOf(name), name);
         } catch (err) {
           db._useDatabase("_system");
           try {
@@ -219,6 +220,7 @@ function DatabaseNamesSuite() {
       // however, sending such values via the HTTP API will fail.
       names.forEach((name) => {
         db._useDatabase("_system");
+        name = NORMALIZE_STRING(name);
         let d = db._createDatabase(name);
         try {
           assertTrue(d);

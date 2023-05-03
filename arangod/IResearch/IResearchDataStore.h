@@ -135,7 +135,8 @@ class IResearchDataStore {
     DataSnapshotPtr _snapshot;
   };
 
-  explicit IResearchDataStore(ArangodServer& server);
+  explicit IResearchDataStore(ArangodServer& server,
+                              LogicalCollection& collection);
 
   virtual ~IResearchDataStore();
 
@@ -487,6 +488,9 @@ class IResearchDataStore {
   std::shared_ptr<MaintenanceState> _maintenanceState;
   bool _hasNestedFields{false};
   bool _isCreation{true};
+#ifdef USE_ENTERPRISE
+  std::atomic_bool _useSearchCache{true};
+#endif
 
   // protected by _commitMutex
   uint64_t _lastCommittedTick{0};
@@ -517,7 +521,7 @@ class IResearchDataStore {
 };
 
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
-                                       IResearchDataStore const& link);
+                                       IResearchDataStore const& dataStore);
 
 }  // namespace iresearch
 }  // namespace arangodb

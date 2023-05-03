@@ -167,14 +167,18 @@ class BufferHeapSortContext {
   size_t _numScoreRegisters;
   std::span<std::pair<size_t, bool> const> _scoresSort;
   std::span<float_t const> _scoreBuffer;
-};  //  BufferHeapSortContext
+};
 
 }  // namespace
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     ViewSnapshotPtr reader, RegisterId outRegister,
     RegisterId searchDocRegister, std::vector<RegisterId> scoreRegisters,
-    arangodb::aql::QueryContext& query, std::vector<SearchFunc> const& scorers,
+    arangodb::aql::QueryContext& query,
+#ifdef USE_ENTERPRISE
+    iresearch::IResearchOptimizeTopK const& optimizeTopK,
+#endif
+    std::vector<SearchFunc> const& scorers,
     std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
@@ -191,6 +195,9 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _scoreRegistersCount{_scoreRegisters.size()},
       _reader{std::move(reader)},
       _query{query},
+#ifdef USE_ENTERPRISE
+      _optimizeTopK{optimizeTopK},
+#endif
       _scorers{scorers},
       _sort{std::move(sort)},
       _storedValues{storedValues},
@@ -225,7 +232,7 @@ aql::QueryContext& IResearchViewExecutorInfos::getQuery() noexcept {
   return _query;
 }
 
-const std::vector<arangodb::iresearch::SearchFunc>&
+std::vector<arangodb::iresearch::SearchFunc> const&
 IResearchViewExecutorInfos::scorers() const noexcept {
   return _scorers;
 }
@@ -266,7 +273,7 @@ bool IResearchViewExecutorInfos::isOldMangling() const noexcept {
   return _meta == nullptr;
 }
 
-const std::pair<const arangodb::iresearch::IResearchSortBase*, size_t>&
+std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> const&
 IResearchViewExecutorInfos::sort() const noexcept {
   return _sort;
 }
@@ -289,7 +296,7 @@ void IResearchViewStats::incrScanned(size_t value) noexcept {
 size_t IResearchViewStats::getScanned() const noexcept { return _scannedIndex; }
 ExecutionStats& aql::operator+=(
     ExecutionStats& executionStats,
-    const IResearchViewStats& iResearchViewStats) noexcept {
+    IResearchViewStats const& iResearchViewStats) noexcept {
   executionStats.scannedIndex += iResearchViewStats.getScanned();
   return executionStats;
 }
@@ -392,13 +399,14 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
 
 template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
-    StorageSnapshot const& snapshot, ValueType&& value, float_t const* scores,
-    size_t count) {
+    StorageSnapshot const& snapshot, ValueType&& value,
+    std::span<float_t const> scores, irs::score_threshold* threshold) {
   BufferHeapSortContext sortContext(_numScoreRegisters, _scoresSort,
                                     _scoreBuffer);
   TRI_ASSERT(_maxSize);
-  if (!_heapSizeLeft) {
-    if (sortContext.compareInput(_rows.front(), scores)) {
+  TRI_ASSERT(threshold == nullptr || !scores.empty());
+  if (ADB_LIKELY(!_heapSizeLeft)) {
+    if (sortContext.compareInput(_rows.front(), scores.data())) {
       return;  // not interested in this document
     }
     std::pop_heap(_rows.begin(), _rows.end(), sortContext);
@@ -407,20 +415,24 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     auto const base = _rows.back() * _numScoreRegisters;
     size_t i{0};
     auto bufferIt = _scoreBuffer.begin() + base;
-    for (; i < count; ++i) {
+    for (; i < scores.size(); ++i) {
       *bufferIt = scores[i];
       ++bufferIt;
     }
-    while (i < _numScoreRegisters) {
+    for (; i < _numScoreRegisters; ++i) {
       *bufferIt = std::numeric_limits<float_t>::quiet_NaN();
-      ++i;
       ++bufferIt;
     }
     std::push_heap(_rows.begin(), _rows.end(), sortContext);
+    if (threshold) {
+      TRI_ASSERT(threshold->min <=
+                 _scoreBuffer[_rows.front() * _numScoreRegisters]);
+      threshold->min = _scoreBuffer[_rows.front() * _numScoreRegisters];
+    }
   } else {
     _keyBuffer.emplace_back(snapshot, std::move(value));
     size_t i = 0;
-    for (; i < count; ++i) {
+    for (; i < scores.size(); ++i) {
       _scoreBuffer.emplace_back(scores[i]);
     }
     TRI_ASSERT(i <= _numScoreRegisters);
@@ -547,7 +559,8 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   IResearchViewStats stats{};
   AqlCall upstreamCall{};
-  upstreamCall.fullCount = output.getClientCall().fullCount;
+  bool const needFullCount = output.getClientCall().fullCount;
+  upstreamCall.fullCount = needFullCount;
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool documentWritten = false;
     while (!documentWritten) {
@@ -560,7 +573,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::produceRows(
 
         // reset must be called exactly after we've got a new and valid input
         // row.
-        static_cast<Impl&>(*this).reset();
+        static_cast<Impl&>(*this).reset(needFullCount);
       }
 
       ReadContext ctx(infos().getDocumentRegister(), _inputRow, output);
@@ -596,8 +609,9 @@ std::tuple<ExecutorState,
            size_t, AqlCall>
 IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
+  bool const needFullCount = call.needsFullCount();
   TRI_ASSERT(_indexReadBuffer.empty() ||
-             (!this->infos().scoresSort().empty() && call.needsFullCount()));
+             (!this->infos().scoresSort().empty() && needFullCount));
   auto& impl = static_cast<Impl&>(*this);
   IResearchViewStats stats{};
   while (inputRange.hasDataRow() && call.shouldSkip()) {
@@ -611,7 +625,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
       }
 
       // reset must be called exactly after we've got a new and valid input row.
-      impl.reset();
+      impl.reset(needFullCount);
     }
     TRI_ASSERT(_inputRow.isInitialized());
     if (call.getOffset() > 0) {
@@ -734,10 +748,10 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
     if (infos().volatileSort() || !_isInitialized) {
       auto const& scorers = infos().scorers();
 
-      containers::SmallVector<irs::sort::ptr, 2> order;
-      order.reserve(scorers.size());
+      _scorersContainer.clear();
+      _scorersContainer.reserve(scorers.size());
 
-      for (irs::sort::ptr scorer; auto const& scorerNode : scorers) {
+      for (irs::Scorer::ptr scorer; auto const& scorerNode : scorers) {
         TRI_ASSERT(scorerNode.node);
 
         if (!order_factory::scorer(&scorer, *scorerNode.node, queryCtx)) {
@@ -746,16 +760,16 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
               "failed to build scorers while querying arangosearch view");
         }
 
-        assert(scorer);
-        order.emplace_back(std::move(scorer));
+        TRI_ASSERT(scorer);
+        _scorersContainer.emplace_back(std::move(scorer));
       }
 
-      // compile order
-      _order = irs::Order::Prepare(order);
+      // compile scorers
+      _scorers = irs::Scorers::Prepare(_scorersContainer);
     }
 
     // compile filter
-    _filter = root.prepare(*_reader, _order, irs::kNoBoost, &_filterCtx);
+    _filter = root.prepare(*_reader, _scorers, irs::kNoBoost, &_filterCtx);
 
     if constexpr (ExecutionTraits::EmitSearchDoc) {
       TRI_ASSERT(_filterCookie);
@@ -1025,10 +1039,12 @@ size_t IResearchViewHeapSortExecutor<ExecutionTraits>::skipAll(
     size_t const count = this->_reader->size();
     for (size_t readerOffset = 0; readerOffset < count; ++readerOffset) {
       auto& segmentReader = (*this->_reader)[readerOffset];
-      auto itr = this->_filter->execute({.segment = segmentReader,
-                                         .scorers = this->_order,
-                                         .ctx = &this->_filterCtx,
-                                         .mode = irs::ExecutionMode::kAll});
+      auto itr = this->_filter->execute({
+          .segment = segmentReader,
+          .scorers = this->_scorers,
+          .ctx = &this->_filterCtx,
+          .wand = {},
+      });
       TRI_ASSERT(itr);
       if (!itr) {
         continue;
@@ -1073,8 +1089,15 @@ size_t IResearchViewHeapSortExecutor<ExecutionTraits>::skip(
 }
 
 template<typename ExecutionTraits>
-void IResearchViewHeapSortExecutor<ExecutionTraits>::reset() {
+void IResearchViewHeapSortExecutor<ExecutionTraits>::reset(
+    [[maybe_unused]] bool needFullCount) {
   Base::reset();
+#ifdef USE_ENTERPRISE
+  if (!needFullCount) {
+    this->_wand = this->_infos.optimizeTopK().makeWandContext(
+        this->_infos.scoresSort(), this->_scorers);
+  }
+#endif
   _totalCount = 0;
   _bufferedCount = 0;
   _bufferFilled = false;
@@ -1126,15 +1149,19 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
 
   irs::doc_iterator::ptr itr;
   irs::document const* doc{};
+  irs::score_threshold* threshold{};
+  irs::score_t threshold_value = 0.f;
   size_t numScores{0};
   irs::score const* scr;
   for (size_t readerOffset = 0; readerOffset < count;) {
     if (!itr) {
       auto& segmentReader = (*this->_reader)[readerOffset];
-      itr = this->_filter->execute({.segment = segmentReader,
-                                    .scorers = this->_order,
-                                    .ctx = &this->_filterCtx,
-                                    .mode = irs::ExecutionMode::kAll});
+      itr = this->_filter->execute({
+          .segment = segmentReader,
+          .scorers = this->_scorers,
+          .ctx = &this->_filterCtx,
+          .wand = this->_wand,
+      });
       TRI_ASSERT(itr);
       doc = irs::get<irs::document>(*itr);
       TRI_ASSERT(doc);
@@ -1143,14 +1170,26 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
         if (!scr) {
           scr = &irs::score::kNoScore;
           numScores = 0;
+          threshold = nullptr;
         } else {
           numScores = scores.size();
+          threshold = irs::get_mutable<irs::score_threshold>(itr.get());
+          if (threshold != nullptr && this->_wand.Enabled()) {
+            TRI_ASSERT(threshold->min == 0.f);
+            threshold->min = threshold_value;
+          } else {
+            threshold = nullptr;
+          }
         }
       }
       itr = segmentReader.mask(std::move(itr));
       TRI_ASSERT(itr);
     }
     if (!itr->next()) {
+      if (threshold != nullptr) {
+        TRI_ASSERT(threshold_value <= threshold->min);
+        threshold_value = threshold->min;
+      }
       ++readerOffset;
       itr.reset();
       doc = nullptr;
@@ -1165,7 +1204,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
         this->_reader->snapshot(readerOffset),
         typename decltype(this->_indexReadBuffer)::KeyValueType(doc->value,
                                                                 readerOffset),
-        scores.data(), numScores);
+        std::span{scores.data(), numScores}, threshold);
   }
   this->_indexReadBuffer.finalizeHeapSort();
   _bufferedCount = this->_indexReadBuffer.size();
@@ -1429,10 +1468,12 @@ bool IResearchViewExecutor<ExecutionTraits>::resetIterator() {
     }
   }
 
-  _itr = this->_filter->execute({.segment = segmentReader,
-                                 .scorers = this->_order,
-                                 .ctx = &this->_filterCtx,
-                                 .mode = irs::ExecutionMode::kAll});
+  _itr = this->_filter->execute({
+      .segment = segmentReader,
+      .scorers = this->_scorers,
+      .ctx = &this->_filterCtx,
+      .wand = {},
+  });
   TRI_ASSERT(_itr);
   _doc = irs::get<irs::document>(*_itr);
   TRI_ASSERT(_doc);
@@ -1455,7 +1496,8 @@ bool IResearchViewExecutor<ExecutionTraits>::resetIterator() {
 }
 
 template<typename ExecutionTraits>
-void IResearchViewExecutor<ExecutionTraits>::reset() {
+void IResearchViewExecutor<ExecutionTraits>::reset(
+    [[maybe_unused]] bool needFullCount) {
   Base::reset();
 
   // reset iterator state
@@ -1641,7 +1683,8 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
 }
 
 template<typename ExecutionTraits>
-void IResearchViewMergeExecutor<ExecutionTraits>::reset() {
+void IResearchViewMergeExecutor<ExecutionTraits>::reset(
+    [[maybe_unused]] bool needFullCount) {
   Base::reset();
 
   _segments.clear();
@@ -1658,11 +1701,12 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset() {
   for (size_t i = 0; i < size; ++i) {
     auto& segment = (*this->_reader)[i];
 
-    auto it = segment.mask(
-        this->_filter->execute({.segment = segment,
-                                .scorers = this->_order,
-                                .ctx = &this->_filterCtx,
-                                .mode = irs::ExecutionMode::kAll}));
+    auto it = segment.mask(this->_filter->execute({
+        .segment = segment,
+        .scorers = this->_scorers,
+        .ctx = &this->_filterCtx,
+        .wand = {},
+    }));
     TRI_ASSERT(it);
 
     auto const* doc = irs::get<irs::document>(*it);

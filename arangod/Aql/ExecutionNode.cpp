@@ -46,6 +46,7 @@
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/MultipleRemoteModificationNode.h"
 #include "Aql/MutexNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
@@ -111,6 +112,8 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::ENUMERATE_PATHS), "EnumeratePathsNode"},
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
+    {static_cast<int>(ExecutionNode::REMOTE_MULTIPLE),
+     "MultipleRemoteModificationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
      "EnumerateViewNode"},
     {static_cast<int>(ExecutionNode::SUBQUERY_START), "SubqueryStartNode"},
@@ -128,6 +131,57 @@ std::unordered_map<int, std::string const> const typeNames{
 }  // namespace
 
 namespace arangodb::aql {
+
+size_t estimateListLength(ExecutionPlan const* plan, Variable const* var) {
+  // Well, what can we say? The length of the list can in general
+  // only be determined at runtime... If we were to know that this
+  // list is constant, then we could maybe multiply by the length
+  // here... For the time being, we assume 100
+  size_t length = 100;
+
+  auto setter = plan->getVarSetBy(var->id);
+
+  if (setter != nullptr) {
+    if (setter->getType() == ExecutionNode::CALCULATION) {
+      // list variable introduced by a calculation
+      auto expression =
+          ExecutionNode::castTo<CalculationNode*>(setter)->expression();
+
+      if (expression != nullptr) {
+        auto node = expression->node();
+
+        if (node->type == NODE_TYPE_ARRAY) {
+          // this one is easy
+          length = node->numMembers();
+        }
+        if (node->type == NODE_TYPE_RANGE) {
+          auto low = node->getMember(0);
+          auto high = node->getMember(1);
+
+          if (low->isConstant() && high->isConstant() &&
+              (low->isValueType(VALUE_TYPE_INT) ||
+               low->isValueType(VALUE_TYPE_DOUBLE)) &&
+              (high->isValueType(VALUE_TYPE_INT) ||
+               high->isValueType(VALUE_TYPE_DOUBLE))) {
+            // create a temporary range to determine the size
+            Range range(low->getIntValue(), high->getIntValue());
+
+            length = range.size();
+          }
+        }
+      }
+    } else if (setter->getType() == ExecutionNode::SUBQUERY) {
+      // length will be set by the subquery's cost estimator
+      CostEstimate subEstimate =
+          ExecutionNode::castTo<SubqueryNode const*>(setter)
+              ->getSubquery()
+              ->getCost();
+      length = subEstimate.estimatedNrItems;
+    }
+  }
+  return length;
+}
+
 ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice);
 
 #ifndef USE_ENTERPRISE
@@ -220,7 +274,8 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
 }
 
 ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
-                                               VPackSlice const& slice) {
+                                               velocypack::Slice slice) {
+  TRI_ASSERT(slice.get("typeID").isNumber()) << slice.toJson();
   int nodeTypeID = slice.get("typeID").getNumericValue<int>();
   validateType(nodeTypeID);
 
@@ -356,6 +411,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new EnumeratePathsNode(plan, slice);
     case REMOTESINGLE:
       return new SingleRemoteOperationNode(plan, slice);
+    case REMOTE_MULTIPLE:
+      return new MultipleRemoteModificationNode(plan, slice);
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
     case SUBQUERY_START:
@@ -413,7 +470,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
 }
 
 /// @brief create an ExecutionNode from VPackSlice
-ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
+ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
     : _id(slice.get("id").getNumericValue<size_t>()),
       _depth(slice.get("depth").getNumericValue<unsigned int>()),
       _varUsageValid(true),
@@ -1544,6 +1601,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case SHORTEST_PATH:
     case ENUMERATE_PATHS:
     case REMOTESINGLE:
+    case REMOTE_MULTIPLE:
     case ENUMERATE_IRESEARCH_VIEW:
     case DISTRIBUTE_CONSUMER:
     case SUBQUERY_START:
@@ -1668,14 +1726,6 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-
-  if (!engine.waitForSatellites(engine.getQuery(), collection())) {
-    double maxWait = engine.getQuery().queryOptions().satelliteSyncWait;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-                                   "collection " + collection()->name() +
-                                       " did not come into sync in time (" +
-                                       std::to_string(maxWait) + ")");
-  }
 
   // check which variables are used by the node's post-filter
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
@@ -1840,52 +1890,7 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
 
 /// @brief the cost of an enumerate list node
 CostEstimate EnumerateListNode::estimateCost() const {
-  // Well, what can we say? The length of the list can in general
-  // only be determined at runtime... If we were to know that this
-  // list is constant, then we could maybe multiply by the length
-  // here... For the time being, we assume 100
-  size_t length = 100;
-
-  auto setter = _plan->getVarSetBy(_inVariable->id);
-
-  if (setter != nullptr) {
-    if (setter->getType() == ExecutionNode::CALCULATION) {
-      // list variable introduced by a calculation
-      auto expression =
-          ExecutionNode::castTo<CalculationNode*>(setter)->expression();
-
-      if (expression != nullptr) {
-        auto node = expression->node();
-
-        if (node->type == NODE_TYPE_ARRAY) {
-          // this one is easy
-          length = node->numMembers();
-        }
-        if (node->type == NODE_TYPE_RANGE) {
-          auto low = node->getMember(0);
-          auto high = node->getMember(1);
-
-          if (low->isConstant() && high->isConstant() &&
-              (low->isValueType(VALUE_TYPE_INT) ||
-               low->isValueType(VALUE_TYPE_DOUBLE)) &&
-              (high->isValueType(VALUE_TYPE_INT) ||
-               high->isValueType(VALUE_TYPE_DOUBLE))) {
-            // create a temporary range to determine the size
-            Range range(low->getIntValue(), high->getIntValue());
-
-            length = range.size();
-          }
-        }
-      }
-    } else if (setter->getType() == ExecutionNode::SUBQUERY) {
-      // length will be set by the subquery's cost estimator
-      CostEstimate subEstimate =
-          ExecutionNode::castTo<SubqueryNode const*>(setter)
-              ->getSubquery()
-              ->getCost();
-      length = subEstimate.estimatedNrItems;
-    }
-  }
+  size_t length = estimateListLength(_plan, _inVariable);
 
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();

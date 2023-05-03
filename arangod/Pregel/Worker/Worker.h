@@ -23,15 +23,16 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Messages.h"
-#include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/GraphStore/Magazine.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Worker/Messages.h"
@@ -77,6 +78,11 @@ class RangeIterator;
 template<typename V, typename E, typename M>
 class VertexContext;
 
+struct ProcessVerticesResult {
+  AggregatorHandler workerAggregator;
+  MessageStats stats;
+};
+
 template<typename V, typename E, typename M>
 class Worker : public IWorker {
   // friend class arangodb::RestPregelHandler;
@@ -97,13 +103,13 @@ class Worker : public IWorker {
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
   // locks modifying member vars
-  mutable Mutex _commandMutex;
+  mutable std::mutex _commandMutex;
   // locks swapping
   mutable arangodb::basics::ReadWriteLock _cacheRWLock;
 
   std::unique_ptr<AggregatorHandler> _conductorAggregators;
   std::unique_ptr<AggregatorHandler> _workerAggregators;
-  std::shared_ptr<Quiver<V, E>> _quiver;
+  Magazine<V, E> _magazine;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
 
@@ -111,12 +117,6 @@ class Worker : public IWorker {
   InCache<M>* _readCache = nullptr;
   // for the current or next superstep
   InCache<M>* _writeCache = nullptr;
-  // intended for the next superstep phase
-  InCache<M>* _writeCacheNextGSS = nullptr;
-  // preallocated incoming caches
-  std::vector<InCache<M>*> _inCaches;
-  // preallocated ootgoing caches
-  std::vector<OutCache<M>*> _outCaches;
 
   GssObservables _currentGssObservables;
   Guarded<AllGssStatus> _allGssStatus;
@@ -124,15 +124,12 @@ class Worker : public IWorker {
   /// Stats about the CURRENT gss
   MessageStats _messageStats;
   /// valid after _finishedProcessing was called
-  uint64_t _activeCount = 0;
+  std::atomic<uint64_t> _activeCount = 0;
   /// current number of running threads
   size_t _runningThreads = 0;
   Scheduler::WorkHandle _workHandle;
 
-  void _initializeMessageCaches();
-  void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
-  bool _processVertices();
   void _finishedProcessing();
   void _callConductor(std::string const& path,
                       VPackBuilder const& message) const;

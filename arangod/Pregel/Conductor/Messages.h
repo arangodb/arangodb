@@ -63,35 +63,54 @@ auto inspect(Inspector& f, GraphLoaded& x) {
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
 
+struct SendCountPerActor {
+  actor::ActorPID receiver;
+  uint64_t sendCount;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, SendCountPerActor& x) {
+  return f.object(x).fields(f.field("receiver", x.receiver),
+                            f.field("sendCount", x.sendCount));
+}
+
 struct GlobalSuperStepFinished {
   GlobalSuperStepFinished() noexcept = default;
-  GlobalSuperStepFinished(
-      MessageStats messageStats,
-      std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor,
-      uint64_t activeCount, uint64_t vertexCount, uint64_t edgeCount,
-      VPackBuilder aggregators)
-      : messageStats{std::move(messageStats)},
+  GlobalSuperStepFinished(uint64_t sendMessagesCount,
+                          uint64_t receivedMessagesCount,
+                          std::vector<SendCountPerActor> sendCountPerActor,
+                          uint64_t activeCount, uint64_t vertexCount,
+                          uint64_t edgeCount, VPackBuilder aggregators)
+      : sendMessagesCount{sendMessagesCount},
+        receivedMessagesCount{receivedMessagesCount},
         sendCountPerActor{std::move(sendCountPerActor)},
         activeCount{activeCount},
         vertexCount{vertexCount},
         edgeCount{edgeCount},
         aggregators{std::move(aggregators)} {};
-  MessageStats messageStats;
-  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
-  uint64_t activeCount;
-  uint64_t vertexCount;
-  uint64_t edgeCount;
+
+  uint64_t sendMessagesCount = 0;
+  uint64_t receivedMessagesCount = 0;
+  std::vector<SendCountPerActor> sendCountPerActor;
+  uint64_t activeCount = 0;
+  uint64_t vertexCount = 0;
+  uint64_t edgeCount = 0;
   VPackBuilder aggregators;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
   return f.object(x).fields(
-      f.field("messageStats", x.messageStats),
-      // f.field("sentCounts", x.sendCountPerActor), // make inspection worker
-      // with self-defined hashtable
+      f.field("sendMessagesCount", x.sendMessagesCount),
+      f.field("receivedMessagesCount", x.receivedMessagesCount),
+      f.field("sendCountPerActor", x.sendCountPerActor),
       f.field("activeCount", x.activeCount),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
       f.field("aggregators", x.aggregators));
+}
+
+struct Stored {};
+template<typename Inspector>
+auto inspect(Inspector& f, Stored& x) {
+  return f.object(x).fields();
 }
 
 struct ResultCreated {
@@ -112,13 +131,27 @@ auto inspect(Inspector& f, StatusUpdate& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field("status", x.status));
 }
+
+struct CleanupFinished {};
+template<typename Inspector>
+auto inspect(Inspector& f, CleanupFinished& x) {
+  return f.object(x).fields();
+}
+
+struct Cancel {};
+template<typename Inspector>
+auto inspect(Inspector& f, Cancel& x) {
+  return f.object(x).fields();
+}
+
 struct ConductorMessages
     : std::variant<ConductorStart, ResultT<WorkerCreated>, ResultT<GraphLoaded>,
-                   ResultT<GlobalSuperStepFinished>, ResultCreated,
-                   StatusUpdate> {
+                   ResultT<GlobalSuperStepFinished>, ResultT<Stored>,
+                   ResultCreated, StatusUpdate, CleanupFinished, Cancel> {
   using std::variant<ConductorStart, ResultT<WorkerCreated>,
                      ResultT<GraphLoaded>, ResultT<GlobalSuperStepFinished>,
-                     ResultCreated, StatusUpdate>::variant;
+                     ResultT<Stored>, ResultCreated, StatusUpdate,
+                     CleanupFinished, Cancel>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorMessages& x) {
@@ -128,8 +161,11 @@ auto inspect(Inspector& f, ConductorMessages& x) {
       arangodb::inspection::type<ResultT<GraphLoaded>>("GraphLoaded"),
       arangodb::inspection::type<ResultT<GlobalSuperStepFinished>>(
           "GlobalSuperStepFinished"),
+      arangodb::inspection::type<ResultT<Stored>>("Stored"),
       arangodb::inspection::type<ResultCreated>("ResultCreated"),
-      arangodb::inspection::type<StatusUpdate>("StatusUpdate"));
+      arangodb::inspection::type<StatusUpdate>("StatusUpdate"),
+      arangodb::inspection::type<CleanupFinished>("CleanupFinished"),
+      arangodb::inspection::type<Cancel>("Cancel"));
 }
 
 }  // namespace conductor::message

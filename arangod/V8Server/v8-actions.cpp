@@ -26,7 +26,6 @@
 #include "Actions/actions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "V8/V8SecurityFeature.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -119,7 +118,7 @@ class v8_action_t final : public TRI_action_t {
   }
 
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, GeneralRequest* request,
-                              GeneralResponse* response, Mutex* dataLock,
+                              GeneralResponse* response, std::mutex* dataLock,
                               void** data) override {
     TRI_action_result_t result;
 
@@ -152,7 +151,7 @@ class v8_action_t final : public TRI_action_t {
       // and execute it
       {
         // cppcheck-suppress redundantPointerOp
-        MUTEX_LOCKER(mutexLocker, *dataLock);
+        std::lock_guard mutexLocker{*dataLock};
 
         if (*data != nullptr) {
           result.canceled = true;
@@ -178,7 +177,7 @@ class v8_action_t final : public TRI_action_t {
 
       {
         // cppcheck-suppress redundantPointerOp
-        MUTEX_LOCKER(mutexLocker, *dataLock);
+        std::lock_guard mutexLocker{*dataLock};
         *data = nullptr;
       }
     }
@@ -186,10 +185,10 @@ class v8_action_t final : public TRI_action_t {
     return result;
   }
 
-  void cancel(Mutex* dataLock, void** data) override {
+  void cancel(std::mutex* dataLock, void** data) override {
     {
       // cppcheck-suppress redundantPointerOp
-      MUTEX_LOCKER(mutexLocker, *dataLock);
+      std::lock_guard mutexLocker{*dataLock};
 
       // either we have not yet reached the execute above or we are already done
       if (*data == nullptr) {
@@ -826,9 +825,6 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>());
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP: {
-        //  OBI FIXME - vpack
-        //  HTTP SHOULD USE vpack interface
-
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         v8::Handle<v8::Array> transformations = transformArray.As<v8::Array>();
         bool setRegularBody = !transformArray->IsArray();

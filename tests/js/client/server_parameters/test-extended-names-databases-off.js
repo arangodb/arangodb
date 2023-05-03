@@ -28,14 +28,15 @@
 
 if (getOptions === true) {
   return {
-    'database.extended-names-databases': "false",
+    'database.extended-names': "false",
   };
 }
 const jsunity = require('jsunity');
-const traditionalName = "UnitTestsDatabase";
-const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 const db = require('internal').db;
 const errors = require('@arangodb').errors;
+
+const traditionalName = "UnitTestsDatabase";
+const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 
 function testSuite() {
   return {
@@ -58,7 +59,7 @@ function testSuite() {
         db._createDatabase(extendedName);
         fail();
       } catch (err) {
-        assertEqual(errors.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
+        assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
   };

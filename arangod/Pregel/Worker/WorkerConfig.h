@@ -61,8 +61,6 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
 
   inline uint64_t localSuperstep() const { return _localSuperstep; }
 
-  inline bool useMemoryMaps() const { return _useMemoryMaps; }
-
   inline uint64_t parallelism() const { return _parallelism; }
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
@@ -80,11 +78,6 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
   inline std::map<CollectionID, std::vector<ShardID>> const&
   edgeCollectionShards() const {
     return _edgeCollectionShards;
-  }
-
-  inline std::unordered_map<CollectionID, std::string> const&
-  collectionPlanIdMap() const {
-    return _collectionPlanIdMap;
   }
 
   std::string const& shardIDToCollectionName(ShardID const& shard) const {
@@ -146,15 +139,12 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
   std::string _coordinatorId;
   TRI_vocbase_t* _vocbase;
 
-  // use memory mapping? will be updated by config later
-  bool _useMemoryMaps = true;
   // parallelism. will be updated by config later
   size_t _parallelism = 1;
 
   std::vector<ShardID> _globalShardIDs;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
 
-  std::unordered_map<std::string, std::string> _collectionPlanIdMap;
   std::map<ShardID, std::string> _shardToCollectionName;
 
   // Map from edge collection to their shards, only iterated over keep sorted

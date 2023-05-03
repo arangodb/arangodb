@@ -24,28 +24,26 @@
 
 #include "HttpRequest.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/conversions.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Validator.h>
 
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/conversions.h"
-#include "Basics/debugging.h"
-#include "Logger/Logger.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
-std::string url_decode(const char* begin, const char* end) {
+std::string urlDecode(char const* begin, char const* end) {
   std::string out;
   out.reserve(static_cast<size_t>(end - begin));
-  for (const char* i = begin; i != end; ++i) {
+  for (char const* i = begin; i != end; ++i) {
     std::string::value_type c = (*i);
     if (c == '%') {
       if (i + 2 < end) {
@@ -233,7 +231,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
                 ++q;
               }
 
-              _databaseName = ::url_decode(pathBegin, q);
+              _databaseName = ::urlDecode(pathBegin, q);
               if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
                 THROW_ARANGO_EXCEPTION_MESSAGE(
                     TRI_ERROR_ARANGO_ILLEGAL_NAME,
@@ -447,7 +445,7 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       }
 
       TRI_ASSERT(q >= start);
-      _databaseName = ::url_decode(start, q);
+      _databaseName = ::urlDecode(start, q);
       if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_ARANGO_ILLEGAL_NAME,
@@ -503,14 +501,14 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
         ++q;  // skip ahead
       }
 
-      std::string val = ::url_decode(valueBegin, q);
+      std::string val = ::urlDecode(valueBegin, q);
       if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' &&
           *(keyEnd - 1) == ']') {
         // found parameter xxx[]
-        _arrayValues[::url_decode(keyBegin, keyEnd - 2)].emplace_back(
+        _arrayValues[::urlDecode(keyBegin, keyEnd - 2)].emplace_back(
             std::move(val));
       } else {
-        _values[::url_decode(keyBegin, keyEnd)] = std::move(val);
+        _values[::urlDecode(keyBegin, keyEnd)] = std::move(val);
       }
       keyPhase = true;
       keyBegin = q + 1;
@@ -564,12 +562,11 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
     if (StaticStrings::EncodingDeflate == value) {
       // FXIME: cannot use substring search, Java driver chokes on deflated
       // response
-      // if (value.find(StaticStrings::EncodingDeflate) != std::string::npos) {
       _acceptEncoding = EncodingType::DEFLATE;
+    } else if (StaticStrings::EncodingGzip == value) {
+      _acceptEncoding = EncodingType::GZIP;
     }
-  }
-
-  if (key == "cookie") {
+  } else if (key == "cookie") {
     parseCookies(value.c_str(), value.size());
     return;
   }
@@ -724,11 +721,14 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
 
   if (k == StaticStrings::Accept && v == StaticStrings::MimeTypeVPack) {
     _contentTypeResponse = ContentType::VPACK;
-  } else if (k == StaticStrings::AcceptEncoding &&
-             v == StaticStrings::EncodingDeflate) {
+  } else if (k == StaticStrings::AcceptEncoding) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
-    _acceptEncoding = EncodingType::DEFLATE;
+    if (v == StaticStrings::EncodingDeflate) {
+      _acceptEncoding = EncodingType::DEFLATE;
+    } else if (v == StaticStrings::EncodingGzip) {
+      _acceptEncoding = EncodingType::GZIP;
+    }
   } else if (_contentType == ContentType::UNSET &&
              k == StaticStrings::ContentTypeHeader) {
     if (v == StaticStrings::MimeTypeVPack) {
@@ -741,9 +741,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
       // don't insert this header!!
       return;
     }
-  }
-
-  if (k == "cookie") {
+  } else if (k == "cookie") {
     parseCookies(value, valueLength);
     return;
   }

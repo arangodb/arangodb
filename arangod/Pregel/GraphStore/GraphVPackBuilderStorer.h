@@ -54,21 +54,26 @@ template<typename V, typename E>
 struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
   explicit GraphVPackBuilderStorer(
       bool withId, std::shared_ptr<WorkerConfig> config,
-      std::shared_ptr<GraphFormat<V, E> const> graphFormat,
-      std::function<void()> const& statusUpdateCallback)
-      : withId(withId),
+      std::shared_ptr<GraphFormat<V, E> const> graphFormat)
+      : result(std::make_unique<VPackBuilder>()),
+        withId(withId),
         graphFormat(graphFormat),
-        config(config),
-        statusUpdateCallback(statusUpdateCallback) {}
+        config(config) {
+    result->openArray(/*unindexed*/ true);
+  }
 
-  auto store(std::shared_ptr<Quiver<V, E>> quiver) -> void override;
+  auto store(Magazine<V, E> magazine)
+      -> futures::Future<futures::Unit> override;
+  auto stealResult() -> std::unique_ptr<VPackBuilder> {
+    result->close();
+    return std::move(result);
+  }
 
   std::unique_ptr<VPackBuilder> result;
   bool withId{false};
 
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   std::shared_ptr<WorkerConfig const> config;
-  std::function<void()> const& statusUpdateCallback;
 };
 
 }  // namespace arangodb::pregel

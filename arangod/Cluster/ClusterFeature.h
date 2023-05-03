@@ -23,11 +23,11 @@
 
 #pragma once
 
+#include <mutex>
 #include <unordered_set>
 
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
@@ -137,9 +137,9 @@ class ClusterFeature : public ArangodFeature {
     TRI_ASSERT(_followersWrongChecksumCounter != nullptr);
     return *_followersWrongChecksumCounter;
   }
-  metrics::Counter& followersTotalRebuildCounter() {
-    TRI_ASSERT(_followersTotalRebuildCounter != nullptr);
-    return *_followersTotalRebuildCounter;
+  metrics::Counter& syncTreeRebuildCounter() {
+    TRI_ASSERT(_syncTreeRebuildCounter != nullptr);
+    return *_syncTreeRebuildCounter;
   }
   metrics::Counter& potentiallyDirtyDocumentReadsCounter() {
     TRI_ASSERT(_potentiallyDirtyDocumentReadsCounter != nullptr);
@@ -252,13 +252,16 @@ class ClusterFeature : public ArangodFeature {
   metrics::Counter* _followersDroppedCounter = nullptr;
   metrics::Counter* _followersRefusedCounter = nullptr;
   metrics::Counter* _followersWrongChecksumCounter = nullptr;
+  // note: this metric is only there for downwards-compatibility reasons. it
+  // will always have a value of 0.
   metrics::Counter* _followersTotalRebuildCounter = nullptr;
+  metrics::Counter* _syncTreeRebuildCounter = nullptr;
   metrics::Counter* _potentiallyDirtyDocumentReadsCounter = nullptr;
   metrics::Counter* _dirtyReadQueriesCounter = nullptr;
   std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback = nullptr;
 
   /// @brief lock for dirty database list
-  mutable arangodb::Mutex _dirtyLock;
+  mutable std::mutex _dirtyLock;
   /// @brief dirty databases, where a job could not be posted)
   containers::FlatHashSet<std::string> _dirtyDatabases;
 };

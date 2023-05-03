@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "MutexLocker.h"
 #include "ReadLocker.h"
 #include "WriteLocker.h"
 
@@ -34,6 +33,101 @@
 #include <thread>
 
 namespace arangodb {
+namespace basics {
+
+/// @brief mutex locker
+/// A MutexLocker locks a mutex during its lifetime und unlocks the mutex
+/// when it is destroyed.
+template<class LockType>
+class MutexLocker {
+  MutexLocker(MutexLocker const&) = delete;
+  MutexLocker& operator=(MutexLocker const&) = delete;
+
+ public:
+  /// @brief acquires a mutex
+  /// The constructor acquires the mutex, the destructor unlocks the mutex.
+  MutexLocker(LockType* mutex, LockerType type, bool condition,
+              char const* file, int line) noexcept
+      : _mutex(mutex), _file(file), _line(line), _isLocked(false) {
+    if (condition) {
+      if (type == LockerType::BLOCKING) {
+        lock();
+        TRI_ASSERT(_isLocked);
+      } else if (type == LockerType::EVENTUAL) {
+        lockEventual();
+        TRI_ASSERT(_isLocked);
+      } else if (type == LockerType::TRY) {
+        _isLocked = tryLock();
+      }
+    }
+  }
+
+  /// @brief releases the read-lock
+  ~MutexLocker() {
+    if (_isLocked) {
+      _mutex->unlock();
+    }
+  }
+
+  bool isLocked() const noexcept { return _isLocked; }
+
+  /// @brief eventually acquire the read lock
+  void lockEventual() {
+    while (!tryLock()) {
+      std::this_thread::yield();
+    }
+    TRI_ASSERT(_isLocked);
+  }
+
+  bool tryLock() {
+    TRI_ASSERT(!_isLocked);
+    if (_mutex->try_lock()) {
+      _isLocked = true;
+    }
+    return _isLocked;
+  }
+
+  /// @brief acquire the mutex, blocking
+  void lock() noexcept {
+    TRI_ASSERT(!_isLocked);
+    _mutex->lock();
+    _isLocked = true;
+  }
+
+  /// @brief unlocks the mutex if we own it
+  bool unlock() noexcept {
+    if (_isLocked) {
+      _isLocked = false;
+      _mutex->unlock();
+      return true;
+    }
+    return false;
+  }
+
+  /// @brief steals the lock, but does not unlock it
+  bool steal() noexcept {
+    if (_isLocked) {
+      _isLocked = false;
+      return true;
+    }
+    return false;
+  }
+
+ private:
+  /// @brief the mutex
+  LockType* _mutex;
+
+  /// @brief file
+  char const* _file;
+
+  /// @brief line number
+  int _line;
+
+  /// @brief whether or not the mutex is locked
+  bool _isLocked;
+};
+
+}  // namespace basics
 
 // identical code to RecursiveWriteLocker except for type
 template<typename T>

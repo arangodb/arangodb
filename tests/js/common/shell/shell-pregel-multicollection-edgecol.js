@@ -99,6 +99,8 @@ function multiCollectionTestSuite() {
           const vj = `${vColl}_${j}`;
           const eij = `${eColl}_${i}_${j}`;
           db._createEdgeCollection(eij, {
+            numberOfShards: 4,
+            replicationFactor: 1,
             shardKeys: ["vertex"],
             distributeShardsLike: v0
           });
@@ -237,28 +239,12 @@ function multiCollectionTestSuite() {
         assertEqual(stats.vertexCount, numComponents * n, stats);
         assertEqual(stats.edgeCount, numComponents * (m + n), stats);
         assertTrue(stats.hasOwnProperty("parallelism"));
-        assertEqual(parallelism, stats.parallelism);
-
-        let allUniquePregelResults = new Set();
-        for (let j = 0; j < cn; ++j) {
-          let c = db[`${vColl}_${j}`].all();
-          const pregelResults = pregelTestHelpers.uniquePregelResults(c);
-          allUniquePregelResults = new Set([...allUniquePregelResults, ...pregelResults]);
+        const number_of_cores = require('@arangodb/test-helper').getMetricSingle("arangodb_server_statistics_cpu_core");
+        if (number_of_cores < parallelism) {
+          assertEqual(number_of_cores, stats.parallelism);
+        } else {
+          assertEqual(parallelism, stats.parallelism);
         }
-        assertEqual(allUniquePregelResults.size, numComponents);
-      });
-    },
-    
-    testMultiWCCParallelismMemoryMapping: function () {
-      [ 1, 2, 4, 8 ].forEach((parallelism) => {
-        let pid = pregel.start("wcc", graphName, { resultField: "result", store: true, parallelism, useMemoryMaps: true });
-        const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
-
-        assertTrue(stats.gss <= 25, stats);
-        assertEqual(stats.vertexCount, numComponents * n, stats);
-        assertEqual(stats.edgeCount, numComponents * (m + n), stats);
-        assertTrue(stats.hasOwnProperty("parallelism"), stats);
-        assertEqual(parallelism, stats.parallelism, stats);
 
         let allUniquePregelResults = new Set();
         for (let j = 0; j < cn; ++j) {

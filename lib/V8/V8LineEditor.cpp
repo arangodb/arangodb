@@ -23,14 +23,13 @@
 
 #include <stddef.h>
 #include <cstdint>
+#include <mutex>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "V8LineEditor.h"
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
@@ -50,7 +49,7 @@
 using namespace arangodb;
 
 namespace {
-static arangodb::Mutex singletonMutex;
+static std::mutex singletonMutex;
 static arangodb::V8LineEditor* singleton = nullptr;
 }  // namespace
 
@@ -72,7 +71,7 @@ static bool SignalHandler(DWORD eventType) {
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT: {
       // get the instance of the console
-      MUTEX_LOCKER(mutex, ::singletonMutex);
+      std::lock_guard mutex{::singletonMutex};
       auto instance = ::singleton;
 
       if (instance != nullptr) {
@@ -99,7 +98,7 @@ static bool SignalHandler(DWORD eventType) {
 
 static void SignalHandler(int /*signal*/) {
   // get the instance of the console
-  MUTEX_LOCKER(mutex, ::singletonMutex);
+  std::lock_guard mutex{::singletonMutex};
   auto instance = ::singleton;
 
   if (instance != nullptr) {
@@ -421,7 +420,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
   // register global instance
 
   {
-    MUTEX_LOCKER(mutex, ::singletonMutex);
+    std::lock_guard mutex{::singletonMutex};
     TRI_ASSERT(::singleton == nullptr);
     ::singleton = this;
   }
@@ -459,7 +458,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
 
 V8LineEditor::~V8LineEditor() {
   // unregister global instance
-  MUTEX_LOCKER(mutex, ::singletonMutex);
+  std::lock_guard mutex{::singletonMutex};
   TRI_ASSERT(::singleton != nullptr);
   ::singleton = nullptr;
 }

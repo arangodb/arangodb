@@ -132,13 +132,19 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
              "arangosearch view '"
           << impl->name() << "'";
     }
-    // refresh view from Agency
+    // refresh view from Agency to get latest state with populated collections
     view = ci.getView(vocbase.name(), absl::AlphaNum{impl->id().id()}.Piece());
-    TRI_ASSERT(view);
+    // view might be already dropped
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
       // and original behavior of TRI_vocbase_t::createView
       view->open();
+    } else {
+      return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+              absl::StrCat("ArangoSearch view '", impl->name(),
+                           "' was dropped during creation "
+                           "from database '" +
+                               vocbase.name() + "'")};
     }
     return {};
   }
@@ -188,6 +194,11 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
     build.add(StaticStrings::LinksField, VPackValue(VPackValueType::Object));
     auto const accept = [](std::string_view key) {
       return key != iresearch::StaticStrings::AnalyzerDefinitionsField &&
+#ifdef USE_ENTERPRISE
+             key != iresearch::StaticStrings::kOptimizeTopKField &&
+             key != iresearch::StaticStrings::kPrimarySortCacheField &&
+             key != iresearch::StaticStrings::kCachePrimaryKeyField &&
+#endif
              key != iresearch::StaticStrings::PrimarySortField &&
              key != iresearch::StaticStrings::PrimarySortCompressionField &&
              key != iresearch::StaticStrings::StoredValuesField &&
@@ -245,6 +256,7 @@ ViewFactory const& IResearchViewCoordinator::factory() {
 }
 
 Result IResearchViewCoordinator::link(IResearchLinkCoordinator const& link) {
+  TRI_IF_FAILURE("IResearchLink::alwaysDangling") { return {}; }
   auto& collection = link.collection();
   auto const& cname = collection.name();
   if (!ClusterMethods::includeHiddenCollectionInLink(cname)) {

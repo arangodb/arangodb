@@ -1,35 +1,36 @@
+import { Box } from "@chakra-ui/react";
 import { chain, map } from "lodash";
 import React, { useContext, useEffect, useState } from "react";
-import { Link, useRouteMatch } from "react-router-dom";
 import { components, MultiValueGenericProps } from "react-select";
 import useSWR from "swr";
-import MultiSelect, {
-  OptionType
-} from "../../../../components/pure-css/form/MultiSelect";
+import MultiSelect from "../../../../components/select/MultiSelect";
+import { OptionType } from "../../../../components/select/SelectBase";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { escapeFieldDot } from "../../../../utils/fieldHelpers";
 import { FormState, ViewContext } from "../../constants";
+import { useLinksContext } from "../../LinksContext";
 
 const MultiValueLabel = (props: MultiValueGenericProps<OptionType>) => {
-  const match = useRouteMatch();
-  const to =
-    match && match.url === "/"
-      ? props.data.value
-      : `${match.url}/${props.data.value}`;
+  const { setCurrentField } = useLinksContext();
   return (
-    <Link
-      to={to}
+    <Box
       style={{
         textDecoration: "underline",
         minWidth: 0 // because parent is flex
       }}
+      cursor="pointer"
+      onClick={() => {
+        setCurrentField({ fieldPath: `links[${props.data.value}]` });
+      }}
     >
       <components.MultiValueLabel {...props} />
-    </Link>
+    </Box>
   );
 };
 
 const CollectionsDropdown = () => {
   const viewContext = useContext(ViewContext);
+  const { setCurrentField } = useLinksContext();
   const { dispatch, formState: fs, isAdminUser } = viewContext;
   const formState = fs as FormState;
   const { data } = useSWR("/collection?excludeSystem=true", () =>
@@ -52,20 +53,22 @@ const CollectionsDropdown = () => {
   }, [data, formState.links]);
 
   const addLink = (link: string) => {
+    const newLink = escapeFieldDot(link);
     dispatch({
       type: "setField",
       field: {
-        path: `links[${link}]`,
+        path: `links[${newLink}]`,
         value: {}
       }
     });
   };
 
   const removeLink = async (link: string) => {
+    const newLink = escapeFieldDot(link);
     dispatch({
       type: "setField",
       field: {
-        path: `links[${link}]`,
+        path: `links[${newLink}]`,
         value: null
       }
     });
@@ -79,7 +82,6 @@ const CollectionsDropdown = () => {
       value: pair[0]
     }))
     .value();
-
   return (
     <MultiSelect
       value={validLinks}
@@ -93,11 +95,12 @@ const CollectionsDropdown = () => {
       isDisabled={!isAdminUser}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
-          removeLink((action.removedValue as any).value as string);
+          removeLink(action.removedValue.value);
+          setCurrentField(undefined);
           return;
         }
-        if (action.action === "select-option") {
-          addLink((action.option as any).value as string);
+        if (action.action === "select-option" && action.option?.value) {
+          addLink(action.option.value);
         }
       }}
     />

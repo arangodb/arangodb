@@ -29,7 +29,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "Basics/MutexLocker.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterInfo.h"
@@ -725,6 +724,9 @@ DECLARE_COUNTER(arangodb_sync_wrong_checksum_total,
 DECLARE_COUNTER(arangodb_sync_rebuilds_total,
                 "Number of times a follower shard needed to be completely "
                 "rebuilt because of too many synchronization failures");
+DECLARE_COUNTER(arangodb_sync_tree_rebuilds_total,
+                "Number of times a shard rebuilt its revision tree "
+                "completely because of too many synchronization failures");
 DECLARE_COUNTER(arangodb_potentially_dirty_document_reads_total,
                 "Number of document reads which could be dirty");
 DECLARE_COUNTER(arangodb_dirty_read_queries_total,
@@ -789,8 +791,6 @@ void ClusterFeature::start() {
 
   auto const version = comm.version();
 
-  ServerState::instance()->setInitialized();
-
   std::string const endpoints =
       AsyncAgencyCommManager::INSTANCE->getCurrentEndpoint();
 
@@ -805,6 +805,8 @@ void ClusterFeature::start() {
         &_metrics.add(arangodb_sync_wrong_checksum_total{});
     _followersTotalRebuildCounter =
         &_metrics.add(arangodb_sync_rebuilds_total{});
+    _syncTreeRebuildCounter =
+        &_metrics.add(arangodb_sync_tree_rebuilds_total{});
   } else if (role == ServerState::RoleEnum::ROLE_COORDINATOR) {
     _potentiallyDirtyDocumentReadsCounter =
         &_metrics.add(arangodb_potentially_dirty_document_reads_total{});
@@ -1069,7 +1071,7 @@ void ClusterFeature::allocateMembers() {
 void ClusterFeature::addDirty(
     containers::FlatHashSet<std::string> const& databases, bool callNotify) {
   if (databases.size() > 0) {
-    MUTEX_LOCKER(guard, _dirtyLock);
+    std::lock_guard guard{_dirtyLock};
     for (auto const& database : databases) {
       if (_dirtyDatabases.emplace(database).second) {
         LOG_TOPIC("35b75", DEBUG, Logger::MAINTENANCE)
@@ -1086,7 +1088,7 @@ void ClusterFeature::addDirty(
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         databases) {
   if (databases.size() > 0) {
-    MUTEX_LOCKER(guard, _dirtyLock);
+    std::lock_guard guard{_dirtyLock};
     bool addedAny = false;
     for (auto const& database : databases) {
       if (_dirtyDatabases.emplace(database.first).second) {
@@ -1102,7 +1104,7 @@ void ClusterFeature::addDirty(
 }
 
 void ClusterFeature::addDirty(std::string const& database) {
-  MUTEX_LOCKER(guard, _dirtyLock);
+  std::lock_guard guard{_dirtyLock};
   if (_dirtyDatabases.emplace(database).second) {
     LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE)
         << "adding " << database << " to dirty databases";
@@ -1112,14 +1114,14 @@ void ClusterFeature::addDirty(std::string const& database) {
 }
 
 containers::FlatHashSet<std::string> ClusterFeature::dirty() {
-  MUTEX_LOCKER(guard, _dirtyLock);
+  std::lock_guard guard{_dirtyLock};
   containers::FlatHashSet<std::string> ret;
   ret.swap(_dirtyDatabases);
   return ret;
 }
 
 bool ClusterFeature::isDirty(std::string const& dbName) const {
-  MUTEX_LOCKER(guard, _dirtyLock);
+  std::lock_guard guard{_dirtyLock};
   return _dirtyDatabases.find(dbName) != _dirtyDatabases.end();
 }
 

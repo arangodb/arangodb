@@ -70,21 +70,21 @@ using Weight = fst::fsa::BooleanWeight;
 
 namespace fst {
 
-inline Weight Times(const Weight& lhs, const Weight& rhs) {
+inline Weight Times(Weight const& lhs, Weight const& rhs) {
   if (!lhs.Member() || !rhs.Member()) {
     return Weight::NoWeight();
   }
   return Weight{lhs && rhs};
 }
 
-inline Weight Plus(const Weight& lhs, const Weight& rhs) {
+inline Weight Plus(Weight const& lhs, Weight const& rhs) {
   if (!lhs.Member() || !rhs.Member()) {
     return Weight::NoWeight();
   }
   return Weight{lhs || rhs};
 }
 
-inline Weight DivideLeft(const Weight& lhs, const Weight& rhs) {
+inline Weight DivideLeft(Weight const& lhs, Weight const& rhs) {
   if (!lhs.Member() || !rhs.Member()) {
     return Weight::NoWeight();
   }
@@ -264,6 +264,11 @@ std::string checkFieldsDifferentCollections(
 
 std::string check(SearchMeta const& search,
                   IResearchInvertedIndexMeta const& index) {
+#ifdef USE_ENTERPRISE
+  if (search.optimizeTopK != index._optimizeTopK) {
+    return "index optimize topK mismatches view optimize topK";
+  }
+#endif
   if (search.primarySort != index._sort) {
     return "index primary sort mismatches view primary sort";
   }
@@ -394,7 +399,7 @@ Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                              bool isUserRequest) const {
   if (!definition.isObject()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "search-alias view definition should be a object"};
+            "search-alias view definition should be an object"};
   }
   auto const nameSlice = definition.get("name");
   if (nameSlice.isNone()) {
@@ -440,7 +445,7 @@ Result SearchFactory::instantiate(LogicalView::ptr& view,
   }
   if (!indexesSlice.isArray()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "search-alias view optional field 'indexes' should be array"};
+            "search-alias view optional field 'indexes' should be an array"};
   }
   CollectionNameResolver resolver{vocbase};
   velocypack::ArrayIterator it{indexesSlice};
@@ -522,6 +527,10 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
   auto indexesSlice = definition.get("indexes");
   if (indexesSlice.isNone()) {
     indexesSlice = velocypack::Slice::emptyArraySlice();
+  }
+  if (!indexesSlice.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "search-alias view optional field 'indexes' should be an array"};
   }
   velocypack::ArrayIterator it{indexesSlice};
   if (it.size() == 0 && partialUpdate) {
@@ -688,6 +697,10 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
       frozen::make_unordered_set<frozen::string>({"", "add", "del"});
   for (; it.valid(); ++it) {
     auto value = *it;
+    if (!value.isObject()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "search-alias index definition should be an object"};
+    }
     auto collectionSlice = value.get("collection");
     if (!collectionSlice.isString()) {
       return {TRI_ERROR_BAD_PARAMETER, "'collection' should be a string"};
@@ -789,6 +802,9 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
   auto searchMeta = SearchMeta::make();
   auto r = iterate(
       [&](auto const& indexMeta) {
+#ifdef USE_ENTERPRISE
+        searchMeta->optimizeTopK = indexMeta._optimizeTopK;
+#endif
         searchMeta->primarySort = indexMeta._sort;
         searchMeta->storedValues = indexMeta._storedValues;
       },

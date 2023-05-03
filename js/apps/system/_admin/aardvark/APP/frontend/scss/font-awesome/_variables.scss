@@ -1,7 +1,9 @@
 // Variables
 // --------------------------
 
-$fa-font-path:        "../fonts/fontawesome" !default;
+@use "sass:math";
+
+$fa-font-path:        "../../fonts/fontawesome" !default;
 $fa-font-size-base:   14px !default;
 $fa-line-height-base: 1 !default;
 //$fa-font-path:        "//netdna.bootstrapcdn.com/font-awesome/4.4.0/fonts" !default; // for referencing Bootstrap CDN font files directly
@@ -9,7 +11,7 @@ $fa-css-prefix:       fa !default;
 $fa-version:          "4.4.0" !default;
 $fa-border-color:     #eee !default;
 $fa-inverse:          #fff !default;
-$fa-li-width:         (30em / 14) !default;
+$fa-li-width:         math.div(30em, 14) !default;
 
 $fa-var-500px: "\f26e";
 $fa-var-adjust: "\f042";

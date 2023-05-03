@@ -56,22 +56,23 @@ class NetworkFeature final : public ArangodFeature {
   void beginShutdown() override;
   void stop() override;
   void unprepare() override;
-  bool prepared() const;
+
+  bool prepared() const noexcept;
 
   /// @brief global connection pool
-  arangodb::network::ConnectionPool* pool() const;
+  network::ConnectionPool* pool() const noexcept;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setPoolTesting(arangodb::network::ConnectionPool* pool);
+  void setPoolTesting(network::ConnectionPool* pool);
 #endif
 
   /// @brief increase the counter for forwarded requests
-  void trackForwardedRequest();
+  void trackForwardedRequest() noexcept;
 
-  std::size_t requestsInFlight() const;
+  std::size_t requestsInFlight() const noexcept;
 
-  bool isCongested() const;  // in-flight above low-water mark
-  bool isSaturated() const;  // in-flight above high-water mark
+  bool isCongested() const noexcept;  // in-flight above low-water mark
+  bool isSaturated() const noexcept;  // in-flight above high-water mark
   void sendRequest(network::ConnectionPool& pool,
                    network::RequestOptions const& options,
                    std::string const& endpoint,
@@ -111,6 +112,11 @@ class NetworkFeature final : public ArangodFeature {
 
   metrics::Counter& _requestTimeouts;
   metrics::Histogram<metrics::FixScale<double>>& _requestDurations;
+
+  metrics::Counter& _unfinishedSends;
+  metrics::Histogram<metrics::FixScale<double>>& _dequeueDurations;
+  metrics::Histogram<metrics::FixScale<double>>& _sendDurations;
+  metrics::Histogram<metrics::FixScale<double>>& _responseDurations;
 };
 
 }  // namespace arangodb

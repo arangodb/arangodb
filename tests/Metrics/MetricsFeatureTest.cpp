@@ -51,10 +51,10 @@ TEST_F(MetricsFeatureTest, test_counter) {
 
   ASSERT_EQ(counter.load(), 0);
   std::string s;
-  counter.toPrometheus(s, "");
+  counter.toPrometheus(s, "", /*ensureWhitespace*/ false);
   std::cout << s << std::endl;
   s.clear();
-  labeledCounter.toPrometheus(s, "");
+  labeledCounter.toPrometheus(s, "", /*ensureWhitespace*/ false);
   std::cout << s << std::endl;
 
   thisMetric = &counter;
@@ -77,10 +77,10 @@ TEST_F(MetricsFeatureTest, test_histogram) {
       feature.add(HISTOGRAMLIN{}.withLabel("label", "label"));
 
   std::string s;
-  histogram.toPrometheus(s, "");
+  histogram.toPrometheus(s, "", /*ensureWhitespace*/ false);
   std::cout << s << std::endl;
   s.clear();
-  labeledHistogram.toPrometheus(s, "");
+  labeledHistogram.toPrometheus(s, "", /*ensureWhitespace*/ false);
   std::cout << s << std::endl;
 
   thisMetric = &histogram;
@@ -102,10 +102,10 @@ TEST_F(MetricsFeatureTest, test_gauge) {
   auto& labeledGauge = feature.add(GAUGE{}.withLabel("label", "label"));
 
   std::string s;
-  gauge.toPrometheus(s, "");
+  gauge.toPrometheus(s, "", /*ensureWhitespace*/ false);
   std::cout << s << std::endl;
   s.clear();
-  labeledGauge.toPrometheus(s, "");
+  labeledGauge.toPrometheus(s, "", /*ensureWhitespace*/ false);
   std::cout << s << std::endl;
 
   thisMetric = &gauge;

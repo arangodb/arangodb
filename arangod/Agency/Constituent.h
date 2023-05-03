@@ -28,12 +28,12 @@
 #include "AgentConfiguration.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 
 #include <list>
+#include <mutex>
 
 struct TRI_vocbase_t;
 
@@ -125,7 +125,7 @@ class Constituent : public Thread {
   std::string endpoint(std::string) const;
 
   // Run for leadership
-  void candidate();
+  void candidateNoLock();
 
   // Become leader
   void lead(term_t);
@@ -181,14 +181,14 @@ class Constituent : public Thread {
                                             // up the Constituent thread
                                             // when an AgentCallback
                                             // arrives
-  mutable arangodb::Mutex _termVoteLock;
+  mutable std::mutex _termVoteLock;
   // This mutex protects _term, _votedFor, _role and _leaderID, note that
   // all this Constituent data is usually only accessed from the Constituent
   // thread. However, the AgentCallback is executed in a Scheduler thread
   // which calls methods of Constituent. This is why we need mutexes here.
 
   // Keep track of times of last few elections:
-  mutable arangodb::Mutex _recentElectionsMutex;
+  mutable std::mutex _recentElectionsMutex;
   std::list<double> _recentElections;
 
   // For leader case: Last time we have sent out AppendEntriesRPC message
@@ -197,7 +197,7 @@ class Constituent : public Thread {
   std::unordered_map<std::string, double> _lastHeartbeatSent;
 
   /// @brief _heartBeatMutex, protection for _lastHeartbeatSent
-  mutable arangodb::Mutex _heartBeatMutex;
+  mutable std::mutex _heartBeatMutex;
 };
 }  // namespace consensus
 }  // namespace arangodb

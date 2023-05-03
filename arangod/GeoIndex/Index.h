@@ -65,7 +65,7 @@ struct Index {
 
  protected:
   /// @brief Initialize coverParams
-  Index(velocypack::Slice const&,
+  Index(velocypack::Slice info,
         std::vector<std::vector<basics::AttributeName>> const&);
 
  public:

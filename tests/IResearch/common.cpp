@@ -263,117 +263,104 @@ std::string to_string(irs::filter const& f) {
 
 namespace {
 
-struct BoostScorer : public irs::sort {
+struct BoostScorer final : public irs::ScorerBase<void> {
   static constexpr std::string_view type_name() noexcept {
     return "boostscorer";
   }
 
-  struct Prepared : public irs::PreparedSortBase<void> {
-   public:
-    Prepared() = default;
+  void collect(irs::byte_type* stats, irs::FieldCollector const*,
+               irs::TermCollector const*) const final {
+    // NOOP
+  }
 
-    virtual void collect(irs::byte_type*, const irs::IndexReader&,
-                         const irs::sort::field_collector*,
-                         const irs::sort::term_collector*) const override {
-      // NOOP
-    }
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
+  }
 
-    virtual irs::IndexFeatures features() const override {
-      return irs::IndexFeatures::NONE;
-    }
+  irs::FieldCollector::ptr prepare_field_collector() const final {
+    return nullptr;
+  }
 
-    virtual irs::sort::field_collector::ptr prepare_field_collector()
-        const override {
-      return nullptr;
-    }
+  irs::TermCollector::ptr prepare_term_collector() const final {
+    return nullptr;
+  }
 
-    virtual irs::sort::term_collector::ptr prepare_term_collector()
-        const override {
-      return nullptr;
-    }
+  irs::ScoreFunction prepare_scorer(
+      irs::ColumnProvider const&,
+      std::map<irs::type_info::type_id, irs::field_id> const&,
+      irs::byte_type const* stats, irs::attribute_provider const&,
+      irs::score_t boost) const final {
+    struct ScoreCtx final : public irs::score_ctx {
+      explicit ScoreCtx(irs::score_t b) noexcept : boost{b} {}
 
-    virtual irs::ScoreFunction prepare_scorer(
-        irs::SubReader const&, irs::term_reader const&, irs::byte_type const*,
-        irs::attribute_provider const&, irs::score_t boost) const override {
-      struct ScoreCtx : public irs::score_ctx {
-        explicit ScoreCtx(irs::score_t boost) noexcept : boost{boost} {}
+      irs::score_t boost;
+    };
 
-        irs::score_t boost;
-      };
+    return irs::ScoreFunction::Make<ScoreCtx>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          *res = static_cast<ScoreCtx*>(ctx)->boost;
+        },
+        boost);
+  }
 
-      return irs::ScoreFunction::Make<ScoreCtx>(
-          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-            *res = static_cast<ScoreCtx*>(ctx)->boost;
-          },
-          boost);
-    }
-  };  // namespace
-
-  static irs::sort::ptr make(std::string_view) {
+  static irs::Scorer::ptr make(std::string_view) {
     return std::make_unique<BoostScorer>();
   }
 
-  BoostScorer() : irs::sort(irs::type<BoostScorer>::get()) {}
-
-  virtual irs::sort::prepared::ptr prepare() const override {
-    return std::make_unique<Prepared>();
-  }
-};  // BoostScorer
+  BoostScorer() = default;
+};
 
 REGISTER_SCORER_JSON(BoostScorer, BoostScorer::make);
 
-struct CustomScorer : public irs::sort {
+struct CustomScorer final : public irs::ScorerBase<void> {
   static constexpr std::string_view type_name() noexcept {
     return "customscorer";
   }
 
-  struct Prepared : public irs::PreparedSortBase<void> {
-   public:
-    Prepared(float_t i) : i(i) {}
+  void collect(irs::byte_type*, irs::FieldCollector const*,
+               irs::TermCollector const*) const final {
+    // NOOP
+  }
 
-    virtual void collect(irs::byte_type*, const irs::IndexReader&,
-                         const irs::sort::field_collector*,
-                         const irs::sort::term_collector*) const override {
-      // NOOP
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
+  }
+
+  irs::FieldCollector::ptr prepare_field_collector() const final {
+    return nullptr;
+  }
+
+  irs::TermCollector::ptr prepare_term_collector() const final {
+    return nullptr;
+  }
+
+  irs::ScoreFunction prepare_scorer(
+      irs::ColumnProvider const&,
+      std::map<irs::type_info::type_id, irs::field_id> const&,
+      irs::byte_type const* stats, irs::attribute_provider const&,
+      irs::score_t) const final {
+    struct ScoreCtx : public irs::score_ctx {
+      ScoreCtx(float v) noexcept : scoreValue{v} {}
+
+      float scoreValue;
+    };
+
+    return irs::ScoreFunction::Make<ScoreCtx>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          *res = static_cast<ScoreCtx const*>(ctx)->scoreValue;
+        },
+        this->i);
+  }
+
+  bool equals(irs::Scorer const& other) const noexcept final {
+    if (!Scorer::equals(other)) {
+      return false;
     }
+    auto const& p = down_cast<CustomScorer>(other);
+    return p.i == i;
+  }
 
-    virtual irs::IndexFeatures features() const override {
-      return irs::IndexFeatures::NONE;
-    }
-
-    virtual irs::sort::field_collector::ptr prepare_field_collector()
-        const override {
-      return nullptr;
-    }
-
-    virtual irs::sort::term_collector::ptr prepare_term_collector()
-        const override {
-      return nullptr;
-    }
-
-    virtual irs::ScoreFunction prepare_scorer(irs::SubReader const&,
-                                              irs::term_reader const&,
-                                              irs::byte_type const*,
-                                              irs::attribute_provider const&,
-                                              irs::score_t) const override {
-      struct ScoreCtx : public irs::score_ctx {
-        ScoreCtx(float_t scoreValue) noexcept : scoreValue(scoreValue) {}
-
-        float_t scoreValue;
-      };
-
-      return irs::ScoreFunction::Make<ScoreCtx>(
-
-          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-            *res = static_cast<ScoreCtx const*>(ctx)->scoreValue;
-          },
-          this->i);
-    }
-
-    float_t i;
-  };
-
-  static irs::sort::ptr make(std::string_view args) {
+  static irs::Scorer::ptr make(std::string_view args) {
     if (irs::IsNull(args)) {
       return std::make_unique<CustomScorer>(0u);
     }
@@ -387,7 +374,7 @@ struct CustomScorer : public irs::sort {
       return nullptr;  // incorrect argument format
     }
 
-    arangodb::velocypack::ArrayIterator itr(slice);
+    arangodb::velocypack::ArrayIterator itr{slice};
 
     if (!itr.valid()) {
       return nullptr;
@@ -395,21 +382,16 @@ struct CustomScorer : public irs::sort {
 
     auto const value = itr.value();
 
-    if (!value.isNumber()) {
+    if (!value.isNumber<size_t>()) {
       return nullptr;
     }
-
-    return std::make_unique<CustomScorer>(itr.value().getNumber<size_t>());
+    return std::make_unique<CustomScorer>(value.getNumber<size_t>());
   }
 
-  CustomScorer(size_t i) : irs::sort(irs::type<CustomScorer>::get()), i(i) {}
+  CustomScorer(size_t i) noexcept : i{static_cast<float>(i)} {}
 
-  virtual irs::sort::prepared::ptr prepare() const override {
-    return std::make_unique<Prepared>(static_cast<float_t>(i));
-  }
-
-  size_t i;
-};  // CustomScorer
+  float i;
+};
 
 REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 
@@ -766,7 +748,7 @@ void assertFilterOptimized(
                     &actualFilter, filterCtx, viewNode->filterCondition())
                     .ok());
     EXPECT_FALSE(actualFilter.empty());
-    EXPECT_EQ(expectedFilter, *actualFilter.begin());
+    EXPECT_EQ(expectedFilter, **actualFilter.begin());
   }
 }
 
@@ -865,7 +847,7 @@ void assertExpressionFilter(
                     .ok());
     EXPECT_EQ(expected, actual) << to_string(expected) << "\n"
                                 << to_string(actual);
-    EXPECT_EQ(boost, actual.begin()->boost());
+    EXPECT_EQ(boost, (*actual.begin())->boost());
   }
 }
 
@@ -889,7 +871,7 @@ static bool assertFilterBoostImpl(irs::filter const& expected,
 
     for (auto actualBegin = actualBooleanFilter->begin();
          expectedBegin != expectedEnd;) {
-      if (!assertFilterBoostImpl(*expectedBegin, *actualBegin)) {
+      if (!assertFilterBoostImpl(**expectedBegin, **actualBegin)) {
         return false;
       }
       ++expectedBegin;
