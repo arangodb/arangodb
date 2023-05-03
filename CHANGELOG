@@ -1,6 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* FE-162: Fix display of geodesic lines.
+
 * Fixed a race in the Maintenance, impacting leaders that have just been
   resigned. During a MoveShard job, the old leader could sabotage the whole
   operation by removing the newly added follower from Current. The solution
@@ -8,8 +10,6 @@ v3.11.0 (XXXX-XX-XX)
   potentially outdated velocypack slice.
 
 * Fix unstable test setting the desired number of dbservers.
-
-* FE-162: Fix display of geodesic lines
 
 * FE-253: bugfix - validate JSON, show errors & disable save when error.
 
