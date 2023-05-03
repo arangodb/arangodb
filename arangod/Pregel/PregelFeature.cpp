@@ -197,7 +197,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
     auto statusStart = message::StatusMessages{message::StatusStart{
         .state = "Execution Started",
         .id = executionSpecifications.executionNumber,
-        .user = user,
+        .user = ExecContext::current().user(),
         .database = vocbase.name(),
         .algorithm = executionSpecifications.algorithm,
         .ttl = executionSpecifications.ttl,
@@ -207,9 +207,6 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         std::move(statusStart));
     auto statusActorPID = actor::ActorPID{
         .server = server, .database = vocbase.name(), .id = statusActorID};
-    _statusActors.doUnderLock([&en, &statusActorPID](auto& actors) {
-      actors.emplace(en, statusActorPID);
-    });
 
     auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
         vocbase.name(), std::make_unique<MetricsState>(_metrics),
@@ -226,9 +223,6 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         message::ResultMessages{message::ResultStart{}});
     auto resultActorPID = actor::ActorPID{
         .server = server, .database = vocbase.name(), .id = resultActorID};
-    _resultActor.doUnderLock([&en, &resultActorPID](auto& actors) {
-      actors.emplace(en, resultActorPID);
-    });
 
     auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
         vocbase.name(), std::make_unique<SpawnState>(vocbase, resultActorPID),
@@ -255,7 +249,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
 
     _pregelRuns.doUnderLock([&](auto& actors) {
       actors.emplace(
-          en, PregelRun{PregelRunUser(user),
+          en, PregelRun{PregelRunUser(ExecContext::current().user()),
                         PregelRunActors{.resultActor = resultActorPID,
                                         .results = resultData,
                                         .conductor = conductorActorPID}});

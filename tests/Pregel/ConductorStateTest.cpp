@@ -70,7 +70,7 @@ TEST(ConductorStateTest,
   std::vector<std::string> emptyServers{};
   auto cState = ConductorState(std::make_unique<AlgorithmFake>(),
                                ExecutionSpecifications(), fakeActorPID,
-                               fakeActorPID, fakeActorPID);
+                               fakeActorPID, fakeActorPID, fakeActorPID);
   ASSERT_EQ(cState.executionState->name(), "initial");
 }
 
@@ -91,8 +91,9 @@ TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
                               .edgeShards = {}});
     }
 
-    auto cState = ConductorState(std::make_unique<AlgorithmFake>(), execSpec,
-                                 fakeActorPID, fakeActorPID, fakeActorPID);
+    auto cState =
+        ConductorState(std::make_unique<AlgorithmFake>(), execSpec,
+                       fakeActorPID, fakeActorPID, fakeActorPID, fakeActorPID);
     auto createWorkersState = CreateWorkers(cState);
     auto msgs = createWorkersState.messagesToServers();
     ASSERT_EQ(msgs.size(), servers.size());
@@ -118,8 +119,9 @@ TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
                             .edgeShards = {}});
   }
 
-  auto cState = ConductorState(std::make_unique<AlgorithmFake>(), execSpec,
-                               fakeActorPID, fakeActorPID, fakeActorPID);
+  auto cState =
+      ConductorState(std::make_unique<AlgorithmFake>(), execSpec, fakeActorPID,
+                     fakeActorPID, fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messagesToServers();
 
@@ -160,8 +162,9 @@ TEST(CreateWorkersStateTest,
                             .edgeShards = {}});
   }
 
-  auto cState = ConductorState(std::make_unique<AlgorithmFake>(), execSpec,
-                               fakeActorPID, fakeActorPID, fakeActorPID);
+  auto cState =
+      ConductorState(std::make_unique<AlgorithmFake>(), execSpec, fakeActorPID,
+                     fakeActorPID, fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messagesToServers();
   ASSERT_EQ(msgs.size(), servers.size());
@@ -197,7 +200,7 @@ TEST(CreateWorkersStateTest, receive_invalid_message_type) {
   std::vector<std::string> servers = {"ServerA"};
   auto cState = ConductorState(std::make_unique<AlgorithmFake>(),
                                ExecutionSpecifications(), fakeActorPID,
-                               fakeActorPID, fakeActorPID);
+                               fakeActorPID, fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messagesToServers();
 
@@ -217,7 +220,7 @@ TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
   std::vector<std::string> servers = {"ServerA"};
   auto cState = ConductorState(std::make_unique<AlgorithmFake>(),
                                ExecutionSpecifications(), fakeActorPID,
-                               fakeActorPID, fakeActorPID);
+                               fakeActorPID, fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messagesToServers();
 
@@ -237,7 +240,7 @@ TEST(CreateWorkersStateTest, receive_valid_error_message) {
   std::vector<std::string> servers = {"ServerA"};
   auto cState = ConductorState(std::make_unique<AlgorithmFake>(),
                                ExecutionSpecifications(), fakeActorPID,
-                               fakeActorPID, fakeActorPID);
+                               fakeActorPID, fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
   auto msgs = createWorkers.messagesToServers();
 
