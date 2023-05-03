@@ -27,6 +27,7 @@
 #include "Actor/ActorPID.h"
 #include "Pregel/PregelOptions.h"
 #include "Inspection/Types.h"
+#include "MetricsMessages.h"
 
 namespace arangodb::pregel::message {
 

@@ -4,6 +4,7 @@
 #include "Pregel/Conductor/ExecutionStates/LoadingState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/State.h"
+#include "CanceledState.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -53,6 +54,18 @@ auto CreateWorkers::messagesToServers()
   return workerSpecifications;
 }
 
+auto CreateWorkers::cancel(actor::ActorPID sender,
+                           message::ConductorMessages message)
+    -> std::optional<StateChange> {
+  auto newState = std::make_unique<Canceled>(conductor);
+  auto stateName = newState->name();
+
+  return StateChange{
+      .statusMessage = pregel::message::Canceled{.state = stateName},
+      .metricsMessage = pregel::metrics::message::ConductorFinished{},
+      .newState = std::move(newState)};
+}
+
 auto CreateWorkers::receive(actor::ActorPID sender,
                             message::ConductorMessages message)
     -> std::optional<StateChange> {
@@ -67,6 +80,7 @@ auto CreateWorkers::receive(actor::ActorPID sender,
                 .errorMessage =
                     fmt::format("In {}: Received unexpected message {} from {}",
                                 name(), inspection::json(message), sender)},
+        .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }
   auto workerCreated = std::get<ResultT<message::WorkerCreated>>(message);
@@ -80,6 +94,7 @@ auto CreateWorkers::receive(actor::ActorPID sender,
                 .errorMessage = fmt::format(
                     "In {}: Received error {} from {}", name(),
                     inspection::json(workerCreated.errorMessage()), sender)},
+        .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }
   conductor.workers.emplace(sender);
@@ -95,6 +110,7 @@ auto CreateWorkers::receive(actor::ActorPID sender,
     auto stateName = newState->name();
     return StateChange{
         .statusMessage = pregel::message::LoadingStarted{.state = stateName},
+        .metricsMessage = pregel::metrics::message::ConductorLoadingStarted{},
         .newState = std::move(newState)};
   }
   return std::nullopt;

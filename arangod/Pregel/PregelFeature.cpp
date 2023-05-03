@@ -58,6 +58,7 @@
 #include "Pregel/ResultActor.h"
 #include "Pregel/ResultMessages.h"
 #include "Pregel/SpawnActor.h"
+#include "Pregel/MetricsActor.h"
 #include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
@@ -386,6 +387,14 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
     auto statusActorPID = actor::ActorPID{
         .server = ss->getId(), .database = vocbase.name(), .id = statusActorID};
 
+    auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
+        vocbase.name(), std::make_unique<MetricsState>(_metrics),
+        metrics::message::MetricsStart{});
+    auto metricsActorPID =
+        actor::ActorPID{.server = ServerState::instance()->getId(),
+                        .database = vocbase.name(),
+                        .id = metricsActorID};
+
     auto resultState = std::make_unique<ResultState>(ttl);
     auto resultData = resultState->data;
     auto resultActorID = _actorRuntime->spawn<ResultActor>(
@@ -412,7 +421,8 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         std::make_unique<conductor::ConductorState>(
             std::move(algorithm.value()), executionSpecifications,
             std::move(vocbaseLookupInfo), std::move(spawnActor),
-            std::move(resultActorPID), std::move(statusActorPID)),
+            std::move(resultActorPID), std::move(statusActorPID),
+            std::move(metricsActorPID)),
         conductor::message::ConductorStart{});
     auto conductorActorPID = actor::ActorPID{.server = ss->getId(),
                                              .database = vocbase.name(),
@@ -448,10 +458,11 @@ PregelFeature::PregelFeature(Server& server)
       _maxParallelism(::availableCores()),
       _softShutdownOngoing(false),
       _metrics(std::make_shared<PregelMetrics>(
-          server.getFeature<metrics::MetricsFeature>())),
+          server.getFeature<arangodb::metrics::MetricsFeature>())),
       _actorRuntime(nullptr) {
-  static_assert(
-      Server::isCreatedAfter<PregelFeature, metrics::MetricsFeature>());
+  static_assert(Server::isCreatedAfter<PregelFeature,
+                                       arangodb::metrics::MetricsFeature>());
+
   setOptional(true);
   startsAfter<DatabaseFeature>();
   startsAfter<application_features::V8FeaturePhase>();
@@ -846,7 +857,7 @@ void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
 }
 
 void PregelFeature::cleanupWorker(ExecutionNumber executionNumber) {
-  // unmapping etc might need a few seconds
+  // unmapping etc. might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {

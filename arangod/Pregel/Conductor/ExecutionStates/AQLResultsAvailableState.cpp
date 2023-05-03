@@ -56,6 +56,7 @@ auto AQLResultsAvailable::receive(actor::ActorPID sender,
                 .errorMessage =
                     fmt::format("In {}: Received unexpected message {} from {}",
                                 name(), inspection::json(message), sender)},
+        .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }
   conductor.workers.erase(sender);
@@ -63,4 +64,4 @@ auto AQLResultsAvailable::receive(actor::ActorPID sender,
     return StateChange{.newState = std::make_unique<CleanedUp>()};
   }
   return std::nullopt;
-};
+}

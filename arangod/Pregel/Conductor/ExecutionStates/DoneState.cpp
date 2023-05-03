@@ -54,6 +54,7 @@ auto Done::receive(actor::ActorPID sender, message::ConductorMessages message)
                 .errorMessage =
                     fmt::format("In {}: Received unexpected message {} from {}",
                                 name(), inspection::json(message), sender)},
+        .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }
   conductor.workers.erase(sender);
