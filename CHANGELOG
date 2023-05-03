@@ -1,6 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed a race in a test for aborting long running operations.
+
 * FE-251: bugfix - prohibit multiple expansions of the same node in the graph
   viewer.
 
