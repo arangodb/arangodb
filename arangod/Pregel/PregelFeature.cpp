@@ -113,27 +113,6 @@ network::Headers buildHeaders() {
   return headers;
 }
 
-std::vector<ShardID> getShardIds(TRI_vocbase_t& vocbase,
-                                 ShardID const& collection) {
-  ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-
-  std::vector<ShardID> result;
-  try {
-    std::shared_ptr<LogicalCollection> lc =
-        ci.getCollection(vocbase.name(), collection);
-    std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci.getShardList(std::to_string(lc->id().id()));
-    result.reserve(shardIDs->size());
-    for (auto const& it : *shardIDs) {
-      result.emplace_back(it);
-    }
-  } catch (...) {
-    result.clear();
-  }
-
-  return result;
-}
-
 }  // namespace
 
 auto PregelRunUser::authorized(ExecContext const& userContext) const -> bool {
@@ -193,190 +172,6 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   }
   auto graphSerdeConfig = maybeGraphSerdeConfig.get();
 
-  // extract the collections
-  std::vector<std::string> vertexCollections;
-  std::vector<std::string> edgeCollections;
-  std::unordered_map<std::string, std::vector<std::string>>
-      edgeCollectionRestrictions;
-
-  if (std::holds_alternative<GraphCollectionNames>(
-          options.graphSource.graphOrCollections)) {
-    auto collectionNames =
-        std::get<GraphCollectionNames>(options.graphSource.graphOrCollections);
-    vertexCollections = collectionNames.vertexCollections;
-    edgeCollections = collectionNames.edgeCollections;
-    edgeCollectionRestrictions =
-        options.graphSource.edgeCollectionRestrictions.items;
-  } else {
-    auto graphName =
-        std::get<GraphName>(options.graphSource.graphOrCollections);
-    if (graphName.graph == "") {
-      return Result{TRI_ERROR_BAD_PARAMETER, "expecting graphName as string"};
-    }
-
-    graph::GraphManager gmngr{vocbase};
-    auto graphRes = gmngr.lookupGraphByName(graphName.graph);
-    if (graphRes.fail()) {
-      return std::move(graphRes).result();
-    }
-    std::unique_ptr<graph::Graph> graph = std::move(graphRes.get());
-
-    auto const& gv = graph->vertexCollections();
-    for (auto const& v : gv) {
-      vertexCollections.push_back(v);
-    }
-
-    auto const& ge = graph->edgeCollections();
-    for (auto const& e : ge) {
-      edgeCollections.push_back(e);
-    }
-
-    auto const& ed = graph->edgeDefinitions();
-    for (auto const& e : ed) {
-      auto const& from = e.second.getFrom();
-      // intentionally create map entry
-      for (auto const& f : from) {
-        auto& restrictions = edgeCollectionRestrictions[f];
-        restrictions.push_back(e.second.getName());
-      }
-    }
-  }
-
-  ServerState* ss = ServerState::instance();
-
-  std::unordered_map<std::string, std::vector<std::string>>
-      edgeCollectionRestrictionsPerShard;
-  if (ss->isSingleServer()) {
-    edgeCollectionRestrictionsPerShard = std::move(edgeCollectionRestrictions);
-  } else {
-    for (auto const& [vertexCollection, edgeCollections] :
-         edgeCollectionRestrictions) {
-      for (auto const& shardId : getShardIds(vocbase, vertexCollection)) {
-        // intentionally create key in map
-        auto& restrictions = edgeCollectionRestrictionsPerShard[shardId];
-        for (auto const& edgeCollection : edgeCollections) {
-          for (auto const& edgeShardId : getShardIds(vocbase, edgeCollection)) {
-            restrictions.push_back(edgeShardId);
-          }
-        }
-      }
-    }
-  }
-
-  // check the access rights to collections
-  ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    // TODO get rid of that when we have a pregel parameter struct
-    TRI_ASSERT(options.userParameters.slice().isObject());
-    VPackSlice storeSlice = options.userParameters.slice().get("store");
-    bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
-
-    for (std::string const& vc : vertexCollections) {
-      bool canWrite = exec.canUseCollection(vc, auth::Level::RW);
-      bool canRead = exec.canUseCollection(vc, auth::Level::RO);
-      if ((storeResults && !canWrite) || !canRead) {
-        return Result{TRI_ERROR_FORBIDDEN};
-      }
-    }
-    for (std::string const& ec : edgeCollections) {
-      bool canWrite = exec.canUseCollection(ec, auth::Level::RW);
-      bool canRead = exec.canUseCollection(ec, auth::Level::RO);
-      if ((storeResults && !canWrite) || !canRead) {
-        return Result{TRI_ERROR_FORBIDDEN};
-      }
-    }
-  }
-
-  for (std::string const& name : vertexCollections) {
-    if (ss->isCoordinator()) {
-      try {
-        auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-        auto coll = ci.getCollection(vocbase.name(), name);
-
-        if (coll->system()) {
-          return Result{TRI_ERROR_BAD_PARAMETER,
-                        "Cannot use pregel on system collection"};
-        }
-
-        if (coll->deleted()) {
-          return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
-        }
-      } catch (...) {
-        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
-      }
-    } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
-      auto coll = vocbase.lookupCollection(name);
-
-      if (coll == nullptr || coll->deleted()) {
-        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
-      }
-    } else {
-      return Result{TRI_ERROR_INTERNAL};
-    }
-  }
-
-  std::vector<CollectionID> edgeColls;
-
-  // load edge collection
-  for (std::string const& name : edgeCollections) {
-    if (ss->isCoordinator()) {
-      try {
-        auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-        auto coll = ci.getCollection(vocbase.name(), name);
-
-        if (coll->system()) {
-          return Result{TRI_ERROR_BAD_PARAMETER,
-                        "Cannot use pregel on system collection"};
-        }
-
-        if (!coll->isSmart()) {
-          std::vector<std::string> eKeys = coll->shardKeys();
-
-          // TODO get rid of that when we have a pregel parameter struct
-          std::string shardKeyAttribute =
-              options.userParameters.slice().hasKey("shardKeyAttribute")
-                  ? options.userParameters.slice()
-                        .get("shardKeyAttribute")
-                        .copyString()
-                  : "vertex";
-
-          if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
-            return Result{
-                TRI_ERROR_BAD_PARAMETER,
-                "Edge collection needs to be sharded "
-                "by shardKeyAttribute parameter ('" +
-                    shardKeyAttribute +
-                    "'), or use SmartGraphs. The current shardKey is: " +
-                    (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
-
-            };
-          }
-        }
-
-        if (coll->deleted()) {
-          return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
-        }
-
-        // smart edge collections contain multiple actual collections
-        std::vector<std::string> actual = coll->realNamesForRead();
-
-        edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
-      } catch (...) {
-        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
-      }
-    } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
-      auto coll = vocbase.lookupCollection(name);
-
-      if (coll == nullptr || coll->deleted()) {
-        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
-      }
-      std::vector<std::string> actual = coll->realNamesForRead();
-      edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
-    } else {
-      return Result{TRI_ERROR_INTERNAL};
-    }
-  }
-
   auto en = createExecutionNumber();
 
   auto executionSpecifications = ExecutionSpecifications{
@@ -390,6 +185,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
       .userParameters = std::move(options.userParameters)};
 
   if (options.useActors) {
+    auto server = ServerState::instance()->getId();
     auto statusStart = message::StatusMessages{message::StatusStart{
         .state = "Execution Started",
         .id = executionSpecifications.executionNumber,
@@ -402,7 +198,10 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         vocbase.name(), std::make_unique<StatusState>(vocbase),
         std::move(statusStart));
     auto statusActorPID = actor::ActorPID{
-        .server = ss->getId(), .database = vocbase.name(), .id = statusActorID};
+        .server = server, .database = vocbase.name(), .id = statusActorID};
+    _statusActors.doUnderLock([&en, &statusActorPID](auto& actors) {
+      actors.emplace(en, statusActorPID);
+    });
 
     auto metricsActorID = _actorRuntime->spawn<MetricsActor>(
         vocbase.name(), std::make_unique<MetricsState>(_metrics),
@@ -418,13 +217,16 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         vocbase.name(), std::move(resultState),
         message::ResultMessages{message::ResultStart{}});
     auto resultActorPID = actor::ActorPID{
-        .server = ss->getId(), .database = vocbase.name(), .id = resultActorID};
+        .server = server, .database = vocbase.name(), .id = resultActorID};
+    _resultActor.doUnderLock([&en, &resultActorPID](auto& actors) {
+      actors.emplace(en, resultActorPID);
+    });
 
     auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
         vocbase.name(), std::make_unique<SpawnState>(vocbase, resultActorPID),
         message::SpawnMessages{message::SpawnStart{}});
     auto spawnActor = actor::ActorPID{
-        .server = ss->getId(), .database = vocbase.name(), .id = spawnActorID};
+        .server = server, .database = vocbase.name(), .id = spawnActorID};
     auto algorithm = AlgoRegistry::createAlgorithmNew(
         executionSpecifications.algorithm,
         executionSpecifications.userParameters.slice());
@@ -440,9 +242,8 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
             std::move(spawnActor), std::move(resultActorPID),
             std::move(statusActorPID), std::move(metricsActorPID)),
         conductor::message::ConductorStart{});
-    auto conductorActorPID = actor::ActorPID{.server = ss->getId(),
-                                             .database = vocbase.name(),
-                                             .id = conductorActorID};
+    auto conductorActorPID = actor::ActorPID{
+        .server = server, .database = vocbase.name(), .id = conductorActorID};
 
     _pregelRuns.doUnderLock([&](auto& actors) {
       actors.emplace(
