@@ -1,11 +1,31 @@
-v3.10.6 (XXXX-XX-XX)
+v3.10.7 (XXXX-XX-XX)
 --------------------
 
-* Fix incompatibility between 3.9 and 3.10 w.r.t. to serialization of AQL
-  array filters (i.e. `[* FILTER ...]`). The array filters were serialized in
-  a different way in 3.9 than they are serialized in 3.10. 3.10 also expected
-  the new serialization format when unserializing a plan.
+* Fix incompatibility between 3.9 and 3.10 w.r.t. to serialization of AQL array
+  filters (i.e. `[* FILTER ...]`). The array filters were serialized in a
+  different way in 3.9 than they are serialized in 3.10. 3.10 also expected the
+  new serialization format when unserializing a plan.
   The fix now enables support for both formats.
+
+* FE-238: Added auto-login support in core web UI - disabled logout when
+  auto-login is enabled, set sessionStorage "jwtUser" value when login is
+  skipped.
+
+* Fixed a race in the Maintenance, impacting leaders that have just been
+  resigned. During a MoveShard job, the old leader could sabotage the whole
+  operation by removing the newly added follower from Current. The solution is
+  to update Current using local collection information, instead of the
+  potentially outdated velocypack slice.
+
+
+v3.10.6 (2023-04-27)
+--------------------
+
+* Fixed a race in the Maintenance, impacting leaders that have just been
+  resigned. During a MoveShard job, the old leader could sabotage the whole
+  operation by removing the newly added follower from Current. The solution
+  is to update Current using local collection information, instead of the
+  potentially outdated velocypack slice.
 
 * Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
 
