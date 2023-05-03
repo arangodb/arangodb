@@ -35,10 +35,12 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Actor/ActorPID.h"
 #include "Pregel/ArangoExternalDispatcher.h"
 #include "Actor/Runtime.h"
 #include "Basics/Common.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/ResultActor.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/StatusActor.h"
@@ -71,6 +73,15 @@ struct PregelScheduler {
     auto workItem = scheduler->queueDelayed(
         "pregel-actors", RequestLane::INTERNAL_LOW, delay, fn);
   }
+};
+
+struct ResultActorReference {
+  actor::ActorPID pid;
+  std::shared_ptr<PregelResult> data;
+};
+struct StatusActorReference {
+  actor::ActorPID pid;
+  std::shared_ptr<PregelStatus> status;
 };
 
 class Conductor;
@@ -110,7 +121,7 @@ class PregelFeature final : public ArangodFeature {
   void cleanupConductor(ExecutionNumber executionNumber);
   void cleanupWorker(ExecutionNumber executionNumber);
   [[nodiscard]] ResultT<PregelResults> getResults(ExecutionNumber execNr);
-  [[nodiscard]] ResultT<StatusState> getStatus(ExecutionNumber execNr);
+  [[nodiscard]] ResultT<PregelStatus> getStatus(ExecutionNumber execNr);
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
@@ -173,10 +184,12 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
 
-  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _resultActor;
-  // conductor actor is only used on the coordinator
+  Guarded<std::unordered_map<ExecutionNumber, ResultActorReference>>
+      _resultActor;
+  // conductor and status actors are only used on the coordinator
   Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _conductorActor;
-  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _statusActors;
+  Guarded<std::unordered_map<ExecutionNumber, StatusActorReference>>
+      _statusActors;
 };
 
 }  // namespace arangodb::pregel
