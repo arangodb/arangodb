@@ -54,6 +54,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 struct OperationResult;
+class ExecContext;
 namespace rest {
 enum class RequestType;
 }
@@ -75,13 +76,35 @@ struct PregelScheduler {
   }
 };
 
-struct ResultActorReference {
-  actor::ActorPID pid;
-  std::shared_ptr<PregelResult> data;
+struct PregelRunUser {
+  PregelRunUser(std::string name) : name{std::move(name)} {}
+  auto authorized(ExecContext const& userContext) const -> bool;
+
+ private:
+  std::string name;
 };
-struct StatusActorReference {
-  actor::ActorPID pid;
-  std::shared_ptr<PregelStatus> status;
+struct PregelRunActors {
+  actor::ActorPID resultActor;
+  std::shared_ptr<PregelResult> results;
+
+  // following members are only relevant on coordinator
+  std::optional<actor::ActorPID> conductor;
+};
+struct PregelRun {
+  PregelRun(PregelRunUser user, PregelRunActors actors)
+      : user{std::move(user)}, actors{std::move(actors)} {}
+  auto getActorsInternally() const -> PregelRunActors { return actors; }
+  auto getActorsFromUser(ExecContext const& userContext) const
+      -> std::optional<PregelRunActors> {
+    if (not user.authorized(userContext)) {
+      return std::nullopt;
+    }
+    return actors;
+  }
+
+ private:
+  PregelRunUser user;
+  PregelRunActors actors;
 };
 
 class Conductor;
@@ -121,7 +144,6 @@ class PregelFeature final : public ArangodFeature {
   void cleanupConductor(ExecutionNumber executionNumber);
   void cleanupWorker(ExecutionNumber executionNumber);
   [[nodiscard]] ResultT<PregelResults> getResults(ExecutionNumber execNr);
-  [[nodiscard]] ResultT<PregelStatus> getStatus(ExecutionNumber execNr);
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
@@ -183,13 +205,7 @@ class PregelFeature final : public ArangodFeature {
  public:
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
-
-  Guarded<std::unordered_map<ExecutionNumber, ResultActorReference>>
-      _resultActor;
-  // conductor and status actors are only used on the coordinator
-  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _conductorActor;
-  Guarded<std::unordered_map<ExecutionNumber, StatusActorReference>>
-      _statusActors;
+  Guarded<std::unordered_map<ExecutionNumber, PregelRun>> _pregelRuns;
 };
 
 }  // namespace arangodb::pregel

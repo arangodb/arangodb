@@ -43,7 +43,7 @@ require('../../frontend/css/highlightjs.css');
 require('../../frontend/css/jsoneditor.css');
 require('../../frontend/css/tippy.css');
 require('../../frontend/css/dygraph.css');
-require('../../frontend/css/leaflet.css');
+require('leaflet/dist/leaflet.css');
 require('../../frontend/css/nv.d3.css');
 require('../../frontend/css/grids-responsive-min.css');
 
@@ -138,8 +138,9 @@ window.define = window.ace.define;
 window.aqltemplates = require('../public/assets/aqltemplates.json');
 
 window.d3 = d3;
-require('../../frontend/js/lib/leaflet.js');
+require('leaflet');
 require('../../frontend/js/lib/tile.stamen.js');
+require('leaflet.geodesic');
 
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');
 window.Dygraph = require('../../frontend/js/lib/dygraph-combined.min.js');
