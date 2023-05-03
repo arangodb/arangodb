@@ -161,8 +161,7 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
 }
 
 template<typename V, typename E>
-auto GraphLoader<V, E>::loadVertices(
-    LoadableVertexShard const& loadableVertexShard)
+auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
     -> std::shared_ptr<Quiver<V, E>> {
   auto const& vertexShard = loadableVertexShard.vertexShard;
   auto const& edgeShards = loadableVertexShard.edgeShards;

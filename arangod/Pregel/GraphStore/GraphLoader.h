@@ -73,7 +73,7 @@ struct GraphLoader : GraphLoaderBase<V, E> {
         updateCallback(updateCallback) {}
   auto load() -> futures::Future<Magazine<V, E>> override;
 
-  auto loadVertices(LoadableVertexShard const& loadableVertexShard)
+  auto loadVertices(LoadableVertexShard loadableVertexShard)
       -> std::shared_ptr<Quiver<V, E>>;
   auto loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
                  std::string_view documentID,

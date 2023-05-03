@@ -23,6 +23,7 @@
 
 #include "Pregel/GraphStore/GraphSerdeConfigBuilderSingleServer.h"
 
+#include "Cluster/ServerState.h"
 #include "Containers/Enumerate.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -59,13 +60,14 @@ GraphSerdeConfigBuilderSingleServer::GraphSerdeConfigBuilderSingleServer(
 [[nodiscard]] auto GraphSerdeConfigBuilderSingleServer::loadableVertexShards()
     const -> std::vector<LoadableVertexShard> {
   auto result = std::vector<LoadableVertexShard>{};
+  auto const server = ServerState::instance()->getId();
 
   for (auto const [idx, vertexCollection] :
        enumerate(graphByCollections.vertexCollections)) {
     auto loadableVertexShard =
         LoadableVertexShard{.pregelShard = PregelShard(idx),
                             .vertexShard = vertexCollection,
-                            .responsibleServer = "",
+                            .responsibleServer = server,
                             .collectionName = vertexCollection,
                             .edgeShards = {}};
     for (auto const& edgeCollection : graphByCollections.edgeCollections) {

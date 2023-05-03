@@ -113,10 +113,15 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
   for (auto collIdx = size_t{0}; collIdx < vertexShardTable.size(); ++collIdx) {
     for (auto shardIdx = size_t{0}; shardIdx < vertexShardTable[collIdx].size();
          ++shardIdx) {
+      auto responsibleServers =
+          clusterInfo.getResponsibleServer(vertexShardTable[collIdx][shardIdx]);
+
+      ADB_PROD_ASSERT(not responsibleServers->empty());
+
       auto loadableVertexShard = LoadableVertexShard{
           .pregelShard = PregelShard(result.size()),
           .vertexShard = vertexShardTable[collIdx][shardIdx],
-          .responsibleServer = "",
+          .responsibleServer = responsibleServers->at(0),
           .collectionName = graphByCollections.vertexCollections[collIdx],
           .edgeShards = {}};
 
