@@ -33,4 +33,9 @@ struct SenderMessage {
   VertexID senderId;
   T value;
 };
+template<typename Inspector, typename T>
+auto inspect(Inspector& f, SenderMessage<T>& x) {
+  return f.object(x).fields(f.field("sender", x.senderId),
+                            f.field("value", x.value));
+}
 }  // namespace arangodb::pregel
