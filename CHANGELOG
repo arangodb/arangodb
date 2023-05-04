@@ -13,6 +13,9 @@ v3.9.11 (XXXX-XX-XX)
   network delays better. This fixes some problems when the networking
   infrastructure delays requests.
 
+* SEARCH-466 Fix leaking into individual link definition inherited properties
+  from view.
+
 * Stabilize test which sets the desired number of servers.
 
 * FE-238: Added auto-login support in core web UI - disabled logout when
