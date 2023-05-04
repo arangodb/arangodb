@@ -100,73 +100,60 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
     -> std::vector<LoadableVertexShard> {
   auto result = std::vector<LoadableVertexShard>{};
 
-  std::vector<std::vector<ShardID>> vertexShardTable;
-  std::vector<std::vector<ShardID>> edgeShardTable;
+  auto edgeShardMap = std::unordered_map<CollectionName, CollectionShardMap>{};
 
-  for (auto const& vertexCollection : graphByCollections.vertexCollections) {
-    vertexShardTable.emplace_back(getShardIds(vertexCollection));
-  }
-  for (auto const& edgeCollection : graphByCollections.edgeCollections) {
-    edgeShardTable.emplace_back(getShardIds(edgeCollection));
+  for (auto&& edgeCollection : graphByCollections.edgeCollections) {
+    edgeShardMap.emplace(edgeCollection, getCollectionShardMap(edgeCollection));
   }
 
-  for (auto collIdx = size_t{0}; collIdx < vertexShardTable.size(); ++collIdx) {
-    for (auto shardIdx = size_t{0}; shardIdx < vertexShardTable[collIdx].size();
+  for (auto&& vertexCollection : graphByCollections.vertexCollections) {
+    auto shardmap = getCollectionShardMap(vertexCollection);
+    for (auto shardIdx = size_t{0}; shardIdx < shardmap.content.at(0).size();
          ++shardIdx) {
-      auto responsibleServers =
-          clusterInfo.getResponsibleServer(vertexShardTable[collIdx][shardIdx]);
+      auto vertexShard = shardmap.at(shardIdx).at(0);
+
+      auto responsibleServers = clusterInfo.getResponsibleServer(vertexShard);
 
       ADB_PROD_ASSERT(not responsibleServers->empty());
 
-      auto loadableVertexShard = LoadableVertexShard{
-          .pregelShard = PregelShard(result.size()),
-          .vertexShard = vertexShardTable[collIdx][shardIdx],
-          .responsibleServer = responsibleServers->at(0),
-          .collectionName = graphByCollections.vertexCollections[collIdx],
-          .edgeShards = {}};
+      auto loadableVertexShard =
+          LoadableVertexShard{.pregelShard = PregelShard(result.size()),
+                              .vertexShard = vertexShard,
+                              .responsibleServer = responsibleServers->at(0),
+                              .collectionName = vertexCollection,
+                              .edgeShards = {}};
 
-      for (auto edgeCollIdx = size_t{0}; edgeCollIdx < edgeShardTable.size();
-           ++edgeCollIdx) {
-        if (not graphByCollections.isRestricted(
-                graphByCollections.vertexCollections.at(collIdx),
-                graphByCollections.edgeCollections.at(edgeCollIdx))) {
-          loadableVertexShard.edgeShards.emplace_back(
-              edgeShardTable[edgeCollIdx][shardIdx]);
+      for (auto&& edgeCollection : graphByCollections.edgeCollections) {
+        if (not graphByCollections.isRestricted(vertexCollection,
+                                                edgeCollection)) {
+          for (auto shard : edgeShardMap.at(edgeCollection).at(shardIdx)) {
+            loadableVertexShard.edgeShards.emplace_back(shard);
+          }
         }
+        result.emplace_back(loadableVertexShard);
       }
-      result.emplace_back(loadableVertexShard);
     }
   }
   return result;
 }
 
-[[nodiscard]] auto GraphSerdeConfigBuilderCluster::resolveCollectionNameToIds(
-    CollectionName collectionName) const -> std::vector<DataSourceId> {
+[[nodiscard]] auto GraphSerdeConfigBuilderCluster::getCollectionShardMap(
+    CollectionName collectionName) const -> CollectionShardMap {
+  auto result = CollectionShardMap{};
+
   auto logicalCollection =
       clusterInfo.getCollection(vocbase.name(), collectionName);
 
   if (logicalCollection->isSmart()) {
-    auto collectionIds = std::vector<DataSourceId>{};
     for (auto&& l : logicalCollection->realNamesForRead()) {
       auto lc2 = clusterInfo.getCollection(vocbase.name(), l);
-      collectionIds.push_back(lc2->id());
+      auto shardIDs = clusterInfo.getShardList(std::to_string(lc2->id().id()));
+      result.content.push_back(*shardIDs);
     }
-    return collectionIds;
   } else {
-    return {logicalCollection->id()};
-  }
-}
-
-[[nodiscard]] auto GraphSerdeConfigBuilderCluster::getShardIds(
-    ShardID collection) const -> std::vector<ShardID> {
-  std::vector<ShardID> result;
-
-  auto collectionIds = resolveCollectionNameToIds(collection);
-  for (auto&& collectionId : collectionIds) {
-    auto shardIds = clusterInfo.getShardList(std::to_string(collectionId.id()));
-    for (auto const& it : *shardIds) {
-      result.emplace_back(it);
-    }
+    auto shardIDs =
+        clusterInfo.getShardList(std::to_string(logicalCollection->id().id()));
+    result.content.push_back(*shardIDs);
   }
   return result;
 }

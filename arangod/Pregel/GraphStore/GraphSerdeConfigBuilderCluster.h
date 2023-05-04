@@ -30,6 +30,18 @@ class ClusterInfo;
 
 namespace arangodb::pregel {
 
+struct CollectionShardMap {
+  std::vector<std::vector<ShardID>> content;
+
+  auto at(size_t pos) const -> std::vector<ShardID> {
+    auto result = std::vector<ShardID>{};
+    for (auto&& c : content) {
+      result.emplace_back(c.at(pos));
+    }
+    return result;
+  }
+};
+
 struct GraphSerdeConfigBuilderCluster : GraphSerdeConfigBuilderBase {
   GraphSerdeConfigBuilderCluster(TRI_vocbase_t& vocbase,
                                  GraphByCollections const& graphByCollections);
@@ -40,10 +52,8 @@ struct GraphSerdeConfigBuilderCluster : GraphSerdeConfigBuilderBase {
   [[nodiscard]] virtual auto loadableVertexShards() const
       -> std::vector<LoadableVertexShard> override;
 
-  [[nodiscard]] auto getShardIds(ShardID collection) const
-      -> std::vector<ShardID>;
-  [[nodiscard]] auto resolveCollectionNameToIds(CollectionName name) const
-      -> std::vector<DataSourceId>;
+  [[nodiscard]] auto getCollectionShardMap(CollectionName collectionName) const
+      -> CollectionShardMap;
 
   TRI_vocbase_t& vocbase;
   ClusterInfo& clusterInfo;
