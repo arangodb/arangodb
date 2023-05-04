@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual */
+/* global getOptions, assertTrue, assertFalse, assertEqual, assertUndefined */
 
 const jsunity = require('jsunity');
 const tasks = require('@arangodb/tasks');
