@@ -208,11 +208,13 @@ struct StateManagerTest : testing::Test {
       std::make_shared<replicated_log::DefaultParticipantsFactory>(
           fakeFollowerFactory, logScheduler);
 
+  LogId const logId = LogId{1};
+
   std::shared_ptr<ReplicatedLog> log =
       std::make_shared<replicated_log::ReplicatedLog>(
           std::unique_ptr<replicated_state::IStorageEngineMethods>{methodsPtr},
-          logMetricsMock, optionsMock, participantsFactory, loggerContext,
-          myself);
+          logMetricsMock, optionsMock, participantsFactory, logId,
+          loggerContext, myself);
 
   std::shared_ptr<FakeState::FactoryType> stateFactory =
       std::make_shared<FakeState::FactoryType>();

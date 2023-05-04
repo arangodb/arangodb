@@ -170,6 +170,7 @@ struct ReplicatedLogConnectTest : ::testing::Test {
       std::make_shared<ReplicatedLogGlobalSettings>();
   LoggerContext loggerContext = LoggerContext(Logger::REPLICATION2);
   agency::ServerInstanceReference const myself = {"SELF", RebootId{1}};
+  LogId const logId = LogId{1};
 
   std::shared_ptr<test::ParticipantsFactoryMock> participantsFactoryMock =
       std::make_shared<test::ParticipantsFactoryMock>();
@@ -181,8 +182,8 @@ struct ReplicatedLogConnectTest : ::testing::Test {
 TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
       std::unique_ptr<replicated_state::IStorageEngineMethods>{methodsPtr},
-      logMetricsMock, optionsMock, participantsFactoryMock, loggerContext,
-      myself);
+      logMetricsMock, optionsMock, participantsFactoryMock, logId,
+      loggerContext, myself);
 
   test::TermBuilder term;
   term.setTerm(LogTerm{1}).setLeader(myself);
@@ -226,8 +227,8 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
 TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
       std::unique_ptr<replicated_state::IStorageEngineMethods>{methodsPtr},
-      logMetricsMock, optionsMock, participantsFactoryMock, loggerContext,
-      myself);
+      logMetricsMock, optionsMock, participantsFactoryMock, logId,
+      loggerContext, myself);
 
   test::TermBuilder term;
   term.setTerm(LogTerm{1}).setLeader(myself);
@@ -272,8 +273,8 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
 TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
       std::unique_ptr<replicated_state::IStorageEngineMethods>{methodsPtr},
-      logMetricsMock, optionsMock, participantsFactoryMock, loggerContext,
-      myself);
+      logMetricsMock, optionsMock, participantsFactoryMock, logId,
+      loggerContext, myself);
 
   test::TermBuilder term;
   term.setTerm(LogTerm{1}).setLeader(myself);
@@ -341,8 +342,8 @@ TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
 TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
       std::unique_ptr<replicated_state::IStorageEngineMethods>{methodsPtr},
-      logMetricsMock, optionsMock, participantsFactoryMock, loggerContext,
-      myself);
+      logMetricsMock, optionsMock, participantsFactoryMock, logId,
+      loggerContext, myself);
 
   test::TermBuilder term;
   term.setTerm(LogTerm{1}).setLeader("B");
@@ -407,8 +408,8 @@ TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
 TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
       std::unique_ptr<replicated_state::IStorageEngineMethods>{methodsPtr},
-      logMetricsMock, optionsMock, participantsFactoryMock, loggerContext,
-      myself);
+      logMetricsMock, optionsMock, participantsFactoryMock, logId,
+      loggerContext, myself);
 
   test::TermBuilder term;
   term.setTerm(LogTerm{1}).setLeader(myself);

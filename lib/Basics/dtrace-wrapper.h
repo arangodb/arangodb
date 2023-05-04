@@ -33,6 +33,9 @@
   DTRACE_PROBE_N(a, b, _SDT_NARG(0, ##__VA_ARGS__), ##__VA_ARGS__)
 #else
 
+#define DTRACE_PROBE(a, b) \
+  do {                     \
+  } while (0);
 #define DTRACE_PROBE1(a, b, c) \
   do {                         \
   } while (0);
