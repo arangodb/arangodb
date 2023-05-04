@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <errno.h>
-#include <string.h>
+#include <cerrno>
+#include <cstring>
 #include <string>
 
 #include "Basics/Common.h"
@@ -33,6 +33,7 @@
 #include <WinSock2.h>
 #endif
 
+#include <fcntl.h>
 #include <openssl/opensslv.h>
 #include <openssl/ssl.h>
 #ifndef OPENSSL_VERSION_NUMBER
@@ -56,6 +57,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Ssl/ssl-helper.h"
+#include <chrono>
 
 #undef TRACE_SSL_CONNECTIONS
 
@@ -72,6 +74,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
+using namespace std::chrono;
 
 namespace {
 
@@ -302,6 +305,8 @@ bool SslClientConnection::connectSocket() {
 
   _errorDetails.clear();
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
+  long flags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
+  fcntl(_socket.fileDescriptor, F_SETFL, flags | O_NONBLOCK);
 
   if (!TRI_isvalidsocket(_socket) || _ctx == nullptr) {
     _errorDetails = _endpoint->_errorMessage;
@@ -343,15 +348,29 @@ bool SslClientConnection::connectSocket() {
 
   ERR_clear_error();
 
-  int ret = SSL_connect(_ssl);
+  int ret = -1;
+  int errorDetail = -1;
+
+  auto start = steady_clock::now();
+
+  while ((ret = SSL_connect(_ssl)) == -1) {
+    errorDetail = SSL_get_error(_ssl, ret);
+    if (_isInterrupted) {
+      break;
+    }
+    auto end = steady_clock::now();
+    if ((errorDetail != SSL_ERROR_WANT_READ &&
+         errorDetail != SSL_ERROR_WANT_WRITE) ||
+        duration_cast<seconds>(end - start).count() >= _connectTimeout) {
+      break;
+    }
+  }
 
   if (ret != 1) {
     _errorDetails.append("SSL: during SSL_connect: ");
 
-    int errorDetail;
     long certError;
 
-    errorDetail = SSL_get_error(_ssl, ret);
     if ((errorDetail == SSL_ERROR_WANT_READ) ||
         (errorDetail == SSL_ERROR_WANT_WRITE)) {
       return true;
@@ -410,6 +429,7 @@ bool SslClientConnection::connectSocket() {
       << "SSL connection opened: " << SSL_get_cipher(_ssl) << ", "
       << SSL_get_cipher_version(_ssl) << " ("
       << SSL_get_cipher_bits(_ssl, nullptr) << " bits)";
+  fcntl(_socket.fileDescriptor, F_SETFL, flags & ~O_NONBLOCK);
 
   return true;
 }
@@ -446,48 +466,51 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
     return false;
   }
 
-  int written = SSL_write(_ssl, buffer, (int)length);
-  int err = SSL_get_error(_ssl, written);
-  switch (err) {
-    case SSL_ERROR_NONE:
-      *bytesWritten = written;
+  int written = -1;
+  do {
+    written = SSL_write(_ssl, buffer, (int)length);
+    int err = SSL_get_error(_ssl, written);
+    switch (err) {
+      case SSL_ERROR_NONE:
+        *bytesWritten = written;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _written += written;
+        _written += written;
 #endif
-      return true;
+        return true;
 
-    case SSL_ERROR_ZERO_RETURN:
-      SSL_shutdown(_ssl);
-      break;
+      case SSL_ERROR_ZERO_RETURN:
+        SSL_shutdown(_ssl);
+        break;
 
-    case SSL_ERROR_WANT_READ:
-    case SSL_ERROR_WANT_WRITE:
-    case SSL_ERROR_WANT_CONNECT:
-      break;
+      case SSL_ERROR_WANT_READ:
+      case SSL_ERROR_WANT_WRITE:
+      case SSL_ERROR_WANT_CONNECT:
+        break;
 
-    case SSL_ERROR_SYSCALL: {
-      char const* pErr = STR_ERROR();
-      _errorDetails =
-          std::string("SSL: while writing: SYSCALL returned errno = ") +
-          std::to_string(errno) + std::string(" - ") + pErr;
-      break;
+      case SSL_ERROR_SYSCALL: {
+        char const* pErr = STR_ERROR();
+        _errorDetails =
+            std::string("SSL: while writing: SYSCALL returned errno = ") +
+            std::to_string(errno) + std::string(" - ") + pErr;
+        break;
+      }
+
+      case SSL_ERROR_SSL: {
+        /*  A failure in the SSL library occurred, usually a protocol error.
+            The OpenSSL error queue contains more information on the error. */
+        unsigned long errorDetail = ERR_get_error();
+        char errorBuffer[256];
+        ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
+        _errorDetails = std::string("SSL: while writing: ") + errorBuffer;
+        break;
+      }
+
+      default:
+        /* a true error */
+        _errorDetails =
+            std::string("SSL: while writing: error ") + std::to_string(err);
     }
-
-    case SSL_ERROR_SSL: {
-      /*  A failure in the SSL library occurred, usually a protocol error.
-          The OpenSSL error queue contains more information on the error. */
-      unsigned long errorDetail = ERR_get_error();
-      char errorBuffer[256];
-      ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
-      _errorDetails = std::string("SSL: while writing: ") + errorBuffer;
-      break;
-    }
-
-    default:
-      /* a true error */
-      _errorDetails =
-          std::string("SSL: while writing: error ") + std::to_string(err);
-  }
+  } while (written < 0 && (errno == EAGAIN || errno == EWOULDBLOCK));
 
   return false;
 }
@@ -559,7 +582,7 @@ bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
         return false;
       }
     }
-  } while (readable());
+  } while (readable() || (errno == EAGAIN || errno == EWOULDBLOCK));
 
   return true;
 }
