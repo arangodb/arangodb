@@ -54,9 +54,10 @@ const Graph = graphGeneration.Graph;
 const epsilon = 0.00001;
 
 const runFinishedSuccessfully = (stats) => stats.state === "done";
-const runFinishedUnsuccessfully = (stats) => stats.state === "canceled" || stats.state === "fatal error";
-const runFinished = (stats) => runFinishedSuccessfully(stats) || runFinishedUnsuccessfully(stats);
 const runCanceled = (stats) => stats.state === "canceled";
+const runInFatalError = (stats) => stats.state === "fatal error";
+const runFinishedUnsuccessfully = (stats) => runCanceled(stats) || runInFatalError(stats);
+const runFinished = (stats) => runFinishedSuccessfully(stats) || runFinishedUnsuccessfully(stats);
 
 const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sleepIntervalSeconds = 0.2) {
   let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
@@ -65,17 +66,39 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
     internal.sleep(sleepIntervalSeconds);
     status = pregel.status(pid);
     if (wakeupsLeft-- === 0) {
-      assertTrue(false, "timeout in pregel execution");
+      assertTrue(false, "Pregel did not finish after timeout but is in state " + status.state);
       return;
     }
   } while (!runFinished(status));
 
-  if (runFinishedUnsuccessfully(status)) {
-    assertTrue(false, "Pregel run finished unsuccessfully in state " + status.state);
-    return;
+  if (runFinishedSuccessfully(status)) {
+    return status;
   }
 
+  if (runInFatalError(status)) {
+    assertTrue(false, "Pregel run finished unsuccessfully with error " + status.errorMessage);
+    return status;
+  }
+
+  assertTrue(false, "Pregel run finished unsuccessfully in state " + status.state);
   return status;
+};
+
+const waitForResultsBeeingGarbageCollected = function (pid, ttl) {
+  // garbage collection runs every 20s, therefore we should wait at least that long plus the ttl given
+	const maxWaitSeconds = ttl + 25;
+	const sleepIntervalSeconds = 0.2;
+  let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
+	let array;
+  do {
+    internal.sleep(sleepIntervalSeconds);
+    array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
+    assertEqual(array.length, 1);
+    if (wakeupsLeft-- === 0) {
+      assertTrue(false, "Pregel results were not garbage collected");
+      return;
+    }
+  } while (array[0].length !== 0);
 };
 
 const uniquePregelResults = function (documentCursor) {
@@ -1784,4 +1807,5 @@ exports.runFinished = runFinished;
 exports.runCanceled = runCanceled;
 exports.runFinishedSuccessfully = runFinishedSuccessfully;
 exports.waitUntilRunFinishedSuccessfully = waitUntilRunFinishedSuccessfully;
+exports.waitForResultsBeeingGarbageCollected = waitForResultsBeeingGarbageCollected;
 exports.uniquePregelResults = uniquePregelResults;

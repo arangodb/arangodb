@@ -742,6 +742,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
             if (tryCatch.HasCaught()) {
               if (tryCatch.CanContinue()) {
                 TRI_LogV8Exception(isolate, &tryCatch);
+                ok = false;
               } else {
                 // will stop, so need for v8g->_canceled = true;
                 TRI_ASSERT(!ok);

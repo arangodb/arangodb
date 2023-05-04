@@ -116,7 +116,7 @@ auto inspect(Inspector& f, Store& x) {
 }
 
 struct ProduceResults {
-  bool withID;
+  bool withID = true;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ProduceResults& x) {

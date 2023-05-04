@@ -29,8 +29,7 @@ set(LIB_ARANGO_DATE
 )
 add_definitions("-DHAS_REMOTE_API=0")
 
-
-add_definitions("-DARCHITECTURE_OPTIMIZATIONS=${ARCHITECTURE_OPTIMIZATIONS}")
+add_definitions("-DARCHITECTURE_OPTIMIZATIONS=\"${ARCHITECTURE_OPTIMIZATIONS}\"")
 
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
