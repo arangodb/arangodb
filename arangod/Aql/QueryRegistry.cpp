@@ -163,6 +163,11 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
 
   ei._isOpen = true;
   if (ei._queryInfo) {
+    if (ei._queryInfo->_expires == 0) {
+      // query is already killed or finished - do not hand out engine!
+      ei._isOpen = false;
+      return nullptr;
+    }
     ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
     ei._queryInfo->_numOpen++;
 
@@ -365,6 +370,7 @@ bool QueryRegistry::destroyEngine(EngineId engineId, ErrorCode errorCode) {
         qId = ei._queryInfo->_query->id();
         vocbase = ei._queryInfo->_query->vocbase().name();
       } else {
+        TRI_ASSERT(ei._queryInfo->_expires > 0.0);
         ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       }
     }
