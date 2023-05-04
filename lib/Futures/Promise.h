@@ -99,7 +99,7 @@ class Promise {
   /// set void value
   template<class B = T>
   typename std::enable_if<std::is_same<Unit, B>::value>::type setValue() {
-    setTry(Try<Unit>());
+    setTry(Try<Unit>(std::in_place));
   }
 
   /// Fulfill the Promise with the specified Try (value or exception).
