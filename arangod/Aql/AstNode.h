@@ -564,6 +564,14 @@ struct AstNode {
   /// @brief sets the computed value pointer.
   void setComputedValue(uint8_t* data);
 
+  /// @brief compare this node to the other semantically. and return true
+  /// only if they are identical. e.g. a == 1 is identical to a == 1 and 1 == a
+  /// it is not identical to a < 1
+  /// Please NOTE: This is a best effort method, that may still need more work
+  /// it may still return false negatives if certain special cases are not
+  /// implemented. It is guaranteed that we do never return false positives.
+  bool semanticallyEquals(AstNode const* other) const noexcept;
+
   /// @brief the node type
   AstNodeType type;
 

@@ -3028,16 +3028,31 @@ function testSmallCircleFilterOptimization(testGraph) {
     `p.edges[1].color == "blue"`,
     `"blue" == p.vertices[1].color`,
     `p.edges[*].color ALL == "blue"`,
-    `p.vertices[*].color ALL == "blue"`
+    `p.vertices[*].color ALL == "blue"`,
+    `IS_SAME_COLLECTION(v, "circles")`,
+    `IS_SAME_COLLECTION(e, "edges")`,
+    `v._id =~ "circles"`,
+    `e._id =~ "edges"`,
+    `v._id LIKE "circles"`,
+    `e._id LIKE "edges"`,
+    `v._id !~ "circles"`,
+    `e._id !~ "edges"`,
+      /* Those do not yet work
+    `SPLIT(v._id,"/")[0] == "circles"`,
+    `SPLIT(e._id,"/")[0] == "edges"`,
+    `PARSE_IDENTIFIER(v._id).collectionName == "circles"`,
+    `PARSE_IDENTIFIER(e._id).collectionName == "edges"`,
+       */
   ];
-
   // Optimize a single condition
   const filtersToTest = optimizableConditions.map(f => `FILTER ${f}`);
+
   // More complex test.
   for (let first = 0; first < optimizableConditions.length; ++first) {
     for (let second = first + 1; second < optimizableConditions.length; ++second) {
       // Optimize two filter nodes, and erase the filter nodes
       filtersToTest.push(`FILTER ${optimizableConditions[first]} FILTER ${optimizableConditions[second]}`);
+      filtersToTest.push(`FILTER ${optimizableConditions[first]} && ${optimizableConditions[second]}`);
     }
   }
 
@@ -3083,15 +3098,6 @@ function testSmallCircleFilterOptimization(testGraph) {
 
   for (const c of optimizedButFilterIsKept.map(f => [`FILTER ${f}`, `${f}`, true])) {
     nonOptFiltersToTest.push(c);
-  }
-
-  // NOTE: we only detect one of the two AND branches to be covered.
-  // Actually both are covered, our optimizer does not detect this yet.
-  // NOTE: We only iterate up to 2 as the following all cover Path only conditions which are optimized
-  for (let first = 0; first < 2; ++first) {
-    for (let second = first + 1; second < optimizableConditions.length; ++second) {
-      nonOptFiltersToTest.push([`FILTER ${optimizableConditions[first]} && ${optimizableConditions[second]}`, `${optimizableConditions[first]}`, true]);
-    }
   }
 
   // More complex test.

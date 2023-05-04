@@ -2581,6 +2581,7 @@ AstNode* AstNode::getMember(size_t i) const {
 }
 
 AstNode* AstNode::getMemberUnchecked(size_t i) const noexcept {
+  TRI_ASSERT(members.size() > i);
   return members[i];
 }
 
@@ -2715,6 +2716,39 @@ void AstNode::setComputedValue(uint8_t* data) {
   TRI_ASSERT(isConstant());
   TRI_ASSERT(hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
   _computedValue = data;
+}
+
+bool AstNode::semanticallyEquals(AstNode const* other) const noexcept {
+  if (other == nullptr) {
+    // We can never be equal to nothing
+    return false;
+  }
+  if (other->type != this->type) {
+    // Both sides have to be the same type
+    // NOTE: We may want to loosen this for symmetric transformations
+    // e.g. < can be equal to >= if left and right are exact switches
+    return false;
+  }
+  switch (this->type) {
+    case NODE_TYPE_FCALL:
+    case NODE_TYPE_FCALL_USER: {
+      // Poor mans comparison.
+      return other->toString() == toString();
+    }
+    case NODE_TYPE_OPERATOR_UNARY_NOT:
+    case NODE_TYPE_OPERATOR_UNARY_MINUS:
+    case NODE_TYPE_OPERATOR_UNARY_PLUS:
+    {
+      TRI_ASSERT(numMembers() == 1);
+      return getMemberUnchecked(0)->semanticallyEquals(
+          other->getMemberUnchecked(0));
+    }
+    default: {
+      // Do not check, just say no.,
+      break;
+    }
+  }
+  return false;
 }
 
 /// @brief append the AstNode to an output stream

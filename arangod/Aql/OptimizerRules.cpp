@@ -6430,15 +6430,19 @@ void arangodb::aql::removeFiltersCoveredByTraversal(
     auto conditionNode = calculationNode->expression()->node();
 
     // build the filter condition
-    Condition condition(plan->getAst());
-    condition.andCombine(conditionNode);
-    condition.normalize(plan.get());
+    auto rebuildCondition = [&plan](AstNode const* node) {
+      auto condition = std::make_unique<Condition>(plan->getAst());
+      condition->andCombine(node);
+      condition->normalize(plan.get());
+      return condition;
+    };
+    auto condition = rebuildCondition(conditionNode);
 
-    if (condition.root() == nullptr) {
+    if (condition->root() == nullptr) {
       continue;
     }
 
-    size_t const n = condition.root()->numMembers();
+    size_t const n = condition->root()->numMembers();
 
     if (n != 1) {
       // either no condition or multiple ORed conditions...
@@ -6458,7 +6462,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(
 
         if (traversalCondition != nullptr && !traversalCondition->isEmpty()) {
           VarSet varsUsedByCondition;
-          Ast::getReferencedVariables(condition.root(), varsUsedByCondition);
+          Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
 
           auto remover = [&](Variable const* outVariable,
                              bool isPathCondition) -> bool {
@@ -6470,27 +6474,18 @@ void arangodb::aql::removeFiltersCoveredByTraversal(
               return false;
             }
 
-            auto newNode = condition.removeTraversalCondition(
+            auto nextNode = condition->removeTraversalCondition(
                 plan.get(), outVariable, traversalCondition->root(),
                 isPathCondition);
-            if (newNode == nullptr) {
-              // no condition left...
-              // FILTER node can be completely removed
-              toUnlink.emplace(node);
-              // note: we must leave the calculation node intact, in case it
-              // is still used by other nodes in the plan
-              return true;
-            } else if (newNode != condition.root()) {
-              // some condition is left, but it is a different one than
-              // the one from the FILTER node
-              auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
-              auto* cn = plan->createNode<CalculationNode>(
-                  plan.get(), plan->nextId(), std::move(expr),
-                  calculationNode->outVariable());
-              plan->replaceNode(setter, cn);
+            if (nextNode != condition->root()) {
+              if (nextNode == nullptr) {
+                // Nothing more to optimize trigger unlink
+                condition.reset();
+              } else {
+                condition = rebuildCondition(nextNode);
+              }
               return true;
             }
-
             return false;
           };
 
@@ -6502,12 +6497,36 @@ void arangodb::aql::removeFiltersCoveredByTraversal(
               std::make_pair(traversalNode->edgeOutVariable(),
                              /*isPathCondition*/ false)};
 
+          bool didChange = false;
           for (auto [v, isPathCondition] : vars) {
             if (remover(v, isPathCondition)) {
               modified = true;
               handled = true;
-              break;
+              if (condition == nullptr) {
+                // no condition left...
+                // FILTER node can be completely removed
+                toUnlink.emplace(node);
+                // note: we must leave the calculation node intact, in case it
+                // is still used by other nodes in the plan
+                // We can stop this loop nothing left to optimize
+                break;
+              }
+              didChange = true;
             }
+          }
+
+          if (didChange && condition != nullptr) {
+            // Thus far we only support a single OR condition.
+            TRI_ASSERT(condition->root() != nullptr &&
+                       condition->root()->numMembers() == 1);
+            // some condition is left, but it is a different one than
+            // the one from the FILTER node
+            auto expr = std::make_unique<Expression>(
+                plan->getAst(), condition->root()->getMemberUnchecked(0));
+            auto* cn = plan->createNode<CalculationNode>(
+                plan.get(), plan->nextId(), std::move(expr),
+                calculationNode->outVariable());
+            plan->replaceNode(setter, cn);
           }
         }
 

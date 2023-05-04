@@ -165,6 +165,11 @@ class Condition {
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*,
                                     AstNode*, bool isPathCondition);
 
+  /// @brief removes condition parts from another
+  bool removeTraversalConditionInPlace(ExecutionPlan const*, Variable const*,
+                                       AstNode const* otherCondition,
+                                       bool isPathCondition);
+
   /// @brief remove (now) invalid variables from the condition
   bool removeInvalidVariables(VarSet const&);
 
@@ -200,7 +205,7 @@ class Condition {
   /// @brief internal worker function for removeIndexCondition and
   /// removeTraversalCondition
   AstNode* removeCondition(ExecutionPlan const* plan, Variable const* variable,
-                           AstNode const* condition, Index const* index,
+                           AstNode const* otherCondition, Index const* index,
                            bool isFromTraverser);
 
   /// @brief optimize the condition expression tree
