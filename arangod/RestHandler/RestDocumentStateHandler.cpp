@@ -115,7 +115,7 @@ RestStatus RestDocumentStateHandler::handleGetRequest(
 
   auto const& verb = suffixes[1];
   if (verb == "snapshot") {
-    if (suffixes.size() != 3) {
+    if (suffixes.size() < 3) {
       generateError(
           rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
           "expect GET /_api/document-state/<state-id>/snapshot/<action>");
