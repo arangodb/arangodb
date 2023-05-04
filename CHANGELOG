@@ -1,6 +1,9 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* SEARCH-466 Fix leaking into individual link definition inherited properties
+  from view.
+
 * Stabilize test which sets the desired number of servers.
 
 * FE-238: Added auto-login support in core web UI - disabled logout when

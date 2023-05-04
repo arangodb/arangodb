@@ -194,6 +194,8 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
     return key != iresearch::StaticStrings::AnalyzerDefinitionsField &&
            key != iresearch::StaticStrings::PrimarySortField &&
            key != iresearch::StaticStrings::PrimarySortCompressionField &&
+           key != iresearch::StaticStrings::kPrimarySortCacheField &&
+           key != iresearch::StaticStrings::kCachePrimaryKeyField &&
            key != iresearch::StaticStrings::StoredValuesField &&
            key != iresearch::StaticStrings::VersionField &&
            key != iresearch::StaticStrings::CollectionNameField;

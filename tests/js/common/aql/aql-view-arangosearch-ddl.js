@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual */
+/* global getOptions, assertTrue, assertFalse, assertEqual, assertUndefined */
 
 const jsunity = require('jsunity');
 const tasks = require('@arangodb/tasks');
@@ -104,6 +104,37 @@ function testSuite() {
       } finally {
         db._dropView(viewName);
         db._drop(colName);
+      }
+    },
+    testViewOnlyOptions : function() {
+      if (!isEnterprise) {
+        return;
+      }
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        let view = db._createView(viewName, "arangosearch", {
+          consolidationIntervalMsec: 0,
+          commitIntervalMsec: 0,
+          primarySortCache: true,
+          primaryKeyCache: true,
+          links: {
+            [colName]: {
+              storeValues: 'id',
+              includeAllFields:true
+            }}});
+        let props = view.properties();
+        assertUndefined(props.links[colName].primarySortCache);
+        assertUndefined(props.links[colName].primaryKeyCache);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
       }
     }
   }; // return
