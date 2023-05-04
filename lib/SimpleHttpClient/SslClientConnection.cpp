@@ -306,7 +306,9 @@ bool SslClientConnection::connectSocket() {
   _errorDetails.clear();
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
   long flags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
-  fcntl(_socket.fileDescriptor, F_SETFL, flags | O_NONBLOCK);
+  if (_isTelemetrics) {
+    fcntl(_socket.fileDescriptor, F_SETFL, flags | O_NONBLOCK);
+  }
 
   if (!TRI_isvalidsocket(_socket) || _ctx == nullptr) {
     _errorDetails = _endpoint->_errorMessage;
@@ -351,19 +353,23 @@ bool SslClientConnection::connectSocket() {
   int ret = -1;
   int errorDetail = -1;
 
-  auto start = steady_clock::now();
-
-  while ((ret = SSL_connect(_ssl)) == -1) {
+  if (_isTelemetrics) {
+    auto start = steady_clock::now();
+    while ((ret = SSL_connect(_ssl)) == -1) {
+      errorDetail = SSL_get_error(_ssl, ret);
+      if (_isInterrupted) {
+        break;
+      }
+      auto end = steady_clock::now();
+      if ((errorDetail != SSL_ERROR_WANT_READ &&
+           errorDetail != SSL_ERROR_WANT_WRITE) ||
+          duration_cast<seconds>(end - start).count() >= _connectTimeout) {
+        break;
+      }
+    }
+  } else {
+    ret = SSL_connect(_ssl);
     errorDetail = SSL_get_error(_ssl, ret);
-    if (_isInterrupted) {
-      break;
-    }
-    auto end = steady_clock::now();
-    if ((errorDetail != SSL_ERROR_WANT_READ &&
-         errorDetail != SSL_ERROR_WANT_WRITE) ||
-        duration_cast<seconds>(end - start).count() >= _connectTimeout) {
-      break;
-    }
   }
 
   if (ret != 1) {
@@ -429,8 +435,9 @@ bool SslClientConnection::connectSocket() {
       << "SSL connection opened: " << SSL_get_cipher(_ssl) << ", "
       << SSL_get_cipher_version(_ssl) << " ("
       << SSL_get_cipher_bits(_ssl, nullptr) << " bits)";
-  fcntl(_socket.fileDescriptor, F_SETFL, flags & ~O_NONBLOCK);
-
+  if (_isTelemetrics) {
+    fcntl(_socket.fileDescriptor, F_SETFL, flags & ~O_NONBLOCK);
+  }
   return true;
 }
 
@@ -467,6 +474,7 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
   }
 
   int written = -1;
+  auto start = steady_clock::now();
   do {
     written = SSL_write(_ssl, buffer, (int)length);
     int err = SSL_get_error(_ssl, written);
@@ -510,7 +518,12 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
         _errorDetails =
             std::string("SSL: while writing: error ") + std::to_string(err);
     }
-  } while (written < 0 && (errno == EAGAIN || errno == EWOULDBLOCK));
+    auto end = steady_clock::now();
+    if (duration_cast<seconds>(end - start).count() >= _connectTimeout) {
+      break;
+    }
+  } while (_isTelemetrics &&
+           (written < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)));
 
   return false;
 }
@@ -534,6 +547,7 @@ bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
   }
 
   connectionClosed = false;
+  auto start = steady_clock::now();
 
   do {
   again:
@@ -582,7 +596,12 @@ bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
         return false;
       }
     }
-  } while (readable() || (errno == EAGAIN || errno == EWOULDBLOCK));
+    auto end = steady_clock::now();
+    if (duration_cast<seconds>(end - start).count() >= _connectTimeout) {
+      break;
+    }
+  } while (_isTelemetrics &&
+           (readable() || (errno == EAGAIN || errno == EWOULDBLOCK)));
 
   return true;
 }
