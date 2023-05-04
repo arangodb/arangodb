@@ -130,8 +130,8 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
             loadableVertexShard.edgeShards.emplace_back(shard);
           }
         }
-        result.emplace_back(loadableVertexShard);
       }
+      result.emplace_back(loadableVertexShard);
     }
   }
   return result;
