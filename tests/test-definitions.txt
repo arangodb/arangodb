@@ -53,7 +53,7 @@ shell_client_aql !mac priority=500  single suffix=http2 -- --http2 true
 shell_client_aql !mac priority=750  single suffix=vst -- --vst true
 shell_client_aql !mac priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true
 
-shell_server_aql priority=750 single buckets=5
+shell_server_aql !mac priority=750 single buckets=5
 # execute without buckets in single server, but use 5 buckets in cluster
 shell_server priority=1000 single buckets=3
 
@@ -64,8 +64,8 @@ gtest_arangodb priority=1000 parallelity=3 size=medium single
 # Fuerte tests are executed in single env
 fuerte priority=500 single
 
-rta_makedata single
-rta_makedata single suffix=afo -- --activeFailover true
+rta_makedata !mac single
+rta_makedata !mac single suffix=afo -- --activeFailover true
 
 
 # Cluster Tests
@@ -103,7 +103,7 @@ shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5
 shell_client_replication2_recovery !mac priority=500 size=small cluster -- --dumpAgencyOnError true
 shell_server !mac priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
 
-rta_makedata cluster
+rta_makedata !mac cluster
 
 # Common Tests
 
@@ -112,9 +112,9 @@ importing,export name=import_export parallelity=3 size=small single -- --dumpAge
 hot_backup enterprise !windows -- --dumpAgencyOnError true
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
-server_parameters priority=1000 parallelity=2 buckets=3 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 buckets=6 size=small cluster -- --dumpAgencyOnError true
-server_permissions,server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
+server_parameters !mac priority=1000 parallelity=2 buckets=3 single -- --dumpAgencyOnError true
+server_parameters !mac priority=1000 parallelity=5 buckets=6 size=small cluster -- --dumpAgencyOnError true
+server_permissions,server_secrets !mac priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 
 # Dump Tests
 dump,dump_authentication,dump_jwt,dump_multiple,dump_no_envelope name=dump -- --dumpAgencyOnError true
