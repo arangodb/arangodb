@@ -733,6 +733,15 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
     TRI_vocbase_t& vocbase, std::vector<CreateCollectionBody> collections,
     bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
     bool enforceReplicationFactor, bool isNewDatabase) {
+  TRI_IF_FAILURE("ClusterInfo::requiresWaitForReplication") {
+    if (waitForSyncReplication) {
+      return {TRI_ERROR_DEBUG};
+    } else {
+      TRI_ASSERT(false) << "We required to have waitForReplication, but it "
+                           "was set to false";
+    }
+  }
+
   TRI_ASSERT(!collections.empty());
   if (collections.empty()) {
     return Result{
