@@ -11,7 +11,7 @@ replication_fuzz !mac priority=500 parallelity=3 size=small single -- --extraArg
 replication_ongoing !mac priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 replication_ongoing_frompresent !mac parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 replication_ongoing_global !mac priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
-replication_ongoing_global_spec !macparallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_global_spec !mac parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 replication_static !mac priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 # TODO - we could actually use 4 buckets instead of 2, but ATM this causes issues with other tests on Jenkins
 replication_sync !mac priority=8000 buckets=2 parallelity=3 size=medium single -- --extraArgs:log.level replication=trace
