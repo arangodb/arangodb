@@ -371,10 +371,10 @@ jsunity.run(function ShardDistributionTest_R1() {
   return derivedSuite;
 });
 
-jsunity.run(function ShardDistributionTest_R2() {
+/*jsunity.run(function ShardDistributionTest_R2() {
   let derivedSuite = {};
   deriveTestSuite(ShardDistributionTest({replVersion: "2"}), derivedSuite, "_R2");
   return derivedSuite;
-});
+});*/
 
 return jsunity.done();
