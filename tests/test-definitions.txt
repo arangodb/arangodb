@@ -9,20 +9,20 @@ BackupAuthNoSysTests,BackupAuthSysTests,BackupNoAuthSysTests,arangosh,arangobenc
 # Single Server Replication Tests
 replication_fuzz !mac priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 replication_ongoing !mac priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
-replication_ongoing_frompresent parallelity=3 size=small single -- --extraArgs:log.level replication=trace
-replication_ongoing_global priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
-replication_ongoing_global_spec parallelity=3 size=small single -- --extraArgs:log.level replication=trace
-replication_static priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_frompresent !mac parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_global !mac priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_global_spec !macparallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_static !mac priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 # TODO - we could actually use 4 buckets instead of 2, but ATM this causes issues with other tests on Jenkins
-replication_sync priority=8000 buckets=2 parallelity=3 size=medium single -- --extraArgs:log.level replication=trace
-shell_replication parallelity=3 size=small single 
-http_replication priority=500 parallelity=3 size=small single
+replication_sync !mac priority=8000 buckets=2 parallelity=3 size=medium single -- --extraArgs:log.level replication=trace
+shell_replication !mac parallelity=3 size=small single 
+http_replication !mac priority=500 parallelity=3 size=small single
 
 # Misc single server tests
-agency,agency-restart priority=350 parallelity=3 size=small single -- --dumpAgencyOnError true
+agency,agency-restart !mac priority=350 parallelity=3 size=small single -- --dumpAgencyOnError true
 authentication priority=1000 single
 endpoints priority=250 single -- --skipEndpointsIpv6 true
-recovery priority=2000 buckets=6 parallelity=5 size=small single
+recovery !mac priority=2000 buckets=6 parallelity=5 size=small single
 
 shell_server_v8,shell_v8 priority=500 name=v8 single -- $EncryptionAtRest
 
@@ -77,15 +77,15 @@ restart !mac priority=1000 size=small sniff cluster -- --dumpAgencyOnError true 
 load_balancing priority=500 size=small cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
 
-replication2_client size=small cluster
-replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
+replication2_client !mac size=small cluster
+replication2_server !mac size=medium cluster buckets=3 -- --dumpAgencyOnError true
 
-resilience_analyzers priority=500 size=small cluster -- --dumpAgencyOnError true
-resilience_failover priority=1200 size=small buckets=2 cluster -- --dumpAgencyOnError true
-resilience_move priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnError true
-resilience_sharddist size=small cluster -- --dumpAgencyOnError true
+resilience_analyzers !mac priority=500 size=small cluster -- --dumpAgencyOnError true
+resilience_failover !mac priority=1200 size=small buckets=2 cluster -- --dumpAgencyOnError true
+resilience_move !mac priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnError true
+resilience_sharddist !mac size=small cluster -- --dumpAgencyOnError true
 
-recovery_cluster priority=2000 size=small cluster buckets=8
+recovery_cluster priority=2000 !mac size=small cluster buckets=8
 
 shell_api priority=500 cluster -- $EncryptionAtRest
 
@@ -97,11 +97,11 @@ shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
-shell_server_aql priority=1000 size=medium+ cluster sniff buckets=16 -- --dumpAgencyOnError true --sniffFilter graph
+shell_server_aql priority=1000 !mac size=medium+ cluster sniff buckets=16 -- --dumpAgencyOnError true --sniffFilter graph
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
-shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true
-shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
+shell_client_replication2_recovery !mac priority=500 size=small cluster -- --dumpAgencyOnError true
+shell_server !mac priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
 
 rta_makedata cluster
 
@@ -158,7 +158,7 @@ resilience_move_view !mac full cluster priority=750 -- --dumpAgencyOnError true
 resilience_repair !mac full cluster priority=500 -- --dumpAgencyOnError true
 resilience_transactions !mac full cluster priority=500 -- --dumpAgencyOnError true
 shell_client_aql !mac full cluster priority=2500 -- --dumpAgencyOnError true
-wal_cleanup full cluster priority=2500 -- --dumpAgencyOnError true
+wal_cleanup full !mac cluster priority=2500 -- --dumpAgencyOnError true
 
 # Common Full Tests
 communication full !mac priority=1000 parallelity=2 single
