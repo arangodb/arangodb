@@ -74,8 +74,8 @@ arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
 chaos cluster !mac !coverage !full -- --dumpAgencyOnError true parallelity=8
 restart !mac priority=1000 size=small sniff cluster -- --dumpAgencyOnError true --forceJson true
 
-load_balancing priority=500 size=small cluster -- --dumpAgencyOnError true
-load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
+load_balancing !mac priority=500 size=small cluster -- --dumpAgencyOnError true
+load_balancing_auth !mac priority=500 size=small cluster -- --dumpAgencyOnError true
 
 replication2_client !mac size=small cluster
 replication2_server !mac size=medium cluster buckets=3 -- --dumpAgencyOnError true
