@@ -24,24 +24,6 @@ export const AddAnalyzerModal = ({
   const [showJSONForm, setShowJSONForm] = React.useState(false);
   return (
     <Modal size="6xl" isOpen={isOpen} onClose={onClose}>
-      <ModalHeader fontSize="sm" fontWeight="normal">
-        <Flex direction="row" alignItems="center">
-          <Heading marginRight="4" size="md">
-            Create Analyzer
-          </Heading>
-          <CopyAnalyzerDropdown />
-          <Button
-            size="sm"
-            colorScheme="gray"
-            marginLeft="auto"
-            onClick={() => {
-              setShowJSONForm(!showJSONForm);
-            }}
-          >
-            {showJSONForm ? "Show form" : " Show JSON"}
-          </Button>
-        </Flex>
-      </ModalHeader>
       <Formik
         enableReinitialize
         initialValues={initialValues}
@@ -53,6 +35,25 @@ export const AddAnalyzerModal = ({
         }}
       >
         <Form>
+          <ModalHeader fontSize="sm" fontWeight="normal">
+            <Flex direction="row" alignItems="center">
+              <Heading marginRight="4" size="md">
+                Create Analyzer
+              </Heading>
+              <CopyAnalyzerDropdown />
+              <Button
+                size="xs"
+                colorScheme="gray"
+                marginLeft="auto"
+                onClick={() => {
+                  setShowJSONForm(!showJSONForm);
+                }}
+              >
+                {showJSONForm ? "Show form" : " Show JSON"}
+              </Button>
+            </Flex>
+          </ModalHeader>
+
           <ModalBody>
             {showJSONForm ? <AnalyzerJSONForm /> : <AddAnalyzerForm />}
           </ModalBody>

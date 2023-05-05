@@ -1,5 +1,7 @@
 import { ArrowBackIcon } from "@chakra-ui/icons";
 import { Box, Button, Stack } from "@chakra-ui/react";
+import { AnalyzerDescription } from "arangojs/analyzer";
+import { useFormikContext } from "formik";
 import React from "react";
 import SingleSelect from "../../components/select/SingleSelect";
 import { useAnalyzersContext } from "./AnalyzersContext";
@@ -10,6 +12,10 @@ export const CopyAnalyzerDropdown = () => {
     analyzers?.map(analyzer => {
       return { value: analyzer.name, label: analyzer.name };
     }) || [];
+  const [selectedAnalyzer, setSelectedAnalyzer] = React.useState<
+    AnalyzerDescription | undefined
+  >(analyzers?.[0]);
+  const { setValues } = useFormikContext();
   return (
     <Stack direction="row" alignItems="center" flexWrap="wrap">
       <Stack direction="row" alignItems="center">
@@ -17,7 +23,10 @@ export const CopyAnalyzerDropdown = () => {
           <SingleSelect
             options={analyzerOptions}
             onChange={value => {
-              console.log(value);
+              const selectedAnalyzer = analyzers?.find(
+                analyzer => analyzer.name === value?.value
+              );
+              setSelectedAnalyzer(selectedAnalyzer);
             }}
             defaultValue={analyzerOptions[0]}
           />
@@ -26,7 +35,7 @@ export const CopyAnalyzerDropdown = () => {
           size="xs"
           leftIcon={<ArrowBackIcon />}
           onClick={() => {
-            console.log("copy from");
+            setValues(selectedAnalyzer);
           }}
         >
           Copy from
