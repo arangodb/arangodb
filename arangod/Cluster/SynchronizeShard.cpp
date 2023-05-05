@@ -1033,7 +1033,7 @@ bool SynchronizeShard::first() {
       std::stringstream error;
       error << "failed to get a count on leader " << database << "/" << shard
             << ": " << res.errorMessage();
-      LOG_TOPIC("1254a", ERR, Logger::MAINTENANCE)
+      LOG_TOPIC("1254a", WARN, Logger::MAINTENANCE)
           << "SynchronizeShard " << error.str();
       result(res.errorNumber(), error.str());
       return false;
