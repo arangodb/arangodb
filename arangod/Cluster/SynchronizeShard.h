@@ -107,6 +107,10 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   /// synchronization
   uint64_t _docCountAtEnd;
 
+  /// @brief arangodb version of the leader, in format 30902 for 3.9.2.
+  /// may not be set in all cases. only rely on it if it is set to != 0.
+  uint64_t _leaderVersion;
+
   /// @brief end time (timestamp in seconds)
   std::chrono::time_point<std::chrono::steady_clock> _endTimeForAttempt;
 };

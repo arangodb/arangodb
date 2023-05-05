@@ -3149,7 +3149,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
 
   bool success = false;
   std::size_t current = 0;
-  VPackSlice const body = this->parseVPackBody(success);
+  VPackSlice body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -3185,6 +3185,9 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
       ++i;
     }
   }
+
+  TRI_IF_FAILURE("alwaysRefuseRangesRequests") { badFormat = true; }
+
   if (badFormat) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an array of pairs of revisions");
@@ -3306,7 +3309,7 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
   bool encodeAsHLC = _request->parsedValue("encodeAsHLC", false);
 
   bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
+  VPackSlice body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -3330,6 +3333,9 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
       }
     }
   }
+
+  TRI_IF_FAILURE("alwaysRefuseDocumentsRequests") { badFormat = true; }
+
   if (badFormat) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an array of revisions");

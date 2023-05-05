@@ -152,6 +152,13 @@ arangodb::Result handleLeaderStateResponse(
   leader.serverId = leaderId;
   leader.lastLogTick = lastLogTick;
 
+  TRI_IF_FAILURE("replicationFakeVersion392") {
+    // fake leader version to 3.9.2. we need this for a specific test case.
+    leader.majorVersion = 3;
+    leader.minorVersion = 9;
+    leader.patchVersion = 2;
+  }
+
   if (context == nullptr) {
     LOG_TOPIC("6c920", INFO, arangodb::Logger::REPLICATION)
         << "connected to leader at " << leader.endpoint << ", id "
