@@ -11,7 +11,7 @@ import {
 import { AddAnalyzerForm } from "./AddAnalyzerForm";
 import { AnalyzerJSONForm } from "./AnalyzerJSONForm";
 import { useAnalyzersContext } from "./AnalyzersContext";
-import { CopyAnalyzer } from "./CopyAnalyzer";
+import { CopyAnalyzerDropdown } from "./CopyAnalyzerDropdown";
 
 export const AddAnalyzerModal = ({
   isOpen,
@@ -29,7 +29,7 @@ export const AddAnalyzerModal = ({
           <Heading marginRight="4" size="md">
             Create Analyzer
           </Heading>
-          <CopyAnalyzer />
+          <CopyAnalyzerDropdown />
           <Button
             size="sm"
             colorScheme="gray"

@@ -4,7 +4,7 @@ import React from "react";
 import SingleSelect from "../../components/select/SingleSelect";
 import { useAnalyzersContext } from "./AnalyzersContext";
 
-export const CopyAnalyzer = () => {
+export const CopyAnalyzerDropdown = () => {
   const { analyzers } = useAnalyzersContext();
   const analyzerOptions =
     analyzers?.map(analyzer => {
