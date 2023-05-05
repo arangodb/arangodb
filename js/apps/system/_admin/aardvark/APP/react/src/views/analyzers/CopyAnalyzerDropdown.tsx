@@ -4,6 +4,7 @@ import { AnalyzerDescription } from "arangojs/analyzer";
 import { useFormikContext } from "formik";
 import React from "react";
 import SingleSelect from "../../components/select/SingleSelect";
+import { AnalyzerState } from "./Analyzer.types";
 import { useAnalyzersContext } from "./AnalyzersContext";
 
 export const CopyAnalyzerDropdown = () => {
@@ -15,7 +16,7 @@ export const CopyAnalyzerDropdown = () => {
   const [selectedAnalyzer, setSelectedAnalyzer] = React.useState<
     AnalyzerDescription | undefined
   >(analyzers?.[0]);
-  const { setValues } = useFormikContext();
+  const { setValues, values } = useFormikContext<AnalyzerState>();
   return (
     <Stack direction="row" alignItems="center" flexWrap="wrap">
       <Stack direction="row" alignItems="center">
@@ -35,7 +36,13 @@ export const CopyAnalyzerDropdown = () => {
           size="xs"
           leftIcon={<ArrowBackIcon />}
           onClick={() => {
-            setValues(selectedAnalyzer);
+            if (!selectedAnalyzer) {
+              return;
+            }
+            setValues({
+              ...selectedAnalyzer,
+              name: values.name
+            } as AnalyzerState);
           }}
         >
           Copy from
