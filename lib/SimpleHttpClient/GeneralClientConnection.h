@@ -168,9 +168,7 @@ class GeneralClientConnection {
   /// @brief set whether or not http client is from telemetrics
   //////////////////////////////////////////////////////////////////////////////
 
-  void setTelemetrics(bool value) {
-    _isTelemetrics = value;
-  }
+  void setTelemetrics(bool value) { _isTelemetrics = value; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying application server
