@@ -174,8 +174,8 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
       if (!res) {
         setCustomError(500, "unable to create connection");
         LOG_TOPIC("9daaa", DEBUG, arangodb::Logger::HTTPCLIENT)
-          << "Connection attempt to endpoint '" << _client.endpoint() << "' failed: "
-          << res->statusCode();
+            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "' failed: " << res->statusCode();
         return nullptr;
       }
 
@@ -205,8 +205,8 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
           }
           setCustomError(_lastHttpReturnCode, errorMessage);
           LOG_TOPIC("9daab", DEBUG, arangodb::Logger::HTTPCLIENT)
-            << "Connection attempt to endpoint '" << _client.endpoint() << "' failed: "
-            << errorMessage;
+              << "Connection attempt to endpoint '" << _client.endpoint()
+              << "' failed: " << errorMessage;
           return nullptr;
         }
       }
@@ -218,8 +218,8 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         msg += "'";
         setCustomError(503, msg);
         LOG_TOPIC("9daac", DEBUG, arangodb::Logger::HTTPCLIENT)
-          << "Connection attempt to endpoint '" << _client.endpoint() << "' failed: "
-          << msg;
+            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "' failed: " << msg;
         return nullptr;
       }
 
@@ -269,8 +269,8 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         std::string msg(fu::to_string(e));
         setCustomError(503, msg);
         LOG_TOPIC("9daad", DEBUG, arangodb::Logger::HTTPCLIENT)
-          << "Connection attempt to endpoint '" << _client.endpoint() << "' failed: "
-          << msg;
+            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "' failed: " << msg;
         return nullptr;
       } else {
         newConnection = _builder.connect(_loop);
