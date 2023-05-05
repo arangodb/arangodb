@@ -1691,7 +1691,7 @@ void SynchronizeShard::setState(ActionState state) {
 
             auto collection = vocbase->lookupCollection(getShard());
             if (collection != nullptr) {
-              LOG_TOPIC("7a2cf", WARN, Logger::MAINTENANCE)
+              LOG_TOPIC("94900", WARN, Logger::MAINTENANCE)
                   << "SynchronizeShard: synchronizing shard '" << getDatabase()
                   << "/" << getShard() << "' for central '" << getDatabase()
                   << "/" << _description.get(COLLECTION) << "' encountered "
