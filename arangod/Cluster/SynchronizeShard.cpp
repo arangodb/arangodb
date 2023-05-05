@@ -593,7 +593,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     SynchronizeShard& job,
     std::chrono::time_point<std::chrono::steady_clock> endTime,
     std::shared_ptr<arangodb::LogicalCollection> const& col, VPackSlice config,
-    std::shared_ptr<DatabaseTailingSyncer> tailingSyncer, VPackBuilder& sy) {
+    std::shared_ptr<DatabaseTailingSyncer> tailingSyncer, VPackBuilder& sy,
+    bool syncByRevision) {
   auto& vocbase = col->vocbase();
   auto database = vocbase.name();
 
@@ -676,7 +677,10 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   SyncerId syncerId{syncer->syncerId()};
 
   try {
-    std::string const context = "syncing shard " + database + "/" + col->name();
+    std::string context = "syncing shard " + database + "/" + col->name();
+    if (syncByRevision) {
+      context += " using sync-by-revision";
+    }
     Result r = syncer->run(configuration._incremental, context.c_str());
 
     if (r.fail()) {
@@ -1157,9 +1161,9 @@ bool SynchronizeShard::first() {
       startTime = std::chrono::system_clock::now();
 
       VPackBuilder builder;
-      ResultT<SyncerId> syncRes =
-          replicationSynchronize(*this, _endTimeForAttempt, collection,
-                                 config.slice(), tailingSyncer, builder);
+      ResultT<SyncerId> syncRes = replicationSynchronize(
+          *this, _endTimeForAttempt, collection, config.slice(), tailingSyncer,
+          builder, syncByRevision);
 
       auto const endTime = std::chrono::system_clock::now();
 
