@@ -36,15 +36,7 @@ struct Loading : ExecutionState {
 
   [[nodiscard]] auto name() const -> std::string override { return "loading"; };
   auto receive(actor::ActorPID const& sender,
-               message::WorkerMessages const& message,
-               DispatchStatus const& dispatchStatus,
-               DispatchMetrics const& dispatchMetrics,
-               DispatchConductor const& dispatchConductor,
-               DispatchSelf const& dispatchSelf,
-               DispatchOther const& dispatchOther)
-      -> std::unique_ptr<ExecutionState> override;
-  auto cancel(actor::ActorPID const& sender,
-              message::WorkerMessages const& message)
+               message::WorkerMessages const& message, Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> override;
 
   actor::ActorPID self;

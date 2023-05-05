@@ -28,6 +28,8 @@
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/StatusMessages.h"
 #include "Pregel/Conductor/Messages.h"
+#include "Pregel/ResultMessages.h"
+#include "Pregel/SpawnMessages.h"
 
 namespace arangodb::pregel::worker {
 
@@ -39,6 +41,18 @@ typedef std::function<void(pregel::conductor::message::ConductorMessages)>
 typedef std::function<void(message::WorkerMessages)> DispatchSelf;
 typedef std::function<void(actor::ActorPID, message::WorkerMessages)>
     DispatchOther;
+typedef std::function<void(pregel::message::ResultMessages)> DispatchResult;
+typedef std::function<void(pregel::message::SpawnMessages)> DispatchSpawn;
+
+struct Dispatcher {
+  DispatchStatus const& dispatchStatus;
+  DispatchMetrics const& dispatchMetrics;
+  DispatchConductor const& dispatchConductor;
+  DispatchSelf const& dispatchSelf;
+  DispatchOther const& dispatchOther;
+  DispatchResult const& dispatchResult;
+  DispatchSpawn const& dispatchSpawn;
+};
 
 struct ExecutionState {
   virtual ~ExecutionState() = default;
@@ -46,16 +60,7 @@ struct ExecutionState {
   [[nodiscard]] virtual auto name() const -> std::string = 0;
   virtual auto receive(actor::ActorPID const& sender,
                        worker::message::WorkerMessages const& message,
-                       DispatchStatus const& dispatchStatus,
-                       DispatchMetrics const& dispatchMetrics,
-                       DispatchConductor const& dispatchConductor,
-                       DispatchSelf const& dispatchSelf,
-                       DispatchOther const& dispatchOther)
-      -> std::unique_ptr<ExecutionState> {
-    return nullptr;
-  };
-  virtual auto cancel(actor::ActorPID const& sender,
-                      worker::message::WorkerMessages const& message)
+                       Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> {
     return nullptr;
   };

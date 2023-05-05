@@ -26,6 +26,8 @@
 #include <utility>
 #include "FatalErrorState.h"
 #include "Pregel/Worker/State.h"
+#include "StoringState.h"
+#include "ProducingResultsState.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -39,24 +41,17 @@ Computing<V, E, M>::Computing(actor::ActorPID self,
 template<typename V, typename E, typename M>
 auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
                                  worker::message::WorkerMessages const& message,
-                                 DispatchStatus const& dispatchStatus,
-                                 DispatchMetrics const& dispatchMetrics,
-                                 DispatchConductor const& dispatchConductor,
-                                 DispatchSelf const& dispatchSelf,
-                                 DispatchOther const& dispatchOther)
+                                 Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::PregelMessage>(message)) {
     auto msg = std::get<worker::message::PregelMessage>(message);
 
-    LOG_TOPIC("80709", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor {} with gss {} received message for gss {}", self,
-        worker->config->globalSuperstep(), msg.gss);
     if (msg.gss != worker->config->globalSuperstep() &&
         msg.gss != worker->config->globalSuperstep() + 1) {
       LOG_TOPIC("da39a", ERR, Logger::PREGEL)
           << "Expected: " << worker->config->globalSuperstep()
           << " Got: " << msg.gss;
-      dispatchConductor(
+      dispatcher.dispatchConductor(
           ResultT<conductor::message::GlobalSuperStepFinished>::error(
               TRI_ERROR_BAD_PARAMETER, "Superstep out of sync"));
     }
@@ -79,8 +74,9 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
   if (std::holds_alternative<worker::message::RunGlobalSuperStep>(message)) {
     auto msg = std::get<worker::message::RunGlobalSuperStep>(message);
 
-    dispatchMetrics(arangodb::pregel::metrics::message::WorkerGssStarted{
-        .threadsAdded = 1});
+    dispatcher.dispatchMetrics(
+        arangodb::pregel::metrics::message::WorkerGssStarted{.threadsAdded =
+                                                                 1});
 
     // check if worker is in expected gss (previous gss of conductor)
     if (msg.gss != 0 && msg.gss != worker->config->globalSuperstep() + 1) {
@@ -113,7 +109,7 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
 
         return nullptr;
       }
-      dispatchSelf(message);
+      dispatcher.dispatchSelf(message);
 
       return nullptr;
     }
@@ -128,28 +124,34 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
     }
     worker->messagesForNextGss.clear();
 
-    auto verticesProcessed = processVertices(dispatchStatus);
-    auto out = finishProcessing(verticesProcessed, dispatchStatus);
+    auto verticesProcessed = processVertices(dispatcher.dispatchStatus);
+    auto out = finishProcessing(verticesProcessed, dispatcher.dispatchStatus);
     dispatchConductor(
         ResultT<conductor::message::GlobalSuperStepFinished>::success(
             std::move(out)));
 
-    dispatchMetrics(arangodb::pregel::metrics::message::WorkerGssFinished{
-        .threadsRemoved = 1,
-        .messagesSent = worker->messageStats.sendCount,
-        .messagesReceived = worker->messageStats.receivedCount});
+    dispatcher.dispatchMetrics(
+        arangodb::pregel::metrics::message::WorkerGssFinished{
+            .threadsRemoved = 1,
+            .messagesSent = worker->messageStats.sendCount,
+            .messagesReceived = worker->messageStats.receivedCount});
 
     return nullptr;
   }
 
-  return std::make_unique<FatalError>();
-}
+  if (std::holds_alternative<worker::message::Store>(message)) {
+    dispatcher.dispatchSelf(message);
 
-template<typename V, typename E, typename M>
-auto Computing<V, E, M>::cancel(actor::ActorPID const& sender,
-                                worker::message::WorkerMessages const& message)
-    -> std::unique_ptr<ExecutionState> {
-  ExecutionState::cancel(sender, message);
+    return std::make_unique<Storing>(self, worker);
+  }
+
+  if (std::holds_alternative<worker::message::ProduceResults>(message)) {
+    dispatcher.dispatchSelf(message);
+
+    return std::make_unique<ProducingResults>(self, worker);
+  }
+
+  return std::make_unique<FatalError>();
 }
 
 template<typename V, typename E, typename M>

@@ -37,30 +37,19 @@ Loaded<V, E, M>::Loaded(actor::ActorPID self, WorkerState<V, E, M>& worker)
 template<typename V, typename E, typename M>
 auto Loaded<V, E, M>::receive(actor::ActorPID const& sender,
                               worker::message::WorkerMessages const& message,
-                              DispatchStatus const& dispatchStatus,
-                              DispatchMetrics const& dispatchMetrics,
-                              DispatchConductor const& dispatchConductor,
-                              DispatchSelf const& dispatchSelf,
-                              DispatchOther const& dispatchOther)
+                              Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::PregelMessage>(message)) {
-    dispatchSelf(message);
+    dispatcher.dispatchSelf(message);
 
     return nullptr;
   }
 
   if (std::holds_alternative<worker::message::RunGlobalSuperStep>(message)) {
-    dispatchSelf(message);
+    dispatcher.dispatchSelf(message);
 
     return std::make_unique<Computing>(self, worker);
   }
 
   return std::make_unique<FatalError>();
-}
-
-template<typename V, typename E, typename M>
-auto Loaded<V, E, M>::cancel(actor::ActorPID const& sender,
-                             worker::message::WorkerMessages const& message)
-    -> std::unique_ptr<ExecutionState> {
-  ExecutionState::cancel(sender, message);
 }

@@ -30,13 +30,24 @@ template<typename V, typename E, typename M>
 struct WorkerState;
 
 template<typename V, typename E, typename M>
-struct Initial : ExecutionState {
-  explicit Initial(actor::ActorPID self, WorkerState<V, E, M>& worker);
-  ~Initial() override = default;
+struct ProducingResults : ExecutionState {
+  explicit ProducingResults(actor::ActorPID self, WorkerState<V, E, M>& worker);
+  ~ProducingResults() override = default;
 
-  [[nodiscard]] auto name() const -> std::string override { return "initial"; };
+  [[nodiscard]] auto name() const -> std::string override {
+    return "producing results";
+  };
   auto receive(actor::ActorPID const& sender,
-               message::WorkerMessages const& message, Dispatcher dispatcher)
+               message::WorkerMessages const& message,
+               DispatchStatus const& dispatchStatus,
+               DispatchMetrics const& dispatchMetrics,
+               DispatchConductor const& dispatchConductor,
+               DispatchSelf const& dispatchSelf,
+               DispatchOther const& dispatchOther,
+               DispatchResult const& dispatchResult)
+      -> std::unique_ptr<ExecutionState> override;
+  auto cancel(actor::ActorPID const& sender,
+              message::WorkerMessages const& message)
       -> std::unique_ptr<ExecutionState> override;
 
   actor::ActorPID self;

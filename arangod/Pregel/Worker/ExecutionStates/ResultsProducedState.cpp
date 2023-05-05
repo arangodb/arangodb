@@ -21,25 +21,31 @@
 /// @author Aditya Mukhopadhyay
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "ResultsProducedState.h"
+#include "FatalErrorState.h"
+#include "Pregel/Worker/State.h"
+#include "ComputingState.h"
+#include "CleaningUpState.h"
 
-#include "State.h"
+using namespace arangodb;
+using namespace arangodb::pregel;
+using namespace arangodb::pregel::worker;
 
-namespace arangodb::pregel::worker {
 template<typename V, typename E, typename M>
-struct WorkerState;
+ResultsProduced<V, E, M>::ResultsProduced(actor::ActorPID self,
+                                          WorkerState<V, E, M>& worker)
+    : self(std::move(self)), worker{worker} {}
 
 template<typename V, typename E, typename M>
-struct Initial : ExecutionState {
-  explicit Initial(actor::ActorPID self, WorkerState<V, E, M>& worker);
-  ~Initial() override = default;
+auto ResultsProduced<V, E, M>::receive(
+    actor::ActorPID const& sender,
+    worker::message::WorkerMessages const& message, Dispatcher dispatcher)
+    -> std::unique_ptr<ExecutionState> {
+  if (std::holds_alternative<worker::message::Cleanup>(message)) {
+    dispatcher.dispatchSelf(message);
 
-  [[nodiscard]] auto name() const -> std::string override { return "initial"; };
-  auto receive(actor::ActorPID const& sender,
-               message::WorkerMessages const& message, Dispatcher dispatcher)
-      -> std::unique_ptr<ExecutionState> override;
+    return std::make_unique<CleaningUp>(self, worker);
+  }
 
-  actor::ActorPID self;
-  WorkerState<V, E, M>& worker;
-};
-}  // namespace arangodb::pregel::worker
+  return std::make_unique<FatalError>();
+}

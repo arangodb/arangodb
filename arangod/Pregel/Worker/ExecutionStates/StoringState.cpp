@@ -21,44 +21,53 @@
 /// @author Aditya Mukhopadhyay
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "InitialState.h"
-
-#include <utility>
+#include "StoringState.h"
 #include "FatalErrorState.h"
 #include "Pregel/Worker/State.h"
-#include "LoadingState.h"
+#include "Pregel/GraphStore/GraphStorer.h"
+#include "StoredState.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::worker;
 
 template<typename V, typename E, typename M>
-Initial<V, E, M>::Initial(actor::ActorPID self, WorkerState<V, E, M>& worker)
+Storing<V, E, M>::Storing(actor::ActorPID self, WorkerState<V, E, M>& worker)
     : self(std::move(self)), worker{worker} {}
 
 template<typename V, typename E, typename M>
-auto Initial<V, E, M>::receive(actor::ActorPID const& sender,
+auto Storing<V, E, M>::receive(actor::ActorPID const& sender,
                                worker::message::WorkerMessages const& message,
                                Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
-  if (std::holds_alternative<worker::message::PregelMessage>(message)) {
-    dispatcher.dispatchSelf(message);
-
-    return nullptr;
-  }
-
-  if (std::holds_alternative<worker::message::WorkerStart>(message)) {
-    dispatcher.dispatchConductor(ResultT<conductor::message::WorkerCreated>{});
+  if (std::holds_alternative<worker::message::Store>(message)) {
     dispatcher.dispatchMetrics(
-        arangodb::pregel::metrics::message::WorkerStarted{});
+        arangodb::pregel::metrics::message::WorkerStoringStarted{});
 
-    return nullptr;
-  }
+    auto graphStored = [this,
+                        dispatcher]() -> ResultT<conductor::message::Stored> {
+      try {
+        auto storer = std::make_shared<GraphStorer<V, E>>(
+            worker->config->executionNumber(), *worker->config->vocbase(),
+            worker->config->parallelism(), worker->algorithm->inputFormat(),
+            worker->config->globalShardIDs(),
+            ActorStoringUpdate{.fn = dispatcher.dispatchStatus});
+        storer->store(worker->magazine).get();
 
-  if (std::holds_alternative<worker::message::LoadGraph>(message)) {
-    dispatcher.dispatchSelf(message);
+        return conductor::message::Stored{};
+      } catch (std::exception const& ex) {
+        return Result{
+            TRI_ERROR_INTERNAL,
+            fmt::format("caught exception when storing graph: {}", ex.what())};
+      } catch (...) {
+        return Result{TRI_ERROR_INTERNAL,
+                      "caught unknown exception when storing graph"};
+      }
+    };
 
-    return std::make_unique<Loading>(self, worker);
+    dispatchConductor(graphStored());
+
+    return std::make_unique<Stored>(self, worker);
   }
 
   return std::make_unique<FatalError>();

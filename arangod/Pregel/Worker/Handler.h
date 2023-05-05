@@ -72,15 +72,32 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
   };
   DispatchOther const& dispatchOther =
       this->template dispatch<message::WorkerMessages>;
+  DispatchResult const& dispatchResult =
+      [this](pregel::message::ResultMessages message) -> void {
+    this->template dispatch<pregel::message::ResultMessages>(
+        this->state->resultActor, message);
+  };
+  DispatchSpawn const& dispatchSpawn =
+      [this](pregel::message::SpawnMessages message) -> void {
+    this->template dispatch<pregel::message::SpawnMessages>(
+        this->state->spawnActor, message);
+  };
+
+  Dispatcher dispatcher{.dispatchStatus = dispatchStatus,
+                        .dispatchMetrics = dispatchMetrics,
+                        .dispatchConductor = dispatchConductor,
+                        .dispatchSelf = dispatchSelf,
+                        .dispatchOther = dispatchOther,
+                        .dispatchResult = dispatchResult,
+                        .dispatchSpawn = dispatchSpawn};
 
   auto operator()(message::WorkerStart start)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor {} started with state {}", this->self, *this->state);
 
-    auto newState = this->executionState->receive(
-        this->sender, start, dispatchStatus, dispatchMetrics, dispatchConductor,
-        dispatchSelf);
+    auto newState =
+        this->executionState->receive(this->sender, start, dispatcher);
     changeState(newState);
 
     return std::move(this->state);
@@ -91,9 +108,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is loading", this->self);
 
-    auto newState = this->executionState->receive(
-        this->sender, message, dispatchStatus, dispatchMetrics,
-        dispatchConductor, dispatchSelf);
+    auto newState =
+        this->executionState->receive(this->sender, message, dispatcher);
     changeState(newState);
 
     return std::move(this->state);
@@ -105,9 +121,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("0f658", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is computing", this->self);
 
-    auto newState = this->executionState->receive(
-        this->sender, message, dispatchStatus, dispatchMetrics,
-        dispatchConductor, dispatchSelf);
+    auto newState =
+        this->executionState->receive(this->sender, message, dispatcher);
     changeState(newState);
 
     return std::move(this->state);
@@ -115,9 +130,12 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   auto operator()(message::PregelMessage message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    auto newState = this->executionState->receive(
-        this->sender, message, dispatchStatus, dispatchMetrics,
-        dispatchConductor, dispatchSelf);
+    LOG_TOPIC("80709", INFO, Logger::PREGEL) << fmt::format(
+        "Worker Actor {} with gss {} received message for gss {}", this->self,
+        this->state->config->globalSuperstep(), message.gss);
+
+    auto newState =
+        this->executionState->receive(this->sender, message, dispatcher);
     changeState(newState);
 
     return std::move(this->state);
@@ -125,106 +143,37 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   // ------ end computing ----
 
-  auto operator()([[maybe_unused]] message::Store msg)
+  auto operator()([[maybe_unused]] message::Store message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("980d9", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is storing", this->self);
 
-    this->template dispatch<metrics::message::MetricsMessages>(
-        this->state->metricsActor,
-        arangodb::pregel::metrics::message::WorkerStoringStarted{});
-
-    auto graphStored = [this]() -> ResultT<conductor::message::Stored> {
-      try {
-        auto storer = std::make_shared<GraphStorer<V, E>>(
-            this->state->config->executionNumber(),
-            *this->state->config->vocbase(), this->state->config->parallelism(),
-            this->state->algorithm->inputFormat(),
-            this->state->config->globalShardIDs(),
-            ActorStoringUpdate{
-                .fn =
-                    [this](pregel::message::GraphStoringUpdate update) -> void {
-                  this->template dispatch<pregel::message::StatusMessages>(
-                      this->state->statusActor, update);
-                }});
-        storer->store(this->state->magazine).get();
-        return conductor::message::Stored{};
-      } catch (std::exception const& ex) {
-        return Result{
-            TRI_ERROR_INTERNAL,
-            fmt::format("caught exception when storing graph: {}", ex.what())};
-      } catch (...) {
-        return Result{TRI_ERROR_INTERNAL,
-                      "caught unknown exception when storing graph"};
-      }
-    };
-
-    this->template dispatch<metrics::message::MetricsMessages>(
-        this->state->metricsActor,
-        arangodb::pregel::metrics::message::WorkerStoringFinished{});
-
-    this->finish();
-
-    this->template dispatch<conductor::message::ConductorMessages>(
-        this->state->conductor, graphStored());
+    auto newState =
+        this->executionState->receive(this->sender, message, dispatcher);
+    changeState(newState);
 
     return std::move(this->state);
   }
 
-  auto operator()(message::ProduceResults msg)
+  auto operator()(message::ProduceResults message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    auto getResults = [this, msg]() -> ResultT<PregelResults> {
-      std::function<void()> statusUpdateCallback = [] {
-        // TODO GORDO-1584 send update to status actor
-        // this->template dispatch<conductor::message::ConductorMessages>(
-        //     this->state->conductor,
-        //     conductor::message::StatusUpdate{
-        //         .executionNumber = this->state->config->executionNumber(),
-        //         .status = this->state->observeStatus()});
-      };
-      try {
-        auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
-            msg.withID, this->state->config,
-            this->state->algorithm->inputFormat(),
-            std::move(statusUpdateCallback));
-        storer->store(this->state->magazine).get();
-        return PregelResults{*storer->stealResult()};
-      } catch (std::exception const& ex) {
-        return Result{TRI_ERROR_INTERNAL,
-                      fmt::format("caught exception when receiving results: {}",
-                                  ex.what())};
-      } catch (...) {
-        return Result{TRI_ERROR_INTERNAL,
-                      "caught unknown exception when receiving results"};
-      }
-    };
-    auto results = getResults();
-    this->template dispatch<pregel::message::ResultMessages>(
-        this->state->resultActor,
-        pregel::message::SaveResults{.results = {results}});
-    this->template dispatch<pregel::conductor::message::ConductorMessages>(
-        this->state->conductor,
-        pregel::conductor::message::ResultCreated{.results = {results}});
+    auto newState =
+        this->executionState->receive(this->sender, message, dispatcher);
+    changeState(newState);
 
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] message::Cleanup msg)
+  auto operator()([[maybe_unused]] message::Cleanup message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     this->finish();
 
     LOG_TOPIC("664f5", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is cleaned", this->self);
 
-    this->template dispatch<pregel::message::SpawnMessages>(
-        this->state->spawnActor, pregel::message::SpawnCleanup{});
-    this->template dispatch<pregel::conductor::message::ConductorMessages>(
-        this->state->conductor, pregel::conductor::message::CleanupFinished{});
-    this->template dispatch<metrics::message::MetricsMessages>(
-        this->state->metricsActor,
-        arangodb::pregel::metrics::message::WorkerFinished{});
-
-    changeState(std::make_unique<CleanedUp>());
+    auto newState =
+        this->executionState->receive(this->sender, message, dispatcher);
+    changeState(newState);
 
     return std::move(this->state);
   }

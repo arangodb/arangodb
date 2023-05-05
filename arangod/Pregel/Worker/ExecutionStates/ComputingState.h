@@ -44,21 +44,15 @@ struct Computing : ExecutionState {
     return "computing";
   };
   auto receive(actor::ActorPID const& sender,
-               message::WorkerMessages const& message,
-               DispatchStatus const& dispatchStatus,
-               DispatchMetrics const& dispatchMetrics,
-               DispatchConductor const& dispatchConductor,
-               DispatchSelf const& dispatchSelf,
-               DispatchOther const& dispatchOther)
-      -> std::unique_ptr<ExecutionState> override;
-  auto cancel(actor::ActorPID const& sender,
-              message::WorkerMessages const& message)
+               message::WorkerMessages const& message, Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> override;
 
   auto prepareGlobalSuperStep(message::RunGlobalSuperStep message,
                               DispatchOther const& dispatchOther) -> void;
-  auto processVertices(DispatchStatus const& dispatchStatus) -> VerticesProcessed;
-  auto finishProcessing(VerticesProcessed verticesProcessed, DispatchStatus const& dispatchStatus)
+  auto processVertices(DispatchStatus const& dispatchStatus)
+      -> VerticesProcessed;
+  auto finishProcessing(VerticesProcessed verticesProcessed,
+                        DispatchStatus const& dispatchStatus)
       -> conductor::message::GlobalSuperStepFinished;
   void initializeVertexContext(VertexContext<V, E, M>* ctx);
 

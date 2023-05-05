@@ -38,14 +38,10 @@ Loading<V, E, M>::Loading(actor::ActorPID self, WorkerState<V, E, M>& worker)
 template<typename V, typename E, typename M>
 auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
                                worker::message::WorkerMessages const& message,
-                               DispatchStatus const& dispatchStatus,
-                               DispatchMetrics const& dispatchMetrics,
-                               DispatchConductor const& dispatchConductor,
-                               DispatchSelf const& dispatchSelf,
-                               DispatchOther const& dispatchOther)
+                               Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::PregelMessage>(message)) {
-    dispatchSelf(message);
+    dispatcher.dispatchSelf(message);
 
     return nullptr;
   }
@@ -54,17 +50,18 @@ auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
     auto msg = std::get<worker::message::LoadGraph>(message);
     worker.outCache->setResponsibleActorPerShard(msg.responsibleActorPerShard);
 
-    dispatchMetrics(arangodb::pregel::metrics::message::WorkerLoadingStarted{});
+    dispatcher.dispatchMetrics(
+        arangodb::pregel::metrics::message::WorkerLoadingStarted{});
 
     auto graphLoaded =
-        [this, dispatchStatus]() -> ResultT<conductor::message::GraphLoaded> {
+        [this, dispatcher]() -> ResultT<conductor::message::GraphLoaded> {
       try {
         auto loader = GraphLoader(
             worker.config, worker.algorithm->inputFormat(),
             ActorLoadingUpdate{
-                .fn = [this, dispatchStatus](
+                .fn = [this, dispatcher](
                           pregel::message::GraphLoadingUpdate update) -> void {
-                  dispatchStatus(update);
+                  dispatcher.dispatchStatus(update);
                 }});
         worker.magazine = loader.load().get();
 
@@ -84,19 +81,12 @@ auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
       }
     };
 
-    dispatchConductor(graphLoaded());
-    dispatchMetrics(
+    dispatcher.dispatchConductor(graphLoaded());
+    dispatcher.dispatchMetrics(
         arangodb::pregel::metrics::message::WorkerLoadingFinished{});
 
     return std::make_unique<Loaded>(self, worker);
   }
 
   return std::make_unique<FatalError>();
-}
-
-template<typename V, typename E, typename M>
-auto Loading<V, E, M>::cancel(actor::ActorPID const& sender,
-                              worker::message::WorkerMessages const& message)
-    -> std::unique_ptr<ExecutionState> {
-  ExecutionState::cancel(sender, message);
 }
