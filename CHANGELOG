@@ -1,6 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to v2.17.0-preview-1.
+
 * FE-243: add support for geo_s2 analyzer.
 
 * Reduce memory usage for incremental sync replication.
