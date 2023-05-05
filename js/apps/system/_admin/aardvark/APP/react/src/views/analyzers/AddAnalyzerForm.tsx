@@ -33,7 +33,6 @@ export const AddAnalyzerForm = ({
         <Grid templateColumns={"1fr 1fr"} columnGap="4">
           <InputControl
             ref={initialFocusRef}
-            autoFocus
             isDisabled={isDisabled}
             name="name"
             label="Analyzer name"
