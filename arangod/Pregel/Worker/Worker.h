@@ -59,7 +59,7 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
   virtual void startGlobalStep(
       RunGlobalSuperStep const& data) = 0;  // called by coordinator
   virtual void cancelGlobalStep(
-      VPackSlice const& data) = 0;          // called by coordinator
+      VPackSlice const& data) = 0;  // called by coordinator
   virtual void receivedMessages(worker::message::PregelMessage const& data) = 0;
   virtual void finalizeExecution(FinalizeExecution const& data,
                                  std::function<void()> cb) = 0;
