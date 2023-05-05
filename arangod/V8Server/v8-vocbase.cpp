@@ -2373,6 +2373,15 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           v8::Object::New(isolate), v8::DontEnum)
       .FromMaybe(false);  // ignore result
 
+  // extended names enabled
+  context->Global()
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FE_EXTENDED_NAMES"),
+          v8::Boolean::New(
+              isolate, server.getFeature<DatabaseFeature>().extendedNames()),
+          v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
+      .FromMaybe(false);  // ignore result
+
   // current thread number
   context->Global()
       ->DefineOwnProperty(

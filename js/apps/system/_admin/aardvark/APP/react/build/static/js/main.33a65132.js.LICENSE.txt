@@ -34,19 +34,19 @@ object-assign
 */
 
 /*!
+                     * @overview es6-promise - a tiny implementation of Promises/A+.
+                     * @copyright Copyright (c) 2014 Yehuda Katz, Tom Dale, Stefan Penner and contributors (Conversion to ES6 API by Jake Archibald)
+                     * @license   Licensed under MIT license
+                     *            See https://raw.githubusercontent.com/stefanpenner/es6-promise/master/LICENSE
+                     * @version   4.1.1
+                     */
+
+/*!
            * Selectr 2.4.13
            * http://mobius.ovh/docs/selectr
            *
            * Released under the MIT license
            */
-
-/*!
-        * @overview es6-promise - a tiny implementation of Promises/A+.
-        * @copyright Copyright (c) 2014 Yehuda Katz, Tom Dale, Stefan Penner and contributors (Conversion to ES6 API by Jake Archibald)
-        * @license   Licensed under MIT license
-        *            See https://raw.githubusercontent.com/stefanpenner/es6-promise/master/LICENSE
-        * @version   4.1.1
-        */
 
 /*!
    * Sizzle CSS Selector Engine v2.3.10

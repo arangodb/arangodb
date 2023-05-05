@@ -73,7 +73,7 @@ function dropFollowersWhileReplicatingSuite() {
       debugClearFailAt(getEndpointById(leader), "replicateOperationsDropFollower");
 
       assertEqual(1, c.count());
-      waitForShardsInSync(cn, 60);
+      waitForShardsInSync(cn, 60, 1);
     },
     
     testMultiOperationDropFollowerWhileReplicating: function() {
@@ -86,7 +86,7 @@ function dropFollowersWhileReplicatingSuite() {
       debugClearFailAt(getEndpointById(leader), "replicateOperationsDropFollower");
       
       assertEqual(4, c.count());
-      waitForShardsInSync(cn, 60);
+      waitForShardsInSync(cn, 60, 1);
     },
     
     testAqlDropFollowerWhileReplicating: function() {
@@ -99,7 +99,7 @@ function dropFollowersWhileReplicatingSuite() {
       debugClearFailAt(getEndpointById(leader), "replicateOperationsDropFollower");
       
       assertEqual(10, c.count());
-      waitForShardsInSync(cn, 60);
+      waitForShardsInSync(cn, 60, 1);
     },
     
     testSingleOperationBuildEmptyTransactionBody: function() {
@@ -112,7 +112,7 @@ function dropFollowersWhileReplicatingSuite() {
       debugClearFailAt(getEndpointById(leader), "buildTransactionBodyEmpty");
       
       assertEqual(1, c.count());
-      waitForShardsInSync(cn, 60);
+      waitForShardsInSync(cn, 60, 1);
     },
     
     testMultiOperationBuildEmptyTransactionBody: function() {
@@ -125,7 +125,7 @@ function dropFollowersWhileReplicatingSuite() {
       debugClearFailAt(getEndpointById(leader), "buildTransactionBodyEmpty");
       
       assertEqual(4, c.count());
-      waitForShardsInSync(cn, 60);
+      waitForShardsInSync(cn, 60, 1);
     },
     
     testAqlBuildEmptyTransactionBody: function() {
@@ -138,7 +138,7 @@ function dropFollowersWhileReplicatingSuite() {
       debugClearFailAt(getEndpointById(leader), "buildTransactionBodyEmpty");
       
       assertEqual(10, c.count());
-      waitForShardsInSync(cn, 60);
+      waitForShardsInSync(cn, 60, 1);
     },
   };
 }
