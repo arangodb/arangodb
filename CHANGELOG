@@ -18,6 +18,21 @@ v3.9.11 (XXXX-XX-XX)
   vector has reached some size threshold, and also to use intermediate commits
   during the removals.
 
+* BTS-1148: Fix a race when aborting/finishing a currently active query on a
+  DB-Server. This race could cause the query to remain in the server's query
+  registry longer than intended, potentially holding some locks. Such queries
+  were garbage collected eventually, but this could take a while, depending on
+  the specified TTL (10min per default).
+  This has now been fixed so that aborted/finished queries are cleaned up in a
+  timely manner.
+
+* Adjusted timeouts for cluster internal commit and abort requests to withstand
+  network delays better. This fixes some problems when the networking
+  infrastructure delays requests.
+
+* SEARCH-466 Fix leaking into individual link definition inherited properties
+  from view.
+
 * Stabilize test which sets the desired number of servers.
 
 * FE-238: Added auto-login support in core web UI - disabled logout when

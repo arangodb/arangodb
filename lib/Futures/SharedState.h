@@ -186,6 +186,7 @@ class SharedState {
   /// and might also synchronously execute that callback (e.g., if there is no
   /// executor or if the executor is inline).
   void setResult(Try<T>&& t) {
+    TRI_ASSERT(t.valid());
     TRI_ASSERT(!hasResult());
     // call move constructor of content
     ::new (&_result) Try<T>(std::move(t));
