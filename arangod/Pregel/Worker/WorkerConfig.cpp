@@ -35,10 +35,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
-namespace {
-std::vector<ShardID> const emptyEdgeCollectionRestrictions;
-}
-
 WorkerConfig::WorkerConfig(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {}
 
 std::string const& WorkerConfig::database() const { return _vocbase->name(); }
