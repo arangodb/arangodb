@@ -4,7 +4,7 @@ import { useFormikContext } from "formik";
 import { ValidationError } from "jsoneditor-react";
 import React, { useState } from "react";
 import { JSONErrors } from "../../../../../components/jsonEditor/JSONErrors";
-import { ControlledJSONEditor } from "./ControlledJSONEditor";
+import { ControlledJSONEditor } from "../../../../../components/jsonEditor/ControlledJSONEditor";
 import { useInvertedIndexJSONSchema } from "./useInvertedIndexJSONSchema";
 
 const ajv = new Ajv({
