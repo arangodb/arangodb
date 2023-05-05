@@ -6,7 +6,7 @@ import { GeoOptionsInputs } from "./inputs/GeoOptionsInputs";
 export const GeopointConfig = () => {
   return (
     <Grid templateColumns={"1fr 1fr 1fr"} columnGap="4" rowGap="4">
-      <Grid gridColumn={"1/-1"} templateColumns={"1fr 1fr 1fr"} columnGap="4">
+      <Grid gridColumn={"1 / -1"} templateColumns={"1fr 1fr 1fr"} columnGap="4">
         <CreatableMultiSelectControl
           label={"Latitude Path"}
           name={"properties.latitude"}
