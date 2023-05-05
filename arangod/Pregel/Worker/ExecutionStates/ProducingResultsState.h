@@ -38,16 +38,7 @@ struct ProducingResults : ExecutionState {
     return "producing results";
   };
   auto receive(actor::ActorPID const& sender,
-               message::WorkerMessages const& message,
-               DispatchStatus const& dispatchStatus,
-               DispatchMetrics const& dispatchMetrics,
-               DispatchConductor const& dispatchConductor,
-               DispatchSelf const& dispatchSelf,
-               DispatchOther const& dispatchOther,
-               DispatchResult const& dispatchResult)
-      -> std::unique_ptr<ExecutionState> override;
-  auto cancel(actor::ActorPID const& sender,
-              message::WorkerMessages const& message)
+               message::WorkerMessages const& message, Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> override;
 
   actor::ActorPID self;

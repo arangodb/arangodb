@@ -39,12 +39,8 @@ ProducingResults<V, E, M>::ProducingResults(actor::ActorPID self,
 template<typename V, typename E, typename M>
 auto ProducingResults<V, E, M>::receive(
     actor::ActorPID const& sender,
-    worker::message::WorkerMessages const& message,
-    DispatchStatus const& dispatchStatus,
-    DispatchMetrics const& dispatchMetrics,
-    DispatchConductor const& dispatchConductor,
-    DispatchSelf const& dispatchSelf, DispatchOther const& dispatchOther,
-    DispatchResult const& dispatchResult) -> std::unique_ptr<ExecutionState> {
+    worker::message::WorkerMessages const& message, Dispatcher dispatcher)
+    -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::ProduceResults>(message)) {
     auto msg = std::get<worker::message::ProduceResults>(message);
 
@@ -74,20 +70,13 @@ auto ProducingResults<V, E, M>::receive(
       }
     };
     auto results = getResults();
-    dispatchResult(pregel::message::SaveResults{.results = {results}});
-    dispatchConductor(
+    dispatcher.dispatchResult(
+        pregel::message::SaveResults{.results = {results}});
+    dispatcher.dispatchConductor(
         pregel::conductor::message::ResultCreated{.results = {results}});
 
     return std::make_unique<ResultsProduced>(self, worker);
   }
 
   return std::make_unique<FatalError>();
-}
-
-template<typename V, typename E, typename M>
-auto ProducingResults<V, E, M>::cancel(
-    actor::ActorPID const& sender,
-    worker::message::WorkerMessages const& message)
-    -> std::unique_ptr<ExecutionState> {
-  ExecutionState::cancel(sender, message);
 }
