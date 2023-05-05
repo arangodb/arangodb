@@ -85,19 +85,23 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
     AnalyzerValueType returnType{AnalyzerValueType::String};
   };
 
-  static constexpr irs::string_ref type_name() noexcept { return "aql"; }
+  static constexpr std::string_view type_name() noexcept { return "aql"; }
 
  public:
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   bool isOptimized() const;
 #endif
 
-  static bool normalize_vpack(irs::string_ref args, std::string& out);
-  static irs::analysis::analyzer::ptr make_vpack(irs::string_ref args);
-  static bool normalize_json(irs::string_ref args, std::string& out);
-  static irs::analysis::analyzer::ptr make_json(irs::string_ref args);
+  static bool normalize_vpack(std::string_view args, std::string& out);
+  static irs::analysis::analyzer::ptr make_vpack(std::string_view args);
+  static bool normalize_json(std::string_view args, std::string& out);
+  static irs::analysis::analyzer::ptr make_json(std::string_view args);
 
   explicit AqlAnalyzer(Options const& options);
+
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<AqlAnalyzer>::id();
+  }
 
   virtual irs::attribute* get_mutable(
       irs::type_info::type_id type) noexcept override final {
@@ -105,7 +109,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   }
 
   virtual bool next() override;
-  virtual bool reset(irs::string_ref field) noexcept override;
+  virtual bool reset(std::string_view field) noexcept override;
 
  private:
   using ResetImplFunctor = void (*)(AqlAnalyzer* analyzer);

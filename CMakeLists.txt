@@ -751,10 +751,12 @@ if (NOT WINDOWS)
   if (USE_SSE4_2)
     set(ARANGODB_SSE42_FLAGS "-msse4.2")
   endif ()
-
-  set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
+else()
+  # sandy-bridge is our minimal requrement,
+  # so AVX should be available
+  set(Vc_ARCHITECTURE_FLAGS "/arch:AVX")
 endif ()
-
+set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 
 ################################################################################

@@ -62,10 +62,10 @@ bool IResearchViewStoredValues::toVelocyPack(
         builder.add(VPackValue(field.first));
       }
     }
-    irs::string_ref encodedCompression =
+    std::string_view encodedCompression =
         columnCompressionToString(column.compression);
-    TRI_ASSERT(!encodedCompression.null());
-    if (ADB_LIKELY(!encodedCompression.null())) {
+    TRI_ASSERT(!irs::IsNull(encodedCompression));
+    if (ADB_LIKELY(!irs::IsNull(encodedCompression))) {
       addStringRef(builder, COMPRESSION_COLUMN_PARAM, encodedCompression);
     }
 #ifdef USE_ENTERPRISE

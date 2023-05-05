@@ -31,13 +31,13 @@ namespace iresearch {
 
 class IdentityAnalyzer final : public irs::string_token_stream {
  public:
-  static bool normalize(irs::string_ref /*args*/, std::string& out);
+  static bool normalize(std::string_view /*args*/, std::string& out);
 
-  static ptr make(irs::string_ref /*args*/);
+  static ptr make(std::string_view /*args*/);
 
-  static bool normalize_json(irs::string_ref /*args*/, std::string& out);
+  static bool normalize_json(std::string_view /*args*/, std::string& out);
 
-  static ptr make_json(irs::string_ref /*args*/);
+  static ptr make_json(std::string_view /*args*/);
 };
 
 }  // namespace iresearch

@@ -31,7 +31,7 @@
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchInvertedIndexMeta.h"
 
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 #include "Cluster/ClusterInfo.h"
@@ -79,17 +79,17 @@ size_t hash(aql::AstNode const* node, size_t hash = 0) noexcept;
 ///        must be an arangodb::aql::VALUE_TYPE_STRING
 /// @return extracted string_ref
 //////////////////////////////////////////////////////////////////////////////
-inline irs::string_ref getStringRef(aql::AstNode const& node) {
+inline std::string_view getStringRef(aql::AstNode const& node) {
   TRI_ASSERT(aql::VALUE_TYPE_STRING == node.value.type);
 
-  return irs::string_ref(node.getStringValue(), node.getStringLength());
+  return std::string_view(node.getStringValue(), node.getStringLength());
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns name of function denoted by a specified AstNode
 /// @note applicable for nodes of type NODE_TYPE_FCALL, NODE_TYPE_FCALL_USER
 //////////////////////////////////////////////////////////////////////////////
-irs::string_ref getFuncName(aql::AstNode const& node);
+std::string_view getFuncName(aql::AstNode const& node);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to extract 'size_t' value from the specified AstNode 'node'
@@ -112,7 +112,7 @@ inline bool parseValue(size_t& value, aql::AstNode const& node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to extract 'irs::basic_string_ref<Char>' value from the
+/// @brief tries to extract 'std::basic_string_view<Char>' value from the
 ///         specified AstNode 'node'
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,7 +246,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
  public:
   static aql::AstNode const INVALID_NODE;
 
-  static irs::string_ref typeString(ScopedValueType type) noexcept;
+  static std::string_view typeString(ScopedValueType type) noexcept;
 
   explicit ScopedAqlValue(aql::AstNode const& node = INVALID_NODE) noexcept {
     reset(node);
@@ -308,7 +308,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
     return _node->isConstant() ? _node->getIntValue() : _value.toInt64();
   }
 
-  bool getString(irs::string_ref& value) const {
+  bool getString(std::string_view& value) const {
     if (_node->isConstant()) {
       return parseValue(value, *_node);
     } else {
@@ -353,7 +353,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
     _type = AqlValueTraits::type(_value);
   }
 
-  FORCE_INLINE void destroy() noexcept {
+  IRS_FORCE_INLINE void destroy() noexcept {
     if (_destroy) {
       _value.destroy();
     }

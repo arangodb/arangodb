@@ -79,8 +79,8 @@ namespace iresearch {
 struct Field {
   static void setPkValue(Field& field, LocalDocumentId::BaseType const& pk);
 
-  irs::string_ref const& name() const noexcept {
-    TRI_ASSERT(!_name.null());
+  std::string_view const& name() const noexcept {
+    TRI_ASSERT(!irs::IsNull(_name));
     return _name;
   }
 
@@ -94,16 +94,16 @@ struct Field {
   }
 
   bool write(irs::data_output& out) const {
-    if (!_value.null()) {
-      out.write_bytes(_value.c_str(), _value.size());
+    if (!irs::IsNull(_value)) {
+      out.write_bytes(_value.data(), _value.size());
     }
 
     return true;
   }
 
   AnalyzerPool::CacheType::ptr _analyzer;
-  irs::string_ref _name;
-  irs::bytes_ref _value;
+  std::string_view _name;
+  irs::bytes_view _value;
   ValueStorage _storeValues;
   irs::features_t _fieldFeatures;
   irs::IndexFeatures _indexFeatures;
@@ -258,7 +258,7 @@ class FieldIterator {
 /// @brief represents stored primary key of the ArangoDB document
 ////////////////////////////////////////////////////////////////////////////////
 struct DocumentPrimaryKey {
-  static irs::string_ref const& PK() noexcept;  // stored primary key column
+  static std::string_view const& PK() noexcept;  // stored primary key column
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief encodes a specified PK value
@@ -272,7 +272,7 @@ struct DocumentPrimaryKey {
   /// @note PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >=
   /// alignof(uint64_t)
   ////////////////////////////////////////////////////////////////////////////////
-  static bool read(LocalDocumentId& value, irs::bytes_ref const& in) noexcept;
+  static bool read(LocalDocumentId& value, irs::bytes_view const& in) noexcept;
 
   DocumentPrimaryKey() = delete;
 };
@@ -299,9 +299,9 @@ struct SortedValue : Value {
 struct StoredValue : Value {
   using Value::Value;
   bool write(irs::data_output& out) const;
-  irs::string_ref const& name() const noexcept { return fieldName; }
+  std::string_view const& name() const noexcept { return fieldName; }
 
-  irs::string_ref fieldName;
+  std::string_view fieldName;
   std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const*
       fields;
 };

@@ -151,7 +151,7 @@ get_target_property(IRESEARCH_INCLUDE
   ${IRESEARCH_TARGET_DEPENDENCY} INCLUDE_DIRECTORIES)
 
 target_include_directories(arango_iresearch
-  PUBLIC ${IRESEARCH_INCLUDE}
+  SYSTEM PUBLIC ${IRESEARCH_INCLUDE}
 )
 
 if (USE_ENTERPRISE)
@@ -1016,11 +1016,11 @@ target_link_libraries(arango_cluster_engine boost_boost)
 target_link_libraries(arango_cluster_engine arango_v8 arango_v8_no_deadline)
 
 target_include_directories(arango_cluster_engine
-    PUBLIC ${IRESEARCH_INCLUDE}
+    SYSTEM PUBLIC ${IRESEARCH_INCLUDE}
 )
 
 target_include_directories(arango_indexes
-    PUBLIC ${IRESEARCH_INCLUDE}
+    SYSTEM PUBLIC ${IRESEARCH_INCLUDE}
 )
 
 target_link_libraries(arango_cluster_methods arango)

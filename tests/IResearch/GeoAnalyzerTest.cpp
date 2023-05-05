@@ -132,7 +132,7 @@ TEST(GeoPointAnalyzerTest, ctor) {
     {
       auto* term = irs::get<irs::term_attribute>(a);
       ASSERT_NE(nullptr, term);
-      ASSERT_TRUE(term->value.null());
+      ASSERT_TRUE(irs::IsNull(term->value));
     }
     ASSERT_EQ(irs::type<GeoPointAnalyzer>::id(), a.type());
     ASSERT_FALSE(a.next());
@@ -171,7 +171,7 @@ TEST(GeoPointAnalyzerTest, ctor) {
     {
       auto* term = irs::get<irs::term_attribute>(a);
       ASSERT_NE(nullptr, term);
-      ASSERT_TRUE(term->value.null());
+      ASSERT_TRUE(irs::IsNull(term->value));
     }
     ASSERT_EQ(irs::type<GeoPointAnalyzer>::id(), a.type());
     ASSERT_FALSE(a.next());
@@ -213,7 +213,7 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -248,7 +248,7 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -293,7 +293,7 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromObject) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -330,7 +330,7 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromObject) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -375,7 +375,7 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromObjectComplexPath) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -412,7 +412,7 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromObjectComplexPath) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -662,7 +662,7 @@ TEST(GeoVPackAnalyzerTest, ctor) {
   {
     auto* term = irs::get<irs::term_attribute>(a);
     ASSERT_NE(nullptr, term);
-    ASSERT_TRUE(term->value.null());
+    ASSERT_TRUE(irs::IsNull(term->value));
   }
   ASSERT_EQ(irs::type<GeoVPackAnalyzer>::id(), a.type());
   ASSERT_FALSE(a.next());
@@ -718,7 +718,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeLatLngRect) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -743,7 +743,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeLatLngRect) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -766,7 +766,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeLatLngRect) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -792,7 +792,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeLatLngRect) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -877,7 +877,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePolygon) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -902,7 +902,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePolygon) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -925,7 +925,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePolygon) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -951,7 +951,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePolygon) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1039,7 +1039,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeLineString) {
     auto end = terms.end();
     for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, end);
     while (a.next()) {  // centroid terms
@@ -1067,7 +1067,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeLineString) {
     auto end = terms.end();
     for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, end);
     while (a.next()) {  // centroid terms
@@ -1092,7 +1092,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeLineString) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1118,7 +1118,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeLineString) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1214,7 +1214,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPolygon) {
     auto end = terms.end();
     for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, end);
     while (a.next()) {  // centroid terms
@@ -1239,7 +1239,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPolygon) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1295,7 +1295,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPoint) {
     auto end = terms.end();
     for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, end);
     while (a.next()) {  // centroid terms
@@ -1323,7 +1323,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPoint) {
     auto end = terms.end();
     for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, end);
     while (a.next()) {  // centroid terms
@@ -1348,7 +1348,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1374,7 +1374,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1502,7 +1502,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPolyLine) {
     auto end = terms.end();
     for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, end);
     while (a.next()) {  // centroid terms
@@ -1530,7 +1530,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPolyLine) {
     auto end = terms.end();
     for (; a.next() && begin != end; ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, end);
     while (a.next()) {  // centroid terms
@@ -1555,7 +1555,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPolyLine) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1581,7 +1581,7 @@ TEST(GeoVPackAnalyzerTest, tokenizeMultiPolyLine) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1639,7 +1639,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1673,7 +1673,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1705,7 +1705,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1740,7 +1740,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1772,7 +1772,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1807,7 +1807,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1849,7 +1849,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePointGeoJSONArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1883,7 +1883,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePointGeoJSONArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1915,7 +1915,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePointGeoJSONArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1950,7 +1950,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePointGeoJSONArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1982,7 +1982,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePointGeoJSONArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -2017,7 +2017,7 @@ TEST(GeoVPackAnalyzerTest, tokenizePointGeoJSONArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }

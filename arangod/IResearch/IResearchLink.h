@@ -27,7 +27,6 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/directory.hpp"
-#include "utils/utf8_path.hpp"
 
 #include "IResearch/IResearchDataStore.h"
 #include "IResearch/IResearchLinkMeta.h"
@@ -41,6 +40,7 @@
 #include "VocBase/Identifiers/IndexId.h"
 
 #include <atomic>
+#include <filesystem>
 
 namespace arangodb::iresearch {
 
@@ -157,7 +157,7 @@ class IResearchLink : public IResearchDataStore {
   /// _collectionName if it is not empty.
   /// @return true if name not existed in link before and was actually set by
   /// this call, false otherwise
-  bool setCollectionName(irs::string_ref name) noexcept;
+  bool setCollectionName(std::string_view name) noexcept;
 
   std::string const& getDbName() const noexcept;
   std::string const& getViewId() const noexcept;
@@ -185,7 +185,7 @@ class IResearchLink : public IResearchDataStore {
 
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
-  irs::comparer const* getComparator() const noexcept override {
+  irs::Comparer const* getComparator() const noexcept override {
     return &_comparer;
   }
 

@@ -113,12 +113,12 @@ void mangleNested(std::string& name) {
 }
 
 #ifdef USE_ENTERPRISE
-bool isNestedField(irs::string_ref name) noexcept {
+bool isNestedField(std::string_view name) noexcept {
   return !name.empty() && name.back() == kNestedDelimiter;
 }
 #endif
 
-bool needTrackPrevDoc(irs::string_ref name, bool nested) noexcept {
+bool needTrackPrevDoc(std::string_view name, bool nested) noexcept {
 #ifdef USE_ENTERPRISE
   return (isNestedField(name)) || (nested && name == DocumentPrimaryKey::PK());
 #else
@@ -188,7 +188,7 @@ std::string_view extractAnalyzerName(std::string_view fieldName) {
 }
 #endif
 
-static constexpr auto kGeoAnalyzers = frozen::make_set<irs::string_ref>({
+static constexpr auto kGeoAnalyzers = frozen::make_set<std::string_view>({
     GeoVPackAnalyzer::type_name(),
 #ifdef USE_ENTERPRISE
     GeoS2Analyzer::type_name(),
@@ -196,11 +196,11 @@ static constexpr auto kGeoAnalyzers = frozen::make_set<irs::string_ref>({
     GeoPointAnalyzer::type_name(),
 });
 
-bool isGeoAnalyzer(irs::string_ref type) noexcept {
+bool isGeoAnalyzer(std::string_view type) noexcept {
   return kGeoAnalyzers.count(type) != 0;
 }
 
-bool isPrimitiveAnalyzer(irs::string_ref type) noexcept {
+bool isPrimitiveAnalyzer(std::string_view type) noexcept {
   return !isGeoAnalyzer(type);
 }
 

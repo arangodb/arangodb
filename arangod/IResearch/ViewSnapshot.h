@@ -46,10 +46,10 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a snapshot representation of the view with ability to query for cid
 //////////////////////////////////////////////////////////////////////////////
-class ViewSnapshot : public irs::index_reader {
+class ViewSnapshot : public irs::IndexReader {
  public:
   using Links = std::vector<LinkLock>;
-  using Segments = std::vector<std::pair<DataSourceId, irs::sub_reader const*>>;
+  using Segments = std::vector<std::pair<DataSourceId, irs::SubReader const*>>;
 
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
@@ -75,7 +75,7 @@ class ViewSnapshot : public irs::index_reader {
 using ViewSnapshotPtr = std::shared_ptr<ViewSnapshot const>;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple irs::index_reader
+/// @brief index reader implementation over multiple irs::IndexReader
 /// @note it is assumed that ViewState resides in the same
 ///       TransactionState as the IResearchView ViewState, therefore a separate
 ///       lock is not required to be held
@@ -93,7 +93,7 @@ class ViewSnapshotView final : public ViewSnapshot {
     return _segments[i].first;
   }
 
-  [[nodiscard]] irs::sub_reader const& operator[](
+  [[nodiscard]] irs::SubReader const& operator[](
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
     return *(_segments[i].second);

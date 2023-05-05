@@ -168,7 +168,7 @@ Result createLink(LogicalCollection& collection,
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::function<bool(irs::string_ref)> const acceptor =
+  std::function<bool(std::string_view)> const acceptor =
       [](std::string_view key) -> bool {
     return key != arangodb::StaticStrings::IndexType &&
            key != arangodb::iresearch::StaticStrings::ViewIdField;
@@ -313,7 +313,7 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
         << "link modification request for view '" << view.name()
         << "', normalized definition:" << link.toString();
 
-    std::function<bool(irs::string_ref)> const acceptor =
+    std::function<bool(std::string_view)> const acceptor =
         [](std::string_view key) -> bool {
       return key != arangodb::StaticStrings::IndexType &&
              key != arangodb::iresearch::StaticStrings::ViewIdField;
@@ -614,7 +614,7 @@ namespace iresearch {
 /*static*/ bool IResearchLinkHelper::equal(ArangodServer& server,
                                            velocypack::Slice lhs,
                                            velocypack::Slice rhs,
-                                           irs::string_ref dbname) {
+                                           std::string_view dbname) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
   }
@@ -698,7 +698,7 @@ namespace iresearch {
     IResearchViewStoredValues const* storedValues, /* = nullptr */
     bool const* pkCache /*= nullptr*/, bool const* sortCache /*= nullptr*/,
     velocypack::Slice idSlice, /* = velocypack::Slice()*/
-    irs::string_ref collectionName /*= irs::string_ref::NIL*/) {
+    std::string_view collectionName /*= std::string_view{}*/) {
   if (!normalized.isOpenObject()) {
     return {TRI_ERROR_BAD_PARAMETER,
             "invalid output buffer provided for arangosearch link normalized "

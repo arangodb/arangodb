@@ -94,11 +94,6 @@ inline Weight DivideLeft(const Weight& lhs, const Weight& rhs) {
       static_cast<bool>(static_cast<bool>(lhs) ^ static_cast<bool>(rhs))};
 }
 
-inline Weight Divide(const Weight& lhs, const Weight& rhs,
-                     DivideType typ = DIVIDE_ANY) {
-  return DivideLeft(lhs, rhs);
-}
-
 }  // namespace fst
 
 #include "utils/fstext/fst_builder.hpp"

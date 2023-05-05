@@ -86,7 +86,7 @@ namespace {
                                                       auto&& self) -> void {
     assertAnalyzerFeatures(fieldMeta._analyzers);
     for (auto const& entry : fieldMeta._fields) {
-      self(*entry.value(), self);
+      self(entry.second, self);
     }
   };
   assertAnalyzerFeatures(meta._analyzerDefinitions);
@@ -157,7 +157,7 @@ Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
 
 Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
                                   IResearchView* view) {
-  irs::index_reader_options readerOptions;
+  irs::IndexReaderOptions readerOptions;
 #ifdef USE_ENTERPRISE
   setupReaderEntepriseOptions(readerOptions, _collection.vocbase().server(),
                               _meta, _useSearchCache);
@@ -413,7 +413,7 @@ char const* IResearchLink::typeName() {
   return StaticStrings::ViewArangoSearchType.data();
 }
 
-bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
+bool IResearchLink::setCollectionName(std::string_view name) noexcept {
   TRI_ASSERT(!name.empty());
   if (_meta._collectionName.empty()) {
     _meta._collectionName = name;
@@ -447,7 +447,7 @@ Result IResearchLink::unload() noexcept {
 AnalyzerPool::ptr IResearchLink::findAnalyzer(
     AnalyzerPool const& analyzer) const {
   auto const it =
-      _meta._analyzerDefinitions.find(irs::string_ref(analyzer.name()));
+      _meta._analyzerDefinitions.find(std::string_view(analyzer.name()));
 
   if (it == _meta._analyzerDefinitions.end()) {
     return nullptr;

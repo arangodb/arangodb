@@ -27,23 +27,23 @@
 #include <analysis/analyzers.hpp>
 #include <velocypack/Builder.h>
 
-TestAnalyzer::TestAnalyzer()
-    : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {}
+// It's test and common, it's convinient to have ctor in .cpp
+TestAnalyzer::TestAnalyzer() = default;
 
-bool TestAnalyzer::reset(irs::string_ref data) {
-  _data = irs::ref_cast<irs::byte_type>(data);
+bool TestAnalyzer::reset(std::string_view data) {
+  _data = irs::ViewCast<irs::byte_type>(data);
   return true;
 }
 
 bool TestAnalyzer::next() {
   if (_data.empty()) return false;
 
-  _term.value = irs::bytes_ref(_data.c_str(), 1);
-  _data = irs::bytes_ref(_data.c_str() + 1, _data.size() - 1);
+  _term.value = irs::bytes_view(_data.data(), 1);
+  _data = irs::bytes_view(_data.data() + 1, _data.size() - 1);
   return true;
 }
 
-bool TestAnalyzer::normalize(irs::string_ref args, std::string& definition) {
+bool TestAnalyzer::normalize(std::string_view args, std::string& definition) {
   // same validation as for make,
   // as normalize usually called to sanitize data before make
   auto slice = arangodb::iresearch::slice(args);
@@ -69,12 +69,11 @@ bool TestAnalyzer::normalize(irs::string_ref args, std::string& definition) {
   return true;
 }
 
-auto TestAnalyzer::make(irs::string_ref args) -> ptr {
+auto TestAnalyzer::make(std::string_view args) -> ptr {
   auto slice = arangodb::iresearch::slice(args);
   if (slice.isNull()) throw std::exception();
   if (slice.isNone()) return nullptr;
-  PTR_NAMED(TestAnalyzer, ptr);
-  return ptr;
+  return std::make_unique<TestAnalyzer>();
 }
 
 irs::attribute* TestAnalyzer::get_mutable(

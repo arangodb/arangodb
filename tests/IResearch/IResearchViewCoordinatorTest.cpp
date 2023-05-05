@@ -4393,7 +4393,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
 
-    auto resetUserManager = irs::make_finally(
+    auto resetUserManager = irs::Finally(
         [userManager]() noexcept { userManager->removeAllUsers(); });
 
     EXPECT_TRUE((
@@ -5945,7 +5945,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
 
-    auto resetUserManager = irs::make_finally(
+    auto resetUserManager = irs::Finally(
         [userManager]() noexcept { userManager->removeAllUsers(); });
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
@@ -6301,7 +6301,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    auto resetUserManager = irs::make_finally(
+    auto resetUserManager = irs::Finally(
         [userManager]() noexcept { userManager->removeAllUsers(); });
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
@@ -7188,7 +7188,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    auto resetUserManager = irs::make_finally(
+    auto resetUserManager = irs::Finally(
         [userManager]() noexcept { userManager->removeAllUsers(); });
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,

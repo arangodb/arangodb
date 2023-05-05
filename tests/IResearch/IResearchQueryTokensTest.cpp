@@ -34,35 +34,33 @@
 #include "VocBase/LogicalCollection.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace arangodb::tests {
 namespace {
-class TestDelimAnalyzer : public irs::analysis::analyzer {
+class TestDelimAnalyzer final
+    : public irs::analysis::TypedAnalyzer<TestDelimAnalyzer> {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestDelimAnalyzer";
   }
 
-  static ptr make(irs::string_ref args) {
+  static ptr make(std::string_view args) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return nullptr;
     if (slice.isString()) {
-      PTR_NAMED(TestDelimAnalyzer, ptr,
-                arangodb::iresearch::getStringRef(slice));
-      return ptr;
+      return std::make_unique<TestDelimAnalyzer>(
+          arangodb::iresearch::getStringRef(slice));
     } else if (slice.isObject() && slice.hasKey("args") &&
                slice.get("args").isString()) {
-      PTR_NAMED(TestDelimAnalyzer, ptr,
-                arangodb::iresearch::getStringRef(slice.get("args")));
-      return ptr;
+      return std::make_unique<TestDelimAnalyzer>(
+          arangodb::iresearch::getStringRef(slice.get("args")));
     } else {
       return nullptr;
     }
   }
 
-  static bool normalize(irs::string_ref args, std::string& out) {
+  static bool normalize(std::string_view args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return false;
@@ -85,19 +83,17 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  TestDelimAnalyzer(irs::string_ref delim)
-      : irs::analysis::analyzer(irs::type<TestDelimAnalyzer>::get()),
-        _delim(irs::ref_cast<irs::byte_type>(delim)) {}
+  TestDelimAnalyzer(std::string_view delim)
+      : _delim(irs::ViewCast<irs::byte_type>(delim)) {}
 
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::term_attribute>::id()) {
       return &_term;
     }
     return nullptr;
   }
 
-  virtual bool next() override {
+  bool next() final {
     if (_data.empty()) {
       return false;
     }
@@ -105,31 +101,31 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     size_t i = 0;
 
     for (size_t count = _data.size(); i < count; ++i) {
-      auto data = irs::ref_cast<char>(_data);
-      auto delim = irs::ref_cast<char>(_delim);
+      auto data = irs::ViewCast<char>(_data);
+      auto delim = irs::ViewCast<char>(irs::bytes_view{_delim});
 
-      if (0 == strncmp(&(data.c_str()[i]), delim.c_str(), delim.size())) {
-        _term.value = irs::bytes_ref(_data.c_str(), i);
-        _data = irs::bytes_ref(
-            _data.c_str() + i + (std::max)(size_t(1), _delim.size()),
+      if (0 == strncmp(&(data.data()[i]), delim.data(), delim.size())) {
+        _term.value = irs::bytes_view(_data.data(), i);
+        _data = irs::bytes_view(
+            _data.data() + i + (std::max)(size_t(1), _delim.size()),
             _data.size() - i - (std::max)(size_t(1), _delim.size()));
         return true;
       }
     }
 
     _term.value = _data;
-    _data = irs::bytes_ref::NIL;
+    _data = irs::bytes_view{};
     return true;
   }
 
-  virtual bool reset(irs::string_ref data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
+  bool reset(std::string_view data) final {
+    _data = irs::ViewCast<irs::byte_type>(data);
     return true;
   }
 
  private:
   std::basic_string<irs::byte_type> _delim;
-  irs::bytes_ref _data;
+  irs::bytes_view _data;
   irs::term_attribute _term;
 };
 

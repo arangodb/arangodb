@@ -27,7 +27,6 @@
 #include "store/fs_directory.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/log.hpp"
-#include "utils/utf8_path.hpp"
 
 #include <velocypack/Parser.h>
 
@@ -847,7 +846,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -871,7 +870,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -881,7 +880,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
-  auto reader = irs::directory_reader::open(directory);
+  auto reader = irs::DirectoryReader::open(directory);
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
@@ -915,7 +914,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -938,7 +937,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -948,7 +947,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
-  auto reader = irs::directory_reader::open(directory);
+  auto reader = irs::DirectoryReader::open(directory);
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
@@ -983,7 +982,7 @@ TEST_F(IResearchLinkTest, test_write) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -1007,7 +1006,7 @@ TEST_F(IResearchLinkTest, test_write) {
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -1017,7 +1016,7 @@ TEST_F(IResearchLinkTest, test_write) {
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
-  auto reader = irs::directory_reader::open(directory);
+  auto reader = irs::DirectoryReader::open(directory);
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
@@ -1078,7 +1077,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -1102,12 +1101,12 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
       [&compressedValues](irs::byte_type* src, size_t size,
-                          irs::bstring& out) -> irs::bytes_ref {
+                          irs::bstring& out) -> irs::bytes_view {
     out.append(src, size);
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  auto compressorRemover = irs::Finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
@@ -1119,7 +1118,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -1129,7 +1128,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
-  auto reader = irs::directory_reader::open(directory);
+  auto reader = irs::DirectoryReader::open(directory);
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
@@ -1183,7 +1182,7 @@ TEST_F(IResearchLinkTest,
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -1208,12 +1207,12 @@ TEST_F(IResearchLinkTest,
   std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
       [&compressedValues](irs::byte_type* src, size_t size,
-                          irs::bstring& out) -> irs::bytes_ref {
+                          irs::bstring& out) -> irs::bytes_view {
     out.append(src, size);
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  auto compressorRemover = irs::Finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
@@ -1225,7 +1224,7 @@ TEST_F(IResearchLinkTest,
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -1235,7 +1234,7 @@ TEST_F(IResearchLinkTest,
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
-  auto reader = irs::directory_reader::open(directory);
+  auto reader = irs::DirectoryReader::open(directory);
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
@@ -1293,7 +1292,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -1321,12 +1320,12 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
       [&compressedValues](irs::byte_type* src, size_t size,
-                          irs::bstring& out) -> irs::bytes_ref {
+                          irs::bstring& out) -> irs::bytes_view {
     out.append(src, size);
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  auto compressorRemover = irs::Finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
@@ -1338,7 +1337,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -1348,7 +1347,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
-  auto reader = irs::directory_reader::open(directory);
+  auto reader = irs::DirectoryReader::open(directory);
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
@@ -1402,7 +1401,7 @@ TEST_F(IResearchLinkTest,
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -1432,12 +1431,12 @@ TEST_F(IResearchLinkTest,
   std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
       [&compressedValues](irs::byte_type* src, size_t size,
-                          irs::bstring& out) -> irs::bytes_ref {
+                          irs::bstring& out) -> irs::bytes_view {
     out.append(src, size);
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  auto compressorRemover = irs::Finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
@@ -1449,7 +1448,7 @@ TEST_F(IResearchLinkTest,
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -1459,7 +1458,7 @@ TEST_F(IResearchLinkTest,
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
-  auto reader = irs::directory_reader::open(directory);
+  auto reader = irs::DirectoryReader::open(directory);
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
@@ -1526,7 +1525,7 @@ TEST_F(
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -1556,12 +1555,12 @@ TEST_F(
   std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
       [&compressedValues](irs::byte_type* src, size_t size,
-                          irs::bstring& out) -> irs::bytes_ref {
+                          irs::bstring& out) -> irs::bytes_view {
     out.append(src, size);
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  auto compressorRemover = irs::Finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
@@ -1573,7 +1572,7 @@ TEST_F(
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -1587,7 +1586,7 @@ TEST_F(
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
-  auto reader = irs::directory_reader::open(directory);
+  auto reader = irs::DirectoryReader::open(directory);
   EXPECT_EQ(0, reader.reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
@@ -2168,7 +2167,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
 
 void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
                         uint64_t& numFiles) {
-  irs::utf8_path utf8Path{path};
+  std::filesystem::path utf8Path{path};
   auto visitor = [&indexSize, &numFiles,
                   &utf8Path](const path_char_t* filename) -> bool {
     auto pathParts = irs::file_utils::path_parts(filename);
@@ -2186,7 +2185,7 @@ void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
 
     if (std::regex_match(name, match, regex)) {
       // creating abs path to current file
-      irs::utf8_path absPath = utf8Path;
+      std::filesystem::path absPath = utf8Path;
       absPath /= pathParts.basename.c_str();
       uint64_t currSize = 0;
       irs::file_utils::byte_size(currSize, absPath.c_str());
@@ -2219,7 +2218,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
   uint64_t _commitIntervalMs = 0;
   uint64_t _consolidationIntervalMs = 0;
   std::shared_ptr<arangodb::LogicalView> _view;
-  irs::utf8_path _dirPath = testFilesystemPath;
+  std::filesystem::path _dirPath = testFilesystemPath;
   std::shared_ptr<arangodb::Index> _link;
 
   IResearchLinkMetricsTest() {
@@ -2373,7 +2372,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     auto visitor = [&](const path_char_t* filename) -> bool {
       ++numFiles;
       auto pathParts = irs::file_utils::path_parts(filename);
-      irs::utf8_path absPath = _dirPath;
+      std::filesystem::path absPath = _dirPath;
       absPath /= pathParts.basename.c_str();
       uint64_t currSize = 0;
       irs::file_utils::byte_size(currSize, absPath.c_str());

@@ -48,7 +48,7 @@ static const char* collectionName1 = "collection_1";
 static const char* collectionName2 = "collection_2";
 static const char* viewName = "view";
 
-static constexpr frozen::map<irs::string_ref,
+static constexpr frozen::map<std::string_view,
                              arangodb::iresearch::CountApproximate, 2>
     countApproximationTypeMap = {
         {"exact", arangodb::iresearch::CountApproximate::Exact},

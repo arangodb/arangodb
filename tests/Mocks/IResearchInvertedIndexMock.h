@@ -46,7 +46,7 @@ class IResearchInvertedIndexMock final : public Index,
   [[nodiscard]] static auto setCallbackForScope(
       std::function<irs::directory_attributes()> callback) {
     InitCallback = callback;
-    return irs::make_finally([]() noexcept { InitCallback = nullptr; });
+    return irs::Finally([]() noexcept { InitCallback = nullptr; });
   }
 
   void toVelocyPack(
@@ -112,7 +112,7 @@ class IResearchInvertedIndexMock final : public Index,
 
   void invalidateQueryCache(TRI_vocbase_t* vocbase) final;
 
-  irs::comparer const* getComparator() const noexcept final;
+  irs::Comparer const* getComparator() const noexcept final;
 
   static std::function<irs::directory_attributes()> InitCallback;
 };

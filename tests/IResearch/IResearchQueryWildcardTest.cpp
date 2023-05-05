@@ -33,7 +33,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace arangodb::tests {
 namespace {
@@ -48,7 +47,7 @@ class QueryWildcard : public QueryTest {
       auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_NE(nullptr, collection);
 
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
@@ -586,7 +585,7 @@ class QueryWildcardView : public QueryWildcard {
         "testCollection1": { "includeAllFields": true, "version": %u }
     }})";
 
-    auto viewDefinition = irs::string_utils::to_string(
+    auto viewDefinition = absl::Substitute(
         viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
@@ -642,7 +641,7 @@ class QueryWildcardSearch : public QueryWildcard {
         {"collection": "testCollection1", "index": "testIndex1"}
       ]})";
 
-      auto viewDefinition = irs::string_utils::to_string(
+      auto viewDefinition = absl::Substitute(
           viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
 
       auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);

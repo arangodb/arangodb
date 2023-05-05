@@ -33,7 +33,7 @@ namespace arangodb::iresearch {
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple irs::index_reader
+/// @brief index reader implementation over multiple irs::IndexReader
 ///        the container storing the view state for a given TransactionState
 /// @note it is assumed that DBServer ViewState resides in the same
 ///       TransactionState as the IResearchView ViewState, therefore a separate
@@ -51,7 +51,7 @@ class ViewSnapshotCookie final : public ViewSnapshot,
   bool compute(bool sync, std::string_view name);
 
  private:
-  [[nodiscard]] irs::sub_reader const& operator[](
+  [[nodiscard]] irs::SubReader const& operator[](
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
     return *(_segments[i].second);
@@ -68,7 +68,7 @@ class ViewSnapshotCookie final : public ViewSnapshot,
 
   // prevent data-store deallocation (lock @ AsyncSelf)
   Links _links;  // should be first
-  std::vector<irs::directory_reader> _readers;
+  std::vector<irs::DirectoryReader> _readers;
   Segments _segments;
 };
 

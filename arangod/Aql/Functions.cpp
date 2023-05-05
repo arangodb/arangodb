@@ -1676,8 +1676,8 @@ AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
   }
 
   auto utf32Attribute = basics::StringUtils::characterCodes(
-      attributeValue.c_str(), attributeValue.size());
-  auto utf32Target = basics::StringUtils::characterCodes(targetValue.c_str(),
+      attributeValue.data(), attributeValue.size());
+  auto utf32Target = basics::StringUtils::characterCodes(targetValue.data(),
                                                          targetValue.size());
 
   auto const similarity = irs::ngram_similarity<uint32_t, search_semantics>(
@@ -1784,13 +1784,13 @@ AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   std::vector<irs::bstring> attrNgrams;
   analyzerImpl->reset(attributeValue);
   while (analyzerImpl->next()) {
-    attrNgrams.emplace_back(token->value.c_str(), token->value.size());
+    attrNgrams.emplace_back(token->value.data(), token->value.size());
   }
 
   std::vector<irs::bstring> targetNgrams;
   analyzerImpl->reset(targetValue);
   while (analyzerImpl->next()) {
-    targetNgrams.emplace_back(token->value.c_str(), token->value.size());
+    targetNgrams.emplace_back(token->value.data(), token->value.size());
   }
 
   // consider only non empty ngrams sets. As no ngrams emitted - means no data
@@ -1875,10 +1875,10 @@ AqlValue functions::LevenshteinMatch(ExpressionContext* ctx,
 
   auto const& lhs = aql::extractFunctionParameterValue(args, 0);
   auto const lhsValue = lhs.isString() ? iresearch::getBytesRef(lhs.slice())
-                                       : irs::bytes_ref::EMPTY;
+                                       : irs::kEmptyStringView<irs::byte_type>;
   auto const& rhs = aql::extractFunctionParameterValue(args, 1);
   auto const rhsValue = rhs.isString() ? iresearch::getBytesRef(rhs.slice())
-                                       : irs::bytes_ref::EMPTY;
+                                       : irs::kEmptyStringView<irs::byte_type>;
 
   size_t const dist = irs::edit_distance(description, lhsValue, rhsValue);
 
