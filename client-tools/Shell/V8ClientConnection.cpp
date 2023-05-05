@@ -173,7 +173,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         setCustomError(500, "unable to create connection");
         LOG_TOPIC("9daaa", DEBUG, arangodb::Logger::HTTPCLIENT)
             << "Connection attempt to endpoint '" << _client.endpoint()
-            << "' failed fataly";
+            << "' failed fatally";
         return nullptr;
       }
 
