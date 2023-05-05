@@ -26,6 +26,17 @@
 #include "Pregel/Worker/State.h"
 #include "StoredState.h"
 #include "CleanedUpState.h"
+#include "Pregel/Algos/WCC/WCCValue.h"
+#include "Pregel/SenderMessage.h"
+#include "Pregel/Algos/SCC/SCCValue.h"
+#include "Pregel/Algos/HITS/HITSValue.h"
+#include "Pregel/Algos/HITSKleinberg/HITSKleinbergValue.h"
+#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
+#include "Pregel/Algos/DMID/DMIDValue.h"
+#include "Pregel/Algos/LabelPropagation/LPValue.h"
+#include "Pregel/Algos/SLPA/SLPAValue.h"
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -47,8 +58,38 @@ auto CleaningUp<V, E, M>::receive(
     dispatcher.dispatchMetrics(
         arangodb::pregel::metrics::message::WorkerFinished{});
 
-    return std::make_unique<CleanedUp>(self, worker);
+    return std::make_unique<CleanedUp>();
   }
 
   return std::make_unique<FatalError>();
 }
+
+// template types to create
+template struct arangodb::pregel::worker::CleaningUp<int64_t, int64_t, int64_t>;
+template struct arangodb::pregel::worker::CleaningUp<uint64_t, uint8_t,
+                                                     uint64_t>;
+template struct arangodb::pregel::worker::CleaningUp<float, float, float>;
+template struct arangodb::pregel::worker::CleaningUp<double, float, double>;
+template struct arangodb::pregel::worker::CleaningUp<float, uint8_t, float>;
+
+// custom algorithm types
+template struct arangodb::pregel::worker::CleaningUp<uint64_t, uint64_t,
+                                                     SenderMessage<uint64_t>>;
+template struct arangodb::pregel::worker::CleaningUp<algos::WCCValue, uint64_t,
+                                                     SenderMessage<uint64_t>>;
+template struct arangodb::pregel::worker::CleaningUp<algos::SCCValue, int8_t,
+                                                     SenderMessage<uint64_t>>;
+template struct arangodb::pregel::worker::CleaningUp<algos::HITSValue, int8_t,
+                                                     SenderMessage<double>>;
+template struct arangodb::pregel::worker::CleaningUp<
+    algos::HITSKleinbergValue, int8_t, SenderMessage<double>>;
+template struct arangodb::pregel::worker::CleaningUp<algos::ECValue, int8_t,
+                                                     HLLCounter>;
+template struct arangodb::pregel::worker::CleaningUp<algos::DMIDValue, float,
+                                                     DMIDMessage>;
+template struct arangodb::pregel::worker::CleaningUp<algos::LPValue, int8_t,
+                                                     uint64_t>;
+template struct arangodb::pregel::worker::CleaningUp<algos::SLPAValue, int8_t,
+                                                     uint64_t>;
+template struct arangodb::pregel::worker::CleaningUp<
+    algos::ColorPropagationValue, int8_t, algos::ColorPropagationMessageValue>;

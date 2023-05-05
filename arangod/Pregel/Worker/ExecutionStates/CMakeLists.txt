@@ -1,4 +1,4 @@
-target_sources(arango_pregel_with_actors PRIVATE
+target_sources(arango_pregel PRIVATE
         InitialState.cpp
         LoadingState.cpp
         LoadedState.cpp

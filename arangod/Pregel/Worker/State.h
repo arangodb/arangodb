@@ -54,9 +54,8 @@ struct WorkerState {
               std::unique_ptr<Algorithm<V, E, M>> algorithm,
               TRI_vocbase_t& vocbase, actor::ActorPID spawnActor,
               actor::ActorPID resultActor, actor::ActorPID statusActor,
-              actor::ActorPID metricsActor)
-      : executionState(std::make_unique<Initial<V, E, M>>(*this)),
-        config{std::make_shared<WorkerConfig>(&vocbase)},
+              actor::ActorPID metricsActor, actor::ActorPID self)
+      : config{std::make_shared<WorkerConfig>(&vocbase)},
         workerContext{std::move(workerContext)},
         messageTimeout{messageTimeout},
         messageFormat{std::move(newMessageFormat)},
@@ -68,6 +67,7 @@ struct WorkerState {
         resultActor(std::move(resultActor)),
         statusActor(std::move(statusActor)),
         metricsActor(std::move(metricsActor)) {
+    executionState = std::make_unique<Initial<V, E, M>>(self, *this);
     config->updateConfig(specifications);
 
     if (messageCombiner) {

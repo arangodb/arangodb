@@ -71,7 +71,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->template dispatch<message::WorkerMessages>(this->self, message);
   };
   DispatchOther const& dispatchOther =
-      this->template dispatch<message::WorkerMessages>;
+      [this](actor::ActorPID other, message::WorkerMessages message) -> void {
+    this->template dispatch<message::WorkerMessages>(other, message);
+  };
   DispatchResult const& dispatchResult =
       [this](pregel::message::ResultMessages message) -> void {
     this->template dispatch<pregel::message::ResultMessages>(
@@ -97,8 +99,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         "Worker Actor {} started with state {}", this->self, *this->state);
 
     auto newState =
-        this->executionState->receive(this->sender, start, dispatcher);
-    changeState(newState);
+        this->state->executionState->receive(this->sender, start, dispatcher);
+    changeState(std::move(newState));
 
     return std::move(this->state);
   }
@@ -109,8 +111,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         << fmt::format("Worker Actor {} is loading", this->self);
 
     auto newState =
-        this->executionState->receive(this->sender, message, dispatcher);
-    changeState(newState);
+        this->state->executionState->receive(this->sender, message, dispatcher);
+    changeState(std::move(newState));
 
     return std::move(this->state);
   }
@@ -122,8 +124,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         << fmt::format("Worker Actor {} is computing", this->self);
 
     auto newState =
-        this->executionState->receive(this->sender, message, dispatcher);
-    changeState(newState);
+        this->state->executionState->receive(this->sender, message, dispatcher);
+    changeState(std::move(newState));
 
     return std::move(this->state);
   }
@@ -135,8 +137,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         this->state->config->globalSuperstep(), message.gss);
 
     auto newState =
-        this->executionState->receive(this->sender, message, dispatcher);
-    changeState(newState);
+        this->state->executionState->receive(this->sender, message, dispatcher);
+    changeState(std::move(newState));
 
     return std::move(this->state);
   }
@@ -149,8 +151,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         << fmt::format("Worker Actor {} is storing", this->self);
 
     auto newState =
-        this->executionState->receive(this->sender, message, dispatcher);
-    changeState(newState);
+        this->state->executionState->receive(this->sender, message, dispatcher);
+    changeState(std::move(newState));
 
     return std::move(this->state);
   }
@@ -158,8 +160,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
   auto operator()(message::ProduceResults message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     auto newState =
-        this->executionState->receive(this->sender, message, dispatcher);
-    changeState(newState);
+        this->state->executionState->receive(this->sender, message, dispatcher);
+    changeState(std::move(newState));
 
     return std::move(this->state);
   }
@@ -172,8 +174,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         << fmt::format("Worker Actor {} is cleaned", this->self);
 
     auto newState =
-        this->executionState->receive(this->sender, message, dispatcher);
-    changeState(newState);
+        this->state->executionState->receive(this->sender, message, dispatcher);
+    changeState(std::move(newState));
 
     return std::move(this->state);
   }

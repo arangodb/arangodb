@@ -27,6 +27,17 @@
 #include "FatalErrorState.h"
 #include "Pregel/Worker/State.h"
 #include "LoadingState.h"
+#include "Pregel/Algos/WCC/WCCValue.h"
+#include "Pregel/SenderMessage.h"
+#include "Pregel/Algos/SCC/SCCValue.h"
+#include "Pregel/Algos/HITS/HITSValue.h"
+#include "Pregel/Algos/HITSKleinberg/HITSKleinbergValue.h"
+#include "Pregel/Algos/EffectiveCloseness/ECValue.h"
+#include "Pregel/Algos/DMID/DMIDValue.h"
+#include "Pregel/Algos/LabelPropagation/LPValue.h"
+#include "Pregel/Algos/SLPA/SLPAValue.h"
+#include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -58,8 +69,37 @@ auto Initial<V, E, M>::receive(actor::ActorPID const& sender,
   if (std::holds_alternative<worker::message::LoadGraph>(message)) {
     dispatcher.dispatchSelf(message);
 
-    return std::make_unique<Loading>(self, worker);
+    return std::make_unique<Loading<V, E, M>>(self, worker);
   }
 
   return std::make_unique<FatalError>();
 }
+
+// template types to create
+template struct arangodb::pregel::worker::Initial<int64_t, int64_t, int64_t>;
+template struct arangodb::pregel::worker::Initial<uint64_t, uint8_t, uint64_t>;
+template struct arangodb::pregel::worker::Initial<float, float, float>;
+template struct arangodb::pregel::worker::Initial<double, float, double>;
+template struct arangodb::pregel::worker::Initial<float, uint8_t, float>;
+
+// custom algorithm types
+template struct arangodb::pregel::worker::Initial<uint64_t, uint64_t,
+                                                  SenderMessage<uint64_t>>;
+template struct arangodb::pregel::worker::Initial<algos::WCCValue, uint64_t,
+                                                  SenderMessage<uint64_t>>;
+template struct arangodb::pregel::worker::Initial<algos::SCCValue, int8_t,
+                                                  SenderMessage<uint64_t>>;
+template struct arangodb::pregel::worker::Initial<algos::HITSValue, int8_t,
+                                                  SenderMessage<double>>;
+template struct arangodb::pregel::worker::Initial<
+    algos::HITSKleinbergValue, int8_t, SenderMessage<double>>;
+template struct arangodb::pregel::worker::Initial<algos::ECValue, int8_t,
+                                                  HLLCounter>;
+template struct arangodb::pregel::worker::Initial<algos::DMIDValue, float,
+                                                  DMIDMessage>;
+template struct arangodb::pregel::worker::Initial<algos::LPValue, int8_t,
+                                                  uint64_t>;
+template struct arangodb::pregel::worker::Initial<algos::SLPAValue, int8_t,
+                                                  uint64_t>;
+template struct arangodb::pregel::worker::Initial<
+    algos::ColorPropagationValue, int8_t, algos::ColorPropagationMessageValue>;

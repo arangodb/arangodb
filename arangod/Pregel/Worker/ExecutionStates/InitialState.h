@@ -31,7 +31,7 @@ struct WorkerState;
 
 template<typename V, typename E, typename M>
 struct Initial : ExecutionState {
-  explicit Initial(actor::ActorPID self, WorkerState<V, E, M>& worker);
+  Initial(actor::ActorPID self, WorkerState<V, E, M>& worker);
   ~Initial() override = default;
 
   [[nodiscard]] auto name() const -> std::string override { return "initial"; };
