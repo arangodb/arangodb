@@ -74,22 +74,22 @@ template struct arangodb::pregel::worker::Loaded<float, uint8_t, float>;
 
 // custom algorithm types
 template struct arangodb::pregel::worker::Loaded<uint64_t, uint64_t,
-                                                  SenderMessage<uint64_t>>;
+                                                 SenderMessage<uint64_t>>;
 template struct arangodb::pregel::worker::Loaded<algos::WCCValue, uint64_t,
-                                                  SenderMessage<uint64_t>>;
+                                                 SenderMessage<uint64_t>>;
 template struct arangodb::pregel::worker::Loaded<algos::SCCValue, int8_t,
-                                                  SenderMessage<uint64_t>>;
+                                                 SenderMessage<uint64_t>>;
 template struct arangodb::pregel::worker::Loaded<algos::HITSValue, int8_t,
-                                                  SenderMessage<double>>;
-template struct arangodb::pregel::worker::Loaded<
-    algos::HITSKleinbergValue, int8_t, SenderMessage<double>>;
+                                                 SenderMessage<double>>;
+template struct arangodb::pregel::worker::Loaded<algos::HITSKleinbergValue,
+                                                 int8_t, SenderMessage<double>>;
 template struct arangodb::pregel::worker::Loaded<algos::ECValue, int8_t,
-                                                  HLLCounter>;
+                                                 HLLCounter>;
 template struct arangodb::pregel::worker::Loaded<algos::DMIDValue, float,
-                                                  DMIDMessage>;
+                                                 DMIDMessage>;
 template struct arangodb::pregel::worker::Loaded<algos::LPValue, int8_t,
-                                                  uint64_t>;
+                                                 uint64_t>;
 template struct arangodb::pregel::worker::Loaded<algos::SLPAValue, int8_t,
-                                                  uint64_t>;
+                                                 uint64_t>;
 template struct arangodb::pregel::worker::Loaded<
     algos::ColorPropagationValue, int8_t, algos::ColorPropagationMessageValue>;

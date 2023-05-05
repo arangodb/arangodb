@@ -48,8 +48,7 @@ struct Computing : ExecutionState {
       -> std::unique_ptr<ExecutionState> override;
 
   auto prepareGlobalSuperStep(message::RunGlobalSuperStep message) -> void;
-  auto processVertices(Dispatcher const& dispatcher)
-      -> VerticesProcessed;
+  auto processVertices(Dispatcher const& dispatcher) -> VerticesProcessed;
   auto finishProcessing(VerticesProcessed verticesProcessed,
                         DispatchStatus const& dispatchStatus)
       -> conductor::message::GlobalSuperStepFinished;

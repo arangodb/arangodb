@@ -296,7 +296,7 @@ auto Computing<V, E, M>::finishProcessing(VerticesProcessed verticesProcessed,
   }
   std::vector<conductor::message::SendCountPerActor> sendCountList;
   sendCountList.reserve(verticesProcessed.sendCountPerActor.size());
-for (auto const& [actor, count] : verticesProcessed.sendCountPerActor) {
+  for (auto const& [actor, count] : verticesProcessed.sendCountPerActor) {
     sendCountList.emplace_back(conductor::message::SendCountPerActor{
         .receiver = actor, .sendCount = count});
   }

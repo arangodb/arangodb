@@ -55,11 +55,10 @@ auto ProducingResults<V, E, M>::receive(
   if (std::holds_alternative<worker::message::ProduceResults>(message)) {
     auto msg = std::get<worker::message::ProduceResults>(message);
 
-auto getResults = [this, msg]() -> ResultT<PregelResults> {
+    auto getResults = [this, msg]() -> ResultT<PregelResults> {
       try {
         auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
-            msg.withID, worker.config,
-            worker.algorithm->inputFormat());
+            msg.withID, worker.config, worker.algorithm->inputFormat());
         storer->store(worker.magazine).get();
         return PregelResults{*storer->stealResult()};
       } catch (std::exception const& ex) {
