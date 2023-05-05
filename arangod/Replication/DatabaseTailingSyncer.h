@@ -85,9 +85,12 @@ class DatabaseTailingSyncer : public TailingSyncer {
   Result registerOnLeader();
   void unregisterFromLeader(bool hardLocked);
 
-  void setCancellationCheckCallback(std::function<bool()> const& cb) {
+  void setCancellationCheckCallback(
+      std::function<bool(DatabaseTailingSyncer const&)> const& cb) {
     _checkCancellation = cb;
   }
+
+  uint64_t leaderVersion() const { return _state.leader.version(); }
 
  protected:
   Result syncCollectionCatchupInternal(std::string const& collectionName,
@@ -117,7 +120,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
   uint64_t _toTick;
 
   // custom callback to check if the sync should be cancelled
-  std::function<bool()> _checkCancellation;
+  std::function<bool(DatabaseTailingSyncer const&)> _checkCancellation;
 
   // point in time when we last executed the _checkCancellation callback
   mutable std::chrono::steady_clock::time_point _lastCancellationCheck;

@@ -127,7 +127,8 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature,
       _tailingUpperBoundTick(0),
       _initialDocCountOnLeader(0),
       _initialDocCountOnFollower(0),
-      _docCountAtEnd(0) {
+      _docCountAtEnd(0),
+      _leaderVersion(0) {
   std::stringstream error;
 
   if (!desc.has(COLLECTION)) {
@@ -590,7 +591,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     SynchronizeShard& job,
     std::chrono::time_point<std::chrono::steady_clock> endTime,
     std::shared_ptr<arangodb::LogicalCollection> const& col, VPackSlice config,
-    std::shared_ptr<DatabaseTailingSyncer> tailingSyncer, VPackBuilder& sy) {
+    std::shared_ptr<DatabaseTailingSyncer> tailingSyncer, VPackBuilder& sy,
+    uint64_t& leaderVersion) {
   auto& vocbase = col->vocbase();
   auto database = vocbase.name();
 
@@ -626,49 +628,60 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   ReplicationTimeoutFeature& timeouts =
       job.feature().server().getFeature<ReplicationTimeoutFeature>();
 
-  syncer->setCancellationCheckCallback([=, &agencyCache, &timeouts]() -> bool {
-    // Will return true if the SynchronizeShard job should be aborted.
-    LOG_TOPIC("39856", DEBUG, Logger::REPLICATION)
-        << "running synchronization cancelation check for shard " << database
-        << "/" << col->name();
-    if (endTime.time_since_epoch().count() > 0 &&
-        std::chrono::steady_clock::now() >= endTime) {
-      // configured timeout exceeded
-      LOG_TOPIC("47154", INFO, Logger::REPLICATION)
-          << "stopping initial sync attempt for " << database << "/"
-          << col->name() << " after configured timeout of "
-          << timeouts.shardSynchronizationAttemptTimeout() << " s. "
-          << "a new sync attempt will be scheduled...";
-      return true;
-    }
+  syncer->setCancellationCheckCallback(
+      [=, &agencyCache,
+       &timeouts](DatabaseInitialSyncer const& syncer) -> bool {
+        // Will return true if the SynchronizeShard job should be aborted.
 
-    std::string path = "Plan/Collections/" + database + "/" +
-                       std::to_string(col->planId().id()) + "/shards/" +
-                       col->name();
-    VPackBuilder builder;
-    agencyCache.get(builder, path);
+        // check if the leader is running (exactly) version 3.9.2. if so,
+        // we disable the synchronization timeout, so that we can replicate
+        // shards from 3.9.2 leaders in one go and without interruption.
+        // the reason is that we want to be able to use the initial sync
+        // protocol without interruptions and not fall back from the
+        // initial sync protocol to incremental sync.
+        bool const is392 = syncer.leaderVersion() == 30902;
 
-    if (!builder.isEmpty()) {
-      VPackSlice plan = builder.slice();
-      if (plan.isArray() && plan.length() >= 2) {
-        if (plan[0].isString() && plan[0].isEqualString(leaderId)) {
-          std::string myself = arangodb::ServerState::instance()->getId();
-          for (size_t i = 1; i < plan.length(); ++i) {
-            if (plan[i].isString() && plan[i].isEqualString(myself)) {
-              // do not abort the synchronization
-              return false;
+        LOG_TOPIC("39856", DEBUG, Logger::REPLICATION)
+            << "running synchronization cancelation check for shard "
+            << database << "/" << col->name();
+        if (!is392 && endTime.time_since_epoch().count() > 0 &&
+            std::chrono::steady_clock::now() >= endTime) {
+          // configured timeout exceeded
+          LOG_TOPIC("47154", INFO, Logger::REPLICATION)
+              << "stopping initial sync attempt for " << database << "/"
+              << col->name() << " after configured timeout of "
+              << timeouts.shardSynchronizationAttemptTimeout() << " s. "
+              << "a new sync attempt will be scheduled...";
+          return true;
+        }
+
+        std::string path = "Plan/Collections/" + database + "/" +
+                           std::to_string(col->planId().id()) + "/shards/" +
+                           col->name();
+        VPackBuilder builder;
+        agencyCache.get(builder, path);
+
+        if (!builder.isEmpty()) {
+          VPackSlice plan = builder.slice();
+          if (plan.isArray() && plan.length() >= 2) {
+            if (plan[0].isString() && plan[0].isEqualString(leaderId)) {
+              std::string myself = arangodb::ServerState::instance()->getId();
+              for (size_t i = 1; i < plan.length(); ++i) {
+                if (plan[i].isString() && plan[i].isEqualString(myself)) {
+                  // do not abort the synchronization
+                  return false;
+                }
+              }
             }
           }
         }
-      }
-    }
 
-    // abort synchronization
-    LOG_TOPIC("f6dbc", INFO, Logger::REPLICATION)
-        << "aborting initial sync for " << database << "/" << col->name()
-        << " because we are not planned as a follower anymore";
-    return true;
-  });
+        // abort synchronization
+        LOG_TOPIC("f6dbc", INFO, Logger::REPLICATION)
+            << "aborting initial sync for " << database << "/" << col->name()
+            << " because we are not planned as a follower anymore";
+        return true;
+      });
 
   SyncerId syncerId{syncer->syncerId()};
 
@@ -676,8 +689,10 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     std::string const context = "syncing shard " + database + "/" + col->name();
     Result r = syncer->run(configuration._incremental, context.c_str());
 
+    leaderVersion = syncer->leaderVersion();
+
     if (r.fail()) {
-      LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
+      LOG_TOPIC("3efff", WARN, Logger::REPLICATION)
           << "initial sync failed for " << database << "/" << col->name()
           << ": " << r.errorMessage();
       return r;
@@ -1147,9 +1162,9 @@ bool SynchronizeShard::first() {
       startTime = std::chrono::system_clock::now();
 
       VPackBuilder builder;
-      ResultT<SyncerId> syncRes =
-          replicationSynchronize(*this, _endTimeForAttempt, collection,
-                                 config.slice(), tailingSyncer, builder);
+      ResultT<SyncerId> syncRes = replicationSynchronize(
+          *this, _endTimeForAttempt, collection, config.slice(), tailingSyncer,
+          builder, _leaderVersion);
 
       auto const endTime = std::chrono::system_clock::now();
 
@@ -1165,7 +1180,8 @@ bool SynchronizeShard::first() {
       // If this did not work, then we cannot go on:
       if (!syncRes.ok()) {
         if (_endTimeForAttempt.time_since_epoch().count() > 0 &&
-            std::chrono::steady_clock::now() >= _endTimeForAttempt) {
+            std::chrono::steady_clock::now() >= _endTimeForAttempt &&
+            _leaderVersion != 30902) {
           // we reached the configured timeout.
           // rebrand the error. this is important because this is a special
           // error that does not count towards the "failed" attempts.
@@ -1176,10 +1192,11 @@ bool SynchronizeShard::first() {
         std::stringstream error;
         error << "could not initially synchronize shard " << database << "/"
               << shard << ": " << syncRes.errorMessage();
-        LOG_TOPIC("c1b31", DEBUG, Logger::MAINTENANCE)
+        LOG_TOPIC("c1b31", INFO, Logger::MAINTENANCE)
             << "SynchronizeOneShard: " << error.str();
 
         result(syncRes.errorNumber(), error.str());
+
         return false;
       }
 
@@ -1204,12 +1221,22 @@ bool SynchronizeShard::first() {
           _feature.server().getFeature<ReplicationTimeoutFeature>();
 
       tailingSyncer->setCancellationCheckCallback(
-          [=, endTime = _endTimeForAttempt, &timeouts]() -> bool {
+          [=, endTime = _endTimeForAttempt,
+           &timeouts](DatabaseTailingSyncer const& syncer) -> bool {
             // Will return true if the tailing syncer should be aborted.
+
+            // check if the leader is running (exactly) version 3.9.2. if so,
+            // we disable the synchronization timeout, so that we can replicate
+            // shards from 3.9.2 leaders in one go and without interruption.
+            // the reason is that we want to be able to use the initial sync
+            // protocol without interruptions and not fall back from the
+            // initial sync protocol to incremental sync.
+            bool const is392 = syncer.leaderVersion() == 30902;
+
             LOG_TOPIC("54ec2", DEBUG, Logger::REPLICATION)
                 << "running tailing cancelation check for shard " << database
                 << "/" << collection->name();
-            if (endTime.time_since_epoch().count() > 0 &&
+            if (!is392 && endTime.time_since_epoch().count() > 0 &&
                 std::chrono::steady_clock::now() >= endTime) {
               // configured timeout exceeded
               LOG_TOPIC("66e75", INFO, Logger::REPLICATION)
@@ -1650,6 +1677,51 @@ void SynchronizeShard::setState(ActionState state) {
         // x many failures in a row, the shard on the follower will be
         // dropped and completely rebuilt.
         _feature.storeReplicationError(getDatabase(), getShard());
+
+        bool syncByRevision = _description.has(SYNC_BY_REVISION) &&
+                              _description.get(SYNC_BY_REVISION) == "true";
+        size_t failuresInRow =
+            _feature.replicationErrors(getDatabase(), getShard());
+        if (_leaderVersion == 30902 && syncByRevision &&
+            failuresInRow >= MaintenanceFeature::maxReplicationErrorsPerShard) {
+          try {
+            auto& df = _feature.server().getFeature<DatabaseFeature>();
+            DatabaseGuard guard(df, getDatabase());
+            auto vocbase = &guard.database();
+
+            auto collection = vocbase->lookupCollection(getShard());
+            if (collection != nullptr) {
+              LOG_TOPIC("7a2cf", WARN, Logger::MAINTENANCE)
+                  << "SynchronizeShard: synchronizing shard '" << getDatabase()
+                  << "/" << getShard() << "' for central '" << getDatabase()
+                  << "/" << _description.get(COLLECTION) << "' encountered "
+                  << failuresInRow
+                  << " failures in a row. now dropping follower shard for "
+                  << "a full rebuild";
+
+              // drop shard (💥)
+              methods::Collections::drop(*collection, false, 3.0);
+
+              // increase metric
+              ++_feature.server()
+                    .getFeature<ClusterFeature>()
+                    .followersTotalRebuildCounter();
+
+              // set error state
+              _feature.removeReplicationError(getDatabase(), getShard());
+            }
+          } catch (std::exception const& ex) {
+            LOG_TOPIC("5cccd", WARN, Logger::MAINTENANCE)
+                << "SynchronizeShard: synchronizing shard '" << getDatabase()
+                << "/" << getShard() << "' for central '" << getDatabase()
+                << "/" << _description.get(COLLECTION) << "' encountered "
+                << failuresInRow
+                << " failures in a row, but unable to drop follower shard for "
+                   "a "
+                   "full rebuild: "
+                << ex.what();
+          }
+        }
       }
       if (isTimeoutExceeded) {
         // track the number of timeouts

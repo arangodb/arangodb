@@ -190,6 +190,7 @@ Result DatabaseTailingSyncer::inheritFromInitialSyncer(
   _state.leader.engine = leaderInfo.engine;
   _state.leader.majorVersion = leaderInfo.majorVersion;
   _state.leader.minorVersion = leaderInfo.minorVersion;
+  _state.leader.patchVersion = leaderInfo.patchVersion;
 
   _initialTick = syncer.getLastLogTick();
 
@@ -324,7 +325,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
 
       if (now - _lastCancellationCheck >= checkFrequency) {
         _lastCancellationCheck = now;
-        if (_checkCancellation()) {
+        if (_checkCancellation(*this)) {
           return Result(
               TRI_ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED);
         }
