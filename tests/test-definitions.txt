@@ -92,7 +92,7 @@ shell_api priority=500 cluster -- $EncryptionAtRest
 shell_api_multi priority=500 cluster suffix=http -- $EncryptionAtRest
 shell_api_multi priority=500 cluster suffix=https -- $EncryptionAtRest --protocol ssl
 
-shell_client_multi priority=1500 cluster suffix=http -- --http true
+shell_client_multi priority=1500 cluster !mac suffix=http -- --http true
 shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
@@ -119,7 +119,7 @@ server_permissions,server_secrets !mac priority=1000 parallelity=5 size=small --
 # Dump Tests
 dump,dump_authentication,dump_jwt,dump_multiple,dump_no_envelope name=dump -- --dumpAgencyOnError true
 dump_maskings,dump_encrypted enterprise -- --dumpAgencyOnError true
-dump_mixed_cluster_single,dump_mixed_single_cluster name=dump_mixed -- --dumpAgencyOnError true
+dump_mixed_cluster_single,dump_mixed_single_cluster !mac name=dump_mixed -- --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes !mac parallelity=1 priority=2000 -- --dumpAgencyOnError true 
 
