@@ -22,25 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <vector>
+#include "Pregel/PregelOptions.h"
 
-#include "Pregel/DatabaseTypes.h"
-#include "Pregel/GraphStore/PregelShard.h"
+#include "Pregel/GraphStore/GraphByCollections.h"
+
+#include "Basics/ErrorT.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb::pregel {
-struct LoadableVertexShard {
-  PregelShard pregelShard;
-  ShardID vertexShard;
-  ServerID responsibleServer;
-  CollectionName collectionName;
-  std::vector<ShardID> edgeShards;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, LoadableVertexShard& x) {
-  return f.object(x).fields(f.field("pregelShard", x.pregelShard),
-                            f.field("vertexShard", x.vertexShard),
-                            f.field("responsibleServer", x.responsibleServer),
-                            f.field("collectionName", x.collectionName),
-                            f.field("edgeShards", x.edgeShards));
+
+auto resolveGraphSourceToGraphByCollections(TRI_vocbase_t& vocbase,
+                                            GraphSource graphSource,
+                                            std::string shardKeyAttribute)
+    -> errors::ErrorT<Result, GraphByCollections>;
 }
-}  // namespace arangodb::pregel
