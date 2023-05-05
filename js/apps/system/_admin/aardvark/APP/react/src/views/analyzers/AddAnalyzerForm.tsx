@@ -16,7 +16,11 @@ const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP).map(type => {
   };
 });
 
-export const AddAnalyzerForm = () => {
+export const AddAnalyzerForm = ({
+  initialFocusRef
+}: {
+  initialFocusRef?: React.RefObject<HTMLInputElement>;
+}) => {
   useReinitializeForm();
   const [analyzerTypeField] = useField<AnalyzerTypes>("type");
   const { isFormDisabled: isDisabled } = useAnalyzersContext();
@@ -28,6 +32,8 @@ export const AddAnalyzerForm = () => {
         <Divider />
         <Grid templateColumns={"1fr 1fr"} columnGap="4">
           <InputControl
+            ref={initialFocusRef}
+            autoFocus
             isDisabled={isDisabled}
             name="name"
             label="Analyzer name"
