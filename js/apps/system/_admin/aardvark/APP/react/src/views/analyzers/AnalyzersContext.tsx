@@ -6,8 +6,8 @@ type AnalyzersContextType = {
   analyzers: AnalyzerDescription[] | undefined;
   showSystemAnalyzers: boolean;
   setShowSystemAnalyzers: (value: boolean) => void;
-  initialValues: { [key: string]: any };
-  setInitialValues: (value: { [key: string]: any }) => void;
+  initialValues: AnalyzerDescription;
+  setInitialValues: (value: AnalyzerDescription) => void;
   viewAnalyzerName: string;
   setViewAnalyzerName: (value: string) => void;
   isFormDisabled: boolean;
@@ -19,13 +19,13 @@ const AnalyzersContext = createContext<AnalyzersContextType>(
 export const AnalyzersProvider = ({ children }: { children: ReactNode }) => {
   const [viewAnalyzerName, setViewAnalyzerName] = React.useState<string>("");
   const [showSystemAnalyzers, setShowSystemAnalyzers] = React.useState(false);
-  const [initialValues, setInitialValues] = React.useState<{
-    [key: string]: any;
-  }>({
-    name: "",
-    type: "identity",
-    features: []
-  });
+  const [initialValues, setInitialValues] = React.useState<AnalyzerDescription>(
+    {
+      name: "",
+      type: "identity",
+      features: []
+    }
+  );
   const { analyzers } = useFetchAnalyzers();
   const isFormDisabled = !!viewAnalyzerName;
   return (

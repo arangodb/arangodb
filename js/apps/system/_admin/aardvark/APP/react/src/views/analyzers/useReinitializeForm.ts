@@ -1,3 +1,4 @@
+import { AnalyzerDescription } from "arangojs/analyzer";
 import { useField } from "formik";
 import { useEffect } from "react";
 import { useAnalyzersContext } from "./AnalyzersContext";
@@ -19,8 +20,8 @@ export const useReinitializeForm = () => {
       // adding features which are already set
       features: featuresField.value
     };
-    
-    setInitialValues(initialValues);
+    // todo - remove after arangojs types are updated
+    setInitialValues(initialValues as AnalyzerDescription);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [field.value]);
