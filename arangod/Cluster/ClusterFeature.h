@@ -127,6 +127,10 @@ class ClusterFeature : public ArangodFeature {
     TRI_ASSERT(_followersWrongChecksumCounter != nullptr);
     return *_followersWrongChecksumCounter;
   }
+  metrics::Counter& followersTotalRebuildCounter() {
+    TRI_ASSERT(_followersTotalRebuildCounter != nullptr);
+    return *_followersTotalRebuildCounter;
+  }
   metrics::Counter& syncTreeRebuildCounter() {
     TRI_ASSERT(_syncTreeRebuildCounter != nullptr);
     return *_syncTreeRebuildCounter;

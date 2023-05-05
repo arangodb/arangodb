@@ -656,7 +656,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     r = handleCollectionsAndViews(pair.first, views, incremental);
 
     if (r.fail()) {
-      LOG_TOPIC("12556", DEBUG, Logger::REPLICATION)
+      LOG_TOPIC("12556", WARN, Logger::REPLICATION)
           << "Error during initial sync: " << r.errorMessage();
     }
 
@@ -728,7 +728,7 @@ bool DatabaseInitialSyncer::isAborted() const {
 
     if (now - _lastCancellationCheck >= checkFrequency) {
       _lastCancellationCheck = now;
-      if (_checkCancellation()) {
+      if (_checkCancellation(*this)) {
         return true;
       }
     }
@@ -1844,6 +1844,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> ranges =
       treeLeader->diff(*treeLocal);
+
   if (ranges.empty()) {
     // no differences, done!
     setProgress("no differences between two revision trees, ending");
@@ -1902,6 +1903,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
                             "?collection=" + urlEncode(leaderColl) +
                             "&serverId=" + _state.localServerIdString +
                             "&batchId=" + std::to_string(_config.batch.id);
+    TRI_ASSERT(!ranges.empty());
     RevisionId requestResume{ranges[0].first};  // start with beginning
     RevisionId iterResume = requestResume;
     std::size_t chunk = 0;
