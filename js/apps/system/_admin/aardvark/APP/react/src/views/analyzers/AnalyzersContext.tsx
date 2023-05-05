@@ -8,12 +8,15 @@ type AnalyzersContextType = {
   setShowSystemAnalyzers: (value: boolean) => void;
   initialValues: { [key: string]: any };
   setInitialValues: (value: { [key: string]: any }) => void;
+  viewAnalyzerName: string;
+  setViewAnalyzerName: (value: string) => void;
 };
 const AnalyzersContext = createContext<AnalyzersContextType>(
   {} as AnalyzersContextType
 );
 
 export const AnalyzersProvider = ({ children }: { children: ReactNode }) => {
+  const [viewAnalyzerName, setViewAnalyzerName] = React.useState<string>("");
   const [showSystemAnalyzers, setShowSystemAnalyzers] = React.useState(false);
   const [initialValues, setInitialValues] = React.useState<{
     [key: string]: any;
@@ -30,7 +33,9 @@ export const AnalyzersProvider = ({ children }: { children: ReactNode }) => {
         showSystemAnalyzers,
         setShowSystemAnalyzers,
         initialValues,
-        setInitialValues
+        setInitialValues,
+        viewAnalyzerName,
+        setViewAnalyzerName
       }}
     >
       {children}
