@@ -737,26 +737,17 @@ void Conductor::persistPregelState(ExecutionState state) {
     serialize(builder, conductorStatus);
   };
 
-  if (_state == ExecutionState::DONE) {
-    // TODO: What I wanted to do here is to just use the already available
-    // toVelocyPack() method. This fails currently because of the lock:
-    // "[void arangodb::Mutex::lock()]: _holder != Thread::currentThreadId()"
-    // Therefore, for now - do it manually. Let's clean this up ASAP.
-    // this->toVelocyPack(stateBuilder);
-    // After this works, we can remove all of that code below (same scope).
-    // Including those lambda helper methods.
-
-    stateBuilder.openObject();  // opens main builder
-    addMinimalOutputToBuilder(stateBuilder);
-    addAdditionalOutputToBuilder(stateBuilder);
-    stateBuilder.close();  // closes main builder
-  } else {
-    // minimalistic update during runs or errors (cancel, fatal)
-    // TODO: We should introduce an inspector here as well.
-    stateBuilder.openObject();  // opens main builder
-    addMinimalOutputToBuilder(stateBuilder);
-    stateBuilder.close();  // closes main builder
-  }
+  // TODO: What I wanted to do here is to just use the already available
+  // toVelocyPack() method. This fails currently because of the lock:
+  // "[void arangodb::Mutex::lock()]: _holder != Thread::currentThreadId()"
+  // Therefore, for now - do it manually. Let's clean this up ASAP.
+  // this->toVelocyPack(stateBuilder);
+  // After this works, we can remove all of that code below (same scope).
+  // Including those lambda helper methods.
+  stateBuilder.openObject();  // opens main builder
+  addMinimalOutputToBuilder(stateBuilder);
+  addAdditionalOutputToBuilder(stateBuilder);
+  stateBuilder.close();  // closes main builder
 
   TRI_ASSERT(state != ExecutionState::DEFAULT);
   auto updateResult = cWriter.updateResult(stateBuilder.slice());
