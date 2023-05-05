@@ -75,7 +75,8 @@ auto Storing<V, E, M>::receive(actor::ActorPID const& sender,
                       "caught unknown exception when storing graph"};
       }
     };
-
+    dispatcher.dispatchMetrics(
+        arangodb::pregel::metrics::message::WorkerStoringFinished{});
     dispatcher.dispatchConductor(graphStored());
 
     return std::make_unique<Stored<V, E, M>>(self, worker);

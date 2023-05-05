@@ -55,21 +55,12 @@ auto ProducingResults<V, E, M>::receive(
   if (std::holds_alternative<worker::message::ProduceResults>(message)) {
     auto msg = std::get<worker::message::ProduceResults>(message);
 
-    auto getResults = [this, msg]() -> ResultT<PregelResults> {
-      std::function<void()> statusUpdateCallback = [] {
-        // TODO GORDO-1584 send update to status actor
-        // this->template dispatch<conductor::message::ConductorMessages>(
-        //     worker.conductor,
-        //     conductor::message::StatusUpdate{
-        //         .executionNumber = worker.config->executionNumber(),
-        //         .status = worker.observeStatus()});
-      };
+auto getResults = [this, msg]() -> ResultT<PregelResults> {
       try {
         auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
-            msg.withID, worker.config, worker.algorithm->inputFormat(),
-            std::move(statusUpdateCallback));
+            msg.withID, worker.config,
+            worker.algorithm->inputFormat());
         storer->store(worker.magazine).get();
-
         return PregelResults{*storer->stealResult()};
       } catch (std::exception const& ex) {
         return Result{TRI_ERROR_INTERNAL,
@@ -80,6 +71,7 @@ auto ProducingResults<V, E, M>::receive(
                       "caught unknown exception when receiving results"};
       }
     };
+
     auto results = getResults();
     dispatcher.dispatchResult(
         pregel::message::SaveResults{.results = {results}});

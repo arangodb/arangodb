@@ -59,7 +59,7 @@ auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
 
   if (std::holds_alternative<worker::message::LoadGraph>(message)) {
     auto msg = std::get<worker::message::LoadGraph>(message);
-    worker.outCache->setResponsibleActorPerShard(msg.responsibleActorPerShard);
+    worker.responsibleActorPerShard = msg.responsibleActorPerShard;
 
     dispatcher.dispatchMetrics(
         arangodb::pregel::metrics::message::WorkerLoadingStarted{});
@@ -67,12 +67,12 @@ auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
     auto graphLoaded =
         [this, dispatcher]() -> ResultT<conductor::message::GraphLoaded> {
       try {
-        auto loader = GraphLoader(
+        auto loader = std::make_shared<GraphLoader<V, E>>(
             worker.config, worker.algorithm->inputFormat(),
             ActorLoadingUpdate{
                 .fn = [dispatcher](pregel::message::GraphLoadingUpdate update)
                     -> void { dispatcher.dispatchStatus(update); }});
-        worker.magazine = loader.load().get();
+        worker.magazine = loader->load().get();
 
         LOG_TOPIC("5206c", WARN, Logger::PREGEL)
             << fmt::format("Worker {} has finished loading.", self);

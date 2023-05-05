@@ -39,6 +39,8 @@
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
 #include "Pregel/Algos/DMID/DMIDMessage.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Pregel/Worker/VertexProcessor.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -57,27 +59,27 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
   if (std::holds_alternative<worker::message::PregelMessage>(message)) {
     auto msg = std::get<worker::message::PregelMessage>(message);
 
-    if (msg.gss != worker.config->globalSuperstep() &&
-        msg.gss != worker.config->globalSuperstep() + 1) {
-      LOG_TOPIC("da39a", ERR, Logger::PREGEL)
-          << "Expected: " << worker.config->globalSuperstep()
-          << " Got: " << msg.gss;
-      dispatcher.dispatchConductor(
-          ResultT<conductor::message::GlobalSuperStepFinished>::error(
-              TRI_ERROR_BAD_PARAMETER, "Superstep out of sync"));
-    }
-    // queue message if read and write cache are not swapped yet, otherwise
-    // you will lose this message
-    if (msg.gss == worker.config->globalSuperstep() + 1 ||
-        // if config->gss == 0 and _computationStarted == false: read and
-        // write cache are not swapped yet, config->gss is currently 0 only
-        // due to its initialization
-        (worker.config->globalSuperstep() == 0 &&
-         !worker.computationStarted)) {
-      worker.messagesForNextGss.push_back(msg);
-    } else {
+    if (msg.gss == worker.config->globalSuperstep()) {
       worker.writeCache->parseMessages(msg);
+
+      return nullptr;
     }
+
+    // if message is for next superstep, resend it (because this worker is
+    // still waiting for missing messages in current superstep)
+    if (msg.gss == worker.config->globalSuperstep() + 1) {
+      dispatcher.dispatchSelf(message);
+
+      return nullptr;
+    }
+
+    // otherwise something bad happened
+    LOG_TOPIC("da39a", ERR, Logger::PREGEL)
+        << "Expected: " << worker.config->globalSuperstep()
+        << " Got: " << msg.gss;
+    dispatcher.dispatchConductor(
+        ResultT<conductor::message::GlobalSuperStepFinished>::error(
+            TRI_ERROR_BAD_PARAMETER, "Superstep out of sync"));
 
     return nullptr;
   }
@@ -101,9 +103,15 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
     }
 
     // check if worker received all messages send to it from other workers
-    // if not: send message back to itself such that in between it can receive
-    // missing messages
-    if (msg.sendCount != worker.writeCache->containedMessageCount()) {
+    // if not: send RunGlobalsuperstep back to itself such that in between it
+    // can receive missing messages
+    if (msg.gss != 0 &&
+        msg.sendCount != worker.writeCache->containedMessageCount()) {
+      LOG_TOPIC("097be", WARN, Logger::PREGEL) << fmt::format(
+          "Worker Actor {} in gss {} is waiting for messages: received count "
+          "{} != send count {}",
+          this->self, worker.config->_globalSuperstep, msg.sendCount,
+          worker.writeCache->containedMessageCount());
       if (not worker.isWaitingForAllMessagesSince.has_value()) {
         worker.isWaitingForAllMessagesSince = std::chrono::steady_clock::now();
       }
@@ -115,9 +123,9 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
                 TRI_ERROR_INTERNAL,
                 fmt::format("Worker {} received {} messages in gss {} after "
                             "timeout, although {} were send to it.",
-                            self, worker.writeCache->containedMessageCount(),
-                            msg.gss, msg.sendCount)));
-
+                            this->self,
+                            worker.writeCache->containedMessageCount(), msg.gss,
+                            msg.sendCount)));
         return nullptr;
       }
       dispatcher.dispatchSelf(message);
@@ -127,16 +135,10 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
 
     worker.isWaitingForAllMessagesSince = std::nullopt;
 
-    prepareGlobalSuperStep(std::move(msg), dispatcher.dispatchOther);
-
-    // resend all queued messages that were dedicated to this gss
-    for (auto const& nextGssMsg : worker.messagesForNextGss) {
-      dispatcher.dispatchSelf(nextGssMsg);
-    }
-    worker.messagesForNextGss.clear();
-
-    auto verticesProcessed = processVertices(dispatcher.dispatchStatus);
+    prepareGlobalSuperStep(std::move(msg));
+    auto verticesProcessed = processVertices(dispatcher);
     auto out = finishProcessing(verticesProcessed, dispatcher.dispatchStatus);
+
     dispatcher.dispatchConductor(
         ResultT<conductor::message::GlobalSuperStepFinished>::success(
             std::move(out)));
@@ -167,23 +169,18 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
 
 template<typename V, typename E, typename M>
 auto Computing<V, E, M>::prepareGlobalSuperStep(
-    message::RunGlobalSuperStep message, DispatchOther const& dispatchOther)
-    -> void {
-  // write cache becomes the readable cache
-  worker.outCache->setDispatch(dispatchOther);
-  TRI_ASSERT(worker.readCache->containedMessageCount() == 0);
-  std::swap(worker.readCache, worker.writeCache);
+    message::RunGlobalSuperStep message) -> void {
   worker.config->_globalSuperstep = message.gss;
   worker.config->_localSuperstep = message.gss;
-  if (message.gss == 0) {
-    // now config.gss is set explicitely to 0 and the computation started
-    worker.computationStarted = true;
-  }
 
   worker.workerContext->_vertexCount = message.vertexCount;
   worker.workerContext->_edgeCount = message.edgeCount;
   if (message.gss == 0) {
     worker.workerContext->preApplication();
+  } else {
+    TRI_ASSERT(worker.readCache->containedMessageCount() == 0);
+    // write cache becomes the readable cache
+    std::swap(worker.readCache, worker.writeCache);
   }
   worker.workerContext->_writeAggregators->resetValues();
   worker.workerContext->_readAggregators->setAggregatedValues(
@@ -192,78 +189,92 @@ auto Computing<V, E, M>::prepareGlobalSuperStep(
 }
 
 template<typename V, typename E, typename M>
-auto Computing<V, E, M>::processVertices(DispatchStatus const& dispatchStatus)
+auto Computing<V, E, M>::processVertices(Dispatcher const& dispatcher)
     -> VerticesProcessed {
-  double start = TRI_microtime();
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  auto futures = std::vector<futures::Future<ActorVertexProcessorResult>>();
+  auto quiverIdx = std::make_shared<std::atomic<size_t>>(0);
 
-  InCache<M>* inCache = worker.inCache.get();
-  OutCache<M>* outCache = worker.outCache.get();
-  outCache->setBatchSize(worker.messageBatchSize);
-  outCache->setLocalCache(inCache);
+  for (auto futureN = size_t{0}; futureN < worker.config->parallelism();
+       ++futureN) {
+    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+        RequestLane::INTERNAL_LOW, [this, quiverIdx, futureN, dispatcher]() {
+          auto processor = ActorVertexProcessor<V, E, M>(
+              worker.config, worker.algorithm, worker.workerContext,
+              worker.messageCombiner, worker.messageFormat,
+              [dispatcher](actor::ActorPID actor,
+                           worker::message::PregelMessage message) -> void {
+                dispatcher.dispatchOther(actor, message);
+              },
+              worker.responsibleActorPerShard);
 
-  AggregatorHandler workerAggregator(worker.algorithm.get());
+          while (true) {
+            auto myCurrentQuiver = quiverIdx->fetch_add(1);
+            if (myCurrentQuiver >= worker.magazine.size()) {
+              LOG_TOPIC("eef15", DEBUG, Logger::PREGEL) << fmt::format(
+                  "No more work left in vertex processor number {}", futureN);
+              break;
+            }
+            for (auto& vertex : *worker.magazine.quivers.at(myCurrentQuiver)) {
+              auto messages =
+                  worker.readCache->getMessages(vertex.shard(), vertex.key());
+              auto status = processor.process(&vertex, messages);
 
-  std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
-      worker.algorithm->createComputation(worker.config));
-  initializeVertexContext(vertexComputation.get());
-  vertexComputation->_writeAggregators = &workerAggregator;
-  vertexComputation->_cache = outCache;
+              if (status.verticesProcessed %
+                      Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+                  0) {
+                dispatcher.dispatchStatus(
+                    pregel::message::GlobalSuperStepUpdate{
+                        .gss = worker.config->globalSuperstep(),
+                        .verticesProcessed = status.verticesProcessed,
+                        .messagesSent = status.messageStats.sendCount,
+                        .messagesReceived = status.messageStats.receivedCount,
+                        .memoryBytesUsedForMessages =
+                            status.messageStats.memoryBytesUsedForMessages});
+              }
+            }
+          }
 
-  size_t verticesProcessed = 0;
-  size_t activeCount = 0;
-  for (auto& quiver : worker.magazine) {
-    for (auto& vertexEntry : *quiver) {
-      MessageIterator<M> messages = worker.readCache->getMessages(
-          vertexEntry.shard(), vertexEntry.key());
-      worker.messageStats.receivedCount += messages.size();
-      worker.messageStats.memoryBytesUsedForMessages +=
-          messages.size() * sizeof(M);
+          processor.outCache->flushMessages();
+          worker.writeCache->mergeCache(processor.localMessageCache.get());
 
-      if (messages.size() > 0 || vertexEntry.active()) {
-        vertexComputation->_vertexEntry = &vertexEntry;
-        vertexComputation->compute(messages);
-        if (vertexEntry.active()) {
-          activeCount++;
-        }
-      }
-
-      worker.messageStats.sendCount = outCache->sendCount();
-      verticesProcessed++;
-      if (verticesProcessed %
-              Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
-          0) {
-        dispatchStatus(pregel::message::GlobalSuperStepUpdate{
-            .gss = worker.config->globalSuperstep(),
-            .verticesProcessed = verticesProcessed,
-            .messagesSent = worker.messageStats.sendCount,
-            .messagesReceived = worker.messageStats.receivedCount,
-            .memoryBytesUsedForMessages =
-                worker.messageStats.memoryBytesUsedForMessages});
-      }
-    }
+          return processor.result();
+        }));
   }
 
-  outCache->flushMessages();
+  return futures::collectAll(std::move(futures))
+      .then([this](auto&& tryResults) {
+        auto verticesProcessed = VerticesProcessed{};
+        // TODO: exception handling
+        auto&& results = tryResults.get();
+        for (auto&& tryRes : results) {
+          // TODO: exception handling
+          auto&& res = tryRes.get();
 
-  worker.writeCache->mergeCache(inCache);
-  worker.messageStats.superstepRuntimeSecs = TRI_microtime() - start;
+          worker.workerContext->_writeAggregators->aggregateValues(
+              *res.workerAggregator);
+          worker.messageStats.accumulate(res.messageStats);
+          // TODO why does the VertexProcessor not count receivedCount
+          // correctly?
+          worker.messageStats.receivedCount =
+              worker.readCache->containedMessageCount();
 
-  auto out =
-      VerticesProcessed{.sendCountPerActor = outCache->sendCountPerActor(),
-                        .activeCount = activeCount};
-
-  inCache->clear();
-  outCache->clear();
-
-  worker.workerContext->_writeAggregators->aggregateValues(workerAggregator);
-
-  return out;
+          verticesProcessed.activeCount += res.activeCount;
+          for (auto const& [actor, count] : res.sendCountPerActor) {
+            verticesProcessed.sendCountPerActor[actor] += count;
+          }
+        }
+        return verticesProcessed;
+      })
+      .get();
 }
 
 template<typename V, typename E, typename M>
 auto Computing<V, E, M>::finishProcessing(VerticesProcessed verticesProcessed,
                                           DispatchStatus const& dispatchStatus)
     -> conductor::message::GlobalSuperStepFinished {
+  // _feature.metrics()->pregelWorkersRunningNumber->fetch_sub(1);
+
   worker.workerContext->postGlobalSuperstep(worker.config->_globalSuperstep);
 
   // all vertices processed
@@ -285,12 +296,13 @@ auto Computing<V, E, M>::finishProcessing(VerticesProcessed verticesProcessed,
   }
   std::vector<conductor::message::SendCountPerActor> sendCountList;
   sendCountList.reserve(verticesProcessed.sendCountPerActor.size());
-  for (auto const& [actor, count] : verticesProcessed.sendCountPerActor) {
+for (auto const& [actor, count] : verticesProcessed.sendCountPerActor) {
     sendCountList.emplace_back(conductor::message::SendCountPerActor{
         .receiver = actor, .sendCount = count});
   }
   auto gssFinishedEvent = conductor::message::GlobalSuperStepFinished{
-      worker.messageStats,
+      worker.messageStats.sendCount,
+      worker.messageStats.receivedCount,
       sendCountList,
       verticesProcessed.activeCount,
       worker.magazine.numberOfVertices(),
@@ -307,14 +319,6 @@ auto Computing<V, E, M>::finishProcessing(VerticesProcessed verticesProcessed,
       << fmt::format("Message batch size: {}", worker.messageBatchSize);
 
   return gssFinishedEvent;
-}
-
-template<typename V, typename E, typename M>
-void Computing<V, E, M>::initializeVertexContext(VertexContext<V, E, M>* ctx) {
-  ctx->_gss = worker.config->globalSuperstep();
-  ctx->_lss = worker.config->localSuperstep();
-  ctx->_context = worker.workerContext.get();
-  ctx->_readAggregators = worker.workerContext->_readAggregators.get();
 }
 
 // template types to create

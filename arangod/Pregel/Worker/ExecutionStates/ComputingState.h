@@ -47,14 +47,12 @@ struct Computing : ExecutionState {
                message::WorkerMessages const& message, Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> override;
 
-  auto prepareGlobalSuperStep(message::RunGlobalSuperStep message,
-                              DispatchOther const& dispatchOther) -> void;
-  auto processVertices(DispatchStatus const& dispatchStatus)
+  auto prepareGlobalSuperStep(message::RunGlobalSuperStep message) -> void;
+  auto processVertices(Dispatcher const& dispatcher)
       -> VerticesProcessed;
   auto finishProcessing(VerticesProcessed verticesProcessed,
                         DispatchStatus const& dispatchStatus)
       -> conductor::message::GlobalSuperStepFinished;
-  void initializeVertexContext(VertexContext<V, E, M>* ctx);
 
   actor::ActorPID self;
   WorkerState<V, E, M>& worker;
