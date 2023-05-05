@@ -167,7 +167,7 @@ class BufferHeapSortContext {
   size_t _numScoreRegisters;
   std::span<std::pair<size_t, bool> const> _scoresSort;
   std::span<float_t const> _scoreBuffer;
-};  //  BufferHeapSortContext
+};
 
 }  // namespace
 
@@ -413,10 +413,6 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     // now last contains "free" index in the buffer
     _keyBuffer[_rows.back()] = BufferValueType{snapshot, std::move(value)};
     auto const base = _rows.back() * _numScoreRegisters;
-    if (threshold) {
-      TRI_ASSERT(threshold->value <= scores[0]);
-      threshold->value = scores[0];
-    }
     size_t i{0};
     auto bufferIt = _scoreBuffer.begin() + base;
     for (; i < scores.size(); ++i) {
@@ -428,6 +424,11 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
       ++bufferIt;
     }
     std::push_heap(_rows.begin(), _rows.end(), sortContext);
+    if (threshold) {
+      TRI_ASSERT(threshold->min <=
+                 _scoreBuffer[_rows.front() * _numScoreRegisters]);
+      threshold->min = _scoreBuffer[_rows.front() * _numScoreRegisters];
+    }
   } else {
     _keyBuffer.emplace_back(snapshot, std::move(value));
     size_t i = 0;
@@ -1149,7 +1150,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
   irs::doc_iterator::ptr itr;
   irs::document const* doc{};
   irs::score_threshold* threshold{};
-  float threshold_value = 0.f;
+  irs::score_t threshold_value = 0.f;
   size_t numScores{0};
   irs::score const* scr;
   for (size_t readerOffset = 0; readerOffset < count;) {
@@ -1173,9 +1174,11 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
         } else {
           numScores = scores.size();
           threshold = irs::get_mutable<irs::score_threshold>(itr.get());
-          if (threshold != nullptr) {
-            TRI_ASSERT(threshold->value == 0.f);
-            threshold->value = threshold_value;
+          if (threshold != nullptr && this->_wand.Enabled()) {
+            TRI_ASSERT(threshold->min == 0.f);
+            threshold->min = threshold_value;
+          } else {
+            threshold = nullptr;
           }
         }
       }
@@ -1184,8 +1187,8 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
     }
     if (!itr->next()) {
       if (threshold != nullptr) {
-        TRI_ASSERT(threshold_value <= threshold->value);
-        threshold_value = threshold->value;
+        TRI_ASSERT(threshold_value <= threshold->min);
+        threshold_value = threshold->min;
       }
       ++readerOffset;
       itr.reset();

@@ -156,7 +156,7 @@ function followingTermIdSuite() {
         // wait for everything to get back into sync
         switchConnectionToCoordinator(collInfo);
         assertEqual(1, db._collection(cn).count());
-        waitForShardsInSync(cn, 120); 
+        waitForShardsInSync(cn, 120, 1); 
 
         switchConnectionToFollower(collInfo);
         assertEqual(1, db._collection(collInfo.shard).count());
@@ -212,7 +212,7 @@ function followingTermIdSuite() {
         // wait for everything to get back into sync
         switchConnectionToCoordinator(collInfo);
         assertEqual(1, db._collection(cn).count());
-        waitForShardsInSync(cn, 120); 
+        waitForShardsInSync(cn, 120, 1); 
 
         switchConnectionToFollower(collInfo);
         assertEqual(1, db._collection(collInfo.shard).count());

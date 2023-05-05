@@ -209,7 +209,6 @@ class AgencyPrecondition {
  public:
   enum class Type { NONE, EMPTY, VALUE, TIN, NOTIN, INTERSECTION_EMPTY };
 
- public:
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
@@ -238,11 +237,9 @@ class AgencyPrecondition {
     value = builder->slice();
   }
 
- public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
 
- public:
   std::string key;
   Type type;
   bool empty;
@@ -318,12 +315,10 @@ class AgencyOperation {
                   AgencyValueOperationType opType, velocypack::Slice newValue,
                   velocypack::Slice oldValue);
 
- public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
   AgencyOperationType type() const;
 
- public:
   uint64_t _ttl = 0;
 
  private:
@@ -351,7 +346,6 @@ class AgencyCommResult {
   AgencyCommResult(AgencyCommResult&& other) noexcept;
   AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
 
- public:
   void set(rest::ResponseCode code, std::string message);
 
   [[nodiscard]] bool successful() const {
@@ -393,7 +387,6 @@ class AgencyCommResult {
                           std::optional<std::string_view>>
   parseBodyError() const;
 
- public:
   std::string _location = "";
   std::string _message = "";
 
@@ -657,7 +650,6 @@ class AgencyComm {
 
   bool shouldInitializeStructure();
 
- private:
   ArangodServer& _server;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };

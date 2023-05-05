@@ -29,6 +29,7 @@
 #include "Actor/ActorPID.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/CollectionSpecifications.h"
+#include "Pregel/GraphStore/Magazine.h"
 #include "Pregel/GraphStore/Quiver.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
@@ -77,19 +78,11 @@ struct WorkerState {
       writeCache = std::make_unique<CombiningInCache<M>>(
           config->localPregelShardIDs(), messageFormat.get(),
           messageCombiner.get());
-      inCache = std::make_unique<CombiningInCache<M>>(
-          std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
-      outCache = std::make_unique<CombiningOutActorCache<M>>(
-          config, messageFormat.get(), messageCombiner.get());
     } else {
       readCache = std::make_unique<ArrayInCache<M>>(
           config->localPregelShardIDs(), messageFormat.get());
       writeCache = std::make_unique<ArrayInCache<M>>(
           config->localPregelShardIDs(), messageFormat.get());
-      inCache = std::make_unique<ArrayInCache<M>>(std::set<PregelShard>{},
-                                                  messageFormat.get());
-      outCache =
-          std::make_unique<ArrayOutActorCache<M>>(config, messageFormat.get());
     }
   }
 
@@ -98,20 +91,14 @@ struct WorkerState {
   // only needed in computing state
   std::unique_ptr<WorkerContext> workerContext;
   std::chrono::seconds messageTimeout;
-  std::vector<worker::message::PregelMessage> messagesForNextGss;
-  // distinguishes config.globalSuperStep being initialized to 0 and
-  // config.globalSuperStep being explicitely set to 0 when the first superstep
-  // starts: needed to process incoming messages in its dedicated gss
-  bool computationStarted = false;
   std::optional<std::chrono::steady_clock::time_point>
       isWaitingForAllMessagesSince;
   std::unique_ptr<MessageFormat<M>> messageFormat;
   std::unique_ptr<MessageCombiner<M>> messageCombiner;
   std::unique_ptr<InCache<M>> readCache = nullptr;
   std::unique_ptr<InCache<M>> writeCache = nullptr;
-  std::unique_ptr<InCache<M>> inCache = nullptr;
-  std::unique_ptr<OutCache<M>> outCache = nullptr;
   uint32_t messageBatchSize = 500;
+  std::unordered_map<ShardID, actor::ActorPID> responsibleActorPerShard;
 
   std::unique_ptr<ExecutionState> executionState;
   const actor::ActorPID conductor;

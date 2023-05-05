@@ -39,6 +39,8 @@
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/StatusMessages.h"
 #include "Pregel/MetricsMessages.h"
+#include "Pregel/Worker/VertexProcessor.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Pregel/Worker/ExecutionStates/State.h"
 #include "Pregel/Worker/ExecutionStates/CleanedUpState.h"
 
@@ -120,12 +122,24 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
   // ----- computing -----
   auto operator()(message::RunGlobalSuperStep message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    LOG_TOPIC("0f658", INFO, Logger::PREGEL)
-        << fmt::format("Worker Actor {} is computing", this->self);
+    LOG_TOPIC("0f658", INFO, Logger::PREGEL) << fmt::format(
+        "Worker Actor {} starts computing gss {}", this->self, message.gss);
+
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerGssStarted{.threadsAdded =
+                                                                 1});
 
     auto newState =
         this->state->executionState->receive(this->sender, message, dispatcher);
     changeState(std::move(newState));
+
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerGssFinished{
+            .threadsRemoved = 1,
+            .messagesSent = this->state->messageStats.sendCount,
+            .messagesReceived = this->state->messageStats.receivedCount});
 
     return std::move(this->state);
   }

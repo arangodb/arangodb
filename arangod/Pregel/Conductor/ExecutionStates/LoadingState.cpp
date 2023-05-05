@@ -44,13 +44,32 @@ auto Loading::receive(actor::ActorPID sender,
     -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::GraphLoaded>>(message)) {
-  }
-  auto workerCreated = std::get<ResultT<message::GraphLoaded>>(message);
-  if (not workerCreated.ok()) {
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .errorMessage =
+                    fmt::format("In {}: Received unexpected message {} from {}",
+                                name(), inspection::json(message), sender)},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
+                .previousState =
+                    pregel::metrics::message::PreviousState::LOADING},
+        .newState = std::move(newState)};
+  }
+  auto graphLoaded = std::get<ResultT<message::GraphLoaded>>(message);
+  if (not graphLoaded.ok()) {
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .errorMessage = fmt::format(
+                    "In {}: Received error {} from {}", name(),
+                    inspection::json(graphLoaded.errorMessage()), sender)},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
                 .previousState =
@@ -58,8 +77,8 @@ auto Loading::receive(actor::ActorPID sender,
         .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);
-  totalVerticesCount += workerCreated.get().vertexCount;
-  totalEdgesCount += workerCreated.get().edgeCount;
+  totalVerticesCount += graphLoaded.get().vertexCount;
+  totalEdgesCount += graphLoaded.get().edgeCount;
 
   if (respondedWorkers == conductor.workers) {
     auto masterContext = conductor.algorithm->masterContextUnique(
@@ -68,7 +87,7 @@ auto Loading::receive(actor::ActorPID sender,
         conductor.specifications.userParameters.slice());
     auto newState = std::make_unique<Computing>(
         conductor, std::move(masterContext),
-        std::unordered_map<actor::ActorPID, uint64_t>{});
+        std::unordered_map<actor::ActorPID, uint64_t>{}, 0, 0);
     auto stateName = newState->name();
     return StateChange{
         .statusMessage =

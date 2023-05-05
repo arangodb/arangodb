@@ -100,9 +100,6 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
 
   auto operator()(ResultT<message::GlobalSuperStepFinished> message)
       -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("543aa", INFO, Logger::PREGEL) << fmt::format(
-        "Conductor Actor: Global super step finished on worker {}",
-        this->sender);
     auto stateChange =
         this->state->executionState->receive(this->sender, std::move(message));
     if (stateChange.has_value()) {
@@ -141,6 +138,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     auto stateChange = this->state->executionState->receive(this->sender, msg);
     if (stateChange.has_value()) {
       changeState(std::move(stateChange.value()));
+      sendMessagesToWorkers();
     }
 
     this->template dispatch<pregel::message::ResultMessages>(
@@ -163,6 +161,8 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
       this->finish();
       this->template dispatch<pregel::message::SpawnMessages>(
           this->state->spawnActor, pregel::message::SpawnCleanup{});
+      this->template dispatch<pregel::message::StatusMessages>(
+          this->state->statusActor, pregel::message::Cleanup{});
     }
     return std::move(this->state);
   }
