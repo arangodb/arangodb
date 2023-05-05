@@ -1,20 +1,8 @@
-import { AqlConfig } from "./forms/AqlConfig";
-import { ClassificationConfig } from "./forms/ClassificationConfig";
-import { CollationConfig } from "./forms/CollationConfig";
-import { DelimiterConfig } from "./forms/DelimiterConfig";
-import { GeoJSONConfig } from "./forms/GeoJSONConfig";
-import { GeopointConfig } from "./forms/GeopointConfig";
-import { GeoS2Config } from "./forms/GeoS2Config";
-import { NearestNeighborsConfig } from "./forms/NearestNeighborsConfig";
-import { NgramConfig } from "./forms/NgramConfig";
-import { NormConfig } from "./forms/NormConfig";
-import { PipelineConfig } from "./forms/PipelineConfig";
-import { SegmentationConfig } from "./forms/SegmentationConfig";
-import { StemConfig } from "./forms/StemConfig";
-import { StopwordsConfig } from "./forms/StopwordsConfig";
-import { TextConfig } from "./forms/TextConfig";
+import { AnalyzerTypes, AnalyzerTypeState } from "./Analyzer.types";
 
-export const TYPE_TO_LABEL_MAP = {
+export const TYPE_TO_LABEL_MAP: {
+  [key in AnalyzerTypes]: string;
+} = {
   identity: "Identity",
   delimiter: "Delimiter",
   stem: "Stem",
@@ -33,32 +21,17 @@ export const TYPE_TO_LABEL_MAP = {
   geo_s2: "Geo S2"
 };
 
-export const ANALYZER_TYPE_TO_CONFIG_MAP = {
-  identity: null,
-  delimiter: DelimiterConfig,
-  stem: StemConfig,
-  norm: NormConfig,
-  ngram: NgramConfig,
-  text: TextConfig,
-  aql: AqlConfig,
-  stopwords: StopwordsConfig,
-  collation: CollationConfig,
-  segmentation: SegmentationConfig,
-  nearest_neighbors: NearestNeighborsConfig,
-  classification: ClassificationConfig,
-  pipeline: PipelineConfig,
-  geojson: GeoJSONConfig,
-  geopoint: GeopointConfig,
-  geo_s2: GeoS2Config
-};
-
-export const TYPE_TO_INITIAL_VALUES_MAP = {
+export const TYPE_TO_INITIAL_VALUES_MAP: {
+  [key in AnalyzerTypes]: AnalyzerTypeState;
+} = {
   identity: {
     type: "identity"
   },
   delimiter: {
     type: "delimiter",
-    delimiter: ""
+    properties: {
+      delimiter: ""
+    }
   },
   stem: {
     type: "stem",
@@ -122,7 +95,7 @@ export const TYPE_TO_INITIAL_VALUES_MAP = {
     type: "segmentation",
     properties: {
       case: "lower",
-      break: "aplha"
+      break: "alpha"
     }
   },
   nearest_neighbors: {

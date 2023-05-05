@@ -4,32 +4,50 @@ import { InputControl } from "../../../components/form/InputControl";
 import { SelectControl } from "../../../components/form/SelectControl";
 import { SwitchControl } from "../../../components/form/SwitchControl";
 import { TextareaControl } from "../../../components/form/TextareaControl";
+import { useAnalyzersContext } from "../AnalyzersContext";
 
-export const AqlConfig = () => {
+export const AqlConfig = ({
+  basePropertiesPath
+}: {
+  basePropertiesPath: string;
+}) => {
+  const { isFormDisabled: isDisabled } = useAnalyzersContext();
   return (
     <Grid templateColumns={"1fr 1fr 1fr"} columnGap="4" rowGap="4">
-      <TextareaControl name="properties.queryString" label="Query String" />
+      <TextareaControl
+        isDisabled={isDisabled}
+        name={`${basePropertiesPath}.queryString`}
+        label="Query String"
+      />
       <InputControl
-        name="properties.batchSize"
+        isDisabled={isDisabled}
+        name={`${basePropertiesPath}.batchSize`}
         label={"Batch Size"}
         inputProps={{
           type: "number"
         }}
       />
       <InputControl
-        name="properties.memoryLimit"
+        isDisabled={isDisabled}
+        name={`${basePropertiesPath}.memoryLimit`}
         label={"Memory Limit"}
         inputProps={{
           type: "number"
         }}
       />
       <SwitchControl
-        name="properties.collapsePositions"
+        isDisabled={isDisabled}
+        name={`${basePropertiesPath}.collapsePositions`}
         label={"Collapse Positions"}
       />
-      <SwitchControl name="properties.keepNull" label={"Keep Null"} />
+      <SwitchControl
+        isDisabled={isDisabled}
+        name={`${basePropertiesPath}.keepNull`}
+        label={"Keep Null"}
+      />
       <SelectControl
-        name="properties.returnType"
+        isDisabled={isDisabled}
+        name={`${basePropertiesPath}.returnType`}
         label="Return Type"
         selectProps={{
           options: [

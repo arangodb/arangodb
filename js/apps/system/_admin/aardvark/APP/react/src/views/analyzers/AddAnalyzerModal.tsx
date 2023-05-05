@@ -9,6 +9,7 @@ import {
   ModalHeader
 } from "../../components/modal";
 import { AddAnalyzerForm } from "./AddAnalyzerForm";
+import { AnalyzerJSONForm } from "./AnalyzerJSONForm";
 import { useAnalyzersContext } from "./AnalyzersContext";
 import { CopyAnalyzer } from "./CopyAnalyzer";
 
@@ -20,6 +21,7 @@ export const AddAnalyzerModal = ({
   onClose: () => void;
 }) => {
   const { initialValues } = useAnalyzersContext();
+  const [showJSONForm, setShowJSONForm] = React.useState(false);
   return (
     <Modal size="6xl" isOpen={isOpen} onClose={onClose}>
       <ModalHeader fontSize="sm" fontWeight="normal">
@@ -28,8 +30,15 @@ export const AddAnalyzerModal = ({
             Create Analyzer
           </Heading>
           <CopyAnalyzer />
-          <Button size="sm" colorScheme="gray" marginLeft="auto">
-            Show JSON Form
+          <Button
+            size="sm"
+            colorScheme="gray"
+            marginLeft="auto"
+            onClick={() => {
+              setShowJSONForm(!showJSONForm);
+            }}
+          >
+            {showJSONForm ? "Show form" : " Show JSON"}
           </Button>
         </Flex>
       </ModalHeader>
@@ -45,7 +54,7 @@ export const AddAnalyzerModal = ({
       >
         <Form>
           <ModalBody>
-            <AddAnalyzerForm />
+            {showJSONForm ? <AnalyzerJSONForm /> : <AddAnalyzerForm />}
           </ModalBody>
           <ModalFooter>
             <Stack direction="row" spacing={4} align="center">

@@ -10,6 +10,7 @@ type AnalyzersContextType = {
   setInitialValues: (value: { [key: string]: any }) => void;
   viewAnalyzerName: string;
   setViewAnalyzerName: (value: string) => void;
+  isFormDisabled: boolean;
 };
 const AnalyzersContext = createContext<AnalyzersContextType>(
   {} as AnalyzersContextType
@@ -26,6 +27,7 @@ export const AnalyzersProvider = ({ children }: { children: ReactNode }) => {
     features: []
   });
   const { analyzers } = useFetchAnalyzers();
+  const isFormDisabled = !!viewAnalyzerName;
   return (
     <AnalyzersContext.Provider
       value={{
@@ -35,7 +37,8 @@ export const AnalyzersProvider = ({ children }: { children: ReactNode }) => {
         initialValues,
         setInitialValues,
         viewAnalyzerName,
-        setViewAnalyzerName
+        setViewAnalyzerName,
+        isFormDisabled
       }}
     >
       {children}

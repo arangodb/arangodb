@@ -4,26 +4,36 @@ import React from "react";
 import { InputControl } from "../../components/form/InputControl";
 import { SelectControl } from "../../components/form/SelectControl";
 import { TYPE_TO_LABEL_MAP } from "./AnalyzersHelpers";
+import { AnalyzerTypes } from "./Analyzer.types";
 import { AnalyzerTypeForm } from "./AnalyzerTypeForm";
 import { useReinitializeForm } from "./useReinitializeForm";
+import { useAnalyzersContext } from "./AnalyzersContext";
 
 const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP).map(type => {
   return {
     value: type,
-    label: TYPE_TO_LABEL_MAP[type as keyof typeof TYPE_TO_LABEL_MAP]
+    label: TYPE_TO_LABEL_MAP[type as AnalyzerTypes]
   };
 });
 
 export const AddAnalyzerForm = () => {
   useReinitializeForm();
+  const [analyzerTypeField] = useField<AnalyzerTypes>("type");
+  const { isFormDisabled: isDisabled } = useAnalyzersContext();
+
   return (
     <Grid templateColumns={"1fr 1fr"} gap="6">
       <Stack>
         <Text fontSize="lg">Basic</Text>
         <Divider />
         <Grid templateColumns={"1fr 1fr"} columnGap="4">
-          <InputControl name="name" label="Analyzer name" />
+          <InputControl
+            isDisabled={isDisabled}
+            name="name"
+            label="Analyzer name"
+          />
           <SelectControl
+            isDisabled={isDisabled}
             name="type"
             label="Analyzer type"
             selectProps={{
@@ -41,7 +51,7 @@ export const AddAnalyzerForm = () => {
           <FeatureSwitch name="position" />
         </Grid>
       </Stack>
-      <AnalyzerTypeForm />
+      <AnalyzerTypeForm analyzerType={analyzerTypeField.value} />
     </Grid>
   );
 };
@@ -54,8 +64,11 @@ const FEATURE_NAME_TO_LABEL_MAP = {
 
 const FeatureSwitch = ({ name }: { name: string }) => {
   const [featuresField, , featuresFieldHelper] = useField("features");
+  const { isFormDisabled: isDisabled } = useAnalyzersContext();
+
   return (
     <Switch
+      isDisabled={isDisabled}
       isChecked={featuresField.value.includes(name)}
       onChange={() => {
         if (featuresField.value.includes(name)) {

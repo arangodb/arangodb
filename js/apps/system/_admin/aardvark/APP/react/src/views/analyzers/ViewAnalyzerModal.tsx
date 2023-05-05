@@ -1,4 +1,5 @@
-import { Button, Text } from "@chakra-ui/react";
+import { Button, Flex, Text } from "@chakra-ui/react";
+import { Formik, Form } from "formik";
 import React from "react";
 import {
   Modal,
@@ -6,11 +7,16 @@ import {
   ModalFooter,
   ModalHeader
 } from "../../components/modal";
+import { AddAnalyzerForm } from "./AddAnalyzerForm";
+import { AnalyzerJSONForm } from "./AnalyzerJSONForm";
 import { useAnalyzersContext } from "./AnalyzersContext";
 
 export const ViewAnalyzerModal = () => {
-  const { viewAnalyzerName, setViewAnalyzerName } = useAnalyzersContext();
-  if (!viewAnalyzerName) {
+  const { viewAnalyzerName, setViewAnalyzerName, analyzers } =
+    useAnalyzersContext();
+  const [showJSONForm, setShowJSONForm] = React.useState(false);
+  const currentAnalyzer = analyzers?.find(a => a.name === viewAnalyzerName);
+  if (!viewAnalyzerName || !currentAnalyzer) {
     return null;
   }
   return (
@@ -22,9 +28,32 @@ export const ViewAnalyzerModal = () => {
       }}
     >
       <ModalHeader>
-        <Text>{viewAnalyzerName}</Text>
+        <Flex>
+          <Text>{viewAnalyzerName}</Text>
+          <Button
+            size="sm"
+            colorScheme="gray"
+            marginLeft="auto"
+            onClick={() => {
+              setShowJSONForm(!showJSONForm);
+            }}
+          >
+            {showJSONForm ? "Show form" : " Show JSON"}
+          </Button>
+        </Flex>
       </ModalHeader>
-      <ModalBody>todo</ModalBody>
+      <Formik
+        initialValues={currentAnalyzer}
+        onSubmit={() => {
+          // ignore
+        }}
+      >
+        <Form>
+          <ModalBody>
+            {showJSONForm ? <AnalyzerJSONForm /> : <AddAnalyzerForm />}
+          </ModalBody>
+        </Form>
+      </Formik>
       <ModalFooter>
         <Button
           colorScheme={"gray"}

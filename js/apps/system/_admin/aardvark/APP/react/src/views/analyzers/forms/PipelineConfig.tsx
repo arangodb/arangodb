@@ -1,18 +1,17 @@
-import { AddIcon, DeleteIcon } from "@chakra-ui/icons";
 import {
-  Box,
-  Button,
-  Grid,
-  IconButton,
-  StatDownArrow,
-  StatUpArrow,
-  Text
-} from "@chakra-ui/react";
+  AddIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
+  DeleteIcon
+} from "@chakra-ui/icons";
+import { Box, Button, Grid, IconButton, Stack, Text } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
 import { SelectControl } from "../../../components/form/SelectControl";
-import { PipelineStates, TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
+import { TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
+import { PipelineStates } from "../Analyzer.types";
 import { AnalyzerTypeForm } from "../AnalyzerTypeForm";
+import { useAnalyzersContext } from "../AnalyzersContext";
 
 const ANALYZER_TYPE_OPTIONS = TYPE_TO_LABEL_MAP
   ? (Object.keys(TYPE_TO_LABEL_MAP)
@@ -28,8 +27,8 @@ const ANALYZER_TYPE_OPTIONS = TYPE_TO_LABEL_MAP
   : [];
 
 export const PipelineConfig = () => {
-  const { values } = useFormikContext<PipelineStates>();
-  console.log("item", values);
+  const { values, setValues } = useFormikContext<PipelineStates>();
+  const { isFormDisabled: isDisabled } = useAnalyzersContext();
   return (
     <FieldArray name="properties.pipeline">
       {({ remove, push }) => {
@@ -55,45 +54,82 @@ export const PipelineConfig = () => {
                   borderBottomColor="gray.300"
                 >
                   <Text>{index + 1}.</Text>
-                  <Box>
+                  <Stack>
                     <SelectControl
+                      isDisabled={isDisabled}
                       name={`properties.pipeline.${index}.type`}
                       selectProps={{
                         options: ANALYZER_TYPE_OPTIONS
                       }}
                       label="Type"
                     />
-                    <AnalyzerTypeForm analyzerType={item.type} />
-                  </Box>
+                    <AnalyzerTypeForm
+                      basePropertiesPath={`properties.pipeline.${index}.properties`}
+                      analyzerType={item.type}
+                    />
+                  </Stack>
 
                   <Box marginTop="6">
                     <IconButton
                       aria-label="Delete"
                       variant="ghost"
+                      isDisabled={isDisabled}
                       onClick={() => remove(index)}
                       icon={<DeleteIcon />}
                     />
                     <IconButton
-                      isDisabled={index === 0}
+                      isDisabled={index === 0 || isDisabled}
                       aria-label="Move up"
                       variant="ghost"
-                      onClick={() => {}}
-                      icon={<StatUpArrow />}
+                      onClick={() => {
+                        const { pipeline } = values.properties;
+                        const newPipeline = [
+                          ...pipeline.slice(0, index - 1),
+                          pipeline[index],
+                          pipeline[index - 1],
+                          ...pipeline.slice(index + 1)
+                        ];
+                        setValues({
+                          ...values,
+                          properties: {
+                            ...values.properties,
+                            pipeline: newPipeline
+                          }
+                        });
+                      }}
+                      icon={<ArrowUpIcon />}
                     />
                     <IconButton
                       isDisabled={
-                        index === values.properties.pipeline.length - 1
+                        index === values.properties.pipeline.length - 1 ||
+                        isDisabled
                       }
                       aria-label="Move down"
                       variant="ghost"
-                      onClick={() => {}}
-                      icon={<StatDownArrow />}
+                      onClick={() => {
+                        const { pipeline } = values.properties;
+                        const newPipeline = [
+                          ...pipeline.slice(0, index),
+                          pipeline[index + 1],
+                          pipeline[index],
+                          ...pipeline.slice(index + 2)
+                        ];
+                        setValues({
+                          ...values,
+                          properties: {
+                            ...values.properties,
+                            pipeline: newPipeline
+                          }
+                        });
+                      }}
+                      icon={<ArrowDownIcon />}
                     />
                   </Box>
                 </Grid>
               );
             })}
             <Button
+              isDisabled={isDisabled}
               onClick={() => push({ type: "identity" })}
               variant="ghost"
               colorScheme="blue"

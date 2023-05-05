@@ -1,10 +1,18 @@
 import React from "react";
 import { SelectControl } from "../../../../components/form/SelectControl";
+import { useAnalyzersContext } from "../../AnalyzersContext";
 
-export const CaseInput = () => {
+export const CaseInput = ({
+  basePropertiesPath
+}: {
+  basePropertiesPath: string;
+}) => {
+  const { isFormDisabled: isDisabled } = useAnalyzersContext();
+
   return (
     <SelectControl
-      name="properties.case"
+      isDisabled={isDisabled}
+      name={`${basePropertiesPath}.case`}
       label="Case"
       selectProps={{
         options: [

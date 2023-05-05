@@ -1,10 +1,17 @@
 import React from "react";
 import { SelectControl } from "../../../../components/form/SelectControl";
+import { useAnalyzersContext } from "../../AnalyzersContext";
 
-export const GeoTypeInput = () => {
+export const GeoTypeInput = ({
+  basePropertiesPath
+}: {
+  basePropertiesPath: string;
+}) => {
+  const { isFormDisabled: isDisabled } = useAnalyzersContext();
   return (
     <SelectControl
-      name="properties.type"
+      isDisabled={isDisabled}
+      name={`${basePropertiesPath}.type`}
       label="Type"
       selectProps={{
         options: [
