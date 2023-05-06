@@ -1,7 +1,6 @@
 @startDocuBlock get_api_user
-@brief fetch the properties of a user.
 
-@RESTHEADER{GET /_api/user/, List available Users, listUsers}
+@RESTHEADER{GET /_api/user/, List available users, listUsers}
 
 @RESTDESCRIPTION
 Fetches data about all users.  You need the *Administrate* server access level

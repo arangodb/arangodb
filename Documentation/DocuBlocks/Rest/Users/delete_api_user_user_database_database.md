@@ -1,7 +1,6 @@
 @startDocuBlock delete_api_user_user_database_database
-@brief Clear the database access level, revert back to the default access level
 
-@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}, Clear the database access level, deleteUserDatabasePermissions}
+@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}, Clear a user's database access level, deleteUserDatabasePermissions}
 
 @RESTURLPARAMETERS
 
@@ -12,10 +11,12 @@ The name of the user.
 The name of the database.
 
 @RESTDESCRIPTION
-Clears the database access level for the database *dbname* of user *user*. As
-consequence the default database access level is used. If there is no defined
-default database access level, it defaults to *No access*. You need permission
-to the *_system* database in order to execute this REST call.
+Clears the database access level for the database `dbname` of user `user`. As
+consequence, the default database access level is used. If there is no defined
+default database access level, it defaults to *No access*.
+
+You need write permissions (*Administrate* access level) for the `_system`
+database in order to execute this REST call.
 
 @RESTRETURNCODES
 

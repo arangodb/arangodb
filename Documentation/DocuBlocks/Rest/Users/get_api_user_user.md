@@ -1,7 +1,7 @@
 @startDocuBlock get_api_user_user
 @brief fetch the properties of a user.
 
-@RESTHEADER{GET /_api/user/{user}, Fetch User, getUser}
+@RESTHEADER{GET /_api/user/{user}, Fetch a user's properties, getUser}
 
 @RESTURLPARAMETERS
 

@@ -1,7 +1,6 @@
 @startDocuBlock get_api_user_user_database
-@brief List the accessible databases for a user
 
-@RESTHEADER{GET /_api/user/{user}/database/, List the accessible databases for a user, listUserDatabases},
+@RESTHEADER{GET /_api/user/{user}/database/, List a user's accessible databases, listUserDatabases},
 
 @RESTURLPARAMETERS
 
@@ -14,8 +13,10 @@ The name of the user for which you want to query the databases.
 Return the full set of access levels for all databases and all collections.
 
 @RESTDESCRIPTION
-Fetch the list of databases available to the specified *user*. You need
-*Administrate* for the server access level in order to execute this REST call.
+Fetch the list of databases available to the specified `user`.
+
+You need *Administrate* permissions for the server access level in order to
+execute this REST call.
 
 The call will return a JSON object with the per-database access
 privileges for the specified user. The *result* object will contain
