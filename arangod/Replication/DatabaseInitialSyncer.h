@@ -130,6 +130,8 @@ class DatabaseInitialSyncer : public InitialSyncer {
     return "none";
   }
 
+  uint64_t leaderVersion() const { return _config.leader.version(); }
+
   // TODO worker safety
   TRI_vocbase_t& vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);
@@ -168,7 +170,8 @@ class DatabaseInitialSyncer : public InitialSyncer {
     _onSuccess = cb;
   }
 
-  void setCancellationCheckCallback(std::function<bool()> const& cb) {
+  void setCancellationCheckCallback(
+      std::function<bool(DatabaseInitialSyncer const&)> const& cb) {
     _checkCancellation = cb;
   }
 
@@ -285,7 +288,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
   std::function<Result(DatabaseInitialSyncer&)> _onSuccess;
 
   // custom callback to check if the sync should be cancelled
-  std::function<bool()> _checkCancellation;
+  std::function<bool(DatabaseInitialSyncer const&)> _checkCancellation;
 
   // point in time when we last executed the _checkCancellation callback
   mutable std::chrono::steady_clock::time_point _lastCancellationCheck;

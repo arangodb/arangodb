@@ -60,7 +60,6 @@ class TailingSyncer : public Syncer {
 
   virtual ~TailingSyncer();
 
- public:
   /// @brief run method, performs continuous synchronization
   /// catches exceptions
   Result run();

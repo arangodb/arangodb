@@ -2890,6 +2890,8 @@ Future<Result> Methods::replicateOperations(
   TRI_ASSERT(replicationData.slice().isArray());
   TRI_ASSERT(!replicationData.slice().isEmptyArray());
 
+  TRI_IF_FAILURE("replicateOperations::skip") { return Result(); }
+
   // path and requestType are different for insert/remove/modify.
 
   network::RequestOptions reqOpts;
