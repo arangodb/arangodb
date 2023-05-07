@@ -36,20 +36,20 @@ self.__precacheManifest = [
     "url": "static/media/glyphicons-halflings.180b8ed9.png"
   },
   {
-    "revision": "f71094988de2d6567eb9caba78f61041",
-    "url": "static/media/OpenSans.f7109498.woff"
-  },
-  {
     "revision": "11bbcff6f99be028bf04e2e200299b31",
     "url": "static/media/OpenSansLight.11bbcff6.woff"
   },
   {
-    "revision": "05f81795ee61b18a60d5be1b40714e01",
-    "url": "static/media/OpenSansLightItalic.05f81795.woff"
+    "revision": "f71094988de2d6567eb9caba78f61041",
+    "url": "static/media/OpenSans.f7109498.woff"
   },
   {
     "revision": "2af7a71056d6f2fe2cb2e35c358b59de",
     "url": "static/media/OpenSansBold.2af7a710.woff"
+  },
+  {
+    "revision": "05f81795ee61b18a60d5be1b40714e01",
+    "url": "static/media/OpenSansLightItalic.05f81795.woff"
   },
   {
     "revision": "403dee4359ca42b1d096976fda3ef95c",
@@ -64,20 +64,16 @@ self.__precacheManifest = [
     "url": "static/media/fontawesome-webfont.25a32416.eot"
   },
   {
-    "revision": "c8ddf1e5e5bf3682bc7bebf30f394148",
-    "url": "static/media/fontawesome-webfont.c8ddf1e5.woff"
-  },
-  {
     "revision": "e6cf7c6ec7c2d6f670ae9d762604cb0b",
     "url": "static/media/fontawesome-webfont.e6cf7c6e.woff2"
   },
   {
-    "revision": "c3547b2ec6f5eb324b44d8a0c6b2dd31",
-    "url": "static/media/Roboto-300.c3547b2e.eot"
+    "revision": "c8ddf1e5e5bf3682bc7bebf30f394148",
+    "url": "static/media/fontawesome-webfont.c8ddf1e5.woff"
   },
   {
-    "revision": "1dc35d25e61d819a9c357074014867ab",
-    "url": "static/media/fontawesome-webfont.1dc35d25.ttf"
+    "revision": "c3547b2ec6f5eb324b44d8a0c6b2dd31",
+    "url": "static/media/Roboto-300.c3547b2e.eot"
   },
   {
     "revision": "16a9467557c38b4e1b19e981bd17fe3f",
@@ -92,12 +88,12 @@ self.__precacheManifest = [
     "url": "static/media/Roboto-300.634f53eb.ttf"
   },
   {
-    "revision": "1edaa6e50c2302bf0221d252e1caebb4",
-    "url": "static/media/Roboto-300.1edaa6e5.svg"
+    "revision": "1dc35d25e61d819a9c357074014867ab",
+    "url": "static/media/fontawesome-webfont.1dc35d25.ttf"
   },
   {
-    "revision": "d7c639084f684d66a1bc66855d193ed8",
-    "url": "static/media/fontawesome-webfont.d7c63908.svg"
+    "revision": "1edaa6e50c2302bf0221d252e1caebb4",
+    "url": "static/media/Roboto-300.1edaa6e5.svg"
   },
   {
     "revision": "9f916e330c478bbfa2a0dd6614042046",
@@ -134,6 +130,10 @@ self.__precacheManifest = [
   {
     "revision": "88f29ea5a372d06f521395134f62ab91",
     "url": "static/media/Roboto-500.88f29ea5.ttf"
+  },
+  {
+    "revision": "d7c639084f684d66a1bc66855d193ed8",
+    "url": "static/media/fontawesome-webfont.d7c63908.svg"
   },
   {
     "revision": "f1d811cdfaea49c969500d4bbe52251b",
