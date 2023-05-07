@@ -1,7 +1,7 @@
 v3.10.5.4 (XXXX-XX-XX)
 ----------------------
 
-* Support upgrading to current 3.10 in case a certain failure condition is 
+* Support upgrading to current 3.10 in case a certain failure condition is
   present on a 3.9 leader during the upgrade.
 
 
