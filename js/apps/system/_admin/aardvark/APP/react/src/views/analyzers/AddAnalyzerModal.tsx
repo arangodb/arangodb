@@ -13,8 +13,13 @@ import {
 import { getCurrentDB } from "../../utils/arangoClient";
 import { AddAnalyzerForm } from "./AddAnalyzerForm";
 import { AnalyzerJSONForm } from "./AnalyzerJSONForm";
-import { useAnalyzersContext } from "./AnalyzersContext";
 import { CopyAnalyzerDropdown } from "./CopyAnalyzerDropdown";
+
+const INITIAL_VALUES = {
+  name: "",
+  type: "identity",
+  features: []
+} as AnalyzerDescription;
 
 export const AddAnalyzerModal = ({
   isOpen,
@@ -23,7 +28,6 @@ export const AddAnalyzerModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  const { initialValues } = useAnalyzersContext();
   const [showJSONForm, setShowJSONForm] = React.useState(false);
   const initialFocusRef = React.useRef<HTMLInputElement>(null);
   return (
@@ -34,7 +38,7 @@ export const AddAnalyzerModal = ({
       onClose={onClose}
     >
       <Formik
-        initialValues={initialValues}
+        initialValues={INITIAL_VALUES}
         validationSchema={Yup.object({
           name: Yup.string().required("Name is required")
         })}
