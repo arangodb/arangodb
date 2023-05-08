@@ -1113,8 +1113,7 @@ irs::IndexWriterOptions IResearchDataStore::getWriterOptions(
     options.features = getIndexFeatures<irs::Norm2>();
   }
   // initialize commit callback
-  options.meta_payload_provider = [this, version](uint64_t tick,
-                                                  irs::bstring& out) {
+  options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
     // call from commit under lock _commitMutex (_dataStore._writer->commit())
     // update current stage commit tick
     if (_isCreation) {
