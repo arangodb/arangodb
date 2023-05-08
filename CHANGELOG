@@ -8,6 +8,10 @@ devel
   non-blocking for the thread to leave SSL_connect() after the connection is 
   interrupted when leaving the shell.
 
+* Updated arangosync to v2.17.0-preview-1.
+
+* FE-243: add support for geo_s2 analyzer.
+
 * FE-22: Don't display collection content by default when clicking on a
   collection in the Web UI.
 
