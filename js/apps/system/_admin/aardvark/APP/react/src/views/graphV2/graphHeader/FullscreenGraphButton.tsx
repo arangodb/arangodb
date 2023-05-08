@@ -19,7 +19,7 @@ export const FullscreenGraphButton = () => {
       <IconButton
         size="sm"
         onClick={() => {
-          const elem = document.getElementById("graphNetworkWrap");
+          const elem = document.documentElement;
           enterFullscreen(elem);
         }}
         icon={<Icon width="5" height="5" as={Fullscreen} />}
