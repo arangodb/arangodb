@@ -49,11 +49,11 @@ function UpdateConsistencyArangoSearchView() {
       let c = db._collection(collection);
       c.save({_key: "279974", value: 0, flag: true});
       db._createView(view, "arangosearch", {links: {testUpdate: {includeAllFields: true}}});
-      for (let j = 1; j < 100; j++) {
-        //print("Iteration " + j);
+
+      for (let j = 1; j < 1000; j++) {
+        // print("Iteration " + j);
         let oldLen = db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray().length;
-        //print(db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray());
-        //print("oldLen: " + oldLen);
+        // print(db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray());
         assertEqual(oldLen, 1);
         c.update("279974", {value: j, flag: true});
         let newLen = db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray().length;
@@ -62,53 +62,11 @@ function UpdateConsistencyArangoSearchView() {
       }
     },
 
-    testMultiUpdatesIncludeAllFields: function () {
-      let collectionProperties = {};
-      if (isCluster) {
-        collectionProperties = {numberOfShards: 9, replicationFactor: 3};
-      }
-
-      const amountOfCollections = 3;
-      const amountOfDocuments = 5;
-      const documents = [];
-
-      for (let i = 0; i < amountOfDocuments; i++) {
-        documents.push({_key: `doc${i}`, value: i});
-      }
-
-      const insertedVertices = [];
-      for (let i = 0; i < amountOfCollections; i++) {
-        db._create(`testUpdate${i}`, collectionProperties);
-        insertedVertices.push(db[`testUpdate${i}`].insert(documents));
-      }
-      db._createView(view, "arangosearch", {links: {testUpdate0: {includeAllFields: true}, testUpdate1: {includeAllFields: true}, testUpdate2: {includeAllFields: true}}});
-      for (let j = 1; j < 100; j++) {
-        let oldLen = db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray().length;
-        assertEqual(oldLen, amountOfCollections*amountOfDocuments);
-        for (let i = 0; i < amountOfCollections; i++) {
-          for (let j = 0; j < amountOfDocuments; j++) {
-            db[`testUpdate${i}`].update(`doc${j}`, {value: j, flag: true});
-          }
-        }
-        // c.update("279974", {value: j, flag: true});
-        let newLen = db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray().length;
-        assertEqual(newLen, amountOfCollections*amountOfDocuments);
-        for (let i = 0; i < amountOfCollections; i++) {
-          for (let j = 0; j < amountOfDocuments; j++) {
-            db[`testUpdate${i}`].update(`doc${j}`, {value: j, flag: false});
-          }
-        }
-        //c.update("279974", {value: j, flag: false});
-      }
-      for (let i = 0; i < amountOfCollections; i++) {
-        db._drop(`testUpdate${i}`, collectionProperties);
-      }
-    },
-
     testSingleUpdateOneLinkedField: function () {
       let c = db._collection(collection);
       c.save({_key: "279974", value: 345, flag: true});
       db._createView(view, "arangosearch", {links: {testUpdate: {"fields": {"value": {"analyzers": ["identity"]}}}}});
+
       for (let j = 0; j < 100; j++) {
         let oldLen = db._query("FOR d IN " + view + " SEARCH d.value == 345 RETURN d").toArray().length;
         assertEqual(oldLen, 1);
@@ -119,10 +77,11 @@ function UpdateConsistencyArangoSearchView() {
       }
     },
 
-    testSimpleUpdateUnlinkedField: function () {
+    testSingleleUpdateUnlinkedField: function () {
       let c = db._collection(collection);
       c.save({_key: "279974", value: 345, unlinkedField: 456, flag: true});
       db._createView(view, "arangosearch", {links: {testUpdate: {"fields": {"value": {"analyzers": ["identity"]}}}}});
+
       for (let j = 0; j < 100; j++) {
         let oldLen = db._query("FOR d IN " + view + " SEARCH d.value == 345 RETURN d").toArray().length;
         assertEqual(oldLen, 1);
@@ -133,6 +92,49 @@ function UpdateConsistencyArangoSearchView() {
       }
     },
 
+    testMultiUpdatesIncludeAllFields: function () {
+      let collectionProperties = {};
+      if (isCluster) {
+        collectionProperties = {numberOfShards: 9, replicationFactor: 3};
+      }
+
+      const amountOfCollections = 3;
+      const amountOfDocuments = 10;
+      const documents = [];
+
+      for (let i = 0; i < amountOfDocuments; i++) {
+        documents.push({_key: `doc${i}`, value: i});
+      }
+
+      v = db._createView(view, "arangosearch", {})
+      const insertedDocs = [];
+      for (let i = 0; i < amountOfCollections; i++) {
+        db._create(`testUpdate${i}`, collectionProperties);
+        insertedDocs.push(db[`testUpdate${i}`].insert(documents));
+        v.properties({links: {[`testUpdate${i}`]: {includeAllFields: true}}});
+      }
+
+      for (let j = 1; j < 100; j++) {
+        let oldLen = db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray().length;
+        assertEqual(oldLen, amountOfCollections * amountOfDocuments);
+        for (let i = 0; i < amountOfCollections; i++) {
+          for (let j = 0; j < amountOfDocuments; j++) {
+            db[`testUpdate${i}`].update(`doc${j}`, {value: j, flag: true});
+          }
+        }
+        let newLen = db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray().length;
+        assertEqual(newLen, amountOfCollections * amountOfDocuments);
+        for (let i = 0; i < amountOfCollections; i++) {
+          for (let j = 0; j < amountOfDocuments; j++) {
+            db[`testUpdate${i}`].update(`doc${j}`, {value: j, flag: false});
+          }
+        }
+      }
+
+      for (let i = 0; i < amountOfCollections; i++) {
+        db._drop(`testUpdate${i}`, collectionProperties);
+      }
+    }
   };
 }
 
@@ -140,21 +142,28 @@ function UpdateConsistencySearchAliasView() {
   const collection = "testUpdate";
   const view = "testUpdateView";
   return {
-    setUpAll: function () {
-      let c = db._create(collection);
+    setUp: function () {
+      let collectionProperties = {};
+      if (isCluster) {
+        collectionProperties = {numberOfShards: 9, replicationFactor: 3};
+      }
+      let c = db._create(collection, collectionProperties);
       c.save({_key: "279974", value: 345, flag: true});
-      db._createView(view, "arangosearch", {links: {testUpdate: {includeAllFields: true}}});
+      c.ensureIndex({name: "inverted_index", type: "inverted", fields: ["value"]});
+      v = db._createView(view, "search-alias", {});
     },
 
-    tearDownAll: function () {
+    tearDown: function () {
       db._dropView(view);
       db._drop(collection);
     },
 
-    testSimple2: function () {
+    testInvertedSingleUpdateLinkedField: function () {
       let c = db._collection(collection);
+      v = db._view(view);
+      v.properties({indexes: [{collection: "testUpdate", index: "inverted_index"}]});
+
       for (let j = 0; j < 100; j++) {
-        // print("Iteration " + j);
         let oldLen = db._query("FOR d IN " + view + " SEARCH d.value == 345 RETURN d").toArray().length;
         assertEqual(oldLen, 1);
         c.update("279974", {value: 345, flag: true});
@@ -163,6 +172,69 @@ function UpdateConsistencySearchAliasView() {
         c.update("279974", {value: 345, flag: false});
       }
     },
+
+    testInvertedSingleleUpdateUnlinkedField: function () {
+      let c = db._collection(collection);
+      v = db._view(view);
+      v.properties({indexes: [{collection: "testUpdate", index: "inverted_index"}]});
+
+      for (let j = 0; j < 100; j++) {
+        let oldLen = db._query("FOR d IN " + view + " SEARCH d.value == 345 RETURN d").toArray().length;
+        assertEqual(oldLen, 1);
+        c.update("279974", {unlinkedField: j, flag: true});
+        let newLen = db._query("FOR d IN " + view + " SEARCH d.value == 345 RETURN d").toArray().length;
+        assertEqual(newLen, 1);
+        c.update("279974", {unlinkedField: j, flag: false});
+      }
+    },
+
+    testMultiUpdates: function () {
+      let collectionProperties = {};
+      if (isCluster) {
+        collectionProperties = {numberOfShards: 9, replicationFactor: 3};
+      }
+
+      const amountOfCollections = 3;
+      const amountOfDocuments = 10;
+      const documents = [];
+
+      for (let i = 0; i < amountOfDocuments; i++) {
+        documents.push({_key: `doc${i}`, value: i});
+      }
+
+      v = db._view(view);
+      const insertedDocs = [];
+      for (let i = 0; i < amountOfCollections; i++) {
+        c = db._create(`testUpdate${i}`, collectionProperties);
+        c.ensureIndex({name: "inverted_index", type: "inverted", fields: ["value"]});
+        insertedDocs.push(db[`testUpdate${i}`].insert(documents));
+        v.properties({indexes: [{collection: `testUpdate${i}`, index: "inverted_index"}]});
+      }
+
+      // wait for search-alias view index initialization
+      db._query("RETURN SLEEP(2)")
+      for (let j = 1; j < 100; j++) {
+        let oldLen = db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray().length;
+        // print(db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray());
+        assertEqual(oldLen, amountOfCollections * amountOfDocuments);
+        for (let i = 0; i < amountOfCollections; i++) {
+          for (let j = 0; j < amountOfDocuments; j++) {
+            db[`testUpdate${i}`].update(`doc${j}`, {value: j, flag: true});
+          }
+        }
+        let newLen = db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray().length;
+        assertEqual(newLen, amountOfCollections * amountOfDocuments);
+        for (let i = 0; i < amountOfCollections; i++) {
+          for (let j = 0; j < amountOfDocuments; j++) {
+            db[`testUpdate${i}`].update(`doc${j}`, {value: j, flag: false});
+          }
+        }
+      }
+
+      for (let i = 0; i < amountOfCollections; i++) {
+        db._drop(`testUpdate${i}`, collectionProperties);
+      }
+    }
   };
 }
 
