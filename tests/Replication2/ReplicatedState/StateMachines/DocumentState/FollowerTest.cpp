@@ -88,7 +88,7 @@ TEST_F(DocumentStateFollowerTest,
 
   std::atomic<bool> acquireSnapshotCalled = false;
   std::atomic<bool> followerResigned = false;
-  std::atomic<int> batchesSent = 0;
+  int batchesSent = 0;
 
   // The snapshot will not stop until the follower resigns
   ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
@@ -105,8 +105,8 @@ TEST_F(DocumentStateFollowerTest,
       .WillByDefault([&](SnapshotId id) {
         // In the event that the system is under heavy load, we want to prevent
         // a stack overflow
-        auto batches = batchesSent++;
-        if (batches > 15) {
+        ++batchesSent;
+        if (batchesSent > 16) {
           followerResigned.wait(false);
         }
 
