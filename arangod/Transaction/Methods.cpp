@@ -3364,6 +3364,12 @@ Future<Result> Methods::replicateOperations(
 
         } else {
           auto r = resp.combinedResult();
+          if (r.is(TRI_ERROR_TRANSACTION_ABORTED) &&
+              this->state()->hasHint(
+                  transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
+            return r;
+          }
+
           bool followerRefused =
               (r.errorNumber() ==
                TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
