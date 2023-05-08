@@ -1,7 +1,6 @@
-import { AnalyzerDescription } from "arangojs/analyzer";
-import { useField } from "formik";
+import { useField, useFormikContext } from "formik";
 import { useEffect } from "react";
-import { useAnalyzersContext } from "./AnalyzersContext";
+import { AnalyzerState } from "./Analyzer.types";
 import { TYPE_TO_INITIAL_VALUES_MAP } from "./AnalyzersHelpers";
 
 /**
@@ -9,19 +8,20 @@ import { TYPE_TO_INITIAL_VALUES_MAP } from "./AnalyzersHelpers";
  */
 
 export const useReinitializeForm = () => {
-  const { setInitialValues } = useAnalyzersContext();
+  const { setValues, values } = useFormikContext<AnalyzerState>();
   const [field] = useField("type");
   const [featuresField] = useField("features");
+
   useEffect(() => {
-    const initialValues = {
+    const newValues = {
       ...TYPE_TO_INITIAL_VALUES_MAP[
         field.value as keyof typeof TYPE_TO_INITIAL_VALUES_MAP
       ],
+      name: values.name,
       // adding features which are already set
       features: featuresField.value
     };
-    // todo - remove after arangojs types are updated
-    setInitialValues(initialValues as AnalyzerDescription);
+    setValues(newValues);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [field.value]);

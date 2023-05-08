@@ -34,16 +34,25 @@ export const AddAnalyzerModal = ({
       onClose={onClose}
     >
       <Formik
-        enableReinitialize
         initialValues={initialValues}
         validationSchema={Yup.object({
           name: Yup.string().required("Name is required")
         })}
         onSubmit={async (values: AnalyzerDescription) => {
           const currentDB = getCurrentDB();
-          await currentDB.analyzer(values.name).create(values);
-          mutate("/analyzers");
-          onClose();
+          try {
+            await currentDB.analyzer(values.name).create(values);
+            window.arangoHelper.arangoNotification(
+              `The analyzer: ${values.name} was successfully created`
+            );
+            mutate("/analyzers");
+            onClose();
+          } catch (error: any) {
+            const errorMessage = error?.response?.body?.errorMessage;
+            if (errorMessage) {
+              window.arangoHelper.arangoError("Analyzer", errorMessage);
+            }
+          }
         }}
       >
         {({ isSubmitting }) => (
