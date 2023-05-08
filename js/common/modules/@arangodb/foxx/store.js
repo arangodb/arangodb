@@ -336,7 +336,7 @@ var infoJson = function (name) {
   }
 
   let desc = fishbowl.filter((entry) => {
-    if (entry.name && entry.name.toLowerCase() == name) {
+    if (entry.name && entry.name.toLowerCase() === name) {
       return true;
     }
     if (entry.aliases && Array.isArray(entry.aliases) && entry.aliases.includes(name)) {
