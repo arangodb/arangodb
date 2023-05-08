@@ -167,6 +167,8 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   virtual void afterCommit() {}
 
+  void finishCreation();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief mark the current data store state as the latest valid state
   /// @param wait even if other thread is committing
@@ -473,15 +475,13 @@ class IResearchDataStore {
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;
   bool _hasNestedFields{false};
-
+  bool _isCreation{true};
 #ifdef USE_ENTERPRISE
   std::atomic_bool _useSearchCache{true};
 #endif
 
   // protected by _commitMutex
-  bool _commitStageOne{false};
-  uint64_t _lastCommittedTickOne{0};
-  uint64_t _lastCommittedTickTwo{0};
+  uint64_t _lastCommittedTick{0};
 
   size_t _cleanupIntervalCount{0};
 
