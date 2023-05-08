@@ -50,12 +50,18 @@ VertexProcessor<V, E, M>::VertexProcessor(
     localMessageCache = std::make_shared<CombiningInCache<M>>(
         std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
     outCache = std::make_shared<CombiningOutCache<M>>(
-        workerConfig, messageFormat.get(), messageCombiner.get());
+        workerConfig,
+        workerConfig->graphSerdeConfig().localPregelShardIDs(
+            ServerState::instance()->getId()),
+        messageFormat.get(), messageCombiner.get());
   } else {
     localMessageCache = std::make_shared<ArrayInCache<M>>(
         std::set<PregelShard>{}, messageFormat.get());
-    outCache =
-        std::make_shared<ArrayOutCache<M>>(workerConfig, messageFormat.get());
+    outCache = std::make_shared<ArrayOutCache<M>>(
+        workerConfig,
+        workerConfig->graphSerdeConfig().localPregelShardIDs(
+            ServerState::instance()->getId()),
+        messageFormat.get());
   }
 
   outCache->setBatchSize(messageBatchSize);
@@ -118,12 +124,19 @@ ActorVertexProcessor<V, E, M>::ActorVertexProcessor(
     localMessageCache = std::make_shared<CombiningInCache<M>>(
         std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
     outCache = std::make_shared<CombiningOutActorCache<M>>(
-        workerConfig, messageFormat.get(), messageCombiner.get());
+        workerConfig,
+        workerConfig->graphSerdeConfig().localPregelShardIDs(
+            ServerState::instance()->getId()),
+        messageFormat.get(), messageCombiner.get());
   } else {
     localMessageCache = std::make_shared<ArrayInCache<M>>(
         std::set<PregelShard>{}, messageFormat.get());
-    outCache = std::make_shared<ArrayOutActorCache<M>>(workerConfig,
-                                                       messageFormat.get());
+    outCache = std::make_shared<ArrayOutActorCache<M>>(
+        workerConfig,
+        workerConfig->graphSerdeConfig().localPregelShardIDs(
+            ServerState::instance()->getId()),
+
+        messageFormat.get());
   }
 
   outCache->setBatchSize(messageBatchSize);

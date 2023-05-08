@@ -68,16 +68,22 @@ struct WorkerState {
 
     if (messageCombiner) {
       readCache = std::make_unique<CombiningInCache<M>>(
-          config->localPregelShardIDs(), messageFormat.get(),
-          messageCombiner.get());
+          config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()),
+          messageFormat.get(), messageCombiner.get());
       writeCache = std::make_unique<CombiningInCache<M>>(
-          config->localPregelShardIDs(), messageFormat.get(),
-          messageCombiner.get());
+          config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()),
+          messageFormat.get(), messageCombiner.get());
     } else {
       readCache = std::make_unique<ArrayInCache<M>>(
-          config->localPregelShardIDs(), messageFormat.get());
+          config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()),
+          messageFormat.get());
       writeCache = std::make_unique<ArrayInCache<M>>(
-          config->localPregelShardIDs(), messageFormat.get());
+          config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()),
+          messageFormat.get());
     }
   }
 
