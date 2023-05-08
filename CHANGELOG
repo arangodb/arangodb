@@ -6,6 +6,10 @@ devel
   starting point. As telemetrics is transparent to the end user, the error 
   message interferes with the user experience if keeps appearing. 
 
+* Updated arangosync to v2.17.0-preview-1.
+
+* FE-243: add support for geo_s2 analyzer.
+
 * FE-22: Don't display collection content by default when clicking on a
   collection in the Web UI.
 

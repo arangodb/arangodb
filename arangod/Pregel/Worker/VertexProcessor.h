@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <Cluster/ServerState.h>
+
 #include <Pregel/Algorithm.h>
 #include <Pregel/Iterators.h>
 #include <Pregel/MessageCombiner.h>

@@ -61,12 +61,10 @@ auto GraphVPackBuilderStorer<V, E>::store(Magazine<V, E> magazine)
 
   for (auto& quiver : magazine) {
     for (auto& vertex : *quiver) {
-      ADB_PROD_ASSERT(vertex.shard().value < config->globalShardIDs().size());
-      ShardID const& shardId = config->globalShardID(vertex.shard());
-
+      std::string const& cname =
+          config->graphSerdeConfig().collectionName(vertex.shard());
       result->openObject(/*unindexed*/ true);
       if (withId) {
-        std::string const& cname = config->shardIDToCollectionName(shardId);
         if (!cname.empty()) {
           tmp.clear();
           tmp.append(cname);
