@@ -116,7 +116,7 @@ const viewName = (name, isSearchAlias) => {
   }
 };
 
-const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
+const checkViewConsistency = (cn, isSearchAlias, isMaterialize, viewCounts) => {
   let runQuery = (query) => {
     return db._query(query).toArray();
   };
@@ -134,7 +134,7 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
     } else {
       result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length")[0];
     }
-    assertEqual(expected, result);
+    viewCounts.push({viewName:vn, viewCount:result, collectionName:cn, collectionCount:expected, isMaterialize: isMaterialize});
   };
 
   vn = viewName(cn + "_view", isSearchAlias);
@@ -173,17 +173,22 @@ function BaseChaosSuite(testOpts) {
   };
 
   const removeViews = (isSearchAlias) => {
+    print(Date() + " removeViews: 1 deleting");
     let vn = viewName(cn + "_view", isSearchAlias);
     db._dropView(vn);
 
+    print(Date() + " removeViews: 2 deleting");
     vn = viewName(cn + "_view_ps", isSearchAlias);
     db._dropView(vn);
 
+    print(Date() + " removeViews: 3 deleting");
     vn = viewName(cn + "_view_sv", isSearchAlias);
     db._dropView(vn);
 
+    print(Date() + " removeViews: 4 deleting");
     vn = viewName(cn + "_view_ps_sv", isSearchAlias);
     db._dropView(vn);
+    print(Date() + " removeViews: done");
   };
 
   const createViews = (isSearchAlias) => {
@@ -317,11 +322,13 @@ function BaseChaosSuite(testOpts) {
     },
 
     tearDown: function () {
+      print(Date() + " tearDown: flushing failurepoints");
       clearAllFailurePoints();
       if (testOpts.withViews) {
         removeViews(false);
         removeViews(true);
       }
+      print(Date() + " tearDown: dropping " + cn);
       db._drop(cn);
 
       const shells = db[coordination_cn].all();
@@ -329,6 +336,7 @@ function BaseChaosSuite(testOpts) {
         print("Found remaining docs in coordination collection:");
         print(shells);
       }
+      print(Date() + " tearDown: dropping " + coordination_cn);
       db._drop(coordination_cn);
       print(Date() + " tearDown: done.");
       analyzers.remove('testAnalyzer');
@@ -470,13 +478,23 @@ function BaseChaosSuite(testOpts) {
           } catch (err) {}
         }
         
-        if (trx) {
-          if (Math.random() < 0.2) {
-            log(`ABORTING`);
-            trx.abort();
-          } else {
-            log(`COMMITING`);
-            trx.commit();
+        let willAbort = Math.random() < 0.2;
+        while(trx) {
+          try {
+            if (willAbort) {
+              log(`ABORTING`);
+              trx.abort();
+            } else {
+              log(`COMMITING`);
+              trx.commit();
+            }
+            trx = null;
+          } catch(e) {
+            // due to contention we could have a lock timeout here
+            if(require("@arangodb").errors.ERROR_LOCKED.code !== e.errorNum) {
+               throw e;
+            }
+            require('internal').sleep(1);
           }
         }
       };
@@ -490,18 +508,36 @@ function BaseChaosSuite(testOpts) {
       }
 
       // run the suite for 3 minutes
-      runParallelArangoshTests(tests, 3 * 60, coordination_cn);
+      let client_ret = runParallelArangoshTests(tests, 3 * 60, coordination_cn);
 
-      print("Finished load test - waiting for cluster to get in sync before checking consistency.");
+      print(Date() + " Finished load test; Clearing failurepoints");
       clearAllFailurePoints();
+      print(Date() + " Waiting for shards to get in sync");
       waitForShardsInSync(cn);
+      print(Date() + " checking consistency");
       checkCollectionConsistency(cn);
+      let viewCounts = [];
       if (testOpts.withViews) {
-        checkViewConsistency(cn, false, false);
-        checkViewConsistency(cn, true, false);
-        checkViewConsistency(cn, false, true);
-        checkViewConsistency(cn, true, true);
+        print(Date() + " checking view 1 consistency");
+        checkViewConsistency(cn, false, false, viewCounts);
+        print(Date() + " checking view 2 consistency");
+        checkViewConsistency(cn, true, false, viewCounts);
+        print(Date() + " checking view 3 consistency");
+        checkViewConsistency(cn, false, true, viewCounts);
+        print(Date() + " checking view 4 consistency");
+        checkViewConsistency(cn, true, true, viewCounts);
       }
+      print(Date() + " checking consistency done.");
+      let failedViews = "";
+      for (const c of viewCounts) {
+         if(c.viewCount !== c.collectionCount) {
+           print(viewCounts);
+           failedViews = " and views count mismatch";
+           break;
+         }
+      }
+      client_ret.forEach(client => { if (client.failed) { throw new Error("clients did not finish successfully " + failedViews); }});
+      assertEqual(failedViews, "");
     }
   };
 }
