@@ -72,7 +72,8 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
     if (value_type->value == arangodb::iresearch::AnalyzerValueType::String) {
       auto term_value = std::string(irs::ViewCast<char>(term->value).data(),
                                     term->value.size());
-      ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view(expected_token->value)),
+      ASSERT_EQ(irs::ViewCast<irs::byte_type>(
+                    std::string_view(expected_token->value)),
                 term->value);
     } else {
       ASSERT_EQ(0, arangodb::basics::VelocyPackHelper::compare(

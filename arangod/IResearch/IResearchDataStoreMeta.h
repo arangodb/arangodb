@@ -35,16 +35,13 @@ struct IResearchDataStoreMeta {
                         VPackBuilder&& properties) noexcept
         : _policy(std::move(policy)), _properties(std::move(properties)) {}
 
-    irs::ConsolidationPolicy const& policy() const noexcept {
-      return _policy;
-    }
+    irs::ConsolidationPolicy const& policy() const noexcept { return _policy; }
 
     VPackSlice properties() const noexcept { return _properties.slice(); }
 
    private:
-    irs::ConsolidationPolicy
-        _policy;               // policy instance (false == disable)
-    VPackBuilder _properties;  // normalized policy definition
+    irs::ConsolidationPolicy _policy;  // policy instance (false == disable)
+    VPackBuilder _properties;          // normalized policy definition
   };
 
   IResearchDataStoreMeta();

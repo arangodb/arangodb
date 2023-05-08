@@ -405,7 +405,7 @@ bool AqlAnalyzer::next() {
                   << "Unexpected AqlAnalyzer return type "
                   << static_cast<std::underlying_type_t<AnalyzerValueType>>(
                          _options.returnType);
-              std::get<2>(_attrs).value =  irs::kEmptyStringView<irs::byte_type>;
+              std::get<2>(_attrs).value = irs::kEmptyStringView<irs::byte_type>;
               _valueBuffer = AqlValue();
               std::get<3>(_attrs).value = _valueBuffer.slice();
           }
@@ -462,8 +462,8 @@ bool AqlAnalyzer::reset(std::string_view field) noexcept {
               TRI_ASSERT(node->getStringView() == CALCULATION_PARAMETER_NAME);
               // FIXME: move to computed value once here could be not only
               // strings
-              auto newNode = ast->createNodeValueMutableString(field.data(),
-                                                               field.size());
+              auto newNode =
+                  ast->createNodeValueMutableString(field.data(), field.size());
               // finally note that the node was created from a bind parameter
               newNode->setFlag(FLAG_BIND_PARAMETER);
               newNode->setFlag(

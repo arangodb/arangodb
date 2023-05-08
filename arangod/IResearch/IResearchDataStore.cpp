@@ -261,7 +261,7 @@ Result insertDocument(IResearchDataStore const& dataStore,
       handleNestedRoot(doc, field);
     } else
 #endif
-    if (ValueStorage::NONE == field._storeValues) {
+        if (ValueStorage::NONE == field._storeValues) {
       doc.template Insert<irs::Action::INDEX>(field);
     } else {
       doc.template Insert<irs::Action::INDEX | irs::Action::STORE>(field);
@@ -731,7 +731,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       }
     }
 #endif
-    //TRI_ASSERT(false); // Make if constexpr
+    // TRI_ASSERT(false); // Make if constexpr
     if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
       ctx._ctx.Commit();
     } else {
@@ -1051,13 +1051,13 @@ Result IResearchDataStore::commitUnsafeImpl(
           _lastCommittedTickTwo = lastCommittedTickTwo;
         }};
     auto const lastTickBeforeCommitTwo = _engine->currentTick();
-    auto const commitTwo = _dataStore._writer->Commit({
-        .tick = irs::writer_limits::kMaxTick,
-        .progress = progress,
+    auto const commitTwo =
+        _dataStore._writer->Commit({.tick = irs::writer_limits::kMaxTick,
+                                    .progress = progress,
 #ifdef USE_ENTERPRISE
-        .reopen_columnstore = forceOpen()
+                                    .reopen_columnstore = forceOpen()
 #endif
-    });
+        });
     std::move(stageTwoGuard).Cancel();
     if (!commitTwo) {
       LOG_TOPIC("21bda", TRACE, TOPIC)
@@ -1137,8 +1137,7 @@ Result IResearchDataStore::commitUnsafeImpl(
 ////////////////////////////////////////////////////////////////////////////////
 IResearchDataStore::UnsafeOpResult IResearchDataStore::consolidateUnsafe(
     IResearchDataStoreMeta::ConsolidationPolicy const& policy,
-    irs::MergeWriter::FlushProgress const& progress,
-    bool& emptyConsolidation) {
+    irs::MergeWriter::FlushProgress const& progress, bool& emptyConsolidation) {
   auto begin = std::chrono::steady_clock::now();
   auto result = consolidateUnsafeImpl(policy, progress, emptyConsolidation);
   uint64_t timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -1158,8 +1157,7 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::consolidateUnsafe(
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchDataStore::consolidateUnsafeImpl(
     IResearchDataStoreMeta::ConsolidationPolicy const& policy,
-    irs::MergeWriter::FlushProgress const& progress,
-    bool& emptyConsolidation) {
+    irs::MergeWriter::FlushProgress const& progress, bool& emptyConsolidation) {
   emptyConsolidation = false;  // TODO Why?
 
   if (!policy.policy()) {
@@ -1227,10 +1225,9 @@ Result IResearchDataStore::deleteDataStore() noexcept {
   std::filesystem::remove_all(_dataStore._path, error);
   // remove persisted data store directory if present
   if (error) {
-    return {
-        TRI_ERROR_INTERNAL,
-        absl::StrCat("failed to remove ArangoSearch index '", id().id(),
-                     "' with error code '", error.message(), "'")};
+    return {TRI_ERROR_INTERNAL,
+            absl::StrCat("failed to remove ArangoSearch index '", id().id(),
+                         "' with error code '", error.message(), "'")};
   }
   return {};
 }
@@ -1291,7 +1288,8 @@ irs::IndexWriterOptions IResearchDataStore::getWriterOptions(
     options.features = getIndexFeatures<irs::Norm2>();
   }
   // initialize commit callback
-  options.meta_payload_provider = [this, version](uint64_t tick, irs::bstring& out) {
+  options.meta_payload_provider = [this, version](uint64_t tick,
+                                                  irs::bstring& out) {
     // call from commit under lock _commitMutex (_dataStore._writer->commit())
     // update current stage commit tick
     auto lastCommittedTick =
@@ -1403,9 +1401,8 @@ Result IResearchDataStore::initDataStore(
     return {TRI_ERROR_CANNOT_CREATE_DIRECTORY,
             absl::StrCat(what, " failed for data store directory with path '",
                          _dataStore._path.string(),
-                         "' while initializing ArangoSearch index '",
-                         id().id(), "' with error '", error.message(),
-                         "'")};
+                         "' while initializing ArangoSearch index '", id().id(),
+                         "' with error '", error.message(), "'")};
   };
   if (error) {
     pathExists = true;  // we don't want to remove directory in unknown state
@@ -1492,7 +1489,7 @@ Result IResearchDataStore::initDataStore(
                                   id().id(), "'");
   _flushSubscription = std::make_shared<IResearchFlushSubscription>(
       _dataStore._recoveryTickLow, name);
-  
+
   LOG_TOPIC("7e128", TRACE, TOPIC)
       << "data store reader for link '" << id()
       << "' is initialized with recovery tick low '"
@@ -1818,8 +1815,8 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
     return {};
   }
 
-  auto insertImpl = [&, &self = *this, id = id()](
-                        irs::IndexWriter::Transaction& ctx) -> Result {
+  auto insertImpl = [&, &self = *this,
+                     id = id()](irs::IndexWriter::Transaction& ctx) -> Result {
     try {
       return insertDocument<FieldIteratorType>(self, ctx, trx, doc, documentId,
                                                meta, id);
@@ -2144,7 +2141,7 @@ void IResearchDataStore::initClusterMetrics() const {
 ///        similar to the data path calculation for collections
 ////////////////////////////////////////////////////////////////////////////////
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
-                                IResearchDataStore const& link) {
+                                       IResearchDataStore const& link) {
   std::filesystem::path dataPath(dbPathFeature.directory());
 
   dataPath /= "databases";

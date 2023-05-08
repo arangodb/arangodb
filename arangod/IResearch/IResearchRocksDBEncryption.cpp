@@ -64,4 +64,4 @@ template<>
 struct type<arangodb::iresearch::RocksDBEncryptionProvider> : type<encryption> {
 };
 
-}  // namespace iresearch
+}  // namespace irs

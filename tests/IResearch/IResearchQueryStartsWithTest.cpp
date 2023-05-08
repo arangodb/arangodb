@@ -997,7 +997,8 @@ class QueryStartsWith : public QueryTest {
         arangodb::velocypack::Slice docSlice(doc->data());
         auto const prefixSlice = docSlice.get("prefix");
         if (prefixSlice.isNone() ||
-            !arangodb::iresearch::getStringRef(prefixSlice).starts_with("abc")) {
+            !arangodb::iresearch::getStringRef(prefixSlice)
+                 .starts_with("abc")) {
           continue;
         }
         expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), doc);
@@ -1037,8 +1038,8 @@ class QueryStartsWith : public QueryTest {
         arangodb::velocypack::Slice docSlice(doc->data());
         auto const prefixSlice = docSlice.get("prefix");
         if (prefixSlice.isNone() ||
-            !arangodb::iresearch::getStringRef(prefixSlice).starts_with(
-                              "abc")) {
+            !arangodb::iresearch::getStringRef(prefixSlice)
+                 .starts_with("abc")) {
           continue;
         }
         expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), doc);
@@ -1201,8 +1202,8 @@ class QueryStartsWith : public QueryTest {
         arangodb::velocypack::Slice docSlice(doc->data());
         auto const prefixSlice = docSlice.get("prefix");
         if (prefixSlice.isNone() ||
-            !arangodb::iresearch::getStringRef(prefixSlice).starts_with(
-                              "abc")) {
+            !arangodb::iresearch::getStringRef(prefixSlice)
+                 .starts_with("abc")) {
           continue;
         }
         expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), doc);
@@ -1259,8 +1260,8 @@ class QueryStartsWith : public QueryTest {
         arangodb::velocypack::Slice docSlice(doc->data());
         auto const prefixSlice = docSlice.get("prefix");
         if (prefixSlice.isNone() ||
-            !arangodb::iresearch::getStringRef(prefixSlice).starts_with(
-                              "abc")) {
+            !arangodb::iresearch::getStringRef(prefixSlice)
+                 .starts_with("abc")) {
           continue;
         }
         expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), doc);

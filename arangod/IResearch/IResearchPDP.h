@@ -28,7 +28,7 @@
 
 namespace irs {
 class parametric_description;
-}  // namespace iresearch
+}  // namespace irs
 
 namespace arangodb {
 namespace iresearch {

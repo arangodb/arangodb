@@ -93,8 +93,8 @@ velocypack::Builder& addStringRef(velocypack::Builder& builder,
 /// @brief wraps bytes ref with VPackValuePair
 ////////////////////////////////////////////////////////////////////////////////
 inline velocypack::ValuePair toValuePair(irs::bytes_view ref) {
-  TRI_ASSERT(!irs::IsNull(ref));  // consumers of ValuePair usually use memcpy(...)
-                            // which cannot handle nullptr
+  TRI_ASSERT(!irs::IsNull(ref));  // consumers of ValuePair usually use
+                                  // memcpy(...) which cannot handle nullptr
   return velocypack::ValuePair(ref.data(), ref.size(),
                                velocypack::ValueType::Binary);
 }
@@ -103,8 +103,8 @@ inline velocypack::ValuePair toValuePair(irs::bytes_view ref) {
 /// @brief wraps string ref with VPackValuePair
 ////////////////////////////////////////////////////////////////////////////////
 inline velocypack::ValuePair toValuePair(std::string_view ref) {
-  TRI_ASSERT(!irs::IsNull(ref));  // consumers of ValuePair usually use memcpy(...)
-                            // which cannot handle nullptr
+  TRI_ASSERT(!irs::IsNull(ref));  // consumers of ValuePair usually use
+                                  // memcpy(...) which cannot handle nullptr
   return velocypack::ValuePair(ref.data(), ref.size(),
                                velocypack::ValueType::String);
 }

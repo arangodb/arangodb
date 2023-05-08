@@ -504,7 +504,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
+    auto prepared =
+        filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
     auto docs = prepared->execute({.segment = segment,
                                    .scorers = irs::Scorers::kUnordered,
                                    .ctx = &queryCtx,
@@ -652,7 +653,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
+    auto prepared =
+        filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
     EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
     EXPECT_EQ(
         typeid(prepared.get()),
@@ -747,9 +749,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared =
-        filter.prepare(*reader, irs::Scorers::kUnordered);  // no context provided
-    EXPECT_EQ(irs::kNoBoost, prepared->boost());          // no boost set
+    auto prepared = filter.prepare(
+        *reader, irs::Scorers::kUnordered);       // no context provided
+    EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
     EXPECT_EQ(
         typeid(prepared.get()),
         typeid(irs::all().prepare(*reader).get()));  // should be same type
@@ -938,9 +940,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = nullptr;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared =
-        filter.prepare(*reader, irs::Scorers::kUnordered);  // no context provided
-    EXPECT_EQ(irs::kNoBoost, prepared->boost());          // no boost set
+    auto prepared = filter.prepare(
+        *reader, irs::Scorers::kUnordered);       // no context provided
+    EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
     auto docs = prepared->execute({.segment = segment,
                                    .scorers = irs::Scorers::kUnordered,
                                    .ctx = &queryCtx,
@@ -1014,9 +1016,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = nullptr;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared =
-        filter.prepare(*reader, irs::Scorers::kUnordered);  // no context provided
-    EXPECT_EQ(irs::kNoBoost, prepared->boost());          // no boost set
+    auto prepared = filter.prepare(
+        *reader, irs::Scorers::kUnordered);       // no context provided
+    EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
     auto docs = prepared->execute({.segment = segment,
                                    .scorers = irs::Scorers::kUnordered,
                                    .ctx = &queryCtx,
@@ -1085,7 +1087,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
+    auto prepared =
+        filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
     auto column = segment.column("name");
     ASSERT_TRUE(column);
     auto columnValues = column->iterator(irs::ColumnHint::kNormal);
@@ -1351,7 +1354,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
+    auto prepared =
+        filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
     auto column = segment.column("name");
     ASSERT_TRUE(column);
     auto columnValues = column->iterator(irs::ColumnHint::kNormal);

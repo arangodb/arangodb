@@ -107,7 +107,6 @@ class EmptyAnalyzer : public irs::analysis::TypedAnalyzer<EmptyAnalyzer> {
 
   EmptyAnalyzer() = default;
 
-
   virtual irs::attribute* get_mutable(
       irs::type_info::type_id type) noexcept override {
     if (type == irs::type<TestAttributeZ>::id()) {
@@ -2606,12 +2605,11 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
       vocbase.name() + "::" + analyzerCustomName;
 
   // this is for test cleanup
-  auto testCleanup =
-      irs::Finally([&analyzerCustomInSystem, &analyzers,
-                         &analyzerCustomInTestVocbase]() noexcept {
-        analyzers.remove(analyzerCustomInSystem);
-        analyzers.remove(analyzerCustomInTestVocbase);
-      });
+  auto testCleanup = irs::Finally([&analyzerCustomInSystem, &analyzers,
+                                   &analyzerCustomInTestVocbase]() noexcept {
+    analyzers.remove(analyzerCustomInSystem);
+    analyzers.remove(analyzerCustomInTestVocbase);
+  });
 
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;

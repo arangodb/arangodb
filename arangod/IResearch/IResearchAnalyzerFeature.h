@@ -174,7 +174,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   using ptr = std::shared_ptr<AnalyzerPool>;
 
   using StoreFunc = irs::bytes_view (*)(irs::token_stream* ctx,
-                                       velocypack::Slice slice);
+                                        velocypack::Slice slice);
 
   // type tags for primitive token streams
   struct NullStreamTag {};

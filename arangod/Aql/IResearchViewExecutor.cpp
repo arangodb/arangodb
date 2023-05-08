@@ -1699,11 +1699,10 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset() {
   for (size_t i = 0; i < size; ++i) {
     auto& segment = (*this->_reader)[i];
 
-    auto it = segment.mask(
-        this->_filter->execute({.segment = segment,
-                                .scorers = this->_scorers,
-                                .ctx = &this->_filterCtx,
-                                .wand ={}}));
+    auto it = segment.mask(this->_filter->execute({.segment = segment,
+                                                   .scorers = this->_scorers,
+                                                   .ctx = &this->_filterCtx,
+                                                   .wand = {}}));
     TRI_ASSERT(it);
 
     auto const* doc = irs::get<irs::document>(*it);

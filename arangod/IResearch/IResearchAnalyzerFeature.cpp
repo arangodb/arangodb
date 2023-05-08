@@ -257,7 +257,6 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
     }
   };
 
-
   auto processBool = [&builder](VPackSlice value) {
     builder.add(
         arangodb::iresearch::toValuePair(basics::StringUtils::encodeBase64(
@@ -950,7 +949,7 @@ bool AnalyzerPool::init(std::string_view const& type,
       if (!irs::IsNull(type)) {
         _config.append(type);
         _type = std::string_view(_config.c_str() + _properties.byteSize(),
-                                type.size());
+                                 type.size());
       }
       _requireMangling = kludge::isGeoAnalyzer(_type);
 
@@ -1016,8 +1015,8 @@ bool AnalyzerPool::init(std::string_view const& type,
   }
 
   _config.clear();                        // set as uninitialized
-  _key = std::string_view{};            // set as uninitialized
-  _type = std::string_view{};           // set as uninitialized
+  _key = std::string_view{};              // set as uninitialized
+  _type = std::string_view{};             // set as uninitialized
   _properties = VPackSlice::noneSlice();  // set as uninitialized
   _features.clear();                      // set as uninitialized
   _requireMangling = false;
@@ -1051,8 +1050,8 @@ void AnalyzerPool::setKey(std::string_view const& key) {
   // append(...)
   if (!irs::IsNull(_type)) {
     TRI_ASSERT(_properties.byteSize() + _type.size() <= _config.size());
-    _type =
-        std::string_view(_config.c_str() + _properties.byteSize(), _type.size());
+    _type = std::string_view(_config.c_str() + _properties.byteSize(),
+                             _type.size());
   }
 
   _key = std::string_view(_config.c_str() + keyOffset, key.size());
@@ -1144,7 +1143,8 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
 
   auto& staticAnalyzers = getStaticAnalyzers();
 
-  if (staticAnalyzers.find(irs::hashed_string_view(name)) != staticAnalyzers.end()) {
+  if (staticAnalyzers.find(irs::hashed_string_view(name)) !=
+      staticAnalyzers.end()) {
     return true;  // special case for singleton static analyzers (always
                   // allowed)
   }
@@ -1266,7 +1266,6 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
                 std::to_string(ANALYZER_PROPERTIES_SIZE_MAX) + "'"};
   }
 
-  
   bool isNew{false};
   irs::hashed_string_view hashed_key{name};
   auto generator = [&isNew, &hashed_key](const auto& map_ctor) {
@@ -1365,7 +1364,8 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
   }
 
   try {
-    if (!irs::IsNull(split.first)) {  // do not trigger load for static-analyzer requests
+    if (!irs::IsNull(
+            split.first)) {  // do not trigger load for static-analyzer requests
       if (transaction) {
         auto cleanupResult = cleanupAnalyzersCollection(
             split.first, transaction->buildingRevision());
@@ -1828,7 +1828,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
   return get(normalizedName, split,
              irs::IsNull(split.first)
                  ? kBuiltinRevision
-                                : revision.getVocbaseRevision(split.first),
+                 : revision.getVocbaseRevision(split.first),
              onlyCached);
 }
 
@@ -1868,8 +1868,7 @@ IResearchAnalyzerFeature::getStaticAnalyzers() {
         }
 
         analyzers.try_emplace(
-            irs::hashed_string_view(std::string_view(pool->name())),
-            pool);
+            irs::hashed_string_view(std::string_view(pool->name())), pool);
       }
 
       // register the text analyzers
@@ -1918,8 +1917,7 @@ IResearchAnalyzerFeature::getStaticAnalyzers() {
           }
 
           analyzers.try_emplace(
-              irs::hashed_string_view(std::string_view(pool->name())),
-              pool);
+              irs::hashed_string_view(std::string_view(pool->name())), pool);
         }
       }
     }
@@ -2358,7 +2356,8 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     std::string_view dbNameFromAnalyzer, std::string_view currentDbName,
     bool forGetters) noexcept {
   TRI_ASSERT(!currentDbName.empty());
-  if (irs::IsNull(dbNameFromAnalyzer)) {  // NULL means local db name = always reachable
+  if (irs::IsNull(
+          dbNameFromAnalyzer)) {  // NULL means local db name = always reachable
     return true;
   }
   if (dbNameFromAnalyzer.empty()) {  // empty name with :: means always system
@@ -2384,13 +2383,14 @@ IResearchAnalyzerFeature::splitAnalyzerName(
       auto vocbase =
           i > 1  // non-empty prefix, +1 for first delimiter char
               ? std::string_view(analyzer.data(),
-                                i - 1)  // -1 for the first ':' delimiter
+                                 i - 1)  // -1 for the first ':' delimiter
               : irs::kEmptyStringView<char>;
-      auto name =
-          i < count - 1  // have suffix
-              ? std::string_view(analyzer.data() + i + 1,
-                                count - i - 1)  // +-1 for the suffix after '::'
-              : irs::kEmptyStringView<char>;  // do not point after end of buffer
+      auto name = i < count - 1  // have suffix
+                      ? std::string_view(
+                            analyzer.data() + i + 1,
+                            count - i - 1)  // +-1 for the suffix after '::'
+                      : irs::kEmptyStringView<char>;  // do not point after end
+                                                      // of buffer
 
       return std::make_pair(vocbase, name);  // prefixed analyzer name
     }
@@ -2405,7 +2405,8 @@ IResearchAnalyzerFeature::splitAnalyzerName(
     bool expandVocbasePrefix /*= true*/) {
   auto& staticAnalyzers = getStaticAnalyzers();
 
-  if (staticAnalyzers.find(irs::hashed_string_view(name)) != staticAnalyzers.end()) {
+  if (staticAnalyzers.find(irs::hashed_string_view(name)) !=
+      staticAnalyzers.end()) {
     return static_cast<std::string>(
         name);  // special case for singleton static analyzers
   }
@@ -2492,8 +2493,8 @@ void IResearchAnalyzerFeature::prepare() {
   _analyzers = getStaticAnalyzers();
 }
 
-Result IResearchAnalyzerFeature::removeFromCollection(std::string_view name,
-                                                      std::string_view vocbase) {
+Result IResearchAnalyzerFeature::removeFromCollection(
+    std::string_view name, std::string_view vocbase) {
   auto& dbFeature = server().getFeature<DatabaseFeature>();
   auto* voc = dbFeature.useDatabase(static_cast<std::string>(
       vocbase));  // FIXME: after C++20 remove cast and use heterogeneous lookup
@@ -2581,8 +2582,7 @@ Result IResearchAnalyzerFeature::remove(std::string_view const& name,
 
     WRITE_LOCKER(lock, _mutex);
 
-    auto itr = _analyzers.find(
-        irs::hashed_string_view(name));
+    auto itr = _analyzers.find(irs::hashed_string_view(name));
 
     if (itr == _analyzers.end()) {
       return {
@@ -3002,8 +3002,8 @@ void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
   auto database = std::string_view(vocbase.name());
   // FIXME: after C++20 remove cast and use
   // heterogeneous lookup
-  auto itr = _lastLoad.find(static_cast<std::string>(
-      irs::hashed_string_view(database)));
+  auto itr = _lastLoad.find(
+      static_cast<std::string>(irs::hashed_string_view(database)));
   if (itr != _lastLoad.end()) {
     cleanupAnalyzers(database);
     _lastLoad.erase(itr);

@@ -605,7 +605,7 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
                            .getFeature<arangodb::DatabaseFeature>()
                            .extendedNamesForAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(
-          extendedNames,splittedAnalyzerName.second)) {
+          extendedNames, splittedAnalyzerName.second)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         std::string("Invalid characters in analyzer name '")

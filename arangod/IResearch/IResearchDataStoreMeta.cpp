@@ -457,8 +457,9 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
       auto const type = typeField.stringView();
 
       if (kPolicyBytesAccum == type) {
-        _consolidationPolicy = createConsolidationPolicy<
-            irs::index_utils::ConsolidateBytesAccum>(field, errorSubField);
+        _consolidationPolicy =
+            createConsolidationPolicy<irs::index_utils::ConsolidateBytesAccum>(
+                field, errorSubField);
       } else if (kPolicyTier == type) {
         _consolidationPolicy =
             createConsolidationPolicy<irs::index_utils::ConsolidateTier>(

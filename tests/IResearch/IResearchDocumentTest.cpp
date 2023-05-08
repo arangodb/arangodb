@@ -2223,7 +2223,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     ASSERT_FALSE(it.valid());
 
     analyzer->reset(std::string_view{});  // ensure that acquired 'analyzer'
-                                            // will not be optimized out
+                                          // will not be optimized out
   }
 
   // first analyzer is invalid
@@ -2273,7 +2273,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     ASSERT_FALSE(it.valid());
 
     analyzer->reset(std::string_view{});  // ensure that acquired 'analyzer'
-                                            // will not be optimized out
+                                          // will not be optimized out
   }
 }
 
@@ -2537,8 +2537,8 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
     irs::IndexWriter::ptr writer;
 
     DataStore() {
-      writer = irs::IndexWriter::Make(dir, irs::formats::get("1_0"),
-                                       irs::OM_CREATE);
+      writer =
+          irs::IndexWriter::Make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
       EXPECT_TRUE(writer);
       writer->Commit();
 
@@ -2606,8 +2606,7 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
     arangodb::iresearch::PrimaryKeyFilterContainer filters;
     EXPECT_TRUE(filters.empty());
-    auto& filter =
-        filters.emplace(arangodb::LocalDocumentId(rid), false);
+    auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
     EXPECT_FALSE(filters.empty());
 
     // first execution
@@ -2716,8 +2715,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     irs::IndexWriter::ptr writer;
 
     DataStore() {
-      writer = irs::IndexWriter::Make(dir, irs::formats::get("1_0"),
-                                       irs::OM_CREATE);
+      writer =
+          irs::IndexWriter::Make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
       EXPECT_TRUE(writer);
       writer->Commit();
 
@@ -2785,8 +2784,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
-      auto& filter =
-          filters.emplace(arangodb::LocalDocumentId(rid), false);
+      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
@@ -2878,8 +2876,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto beforeRecovery = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    irs::Finally restoreRecovery =
-        [&beforeRecovery]() noexcept {
+    irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
       StorageEngineMock::recoveryStateResult = beforeRecovery;
     };
 
@@ -2890,8 +2887,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
-      auto& filter =
-          filters.emplace(arangodb::LocalDocumentId(rid), false);
+      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
@@ -2984,8 +2980,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto beforeRecovery = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    irs::Finally restoreRecovery =
-        [&beforeRecovery]() noexcept {
+    irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
       StorageEngineMock::recoveryStateResult = beforeRecovery;
     };
 
@@ -2996,8 +2991,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
-      auto& filter =
-          filters.emplace(arangodb::LocalDocumentId(rid), false);
+      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
@@ -3308,7 +3302,8 @@ TEST_F(
       },
   };
 
-  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
   for (auto& assertField : assertFields) {
@@ -3437,7 +3432,8 @@ TEST_F(
                                             mangleNull("never_present"));
       }};
 
-  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
   size_t fieldIdx{};
@@ -3571,7 +3567,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
                                             mangleNull("never_present"));
       }};
 
-  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
   size_t fieldIdx{};
@@ -3605,7 +3602,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_not_array_expansion) {
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"keys": "not_an_array", "boost": 10})");
 
-  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
   ASSERT_TRUE(it.valid());
   assertField<irs::numeric_token_stream, true>(server, *it,
@@ -3634,7 +3632,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_array_no_expansion) {
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"boost": 10, "keys": [1,2,3]})");
 
-  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
   ASSERT_TRUE(it.valid());
   assertField<irs::numeric_token_stream, true>(server, *it,
@@ -3662,7 +3661,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_searchField) {
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"boost": 10, "keys": [1,2,3]})");
 
-  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
   ASSERT_TRUE(it.valid());
   assertField<irs::numeric_token_stream, true>(server, *it,
@@ -3716,7 +3716,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_object) {
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"boost": 10, "keys": { "a":1, "b":2, "c":3}})");
 
-  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
   ASSERT_TRUE(it.valid());
   assertField<irs::numeric_token_stream, true>(server, *it,
@@ -3751,7 +3752,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
         assertField<irs::null_token_stream>(server, *it, mangleNull("keys"));
       }};
 
-  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
   ASSERT_TRUE(it.valid());
   auto& field = *it;
@@ -3793,7 +3795,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_partial_path_match) {
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
 
-  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
@@ -3837,7 +3840,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_IncludeAllFields_simple) {
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
-  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
@@ -3883,7 +3887,8 @@ TEST_F(IResearchDocumentTest,
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
 
-  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
@@ -3934,7 +3939,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_choose_closer_path_match) {
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
 
-  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {

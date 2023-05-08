@@ -209,7 +209,8 @@ class CoveringVector final : public IndexIteratorCoveringData {
     size_t fields{meta._sort.fields().size()};
     _coverage.reserve(meta._sort.size() + meta._storedValues.columns().size());
     if (!meta._sort.empty()) {
-      _coverage.emplace_back(fields, CoveringValue(irs::kEmptyStringView<char>));
+      _coverage.emplace_back(fields,
+                             CoveringValue(irs::kEmptyStringView<char>));
     }
     for (auto const& column : meta._storedValues.columns()) {
       fields += column.fields.size();

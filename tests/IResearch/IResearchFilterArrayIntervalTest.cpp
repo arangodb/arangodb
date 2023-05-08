@@ -151,7 +151,8 @@ class IResearchFilterArrayIntervalTest
 
 namespace {
 // Auxilary check lambdas. Need them to check by_range part of expected filter
-auto checkLess = [](auto& filter, irs::bytes_view term, std::string_view field) {
+auto checkLess = [](auto& filter, irs::bytes_view term,
+                    std::string_view field) {
   ASSERT_EQ(irs::type<irs::by_range>::id(), (*filter)->type());
   auto& actual = dynamic_cast<irs::by_range const&>(**filter);
   irs::by_range expected;
@@ -329,11 +330,10 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
           irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()),
           mangleNull("quick.brown.fox"));
       ++subFiltersIterator;
-      operation.second.second(
-          subFiltersIterator,
-          irs::ViewCast<irs::byte_type>(
-              irs::boolean_token_stream::value_true()),
-          mangleBool("quick.brown.fox"));
+      operation.second.second(subFiltersIterator,
+                              irs::ViewCast<irs::byte_type>(
+                                  irs::boolean_token_stream::value_true()),
+                              mangleBool("quick.brown.fox"));
       ++subFiltersIterator;
     }
   }
@@ -392,11 +392,10 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
           irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()),
           mangleNull("quick.brown.fox"));
       ++subFiltersIterator;
-      operation.second.second(
-          subFiltersIterator,
-          irs::ViewCast<irs::byte_type>(
-              irs::boolean_token_stream::value_false()),
-          mangleBool("quick.brown.fox"));
+      operation.second.second(subFiltersIterator,
+                              irs::ViewCast<irs::byte_type>(
+                                  irs::boolean_token_stream::value_false()),
+                              mangleBool("quick.brown.fox"));
       ++subFiltersIterator;
     }
   }
@@ -727,11 +726,10 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
           irs::ViewCast<irs::byte_type>(std::string_view("str2")),
           mangleString("a.b.c.e.f", "test_analyzer"));
       ++subFiltersIterator;
-      operation.second.second(
-          subFiltersIterator,
-          irs::ViewCast<irs::byte_type>(
-              irs::boolean_token_stream::value_false()),
-          mangleBool("a.b.c.e.f"));
+      operation.second.second(subFiltersIterator,
+                              irs::ViewCast<irs::byte_type>(
+                                  irs::boolean_token_stream::value_false()),
+                              mangleBool("a.b.c.e.f"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,

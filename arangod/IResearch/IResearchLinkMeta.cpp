@@ -424,8 +424,8 @@ bool FieldMeta::init(
         std::string childErrorField;
 
         if (!_fields[name].init(server, value, childErrorField, defaultVocbase,
-                                 version, subDefaults, referencedAnalyzers,
-                                 nullptr)) {
+                                version, subDefaults, referencedAnalyzers,
+                                nullptr)) {
           errorField =
               std::string{kFieldName} + "." + name + "." + childErrorField;
 
@@ -477,8 +477,8 @@ bool FieldMeta::init(
         std::string childErrorField;
 
         if (!_nested[name].init(server, value, childErrorField, defaultVocbase,
-                                 version, subDefaults, referencedAnalyzers,
-                                 nullptr)) {
+                                version, subDefaults, referencedAnalyzers,
+                                nullptr)) {
           errorField =
               absl::StrCat(kFieldName, ".", name, ".", childErrorField);
           return false;
@@ -560,13 +560,14 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
 
     for (auto& entry : _fields) {
       fieldMask._fields =
-          !entry.second._fields.empty();  // do not output empty fields on subobjects
-      fieldsBuilder.add(           // add sub-object
+          !entry.second._fields
+               .empty();  // do not output empty fields on subobjects
+      fieldsBuilder.add(  // add sub-object
           std::string_view(entry.first),  // field name
           VPackValue(velocypack::ValueType::Object));
 
       if (!entry.second.json(server, fieldsBuilder, &subDefaults,
-                               defaultVocbase, &fieldMask)) {
+                             defaultVocbase, &fieldMask)) {
         return false;
       }
 
@@ -585,12 +586,11 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
     for (auto& entry : _nested) {
       // do not output empty fields on subobjects
       fieldMask._fields = !entry.second._fields.empty();
-      fieldsBuilder.add(
-          std::string_view(entry.first),
-          VPackValue(velocypack::ValueType::Object));
+      fieldsBuilder.add(std::string_view(entry.first),
+                        VPackValue(velocypack::ValueType::Object));
 
       if (!entry.second.json(server, fieldsBuilder, &subDefaults,
-                               defaultVocbase, &fieldMask)) {
+                             defaultVocbase, &fieldMask)) {
         return false;
       }
 

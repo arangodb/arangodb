@@ -254,8 +254,8 @@ bool comparer(irs::Scorer::ptr* comparer, aql::AstNode const& node) {
   // create scorer with default arguments
   // ArangoDB, for API consistency, only supports scorers configurable via jSON
   *comparer = irs::scorers::get(  // get scorer
-      scorerName, irs::type<irs::text_format::json>::get(),
-      std::string_view{}, false  // args
+      scorerName, irs::type<irs::text_format::json>::get(), std::string_view{},
+      false  // args
   );
 
   return bool(*comparer);

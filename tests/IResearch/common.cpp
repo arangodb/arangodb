@@ -258,7 +258,7 @@ std::string to_string(irs::filter const& f) {
   ss << f;
   return ss.str();
 }
-}  // namespace iresearch
+}  // namespace irs
 
 namespace {
 
@@ -393,7 +393,6 @@ struct CustomScorer final : public irs::ScorerBase<void> {
 };
 
 REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
-
 
 static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
 static const VPackSlice testDatabaseArgs = testDatabaseBuilder.slice();

@@ -138,7 +138,8 @@ velocypack::Builder& addStringRef(velocypack::Builder& builder,
 }
 
 velocypack::Builder& addStringRef(velocypack::Builder& builder,
-                                  std::string_view key, std::string_view value) {
+                                  std::string_view key,
+                                  std::string_view value) {
   return addRef(builder, key, value);
 }
 

@@ -35,7 +35,6 @@
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
 
-
 namespace arangodb::tests {
 namespace {
 

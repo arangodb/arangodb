@@ -45,7 +45,7 @@ std::string_view columnCompressionToString(
     demangled_start--;
   }
   return std::string_view(&(*demangled_start),
-                         std::distance(demangled_start, mangled_name.end()));
+                          std::distance(demangled_start, mangled_name.end()));
 }
 
 irs::type_info::type_id columnCompressionFromString(

@@ -317,7 +317,7 @@ void toVelocyPack(velocypack::Builder& builder,
 
 GeoAnalyzer::GeoAnalyzer(irs::type_info const& type,
                          S2RegionTermIndexer::Options const& options)
-    :  _indexer{options}, _coverer{options} {}
+    : _indexer{options}, _coverer{options} {}
 
 bool GeoAnalyzer::next() noexcept {
   if (_begin >= _end) {
@@ -389,7 +389,7 @@ irs::analysis::analyzer::ptr GeoVPackAnalyzer::make(std::string_view args) {
 }
 
 irs::bytes_view GeoVPackAnalyzer::store(irs::token_stream* ctx,
-                                       velocypack::Slice slice) {
+                                        velocypack::Slice slice) {
   TRI_ASSERT(ctx != nullptr);
   auto& impl = basics::downCast<GeoVPackAnalyzer>(*ctx);
   if (impl._type == Type::CENTROID) {
@@ -477,7 +477,7 @@ bool GeoPointAnalyzer::reset(std::string_view value) {
 }
 
 irs::bytes_view GeoPointAnalyzer::store(irs::token_stream* ctx,
-                                       velocypack::Slice slice) {
+                                        velocypack::Slice slice) {
   TRI_ASSERT(ctx != nullptr);
   auto& impl = basics::downCast<GeoPointAnalyzer>(*ctx);
   // reuse already parsed point

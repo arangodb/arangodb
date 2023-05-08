@@ -202,7 +202,8 @@ class TransactionStateMock : public arangodb::TransactionState {
   static std::atomic_size_t commitTransactionCount;
 
   TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
-                       arangodb::transaction::Options const& options, StorageEngineMock& engine);
+                       arangodb::transaction::Options const& options,
+                       StorageEngineMock& engine);
   virtual arangodb::Result abortTransaction(
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(
@@ -214,7 +215,7 @@ class TransactionStateMock : public arangodb::TransactionState {
   void incrementInsert() noexcept { ++_numInserts; }
   void incrementRemove() noexcept { ++_numRemoves; }
   [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept final {
-      return _numInserts + _numRemoves;
+    return _numInserts + _numRemoves;
   }
   virtual uint64_t numCommits() const override;
   virtual bool hasFailedOperations() const override;
@@ -350,6 +351,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
                          arangodb::LogicalCollection& collection,
                          VPackSlice const& info);
   void incrementTick(uint64_t tick) { _engineTick.fetch_add(tick); }
+
  private:
   TRI_voc_tick_t _releasedTick;
   std::atomic_uint64_t _engineTick{100};

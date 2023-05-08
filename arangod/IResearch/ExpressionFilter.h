@@ -94,7 +94,6 @@ class ByExpression final : public irs::filter {
     return irs::type<ByExpression>::id();
   }
 
-
   using irs::filter::prepare;
 
   irs::filter::prepared::ptr prepare(

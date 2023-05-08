@@ -1513,8 +1513,7 @@ TEST_F(
   auto linkCallbackRemover =
       arangodb::iresearch::IResearchLinkMock::setCallbackForScope([]() {
         return irs::directory_attributes{
-            0,
-            std::make_unique<irs::mock::test_encryption>(kEncBlockSize)};
+            0, std::make_unique<irs::mock::test_encryption>(kEncBlockSize)};
       });
   static std::vector<std::string> const kEmpty;
   auto doc0 = arangodb::velocypack::Parser::fromJson(
@@ -1578,9 +1577,9 @@ TEST_F(
                std::to_string(logicalCollection->id().id()) + "_42"))
                  .string();
   irs::FSDirectory directory(
-      dataPath, irs::directory_attributes(
-                    0, std::make_unique<irs::mock::test_encryption>(
-                           kEncBlockSize)));
+      dataPath,
+      irs::directory_attributes(
+          0, std::make_unique<irs::mock::test_encryption>(kEncBlockSize)));
 
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -2170,7 +2169,8 @@ void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
   auto visitor = [&indexSize, &numFiles,
                   &utf8Path](const irs::path_char_t* filename) -> bool {
     auto pathParts = irs::file_utils::path_parts(filename);
-    std::match_results<typename std::basic_string<irs::path_char_t>::const_iterator>
+    std::match_results<
+        typename std::basic_string<irs::path_char_t>::const_iterator>
         match;
     std::basic_regex<irs::path_char_t> regex([] {
       if constexpr (std::is_same_v<irs::path_char_t, wchar_t>) {
@@ -2180,7 +2180,7 @@ void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
       }
     }());
     std::basic_string<irs::path_char_t> name(pathParts.stem.data(),
-                                        pathParts.stem.size());
+                                             pathParts.stem.size());
 
     if (std::regex_match(name, match, regex)) {
       // creating abs path to current file

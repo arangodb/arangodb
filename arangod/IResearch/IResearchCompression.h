@@ -31,7 +31,8 @@ namespace iresearch {
 
 std::string_view columnCompressionToString(
     irs::type_info::type_id type) noexcept;
-irs::type_info::type_id columnCompressionFromString(std::string_view c) noexcept;
+irs::type_info::type_id columnCompressionFromString(
+    std::string_view c) noexcept;
 irs::type_info::type_id getDefaultCompression() noexcept;
 }  // namespace iresearch
 }  // namespace arangodb

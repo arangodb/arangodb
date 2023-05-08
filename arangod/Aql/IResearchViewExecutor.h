@@ -47,7 +47,7 @@
 namespace irs {
 struct score;
 struct document;
-}  // namespace iresearch
+}  // namespace irs
 
 namespace arangodb {
 class LogicalCollection;

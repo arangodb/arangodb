@@ -78,8 +78,7 @@ struct IResearchTrxState final : public TransactionState::Cookie {
     TRI_ASSERT(_removals.empty());
   }
 
-  void remove(LocalDocumentId const& value,
-              bool nested) {
+  void remove(LocalDocumentId const& value, bool nested) {
     _ctx.Remove(_removals.emplace(value, nested));
   }
 };
@@ -330,9 +329,9 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  UnsafeOpResult commitUnsafe(
-      bool wait, irs::ProgressReportCallback const& progress,
-      CommitResult& code);
+  UnsafeOpResult commitUnsafe(bool wait,
+                              irs::ProgressReportCallback const& progress,
+                              CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -354,9 +353,9 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result commitUnsafeImpl(
-      bool wait, irs::ProgressReportCallback const& progress,
-      CommitResult& code);
+  Result commitUnsafeImpl(bool wait,
+                          irs::ProgressReportCallback const& progress,
+                          CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -519,7 +518,7 @@ class IResearchDataStore {
 };
 
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
-                                IResearchDataStore const& link);
+                                       IResearchDataStore const& link);
 
 }  // namespace iresearch
 }  // namespace arangodb

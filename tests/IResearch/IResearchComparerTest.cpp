@@ -56,7 +56,8 @@ TEST(IResearchComparerTest, test_comparer_single_entry) {
   for (auto doc : arangodb::velocypack::ArrayIterator(docsSlice)) {
     auto slice = doc.get("name");
     EXPECT_TRUE(slice.isString());
-    actual_values.emplace_back(irs::bytes_view(slice.start(), slice.byteSize()));
+    actual_values.emplace_back(
+        irs::bytes_view(slice.start(), slice.byteSize()));
     expected_values.emplace_back(
         irs::bytes_view(slice.start(), slice.byteSize()));
   }
