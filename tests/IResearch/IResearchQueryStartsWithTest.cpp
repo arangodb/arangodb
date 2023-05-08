@@ -997,8 +997,7 @@ class QueryStartsWith : public QueryTest {
         arangodb::velocypack::Slice docSlice(doc->data());
         auto const prefixSlice = docSlice.get("prefix");
         if (prefixSlice.isNone() ||
-            !irs::starts_with(arangodb::iresearch::getStringRef(prefixSlice),
-                              "abc")) {
+            !arangodb::iresearch::getStringRef(prefixSlice).starts_with("abc")) {
           continue;
         }
         expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), doc);
@@ -1038,7 +1037,7 @@ class QueryStartsWith : public QueryTest {
         arangodb::velocypack::Slice docSlice(doc->data());
         auto const prefixSlice = docSlice.get("prefix");
         if (prefixSlice.isNone() ||
-            !irs::starts_with(arangodb::iresearch::getStringRef(prefixSlice),
+            !arangodb::iresearch::getStringRef(prefixSlice).starts_with(
                               "abc")) {
           continue;
         }
@@ -1202,7 +1201,7 @@ class QueryStartsWith : public QueryTest {
         arangodb::velocypack::Slice docSlice(doc->data());
         auto const prefixSlice = docSlice.get("prefix");
         if (prefixSlice.isNone() ||
-            !irs::starts_with(arangodb::iresearch::getStringRef(prefixSlice),
+            !arangodb::iresearch::getStringRef(prefixSlice).starts_with(
                               "abc")) {
           continue;
         }
@@ -1260,7 +1259,7 @@ class QueryStartsWith : public QueryTest {
         arangodb::velocypack::Slice docSlice(doc->data());
         auto const prefixSlice = docSlice.get("prefix");
         if (prefixSlice.isNone() ||
-            !irs::starts_with(arangodb::iresearch::getStringRef(prefixSlice),
+            !arangodb::iresearch::getStringRef(prefixSlice).starts_with(
                               "abc")) {
           continue;
         }
@@ -1480,9 +1479,9 @@ class QueryStartsWithView : public QueryStartsWith {
         "links": {
           "collection_1": {
             "includeAllFields": true,
-            "version": %u },
+            "version": $0 },
           "collection_2": {
-            "version": %u,
+            "version": $0,
             "includeAllFields": true }
       }})";
 

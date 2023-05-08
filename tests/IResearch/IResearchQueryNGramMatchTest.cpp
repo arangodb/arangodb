@@ -1178,14 +1178,14 @@ class QueryNGramMatchView : public QueryNGramMatch {
         "testCollection0": {
           "analyzers": [ "::myngram", "identity" ],
           "includeAllFields": true,
-          "version": %u,
+          "version": $0,
           "trackListPositions": true }
       }})"
                                            : R"({ "links": {
         "testCollection0": {
           "analyzers": [ "myngram", "identity" ],
           "includeAllFields": true,
-          "version": %u,
+          "version": $0,
           "trackListPositions": true }
       }})";
 

@@ -75,7 +75,6 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "utils/string_utils.hpp"
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -142,7 +141,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
   struct StringComparer {
     bool operator()(std::string_view lhs, std::string_view rhs) const {
       return arangodb::basics::VelocyPackHelper::compareStringValues(
-                 lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
+                 lhs.data(), lhs.size(), rhs.data(), rhs.size(), true) < 0;
     }
   };  // StringComparer
 
@@ -448,7 +447,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
   struct StringComparer {
     bool operator()(std::string_view lhs, std::string_view rhs) const {
       return arangodb::basics::VelocyPackHelper::compareStringValues(
-                 lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
+                 lhs.data(), lhs.size(), rhs.data(), rhs.size(), true) < 0;
     }
   };  // StringComparer
 

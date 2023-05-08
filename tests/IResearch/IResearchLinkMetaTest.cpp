@@ -4181,7 +4181,8 @@ void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
   std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
   mock_term_reader mockTermReader;
 
-  fakeit::Mock<irs::field_iterator> mockFieldIterator;
+  fakeit::Mock<mock_field_iterator> mockFieldIterator;
+  fakeit::When(Method(mockFieldIterator, Destroy)).AlwaysReturn();
   fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
     if (field == mockedFields.end()) {
       field = mockedFields.begin();

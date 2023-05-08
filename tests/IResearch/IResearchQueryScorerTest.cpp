@@ -1896,11 +1896,11 @@ class QueryScorerView : public QueryScorer {
           "collection_1": {
             "analyzers": [ "test_analyzer", "identity"],
             "includeAllFields": true,
-            "version": %u,
+            "version": $0,
             "trackListPositions": true },
           "collection_2": {
             "analyzers": [ "test_analyzer", "identity"],
-            "version": %u,
+            "version": $0,
             "includeAllFields": true }
       }})";
 

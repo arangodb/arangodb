@@ -6398,11 +6398,11 @@ class QueryPhraseView : public QueryPhrase {
         "testCollection0": {
           "analyzers": [ "test_analyzer", "identity", "::ngram_test_analyzer13", "::ngram_test_analyzer2" ],
           "includeAllFields": true,
-          "version": %u,
+          "version": $0,
           "trackListPositions": true },
         "testCollection1": {
           "analyzers": [ "::test_analyzer", "identity", "::ngram_test_analyzer13", "::ngram_test_analyzer2" ],
-          "version": %u,
+          "version": $0,
           "includeAllFields": true }
     }})";
 
@@ -6445,11 +6445,11 @@ class QueryPhraseView : public QueryPhrase {
         "testCollection0": {
           "analyzers": [ "test_analyzer", "::test_analyzer", "identity", "::ngram_test_analyzer13", "::ngram_test_analyzer2" ],
           "includeAllFields": true,
-          "version": %u,
+          "version": $0,
           "trackListPositions": true },
         "testCollection1": {
           "analyzers": [ "test_analyzer", "_system::test_analyzer", "identity", "::ngram_test_analyzer13", "::ngram_test_analyzer2" ],
-          "version": %u,
+          "version": $0,
           "includeAllFields": true }
     }})";
 

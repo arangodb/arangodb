@@ -2819,9 +2819,9 @@ class QueryStringTermView : public QueryStringTerm {
       "links": {
         "collection_1": {
           "includeAllFields": true,
-          "version": %u },
+          "version": $0 },
         "collection_2": {
-          "version": %u,
+          "version": $0,
           "includeAllFields": true }
     }})";
 

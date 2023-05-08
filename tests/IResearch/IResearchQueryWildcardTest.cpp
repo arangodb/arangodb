@@ -582,7 +582,7 @@ class QueryWildcardView : public QueryWildcard {
 
     auto viewDefinitionTemplate = R"({
       "links": {
-        "testCollection1": { "includeAllFields": true, "version": %u }
+        "testCollection1": { "includeAllFields": true, "version": $0 }
     }})";
 
     auto viewDefinition = absl::Substitute(

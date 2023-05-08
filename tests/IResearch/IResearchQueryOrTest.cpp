@@ -617,12 +617,12 @@ class QueryOrView : public QueryOr {
           "analyzers": [ "test_analyzer", "identity" ],
           "includeAllFields": true,
           "trackListPositions": true,
-          "version": %u,
+          "version": $0,
           "storeValues":"id" },
         "collection_2": {
           "analyzers": [ "test_analyzer", "identity" ],
           "includeAllFields": true,
-          "version": %u,
+          "version": $0,
           "storeValues":"id" }
       }})";
 

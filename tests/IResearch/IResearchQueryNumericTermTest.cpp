@@ -46,7 +46,7 @@ static std::vector<std::string> const kEmpty;
 struct StringComparer {
   bool operator()(std::string_view lhs, std::string_view rhs) const {
     return arangodb::basics::VelocyPackHelper::compareStringValues(
-               lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
+               lhs.data(), lhs.size(), rhs.data(), rhs.size(), true) < 0;
   }
 };
 
@@ -3139,10 +3139,10 @@ class QueryNumericTermView : public QueryNumericTerm {
       "links": {
         "collection_1": {
           "includeAllFields": true,
-          "version":%u },
+          "version": $0 },
         "collection_2": {
           "includeAllFields": true,
-          "version":%u }
+          "version": $0 }
       }
     })";
 

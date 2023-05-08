@@ -47,7 +47,7 @@
 #include "Transaction/Methods.h"
 
 #include "AqlItemBlockHelper.h"
-#include "search/sort.hpp"
+#include "search/score.hpp"
 
 #include <velocypack/Builder.h>
 

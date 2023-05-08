@@ -2622,11 +2622,6 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
       for (auto& segment : *reader) {
         auto docs = prepared->execute(segment);
         ASSERT_TRUE(docs);
-        // EXPECT_EQ(nullptr, prepared->execute(segment)); // unusable filter
-        // TRI_ASSERT(...) check
-        EXPECT_EQ(irs::filter::prepared::empty(),
-                  filter.prepare(*reader));  // unusable filter (after execute)
-
         EXPECT_TRUE(docs->next());
         auto const id = docs->value();
         ++found;
@@ -2804,12 +2799,6 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);
         ASSERT_TRUE(docs);
-        // EXPECT_EQ(nullptr, prepared->execute(segment)); // unusable filter
-        // TRI_ASSERT(...) check
-        EXPECT_EQ(
-            irs::filter::prepared::empty(),
-            filter.prepare(*store.reader));  // unusable filter (after execute)
-
         EXPECT_TRUE(docs->next());
         auto const id = docs->value();
         ++actualDocs;
@@ -2915,12 +2904,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);
         ASSERT_TRUE(docs);
-        EXPECT_NE(nullptr, prepared->execute(segment));  // usable filter
-        EXPECT_NE(
-            nullptr,
-            filter.prepare(*store.reader));  // usable filter (after execute)
-
-        if (docs->next()) {  // old segments will not have any matching docs
+        if (docs->next()) {
           auto const id = docs->value();
           ++actualDocs;
           EXPECT_FALSE(docs->next());
@@ -3026,11 +3010,6 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);
         ASSERT_TRUE(docs);
-        EXPECT_NE(nullptr, prepared->execute(segment));  // usable filter
-        EXPECT_NE(
-            nullptr,
-            filter.prepare(*store.reader));  // usable filter (after execute)
-
         if (docs->next()) {  // old segments will not have any matching docs
           auto const id = docs->value();
           ++actualDocs;

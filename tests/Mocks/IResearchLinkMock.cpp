@@ -24,6 +24,8 @@
 
 #include "IResearchLinkMock.h"
 
+#include "Mocks/StorageEngineMock.h"
+#include "Basics/DownCast.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -81,5 +83,17 @@ void IResearchLinkMock::toVelocyPack(
 }
 
 std::function<irs::directory_attributes()> IResearchLinkMock::InitCallback;
+
+Result IResearchLinkMock::remove(transaction::Methods& trx,
+                                 LocalDocumentId documentId, bool nested,
+                                 uint64_t const* recoveryTick) {
+  if (recoveryTick == nullptr) {
+    auto* state = basics::downCast<::TransactionStateMock>(trx.state());
+    TRI_ASSERT(state != nullptr);
+    state->incrementRemove();
+  }
+  return IResearchDataStore::remove(trx, documentId, nested, recoveryTick);
+}
+
 }  // namespace iresearch
 }  // namespace arangodb

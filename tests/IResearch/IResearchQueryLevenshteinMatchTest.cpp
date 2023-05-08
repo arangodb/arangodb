@@ -952,7 +952,7 @@ class QueryLevenhsteinMatchView : public QueryLevenhsteinMatch {
 
       auto viewDefinitionTemplate = R"({
       "links": {
-        "testCollection1": { "includeAllFields": true, "version": %u }
+        "testCollection1": { "includeAllFields": true, "version": $0 }
       }
     })";
 

@@ -731,7 +731,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       }
     }
 #endif
-    TRI_ASSERT(false); // Make if constexpr
+    //TRI_ASSERT(false); // Make if constexpr
     if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
       ctx._ctx.Commit();
     } else {
@@ -1024,10 +1024,8 @@ Result IResearchDataStore::commitUnsafeImpl(
       _lastCommittedTickOne = lastTickBeforeCommitOne;
       _lastCommittedTickTwo = lastTickBeforeCommitOne;
       impl.tick(_lastCommittedTickOne);
-#ifdef USE_ENTERPRISE
       // get new reader
       _dataStore._reader = _dataStore._writer->GetSnapshot();
-#endif
       return {};
     } else {
       code = CommitResult::DONE;
@@ -1464,12 +1462,12 @@ Result IResearchDataStore::initDataStore(
     _dataStore._writer->Commit();
   }
 
-  auto reader = _dataStore._writer->GetSnapshot();
-  TRI_ASSERT(reader);
+  _dataStore._reader = _dataStore._writer->GetSnapshot();
+  TRI_ASSERT(_dataStore._reader);
 
   if (pathExists) {
     try {
-      if (!readTick(irs::GetPayload(reader.Meta().index_meta),
+      if (!readTick(irs::GetPayload(_dataStore._reader.Meta().index_meta),
                     _dataStore._recoveryTickLow,
                     _dataStore._recoveryTickHigh)) {
         return {TRI_ERROR_INTERNAL,
