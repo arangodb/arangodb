@@ -32,9 +32,6 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
-namespace arangodb::cluster {
-struct IFailureOracle;
-}
 namespace arangodb::replication2::replicated_log {
 struct TermIndexMapping;
 }

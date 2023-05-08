@@ -51,11 +51,7 @@ class MetricsFeature;
 class ClusterMetricsFeature;
 
 }  // namespace metrics
-namespace cluster {
 
-class FailureOracleFeature;
-
-}  // namespace cluster
 class AqlFeature;
 class AgencyFeature;
 class ActionFeature;
@@ -291,7 +287,6 @@ using ArangodFeaturesList = TypeList<
     iresearch::IResearchFeature,
     ClusterEngine,
     RocksDBEngine,
-    cluster::FailureOracleFeature,
     replication2::replicated_state::ReplicatedStateAppFeature,
     replication2::replicated_state::black_hole::BlackHoleStateMachineFeature,
     replication2::replicated_state::document::DocumentStateMachineFeature

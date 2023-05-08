@@ -36,9 +36,6 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
-namespace arangodb::cluster {
-struct IFailureOracle;
-}
 namespace arangodb::replication2::test {
 
 struct DelayedFollowerLog : replicated_log::AbstractFollower,

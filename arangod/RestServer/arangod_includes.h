@@ -56,7 +56,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/MaintenanceFeature.h"
-#include "Cluster/FailureOracleFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"

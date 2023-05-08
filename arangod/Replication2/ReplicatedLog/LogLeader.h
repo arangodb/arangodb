@@ -76,9 +76,6 @@ namespace arangodb::futures {
 template<typename T>
 class Try;
 }
-namespace arangodb::cluster {
-struct IFailureOracle;
-}
 namespace arangodb::replication2::algorithms {
 struct ParticipantState;
 }
