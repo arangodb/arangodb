@@ -3134,6 +3134,28 @@ function testSmallCircleFilterOptimization(testGraph) {
 
 }
 
+function testAdvancedPathFilterTernaryOptimization(testGraph) {
+  // We used the davanced path here to make use of the weight attribute
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = `
+      FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH "${testGraph.name()}"
+        FILTER IS_SAME_COLLECTION("${testGraph.en}", e._id) ? e.distance == 10 : true
+        return e.distance
+    `;
+  db._explain(query);
+  const plan = AQL_EXPLAIN(query, {});
+
+  assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query + " Still has FilterNode");
+
+  const traversals = findExecutionNodes(plan, "TraversalNode");
+  assertEqual(traversals.length, 1, query + " Somehow we have removed the Traversal");
+  const travNode = traversals[0];
+  assertTrue(travNode.hasOwnProperty("condition"));
+  // We do have exactly two entries with distance 10 which are allowed to be returned here.
+  // All others are distance 1, and should not pass the test.
+  assertEqual(db._query(query).toArray(), [10, 10]);
+}
+
 
 function testSmallCircleFilterOptimizationOverlappingVariable(testGraph) {
   // Which Graph is used here does not matter, enough to test with one of the graphs
@@ -6834,6 +6856,7 @@ const testsByGraph = {
     testAdvancedPathBfsUniqueEdgesUniqueVerticesNone,
     testAdvancedPathBfsUniqueEdgesUniquePathVerticesGlobal,
     testAdvancedPathBfsUniqueEdgesUniqueNoneVerticesGlobal,
+    testAdvancedPathFilterTernaryOptimization,
 
     testAdvancedPathWeightedUniqueVerticesPath,
     testAdvancedPathWeightedUniqueVerticesNone,
@@ -6861,7 +6884,7 @@ const testsByGraph = {
     testAdvancedPathKShortestPathMultiLimit,
     testAdvancedPathKShortestPathMultiLimitWT,
     testAdvancedPathKShortestPathEnabledWeightCheckMultiLimit,
-    testAdvancedPathKShortestPathEnabledWeightCheckMultiLimitWT
+    testAdvancedPathKShortestPathEnabledWeightCheckMultiLimitWT,
   },
   largeBinTree: {
     testLargeBinTreeAllCombinations,

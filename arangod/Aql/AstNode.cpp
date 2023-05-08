@@ -2737,11 +2737,32 @@ bool AstNode::semanticallyEquals(AstNode const* other) const noexcept {
     }
     case NODE_TYPE_OPERATOR_UNARY_NOT:
     case NODE_TYPE_OPERATOR_UNARY_MINUS:
-    case NODE_TYPE_OPERATOR_UNARY_PLUS:
-    {
+    case NODE_TYPE_OPERATOR_UNARY_PLUS: {
       TRI_ASSERT(numMembers() == 1);
       return getMemberUnchecked(0)->semanticallyEquals(
           other->getMemberUnchecked(0));
+    }
+    case NODE_TYPE_OPERATOR_TERNARY: {
+      TRI_ASSERT(numMembers() == 3);
+      if (numMembers() != other->numMembers()) {
+        // This should actually be given, we can only have ternaries
+        // with exactly 3 members, if the other side has a different
+        // number of members, we should have caught that earlier.
+        return false;
+      }
+      // Short-cut implementation.
+      return toString() == other->toString();
+      // Simply check if all members are equal.
+      /*
+      for (size_t i = 0; i < numMembers(); ++i) {
+        if (!getMemberUnchecked(i)->semanticallyEquals(
+                other->getMemberUnchecked(i))) {
+          LOG_DEVEL << "Different number of members";
+          return false;
+        }
+      }
+      return true;
+       */
     }
     default: {
       // Do not check, just say no.,

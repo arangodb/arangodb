@@ -942,7 +942,10 @@ void Condition::collectOverlappingMembers(
 
   for (size_t i = 0; i < n; ++i) {
     auto operand = andNode->getMemberUnchecked(i);
-    if (operand->type == NODE_TYPE_FCALL || operand->type == NODE_TYPE_FCALL_USER || operand->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+    if (operand->type == NODE_TYPE_FCALL ||
+        operand->type == NODE_TYPE_FCALL_USER ||
+        operand->type == NODE_TYPE_OPERATOR_UNARY_NOT ||
+        operand->type == NODE_TYPE_OPERATOR_TERNARY) {
       for (size_t j = 0; j < otherAndNode->numMembers(); ++j) {
         if (operand->semanticallyEquals(otherAndNode->getMemberUnchecked(j))) {
           toRemove.emplace(i);
@@ -966,13 +969,13 @@ void Condition::collectOverlappingMembers(
 
         ::clearAttributeAccess(result);
 
-        // only remove the condition if the index is exactly on the same attribute
-        // as the condition
+        // only remove the condition if the index is exactly on the same
+        // attribute as the condition
         if (rhs->isNullValue() &&
             lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
             result.first == variable && index->fields().size() == 1 &&
-            basics::AttributeName::isIdentical(result.second, index->fields()[0],
-                                               false)) {
+            basics::AttributeName::isIdentical(result.second,
+                                               index->fields()[0], false)) {
           toRemove.emplace(i);
           // removed, no need to go on below...
           continue;
@@ -1046,7 +1049,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
                          /*isFromTraverser*/ isPathCondition);
 }
 
-  AstNode* Condition::removeCondition(ExecutionPlan const* plan,
+AstNode* Condition::removeCondition(ExecutionPlan const* plan,
                                     Variable const* variable,
                                     AstNode const* otherCondition,
                                     Index const* index, bool isFromTraverser) {
@@ -1095,7 +1098,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
       } else {
         // AND-combine with existing node
         newNode = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
-                                                 newNode, what);
+                                                newNode, what);
       }
     }
   }
