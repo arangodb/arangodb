@@ -89,7 +89,6 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachineFeature.h"
-#include "Replication2/StateMachines/Prototype/PrototypeStateMachineFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"

@@ -7,7 +7,6 @@ add_library(arango_replication2 STATIC
         Version.cpp
         ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogHandler.cpp
         ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogInternalHandler.cpp
-        ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestPrototypeStateHandler.cpp
         ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestDocumentStateHandler.cpp)
 
 

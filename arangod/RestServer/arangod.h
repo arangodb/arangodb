@@ -171,10 +171,6 @@ struct BlackHoleStateMachineFeature;
 
 }  // namespace black_hole
 
-namespace prototype {
-struct PrototypeStateMachineFeature;
-}
-
 namespace document {
 struct DocumentStateMachineFeature;
 }
@@ -298,7 +294,6 @@ using ArangodFeaturesList = TypeList<
     cluster::FailureOracleFeature,
     replication2::replicated_state::ReplicatedStateAppFeature,
     replication2::replicated_state::black_hole::BlackHoleStateMachineFeature,
-    replication2::replicated_state::prototype::PrototypeStateMachineFeature,
     replication2::replicated_state::document::DocumentStateMachineFeature
 >;  // clang-format on
 struct ArangodFeatures : ArangodFeaturesList {};
