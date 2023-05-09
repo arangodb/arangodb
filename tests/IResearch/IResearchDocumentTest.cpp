@@ -2588,8 +2588,6 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
   EXPECT_EQ(1, reader->size());
   EXPECT_EQ(size, reader->docs_count());
 
-  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
-
   size_t found = 0;
   for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
     auto const ridSlice = docSlice.get("rid");
@@ -2770,8 +2768,6 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
             store.reader->docs_count());  // +1 for keep-alive doc
   EXPECT_EQ(expectedLiveDocs + 1,
             store.reader->live_docs_count());  // +1 for keep-alive doc
-
-  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
 
   // check regular filter case (unique rid)
   {
