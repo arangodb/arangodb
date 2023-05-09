@@ -187,6 +187,10 @@ mark_as_advanced(
 )
 
 set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)
+list(APPEND CMAKE_MODULE_PATH
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
+  "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
+)
 
 # copy pre-built files over to the build directory
 # this is required to avoid triggering file generation via bison and perl during the build procedure
