@@ -187,25 +187,6 @@ mark_as_advanced(
 )
 
 set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)
-list(APPEND CMAKE_MODULE_PATH
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
-  "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
-)
-
-# We do not want to update optimize for architecture here.
-# But we need this variable to have iresearch arch detection work properly
-if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(amd64.*|AMD64.*|x86_64.*)")
-  set(ARCH_AMD64 1)
-elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64.*|ARM64.*|aarch64.*|AARCH64.*)")
-  # armv8.*|ARMV8.* is 32 bit builded aarch64, we don't need to support it now
-  # also even if we want to support it, it's more like armv7 with extensions not aarch64
-  set(ARCH_AARCH64 1)
-  # elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc64le.*|ppc64le.*|PPC64LE.*)")
-  # elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^(s390x.*|S390X.*)")
-  # elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
-else ()
-  message(WARNING "Platform ${CMAKE_SYSTEM_PROCESSOR} is probably not supported")
-endif ()
 
 # copy pre-built files over to the build directory
 # this is required to avoid triggering file generation via bison and perl during the build procedure
