@@ -498,32 +498,9 @@
           var tableContent = [];
           var advanced = {};
           var advancedTableContent = [];
-          var extendedNames = window.frontendConfig.extendedNames;
-          var traditionalNameValidation = [{
-            rule: Joi.string().regex(/^[a-zA-Z]/),
-            msg: 'Collection name must always start with a letter.'
-          },
-          {
-            rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-            msg: 'Only symbols, "_" and "-" are allowed.'
-          }];
-          var extendedValidation = [
-            {
-              rule: Joi.string().regex(/^(?![0-9._])/),
-              msg: 'Collection name cannot start with a number, a dot (.), or an underscore (_).'
-            },
-            {
-              rule: Joi.string().regex(/[\u0000-\u001F]/),
-              msg: 'Collection name cannot contain control characters (0-31).'
-            },
-            {
-              rule: Joi.string().regex(/^\S(.*\S)?$/),
-              msg: 'Collection name cannot contain leading/trailing spaces.'
-            },
-            {
-              rule: Joi.string().regex(/^(?!.*[/])/),
-              msg: 'Collection name cannot contain a forward slash (/).'
-            }];
+          var collectionNameValidations = 
+            window.arangoValidationHelper.getCollectionNameValidations();
+
           tableContent.push(
             window.modalView.createTextEntry(
               'new-collection-name',
@@ -532,17 +509,7 @@
               false,
               '',
               true,
-              [
-                ...(!extendedNames ? traditionalNameValidation : extendedValidation),
-                {
-                  rule: Joi.normalize().string().max(256, 'utf8'),
-                  msg: 'Collection name max length is 256.'
-                },
-                {
-                  rule: Joi.string().required(),
-                  msg: 'No collection name given.'
-                }
-              ]
+              collectionNameValidations
             )
           );
 
