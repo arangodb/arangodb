@@ -12,6 +12,14 @@ devel
   of open file descriptors for performance reasons.
   If counting is turned off, the metric will report a value of `0`.
 
+* Added metric `rocksdb_cache_peak_allocated` to store the peak memory
+  allocation value for in-memory caches.
+
+* Remove leftover in-memory cache tables after dropping collections that
+  had their `cacheEnabled` flag set to `true`. Previously some memory 
+  could remain allocated in the in-memory cache even after such collections
+  were dropped.
+
 * Remove function `getFishbowlStorage()` from bundled JavaScript module 
   `@arangodb/foxx/manager`. This function was publicly exposed in previous
   versions, and returned a handle to the `_fishbowl` system collection.
