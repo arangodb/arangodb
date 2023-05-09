@@ -389,8 +389,8 @@ bool SslClientConnection::connectSocket() {
       auto end = std::chrono::steady_clock::now();
       if ((errorDetail != SSL_ERROR_WANT_READ &&
            errorDetail != SSL_ERROR_WANT_WRITE) ||
-          std::chrono::duration_cast<std::chrono::seconds>(end - start).count() >=
-              _connectTimeout) {
+          std::chrono::duration_cast<std::chrono::seconds>(end - start)
+                  .count() >= _connectTimeout) {
         break;
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
