@@ -51,7 +51,7 @@ const extendedNameSchema = Yup.string()
   .test(
     "normalizedByteLength",
     "View name max length is 256 bytes.",
-    getNormalizedByteLengthTest(256, "Index name max length is 256 bytes.")
+    getNormalizedByteLengthTest(256, "View name max length is 256 bytes.")
   )
   .matches(/^(?![0-9])/, "View name cannot start with a number.")
   .matches(/^\S(.*\S)?$/, "View name cannot contain leading/trailing spaces.")
