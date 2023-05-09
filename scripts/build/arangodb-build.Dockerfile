@@ -5,6 +5,8 @@ ARG ARCH "x86_64"
 
 RUN apk --no-cache add bison flex make cmake g++ git linux-headers python3 curl clang lld bash gdb libexecinfo-dev libexecinfo libexecinfo-static openssh sccache groff nodejs npm
 
+RUN npm install -g yarn
+
 # we need only need perl for openssl installation and can later removed them again
 RUN apk --no-cache add perl
 COPY install-openssl.sh /tools/
