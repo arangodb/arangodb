@@ -4254,22 +4254,20 @@ AstNode* Ast::createNode(AstNodeType type) {
 /// @brief validate the name of the given datasource
 /// in case validation fails, will throw an exception
 void Ast::validateDataSourceName(std::string_view name, bool validateStrict) {
-  bool extendedNames = _query.vocbase()
-                           .server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+  bool extendedNames =
+      _query.vocbase().server().getFeature<DatabaseFeature>().extendedNames();
 
   // common validation
-  if (name.empty() ||
-      (validateStrict && !CollectionNameValidator::isAllowedName(
-                             /*allowSystem*/ true, extendedNames, name))) {
-    // will throw
-    std::string errorMessage(TRI_errno_string(TRI_ERROR_ARANGO_ILLEGAL_NAME));
-    errorMessage.append(": ");
-    errorMessage.append(name.data(), name.size());
+  if (name.empty() || validateStrict) {
+    auto res = CollectionNameValidator::validateName(
+        /*allowSystem*/ true, extendedNames, name);
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, errorMessage);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
+
+  TRI_ASSERT(!name.empty());
 }
 
 /// @brief create an AST collection node

@@ -2283,6 +2283,12 @@ Result transaction::Methods::determineReplication1TypeAndFollowers(
       }
 
       replicationType = ReplicationType::LEADER;
+      TRI_IF_FAILURE("forceDropFollowersInTrxMethods") {
+        for (auto followers = followerInfo->get();
+             auto const& follower : *followers) {
+          followerInfo->remove(follower);
+        }
+      }
       followers = followerInfo->get();
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
@@ -3140,6 +3146,8 @@ Future<Result> Methods::replicateOperations(
   TRI_ASSERT(replicationData.slice().isArray());
   TRI_ASSERT(!replicationData.slice().isEmptyArray());
 
+  TRI_IF_FAILURE("replicateOperations::skip") { return Result(); }
+
   // replication2 is handled here
   if (collection->replicationVersion() == replication::Version::TWO) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
@@ -3356,6 +3364,23 @@ Future<Result> Methods::replicateOperations(
 
         } else {
           auto r = resp.combinedResult();
+
+          // Special case if the follower has already aborted the transaction.
+          // This can happen if a query fails and causes the leaders to abort
+          // the transaction on the followers. However, if the followers have
+          // transactions that are shared with leaders of other shards and one
+          // of those leaders has not yet seen the error, then it will happily
+          // continue to replicate to that follower. But if the follower has
+          // already aborted the transaction, then it will reject the
+          // replication request. In this case we do not want to drop the
+          // follower, but simply return the error and abort our local
+          // transaction.
+          if (r.is(TRI_ERROR_TRANSACTION_ABORTED) &&
+              this->state()->hasHint(
+                  transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
+            return r;
+          }
+
           bool followerRefused =
               (r.errorNumber() ==
                TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);

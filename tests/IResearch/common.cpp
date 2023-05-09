@@ -749,7 +749,7 @@ void assertFilterOptimized(
                     &actualFilter, filterCtx, viewNode->filterCondition())
                     .ok());
     EXPECT_FALSE(actualFilter.empty());
-    EXPECT_EQ(expectedFilter, *actualFilter.begin());
+    EXPECT_EQ(expectedFilter, **actualFilter.begin());
   }
 }
 
@@ -848,7 +848,7 @@ void assertExpressionFilter(
                     .ok());
     EXPECT_EQ(expected, actual) << to_string(expected) << "\n"
                                 << to_string(actual);
-    EXPECT_EQ(boost, actual.begin()->boost());
+    EXPECT_EQ(boost, (*actual.begin())->boost());
   }
 }
 
@@ -872,7 +872,7 @@ static bool assertFilterBoostImpl(irs::filter const& expected,
 
     for (auto actualBegin = actualBooleanFilter->begin();
          expectedBegin != expectedEnd;) {
-      if (!assertFilterBoostImpl(*expectedBegin, *actualBegin)) {
+      if (!assertFilterBoostImpl(**expectedBegin, **actualBegin)) {
         return false;
       }
       ++expectedBegin;

@@ -67,8 +67,6 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX("03dec", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
-             !AccessMode::isWriteOrExclusive(_type));
   TRI_ASSERT(_status == transaction::Status::CREATED);
 
   // set hints

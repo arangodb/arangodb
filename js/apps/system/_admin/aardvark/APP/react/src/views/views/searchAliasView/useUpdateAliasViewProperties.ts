@@ -1,6 +1,7 @@
 import { differenceWith, isEqual } from "lodash";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { encodeHelper } from "../../../utils/encodeHelper";
 import { ViewPropertiesType } from "./useFetchViewProperties";
 
 export const useUpdateAliasViewProperties = ({
@@ -54,11 +55,13 @@ const putRenameView = async ({
 }) => {
   let isError = false;
   const route = getApiRouteForCurrentDB();
-
-  const result = await route.put(`/view/${initialName}/rename`, {
-    name: name
+  // normalize again here because
+  // this can change from the JSON form too
+  const normalizedViewName = name.normalize();
+  const encodedInitialViewName = encodeHelper(initialName).encoded;
+  const result = await route.put(`/view/${encodedInitialViewName}/rename`, {
+    name: normalizedViewName
   });
-
   if (result.body.error) {
     window.arangoHelper.arangoError(
       "Failure",
@@ -79,7 +82,8 @@ async function patchViewProperties({
   initialView: ViewPropertiesType;
   setChanged: (changed: boolean) => void;
 }) {
-  const path = `/view/${view.name}/properties`;
+  const encodedViewName = encodeHelper(view.name).encoded;
+  const path = `/view/${encodedViewName}/properties`;
   window.arangoHelper.hideArangoNotifications();
   const result = await patchProperties({ view, path, initialView });
 
@@ -96,17 +100,13 @@ async function patchViewProperties({
     if (!isNameChanged) {
       await mutate(path);
     } else {
-      let newRoute = `#view/${view.name}`;
+      const { encoded: encodedViewName } = encodeHelper(view.name);
+      let newRoute = `#view/${encodedViewName}`;
       window.App.navigate(newRoute, {
         trigger: true,
         replace: true
       });
     }
-
-    window.arangoHelper.arangoNotification(
-      "Success",
-      `Updated View: ${view.name}`
-    );
   }
 }
 
@@ -136,7 +136,23 @@ async function patchProperties({
     });
     properties = [...addedChanges, ...deletedIndexes];
   }
-  return await route.patch(path, { indexes: properties });
+  const result = await route.patch(
+    path,
+    { indexes: properties },
+    {},
+    {
+      "x-arango-async": "store"
+    }
+  );
+  const asyncId = result.headers["x-arango-async-id"];
+  window.arangoHelper.addAardvarkJob({
+    id: asyncId,
+    type: "view",
+    desc: "Patching View",
+    collection: view.name
+  });
+
+  return result;
 }
 
 export const getUpdatedIndexes = ({

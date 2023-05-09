@@ -1073,7 +1073,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
       {
         EXPECT_EQ(1U, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
+        auto& root = dynamic_cast<irs::Or&>(**actual.begin());
         EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
         EXPECT_EQ(3, root.size());
         auto begin = root.begin();
@@ -1084,17 +1084,17 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -1104,7 +1104,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(root.end(), ++begin);
@@ -1198,7 +1198,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
       {
         EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
+        auto& root = dynamic_cast<irs::Or&>(**actual.begin());
         EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
         EXPECT_EQ(3, root.size());
         auto begin = root.begin();
@@ -1209,17 +1209,17 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -1229,7 +1229,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(root.end(), ++begin);
@@ -1324,7 +1324,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
       {
         EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
+        auto& root = dynamic_cast<irs::Or&>(**actual.begin());
         EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
         EXPECT_EQ(3, root.size());
         auto begin = root.begin();
@@ -1335,27 +1335,27 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         EXPECT_EQ(root.end(), ++begin);
@@ -1450,7 +1450,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
       {
         EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
+        auto& root = dynamic_cast<irs::Or&>(**actual.begin());
         EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
         EXPECT_EQ(3, root.size());
         auto begin = root.begin();
@@ -1461,17 +1461,17 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -1481,7 +1481,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(root.end(), ++begin);
@@ -1576,26 +1576,26 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
       {
         EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
+        auto& root = dynamic_cast<irs::Or&>(**actual.begin());
         EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
         EXPECT_EQ(3, root.size());
         auto begin = root.begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), *begin); }
+        { EXPECT_EQ(irs::empty(), **begin); }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
-        { EXPECT_EQ(irs::all(), *++begin); }
+        EXPECT_EQ(irs::all(), **++begin);
 
         EXPECT_EQ(root.end(), ++begin);
       }
@@ -1688,13 +1688,13 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
       {
         EXPECT_EQ(1, actual.size());
-        auto& root = dynamic_cast<irs::Or&>(*actual.begin());
+        auto& root = dynamic_cast<irs::Or&>(**actual.begin());
         EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
         EXPECT_EQ(3, root.size());
         auto begin = root.begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), *begin); }
+        { EXPECT_EQ(irs::empty(), **begin); }
 
         // 2nd filter
         {
@@ -1706,11 +1706,11 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           irs::by_term expected;
           *expected.mutable_field() = mangleNumeric("b.a");
           expected.mutable_options()->term = term->value;
-          EXPECT_EQ(expected, *++begin);
+          EXPECT_EQ(expected, **++begin);
         }
 
         // 3rd filter
-        { EXPECT_EQ(irs::all(), *++begin); }
+        { EXPECT_EQ(irs::all(), **++begin); }
 
         EXPECT_EQ(root.end(), ++begin);
       }
@@ -4218,8 +4218,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       {
         EXPECT_EQ(1, actual.size());
 
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
 
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
@@ -4235,17 +4235,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -4255,7 +4255,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(orNode->end(), ++begin);
@@ -4351,8 +4351,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       {
         EXPECT_EQ(1, actual.size());
 
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
 
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
@@ -4368,17 +4368,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -4388,7 +4388,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(orNode->end(), ++begin);
@@ -4484,8 +4484,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       {
         EXPECT_EQ(1, actual.size());
 
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
 
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
@@ -4501,17 +4501,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -4521,7 +4521,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(orNode->end(), ++begin);
@@ -4617,8 +4617,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       {
         EXPECT_EQ(1, actual.size());
 
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
 
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
@@ -4635,17 +4635,17 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
@@ -4655,7 +4655,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("3"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         EXPECT_EQ(orNode->end(), ++begin);
@@ -4751,8 +4751,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       {
         EXPECT_EQ(1, actual.size());
 
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
 
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
@@ -4768,27 +4768,27 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
           expected.mutable_options()->term =
               irs::ViewCast<irs::byte_type>(std::string_view("1"));
-          EXPECT_EQ(expected, *begin);
+          EXPECT_EQ(expected, **begin);
         }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         EXPECT_EQ(orNode->end(), ++begin);
@@ -4883,8 +4883,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
       {
         EXPECT_EQ(1, actual.size());
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
         EXPECT_TRUE(orNode);
@@ -4893,20 +4893,20 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto begin = orNode->begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), *begin); }
+        { EXPECT_EQ(irs::empty(), **begin); }
 
         // 2nd filter
         {
           ++begin;
           EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                    begin->type());
-          EXPECT_TRUE(
-              nullptr !=
-              dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
+                    (*begin)->type());
+          EXPECT_TRUE(nullptr !=
+                      dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                          begin->get()));
         }
 
         // 3rd filter
-        { EXPECT_EQ(irs::all(), *++begin); }
+        { EXPECT_EQ(irs::all(), **++begin); }
 
         EXPECT_EQ(orNode->end(), ++begin);
       }
@@ -5000,8 +5000,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       {
         EXPECT_EQ(1, actual.size());
 
-        auto& andNode = dynamic_cast<irs::And&>(*actual.begin());
-        auto& notNode = dynamic_cast<irs::Not&>(*andNode.begin());
+        auto& andNode = dynamic_cast<irs::And&>(**actual.begin());
+        auto& notNode = dynamic_cast<irs::Not&>(**andNode.begin());
         EXPECT_EQ(irs::type<irs::Not>::id(), notNode.type());
 
         auto const* orNode = dynamic_cast<irs::Or const*>(notNode.filter());
@@ -5012,7 +5012,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto begin = orNode->begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), *begin); }
+        { EXPECT_EQ(irs::empty(), **begin); }
 
         // 2nd filter
         {
@@ -5024,11 +5024,11 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           irs::by_term expected;
           *expected.mutable_field() = mangleNumeric("b.a");
           expected.mutable_options()->term = term->value;
-          EXPECT_EQ(expected, *++begin);
+          EXPECT_EQ(expected, **++begin);
         }
 
         // 3rd filter
-        { EXPECT_EQ(irs::all(), *++begin); }
+        { EXPECT_EQ(irs::all(), **++begin); }
 
         EXPECT_EQ(orNode->end(), ++begin);
       }

@@ -144,11 +144,16 @@ class IResearchFeature final : public ArangodFeature {
 
 #ifdef USE_ENTERPRISE
   bool trackColumnsCacheUsage(int64_t diff) noexcept;
+  bool columnsCacheOnlyLeaders() const noexcept;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   int64_t columnsCacheUsage() const noexcept;
 
   void setCacheUsageLimit(uint64_t limit) noexcept {
     _columnsCacheLimit = limit;
+  }
+
+  void setColumnsCacheOnlyOnLeader(bool b) noexcept {
+    _columnsCacheOnlyLeader = b;
   }
 #endif
 #endif
@@ -193,6 +198,7 @@ class IResearchFeature final : public ArangodFeature {
 #ifdef USE_ENTERPRISE
   metrics::Gauge<int64_t>& _columnsCacheMemoryUsed;
   uint64_t _columnsCacheLimit{0};
+  bool _columnsCacheOnlyLeader{false};
 #endif
 
   // helper object, only useful during WAL recovery

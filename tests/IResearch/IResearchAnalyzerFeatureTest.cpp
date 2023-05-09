@@ -1512,7 +1512,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
                 arangodb::velocypack::Slice::emptyArraySlice());
     builder.add("id", VPackValue("43"));
     builder.close();
-    res = arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
+    res = arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                   builder.slice(), true, tmp);
     EXPECT_TRUE(res.ok());
   }

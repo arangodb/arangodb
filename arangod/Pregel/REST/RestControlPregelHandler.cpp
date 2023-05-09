@@ -86,8 +86,10 @@ RestControlPregelHandler::forwardingTarget() {
   }
 
   rest::RequestType const type = _request->requestType();
-  if (type != rest::RequestType::POST && type != rest::RequestType::GET &&
-      type != rest::RequestType::DELETE_REQ) {
+
+  // We only need to support forwarding in case we want to cancel a running
+  // pregel job.
+  if (type != rest::RequestType::DELETE_REQ) {
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
@@ -121,6 +123,67 @@ RestControlPregelHandler::forwardingTarget() {
   return {std::make_pair(std::move(coordinatorId), false)};
 }
 
+namespace {
+auto extractPregelOptions(VPackSlice body) -> ResultT<pregel::PregelOptions> {
+  // emulate 3.10 pregel API
+  // algorithm
+  std::string algorithm =
+      VelocyPackHelper::getStringValue(body, "algorithm", StaticStrings::Empty);
+  if ("" == algorithm) {
+    return Result{TRI_ERROR_HTTP_NOT_FOUND, "invalid algorithm"};
+  }
+  // extract the parameters
+  auto parameters = body.get("params");
+  if (!parameters.isObject()) {
+    parameters = VPackSlice::emptyObjectSlice();
+  }
+  VPackBuilder parameterBuilder;
+  parameterBuilder.add(parameters);
+  // extract the collections
+  auto vc = body.get("vertexCollections");
+  auto ec = body.get("edgeCollections");
+  pregel::PregelOptions options;
+  if (vc.isArray() && ec.isArray()) {
+    std::vector<std::string> vertexCollections;
+    for (auto v : VPackArrayIterator(vc)) {
+      vertexCollections.push_back(v.copyString());
+    }
+    std::vector<std::string> edgeCollections;
+    for (auto e : VPackArrayIterator(ec)) {
+      edgeCollections.push_back(e.copyString());
+    }
+    return pregel::PregelOptions{
+        .algorithm = algorithm,
+        .userParameters = parameterBuilder,
+        .graphSource = {{pregel::GraphCollectionNames{
+                            .vertexCollections = vertexCollections,
+                            .edgeCollections = edgeCollections}},
+                        {}}};
+  } else {
+    auto gs = VelocyPackHelper::getStringValue(body, "graphName", "");
+    if ("" == gs) {
+      return Result{TRI_ERROR_BAD_PARAMETER, "expecting graphName as string"};
+    }
+    return pregel::PregelOptions{
+        .algorithm = algorithm,
+        .userParameters = parameterBuilder,
+        .graphSource = {{pregel::GraphName{.graph = gs}}, {}}};
+  }
+
+  // this should be used for a more restrictive pregel API
+  // that would make more sense
+  // auto restOptions =
+  // inspection::deserializeWithErrorT<pregel::RestOptions>(
+  //     velocypack::SharedSlice(velocypack::SharedSlice{}, body));
+  // if (!restOptions.ok()) {
+  //   return Result{TRI_ERROR_HTTP_NOT_FOUND,
+  //                 fmt::format("Given pregel options are invalid: {}",
+  //                             restOptions.error().error())};
+  // }
+  // return std::move(restOptions).get().options();
+}
+}  // namespace
+
 void RestControlPregelHandler::startExecution() {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
@@ -129,15 +192,18 @@ void RestControlPregelHandler::startExecution() {
     return;
   }
 
-  auto restOptions = inspection::deserializeWithErrorT<pregel::RestOptions>(
-      velocypack::SharedSlice(velocypack::SharedSlice{}, body));
-  if (!restOptions.ok()) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  restOptions.error().error());
+  auto options = extractPregelOptions(std::move(body));
+  if (options.fail()) {
+    if (options.errorNumber() == TRI_ERROR_HTTP_NOT_FOUND) {
+      generateError(rest::ResponseCode::NOT_FOUND, options.errorNumber(),
+                    options.errorMessage());
+      return;
+    }
+    generateError(rest::ResponseCode::BAD, options.errorNumber(),
+                  options.errorMessage());
+    return;
   }
-  auto options = std::move(restOptions).get().options();
-
-  auto res = _pregel.startExecution(_vocbase, options);
+  auto res = _pregel.startExecution(_vocbase, options.get());
   if (res.fail()) {
     generateError(res.result());
     return;
@@ -152,7 +218,6 @@ void RestControlPregelHandler::handleGetRequest() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.empty()) {
-    VPackBuilder builder;
     pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
     return handlePregelHistoryResult(cWriter.readAllNonExpiredResults());
   }
@@ -166,30 +231,9 @@ void RestControlPregelHandler::handleGetRequest() {
     }
     auto executionNumber = arangodb::pregel::ExecutionNumber{
         arangodb::basics::StringUtils::uint64(suffixes[0])};
-    auto c = _pregel.conductor(executionNumber);
-
-    if (nullptr == c) {
-      auto status = _pregel.getStatus(executionNumber);
-      if (not status.ok()) {
-        generateError(rest::ResponseCode::NOT_FOUND, status.errorNumber(),
-                      status.errorMessage());
-        return;
-      }
-      auto serializedState = inspection::serializeWithErrorT(status.get());
-      if (!serializedState.ok()) {
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                      fmt::format("Cannot serialize status: {}",
-                                  serializedState.error().error()));
-        return;
-      }
-      generateResult(rest::ResponseCode::OK, serializedState.get().slice());
-      return;
-    }
-
-    VPackBuilder builder;
-    c->toVelocyPack(builder);
-    generateResult(rest::ResponseCode::OK, builder.slice());
-    return;
+    pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
+                                                         executionNumber};
+    return handlePregelHistoryResult(cWriter.readResult(), true);
   } else if ((suffixes.size() >= 1 || suffixes.size() <= 2) &&
              suffixes.at(0) == "history") {
     if (_pregel.isStopping()) {
@@ -206,7 +250,7 @@ void RestControlPregelHandler::handleGetRequest() {
           arangodb::basics::StringUtils::uint64(suffixes.at(1))};
       pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
                                                            executionNumber};
-      return handlePregelHistoryResult(cWriter.readResult());
+      return handlePregelHistoryResult(cWriter.readResult(), true);
     }
   }
 
@@ -216,7 +260,7 @@ void RestControlPregelHandler::handleGetRequest() {
 }
 
 void RestControlPregelHandler::handlePregelHistoryResult(
-    ResultT<OperationResult> result) {
+    ResultT<OperationResult> result, bool onlyReturnFirstAqlResultEntry) {
   if (result.fail()) {
     // check outer ResultT result
     generateError(rest::ResponseCode::BAD, result.errorNumber(),
@@ -243,7 +287,20 @@ void RestControlPregelHandler::handlePregelHistoryResult(
       // Truncate does not deliver a proper slice in a Cluster.
       generateResult(rest::ResponseCode::OK, VPackSlice::trueSlice());
     } else {
-      generateResult(rest::ResponseCode::OK, result.get().slice());
+      if (onlyReturnFirstAqlResultEntry) {
+        TRI_ASSERT(result->slice().isArray());
+        if (result.get().slice().at(0).isNull()) {
+          // due to AQL returning "null" values in case a document does not
+          // exist ....
+          Result nf = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+          ResponseCode code = GeneralResponse::responseCode(nf.errorNumber());
+          generateError(code, nf.errorNumber(), nf.errorMessage());
+        } else {
+          generateResult(rest::ResponseCode::OK, result.get().slice().at(0));
+        }
+      } else {
+        generateResult(rest::ResponseCode::OK, result.get().slice());
+      }
     }
   } else {
     // Should always have a Slice, doing this check to be sure.

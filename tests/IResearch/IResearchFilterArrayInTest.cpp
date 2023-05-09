@@ -77,8 +77,7 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-using iterator =
-    irs::ptr_iterator<std::vector<irs::filter::ptr>::const_iterator>;
+using iterator = std::vector<irs::filter::ptr>::const_iterator;
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
@@ -1711,7 +1710,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   // generated on the fly
   auto checkAny = [](irs::Or& actual, irs::score_t boost) {
     EXPECT_EQ(1, actual.size());
-    auto& root = dynamic_cast<const irs::Or&>(*actual.begin());
+    auto& root = dynamic_cast<const irs::Or&>(**actual.begin());
     EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
@@ -1719,7 +1718,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   };
   auto checkAll = [](irs::Or& actual, irs::score_t boost) {
     EXPECT_EQ(1, actual.size());
-    auto& root = dynamic_cast<const irs::And&>(*actual.begin());
+    auto& root = dynamic_cast<const irs::And&>(**actual.begin());
     EXPECT_EQ(irs::type<irs::And>::id(), root.type());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
@@ -1727,8 +1726,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   };
   auto checkNone = [](irs::Or& actual, irs::score_t boost) {
     EXPECT_EQ(1, actual.size());
-    auto& andFilter = dynamic_cast<irs::And&>(*actual.begin());
-    auto& notFilter = dynamic_cast<irs::Not&>(*andFilter.begin());
+    auto& andFilter = dynamic_cast<irs::And&>(**actual.begin());
+    auto& notFilter = dynamic_cast<irs::Not&>(**andFilter.begin());
     auto& root = dynamic_cast<const irs::Or&>(*notFilter.filter());
     EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
     EXPECT_EQ(3, root.size());
@@ -1738,7 +1737,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   auto checkAtLeast = [](irs::Or& actual, irs::score_t boost) {
     SCOPED_TRACE(testing::Message("Actual:") << irs::to_string(actual));
     EXPECT_EQ(1, actual.size());
-    auto& root = dynamic_cast<const irs::Or&>(*actual.begin());
+    auto& root = dynamic_cast<const irs::Or&>(**actual.begin());
     EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
     EXPECT_EQ(3, root.size());
     // hardcode here to keep same number of arguments
@@ -1775,7 +1774,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
          checkAtLeast}};
 
     for (auto caseData : testCases) {
-      const auto& queryString = caseData.first;
+      auto const& queryString = caseData.first;
       SCOPED_TRACE(
           testing::Message("Testing with non-determenistic value. Query: ")
           << queryString);
@@ -1857,17 +1856,17 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("1"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
 
           // 2nd filter
           {
             ++begin;
             EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                      begin->type());
+                      (*begin)->type());
             EXPECT_NE(nullptr,
                       dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                          &*begin));
+                          begin->get()));
           }
 
           // 3rd filter
@@ -1877,7 +1876,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("3"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
         }
       }
@@ -1908,7 +1907,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
          "RETURN d",
          checkNone}};
     for (auto caseData : testCases) {
-      const auto& queryString = caseData.first;
+      auto const& queryString = caseData.first;
       SCOPED_TRACE(
           testing::Message("Testing with self-referenced value. Query: ")
           << queryString);
@@ -2002,17 +2001,17 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("1"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
 
           // 2nd filter
           {
             ++begin;
             EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                      begin->type());
+                      (*begin)->type());
             EXPECT_NE(nullptr,
                       dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                          &*begin));
+                          begin->get()));
           }
 
           // 3rd filter
@@ -2022,7 +2021,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("3"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
         }
       }
@@ -2053,7 +2052,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
              "d.a.b.c.e.f RETURN d",
              checkNone}};
     for (auto caseData : testCases) {
-      const auto& queryString = caseData.first;
+      auto const& queryString = caseData.first;
       SCOPED_TRACE(
           testing::Message("Testing with self-referenced value. Query: ")
           << queryString);
@@ -2146,27 +2145,27 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("1"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
 
           // 2nd filter
           {
             ++begin;
             EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                      begin->type());
+                      (*begin)->type());
             EXPECT_NE(nullptr,
                       dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                          &*begin));
+                          begin->get()));
           }
 
           // 3rd filter
           {
             ++begin;
             EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                      begin->type());
+                      (*begin)->type());
             EXPECT_TRUE(nullptr !=
                         dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                            &*begin));
+                            begin->get()));
           }
         }
       }
@@ -2197,7 +2196,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
              "d.a.b.c.e.f, 2.5) RETURN d",
              checkNone}};
     for (auto caseData : testCases) {
-      const auto& queryString = caseData.first;
+      auto const& queryString = caseData.first;
       SCOPED_TRACE(
           testing::Message("Testing with self-referenced value. Query: ")
           << queryString);
@@ -2290,17 +2289,17 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("1"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
 
           // 2nd filter
           {
             ++begin;
             EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                      begin->type());
+                      (*begin)->type());
             EXPECT_NE(nullptr,
                       dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                          &*begin));
+                          begin->get()));
           }
 
           // 3rd filter
@@ -2310,7 +2309,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("3"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
         }
       }
@@ -3717,8 +3716,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   // generated on the fly
   auto checkNotAny = [](irs::Or& actual, irs::score_t boost) {
     EXPECT_EQ(1, actual.size());
-    auto& andFilter = dynamic_cast<irs::And&>(*actual.begin());
-    auto& notFilter = dynamic_cast<irs::Not&>(*andFilter.begin());
+    auto& andFilter = dynamic_cast<irs::And&>(**actual.begin());
+    auto& notFilter = dynamic_cast<irs::Not&>(**andFilter.begin());
     auto& root = dynamic_cast<const irs::And&>(*notFilter.filter());
     EXPECT_EQ(irs::type<irs::And>::id(), root.type());
     EXPECT_EQ(3, root.size());
@@ -3727,8 +3726,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   };
   auto checkNotAll = [](irs::Or& actual, irs::score_t boost) {
     EXPECT_EQ(1, actual.size());
-    auto& andFilter = dynamic_cast<irs::And&>(*actual.begin());
-    auto& notFilter = dynamic_cast<irs::Not&>(*andFilter.begin());
+    auto& andFilter = dynamic_cast<irs::And&>(**actual.begin());
+    auto& notFilter = dynamic_cast<irs::Not&>(**andFilter.begin());
     auto& root = dynamic_cast<const irs::Or&>(*notFilter.filter());
     EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
     EXPECT_EQ(3, root.size());
@@ -3737,7 +3736,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   };
   auto checkNotNone = [](irs::Or& actual, irs::score_t boost) {
     EXPECT_EQ(1, actual.size());
-    auto& root = dynamic_cast<const irs::And&>(*actual.begin());
+    auto& root = dynamic_cast<const irs::And&>(**actual.begin());
     EXPECT_EQ(irs::type<irs::And>::id(), root.type());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
@@ -3858,17 +3857,17 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("1"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
 
           // 2nd filter
           {
             ++begin;
             EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                      begin->type());
+                      (*begin)->type());
             EXPECT_NE(nullptr,
                       dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                          &*begin));
+                          begin->get()));
           }
 
           // 3rd filter
@@ -3878,7 +3877,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("3"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
         }
       }
@@ -4001,17 +4000,17 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("1"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
 
           // 2nd filter
           {
             ++begin;
             EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                      begin->type());
+                      (*begin)->type());
             EXPECT_NE(nullptr,
                       dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                          &*begin));
+                          begin->get()));
           }
 
           // 3rd filter
@@ -4021,7 +4020,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("3"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
         }
       }
@@ -4144,17 +4143,17 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("1"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
 
           // 2nd filter
           {
             ++begin;
             EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                      begin->type());
+                      (*begin)->type());
             EXPECT_NE(nullptr,
                       dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                          &*begin));
+                          begin->get()));
           }
 
           // 3rd filter
@@ -4164,7 +4163,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
             *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
             expected.mutable_options()->term =
                 irs::ViewCast<irs::byte_type>(std::string_view("3"));
-            EXPECT_EQ(expected, *begin);
+            EXPECT_EQ(expected, **begin);
           }
         }
       }

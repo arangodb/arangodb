@@ -724,6 +724,9 @@ DECLARE_COUNTER(arangodb_sync_wrong_checksum_total,
 DECLARE_COUNTER(arangodb_sync_rebuilds_total,
                 "Number of times a follower shard needed to be completely "
                 "rebuilt because of too many synchronization failures");
+DECLARE_COUNTER(arangodb_sync_tree_rebuilds_total,
+                "Number of times a shard rebuilt its revision tree "
+                "completely because of too many synchronization failures");
 DECLARE_COUNTER(arangodb_potentially_dirty_document_reads_total,
                 "Number of document reads which could be dirty");
 DECLARE_COUNTER(arangodb_dirty_read_queries_total,
@@ -788,8 +791,6 @@ void ClusterFeature::start() {
 
   auto const version = comm.version();
 
-  ServerState::instance()->setInitialized();
-
   std::string const endpoints =
       AsyncAgencyCommManager::INSTANCE->getCurrentEndpoint();
 
@@ -804,6 +805,8 @@ void ClusterFeature::start() {
         &_metrics.add(arangodb_sync_wrong_checksum_total{});
     _followersTotalRebuildCounter =
         &_metrics.add(arangodb_sync_rebuilds_total{});
+    _syncTreeRebuildCounter =
+        &_metrics.add(arangodb_sync_tree_rebuilds_total{});
   } else if (role == ServerState::RoleEnum::ROLE_COORDINATOR) {
     _potentiallyDirtyDocumentReadsCounter =
         &_metrics.add(arangodb_potentially_dirty_document_reads_total{});

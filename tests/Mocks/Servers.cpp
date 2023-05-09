@@ -69,6 +69,7 @@
 #include "Mocks/PreparedResponseConnectionPool.h"
 #include "Mocks/StorageEngineMock.h"
 #include "Network/NetworkFeature.h"
+#include "Replication/ReplicationFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -791,11 +792,16 @@ MockDBServer::MockDBServer(ServerID serverId, bool start, bool useAgencyMock)
                         serverId) {
   addFeature<FlushFeature>(false);        // do not start the thread
   addFeature<MaintenanceFeature>(false);  // do not start the thread
+
+  // turn off auto-repairing of revision trees for unit tests
+  auto& rf = addFeature<arangodb::ReplicationFeature>(false);  // do not start
+  rf.autoRepairRevisionTrees(false);
+
   if (start) {
     MockDBServer::startFeatures();
     MockDBServer::createDatabase("_system");
   }
-  ServerState::instance()->setId("PRMR_0001");
+  ServerState::instance()->setId(serverId);
 }
 
 MockDBServer::~MockDBServer() = default;

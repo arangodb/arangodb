@@ -50,6 +50,9 @@ CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase,
                                    StaticStrings::PregelCollection);
   }
   _logicalCollection = std::move(logicalCollection);
+  if (!ExecContext::current().user().empty()) {
+    _user = ExecContext::current().user();
+  }
 };
 
 CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase)
@@ -62,6 +65,9 @@ CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase)
                                    StaticStrings::PregelCollection);
   }
   _logicalCollection = std::move(logicalCollection);
+  if (!ExecContext::current().user().empty()) {
+    _user = ExecContext::current().user();
+  }
 };
 
 auto CollectionStatusWriter::createResult(velocypack::Slice data)
@@ -76,6 +82,7 @@ auto CollectionStatusWriter::createResult(velocypack::Slice data)
                                   accessModeType);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
+  options.waitForSync = false;
 
   Result transactionResult = trx.begin();
   if (transactionResult.fail()) {
@@ -85,51 +92,98 @@ auto CollectionStatusWriter::createResult(velocypack::Slice data)
   auto payload = inspection::serializeWithErrorT(opData);
   return handleOperationResult(
       trx, options, transactionResult,
-      trx.insert(StaticStrings::PregelCollection, payload->slice(), {}));
+      trx.insert(StaticStrings::PregelCollection, payload->slice(), options));
 }
 
 auto CollectionStatusWriter::readResult() -> OperationResult {
-  if (_executionNumber.value == 0) {
-    return OperationResult(Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), {});
+  std::shared_ptr<VPackBuilder> bindParameter =
+      std::make_shared<VPackBuilder>();
+  bindParameter->openObject();
+  bindParameter->add("pid", VPackValue(_executionNumber.value));
+  bindParameter->add("collectionName",
+                     VPackValue(StaticStrings::PregelCollection));
+  if (_user.has_value() && _user.value() != "root") {
+    bindParameter->add("user", _user.value());
   }
-  OperationData opData(_executionNumber.value);
-  auto accessModeType = AccessMode::Type::READ;
-  SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  OperationOptions options(ExecContext::current());
+  bindParameter->close();
 
-  // begin transaction
-  Result transactionResult = trx.begin();
-  if (transactionResult.fail()) {
-    return OperationResult{std::move(transactionResult), options};
-  }
-  auto payload = inspection::serializeWithErrorT(opData);
-  return handleOperationResult(
-      trx, options, transactionResult,
-      trx.documentAsync(StaticStrings::PregelCollection, payload->slice(), {})
-          .get());
-}
-
-auto CollectionStatusWriter::readAllNonExpiredResults() -> OperationResult {
   // TODO: GORDO-1607
   // Note: As soon as we introduce an inspectable struct to the data we actually
   // write into the pregel collection, we can remove change "entry.data" to
   // just "entry".
-  std::string queryString = R"(
-    FOR entry IN _pregel_queries
-      FILTER DATE_DIFF(DATE_NOW(), DATE_TIMESTAMP(entry.data.expires), "s") >= 0
-      OR entry.data.expires == null
-    RETURN entry.data
-  )";
+  std::string queryString;
+  if (_user.has_value() && _user.value() != "root") {
+    queryString = R"(
+      LET potentialDocument = DOCUMENT(CONCAT(@collectionName, '/', @pid)).data
+      RETURN potentialDocument.user == @user ? potentialDocument : null
+    )";
+  } else {
+    queryString = R"(
+      RETURN DOCUMENT(CONCAT(@collectionName, '/', @pid)).data
+    )";
+  }
 
-  return executeQuery(queryString);
+  return executeQuery(queryString, bindParameter);
+}
+
+auto CollectionStatusWriter::readAllNonExpiredResults() -> OperationResult {
+  std::shared_ptr<VPackBuilder> bindParameter =
+      std::make_shared<VPackBuilder>();
+  bindParameter->openObject();
+  bindParameter->add("@collectionName",
+                     VPackValue(StaticStrings::PregelCollection));
+  if (_user.has_value() && _user.value() != "root") {
+    bindParameter->add("user", _user.value());
+  }
+  bindParameter->close();
+
+  // TODO: GORDO-1607
+  // Note: As soon as we introduce an inspectable struct to the data we actually
+  // write into the pregel collection, we can remove change "entry.data" to
+  // just "entry".
+  std::string queryString;
+  if (_user.has_value() && _user.value() != "root") {
+    queryString = R"(
+      FOR entry IN @@collectionName
+        FILTER (entry.data.user == @user AND DATE_DIFF(DATE_NOW(), DATE_TIMESTAMP(entry.data.expires), "s") >= 0)
+          OR (entry.data.user == @user AND entry.data.expires == null)
+      RETURN entry.data
+    )";
+  } else {
+    queryString = R"(
+      FOR entry IN @@collectionName
+        FILTER DATE_DIFF(DATE_NOW(), DATE_TIMESTAMP(entry.data.expires), "s") >= 0
+        OR entry.data.expires == null
+      RETURN entry.data
+    )";
+  }
+
+  return executeQuery(queryString, bindParameter);
 }
 
 auto CollectionStatusWriter::readAllResults() -> OperationResult {
+  std::shared_ptr<VPackBuilder> bindParameter =
+      std::make_shared<VPackBuilder>();
+  bindParameter->openObject();
+  bindParameter->add("@collectionName",
+                     VPackValue(StaticStrings::PregelCollection));
+  if (_user.has_value() && _user.value() != "root") {
+    bindParameter->add("user", _user.value());
+  }
+  bindParameter->close();
+
   // TODO: GORDO-1607
-  std::string queryString = "FOR entry IN _pregel_queries RETURN entry";
-  return executeQuery(queryString);
+  std::string queryString;
+  if (_user.has_value() && _user.value() != "root") {
+    queryString = R"(
+      FOR entry IN @@collectionName
+        FILTER entry.data.user == @user
+      RETURN entry.data
+    )";
+  } else {
+    queryString = "FOR entry IN @@collectionName RETURN entry.data";
+  }
+  return executeQuery(queryString, bindParameter);
 }
 
 auto CollectionStatusWriter::updateResult(velocypack::Slice data)
@@ -193,10 +247,17 @@ auto CollectionStatusWriter::deleteAllResults() -> OperationResult {
       trx.truncateAsync(StaticStrings::PregelCollection, options).get());
 }
 
-auto CollectionStatusWriter::executeQuery(std::string queryString)
+auto CollectionStatusWriter::executeQuery(
+    std::string queryString,
+    std::optional<std::shared_ptr<VPackBuilder>> bindParameters)
     -> OperationResult {
+  std::shared_ptr<VPackBuilder> bindParams = nullptr;
+  if (bindParameters.has_value()) {
+    bindParams = bindParameters.value();
+  }
+
   auto query = arangodb::aql::Query::create(
-      ctx(), arangodb::aql::QueryString(queryString), nullptr);
+      ctx(), arangodb::aql::QueryString(std::move(queryString)), bindParams);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
   if (queryResult.result.fail()) {

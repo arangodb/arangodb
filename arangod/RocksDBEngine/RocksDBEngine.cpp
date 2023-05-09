@@ -45,8 +45,9 @@
 #include "Cache/Manager.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "IResearch/IResearchCommon.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "IResearch/IResearchCommon.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -105,7 +106,6 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/ticks.h"
-#include "Inspection/VPack.h"
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
@@ -120,6 +120,8 @@
 #include <rocksdb/transaction_log.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/write_batch.h>
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Iterator.h>
 
@@ -2881,10 +2883,15 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       auto const slice = builder.slice();
       TRI_ASSERT(slice.isArray());
 
+      LOG_TOPIC("48f11", TRACE, arangodb::Logger::ENGINES)
+          << "processing views metadata in database '" << vocbase->name()
+          << "': " << slice.toJson();
+
       for (VPackSlice it : VPackArrayIterator(slice)) {
         if (it.get(StaticStrings::DataSourceType).stringView() != type) {
           continue;
         }
+
         // we found a view that is still active
         LOG_TOPIC("4dfdd", TRACE, arangodb::Logger::ENGINES)
             << "processing view metadata in database '" << vocbase->name()
@@ -2892,23 +2899,34 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
         TRI_ASSERT(!it.get("id").isNone());
 
-        LogicalView::ptr view;
-        auto res = LogicalView::instantiate(view, *vocbase, it, false);
+        Result res;
+        try {
+          LogicalView::ptr view;
+          res = LogicalView::instantiate(view, *vocbase, it, false);
+
+          if (res.ok() && !view) {
+            res.reset(TRI_ERROR_INTERNAL);
+          }
+
+          if (!res.ok()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
+
+          TRI_ASSERT(view);
+
+          StorageEngine::registerView(*vocbase, view);
+          view->open();
+        } catch (basics::Exception const& ex) {
+          res.reset(ex.code(), ex.what());
+        }
 
         if (!res.ok()) {
-          THROW_ARANGO_EXCEPTION(res);
-        }
-
-        if (!view) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              std::string("failed to instantiate view in database '") +
-                  vocbase->name() + "' from definition: " + it.toString());
+              res.errorNumber(),
+              absl::StrCat("failed to instantiate view in database '",
+                           vocbase->name(), "' from definition: ",
+                           it.toString(), ": ", res.errorMessage()));
         }
-
-        StorageEngine::registerView(*vocbase, view);
-
-        view->open();
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("584b1", ERR, arangodb::Logger::ENGINES)
@@ -2951,6 +2969,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
+    LOG_TOPIC("f1275", TRACE, arangodb::Logger::ENGINES)
+        << "processing collections metadata in database '" << vocbase->name()
+        << "': " << slice.toJson();
+
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       LOG_TOPIC("b2ef2", TRACE, arangodb::Logger::ENGINES)
@@ -2958,6 +2980,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
           << "': " << it.toJson();
 
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
+      TRI_ASSERT(!it.get("deleted").isTrue());
 
       auto collection = vocbase->createCollectionObject(it, /*isAStub*/ false);
       TRI_ASSERT(collection != nullptr);
@@ -2974,7 +2997,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       StorageEngine::registerCollection(*vocbase, collection);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
-          << "added document collection '" << vocbase->name() << "/"
+          << "added collection '" << vocbase->name() << "/"
           << collection->name() << "'";
     }
   } catch (std::exception const& ex) {

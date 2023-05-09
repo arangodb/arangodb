@@ -40,6 +40,7 @@ struct SpawnWorker {
   actor::ActorPID conductor;
   actor::ActorPID resultActorOnCoordinator;
   actor::ActorPID statusActor;
+  actor::ActorPID metricsActor;
   TTL ttl;
   worker::message::CreateWorker message;
 };

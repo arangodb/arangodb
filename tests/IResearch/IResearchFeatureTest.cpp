@@ -22,7 +22,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Agency/AsyncAgencyComm.h>
 #include "gtest/gtest.h"
 
 #include "utils/misc.hpp"
@@ -38,6 +37,7 @@
 #include "Mocks/StorageEngineMock.h"
 #include "Mocks/TemplateSpecializer.h"
 
+#include "Agency/AsyncAgencyComm.h"
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -2579,7 +2579,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
           std::vector<std::string>{"/arango"});
 
   ASSERT_TRUE((arangodb::methods::Indexes::ensureIndex(
-                   logicalCollection.get(), linkJson->slice(), true, tmp)
+                   *logicalCollection, linkJson->slice(), true, tmp)
                    .ok()));
   logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection);
