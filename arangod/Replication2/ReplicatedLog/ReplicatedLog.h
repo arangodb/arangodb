@@ -41,9 +41,6 @@
 #include <utility>
 #include <vector>
 
-namespace arangodb::cluster {
-struct IFailureOracle;
-}
 namespace arangodb::replication2::replicated_log {
 class LogLeader;
 struct AbstractFollower;

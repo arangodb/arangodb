@@ -10,7 +10,6 @@ add_library(arango_v8server STATIC
   v8-dispatcher.cpp
   v8-general-graph.cpp
   v8-pregel.cpp
-  v8-prototype-states.cpp
   v8-query.cpp
   v8-replicated-logs.cpp
   v8-replication.cpp

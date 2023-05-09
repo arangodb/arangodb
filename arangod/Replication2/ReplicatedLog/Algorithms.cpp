@@ -25,7 +25,6 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
-#include "Cluster/FailureOracle.h"
 #include "Logger/LogMacros.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
 
