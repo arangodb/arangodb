@@ -42,7 +42,6 @@ endif ()
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
-option(SKIP_FRONTEND "" OFF)
 option(SKIP_PACKAGING "" OFF)
 
 # be verbose about flags used
@@ -1168,9 +1167,7 @@ endif()
 
 add_subdirectory(Documentation)
 include(ArangoDBInstall)
-if (NOT(SKIP_FRONTEND))
-  include(frontend/aardvark)
-endif()
+include(frontend/aardvark)
 if (NOT(SKIP_PACKAGING))
   include(packages/packages)
 endif()
