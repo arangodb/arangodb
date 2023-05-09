@@ -26,10 +26,12 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -810,8 +812,17 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
     }
 
     ManagedTrx& mtrx = it->second;
-    if (mtrx.type == MetaType::Tombstone || mtrx.expired() ||
-        !::authorized(mtrx.user)) {
+    if (mtrx.type == MetaType::Tombstone) {
+      if (mtrx.finalStatus == transaction::Status::ABORTED) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_ABORTED,
+                                       "transaction " +
+                                           std::to_string(tid.id()) +
+                                           " has already been aborted");
+      }
+      return nullptr;
+    }
+
+    if (mtrx.expired() || !::authorized(mtrx.user)) {
       return nullptr;  // no need to return anything
     }
 
