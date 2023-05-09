@@ -88,6 +88,9 @@ v3.11.0-alpha.1 (2023-05-03)
   auto-login is enabled, set sessionStorage "jwtUser" value when login is
   skipped.
 
+* BTS-1315: Fixed spurious occurring failures during Foxx Application installation
+  in case a Load Balancer is being used in front of the coordinators.
+
 * FE-233: bugfix - fix query spotlight search not working.
 
 * FE-349: bugfix - filter out empty primarySort field in UI.
