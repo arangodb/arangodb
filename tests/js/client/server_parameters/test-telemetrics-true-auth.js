@@ -38,7 +38,7 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 const toArgv = require('internal').toArgv;
 const fs = require('fs');
-let pu = require('@arangodb/testutils/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const FoxxManager = require('@arangodb/foxx/manager');
 const path = require('path');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'redirect');
@@ -474,6 +474,9 @@ function telemetricsShellReconnectGraphTestsuite() {
     },
 
     testTelemetricsShellExecuteScriptLeave: function () {
+      // this is for when the user logs into the shell to run a script and then leave the shell immediately. The shell
+      // should not hang because telemetrics is still in progress, either by fetching telemetrics info from servers or
+      // by sending it to the endpoint so the shell process must be finished just right after the script execution ends.
       let file = fs.getTempFile() + "-telemetrics";
       fs.write(file, `(function() { const x = 0;})();`);
       let options = internal.options();
@@ -485,7 +488,6 @@ function telemetricsShellReconnectGraphTestsuite() {
         'server.password': '',
         'javascript.execute': file,
         'client.failure-points': 'startTelemetricsForTest',
-        'log.output': "file://telemetrics.log",
       };
       const argv = toArgv(args);
 
@@ -506,7 +508,7 @@ function telemetricsShellReconnectGraphTestsuite() {
         internal.sleep(numSecs);
         numSecs *= 2;
       }
-      assertEqual(status.status, "TERMINATED", "couldn't leave shell right after executing script");
+      assertEqual(status.status, "TERMINATED", "couldn't leave shell immediately after executing script");
     }
   };
 }

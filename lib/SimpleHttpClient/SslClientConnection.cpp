@@ -74,7 +74,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
-using namespace std::chrono;
 
 namespace {
 
@@ -307,12 +306,20 @@ bool SslClientConnection::connectSocket() {
 
   _errorDetails.clear();
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
+
+  if (!TRI_isvalidsocket(_socket) || _ctx == nullptr) {
+    _errorDetails = _endpoint->_errorMessage;
+    _isConnected = false;
+    return false;
+  }
+
   if (_isSocketNonBlocking) {
     _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
     if (_socketFlags == -1) {
       _errorDetails = "Socket file descriptor read returned with error " +
                       std::to_string(errno);
       _isConnected = false;
+      disconnectSocket();
       return false;
     }
     if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags | O_NONBLOCK) ==
@@ -320,19 +327,9 @@ bool SslClientConnection::connectSocket() {
       _errorDetails = "Attempt to create non-blocking socket generated error " +
                       std::to_string(errno);
       _isConnected = false;
+      disconnectSocket();
       return false;
     }
-  }
-
-  if (!TRI_isvalidsocket(_socket) || _ctx == nullptr) {
-    _errorDetails = _endpoint->_errorMessage;
-    if (_isSocketNonBlocking) {
-      // we don't care about the return value here because we were already
-      // unsuccessful in the connection attempt
-      cleanUpSocketFlags();
-    }
-    _isConnected = false;
-    return false;
   }
 
   _isConnected = true;
@@ -383,19 +380,20 @@ bool SslClientConnection::connectSocket() {
   int errorDetail = -1;
 
   if (_isSocketNonBlocking) {
-    auto start = steady_clock::now();
+    auto start = std::chrono::steady_clock::now();
     while ((ret = SSL_connect(_ssl)) == -1) {
       errorDetail = SSL_get_error(_ssl, ret);
       if (_isInterrupted) {
         break;
       }
-      auto end = steady_clock::now();
+      auto end = std::chrono::steady_clock::now();
       if ((errorDetail != SSL_ERROR_WANT_READ &&
            errorDetail != SSL_ERROR_WANT_WRITE) ||
-          duration_cast<seconds>(end - start).count() >= _connectTimeout) {
+          duration_cast<std::chrono::seconds>(end - start).count() >=
+              _connectTimeout) {
         break;
       }
-      std::this_thread::sleep_for(seconds(1));
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
   } else {
     if ((ret = SSL_connect(_ssl)) == -1) {
