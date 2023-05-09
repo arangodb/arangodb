@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/operating-system.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 
 #ifdef TRI_HAVE_GETRLIMIT
@@ -46,6 +47,8 @@ class FileDescriptorsFeature : public ArangodFeature {
   void adjustFileDescriptors();
 
   uint64_t _descriptorsMinimum;
+
+  metrics::Gauge<uint64_t>& _fileDescriptorsLimit;
 };
 
 }  // namespace arangodb
