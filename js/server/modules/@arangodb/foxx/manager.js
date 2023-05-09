@@ -1159,7 +1159,6 @@ exports.listDevelopmentJson = utils.listDevelopmentJson;
 
 exports.available = store.available;
 exports.availableJson = store.availableJson;
-exports.getFishbowlStorage = store.getFishbowlStorage;
 exports.search = store.search;
 exports.searchJson = store.searchJson;
 exports.update = store.update;

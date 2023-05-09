@@ -61,7 +61,7 @@ struct IManager {
                                  std::string const& database) = 0;
 };
 
-/// @brief Tracks TransasctionState instances
+/// @brief Tracks TransactionState instances
 class Manager final : public IManager {
   static constexpr size_t numBuckets = 16;
   static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
@@ -177,7 +177,7 @@ class Manager final : public IManager {
                                                         bool isSideUser);
   void returnManagedTrx(TransactionId, bool isSideUser) noexcept;
 
-  /// @brief get the meta transasction state
+  /// @brief get the meta transaction state
   transaction::Status getManagedTrxStatus(TransactionId,
                                           std::string const& database) const;
 
