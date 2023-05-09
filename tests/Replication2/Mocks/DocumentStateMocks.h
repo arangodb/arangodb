@@ -371,9 +371,6 @@ struct MockProducerStream
   MOCK_METHOD(LogIndex, insert,
               (replicated_state::document::DocumentLogEntry const&),
               (override));
-  MOCK_METHOD((std::pair<LogIndex, DeferredAction>), insertDeferred,
-              (replicated_state::document::DocumentLogEntry const&),
-              (override));
 
   MockProducerStream() {
     ON_CALL(*this, insert)

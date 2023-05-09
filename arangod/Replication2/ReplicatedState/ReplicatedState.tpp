@@ -306,7 +306,7 @@ auto StreamProxy<S, Interface, ILogMethodsT>::release(LogIndex index) -> void {
 template<typename S, template<typename> typename Interface,
          ValidStreamLogMethods ILogMethodsT>
 void StreamProxy<S, Interface, ILogMethodsT>::throwResignedException() {
-  static constexpr auto errorCode = ([]() consteval->ErrorCode {
+  static constexpr auto errorCode = ([]() consteval -> ErrorCode {
     if constexpr (std::is_same_v<ILogMethodsT,
                                  replicated_log::IReplicatedLogLeaderMethods>) {
       return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
@@ -347,18 +347,6 @@ auto ProducerStreamProxy<S>::insert(const EntryType& v) -> LogIndex {
   auto guard = this->_logMethods.getLockedGuard();
   if (auto& methods = guard.get(); methods != nullptr) [[likely]] {
     return methods->insert(serialize(v));
-  } else {
-    this->throwResignedException();
-  }
-}
-
-template<typename S>
-auto ProducerStreamProxy<S>::insertDeferred(const EntryType& v)
-    -> std::pair<LogIndex, DeferredAction> {
-  // TODO Remove this method, it should be superfluous
-  auto guard = this->_logMethods.getLockedGuard();
-  if (auto& methods = guard.get(); methods != nullptr) [[likely]] {
-    return methods->insertDeferred(serialize(v));
   } else {
     this->throwResignedException();
   }
