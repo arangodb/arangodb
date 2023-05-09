@@ -655,6 +655,6 @@ bool SslClientConnection::readable() {
   return false;
 }
 
-long SslClientConnection::cleanUpSocketFlags() {
+int SslClientConnection::cleanUpSocketFlags() {
   return fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags & ~O_NONBLOCK);
 }

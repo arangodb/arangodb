@@ -474,9 +474,16 @@ function telemetricsShellReconnectGraphTestsuite() {
     },
 
     testTelemetricsShellExecuteScriptLeave: function () {
-      // this is for when the user logs into the shell to run a script and then leave the shell immediately. The shell
-      // should not hang because telemetrics is still in progress, either by fetching telemetrics info from servers or
-      // by sending it to the endpoint so the shell process must be finished just right after the script execution ends.
+      // this is for when the user logs into the shell to run a script and then leaves the shell immediately. The shell
+      // should not hang because telemetrics is still in progress.
+      // The telemetrics process should be transparent to the user and not influence user experience.
+      // The shell should be closed as soon as the script executes despite of telemetrics being in progress, not
+      // mattering whether telemetrics is still in progress by fetching info from servers or by sending the info to
+      // the endpoint.
+      // It could happen, for example, that the script executes, and telemetrics is still in progress, the data is about
+      // to be sent to the warehouse and could hang until a connection timeout (30s) is reached. Therefore, the
+      // connecting socket is made non-blocking to be able to abort the request.The shell should be closed immediately
+      // as it would behave had the telemetrics process not taken place.
       let file = fs.getTempFile() + "-telemetrics";
       fs.write(file, `(function() { const x = 0;})();`);
       let options = internal.options();
