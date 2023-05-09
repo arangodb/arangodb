@@ -1446,14 +1446,23 @@
   };
 
   window.arangoValidationHelper = {
-    getDocumentKeyValidations: () => {
+    getDocumentKeySpecialCharactersValidation: () => {
       var keySpecialCharactersValidation = {
         rule: Joi.string().regex(/^[a-zA-Z0-9_\-:\.@()\+,=;$!*\%']+$/),
-        msg: "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %."
+        msg: "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %.",
       };
-      return {
-        keySpecialCharactersValidation
-      };
+      return keySpecialCharactersValidation;
+    },
+    getDocumentNameValidations: () => {
+      var keySpecialCharactersValidation = 
+        window.arangoValidationHelper.getDocumentKeySpecialCharactersValidation();
+      return [
+        keySpecialCharactersValidation,
+        {
+          rule: Joi.string().allow("").optional(),
+          msg: "",
+        }
+      ];
     },
     getCollectionNameValidations: () => {
       var traditionalCollectionNameValidation = [
@@ -1464,7 +1473,7 @@
         {
           rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
           msg: 'Only symbols, "_" and "-" are allowed.',
-        },
+        }
       ];
       var extendedCollectionNameValidation = [
         {
@@ -1482,7 +1491,7 @@
         {
           rule: Joi.string().regex(/^(?!.*[/])/),
           msg: "Collection name cannot contain a forward slash (/).",
-        },
+        }
       ];
       var extendedNames = window.frontendConfig.extendedNames;
 

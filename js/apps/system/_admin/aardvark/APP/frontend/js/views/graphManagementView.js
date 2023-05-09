@@ -1253,9 +1253,9 @@
 
         // create graph section
         title = 'Create Graph';
-        var { keySpecialCharactersValidation } = window
+        var keySpecialCharactersValidation = window
           .arangoValidationHelper()
-          .getDocumentKeyValidations();
+          .getDocumentKeySpecialCharactersValidation();
         var nameValidation = [
           keySpecialCharactersValidation,
           {
