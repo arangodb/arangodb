@@ -121,15 +121,29 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
     print(CYAN + 'Shutting down...' + RESET);
     if (this.im1.detectShouldBeRunning()) {
-      this.im1.reconnect();
+      try {
+        this.im1.reconnect();
+      } catch (ex) {
+        print("forcefully shutting down because of: " + ex);
+        this.results['shutdown'] = this.im1.shutdownInstance(true, "Execption caught: " + ex);
+      }
     }
-    this.results['shutdown'] = this.im1.shutdownInstance();
+    if (this.im1.detectShouldBeRunning()) {
+      this.results['shutdown'] = this.im1.shutdownInstance();
+    }
 
     if (this.im2 !== null) {
       if (this.im2.detectShouldBeRunning()) {
-        this.im2.reconnect();
+        try {
+          this.im2.reconnect();
+        } catch (ex) {
+          print("forcefully shutting down because of: " + ex);
+          this.results['shutdown'] &= this.im1.shutdownInstance(true, "Execption caught: " + ex);
+        }
       }
-      this.results['shutdown'] &= this.im2.shutdownInstance();
+      if (this.im2.detectShouldBeRunning()) {
+        this.results['shutdown'] &= this.im2.shutdownInstance();
+      }
     }
     print(CYAN + 'done.' + RESET);
 
@@ -604,63 +618,68 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
 
-  if (firstRunOptions.hasOwnProperty("multipleDumps") && firstRunOptions.multipleDumps) {
-    if (!helper.runSetupSuite(setupFile) ||
-        !helper.dumpFrom('_system', true) ||
-        !helper.dumpFrom('UnitTestsDumpSrc', true) ||
-        (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
-        !helper.runCleanupSuite(cleanupFile) ||
-        !helper.restartInstance() ||
-        !helper.restoreTo('UnitTestsDumpDst', { separate: true, fromDir: 'UnitTestsDumpSrc'}) ||
-        !helper.restoreTo('_system', { separate: true }) ||
-        !helper.runTests(testFile,'UnitTestsDumpDst') ||
-        !helper.tearDown(tearDownFile)) {
-      helper.destructor(true);
-      return helper.extractResults();
+  try {
+    if (firstRunOptions.hasOwnProperty("multipleDumps") && firstRunOptions.multipleDumps) {
+      if (!helper.runSetupSuite(setupFile) ||
+          !helper.dumpFrom('_system', true) ||
+          !helper.dumpFrom('UnitTestsDumpSrc', true) ||
+          (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
+          !helper.runCleanupSuite(cleanupFile) ||
+          !helper.restartInstance() ||
+          !helper.restoreTo('UnitTestsDumpDst', { separate: true, fromDir: 'UnitTestsDumpSrc'}) ||
+          !helper.restoreTo('_system', { separate: true }) ||
+          !helper.runTests(testFile,'UnitTestsDumpDst') ||
+          !helper.tearDown(tearDownFile)) {
+        helper.destructor(true);
+        return helper.extractResults();
+      }
     }
-  }
-  else {
-    if (!helper.runSetupSuite(setupFile) ||
-        !helper.dumpFrom('UnitTestsDumpSrc') ||
-        (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
-        !helper.runCleanupSuite(cleanupFile) ||
-        !helper.restartInstance() ||
-        !helper.restoreTo('UnitTestsDumpDst') ||
-        !helper.runTests(testFile,'UnitTestsDumpDst') ||
-        !helper.tearDown(tearDownFile)) {
-      helper.destructor(true);
-      return helper.extractResults();
+    else {
+      if (!helper.runSetupSuite(setupFile) ||
+          !helper.dumpFrom('UnitTestsDumpSrc') ||
+          (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
+          !helper.runCleanupSuite(cleanupFile) ||
+          !helper.restartInstance() ||
+          !helper.restoreTo('UnitTestsDumpDst') ||
+          !helper.runTests(testFile,'UnitTestsDumpDst') ||
+          !helper.tearDown(tearDownFile)) {
+        helper.destructor(true);
+        return helper.extractResults();
+      }
     }
-  }
 
-  if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
-    const notCluster = getClusterStrings(secondRunOptions).notCluster;
-    const restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
-    const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
-    if (!helper.restoreOld(restoreDir) ||
-        !helper.testRestoreOld(oldTestFile)) {
-      helper.destructor(true);
-      return helper.extractResults();
+    if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
+      const notCluster = getClusterStrings(secondRunOptions).notCluster;
+      const restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
+      const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
+      if (!helper.restoreOld(restoreDir) ||
+          !helper.testRestoreOld(oldTestFile)) {
+        helper.destructor(true);
+        return helper.extractResults();
+      }
+    }
+
+    if (tstFiles.hasOwnProperty("foxxTest")) {
+      const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
+      if (secondRunOptions.hasOwnProperty("multipleDumps") && secondRunOptions.multipleDumps) {
+        helper.adjustRestoreToDump();
+        helper.restoreConfig.setInputDirectory(fs.join('dump','UnitTestsDumpSrc'), true);
+      }
+      if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
+          !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
+          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
+          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
+          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
+          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
+        helper.destructor(true);
+        return helper.extractResults();
+      }
     }
   }
-
-  if (tstFiles.hasOwnProperty("foxxTest")) {
-    const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
-    if (secondRunOptions.hasOwnProperty("multipleDumps") && secondRunOptions.multipleDumps) {
-      helper.adjustRestoreToDump();
-      helper.restoreConfig.setInputDirectory(fs.join('dump','UnitTestsDumpSrc'), true);
-    }
-    if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
-        !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
-        !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
-        !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
-        !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
-        !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
-      helper.destructor(true);
-      return helper.extractResults();
-    }
+  catch (ex) {
+    print("Caught exception during testrun: " + ex);
+    helper.destructor(false);
   }
-
   helper.destructor(true);
   return helper.extractResults();
 }
@@ -967,50 +986,55 @@ function hotBackup (options) {
   const dumpMoveShard = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpMoveShard));
   const dumpRecheck  = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpRecheck));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
-  if (!helper.runSetupSuite(setupFile) ||
-      !helper.dumpFrom('UnitTestsDumpSrc') ||
-      !helper.restartInstance() ||
-      !helper.restoreTo('UnitTestsDumpDst') ||
-      !helper.isAlive() ||
-      !helper.createHotBackup() ||
-      !helper.isAlive() ||
-      !helper.runTests(dumpModify,'UnitTestsDumpDst') ||
-      !helper.isAlive() ||
-      !helper.runTests(dumpMoveShard,'UnitTestsDumpDst') ||
-      !helper.isAlive() ||
-      !helper.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
-      !helper.isAlive() ||
-      !helper.restoreHotBackup() ||
-      !helper.runTests(dumpCheck, 'UnitTestsDumpDst')||
-      !helper.tearDown(tearDownFile)) {
-    helper.destructor(true);
-    return helper.extractResults();
-  }
-
-  if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
-    const notCluster = getClusterStrings(options).notCluster;
-    const restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
-    const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
-    if (!helper.restoreOld(restoreDir) ||
-        !helper.testRestoreOld(oldTestFile)) {
+  try {
+    if (!helper.runSetupSuite(setupFile) ||
+        !helper.dumpFrom('UnitTestsDumpSrc') ||
+        !helper.restartInstance() ||
+        !helper.restoreTo('UnitTestsDumpDst') ||
+        !helper.isAlive() ||
+        !helper.createHotBackup() ||
+        !helper.isAlive() ||
+        !helper.runTests(dumpModify,'UnitTestsDumpDst') ||
+        !helper.isAlive() ||
+        !helper.runTests(dumpMoveShard,'UnitTestsDumpDst') ||
+        !helper.isAlive() ||
+        !helper.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
+        !helper.isAlive() ||
+        !helper.restoreHotBackup() ||
+        !helper.runTests(dumpCheck, 'UnitTestsDumpDst')||
+        !helper.tearDown(tearDownFile)) {
       helper.destructor(true);
       return helper.extractResults();
     }
-  }
 
-  if (tstFiles.hasOwnProperty("foxxTest")) {
-    const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
-    if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
-        !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
-        !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
-        !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
-        !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
-        !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
-      helper.destructor(true);
-      return helper.extractResults();
+    if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
+      const notCluster = getClusterStrings(options).notCluster;
+      const restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
+      const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
+      if (!helper.restoreOld(restoreDir) ||
+          !helper.testRestoreOld(oldTestFile)) {
+        helper.destructor(true);
+        return helper.extractResults();
+      }
+    }
+
+    if (tstFiles.hasOwnProperty("foxxTest")) {
+      const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
+      if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
+          !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
+          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
+          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
+          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
+          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
+        helper.destructor(true);
+        return helper.extractResults();
+      }
     }
   }
-
+  catch (ex) {
+    print("Caught exception during testrun: " + ex);
+    helper.destructor(false);
+  }
   helper.destructor(true);
   if (helper.doCleanup) {
     fs.removeDirectoryRecursive(keyDir, true);

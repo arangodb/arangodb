@@ -826,6 +826,7 @@ class instanceManager {
         print(e.stack);
       }
     }
+    return false;
   }
 
   _forceTerminate(moreReason="") {
