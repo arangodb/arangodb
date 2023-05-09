@@ -76,7 +76,7 @@ function pregelStatusWriterSuiteModules() {
     // verify using Pregel JavaScript module
     const modulePersistedState = pregel.history(pid);
     assertTrue(modulePersistedState);
-    assertEqual(modulePersistedState.data.state, expectedState);
+    assertEqual(modulePersistedState.state, expectedState);
   };
 
   const verifyPersistedStatePIDRead = (pid, expectedState) => {

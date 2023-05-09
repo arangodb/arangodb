@@ -274,7 +274,8 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
 }
 
 ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
-                                               VPackSlice const& slice) {
+                                               velocypack::Slice slice) {
+  TRI_ASSERT(slice.get("typeID").isNumber()) << slice.toJson();
   int nodeTypeID = slice.get("typeID").getNumericValue<int>();
   validateType(nodeTypeID);
 
@@ -469,7 +470,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
 }
 
 /// @brief create an ExecutionNode from VPackSlice
-ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
+ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
     : _id(slice.get("id").getNumericValue<size_t>()),
       _depth(slice.get("depth").getNumericValue<unsigned int>()),
       _varUsageValid(true),
@@ -1725,14 +1726,6 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-
-  if (!engine.waitForSatellites(engine.getQuery(), collection())) {
-    double maxWait = engine.getQuery().queryOptions().satelliteSyncWait;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-                                   "collection " + collection()->name() +
-                                       " did not come into sync in time (" +
-                                       std::to_string(maxWait) + ")");
-  }
 
   // check which variables are used by the node's post-filter
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;

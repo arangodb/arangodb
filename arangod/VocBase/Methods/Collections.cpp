@@ -61,8 +61,6 @@
 #include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
-#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -414,22 +412,11 @@ Collections::Context::~Context() {
 }
 
 transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
-                                                bool embeddable,
-                                                bool forceLoadCollection) {
+                                                bool embeddable) {
   if (_responsibleForTrx && _trx == nullptr) {
     auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(),
                                                           embeddable);
     auto trx = std::make_unique<SingleCollectionTransaction>(ctx, *_coll, type);
-    if (!trx) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY,
-                                     "Cannot create Transaction");
-    }
-
-    if (!forceLoadCollection) {
-      // we actually need this hint here, so that the collection is not
-      // loaded if it has status unloaded.
-      trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
-    }
 
     Result res = trx->begin();
 
@@ -595,43 +582,6 @@ void Collections::enumerate(
   }
 
   return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-}
-
-[[nodiscard]] arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
-Collections::create(         // create collection
-    TRI_vocbase_t& vocbase,  // collection vocbase
-    OperationOptions const& options,
-    std::vector<CreateCollectionBody> collections,  // Collections to create
-    bool createWaitsForSyncReplication,             // replication wait flag
-    bool enforceReplicationFactor,                  // replication factor flag
-    bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
-    bool isRestore) {
-  std::vector<std::shared_ptr<LogicalCollection>> results;
-  results.reserve(collections.size());
-  // This block is to be replaced by proper implementation
-  {
-    // In this rudimentary forward we only support single collection, as this is
-    // the only way it is used right now.
-    TRI_ASSERT(collections.size() == 1);
-    // Just plainly forward
-    auto& planCollection = collections.at(0);
-    auto parameters = planCollection.toCollectionsCreate();
-    std::shared_ptr<LogicalCollection> coll;
-    auto res = methods::Collections::create(
-        vocbase, options,
-        planCollection.name,            // collection name
-        planCollection.getType(),       // collection type
-        parameters.slice(),             // collection properties
-        createWaitsForSyncReplication,  // replication wait flag
-        enforceReplicationFactor,       // replication factor flag
-        /*isNewDatabase*/ false,        // here always false
-        coll, planCollection.isSystem);
-    if (res.fail()) {
-      return res;
-    }
-    results.emplace_back(coll);
-    return results;
-  }
 }
 
 /*static*/ arangodb::Result Collections::create(  // create collection
@@ -923,7 +873,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
          StaticStrings::ShardingStrategy, StaticStrings::IsDisjoint});
 
     // this transaction is held longer than the following if...
-    auto trx = ctxt.trx(AccessMode::Type::READ, true, false);
+    auto trx = ctxt.trx(AccessMode::Type::READ, true);
     TRI_ASSERT(trx != nullptr);
   }
 
@@ -1214,7 +1164,7 @@ futures::Future<OperationResult> Collections::revisionId(
   }
 
   RevisionId rid =
-      ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
+      ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true));
 
   VPackBuilder builder;
   builder.add(VPackValue(rid.toString()));

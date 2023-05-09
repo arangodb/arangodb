@@ -88,6 +88,8 @@ function basicTestSuite() {
       db._create(vColl, { numberOfShards: 4 });
       graph._addVertexCollection(vColl);
       db._createEdgeCollection(eColl, {
+        numberOfShards: 4,
+        replicationFactor: 1,
         shardKeys: ["vertex"],
         distributeShardsLike: vColl
       });
@@ -199,27 +201,17 @@ function basicTestSuite() {
       // after cancelling the pregel run, PREGEL_RESULT is empty
 
       pregel.cancel(pid);
-      internal.sleep(5.0);
-
-      array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
-      assertEqual(array.length, 1);
-      results = array[0];
-      assertEqual(results.length, 0);
+      pregelTestHelpers.waitForResultsBeeingGarbageCollected(pid, 0);
     },
 
     test_AQL_pregel_result_is_empty_after_ttl_expires: function () {
-			// set ttl to one second
-      var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10, store: false, ttl: 1 });
+      const ttl = 1;
+      var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10, store: false, ttl: ttl });
       const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
 
-      // garbage collection runs every 20s, therefore we should wait at least that long plus the ttl given
-      internal.sleep(25);
-      let array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
-      assertEqual(array.length, 1);
-      let results = array[0];
-      assertEqual(results.length, 0);
+      pregelTestHelpers.waitForResultsBeeingGarbageCollected(pid, ttl);
     },
 
     test_AQL_pregel_result_is_empty_when_pregel_results_are_stored_in_database: function () {

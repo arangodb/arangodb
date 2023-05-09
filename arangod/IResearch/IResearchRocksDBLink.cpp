@@ -54,7 +54,7 @@ IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
                    /*cacheManager*/ nullptr,
                    /*engine*/
                    collection.vocbase().engine<RocksDBEngine>()},
-      IResearchLink{collection.vocbase().server()} {
+      IResearchLink{collection.vocbase().server(), collection} {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse

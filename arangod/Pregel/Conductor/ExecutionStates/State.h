@@ -27,6 +27,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/StatusMessages.h"
+#include "Pregel/MetricsMessages.h"
 #include "Pregel/Worker/Messages.h"
 
 namespace arangodb::pregel::conductor {
@@ -35,6 +36,8 @@ struct ExecutionState;
 
 struct StateChange {
   std::optional<pregel::message::StatusMessages> statusMessage = std::nullopt;
+  std::optional<pregel::metrics::message::MetricsMessages> metricsMessage =
+      std::nullopt;
   std::unique_ptr<ExecutionState> newState = nullptr;
 };
 
@@ -54,8 +57,12 @@ struct ExecutionState {
       -> std::optional<StateChange> {
     return std::nullopt;
   };
+  virtual auto cancel(actor::ActorPID sender,
+                      conductor::message::ConductorMessages message)
+      -> std::optional<StateChange> {
+    return std::nullopt;
+  };
   virtual auto aqlResultsAvailable() const -> bool { return false; }
-  virtual auto canBeCanceled() const -> bool { return true; }
   virtual ~ExecutionState() = default;
 };
 

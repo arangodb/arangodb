@@ -72,7 +72,10 @@ struct CollectionStatusWriter : StatusWriterInterface {
   };
 
  private:
-  [[nodiscard]] auto executeQuery(std::string queryString) -> OperationResult;
+  [[nodiscard]] auto executeQuery(
+      std::string queryString,
+      std::optional<std::shared_ptr<VPackBuilder>> bindParameters)
+      -> OperationResult;
   [[nodiscard]] auto handleOperationResult(SingleCollectionTransaction& trx,
                                            OperationOptions& options,
                                            Result& transactionResult,
@@ -83,6 +86,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
  private:
   DatabaseGuard _vocbaseGuard;
   ExecutionNumber _executionNumber;
+  std::optional<std::string> _user;
   std::shared_ptr<LogicalCollection> _logicalCollection;
 };
 

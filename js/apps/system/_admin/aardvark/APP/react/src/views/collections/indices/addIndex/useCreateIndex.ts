@@ -1,4 +1,5 @@
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { encodeHelper } from "../../../../utils/encodeHelper";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 
 const handleError = (error: { errorMessage: string }) => {
@@ -17,16 +18,15 @@ const handleSuccess = (onSuccess: () => void) => {
   onSuccess();
 };
 
-export const useCreateIndex = <TValues extends unknown>() => {
-  const {
-    collectionName,
-    collectionId,
-    onCloseForm
-  } = useCollectionIndicesContext();
-
+export const useCreateIndex = <
+  TValues extends { [key: string]: unknown }
+>() => {
+  const { collectionName, collectionId, onCloseForm } =
+    useCollectionIndicesContext();
+  const { encoded: encodedCollectionName } = encodeHelper(collectionName);
   const onCreate = async (values: TValues) => {
     window.arangoHelper.checkDatabasePermissions(
-      function() {
+      function () {
         window.arangoHelper.arangoError(
           "You do not have the permissions to create indexes in this database."
         );
@@ -36,8 +36,11 @@ export const useCreateIndex = <TValues extends unknown>() => {
         try {
           result = await getApiRouteForCurrentDB().post(
             `index`,
-            values,
-            `collection=${collectionName}`,
+            {
+              ...values,
+              name: values.name ? String(values.name)?.normalize() : undefined
+            },
+            `collection=${encodedCollectionName}`,
             {
               "x-arango-async": "store"
             }

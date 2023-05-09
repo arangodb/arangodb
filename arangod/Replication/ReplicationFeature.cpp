@@ -95,6 +95,7 @@ ReplicationFeature::ReplicationFeature(Server& server)
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false),
       _syncByRevision(true),
+      _autoRepairRevisionTrees(true),
       _connectionCache{
           server.getFeature<application_features::CommunicationFeaturePhase>(),
           httpclient::ConnectionCache::Options{5}},
@@ -184,6 +185,16 @@ void ReplicationFeature::collectOptions(
           "Whether to use the newer revision-based replication protocol.",
           new BooleanParameter(&_syncByRevision))
       .setIntroducedIn(30700);
+
+  options
+      ->addOption("--replication.auto-repair-revision-trees",
+                  "Whether to automatically repair revision trees of shards "
+                  "after too many shard synchronization failures.",
+                  new BooleanParameter(&_autoRepairRevisionTrees),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer))
+      .setIntroducedIn(31006);
 }
 
 void ReplicationFeature::validateOptions(
@@ -314,7 +325,20 @@ bool ReplicationFeature::isActiveFailoverEnabled() const {
   return _enableActiveFailover;
 }
 
-bool ReplicationFeature::syncByRevision() const { return _syncByRevision; }
+bool ReplicationFeature::syncByRevision() const noexcept {
+  return _syncByRevision;
+}
+
+bool ReplicationFeature::autoRepairRevisionTrees() const noexcept {
+  return _autoRepairRevisionTrees;
+}
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// only used during testing
+void ReplicationFeature::autoRepairRevisionTrees(bool value) noexcept {
+  _autoRepairRevisionTrees = value;
+}
+#endif
 
 // start the replication applier for a single database
 void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {

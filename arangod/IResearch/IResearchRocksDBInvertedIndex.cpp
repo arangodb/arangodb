@@ -207,7 +207,8 @@ IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
                    /*cacheManager*/ nullptr,
                    /*engine*/
                    collection.vocbase().engine<RocksDBEngine>()},
-      IResearchInvertedIndex{collection.vocbase().server()} {}
+      IResearchInvertedIndex{collection.vocbase().server(), collection} {}
+
 namespace {
 
 template<typename T>

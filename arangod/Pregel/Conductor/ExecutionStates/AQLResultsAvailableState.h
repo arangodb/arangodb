@@ -39,7 +39,6 @@ struct AQLResultsAvailable : ExecutionState {
   AQLResultsAvailable(ConductorState& conductor);
   auto name() const -> std::string override { return "done"; }
   auto aqlResultsAvailable() const -> bool override { return true; }
-  auto canBeCanceled() const -> bool override { return false; }
   auto messages()
       -> std::unordered_map<actor::ActorPID,
                             worker::message::WorkerMessages> override;

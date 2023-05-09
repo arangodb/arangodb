@@ -312,7 +312,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   if (name.empty() || (name[0] >= '0' && name[0] <= '9')) {
     LOG_TOPIC("e9bdc", ERR, Logger::REPLICATION)
         << "invalid database name in log";
-    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
+            "illegal name: database named invalid"};
   }
 
   if (!_state.applier._server.hasFeature<arangodb::SystemDatabaseFeature>()) {

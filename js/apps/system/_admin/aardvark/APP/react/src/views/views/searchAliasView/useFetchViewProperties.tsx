@@ -4,14 +4,16 @@ import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 
 import useSWR from "swr";
 import { SearchViewType } from "../viewsList/useViewsList";
+import { encodeHelper } from "../../../utils/encodeHelper";
 
 export interface ViewPropertiesType extends SearchViewType {
   indexes: Array<{ collection: string; index: string }>;
 }
 export function useFetchViewProperties(name: string) {
   const [view, setView] = useState<ViewPropertiesType | undefined>();
+  const { encoded: encodedName } = encodeHelper(name);
   const { data, error, isLoading } = useSWR(
-    `/view/${name}/properties`,
+    `/view/${encodedName}/properties`,
     path => getApiRouteForCurrentDB().get(path),
     {
       revalidateOnFocus: false

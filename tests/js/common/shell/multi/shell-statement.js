@@ -964,17 +964,12 @@ function StatementSuite () {
 
     testDispose1 : function () {
       var st = db._createStatement({ query : "for i in 1..10 return i", batchSize : 1 });
-
       var c = st.execute();
 
-      c.dispose();
+      assertUndefined(c.dispose());
 
-      try {
-        // cursor does not exist anymore
-        c.next();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
-      }
+      // cursor does not exist anymore, but data has already been fetched
+      assertEqual(1, c.next());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -990,10 +985,12 @@ function StatementSuite () {
       }
       // this should have auto-disposed the cursor
 
+      assertUndefined(c.dispose());
       try {
-        c.dispose();
+        c.next();
+        fail();
       } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
+        assertTrue(err.toLowerCase().includes("no more results"));
       }
     },
 
