@@ -110,16 +110,22 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
 
   if (_messageCombiner) {
     _readCache =
-        new CombiningInCache<M>(_config->localPregelShardIDs(),
+        new CombiningInCache<M>(_config->graphSerdeConfig().localPregelShardIDs(
+                                    ServerState::instance()->getId()),
                                 _messageFormat.get(), _messageCombiner.get());
     _writeCache =
-        new CombiningInCache<M>(_config->localPregelShardIDs(),
+        new CombiningInCache<M>(_config->graphSerdeConfig().localPregelShardIDs(
+                                    ServerState::instance()->getId()),
                                 _messageFormat.get(), _messageCombiner.get());
   } else {
-    _readCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
-                                     _messageFormat.get());
-    _writeCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
-                                      _messageFormat.get());
+    _readCache =
+        new ArrayInCache<M>(_config->graphSerdeConfig().localPregelShardIDs(
+                                ServerState::instance()->getId()),
+                            _messageFormat.get());
+    _writeCache =
+        new ArrayInCache<M>(_config->graphSerdeConfig().localPregelShardIDs(
+                                ServerState::instance()->getId()),
+                            _messageFormat.get());
   }
 }
 
@@ -463,7 +469,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
       auto storer = std::make_shared<GraphStorer<V, E>>(
           _config->executionNumber(), *_config->vocbase(),
           _config->parallelism(), _algorithm->inputFormat(),
-          _config->globalShardIDs(),
+          _config->graphSerdeConfig(),
           OldStoringUpdate{.fn = std::move(_makeStatusCallback())});
       _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
       storer->store(_magazine).thenFinal(
@@ -484,8 +490,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
-      withId, _config, _algorithm->inputFormat(),
-      std::move(_makeStatusCallback()));
+      withId, _config, _algorithm->inputFormat());
 
   storer->store(_magazine).get();
   return PregelResults{.results =
