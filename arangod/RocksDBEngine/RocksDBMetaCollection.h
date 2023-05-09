@@ -45,7 +45,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   virtual ~RocksDBMetaCollection() = default;
 
   void deferDropCollection(
-      std::function<bool(LogicalCollection&)> const&) override final;
+      std::function<bool(LogicalCollection&)> const&) override;
 
   uint64_t objectId() const noexcept { return _objectId; }
 
