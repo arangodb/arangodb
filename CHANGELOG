@@ -21,6 +21,9 @@ devel
   Now, the list of applications stored in memory is shared between all 
   databases in a deployment.
 
+* Add metric `arangodb_file_descriptors_limit` to expose the system limit for
+  the number of open files for the arangod process.
+
 * Fix an issue that causes followers to be dropped due to premature transaction
   abortions as a result of query failures.
   When we have a query that results in a failure this will cause the leaders to

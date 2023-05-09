@@ -317,12 +317,24 @@
       inRoot = from.indexOf(root) === 0;
     }
 
-    for (var tip = parts.length - 1; tip >= 0; tip--) {
+    for (let tip = parts.length - 1; tip >= 0; tip--) {
       // don't search in .../node_modules/node_modules
-      if (parts[tip] === 'node_modules') continue;
-      var dir = parts.slice(0, tip + 1).concat('node_modules').join(path.sep);
-      if (inRoot && dir.indexOf(root) !== 0) break;
-      paths.push(dir);
+      if (parts[tip] === 'node_modules') {
+        continue;
+      }
+      try {
+        // note: the try...catch is here to debug the following error case:
+        //   JavaScript exception in file 'common/bootstrap/modules.js' at 323,41: TypeError: parts.slice(...).concat is not a function
+        // once we have an understanding of it, the try...catch can be removed again.
+        let dir = parts.slice(0, tip + 1).concat('node_modules').join(path.sep);
+        if (inRoot && dir.indexOf(root) !== 0) {
+          break;
+        }
+        paths.push(dir);
+      } catch (err) {
+        console.error("unable to slice parts", { parts, paths, sep: path.sep, tip, inRoot, root });
+        throw err;
+      }
     }
 
     return paths;
