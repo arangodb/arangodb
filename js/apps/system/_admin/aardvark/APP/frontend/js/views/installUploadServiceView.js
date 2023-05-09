@@ -84,6 +84,9 @@
         info = {
           zipFile: window.foxxData.data.filename
         };
+        if (window.foxxData.data.hasOwnProperty('coordinatorId')) {
+          info.coordinatorId = window.foxxData.data.coordinatorId;
+        }
 
         options = arangoHelper.getFoxxFlags();
         options.legacy = Boolean($('#zip-app-islegacy')[0].checked);
