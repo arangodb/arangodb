@@ -1,6 +1,12 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* FE-256: Minor Graph Viewer improvements:
+  - re-order right click menu
+  - Make Right click menu and toolbar work in full screen
+  - Remove editable attributes in edit and delete (nodes and edges) modals
+  - Add "tree"-mode to editor in edit (nodes and edges) modals
+
 * Fix an issue that causes followers to be dropped due to premature transaction
   abortions as a result of query failures.
   When we have a query that results in a failure this will cause the leaders to
