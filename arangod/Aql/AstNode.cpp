@@ -2734,7 +2734,8 @@ bool AstNode::semanticallyEquals(AstNode const* other) const noexcept {
       if (getStringLength() != other->getStringLength()) {
         return false;
       }
-      if (memcmp(getStringValue(), other->getStringValue(), getStringLength()) != 0) {
+      if (memcmp(getStringValue(), other->getStringValue(),
+                 getStringLength()) != 0) {
         return false;
       }
       TRI_ASSERT(numMembers() == 1);
