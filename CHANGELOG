@@ -1,6 +1,12 @@
 devel
 -----
 
+* FE-256: Minor Graph Viewer improvements:
+  - re-order right click menu
+  - Make Right click menu and toolbar work in full screen
+  - Remove editable attributes in edit and delete (nodes and edges) modals
+  - Add "tree"-mode to editor in edit (nodes and edges) modals
+
 * Fixed a race in the Maintenance, impacting leaders that have just been
   resigned. During a MoveShard job, the old leader could sabotage the whole
   operation by removing the newly added follower from Current. The solution is
