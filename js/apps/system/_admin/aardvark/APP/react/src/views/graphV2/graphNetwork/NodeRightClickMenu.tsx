@@ -134,5 +134,5 @@ const ExpandNodeButton = ({
     datasets?.nodes.add(newNodes);
     datasets?.edges.add(newEdges);
   };
-  return <MenuItem onClick={expandNode}>Expand Node</MenuItem>;
+  return <MenuItem isDisabled={foundNode.label?.includes(" (expanded)")} onClick={expandNode}>Expand Node</MenuItem>;
 };

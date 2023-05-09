@@ -38,6 +38,7 @@
 #include "Pregel/ResultMessages.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/StatusMessages.h"
+#include "Pregel/MetricsMessages.h"
 #include "Pregel/Worker/VertexProcessor.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -58,6 +59,11 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     // _feature.metrics()->pregelWorkersNumber->fetch_add(1);
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor, ResultT<conductor::message::WorkerCreated>{});
+
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerStarted{});
+
     return std::move(this->state);
   }
 
@@ -68,8 +74,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
     this->state->responsibleActorPerShard = msg.responsibleActorPerShard;
 
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerLoadingStarted{});
 
     auto graphLoaded = [this]() -> ResultT<conductor::message::GraphLoaded> {
       try {
@@ -98,10 +105,13 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                       "caught unknown exception when loading graph"};
       }
     };
+
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor, graphLoaded());
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
+
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerLoadingFinished{});
     return std::move(this->state);
   }
 
@@ -268,6 +278,11 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("0f658", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor {} starts computing gss {}", this->self, message.gss);
 
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerGssStarted{.threadsAdded =
+                                                                 1});
+
     // check if worker is in expected gss (previous gss of conductor)
     if (message.gss != 0 &&
         message.gss != this->state->config->globalSuperstep() + 1) {
@@ -323,6 +338,13 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         ResultT<conductor::message::GlobalSuperStepFinished>::success(
             std::move(out)));
 
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerGssFinished{
+            .threadsRemoved = 1,
+            .messagesSent = this->state->messageStats.sendCount,
+            .messagesReceived = this->state->messageStats.receivedCount});
+
     return std::move(this->state);
   }
 
@@ -333,8 +355,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       return std::move(this->state);
     }
 
-    // if message is for next superstep, resend it (because this worker is still
-    // waiting for missing messages in current superstep)
+    // if message is for next superstep, resend it (because this worker is
+    // still waiting for missing messages in current superstep)
     if (message.gss == this->state->config->globalSuperstep() + 1) {
       this->template dispatch<worker::message::WorkerMessages>(this->self,
                                                                message);
@@ -358,8 +380,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("980d9", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is storing", this->self);
 
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerStoringStarted{});
 
     auto graphStored = [this]() -> ResultT<conductor::message::Stored> {
       try {
@@ -367,7 +390,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
             this->state->config->executionNumber(),
             *this->state->config->vocbase(), this->state->config->parallelism(),
             this->state->algorithm->inputFormat(),
-            this->state->config->globalShardIDs(),
+            this->state->config->graphSerdeConfig(),
             ActorStoringUpdate{
                 .fn =
                     [this](pregel::message::GraphStoringUpdate update) -> void {
@@ -386,8 +409,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       }
     };
 
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerStoringFinished{});
 
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor, graphStored());
@@ -435,6 +459,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         this->state->spawnActor, pregel::message::SpawnCleanup{});
     this->template dispatch<pregel::conductor::message::ConductorMessages>(
         this->state->conductor, pregel::conductor::message::CleanupFinished{});
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerFinished{});
 
     return std::move(this->state);
   }

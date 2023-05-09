@@ -23,6 +23,7 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Pregel/AggregatorHandler.h"
@@ -57,7 +58,7 @@ namespace arangodb::pregel {
 
 struct SpawnState {
   SpawnState(TRI_vocbase_t& vocbase, actor::ActorPID resultActor)
-      : vocbaseGuard{vocbase}, resultActor(resultActor) {}
+      : vocbaseGuard{vocbase}, resultActor(std::move(resultActor)) {}
   const DatabaseGuard vocbaseGuard;
   const actor::ActorPID resultActor;
 };
@@ -87,7 +88,7 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
             algorithm->messageFormatUnique(),
             algorithm->messageCombinerUnique(), std::move(algorithm),
             this->state->vocbaseGuard.database(), this->self,
-            this->state->resultActor, msg.statusActor),
+            this->state->resultActor, msg.statusActor, msg.metricsActor),
         worker::message::WorkerStart{});
   }
 

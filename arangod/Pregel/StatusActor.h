@@ -185,7 +185,7 @@ auto inspect(Inspector& f, Details& x) {
                             f.field("graphStoring", x.storing));
 }
 struct StatusDetails {
-  auto update(ServerID server, GraphLoadingDetails const& loadingDetails)
+  auto update(const ServerID& server, GraphLoadingDetails const& loadingDetails)
       -> void {
     perWorker[server].loading = loadingDetails;
     // update combined
@@ -195,7 +195,7 @@ struct StatusDetails {
     }
     combined.loading = loadingCombined;
   }
-  auto update(ServerID server, GraphStoringDetails const& storingDetails)
+  auto update(const ServerID& server, GraphStoringDetails const& storingDetails)
       -> void {
     perWorker[server].storing = storingDetails;
     // update combined
@@ -205,7 +205,7 @@ struct StatusDetails {
     }
     combined.storing = storingCombined;
   }
-  auto update(ServerID server, uint64_t gss,
+  auto update(const ServerID& server, uint64_t gss,
               GlobalSuperStepDetails const& gssDetails) -> void {
     auto gssName = fmt::format("gss_{}", gss);
     perWorker[server].computing[gssName] = gssDetails;
@@ -261,13 +261,13 @@ struct PregelStatus {
   std::string algorithm;
   PregelDate created;
   std::optional<PregelDate> expires;
-  TTL ttl;
-  size_t parallelism;
+  TTL ttl{};
+  size_t parallelism{};
   PregelTimings timings;
-  uint64_t gss;
+  uint64_t gss{};
   VPackBuilder aggregators;
-  uint64_t vertexCount;
-  uint64_t edgeCount;
+  uint64_t vertexCount{};
+  uint64_t edgeCount{};
   StatusDetails details;
 };
 template<typename Inspector>
@@ -361,6 +361,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
 
     return std::move(this->state);
   }
+
   auto operator()(message::GraphLoadingUpdate msg)
       -> std::unique_ptr<StatusState> {
     this->state->status->details.update(
@@ -514,8 +515,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] auto&& rest)
-      -> std::unique_ptr<StatusState> {
+  auto operator()(auto&& rest) -> std::unique_ptr<StatusState> {
     LOG_TOPIC("e9df2", INFO, Logger::PREGEL)
         << "Status Actor: Got unhandled message";
     return std::move(this->state);
