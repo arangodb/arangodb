@@ -8,6 +8,7 @@ import {
   ModalFooter,
   ModalHeader
 } from "../../../../components/modal";
+import { getNormalizedByteLengthTest } from "../../../../utils/yupHelper";
 import { AddNewViewForm } from "./AddNewViewForm";
 import { useAddView } from "./useAddView";
 
@@ -41,13 +42,17 @@ const initialValues = {
 const extendedNames = window.frontendConfig.extendedNames;
 
 const traditionalNameSchema = Yup.string()
-  .max(254, "View name max length is 254.")
+  .max(256, "View name max length is 256.")
   .matches(/^[a-zA-Z]/, "View name must always start with a letter.")
   .matches(/^[a-zA-Z0-9\-_]*$/, 'Only symbols, "_" and "-" are allowed.')
   .required("Name is required");
 
 const extendedNameSchema = Yup.string()
-  .max(254, "View name max length is 254.")
+  .test(
+    "normalizedByteLength",
+    "View name max length is 256 bytes.",
+    getNormalizedByteLengthTest(256, "Index name max length is 256 bytes.")
+  )
   .matches(/^(?![0-9])/, "View name cannot start with a number.")
   .matches(/^\S(.*\S)?$/, "View name cannot contain leading/trailing spaces.")
   .matches(/^(?!.*[/])/, "View name cannot contain a forward slash (/).")

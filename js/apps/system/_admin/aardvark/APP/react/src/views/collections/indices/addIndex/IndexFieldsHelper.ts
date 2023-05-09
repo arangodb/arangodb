@@ -1,4 +1,5 @@
 import * as Yup from "yup";
+import { getNormalizedByteLengthTest } from "../../../../utils/yupHelper";
 
 export const commonFieldsMap = {
   fields: {
@@ -32,9 +33,14 @@ const traditionalNameSchema = Yup.string()
   .matches(/^[a-zA-Z0-9\-_]*$/, 'Only symbols, "_" and "-" are allowed.');
 
 const extendedNameSchema = Yup.string()
-  .max(256, "Index name max length is 256.")
+  .test(
+    "normalizedByteLength",
+    "Index name max length is 256 bytes.",
+    getNormalizedByteLengthTest(256, "Index name max length is 256 bytes.")
+  )
   .matches(/^(?![0-9])/, "Index name cannot start with a number.")
-  .matches(/^\S(.*\S)?$/, "Index name cannot contain leading/trailing spaces.");
+  .matches(/^\S(.*\S)?$/, "Index name cannot contain leading/trailing spaces.")
+  .matches(/^(?!.*[/])/, "Index name cannot contain a forward slash (/).");
 
 const extendedNames = window.frontendConfig.extendedNames;
 

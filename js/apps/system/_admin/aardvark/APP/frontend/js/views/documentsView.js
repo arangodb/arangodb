@@ -677,8 +677,8 @@
                     msg: "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %."
                   },
                   {
-                    rule: Joi.string().max(254, 'utf8'),
-                    msg: 'Document key max length is 254.'
+                    rule: Joi.string().normalize().max(254, 'utf8'),
+                    msg: 'Document key max length is 254 bytes.'
                   },
                   {
                     rule: Joi.string().allow('').optional(),

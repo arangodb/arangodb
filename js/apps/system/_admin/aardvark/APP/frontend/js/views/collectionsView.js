@@ -510,15 +510,15 @@
           var extendedValidation = [{
             rule: Joi.string().regex(/^(?![0-9])/),
             msg: 'Collection name cannot start with a number.'
-          },
-          {
-            rule: Joi.string().regex(/^\S(.*\S)?$/),
-            msg: 'Collection name cannot contain leading/trailing spaces.'
-          },
-          {
-            rule: Joi.string().regex(/^(?!.*[/])/),
-            msg: 'Collection name cannot contain a forward slash (/).'
-          }];
+            },
+            {
+              rule: Joi.string().regex(/^\S(.*\S)?$/),
+              msg: 'Collection name cannot contain leading/trailing spaces.'
+            },
+            {
+              rule: Joi.string().regex(/^(?!.*[/])/),
+              msg: 'Collection name cannot contain a forward slash (/).'
+            }];
           tableContent.push(
             window.modalView.createTextEntry(
               'new-collection-name',
@@ -530,7 +530,7 @@
               [
                 ...(!extendedNames ? traditionalNameValidation : extendedValidation),
                 {
-                  rule: Joi.string().max(256, 'utf8'),
+                  rule: Joi.normalize().string().max(256, 'utf8'),
                   msg: 'Collection name max length is 256.'
                 },
                 {

@@ -411,8 +411,8 @@
         msg: 'Database name cannot contain leading/trailing spaces.'
       },
       {
-        rule: Joi.string().max(128, 'utf8'),
-        msg: 'Database name max length is 128.'
+        rule: Joi.string().normalize().max(128, 'utf8'),
+        msg: 'Database name max length is 128 bytes.'
       }];
       // Database Name
       tableContent.push(

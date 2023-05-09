@@ -180,7 +180,7 @@
                   [
                     ...(!extendedNames ? traditionalNameValidation : extendedValidation),
                     {
-                      rule: Joi.string().max(256, 'utf8'),
+                      rule: Joi.string().normalize().max(256, 'utf8'),
                       msg: 'Collection name max length is 256.'
                     },
                     {
@@ -202,7 +202,7 @@
                   [
                     ...(!extendedNames ? traditionalNameValidation : extendedValidation),
                     {
-                      rule: Joi.string().max(256, 'utf8'),
+                      rule: Joi.string().normalize().max(256, 'utf8'),
                       msg: 'Collection name max length is 256.'
                     },
                     {
