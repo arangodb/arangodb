@@ -55,10 +55,11 @@ std::string_view constexpr kNumericSuffix{"\0_d", 3};
 std::string_view constexpr kStringSuffix{"\0_s", 3};
 
 template<typename T>
-void syncImpl(Index& index) {
+T& syncImpl(Index& index) {
   auto& store = basics::downCast<T>(index);
   store.finishCreation();
   store.commit();
+  return store;
 };
 
 }  // namespace
@@ -66,7 +67,9 @@ void syncImpl(Index& index) {
 void syncIndexOnCreate(Index& index) {
   switch (index.type()) {
     case Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK: {
-      syncImpl<iresearch::IResearchRocksDBLink>(index);
+      auto& store = syncImpl<iresearch::IResearchRocksDBLink>(index);
+      TRI_IF_FAILURE("search::AlwaysIsBuildingSingle");
+      else store.setBuilding(false);
     } break;
     case Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX: {
       syncImpl<iresearch::IResearchRocksDBInvertedIndex>(index);
