@@ -133,7 +133,6 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
       gcore = `generate-core-file ${options.coreDirectory}\\n`;
     }
   }
-<<<<<<< HEAD
   let command = 'ulimit -c 0; sleep 10;(';
   // send some line breaks in case of gdb wanting to paginate...
   command += 'printf \'\\n\\n\\n\\n' +
