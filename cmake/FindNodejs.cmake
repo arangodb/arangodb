@@ -35,47 +35,6 @@ find_program (NODEJS_EXECUTABLE NAMES node nodejs
 
 include (FindPackageHandleStandardArgs)
 
-# If compat-libuv package exists, it must be at start of include path
-find_path (UV_ROOT_DIR "uv.h" PATHS /usr/include/compat-libuv010 NO_DEFAULT_PATH)
-if (UV_ROOT_DIR)
-    # set (NODEJS_INCLUDE_DIRS ${UV_ROOT_DIR})
-    add_include_dir(${UV_ROOT_DIR})
-endif()
-
-# Now look for node. Flag an error if not found
-find_path (NODE_ROOT_DIR
-    NAMES node.h src/node.h
-    PATH_SUFFIXES node node4 node5 node6 node7 node8 nodejs
-    PATHS /usr/include /usr/local/include)
-
-if (NODE_ROOT_DIR)
-    add_include_dir(${NODE_ROOT_DIR})
-    add_include_dir(${NODE_ROOT_DIR}/deps/uv/include)
-    add_include_dir(${NODE_ROOT_DIR}/deps/v8/include)
-    add_include_dir(${NODE_ROOT_DIR}/include/deps/uv/include)
-    add_include_dir(${NODE_ROOT_DIR}/include/deps/v8/include)
-    add_include_dir(${NODE_ROOT_DIR}/include/node)
-    add_include_dir(${NODE_ROOT_DIR}/include/src)
-    add_include_dir(${NODE_ROOT_DIR}/src)
-else()
-    unset(NODEJS_INCLUDE_DIRS)
-    message(ERROR " - node.h not found")
-endif()
-
-# Check that v8.h is in NODEJS_INCLUDE_DIRS
-find_path (V8_ROOT_DIR "v8.h" PATHS ${NODEJS_INCLUDE_DIRS})
-if (NOT V8_ROOT_DIR)
-    unset(NODEJS_INCLUDE_DIRS)
-    message(ERROR " - v8.h not found")
-endif()
-
-# Check that uv.h is in NODEJS_INCLUDE_DIRS
-find_path (UV_ROOT_DIR "uv.h" PATHS ${NODEJS_INCLUDE_DIRS})
-if (NOT UV_ROOT_DIR)
-    unset(NODEJS_INCLUDE_DIRS)
-    message(ERROR " - uv.h not found")
-endif()
-
 if (NODEJS_EXECUTABLE)
     execute_process(COMMAND ${NODEJS_EXECUTABLE} --version
         OUTPUT_VARIABLE _VERSION
@@ -115,7 +74,5 @@ if (NODEJS_EXECUTABLE)
     mark_as_advanced (NODEJS_EXECUTABLE)
 
     find_package_handle_standard_args (Nodejs
-        REQUIRED_VARS NODEJS_EXECUTABLE NODEJS_INCLUDE_DIRS
-        VERSION_VAR NODE_VERSION_STRING)
-    message(STATUS "Found v8: ${V8_ROOT_DIR}/v8.h (found version \"${V8_VERSION_STRING}\")")
+        REQUIRED_VARS NODEJS_EXECUTABLE VERSION_VAR NODE_VERSION_STRING)
 endif ()
