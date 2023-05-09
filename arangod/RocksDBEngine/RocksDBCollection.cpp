@@ -354,6 +354,18 @@ RocksDBCollection::~RocksDBCollection() {
   }
 }
 
+void RocksDBCollection::deferDropCollection(
+    std::function<bool(LogicalCollection&)> const& cb) {
+  RocksDBMetaCollection::deferDropCollection(cb);
+
+  if (useCache()) {
+    try {
+      destroyCache();
+    } catch (...) {
+    }
+  }
+}
+
 Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                            bool /*doSync*/) {
   _cacheEnabled = _cacheManager != nullptr && !_logicalCollection.system() &&

@@ -2968,6 +2968,8 @@ void RocksDBEngine::syncIndexCaches() {
 DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
               "rocksdb_cache_active_tables");
 DECLARE_GAUGE(rocksdb_cache_allocated, uint64_t, "rocksdb_cache_allocated");
+DECLARE_GAUGE(rocksdb_cache_peak_allocated, uint64_t,
+              "rocksdb_cache_peak_allocated");
 DECLARE_GAUGE(rocksdb_cache_hit_rate_lifetime, uint64_t,
               "rocksdb_cache_hit_rate_lifetime");
 DECLARE_GAUGE(rocksdb_cache_hit_rate_recent, uint64_t,
@@ -3228,6 +3230,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     auto rates = manager->globalHitRates();
     builder.add("cache.limit", VPackValue(stats.globalLimit));
     builder.add("cache.allocated", VPackValue(stats.globalAllocation));
+    builder.add("cache.peak-allocated", VPackValue(stats.peakGlobalAllocation));
     builder.add("cache.active-tables", VPackValue(stats.activeTables));
     builder.add("cache.unused-memory", VPackValue(stats.spareAllocation));
     builder.add("cache.unused-tables", VPackValue(stats.spareTables));

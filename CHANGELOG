@@ -1,6 +1,14 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* Added metric `rocksdb_cache_peak_allocated` to store the peak memory
+  allocation value for in-memory caches.
+
+* Remove leftover in-memory cache tables after dropping collections that
+  had their `cacheEnabled` flag set to `true`. Previously some memory 
+  could remain allocated in the in-memory cache even after such collections
+  were dropped.
+
 * FE-243: add support for geo_s2 analyzer.
 
 * FE-22: Don't display collection content by default when clicking on a

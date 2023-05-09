@@ -81,6 +81,7 @@ class Manager {
   struct MemoryStats {
     std::uint64_t globalLimit = 0;
     std::uint64_t globalAllocation = 0;
+    std::uint64_t peakGlobalAllocation = 0;
     std::uint64_t spareAllocation = 0;
     std::uint64_t activeTables = 0;
     std::uint64_t spareTables = 0;
@@ -240,6 +241,7 @@ class Manager {
   std::uint64_t _fixedAllocation;
   std::uint64_t _spareTableAllocation;
   std::uint64_t _globalAllocation;
+  std::uint64_t _peakGlobalAllocation;
   std::uint64_t _activeTables;
   std::uint64_t _spareTables;
 

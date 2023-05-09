@@ -57,6 +57,9 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                              velocypack::Slice info);
   ~RocksDBCollection();
 
+  void deferDropCollection(
+      std::function<bool(LogicalCollection&)> const& cb) override final;
+
   arangodb::Result updateProperties(VPackSlice const& slice,
                                     bool doSync) override;
 
