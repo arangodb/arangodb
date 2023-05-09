@@ -24,7 +24,6 @@
 #include "CpuUsageFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/NumberUtils.h"
 #include "Basics/debugging.h"
 
 #if defined(_WIN32)

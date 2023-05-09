@@ -52,6 +52,7 @@
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -224,6 +225,13 @@ void DatabaseManagerThread::run() {
             vocbase->replicationClients().garbageCollect(now);
           }
         }
+
+        // update metric for the number of open file descriptors.
+        // technically this does not belong here, but there is no other
+        // ideal place for this
+        FileDescriptorsFeature& fds =
+            server().getFeature<FileDescriptorsFeature>();
+        fds.countOpenFilesIfNeeded();
       }
     } catch (...) {
     }

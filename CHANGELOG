@@ -1,6 +1,17 @@
 devel
 -----
 
+* Add metric `arangodb_file_descriptors_current` to expose the number of
+  file descriptors currently opened by the arangod process. This metric is
+  available on Linux only.
+  As counting the number of open file descriptors can be expensive, this
+  metric is only updated in a configurable interval. The new startup option
+  `--server.descriptors-count-interval` can be used to specify the update
+  interval (in milliseconds). It defaults to 60,000 (i.e. once per minute).
+  The startup option can be set to a value of `0` to disable the counting
+  of open file descriptors for performance reasons.
+  If counting is turned off, the metric will report a value of `0`.
+
 * Remove function `getFishbowlStorage()` from bundled JavaScript module 
   `@arangodb/foxx/manager`. This function was publicly exposed in previous
   versions, and returned a handle to the `_fishbowl` system collection.

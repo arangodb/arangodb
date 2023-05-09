@@ -24,6 +24,7 @@
 #include "FileDescriptorsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
@@ -52,6 +53,9 @@ using namespace arangodb::options;
 
 #ifdef TRI_HAVE_GETRLIMIT
 DECLARE_GAUGE(
+    arangodb_file_descriptors_current, uint64_t,
+    "Number of currently open file descriptors for the arangod process");
+DECLARE_GAUGE(
     arangodb_file_descriptors_limit, uint64_t,
     "Limit for the number of open file descriptors for the arangod process");
 
@@ -68,7 +72,7 @@ struct FileDescriptors {
     int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
     if (res != 0) {
-      LOG_TOPIC("17d7b", FATAL, arangodb::Logger::SYSCALL)
+      LOG_TOPIC("17d7b", FATAL, Logger::SYSCALL)
           << "cannot get the file descriptors limit value: " << strerror(errno);
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
     }
@@ -122,6 +126,13 @@ struct FileDescriptors {
 FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
     : ArangodFeature{server, *this},
       _descriptorsMinimum(FileDescriptors::recommendedMinimum()),
+#ifdef __linux__
+      _countDescriptorsInterval(60 * 1000),
+#else
+      _countDescriptorsInterval(0),
+#endif
+      _fileDescriptorsCurrent(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_file_descriptors_current{})),
       _fileDescriptorsLimit(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_file_descriptors_limit{})) {
   setOptional(false);
@@ -138,6 +149,17 @@ void FileDescriptorsFeature::collectOptions(
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsLinux,
                                    arangodb::options::Flags::OsMac));
+
+  options
+      ->addOption(
+          "--server.count-descriptors-interval",
+          "Controls the interval (in milliseconds) in which open files for the "
+          "process are determined. "
+          "Requires `--server.count-descriptors`.",
+          new UInt64Parameter(&_countDescriptorsInterval),
+          arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                       arangodb::options::Flags::OsLinux))
+      .setIntroducedIn(31100);
 }
 
 void FileDescriptorsFeature::validateOptions(
@@ -151,6 +173,15 @@ void FileDescriptorsFeature::validateOptions(
         << std::numeric_limits<rlim_t>::max();
     FATAL_ERROR_EXIT();
   }
+
+  constexpr uint64_t lowerBound = 10000;
+  if (_countDescriptorsInterval > 0 && _countDescriptorsInterval < lowerBound) {
+    LOG_TOPIC("c3011", WARN, Logger::SYSCALL)
+        << "too low value for `--server.count-descriptors-interval`. Should be "
+           "at least "
+        << lowerBound;
+    _countDescriptorsInterval = lowerBound;
+  }
 }
 
 void FileDescriptorsFeature::prepare() {
@@ -160,7 +191,7 @@ void FileDescriptorsFeature::prepare() {
 
   _fileDescriptorsLimit.store(current.soft, std::memory_order_relaxed);
 
-  LOG_TOPIC("a1c60", INFO, arangodb::Logger::SYSCALL)
+  LOG_TOPIC("a1c60", INFO, Logger::SYSCALL)
       << "file-descriptors (nofiles) hard limit is "
       << FileDescriptors::stringify(current.hard) << ", soft limit is "
       << FileDescriptors::stringify(current.soft);
@@ -177,11 +208,45 @@ void FileDescriptorsFeature::prepare() {
       << required << ") or"
       << " adjust the value of the startup option --server.descriptors-minimum";
     if (_descriptorsMinimum == 0) {
-      LOG_TOPIC("a33ba", WARN, arangodb::Logger::SYSCALL) << s.str();
+      LOG_TOPIC("a33ba", WARN, Logger::SYSCALL) << s.str();
     } else {
-      LOG_TOPIC("8c771", FATAL, arangodb::Logger::SYSCALL) << s.str();
+      LOG_TOPIC("8c771", FATAL, Logger::SYSCALL) << s.str();
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
     }
+  }
+}
+
+void FileDescriptorsFeature::countOpenFiles() {
+#ifdef __linux__
+  try {
+    size_t numFiles = FileUtils::countFiles("/proc/self/fd");
+    _fileDescriptorsCurrent.store(numFiles, std::memory_order_relaxed);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("bee41", DEBUG, Logger::SYSCALL)
+        << "unable to count number of open files for arangod process: "
+        << ex.what();
+  } catch (...) {
+    LOG_TOPIC("0a654", DEBUG, Logger::SYSCALL)
+        << "unable to count number of open files for arangod process";
+  }
+#endif
+}
+
+void FileDescriptorsFeature::countOpenFilesIfNeeded() {
+  if (_countDescriptorsInterval == 0) {
+    return;
+  }
+
+  auto now = std::chrono::steady_clock::now();
+
+  std::unique_lock guard{_lastCountMutex, std::try_to_lock};
+
+  if (guard.owns_lock() &&
+      (_lastCountStamp.time_since_epoch().count() == 0 ||
+       now - _lastCountStamp >
+           std::chrono::milliseconds(_countDescriptorsInterval))) {
+    countOpenFiles();
+    _lastCountStamp = now;
   }
 }
 
@@ -189,14 +254,14 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
   auto doAdjust = [](rlim_t recommended) {
     FileDescriptors current = FileDescriptors::load();
 
-    LOG_TOPIC("6762c", DEBUG, arangodb::Logger::SYSCALL)
+    LOG_TOPIC("6762c", DEBUG, Logger::SYSCALL)
         << "file-descriptors (nofiles) hard limit is "
         << FileDescriptors::stringify(current.hard) << ", soft limit is "
         << FileDescriptors::stringify(current.soft);
 
     if (recommended > 0) {
       if (current.hard < recommended) {
-        LOG_TOPIC("0835c", DEBUG, arangodb::Logger::SYSCALL)
+        LOG_TOPIC("0835c", DEBUG, Logger::SYSCALL)
             << "hard limit " << current.hard
             << " is too small, trying to raise";
 
@@ -221,14 +286,14 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
       recommended = std::min((rlim_t)OPEN_MAX, recommended);
 #endif
       if (current.soft < recommended) {
-        LOG_TOPIC("2940e", DEBUG, arangodb::Logger::SYSCALL)
+        LOG_TOPIC("2940e", DEBUG, Logger::SYSCALL)
             << "soft limit " << current.soft
             << " is too small, trying to raise";
 
         FileDescriptors copy = current;
         copy.soft = recommended;
         if (copy.store() != 0) {
-          LOG_TOPIC("ba733", WARN, arangodb::Logger::SYSCALL)
+          LOG_TOPIC("ba733", WARN, Logger::SYSCALL)
               << "cannot raise the file descriptors limit to " << recommended
               << ": " << strerror(errno);
         }
