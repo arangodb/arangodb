@@ -378,17 +378,17 @@ void ClientFeature::prepare() {
 }
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
-    size_t threadNumber) const {
+    size_t threadNumber, bool suppressError) const {
   std::string endpoint;
   {
     READ_LOCKER(locker, _settingsLock);
     endpoint = _endpoints[threadNumber % _endpoints.size()];
   }
-  return createHttpClient(endpoint);
+  return createHttpClient(endpoint, suppressError);
 }
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
-    std::string const& definition) const {
+    std::string const& definition, bool suppressError) const {
   double requestTimeout;
   bool warn;
   {
@@ -396,16 +396,17 @@ std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     requestTimeout = _requestTimeout;
     warn = _warn;
   }
-  return createHttpClient(definition,
-                          SimpleHttpClientParams(requestTimeout, warn));
+  return createHttpClient(
+      definition, SimpleHttpClientParams(requestTimeout, warn), suppressError);
 }
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
-    std::string const& definition, SimpleHttpClientParams const& params) const {
+    std::string const& definition, SimpleHttpClientParams const& params,
+    bool suppressError) const {
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint == nullptr) {
-    if (definition != "none") {
+    if (definition != "none" && !suppressError) {
       LOG_TOPIC("2fac8", ERR, arangodb::Logger::FIXME)
           << "invalid value for --server.endpoint ('" << definition << "')";
     }
