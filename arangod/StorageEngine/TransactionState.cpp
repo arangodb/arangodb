@@ -136,7 +136,7 @@ Result TransactionState::addCollection(DataSourceId cid,
                                        bool lockUsage) {
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && \
     defined(ARANGODB_ENABLE_FAILURE_TESTS)
-  TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
+  TRI_IF_FAILURE("WaitOnLock::" + cname) {
     auto& raceController = basics::DebugRaceController::sharedInstance();
     auto didTrigger = raceController.waitForOthers(2, _id, vocbase().server());
     if (didTrigger) {

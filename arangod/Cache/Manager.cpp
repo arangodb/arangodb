@@ -92,6 +92,7 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
                        _accessStats.memoryUsage()),
       _spareTableAllocation(0),
       _globalAllocation(_fixedAllocation),
+      _peakGlobalAllocation(_fixedAllocation),
       _activeTables(0),
       _spareTables(0),
       _transactions(),
@@ -104,14 +105,10 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
   TRI_ASSERT(_globalAllocation < _globalSoftLimit);
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
   if (enableWindowedStats) {
-    try {
-      _findStats = std::make_unique<Manager::FindStatBuffer>(sharedPRNG, 16384);
-      _fixedAllocation += _findStats->memoryUsage();
-      _globalAllocation = _fixedAllocation;
-    } catch (std::bad_alloc const&) {
-      _findStats.reset();
-      _enableWindowedStats = false;
-    }
+    _findStats = std::make_unique<Manager::FindStatBuffer>(sharedPRNG, 16384);
+    _fixedAllocation += _findStats->memoryUsage();
+    _globalAllocation = _fixedAllocation;
+    _peakGlobalAllocation = _globalAllocation;
   }
 }
 
@@ -285,6 +282,7 @@ std::optional<Manager::MemoryStats> Manager::memoryStats(
 
     result.globalLimit = _resizing ? _globalSoftLimit : _globalHardLimit;
     result.globalAllocation = _globalAllocation;
+    result.peakGlobalAllocation = _peakGlobalAllocation;
     result.spareAllocation = _spareTableAllocation;
     result.activeTables = _activeTables;
     result.spareTables = _spareTables;
@@ -373,6 +371,8 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
                  _fixedAllocation);
       _globalAllocation += (metadata.allocatedSize - memoryUsage);
       TRI_ASSERT(_globalAllocation >= _fixedAllocation);
+      _peakGlobalAllocation =
+          std::max(_globalAllocation, _peakGlobalAllocation);
     }
   }
 
@@ -730,6 +730,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
       _globalAllocation -= oldLimit;
       _globalAllocation += newLimit;
       TRI_ASSERT(_globalAllocation >= _fixedAllocation);
+      _peakGlobalAllocation =
+          std::max(_globalAllocation, _peakGlobalAllocation);
     }
     return;
   }
@@ -805,6 +807,8 @@ std::shared_ptr<Table> Manager::leaseTable(std::uint32_t logSize) {
 
         _globalAllocation += table->memoryUsage();
         TRI_ASSERT(_globalAllocation >= _fixedAllocation);
+        _peakGlobalAllocation =
+            std::max(_globalAllocation, _peakGlobalAllocation);
         ++_activeTables;
       } catch (std::bad_alloc const&) {
         // don't throw from here, but return a nullptr
