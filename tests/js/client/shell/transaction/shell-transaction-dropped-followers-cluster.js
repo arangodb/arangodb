@@ -252,7 +252,7 @@ function transactionDroppedFollowersSuite() {
       // those leaders has not yet seen the error, then it will happily
       // continue to replicate to that follower. But if the follower has
       // already aborted the transaction, then it will reject the replication
-      // request. Previusly this would cause the follower to be dropped, but
+      // request. Previously this would cause the follower to be dropped, but
       // now this should be handled gracefully.
       for (let i = 0; i < 10; ++i) {
         try {
