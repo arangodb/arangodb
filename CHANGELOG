@@ -2,7 +2,7 @@ devel
 -----
 
 * BTS-1343: Removed an error message of endpoint being invalid when attempting 
-  to send telemetrics to the warehouse by having the invalid endpoint as a 
+  fetch telemetrics from the servers by having the invalid endpoint as a 
   starting point. As telemetrics is transparent to the end user, the error 
   message interferes with the user experience if keeps appearing. 
 
