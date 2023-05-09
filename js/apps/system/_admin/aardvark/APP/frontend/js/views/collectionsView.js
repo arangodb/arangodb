@@ -507,9 +507,14 @@
             rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
             msg: 'Only symbols, "_" and "-" are allowed.'
           }];
-          var extendedValidation = [{
-            rule: Joi.string().regex(/^(?![0-9])/),
-            msg: 'Collection name cannot start with a number.'
+          var extendedValidation = [
+            {
+              rule: Joi.string().regex(/^(?![0-9._])/),
+              msg: 'Collection name cannot start with a number, a dot (.), or an underscore (_).'
+            },
+            {
+              rule: Joi.string().regex(/[\u0000-\u001F]/),
+              msg: 'Collection name cannot contain control characters (0-31).'
             },
             {
               rule: Joi.string().regex(/^\S(.*\S)?$/),
