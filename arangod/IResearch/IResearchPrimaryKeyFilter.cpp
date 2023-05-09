@@ -36,7 +36,7 @@ namespace iresearch {
 
 irs::doc_id_t getRemovalBoundary(irs::SubReader const&, irs::doc_id_t, bool);
 #ifndef USE_ENTERPRISE
-FORCE_INLINE irs::doc_id_t getRemovalBoundary(irs::SubReader const&,
+IRS_FORCE_INLINE irs::doc_id_t getRemovalBoundary(irs::SubReader const&,
                                               irs::doc_id_t doc, bool) {
   return doc;
 }
