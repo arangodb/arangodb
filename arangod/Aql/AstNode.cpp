@@ -2730,6 +2730,63 @@ bool AstNode::semanticallyEquals(AstNode const* other) const noexcept {
     return false;
   }
   switch (this->type) {
+    case NODE_TYPE_ATTRIBUTE_ACCESS: {
+      if (getStringLength() != other->getStringLength()) {
+        return false;
+      }
+      if (memcmp(getStringValue(), other->getStringValue(), getStringLength()) != 0) {
+        return false;
+      }
+      TRI_ASSERT(numMembers() == 1);
+      return getMemberUnchecked(0)->semanticallyEquals(
+          other->getMemberUnchecked(0));
+    }
+    case NODE_TYPE_VALUE: {
+      if (value.type != other->value.type) {
+        return false;
+      }
+      switch (value.type) {
+        case AstNodeValueType::VALUE_TYPE_NULL:
+          return true;
+        case VALUE_TYPE_BOOL:
+          return getBoolValue() == other->getBoolValue();
+        case VALUE_TYPE_INT:
+          return getIntValue() == other->getIntValue();
+        case VALUE_TYPE_DOUBLE:
+          return getDoubleValue() == other->getDoubleValue();
+        case VALUE_TYPE_STRING:
+          return stringEquals(other->getStringValue());
+      }
+      return false;
+    }
+    case NODE_TYPE_REFERENCE: {
+      return toString() == other->toString();
+    }
+    case NODE_TYPE_VARIABLE: {
+      return toString() == other->toString();
+    }
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_LE: {
+      TRI_ASSERT(numMembers() == 2);
+      if (numMembers() != other->numMembers()) {
+        // This should actually be given, we can only have binaries
+        // with exactly 2 members, if the other side has a different
+        // number of members, we should have caught that earlier.
+        return false;
+      }
+      // Simply check if all members are equal.
+      for (size_t i = 0; i < numMembers(); ++i) {
+        if (!getMemberUnchecked(i)->semanticallyEquals(
+                other->getMemberUnchecked(i))) {
+          return false;
+        }
+      }
+      return true;
+    }
     case NODE_TYPE_FCALL:
     case NODE_TYPE_FCALL_USER: {
       // Poor mans comparison.
@@ -2750,19 +2807,14 @@ bool AstNode::semanticallyEquals(AstNode const* other) const noexcept {
         // number of members, we should have caught that earlier.
         return false;
       }
-      // Short-cut implementation.
-      return toString() == other->toString();
       // Simply check if all members are equal.
-      /*
       for (size_t i = 0; i < numMembers(); ++i) {
         if (!getMemberUnchecked(i)->semanticallyEquals(
                 other->getMemberUnchecked(i))) {
-          LOG_DEVEL << "Different number of members";
           return false;
         }
       }
       return true;
-       */
     }
     default: {
       // Do not check, just say no.,
