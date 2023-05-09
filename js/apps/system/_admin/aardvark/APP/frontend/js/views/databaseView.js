@@ -387,33 +387,37 @@
       var buttons = [];
       var tableContent = [];
       var extendedNames = window.frontendConfig.extendedNames;
-      var traditionalNameValidation = [{
-        rule: Joi.string().regex(/^[a-zA-Z]/),
-        msg: 'Database name must always start with a letter.'
-      },
-      {
-        rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-        msg: 'Only symbols, "_" and "-" are allowed.'
-      },
-      {
-        rule: Joi.string().max(64, 'utf8'),
-        msg: 'Database name max length is 64.'
-      }];
+      var traditionalNameValidation = [
+        {
+          rule: Joi.string().regex(/^[a-zA-Z]/),
+          msg: 'Database name must always start with a letter.'
+        },
+        {
+          rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+          msg: 'Only symbols, "_" and "-" are allowed.'
+        },
+        {
+          rule: Joi.string().max(64, 'utf8'),
+          msg: 'Database name max length is 64.'
+        }
+      ];
 
-      var extendedValidation = [{
-        rule: Joi.string().regex(/^(?![0-9._])/),
-        msg: 'Database name cannot start with a number, a dot (.), or an underscore (_).'
-      }, {
-        rule: Joi.string().regex(/^(?!.*[/:])/),
-        msg: 'Database name cannot contain a forward slash (/) or a colon (:)'
-      }, {
-        rule: Joi.string().regex(/^\S(.*\S)?$/),
-        msg: 'Database name cannot contain leading/trailing spaces.'
-      },
-      {
-        rule: Joi.string().normalize().max(128, 'utf8'),
-        msg: 'Database name max length is 128 bytes.'
-      }];
+      var extendedValidation = [
+        {
+          rule: Joi.string().regex(/^(?![0-9._])/),
+          msg: 'Database name cannot start with a number, a dot (.), or an underscore (_).'
+        }, {
+          rule: Joi.string().regex(/^(?!.*[/:])/),
+          msg: 'Database name cannot contain a forward slash (/) or a colon (:)'
+        }, {
+          rule: Joi.string().regex(/^\S(.*\S)?$/),
+          msg: 'Database name cannot contain leading/trailing spaces.'
+        },
+        {
+          rule: Joi.string().normalize().max(128, 'utf8'),
+          msg: 'Database name max length is 128 bytes.'
+        }
+      ];
       // Database Name
       tableContent.push(
         window.modalView.createTextEntry(
