@@ -191,7 +191,8 @@ SslClientConnection::SslClientConnection(
                               connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
-      _sslProtocol(sslProtocol) {
+      _sslProtocol(sslProtocol),
+      _socketFlags(0) {
   init(sslProtocol);
 }
 
@@ -203,7 +204,8 @@ SslClientConnection::SslClientConnection(
                               connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
-      _sslProtocol(sslProtocol) {
+      _sslProtocol(sslProtocol),
+      _socketFlags(0) {
   init(sslProtocol);
 }
 
@@ -305,13 +307,30 @@ bool SslClientConnection::connectSocket() {
 
   _errorDetails.clear();
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
-  long flags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
-  if (_isTelemetrics) {
-    fcntl(_socket.fileDescriptor, F_SETFL, flags | O_NONBLOCK);
+  if (_isSocketNonBlocking) {
+    _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
+    if (_socketFlags == -1) {
+      _errorDetails = "Socket file descriptor read returned with error " +
+                      std::to_string(errno);
+      _isConnected = false;
+      return false;
+    }
+    if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags | O_NONBLOCK) ==
+        -1) {
+      _errorDetails = "Attempt to create non-blocking socket generated error " +
+                      std::to_string(errno);
+      _isConnected = false;
+      return false;
+    }
   }
 
   if (!TRI_isvalidsocket(_socket) || _ctx == nullptr) {
     _errorDetails = _endpoint->_errorMessage;
+    if (_isSocketNonBlocking) {
+      // we don't care about the return value here because we were already
+      // unsuccessful in the connection attempt
+      cleanUpSocketFlags();
+    }
     _isConnected = false;
     return false;
   }
@@ -321,6 +340,11 @@ bool SslClientConnection::connectSocket() {
   _ssl = SSL_new(_ctx);
 
   if (_ssl == nullptr) {
+    if (_isSocketNonBlocking) {
+      // we don't care about the return value here because we were already
+      // unsuccessful in the connection attempt
+      cleanUpSocketFlags();
+    }
     _errorDetails = "failed to create ssl context";
     disconnectSocket();
     _isConnected = false;
@@ -339,6 +363,11 @@ bool SslClientConnection::connectSocket() {
   SSL_set_connect_state(_ssl);
 
   if (SSL_set_fd(_ssl, (int)TRI_get_fd_or_handle_of_socket(_socket)) != 1) {
+    if (_isSocketNonBlocking) {
+      // we don't care about the return value here because we were already
+      // unsuccessful in the connection attempt
+      cleanUpSocketFlags();
+    }
     _errorDetails = std::string("SSL: failed to create context ") +
                     ERR_error_string(ERR_get_error(), nullptr);
     disconnectSocket();
@@ -353,7 +382,7 @@ bool SslClientConnection::connectSocket() {
   int ret = -1;
   int errorDetail = -1;
 
-  if (_isTelemetrics) {
+  if (_isSocketNonBlocking) {
     auto start = steady_clock::now();
     while ((ret = SSL_connect(_ssl)) == -1) {
       errorDetail = SSL_get_error(_ssl, ret);
@@ -366,10 +395,22 @@ bool SslClientConnection::connectSocket() {
           duration_cast<seconds>(end - start).count() >= _connectTimeout) {
         break;
       }
+      std::this_thread::sleep_for(seconds(1));
     }
   } else {
-    ret = SSL_connect(_ssl);
-    errorDetail = SSL_get_error(_ssl, ret);
+    if ((ret = SSL_connect(_ssl)) == -1) {
+      errorDetail = SSL_get_error(_ssl, ret);
+    }
+  }
+
+  if (_isSocketNonBlocking) {
+    if (cleanUpSocketFlags() == -1) {
+      _errorDetails = "Attempt to make socket blocking generated error " +
+                      std::to_string(errno);
+      disconnectSocket();
+      _isConnected = false;
+      return false;
+    }
   }
 
   if (ret != 1) {
@@ -435,9 +476,7 @@ bool SslClientConnection::connectSocket() {
       << "SSL connection opened: " << SSL_get_cipher(_ssl) << ", "
       << SSL_get_cipher_version(_ssl) << " ("
       << SSL_get_cipher_bits(_ssl, nullptr) << " bits)";
-  if (_isTelemetrics) {
-    fcntl(_socket.fileDescriptor, F_SETFL, flags & ~O_NONBLOCK);
-  }
+
   return true;
 }
 
@@ -473,57 +512,48 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
     return false;
   }
 
-  int written = -1;
-  auto start = steady_clock::now();
-  do {
-    written = SSL_write(_ssl, buffer, (int)length);
-    int err = SSL_get_error(_ssl, written);
-    switch (err) {
-      case SSL_ERROR_NONE:
-        *bytesWritten = written;
+  int written = SSL_write(_ssl, buffer, (int)length);
+  int err = SSL_get_error(_ssl, written);
+  switch (err) {
+    case SSL_ERROR_NONE:
+      *bytesWritten = written;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        _written += written;
+      _written += written;
 #endif
-        return true;
+      return true;
 
-      case SSL_ERROR_ZERO_RETURN:
-        SSL_shutdown(_ssl);
-        break;
+    case SSL_ERROR_ZERO_RETURN:
+      SSL_shutdown(_ssl);
+      break;
 
-      case SSL_ERROR_WANT_READ:
-      case SSL_ERROR_WANT_WRITE:
-      case SSL_ERROR_WANT_CONNECT:
-        break;
+    case SSL_ERROR_WANT_READ:
+    case SSL_ERROR_WANT_WRITE:
+    case SSL_ERROR_WANT_CONNECT:
+      break;
 
-      case SSL_ERROR_SYSCALL: {
-        char const* pErr = STR_ERROR();
-        _errorDetails =
-            std::string("SSL: while writing: SYSCALL returned errno = ") +
-            std::to_string(errno) + std::string(" - ") + pErr;
-        break;
-      }
-
-      case SSL_ERROR_SSL: {
-        /*  A failure in the SSL library occurred, usually a protocol error.
-            The OpenSSL error queue contains more information on the error. */
-        unsigned long errorDetail = ERR_get_error();
-        char errorBuffer[256];
-        ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
-        _errorDetails = std::string("SSL: while writing: ") + errorBuffer;
-        break;
-      }
-
-      default:
-        /* a true error */
-        _errorDetails =
-            std::string("SSL: while writing: error ") + std::to_string(err);
-    }
-    auto end = steady_clock::now();
-    if (duration_cast<seconds>(end - start).count() >= _connectTimeout) {
+    case SSL_ERROR_SYSCALL: {
+      char const* pErr = STR_ERROR();
+      _errorDetails =
+          std::string("SSL: while writing: SYSCALL returned errno = ") +
+          std::to_string(errno) + std::string(" - ") + pErr;
       break;
     }
-  } while (_isTelemetrics &&
-           (written < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)));
+
+    case SSL_ERROR_SSL: {
+      /*  A failure in the SSL library occurred, usually a protocol error.
+          The OpenSSL error queue contains more information on the error. */
+      unsigned long errorDetail = ERR_get_error();
+      char errorBuffer[256];
+      ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
+      _errorDetails = std::string("SSL: while writing: ") + errorBuffer;
+      break;
+    }
+
+    default:
+      /* a true error */
+      _errorDetails =
+          std::string("SSL: while writing: error ") + std::to_string(err);
+  }
 
   return false;
 }
@@ -547,7 +577,6 @@ bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
   }
 
   connectionClosed = false;
-  auto start = steady_clock::now();
 
   do {
   again:
@@ -596,12 +625,7 @@ bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
         return false;
       }
     }
-    auto end = steady_clock::now();
-    if (duration_cast<seconds>(end - start).count() >= _connectTimeout) {
-      break;
-    }
-  } while (_isTelemetrics &&
-           (readable() || (errno == EAGAIN || errno == EWOULDBLOCK)));
+  } while (readable());
 
   return true;
 }
@@ -631,4 +655,8 @@ bool SslClientConnection::readable() {
   }
 
   return false;
+}
+
+long SslClientConnection::cleanUpSocketFlags() {
+  return fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags & ~O_NONBLOCK);
 }

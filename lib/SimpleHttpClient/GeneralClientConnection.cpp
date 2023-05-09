@@ -79,7 +79,7 @@ GeneralClientConnection::GeneralClientConnection(
       _connectRetries(connectRetries),
       _numConnectRetries(0),
       _freeEndpointOnDestruction(false),
-      _isTelemetrics(false),
+      _isSocketNonBlocking(false),
       _isConnected(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _read(0),
@@ -100,7 +100,7 @@ GeneralClientConnection::GeneralClientConnection(
       _connectRetries(connectRetries),
       _numConnectRetries(0),
       _freeEndpointOnDestruction(true),
-      _isTelemetrics(false),
+      _isSocketNonBlocking(false),
       _isConnected(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _read(0),

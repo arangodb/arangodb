@@ -36,6 +36,9 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 const internal = require('internal');
+const toArgv = require('internal').toArgv;
+const fs = require('fs');
+let pu = require('@arangodb/testutils/process-utils');
 const FoxxManager = require('@arangodb/foxx/manager');
 const path = require('path');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'redirect');
@@ -48,6 +51,7 @@ let smartGraph = null;
 if (isEnterprise) {
   smartGraph = require("@arangodb/smart-graph");
 }
+const arangosh = pu.ARANGOSH_BIN;
 const userName = "abc";
 const databaseName = "databaseTest";
 const cn = "testCollection";
@@ -239,7 +243,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
       } catch (err) {
       }
     },
-    
+
     setUp: function () {
       // clear access counters
       arango.DELETE("/_admin/telemetrics");
@@ -354,6 +358,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
         }
       }
     },
+
   };
 }
 
@@ -467,6 +472,42 @@ function telemetricsShellReconnectGraphTestsuite() {
         }
       }
     },
+
+    testTelemetricsShellExecuteScriptLeave: function () {
+      let file = fs.getTempFile() + "-telemetrics";
+      fs.write(file, `(function() { const x = 0;})();`);
+      let options = internal.options();
+      let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
+      const args = {
+        'javascript.startup-directory': options['javascript.startup-directory'],
+        'server.endpoint': endpoint,
+        'server.username': arango.connectedUser(),
+        'server.password': '',
+        'javascript.execute': file,
+        'client.failure-points': 'startTelemetricsForTest',
+        'log.output': "file://telemetrics.log",
+      };
+      const argv = toArgv(args);
+
+      for (let o in options['javascript.module-directory']) {
+        argv.push('--javascript.module-directory');
+        argv.push(options['javascript.module-directory'][o]);
+      }
+
+      let result = internal.executeExternal(arangosh, argv, false /*usePipes*/);
+      assertTrue(result.hasOwnProperty('pid'));
+      let numSecs = 0.5;
+      let status = {};
+      while (true) {
+        status = internal.statusExternal(result.pid);
+        if (status.status === "TERMINATED" || numSecs >= 16) {
+          break;
+        }
+        internal.sleep(numSecs);
+        numSecs *= 2;
+      }
+      assertEqual(status.status, "TERMINATED", "couldn't leave shell right after executing script");
+    }
   };
 }
 
@@ -495,7 +536,7 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
       } catch (err) {
       }
     },
-    
+
     setUp: function () {
       // clear access counters
       arango.DELETE("/_admin/telemetrics");
@@ -637,7 +678,7 @@ function telemetricsApiReconnectGraphTestsuite() {
       db._drop(cn);
       db._drop(cn3);
     },
-    
+
     setUp: function () {
       // clear access counters
       arango.DELETE("/_admin/telemetrics");
@@ -759,7 +800,7 @@ function telemetricsSendToEndpointRedirectTestsuite() {
       } catch (err) {
       }
     },
-    
+
     setUp: function () {
       // clear access counters
       arango.DELETE("/_admin/telemetrics");
@@ -772,7 +813,6 @@ function telemetricsSendToEndpointRedirectTestsuite() {
       const telemetrics = getTelemetricsSentToEndpoint();
       assertForTelemetricsResponse(telemetrics);
     },
-
   };
 }
 
@@ -789,17 +829,17 @@ function telemetricsEnhancingOurCalm() {
         assertEqual(200, res.code);
       }
     },
-    
+
     testTelemetricsApiCallAndSetArangoshUserAgent: function () {
       const n = 50;
 
       let successful = 0;
       let failed = 0;
       for (let i = 0; i < n; ++i) {
-        let res = arango.GET_RAW("/_admin/telemetrics", { "user-agent": "arangosh/3.11.0" });
+        let res = arango.GET_RAW("/_admin/telemetrics", {"user-agent": "arangosh/3.11.0"});
         if (res.code === 200) {
           ++successful;
-        } 
+        }
         if (res.code === 420) {
           assertEqual(420, res.errorNum);
           ++failed;
