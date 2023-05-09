@@ -1446,6 +1446,15 @@
   };
 
   window.arangoValidationHelper = {
+    getDocumentKeyValidations: () => {
+      var keySpecialCharactersValidation = {
+        rule: Joi.string().regex(/^[a-zA-Z0-9_\-:\.@()\+,=;$!*\%']+$/),
+        msg: "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %."
+      };
+      return {
+        keySpecialCharactersValidation
+      };
+    },
     getCollectionNameValidations: () => {
       var traditionalCollectionNameValidation = [
         {

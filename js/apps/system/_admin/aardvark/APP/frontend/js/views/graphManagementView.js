@@ -1253,11 +1253,11 @@
 
         // create graph section
         title = 'Create Graph';
+        var { keySpecialCharactersValidation } = window
+          .arangoValidationHelper()
+          .getDocumentKeyValidations();
         var nameValidation = [
-          {
-            rule: Joi.string().regex(/^[a-zA-Z0-9_\-:\.@()\+,=;$!*\%'%]+$/),
-            msg: "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %."
-          },
+          keySpecialCharactersValidation,
           {
             rule: Joi.string().normalize().max(254, 'utf8'),
             msg: 'Graph name max length is 254 bytes.'
