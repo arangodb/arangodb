@@ -71,9 +71,21 @@ function testOptimizeTopKEnterprise() {
 
       // testWithoutScore
       for (const v of names) {
-        const query = "FOR d IN " + v + " SEARCH d.f == 'a' OPTIONS {waitForSync:true} LIMIT 10 RETURN d";
+        const query = "FOR d IN " + v + " SEARCH d.f == 'a' OPTIONS {waitForSync:true} LIMIT 100 RETURN d";
         let res = db._query(query).toArray();
-        assertEqual(res.length, 10);
+        assertEqual(res.length, 100);
+      }
+
+      for (const v of names) {
+        const query = "FOR d IN " + v + " SEARCH d.f == 'a' OPTIONS {waitForSync:true} LIMIT 1500 RETURN d";
+        let res = db._query(query).toArray();
+        assertEqual(res.length, 1500);
+      }
+
+      for (const v of names) {
+        const query = "FOR d IN " + v + " SEARCH d.f == 'a' OPTIONS {waitForSync:true} LIMIT 1500, 1000 RETURN d";
+        let res = db._query(query).toArray();
+        assertEqual(res.length, 1000);
       }
     },
 
@@ -84,17 +96,41 @@ function testOptimizeTopKEnterprise() {
 
     testWithTFIDF: function () {
       for (const v of names) {
-        const query = "FOR d IN " + v + " SEARCH d.f == 'a' SORT TFIDF(d) LIMIT 10 RETURN d";
+        const query = "FOR d IN " + v + " SEARCH d.f == 'a' SORT TFIDF(d) LIMIT 100 RETURN d";
         let res = db._query(query).toArray();
-        assertEqual(res.length, 10);
+        assertEqual(res.length, 100);
+      }
+
+      for (const v of names) {
+        const query = "FOR d IN " + v + " SEARCH d.f == 'a' SORT TFIDF(d) LIMIT 1500 RETURN d";
+        let res = db._query(query).toArray();
+        assertEqual(res.length, 1500);
+      }
+
+      for (const v of names) {
+        const query = "FOR d IN " + v + " SEARCH d.f == 'a' SORT TFIDF(d) LIMIT 1500, 1000 RETURN d";
+        let res = db._query(query).toArray();
+        assertEqual(res.length, 1000);
       }
     },
 
     testWithBM25: function () {
       for (const v of names) {
-        const query = "FOR d IN " + v + " SEARCH d.f == 'a' SORT BM25(d) LIMIT 10 RETURN d";
+        const query = "FOR d IN " + v + " SEARCH d.f == 'a' SORT BM25(d) LIMIT 100 RETURN d";
         let res = db._query(query).toArray();
-        assertEqual(res.length, 10);
+        assertEqual(res.length, 100);
+      }
+
+      for (const v of names) {
+        const query = "FOR d IN " + v + " SEARCH d.f == 'a' SORT BM25(d) LIMIT 1500 RETURN d";
+        let res = db._query(query).toArray();
+        assertEqual(res.length, 1500);
+      }
+
+      for (const v of names) {
+        const query = "FOR d IN " + v + " SEARCH d.f == 'a' SORT BM25(d) LIMIT 1500, 1000 RETURN d";
+        let res = db._query(query).toArray();
+        assertEqual(res.length, 1000);
       }
     },
 
