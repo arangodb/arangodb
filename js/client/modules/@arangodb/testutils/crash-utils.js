@@ -97,8 +97,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   }
 
   const args = ['-c', command];
-  print(JSON.stringify(args));
-  
+  print("launching GDB in foreground: " + JSON.stringify(args));
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
@@ -134,6 +133,7 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
       gcore = `generate-core-file ${options.coreDirectory}\\n`;
     }
   }
+<<<<<<< HEAD
   let command = 'ulimit -c 0; sleep 10;(';
   // send some line breaks in case of gdb wanting to paginate...
   command += 'printf \'\\n\\n\\n\\n' +
@@ -163,6 +163,7 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
   } else {
     command += options.coreDirectory;
   }
+  print("launching GDB in background: " + JSON.stringify(command));
   return {
     pid: executeExternal('/bin/bash', args),
     file: gdbOutputFile,
@@ -196,7 +197,7 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   command += ' -c /cores/core.' + pid;
   command += ' > ' + lldbOutputFile + ' 2>&1';
   const args = ['-c', command];
-  print(JSON.stringify(args));
+  print("launching LLDB in foreground: " + JSON.stringify(args));
 
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
@@ -246,7 +247,7 @@ function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid, gene
   command += storeArangodPath;
   command += ' > ' + lldbOutputFile + ' 2>&1';
   const args = ['-c', command];
-  print(JSON.stringify(args));
+  print("launching LLDB in background: " + JSON.stringify(command));
   return {
     pid: executeExternal('/bin/bash', args),
     file: lldbOutputFile,
@@ -402,7 +403,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
   ];
 
   sleep(5);
-  print('running cdb ' + JSON.stringify(args));
+  print('running cdb in foreground: ' + JSON.stringify(args));
   process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
   executeExternalAndWait('cdb', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
@@ -434,7 +435,7 @@ function generateCoreDumpWindows (instanceInfo) {
     dbgCmds.join('; ')
   ];
 
-  print('running cdb ' + JSON.stringify(args));
+  print('running cdb in background: ' + JSON.stringify(args));
   process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
   return {
     pid: executeExternal('cdb', args),
