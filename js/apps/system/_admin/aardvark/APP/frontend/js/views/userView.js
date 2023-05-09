@@ -148,6 +148,19 @@
     },
 
     createEditUserModal: function (username, name, active) {
+      console.log("window.App.userCollection.activeUser: ", window.App.userCollection.activeUser);
+      console.log("frontendConfig.db: ", frontendConfig.db);
+      var isAdmin = frontendConfig.db === '_system';
+      console.log("isAdmin: ", isAdmin);
+      var url = arangoHelper.databaseUrl('/_api/user/' +
+        encodeURIComponent(window.App.userCollection.activeUser || "root") +
+        '/database/' + encodeURIComponent(frontendConfig.db));
+      console.log("username: ", username);
+      console.log("self: ", self);
+      console.log("this.currentUser.get('user'): ", this.currentUser.get('user'));
+      console.log("Lets get the access for the user ", username);
+      //var userAccess = db.getUserAccessLevel(username, {database: "_system"});
+      //console.log("userAccess: ", userAccess);
       var buttons, tableContent;
       tableContent = [
         {
@@ -170,6 +183,20 @@
           id: 'editStatus'
         }
       ];
+      console.log("this.currentUser.get('extra').img: ", this.currentUser.get('extra').img);
+      if(frontendConfig.db === '_system') {
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'editCurrentUserProfileImg',
+            'Gravatar account (Mail)',
+            this.currentUser.get('extra').img,
+            'Mailaddress or its md5 representation of your gravatar account.' +
+            'The address will be converted into a md5 string. ' +
+            'Only the md5 string will be stored, not the mailaddress.',
+            'myAccount(at)gravatar.com'
+          )
+        );
+      }
       buttons = [];
       buttons.push(
         {
@@ -200,6 +227,7 @@
           title: 'Save',
           type: window.modalView.buttons.SUCCESS,
           callback: this.submitEditUser.bind(this, username)
+          //callback: this.submitEditUser.bind(this)
         }
       );
 
@@ -228,12 +256,16 @@
     },
 
     submitEditCurrentUserProfile: function () {
+      console.log("IN FUNCTION: submitEditCurrentUserProfile");
       var self = this;
       var name = $('#editCurrentName').val();
       var img = $('#editCurrentUserProfileImg').val();
       img = this.parseImgString(img);
 
+      // THIS "callback"-function probably has to go to line 345 !!!!! Viking
       var callback = function (error, data) {
+        console.log("data: ", data);
+
         if (error) {
           arangoHelper.arangoError('User', 'Could not edit user settings');
         } else {
@@ -250,6 +282,7 @@
             } else {
               extra.img = null;
             }
+            console.log("extra: ", extra);
             self.currentUser.set('extra', extra);
 
             // rerender navigation containing userBarView
@@ -259,6 +292,8 @@
           arangoHelper.arangoNotification('User', 'Changes confirmed.');
         }
       };
+
+      console.log("callback: ", callback);
 
       this.currentUser.setExtras(name, img, callback);
       window.modalView.hide();
@@ -296,16 +331,60 @@
     },
 
     submitEditUser: function (username) {
+    //submitEditUser: function () {
+      console.log("IN FUNCTION: submitEditUser");
+      console.log(this);
       var name = $('#editName').val();
+      console.log("name: ", name);
       var status = $('#editStatus').is(':checked');
+      console.log("status: ", status);
+
+      var img = $('#editCurrentUserProfileImg').val();
+      console.log("img (1): ", img);
+      img = this.parseImgString(img);
+      console.log("img (2): ", img);
+
 
       if (!this.validateStatus(status)) {
         $('#editStatus').closest('th').css('backgroundColor', 'red');
         return;
       }
       var user = this.collection.findWhere({'user': username});
-      const extra = user.get('extra');
-      user.save({'extra': Object.assign(extra, {'name': name}), 'active': status}, {
+      console.log("user1: ", user);
+
+      var callback = function (error, user, data) {
+        if (error) {
+          arangoHelper.arangoError('User', 'Could not edit user settings');
+        } else {
+          // THIS probably has to go to line 345 !!!!! Viking
+          if (data) {
+            //var extra = self.currentUser.get('extra');
+            var extra = user.get('extra');
+            if (data.extra && data.extra.name) {
+              extra.name = data.extra.name;
+            } else {
+              extra.name = null;
+            }
+
+            if (data.extra && data.extra.img) {
+              extra.img = data.extra.img;
+            } else {
+              extra.img = null;
+            }
+            user.set('extra', extra);
+
+            // rerender navigation containing userBarView
+            window.App.naviView.render();
+          }
+
+          arangoHelper.arangoNotification('User', 'Changes confirmed.');
+        }
+      };
+      
+      this.currentUser.setExtras(name, img, callback);
+
+      console.log("user2: ", user);
+      user.save({'extra': {'name': name}, 'active': status}, {
         type: 'PATCH',
         success: function () {
           arangoHelper.arangoNotification('User', user.get('user') + ' updated.');
