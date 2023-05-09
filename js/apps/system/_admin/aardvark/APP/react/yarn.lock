@@ -2892,14 +2892,6 @@
     "@svgr/plugin-svgo" "^5.5.0"
     loader-utils "^2.0.0"
 
-"@tippy.js/react@^3.1.1":
-  version "3.1.1"
-  resolved "https://registry.npmjs.org/@tippy.js/react/-/react-3.1.1.tgz"
-  integrity sha512-KF45vW/jKh/nBXk/2zzTFslv/T46zOMkIoDJ56ymZ+M00yHttk58J5wZ29oqGqDIUnobWSZD+cFpbR4u/UUvgw==
-  dependencies:
-    prop-types "^15.6.2"
-    tippy.js "^5.1.1"
-
 "@tootallnate/once@1":
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/@tootallnate/once/-/once-1.1.2.tgz#ccb91445360179a04e7fe6aff78c00ffc1eeaf82"
@@ -8103,6 +8095,16 @@ launch-editor@^2.6.0:
     picocolors "^1.0.0"
     shell-quote "^1.7.3"
 
+leaflet.geodesic@^2.6.1:
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/leaflet.geodesic/-/leaflet.geodesic-2.6.1.tgz#72604259cb4a3f3991cbc287bdc0867a8d548932"
+  integrity sha512-irHHgQUCWUDqMdSdGBj66k7F1eeYhviI8OP5aGg2s/fY8SSZrPAPmdxYuRxclWaHvFkyjwtDws8uBHMG8dtuHw==
+
+leaflet@^1.9.3:
+  version "1.9.3"
+  resolved "https://registry.yarnpkg.com/leaflet/-/leaflet-1.9.3.tgz#52ec436954964e2d3d39e0d433da4b2500d74414"
+  integrity sha512-iB2cR9vAkDOu5l3HAay2obcUHZ7xwUBBjph8+PGtmW/2lYhbLizWtG7nTeYht36WfOslixQF9D/uSIzhZgGMfQ==
+
 leven@^3.1.0:
   version "3.1.0"
   resolved "https://registry.npmjs.org/leven/-/leven-3.1.0.tgz"
@@ -9062,7 +9064,7 @@ popmotion@9.3.6:
     style-value-types "4.1.4"
     tslib "^2.1.0"
 
-popper.js@^1.14.3, popper.js@^1.16.0:
+popper.js@^1.14.3:
   version "1.16.1"
   resolved "https://registry.npmjs.org/popper.js/-/popper.js-1.16.1.tgz"
   integrity sha512-Wb4p1J4zyFTbM+u6WuO4XstYx4Ky9Cewe4DWrel7B0w6VVICvPwdOpotjzcf6eD8TsckVnIMNONQyPIUFOUbCQ==
@@ -11319,13 +11321,6 @@ tippy.js@^2.6.0:
   integrity sha512-hBcy6UXK3epiFwpkycy7Pn1SSLofUmawpPnlYg5ginbXMc/3EX2ivjzHfjvr/WPEpUg71/7ssiovhxDtCWvL2A==
   dependencies:
     popper.js "^1.14.3"
-
-tippy.js@^5.1.1:
-  version "5.2.1"
-  resolved "https://registry.npmjs.org/tippy.js/-/tippy.js-5.2.1.tgz"
-  integrity sha512-66UT6JRVn3dXNCORE+0UvUK3JZqV/VhLlU6HTDm3FmrweUUFUxUGvT8tUQ7ycMp+uhuLAwQw6dBabyC+iKf/MA==
-  dependencies:
-    popper.js "^1.16.0"
 
 tmp@^0.0.33:
   version "0.0.33"

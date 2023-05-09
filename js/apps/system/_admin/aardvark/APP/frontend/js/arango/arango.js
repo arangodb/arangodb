@@ -621,14 +621,14 @@
       var defaultRoute = '#collection/' + encodeURIComponent(collectionName);
 
       var menus = {
+        "Info": {
+          route: '#cInfo/' + encodeURIComponent(collectionName)
+        },
         "Content": {
           route: defaultRoute + '/documents/1'
         },
         "Indexes": {
           route: '#cIndices/' + encodeURIComponent(collectionName)
-        },
-        "Info": {
-          route: '#cInfo/' + encodeURIComponent(collectionName)
         },
         "Settings": {
           route: '#cSettings/' + encodeURIComponent(collectionName)

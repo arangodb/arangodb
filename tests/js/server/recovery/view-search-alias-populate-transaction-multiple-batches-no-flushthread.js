@@ -52,6 +52,7 @@ function runSetup () {
       write: ['UnitTestsRecoveryDummy']
     },
     action: function() {
+      const db = require('internal').db;
       var c = db.UnitTestsRecoveryDummy;
       for (let j = 0; j < 100; j++) {
         var values = [];

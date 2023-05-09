@@ -50,6 +50,7 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utilities/NameValidator.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-deadline.h"
@@ -172,6 +173,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
 
       if (!res) {
         setCustomError(500, "unable to create connection");
+        LOG_TOPIC("9daaa", DEBUG, arangodb::Logger::HTTPCLIENT)
+            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "' failed fatally";
         return nullptr;
       }
 
@@ -200,6 +204,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
             }
           }
           setCustomError(_lastHttpReturnCode, errorMessage);
+          LOG_TOPIC("9daab", DEBUG, arangodb::Logger::HTTPCLIENT)
+              << "Connection attempt to endpoint '" << _client.endpoint()
+              << "' failed: " << errorMessage;
           return nullptr;
         }
       }
@@ -210,6 +217,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
                            res->payload().size());
         msg += "'";
         setCustomError(503, msg);
+        LOG_TOPIC("9daac", DEBUG, arangodb::Logger::HTTPCLIENT)
+            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "' failed: " << msg;
         return nullptr;
       }
 
@@ -258,6 +268,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
       if (retryCount <= 0) {
         std::string msg(fu::to_string(e));
         setCustomError(503, msg);
+        LOG_TOPIC("9daad", DEBUG, arangodb::Logger::HTTPCLIENT)
+            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "' failed: " << msg;
         return nullptr;
       } else {
         newConnection = _builder.connect(_loop);
@@ -314,7 +327,7 @@ std::string V8ClientConnection::endpointSpecification() const {
 ArangoshServer& V8ClientConnection::server() { return _server; }
 
 void V8ClientConnection::setDatabaseName(std::string const& value) {
-  _databaseName = normalizeUtf8ToNFC(value);
+  _databaseName = value;
 }
 
 double V8ClientConnection::timeout() const { return _requestTimeout.count(); }
@@ -619,6 +632,11 @@ static void ClientConnection_reconnect(
   std::string const endpoint = TRI_ObjectToString(isolate, args[0]);
   std::string databaseName = TRI_ObjectToString(isolate, args[1]);
 
+  if (auto res = DatabaseNameValidator::validateName(true, true, databaseName);
+      res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
   std::string username;
 
   if (args.Length() < 3) {
@@ -663,6 +681,7 @@ static void ClientConnection_reconnect(
         TRI_ERROR_FORBIDDEN,
         std::string("not allowed to connect to this endpoint") + endpoint);
   }
+
   client->setEndpoint(endpoint);
   client->setDatabaseName(databaseName);
   client->setUsername(username);
