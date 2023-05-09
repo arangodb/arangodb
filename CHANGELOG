@@ -1,3 +1,10 @@
+v3.11.0 (XXXX-XX-XX)
+--------------------
+
+* FE-255: add validation for collection, document, graph, view and database
+  names.
+
+
 v3.11.0-beta.1 (2023-05-07)
 ---------------------------
 
