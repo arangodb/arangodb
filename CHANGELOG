@@ -1,5 +1,5 @@
-v3.11.0-beta.1 (2023-05-07)
----------------------------
+v3.11.0 (XXXX-XX-XX)
+--------------------
 
 * Fix an issue that causes followers to be dropped due to premature transaction
   abortions as a result of query failures.
@@ -10,7 +10,11 @@ v3.11.0-beta.1 (2023-05-07)
   to that follower. But if the follower has already aborted the transaction,
   then it will reject the replication request. Previously this would cause the
   follower to be dropped, but now this should be handled gracefully.
-      
+
+
+v3.11.0-beta.1 (2023-05-07)
+---------------------------
+    
 * Updated arangosync to v2.17.0-preview-1.
 
 * FE-243: add support for geo_s2 analyzer.
