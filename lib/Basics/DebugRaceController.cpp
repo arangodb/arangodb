@@ -24,7 +24,9 @@
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #include "DebugRaceController.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ScopeGuard.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -36,35 +38,29 @@ DebugRaceController::DebugRaceController() {}
 DebugRaceController& DebugRaceController::sharedInstance() { return Instance; }
 
 void DebugRaceController::reset() {
-  std::unique_lock<std::mutex> guard(_mutex);
+  {
+    std::scoped_lock<std::mutex> guard(_mutex);
+    _data.clear();
+  }
   _condVariable.notify_all();
-  _data.clear();
-  _didTrigger = false;
-}
-
-std::vector<std::any> DebugRaceController::data() const {
-  std::unique_lock<std::mutex> guard(_mutex);
-  return _data;
 }
 
 auto DebugRaceController::waitForOthers(
     size_t numberOfThreadsToWaitFor, std::any myData,
-    arangodb::application_features::ApplicationServer const& server) -> bool {
+    arangodb::application_features::ApplicationServer const& server) -> std::optional<std::vector<std::any>> {
+  auto notifyGuard = scopeGuard([this]() noexcept { _condVariable.notify_all(); });
   std::unique_lock<std::mutex> guard(_mutex);
-  if (!_didTrigger) {
-    _data.emplace_back(std::move(myData));
-    _condVariable.wait(guard, [&] {
-      // check emtpy to continue after beeing resetted
-      return _data.empty() || _data.size() == numberOfThreadsToWaitFor ||
-             server.isStopping();
-    });
-    if (!_data.empty()) {
-      _didTrigger = true;
-    }
-    _condVariable.notify_all();
-    return true;
+
+  _data.emplace_back(std::move(myData));
+  _condVariable.wait(guard, [&] {
+    // check empty to continue after being reset
+    return _data.empty() || _data.size() == numberOfThreadsToWaitFor || server.isStopping();
+  });
+
+  if (_data.size() == numberOfThreadsToWaitFor) {
+    return {_data};
   } else {
-    return false;
+    return std::nullopt;
   }
 }
 

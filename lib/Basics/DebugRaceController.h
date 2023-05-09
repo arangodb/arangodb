@@ -28,6 +28,7 @@
 #include <any>
 #include <condition_variable>
 #include <mutex>
+#include <optional>
 #include <vector>
 
 namespace arangodb {
@@ -44,25 +45,20 @@ class DebugRaceController {
 
   DebugRaceController();
 
-  // Reset the sotread state here, will free the stored data
-  // and remove the didTrigger flag
+  // Reset the stored state here, will free the stored data.
   void reset();
 
-  // Access the data stored by waiting threads.
-  std::vector<std::any> data() const;
-
   // Caller is required to COPY the data to store here.
-  // Otherwise a concurrent thread might try to read it,
+  // Otherwise, a concurrent thread might try to read it,
   // after the caller has freed the memory.
   auto waitForOthers(
       size_t numberOfThreadsToWaitFor, std::any myData,
-      arangodb::application_features::ApplicationServer const& server) -> bool;
+      arangodb::application_features::ApplicationServer const& server) -> std::optional<std::vector<std::any>>;
 
  private:
-  bool _didTrigger{false};
   std::mutex mutable _mutex{};
-  std::vector<std::any> _data{};
   std::condition_variable _condVariable{};
+  std::vector<std::any> _data{};
 };
 }  // namespace basics
 }  // namespace arangodb
