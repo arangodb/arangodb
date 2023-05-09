@@ -10,7 +10,12 @@ devel
   to that follower. But if the follower has already aborted the transaction,
   then it will reject the replication request. Previously this would cause the
   follower to be dropped, but now this should be handled gracefully.
-      
+
+* BTS-1343: Removed an error message of endpoint being invalid when attempting 
+  fetch telemetrics from the servers by having the invalid endpoint as a 
+  starting point. As telemetrics is transparent to the end user, the error 
+  message interferes with the user experience if keeps appearing. 
+
 * Updated arangosync to v2.17.0-preview-1.
 
 * FE-243: add support for geo_s2 analyzer.
