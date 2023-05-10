@@ -268,6 +268,8 @@ struct PregelStatus {
   VPackBuilder aggregators;
   uint64_t vertexCount{};
   uint64_t edgeCount{};
+  uint64_t sendCount{};
+  uint64_t receivedCount{};
   StatusDetails details;
 };
 template<typename Inspector>
@@ -284,7 +286,8 @@ auto inspect(Inspector& f, PregelStatus& x) {
       f.field("aggregators", x.aggregators),
 
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
-      f.field("details", x.details));
+      f.field("sendCount", x.sendCount),
+      f.field("receivedCount", x.receivedCount), f.field("details", x.details));
 }
 struct StatusState {
   StatusState(TRI_vocbase_t& vocbase) : vocbaseGuard{vocbase} {}
@@ -385,6 +388,8 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
             .messagesSent = msg.messagesSent,
             .messagesReceived = msg.messagesReceived,
             .memoryBytesUsedForMessages = msg.memoryBytesUsedForMessages});
+    this->state->status->sendCount += msg.messagesSent;
+    this->state->status->receivedCount += msg.messagesReceived;
     return std::move(this->state);
   }
 
@@ -400,7 +405,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->status->stateName = msg.state;
     this->state->status->timings.totalRuntime.setStart(msg.time);
 
-    auto duration = std::chrono::microseconds{msg.time.value};
+    auto duration = std::chrono::microseconds{msg.systemTime.value};
     this->state->status->created = PregelDate{
         .time_point =
             std::chrono::time_point<std::chrono::system_clock>{duration}};

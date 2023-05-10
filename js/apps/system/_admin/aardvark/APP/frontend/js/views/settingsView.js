@@ -146,7 +146,8 @@
 
           var buttons = [];
           var tableContent = [];
-
+          var collectionNameValidations = 
+            window.arangoValidationHelper.getCollectionNameValidations();
           if (!isCoordinator) {
             if (this.model.get('name').substr(0, 1) === '_') {
               tableContent.push(
@@ -157,12 +158,7 @@
                   false,
                   '',
                   true,
-                  [
-                    {
-                      rule: Joi.string().required(),
-                      msg: 'No collection name given.'
-                    }
-                  ]
+                  collectionNameValidations
                 )
               );
             } else {
@@ -174,12 +170,7 @@
                   false,
                   '',
                   true,
-                  [
-                    {
-                      rule: Joi.string().required(),
-                      msg: 'No collection name given.'
-                    }
-                  ]
+                  collectionNameValidations
                 )
               );
             }
