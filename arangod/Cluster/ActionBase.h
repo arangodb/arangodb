@@ -120,7 +120,7 @@ class ActionBase {
   virtual arangodb::Result setProgress(double d);
 
   /// @brief return progress statistic
-  uint64_t getProgress() const { return _progress.load(); }
+  double getProgress() const { return _progress.load(); }
 
   /// @brief Once PreAction completes, remove its pointer
   void clearPreAction() { _preAction.reset(); }
@@ -244,7 +244,7 @@ class ActionBase {
   std::atomic<std::chrono::system_clock::duration> _actionLastStat;
   std::atomic<std::chrono::system_clock::duration> _actionDone;
 
-  std::atomic<uint64_t> _progress;
+  std::atomic<double> _progress;
 
   int _priority;
 
