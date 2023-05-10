@@ -4,11 +4,11 @@
 
   window.arangoValidationHelper = {
     getControlCharactersRegex: () => {
-      return /[^\u0000-\u001F]/;
+      return /^[^\u0000-\u001F]+$/;
     },
     getDocumentKeySpecialCharactersValidation: () => {
       var keySpecialCharactersValidation = {
-        rule: Joi.string().regex(/^[a-zA-Z0-9_\-:\.@()\+,=;$!*\%']+$/),
+        rule: Joi.string().regex(/^[a-zA-Z0-9_\-:\.@()\+,=;$!*%']+$/),
         msg: "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %.",
       };
       return keySpecialCharactersValidation;
@@ -68,6 +68,10 @@
         window.arangoValidationHelper.getDocumentKeySpecialCharactersValidation();
       return [
         keySpecialCharactersValidation,
+        {
+          rule: Joi.string().max(256, "utf8"),
+          msg: "Document name max length is 256.",
+        },
         {
           rule: Joi.string().allow("").optional(),
           msg: "",
@@ -129,7 +133,7 @@
       var graphNameValidations = [
         keySpecialCharactersValidation,
         {
-          rule: Joi.string().normalize().max(254, "utf8"),
+          rule: Joi.string().max(254, "utf8"),
           msg: "Graph name max length is 254 bytes.",
         },
         {
