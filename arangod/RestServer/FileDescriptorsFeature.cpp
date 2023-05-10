@@ -29,6 +29,9 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/EnvironmentFeature.h"
@@ -48,6 +51,10 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 #ifdef TRI_HAVE_GETRLIMIT
+DECLARE_GAUGE(
+    arangodb_file_descriptors_limit, uint64_t,
+    "Limit for the number of open file descriptors for the arangod process");
+
 namespace arangodb {
 
 struct FileDescriptors {
@@ -114,7 +121,9 @@ struct FileDescriptors {
 
 FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
     : ArangodFeature{server, *this},
-      _descriptorsMinimum(FileDescriptors::recommendedMinimum()) {
+      _descriptorsMinimum(FileDescriptors::recommendedMinimum()),
+      _fileDescriptorsLimit(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_file_descriptors_limit{})) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<EnvironmentFeature>();
@@ -148,6 +157,8 @@ void FileDescriptorsFeature::prepare() {
   adjustFileDescriptors();
 
   FileDescriptors current = FileDescriptors::load();
+
+  _fileDescriptorsLimit.store(current.soft, std::memory_order_relaxed);
 
   LOG_TOPIC("a1c60", INFO, arangodb::Logger::SYSCALL)
       << "file-descriptors (nofiles) hard limit is "

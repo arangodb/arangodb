@@ -1,6 +1,9 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* Add metric `arangodb_file_descriptors_limit` to expose the system limit for
+  the number of open files for the arangod process.
+
 * FE-243: add support for geo_s2 analyzer.
 
 * FE-22: Don't display collection content by default when clicking on a
