@@ -12,10 +12,6 @@ v3.9.11 (XXXX-XX-XX)
   This has now been fixed so that aborted/finished queries are cleaned up in a
   timely manner.
 
-* Adjusted timeouts for cluster internal commit and abort requests to withstand
-  network delays better. This fixes some problems when the networking
-  infrastructure delays requests.
-
 * SEARCH-466 Fix leaking into individual link definition inherited properties
   from view.
 
