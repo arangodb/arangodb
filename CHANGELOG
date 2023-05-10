@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated bundled version of libunwind to 1.7-rc2.
+
 * ES-1566: fix an issue when trying to restrict traversals to non-existing
   collections with the `edgeCollections` traversal option.
   
