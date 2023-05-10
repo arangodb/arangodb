@@ -74,7 +74,7 @@ struct VertexProcessor {
   std::shared_ptr<VertexComputation<V, E, M>> vertexComputation;
   std::unique_ptr<AggregatorHandler> workerAggregator;
 
-  uint32_t messageBatchSize = 500;
+  uint32_t messageBatchSize = 5000;
 };
 
 }  // namespace arangodb::pregel

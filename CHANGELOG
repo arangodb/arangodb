@@ -4,6 +4,19 @@ v3.11.0 (XXXX-XX-XX)
 * FE-255: add validation for collection, document, graph, view and database
   names.
 
+* Add metric `arangodb_file_descriptors_limit` to expose the system limit for
+  the number of open files for the arangod process.
+
+* Fix an issue that causes followers to be dropped due to premature transaction
+  abortions as a result of query failures.
+  When we have a query that results in a failure this will cause the leaders to
+  abort the transaction on the followers. However, if the followers have
+  transactions that are shared with leaders of other shards, and if one of those
+  leaders has not yet seen the error, then it will happily continue to replicate
+  to that follower. But if the follower has already aborted the transaction,
+  then it will reject the replication request. Previously this would cause the
+  follower to be dropped, but now this should be handled gracefully.
+
 
 v3.11.0-beta.1 (2023-05-07)
 ---------------------------
