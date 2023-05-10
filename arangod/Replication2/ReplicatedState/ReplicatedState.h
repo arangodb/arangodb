@@ -177,9 +177,6 @@ struct ProducerStreamProxy
   // TODO waitForSync parameter is missing
   auto insert(EntryType const& v) -> LogIndex override;
 
-  auto insertDeferred(EntryType const& v)
-      -> std::pair<LogIndex, DeferredAction> override;
-
  private:
   auto serialize(EntryType const& v) -> LogPayload;
 };

@@ -353,18 +353,6 @@ auto ProducerStreamProxy<S>::insert(const EntryType& v) -> LogIndex {
 }
 
 template<typename S>
-auto ProducerStreamProxy<S>::insertDeferred(const EntryType& v)
-    -> std::pair<LogIndex, DeferredAction> {
-  // TODO Remove this method, it should be superfluous
-  auto guard = this->_logMethods.getLockedGuard();
-  if (auto& methods = guard.get(); methods != nullptr) [[likely]] {
-    return methods->insertDeferred(serialize(v));
-  } else {
-    this->throwResignedException();
-  }
-}
-
-template<typename S>
 auto ProducerStreamProxy<S>::serialize(const EntryType& v) -> LogPayload {
   auto builder = velocypack::Builder();
   std::invoke(Serializer{}, streams::serializer_tag<EntryType>, v, builder);
