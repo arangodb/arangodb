@@ -27,6 +27,7 @@
 #include "Basics/files.h"
 #include "Basics/operating-system.h"
 #include "Basics/system-functions.h"
+#include "Basics/voc-errors.h"
 #include "Random/RandomGenerator.h"
 
 #include "gtest/gtest.h"
