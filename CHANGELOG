@@ -1,6 +1,9 @@
 devel
 -----
 
+* ES-1566: fix an issue when trying to restrict traversals to non-existing
+  collections with `edgeCollections` traversal option.
+
 * Got rid of hard timeout of 10s in sub-arangoshs of tests to make chaos
   tests more stable.
 
