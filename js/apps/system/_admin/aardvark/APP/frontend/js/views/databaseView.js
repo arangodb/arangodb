@@ -406,7 +406,12 @@
         {
           rule: Joi.string().regex(/^(?![0-9._])/),
           msg: 'Database name cannot start with a number, a dot (.), or an underscore (_).'
-        }, {
+        }, 
+        {
+          rule: Joi.string().regex(window.arangoValidationHelper.getControlCharactersRegex()),
+          msg: "Database name cannot contain control characters(0-31).",
+        },
+        {
           rule: Joi.string().regex(/^(?!.*[/:])/),
           msg: 'Database name cannot contain a forward slash (/) or a colon (:)'
         }, {
