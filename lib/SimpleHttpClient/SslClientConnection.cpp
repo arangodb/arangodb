@@ -35,8 +35,6 @@
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <fcntl.h>
-#else
-#include <winsock2.h>
 #endif
 #include <openssl/opensslv.h>
 #include <openssl/ssl.h>
@@ -664,7 +662,7 @@ bool SslClientConnection::setSocketToNonBlocking() {
     return false;
   }
 #else
-  if (ioctlsocket(s, FIONBIO, 1) != 0) {
+  if (ioctlsocket(_socket.fileDescriptor, FIONBIO, 1) != 0) {
     _errorDetails = "Attempt to create non-blocking socket generated error " +
                     std::to_string(WSAGetLastError());
     return false;
@@ -682,7 +680,7 @@ bool SslClientConnection::cleanUpSocketFlags() {
     return false;
   }
 #else
-  if (ioctlsocket(s, FIONBIO, 0) != 0) {
+  if (ioctlsocket(_socket.fileDescriptor, FIONBIO, 0) != 0) {
     _errorDetails = "Attempt to make socket blocking generated error " +
                     std::to_string(WSAGetLastError());
     return false;
