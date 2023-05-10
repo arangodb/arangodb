@@ -61,7 +61,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(
   try {
     std::ostringstream tmp;
     tmp << std::setprecision(value._precision) << std::fixed << value._value;
-    _out << tmp.str();
+    _out << tmp.view();
   } catch (...) {
     // ignore any errors here. logging should not have side effects
   }
@@ -111,12 +111,12 @@ LoggerStream::~LoggerStream() {
   try {
     // TODO: with c++20, we can get a view on the stream's underlying buffer,
     // without copying it
-    Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.str());
+    Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.view());
   } catch (...) {
     try {
       // logging the error may fail as well, and we should never throw in the
       // dtor
-      std::cerr << "failed to log: " << _out.str() << std::endl;
+      std::cerr << "failed to log: " << _out.view() << std::endl;
     } catch (...) {
     }
   }
