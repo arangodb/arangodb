@@ -713,9 +713,8 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index,
   MeasureTimeGuard rttGuard(*_metrics->replicatedStateAcquireSnapshotRtt);
   GaugeScopedCounter snapshotCounter(
       *_metrics->replicatedStateNumberWaitingForSnapshot);
-  auto fut = _guardedData.doUnderLock([&](auto& self) {
-    return self._followerState->acquireSnapshot(leader, index);
-  });
+  auto fut = _guardedData.doUnderLock(
+      [&](auto& self) { return self._followerState->acquireSnapshot(leader); });
   // note that we release the lock before calling "then" to avoid deadlocks
 
   // must be posted on the scheduler to avoid deadlocks with the log

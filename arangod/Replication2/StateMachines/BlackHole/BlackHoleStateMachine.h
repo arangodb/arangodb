@@ -78,7 +78,7 @@ struct BlackHoleFollowerState
       -> std::unique_ptr<BlackHoleCore> override;
 
  protected:
-  auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
+  auto acquireSnapshot(ParticipantId const& destination) noexcept
       -> futures::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;

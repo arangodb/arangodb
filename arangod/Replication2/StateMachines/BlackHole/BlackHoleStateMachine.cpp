@@ -48,9 +48,8 @@ auto BlackHoleLeaderState::resign() && noexcept
   return std::move(_core);
 }
 
-auto BlackHoleFollowerState::acquireSnapshot(ParticipantId const& destination,
-                                             LogIndex) noexcept
-    -> futures::Future<Result> {
+auto BlackHoleFollowerState::acquireSnapshot(
+    ParticipantId const& destination) noexcept -> futures::Future<Result> {
   return {TRI_ERROR_NO_ERROR};
 }
 
