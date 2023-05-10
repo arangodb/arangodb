@@ -1,6 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to v2.17.0.
+
 * BTS-1343: Removed an error message of endpoint being invalid when attempting
   fetch telemetrics from the servers by having the invalid endpoint as a
   starting point. As telemetrics is transparent to the end user, the error
