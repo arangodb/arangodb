@@ -159,7 +159,7 @@ void FileDescriptorsFeature::collectOptions(
           new UInt64Parameter(&_countDescriptorsInterval),
           arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                        arangodb::options::Flags::OsLinux))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(31007);
 }
 
 void FileDescriptorsFeature::validateOptions(

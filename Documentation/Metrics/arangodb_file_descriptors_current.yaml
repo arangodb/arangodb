@@ -1,5 +1,5 @@
 name: arangodb_file_descriptors_current
-introducedIn: "3.11.0"
+introducedIn: "3.10.7"
 help: |
   Number of file descriptors currently opened by the arangod process.
 unit: number

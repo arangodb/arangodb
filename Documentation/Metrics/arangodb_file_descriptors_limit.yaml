@@ -1,5 +1,5 @@
 name: arangodb_file_descriptors_limit
-introducedIn: "3.11.0"
+introducedIn: "3.10.7"
 help: |
   System limit for the number of open file descriptors for the arangod process.
 unit: number
