@@ -1,6 +1,9 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* Got rid of hard timeout of 10s in sub-arangoshs of tests to make chaos
+  tests more stable.
+
 * BTS-1148: Fix a race when aborting/finishing a currently active query on a
   DB-Server. This race could cause the query to remain in the server's query
   registry longer than intended, potentially holding some locks. Such queries
