@@ -409,7 +409,7 @@
         }, 
         {
           rule: Joi.string().regex(window.arangoValidationHelper.getControlCharactersRegex()),
-          msg: "Database name cannot contain control characters(0-31).",
+          msg: "Database name cannot contain control characters (0-31).",
         },
         {
           rule: Joi.string().regex(/^(?!.*[/:])/),
