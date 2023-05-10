@@ -32,7 +32,6 @@
 #include "V8PlatformFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
@@ -271,7 +270,7 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   isolate->SetData(V8_INFO, data.get());
 
   {
-    MUTEX_LOCKER(guard, _lock);
+    std::lock_guard guard{_lock};
     try {
       _isolateData.try_emplace(isolate, std::move(data));
     } catch (...) {
@@ -287,7 +286,7 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
 void V8PlatformFeature::disposeIsolate(v8::Isolate* isolate) {
   // must first remove from isolate-data map
   {
-    MUTEX_LOCKER(guard, _lock);
+    std::lock_guard guard{_lock};
     _isolateData.erase(isolate);
   }
   // because Isolate::Dispose() will delete isolate!

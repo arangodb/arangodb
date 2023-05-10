@@ -522,6 +522,8 @@ void QuerySnippet::serializeIntoBuilder(
       }
     }
 
+    TRI_ASSERT(!_nodes.empty());
+
     // We do not need to copy the first stream, we can use the one we have.
     // We only need copies for the other streams.
     plan->insertAfter(_nodes.front(), internalGather);
@@ -530,7 +532,6 @@ void QuerySnippet::serializeIntoBuilder(
     // We will inject the permuted shards on the way.
     // Also note: the local plan will take memory responsibility
     // of the ExecutionNodes created during this procedure.
-    TRI_ASSERT(!_nodes.empty());
     auto snippetRoot = _nodes.at(0);
 
     // make sure we don't explode accessing distIds

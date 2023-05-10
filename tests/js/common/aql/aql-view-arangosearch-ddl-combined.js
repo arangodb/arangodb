@@ -2337,6 +2337,39 @@ function IResearchFeatureDDLTestSuite2() {
         db._dropView(viewName);
         db._drop(colName);
       }
+    },
+    testViewOnlyOptions : function() {
+      if (!isEnterprise) {
+        return;
+      }
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        let view = db._createView(viewName, "arangosearch", {
+          consolidationIntervalMsec: 0,
+          commitIntervalMsec: 0,
+          primarySortCache: true,
+          primaryKeyCache: true,
+          optimizeTopK: ["BM25(@doc) DESC"],
+          links: {
+            [colName]: {
+              storeValues: 'id',
+              includeAllFields:true
+            }}});
+        let props = view.properties();
+        assertUndefined(props.links[colName].primarySortCache);
+        assertUndefined(props.links[colName].primaryKeyCache);
+        assertUndefined(props.links[colName].optimizeTopK);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
     }
   }; // return
 }

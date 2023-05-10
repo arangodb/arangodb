@@ -27,6 +27,9 @@
 #include "Basics/Guarded.h"
 #include "Replication2/LoggerContext.h"
 
+namespace arangodb::replication2 {
+struct IScheduler;
+}
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
 
@@ -35,14 +38,15 @@ struct IStorageManager;
 struct FollowerCommitManager
     : IFollowerCommitManager,
       std::enable_shared_from_this<FollowerCommitManager> {
-  explicit FollowerCommitManager(IStorageManager&, IStateHandleManager&,
-                                 LoggerContext const& loggerContext);
-  auto updateCommitIndex(LogIndex index) noexcept -> DeferredAction override;
-  auto getCommitIndex() const noexcept -> LogIndex override;
+  FollowerCommitManager(IStorageManager&, LoggerContext const& loggerContext,
+                        std::shared_ptr<IScheduler> scheduler);
+  [[nodiscard]] auto updateCommitIndex(LogIndex index) noexcept
+      -> std::pair<std::optional<LogIndex>, DeferredAction> override;
+  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
 
-  auto waitFor(LogIndex index) noexcept
+  [[nodiscard]] auto waitFor(LogIndex index) noexcept
       -> ILogParticipant::WaitForFuture override;
-  auto waitForIterator(LogIndex index) noexcept
+  [[nodiscard]] auto waitForIterator(LogIndex index) noexcept
       -> ILogParticipant::WaitForIteratorFuture override;
 
   void resign() noexcept;
@@ -53,18 +57,18 @@ struct FollowerCommitManager
   using WaitForQueue = std::multimap<LogIndex, ResolvePromise>;
 
   struct GuardedData {
-    explicit GuardedData(IStorageManager&, IStateHandleManager&);
+    explicit GuardedData(IStorageManager&);
     LogIndex commitIndex{0};
     LogIndex resolveIndex{0};
     WaitForQueue waitQueue;
     bool isResigned{false};
 
     IStorageManager& storage;
-    IStateHandleManager& stateHandle;
   };
 
   Guarded<GuardedData> guardedData;
   LoggerContext const loggerContext;
+  std::shared_ptr<IScheduler> const scheduler;
 };
 
 }  // namespace comp

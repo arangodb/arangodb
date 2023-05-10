@@ -100,6 +100,19 @@ ReplicatedLogMetricsIndirect<mock>::ReplicatedLogMetricsIndirect(
   leaderNumInMemoryBytes =
       createMetric<arangodb_replication2_leader_in_memory_bytes>(
           metricsFeature);
+
+  replicatedLogAppendEntriesNumEntries = createMetric<
+      arangodb_replication2_replicated_log_append_entries_num_entries>(
+      metricsFeature);
+  replicatedLogAppendEntriesSize =
+      createMetric<arangodb_replication2_replicated_log_append_entries_size>(
+          metricsFeature);
+  replicatedLogFollowerEntryDropCount = createMetric<
+      arangodb_replication2_replicated_log_follower_entry_drop_total>(
+      metricsFeature);
+  replicatedLogLeaderAppendEntriesErrorCount = createMetric<
+      arangodb_replication2_replicated_log_leader_append_entries_error_total>(
+      metricsFeature);
 }
 
 }  // namespace arangodb::replication2::replicated_log

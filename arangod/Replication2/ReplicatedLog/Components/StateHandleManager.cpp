@@ -23,6 +23,7 @@
 
 #include "StateHandleManager.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/Components/IFollowerCommitManager.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -30,8 +31,9 @@ using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_log::comp;
 
 StateHandleManager::GuardedData::GuardedData(
-    std::unique_ptr<IReplicatedStateHandle> stateHandlePtr)
-    : stateHandle(std::move(stateHandlePtr)) {
+    std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
+    IFollowerCommitManager& commit)
+    : stateHandle(std::move(stateHandlePtr)), commit(commit) {
   ADB_PROD_ASSERT(stateHandle != nullptr);
 }
 
@@ -43,17 +45,24 @@ auto StateHandleManager::resign() noexcept
   return std::move(guard->stateHandle);
 }
 
-void StateHandleManager::updateCommitIndex(LogIndex index) noexcept {
+auto StateHandleManager::updateCommitIndex(LogIndex index) noexcept
+    -> DeferredAction {
   if (auto guard = guardedData.getLockedGuard(); guard->stateHandle) {
-    guard->stateHandle->updateCommitIndex(index);
+    auto&& [maybeResolveIndex, action] = guard->commit.updateCommitIndex(index);
+    if (maybeResolveIndex) {
+      guard->stateHandle->updateCommitIndex(*maybeResolveIndex);
+    }
+    return std::move(action);
   } else {
     // TODO Do some logging here
+    return {};
   }
 }
 
 StateHandleManager::StateHandleManager(
-    std::unique_ptr<IReplicatedStateHandle> stateHandle)
-    : guardedData(std::move(stateHandle)) {}
+    std::unique_ptr<IReplicatedStateHandle> stateHandle,
+    IFollowerCommitManager& commit)
+    : guardedData(std::move(stateHandle), commit) {}
 
 void StateHandleManager::becomeFollower(
     std::unique_ptr<IReplicatedLogFollowerMethods> ptr) {

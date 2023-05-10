@@ -23,11 +23,12 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "Auth/Common.h"
 #include "Auth/User.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
@@ -74,19 +75,13 @@ class UserManager {
   typedef std::function<Result(auth::User const&)> ConstUserCallback;
 
   /// Tells coordinator to reload its data. Only called in HeartBeat thread
-  void setGlobalVersion(uint64_t version) {
-    _globalVersion.store(version, std::memory_order_release);
-  }
+  void setGlobalVersion(uint64_t version) noexcept;
 
   /// @brief reload user cache and token caches
-  void triggerLocalReload() {
-    _internalVersion.store(0, std::memory_order_release);
-  }
+  void triggerLocalReload() noexcept;
 
   /// @brief used for caching
-  uint64_t globalVersion() const {
-    return _globalVersion.load(std::memory_order_acquire);
-  }
+  uint64_t globalVersion() const noexcept;
 
   /// Trigger eventual reload on all other coordinators (and in TokenCache)
   void triggerGlobalReload();
@@ -172,7 +167,7 @@ class UserManager {
 
   /// Protected the sync process from db, always lock
   /// before locking _userCacheLock
-  Mutex _loadFromDBLock;
+  std::mutex _loadFromDBLock;
 
   /// Protect the _userCache access
   basics::ReadWriteLock _userCacheLock;

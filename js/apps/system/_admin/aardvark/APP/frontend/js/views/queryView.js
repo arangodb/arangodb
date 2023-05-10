@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, localStorage, window, _, btoa */
-/* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi, Noty */
+/* global Backbone, $, L, sessionStorage, ace, Storage, localStorage, window, _ */
+/* global frontendConfig, arangoHelper, numeral, templateEngine, Joi, Noty */
 
 (function () {
   'use strict';
@@ -647,15 +647,11 @@
       var query = this.queriesHistory[counter].sentQuery;
 
       if (query !== '' && query !== undefined && query !== null) {
-        var url;
-        if (Object.keys(this.queriesHistory[counter].bindParam).length === 0) {
-          url = 'query/result/download/' + encodeURIComponent(btoa(JSON.stringify({ query: query })));
-        } else {
-          url = 'query/result/download/' + encodeURIComponent(btoa(JSON.stringify({
-            query: query,
-            bindVars: this.queriesHistory[counter].bindParam
-          })));
+        var toEncode = { query: query };
+        if (Object.keys(this.queriesHistory[counter].bindParam).length !== 0) {
+          toEncode.bindVars = this.queriesHistory[counter].bindParam;
         }
+        var url = 'query/result/download/' + encodeURIComponent(arangoHelper.toBinary(JSON.stringify(toEncode)));
         arangoHelper.download(url);
       } else {
         arangoHelper.arangoError('Query error', 'Could not download the result.');
@@ -1594,8 +1590,8 @@
       this.updateLocalQueries();
 
       this.myQueriesTableDesc.rows = this.customQueries;
+      // sort only custom queries (not predefined ones)
       this.myQueriesTableDesc.rows = this.sortRows(this.myQueriesTableDesc.rows);
-      this.myQueriesTableDesc.rows = this.filterRows(this.myQueriesTableDesc.rows);
       _.each(this.myQueriesTableDesc.rows, function (k) {
         k.secondRow = '<span class="spanWrapper">' +
           '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span>' +
@@ -1610,6 +1606,7 @@
         delete k.modified_at;
       });
       
+      // iterate over predefined queries
       _.each(this.queries, function (val) {
         if (val.hasOwnProperty('parameter')) {
           delete val.parameter;
@@ -1620,6 +1617,9 @@
             '<span id="copyQuery" title="Copy query"><i class="fa fa-copy"></i></span></span>'
         });
       });
+
+      // filter based on search term, including predefined queries
+      this.myQueriesTableDesc.rows = this.filterRows(this.myQueriesTableDesc.rows);
 
       // escape all columns but the third (which contains HTML)
       this.myQueriesTableDesc.unescaped = [ false, true, true ];
@@ -2211,12 +2211,7 @@
                 }
               } else if (geometry.type === 'Polygon' || geometry.type === 'LineString' || geometry.type === 'MultiLineString' || geometry.type === 'MultiPolygon') {
                 try {
-                  geojson = new L.GeoJSON(geometry, {
-                    style: geoStyle,
-                    onEachFeature: function (feature, layer) {
-                      layer.bindPopup('<pre style="width: 250px;">' + JSON.stringify(feature, null, 2) + '</pre>');
-                    }
-                  }).addTo(self.maps[counter]);
+                  geojson = new L.Geodesic(geometry.coordinates).addTo(self.maps[counter]);
                   markers.push(geojson);
                 } catch (ignore) {
                   invalidGeoJSON++;

@@ -48,6 +48,20 @@ struct InsertBytesScale {
   }
 };
 
+struct AppendEntriesNumEntriesScale {
+  using scale_t = metrics::LogScale<std::uint64_t>;
+  static scale_t scale() {
+    return {scale_t::kSupplySmallestBucket, 2, 0, 1, 16};
+  }
+};
+
+struct AppendEntriesSizeScale {
+  using scale_t = metrics::LogScale<std::uint64_t>;
+  static scale_t scale() {
+    return {scale_t::kSupplySmallestBucket, 2, 0, 64, 18};
+  }
+};
+
 DECLARE_GAUGE(arangodb_replication2_replicated_log_number, std::uint64_t,
               "Number of replicated logs on this arangodb instance");
 
@@ -98,6 +112,21 @@ DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_inserts_bytes,
 DECLARE_HISTOGRAM(
     arangodb_replication2_replicated_log_inserts_rtt, AppendEntriesRttScale,
     "Histogram of round-trip times of replicated log inserts [us]");
+
+DECLARE_HISTOGRAM(
+    arangodb_replication2_replicated_log_append_entries_num_entries,
+    AppendEntriesNumEntriesScale,
+    "Histogram of number of log entries per append-entries request");
+DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_append_entries_size,
+                  AppendEntriesSizeScale,
+                  "Histogram of size of append-entries requests");
+DECLARE_COUNTER(
+    arangodb_replication2_replicated_log_follower_entry_drop_total,
+    "Number of log entries dropped by a follower before appending the log");
+
+DECLARE_COUNTER(
+    arangodb_replication2_replicated_log_leader_append_entries_error_total,
+    "Number of failed append-entries requests");
 
 DECLARE_COUNTER(
     arangodb_replication2_replicated_log_number_accepted_entries_total,

@@ -24,7 +24,6 @@
 #include "InMemoryLog.h"
 
 #include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"

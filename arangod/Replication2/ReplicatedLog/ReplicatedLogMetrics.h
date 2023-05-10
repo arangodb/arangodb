@@ -32,28 +32,37 @@
 namespace arangodb::replication2::replicated_log {
 
 struct ReplicatedLogMetrics {
-  metrics::Gauge<uint64_t>* replicatedLogNumber;
+  metrics::Gauge<uint64_t>* replicatedLogNumber{nullptr};
   metrics::Histogram<metrics::LogScale<std::uint64_t>>*
-      replicatedLogAppendEntriesRttUs;
+      replicatedLogAppendEntriesRttUs{nullptr};
   metrics::Histogram<metrics::LogScale<std::uint64_t>>*
-      replicatedLogFollowerAppendEntriesRtUs;
-  metrics::Counter* replicatedLogCreationNumber;
-  metrics::Counter* replicatedLogDeletionNumber;
-  metrics::Gauge<std::uint64_t>* replicatedLogLeaderNumber;
-  metrics::Gauge<std::uint64_t>* replicatedLogFollowerNumber;
-  metrics::Gauge<std::uint64_t>* replicatedLogInactiveNumber;
-  metrics::Gauge<std::uint64_t>* leaderNumInMemoryEntries;
-  metrics::Gauge<std::size_t>* leaderNumInMemoryBytes;
-  metrics::Counter* replicatedLogLeaderTookOverNumber;
-  metrics::Counter* replicatedLogStartedFollowingNumber;
+      replicatedLogFollowerAppendEntriesRtUs{nullptr};
+  metrics::Counter* replicatedLogCreationNumber{nullptr};
+  metrics::Counter* replicatedLogDeletionNumber{nullptr};
+  metrics::Gauge<std::uint64_t>* replicatedLogLeaderNumber{nullptr};
+  metrics::Gauge<std::uint64_t>* replicatedLogFollowerNumber{nullptr};
+  // TODO This metric currently isn't populated
+  metrics::Gauge<std::uint64_t>* replicatedLogInactiveNumber{nullptr};
+  metrics::Gauge<std::uint64_t>* leaderNumInMemoryEntries{nullptr};
+  metrics::Gauge<std::size_t>* leaderNumInMemoryBytes{nullptr};
+  metrics::Counter* replicatedLogLeaderTookOverNumber{nullptr};
+  metrics::Counter* replicatedLogStartedFollowingNumber{nullptr};
   metrics::Histogram<metrics::LogScale<std::uint64_t>>*
-      replicatedLogInsertsBytes;
-  metrics::Histogram<metrics::LogScale<std::uint64_t>>* replicatedLogInsertsRtt;
+      replicatedLogInsertsBytes{nullptr};
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>* replicatedLogInsertsRtt{
+      nullptr};
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>*
+      replicatedLogAppendEntriesNumEntries{nullptr};
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>*
+      replicatedLogAppendEntriesSize{nullptr};
+  metrics::Counter* replicatedLogFollowerEntryDropCount{nullptr};
+  metrics::Counter* replicatedLogLeaderAppendEntriesErrorCount{nullptr};
 
-  metrics::Counter* replicatedLogNumberAcceptedEntries;
-  metrics::Counter* replicatedLogNumberCommittedEntries;
-  metrics::Counter* replicatedLogNumberMetaEntries;
-  metrics::Counter* replicatedLogNumberCompactedEntries;
+  metrics::Counter* replicatedLogNumberAcceptedEntries{nullptr};
+  metrics::Counter* replicatedLogNumberCommittedEntries{nullptr};
+  metrics::Counter* replicatedLogNumberMetaEntries{nullptr};
+  // TODO This metric currently isn't populated
+  metrics::Counter* replicatedLogNumberCompactedEntries{nullptr};
 };
 
 template<bool Mock>

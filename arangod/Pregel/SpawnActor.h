@@ -23,6 +23,7 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Pregel/AggregatorHandler.h"
@@ -57,7 +58,7 @@ namespace arangodb::pregel {
 
 struct SpawnState {
   SpawnState(TRI_vocbase_t& vocbase, actor::ActorPID resultActor)
-      : vocbaseGuard{vocbase}, resultActor(resultActor) {}
+      : vocbaseGuard{vocbase}, resultActor(std::move(resultActor)) {}
   const DatabaseGuard vocbaseGuard;
   const actor::ActorPID resultActor;
 };
@@ -83,9 +84,11 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
                 std::make_unique<AggregatorHandler>(algorithm.get()),
                 std::make_unique<AggregatorHandler>(algorithm.get()),
                 msg.message.userParameters.slice()),
-            msg.conductor, msg.message, algorithm->messageFormatUnique(),
+            msg.conductor, msg.message, std::chrono::seconds(60),
+            algorithm->messageFormatUnique(),
             algorithm->messageCombinerUnique(), std::move(algorithm),
-            this->state->vocbaseGuard.database(), this->state->resultActor),
+            this->state->vocbaseGuard.database(), this->self,
+            this->state->resultActor, msg.statusActor, msg.metricsActor),
         worker::message::WorkerStart{});
   }
 
@@ -195,6 +198,11 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
                                      .id = {0}},
                      message::SpawnMessages{msg});
     }
+    return std::move(this->state);
+  }
+
+  auto operator()(message::SpawnCleanup msg) -> std::unique_ptr<SpawnState> {
+    this->finish();
     return std::move(this->state);
   }
 

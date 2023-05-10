@@ -57,8 +57,7 @@ struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
 
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId, VPackSlice document,
-                      V& targetPtr,
-                      uint64_t& /*vertexIdRange*/) const override {
+                      V& targetPtr, uint64_t vertexId) const override {
     auto value = document.get(sourceFieldName);
     if (value.isNone()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,

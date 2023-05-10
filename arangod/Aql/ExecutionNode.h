@@ -97,6 +97,8 @@ struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
 
+size_t estimateListLength(ExecutionPlan const* plan, Variable const* var);
+
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document
 
@@ -165,6 +167,7 @@ class ExecutionNode {
     MUTEX = 33,
     WINDOW = 34,
     OFFSET_INFO_MATERIALIZE = 35,
+    REMOTE_MULTIPLE = 36,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -185,14 +188,14 @@ class ExecutionNode {
   ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id);
 
   /// @brief constructor using a VPackSlice
-  ExecutionNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& slice);
+  ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice);
 
   /// @brief destructor, free dependencies
   virtual ~ExecutionNode() = default;
 
   /// @brief factory from JSON
-  static ExecutionNode* fromVPackFactory(
-      ExecutionPlan* plan, arangodb::velocypack::Slice const& slice);
+  static ExecutionNode* fromVPackFactory(ExecutionPlan* plan,
+                                         velocypack::Slice slice);
 
   /// @brief remove registers right of (greater than) the specified register
   /// from the internal maps

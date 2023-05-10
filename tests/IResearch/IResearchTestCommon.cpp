@@ -27,8 +27,8 @@
 #include <analysis/analyzers.hpp>
 #include <velocypack/Builder.h>
 
-TestAnalyzer::TestAnalyzer()
-    : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {}
+// It's test and common, it's convinient to have ctor in .cpp
+TestAnalyzer::TestAnalyzer() = default;
 
 bool TestAnalyzer::reset(std::string_view data) {
   _data = irs::ViewCast<irs::byte_type>(data);

@@ -40,17 +40,9 @@ DocumentCore::DocumentCore(
       loggerContext(std::move(loggerContext)),
       _vocbase(vocbase),
       _params(std::move(coreParameters)),
-      _shardHandler(handlersFactory->createShardHandler(vocbase, this->gid)),
-      _transactionHandler(handlersFactory->createTransactionHandler(
-          _vocbase, this->gid, _shardHandler)) {}
+      _shardHandler(handlersFactory->createShardHandler(vocbase, this->gid)) {}
 
 void DocumentCore::drop() {
-  if (auto res = _transactionHandler->applyEntry(
-          ReplicatedOperation::buildAbortAllOngoingTrxOperation());
-      res.fail()) {
-    LOG_CTX("f3b3c", ERR, loggerContext)
-        << "Failed to abort all ongoing transactions: " << res;
-  }
   if (auto res = _shardHandler->dropAllShards(); res.fail()) {
     LOG_CTX("f3b3d", ERR, loggerContext)
         << "Failed to drop all shards: " << res;
@@ -58,11 +50,6 @@ void DocumentCore::drop() {
 }
 
 auto DocumentCore::getVocbase() -> TRI_vocbase_t& { return _vocbase; }
-
-auto DocumentCore::getTransactionHandler()
-    -> std::shared_ptr<IDocumentStateTransactionHandler> {
-  return _transactionHandler;
-}
 
 auto DocumentCore::getShardHandler()
     -> std::shared_ptr<IDocumentStateShardHandler> {

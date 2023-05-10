@@ -26,7 +26,6 @@
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/MasterContext.h"
-#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/Worker/WorkerConfig.h"
@@ -88,9 +87,8 @@ struct arangodb::pregel::algos::SPGraphFormat
 
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId,
-                      arangodb::velocypack::Slice /*document*/,
-                      int64_t& targetPtr,
-                      uint64_t& /*vertexIdRange*/) const override {
+                      arangodb::velocypack::Slice document, int64_t& targetPtr,
+                      uint64_t vertexIdRange) const override {
     targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 };

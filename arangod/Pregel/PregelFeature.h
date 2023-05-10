@@ -27,6 +27,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -34,13 +35,15 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Actor/ActorPID.h"
 #include "Pregel/ArangoExternalDispatcher.h"
 #include "Actor/Runtime.h"
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/ResultActor.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelOptions.h"
+#include "Pregel/StatusActor.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
@@ -48,6 +51,14 @@
 #include "Pregel/PregelMetrics.h"
 
 struct TRI_vocbase_t;
+
+namespace arangodb {
+struct OperationResult;
+class ExecContext;
+namespace rest {
+enum class RequestType;
+}
+}  // namespace arangodb
 
 namespace arangodb::pregel {
 
@@ -57,6 +68,43 @@ struct PregelScheduler {
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     scheduler->queue(RequestLane::INTERNAL_LOW, fn);
   }
+  auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    auto workItem = scheduler->queueDelayed(
+        "pregel-actors", RequestLane::INTERNAL_LOW, delay, fn);
+  }
+};
+
+struct PregelRunUser {
+  PregelRunUser(std::string name) : name{std::move(name)} {}
+  auto authorized(ExecContext const& userContext) const -> bool;
+
+ private:
+  std::string name;
+};
+struct PregelRunActors {
+  actor::ActorPID resultActor;
+  std::shared_ptr<PregelResult> results;
+
+  // following members are only relevant on coordinator
+  std::optional<actor::ActorPID> conductor;
+};
+struct PregelRun {
+  PregelRun(PregelRunUser user, PregelRunActors actors)
+      : user{std::move(user)}, actors{std::move(actors)} {}
+  auto getActorsInternally() const -> PregelRunActors { return actors; }
+  auto getActorsFromUser(ExecContext const& userContext) const
+      -> std::optional<PregelRunActors> {
+    if (not user.authorized(userContext)) {
+      return std::nullopt;
+    }
+    return actors;
+  }
+
+ private:
+  PregelRunUser user;
+  PregelRunActors actors;
 };
 
 class Conductor;
@@ -88,6 +136,7 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<Conductor> conductor(ExecutionNumber executionNumber);
 
   void garbageCollectConductors();
+  void garbageCollectActors();
 
   void addWorker(std::shared_ptr<IWorker>&&, ExecutionNumber executionNumber);
   std::shared_ptr<IWorker> worker(ExecutionNumber executionNumber);
@@ -101,7 +150,6 @@ class PregelFeature final : public ArangodFeature {
                               VPackBuilder& outResponse);
   void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                            VPackSlice const& body, VPackBuilder& outBuilder);
-
   uint64_t numberOfActiveConductors() const;
 
   void initiateSoftShutdown() override final {
@@ -118,9 +166,10 @@ class PregelFeature final : public ArangodFeature {
   size_t parallelism(VPackSlice params) const noexcept;
 
   std::string tempPath() const;
-  bool useMemoryMaps() const noexcept;
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
+
+  auto cancel(ExecutionNumber executionNumber) -> Result;
 
  private:
   void scheduleGarbageCollection();
@@ -134,18 +183,7 @@ class PregelFeature final : public ArangodFeature {
   // max parallelism usable per Pregel job
   size_t _maxParallelism;
 
-  // type of temporary directory location ("custom", "temp-directory",
-  // "database-directory")
-  std::string _tempLocationType;
-
-  // custom path for temporary directory. only populated if _tempLocationType ==
-  // "custom"
-  std::string _tempLocationCustomPath;
-
-  // default "useMemoryMaps" value per Pregel job
-  bool _useMemoryMaps;
-
-  mutable Mutex _mutex;
+  mutable std::mutex _mutex;
 
   Scheduler::WorkHandle _gcHandle;
 
@@ -167,8 +205,7 @@ class PregelFeature final : public ArangodFeature {
  public:
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
-
-  std::unordered_map<ExecutionNumber, actor::ActorPID> _resultActor;
+  Guarded<std::unordered_map<ExecutionNumber, PregelRun>> _pregelRuns;
 };
 
 }  // namespace arangodb::pregel

@@ -42,7 +42,6 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/HashedCollectExecutor.h"
-#include "Aql/IResearchViewExecutor.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexExecutor.h"
 #include "Aql/InputAqlItemRow.h"
@@ -175,6 +174,10 @@ using WeightedShortestPathCluster =
 using WeightedShortestPathClusterTracer =
     arangodb::graph::TracedWeightedShortestPathEnumerator<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+namespace arangodb::aql {
+struct MultipleRemoteModificationExecutor;
+}
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -644,6 +647,34 @@ enum class SkipRowsRangeVariant {
   SUBQUERY_END
 };
 
+namespace arangodb::aql {
+
+template<typename ExecutionTraits>
+class IResearchViewExecutor;
+
+template<typename ExecutionTraits>
+class IResearchViewMergeExecutor;
+
+template<typename ExecutionTraits>
+class IResearchViewHeapSortExecutor;
+
+template<typename T>
+struct IsSearchExecutor : std::false_type {};
+
+template<typename ExecutionTraits>
+struct IsSearchExecutor<IResearchViewExecutor<ExecutionTraits>>
+    : std::true_type {};
+
+template<typename ExecutionTraits>
+struct IsSearchExecutor<IResearchViewMergeExecutor<ExecutionTraits>>
+    : std::true_type {};
+
+template<typename ExecutionTraits>
+struct IsSearchExecutor<IResearchViewHeapSortExecutor<ExecutionTraits>>
+    : std::true_type {};
+
+}  // namespace arangodb::aql
+
 // This function is just copy&pasted from above to decide which variant of
 // skip is used for which executor.
 template<class Executor>
@@ -721,7 +752,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   SingleRemoteModificationExecutor<Remove>,
                   SingleRemoteModificationExecutor<Update>,
                   SingleRemoteModificationExecutor<Replace>,
-                  SingleRemoteModificationExecutor<Upsert>, SortExecutor,
+                  SingleRemoteModificationExecutor<Upsert>,
+                  MultipleRemoteModificationExecutor, SortExecutor,
 #ifdef USE_ENTERPRISE
                   arangodb::iresearch::OffsetMaterializeExecutor,
 #endif

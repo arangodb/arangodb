@@ -2283,6 +2283,12 @@ Result transaction::Methods::determineReplication1TypeAndFollowers(
       }
 
       replicationType = ReplicationType::LEADER;
+      TRI_IF_FAILURE("forceDropFollowersInTrxMethods") {
+        for (auto followers = followerInfo->get();
+             auto const& follower : *followers) {
+          followerInfo->remove(follower);
+        }
+      }
       followers = followerInfo->get();
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
@@ -2884,7 +2890,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(
-    std::string const& collectionName, transaction::CountType type,
+    std::string const& collectionName, transaction::CountType /*type*/,
     OperationOptions const& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
@@ -2899,7 +2905,7 @@ OperationResult transaction::Methods::countLocal(
 
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::READ));
 
-  uint64_t num = collection->numberDocuments(this, type);
+  uint64_t num = collection->getPhysical()->numberDocuments(this);
 
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(num));
@@ -3138,6 +3144,8 @@ Future<Result> Methods::replicateOperations(
 
   TRI_ASSERT(replicationData.slice().isArray());
   TRI_ASSERT(!replicationData.slice().isEmptyArray());
+
+  TRI_IF_FAILURE("replicateOperations::skip") { return Result(); }
 
   // replication2 is handled here
   if (collection->replicationVersion() == replication::Version::TWO) {

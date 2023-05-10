@@ -306,13 +306,11 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  bool extendedNames = v8g->server()
-                           .getFeature<arangodb::DatabaseFeature>()
-                           .extendedNamesForAnalyzers();
-  if (!arangodb::AnalyzerNameValidator::isAllowedName(
-          extendedNames,
-          std::string_view(splittedAnalyzerName.second.data(),
-                           splittedAnalyzerName.second.size()))) {
+  bool extendedNames =
+      v8g->server().getFeature<arangodb::DatabaseFeature>().extendedNames();
+  if (arangodb::AnalyzerNameValidator::validateName(extendedNames,
+                                                    splittedAnalyzerName.second)
+          .fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         std::string("invalid characters in analyzer name '")
@@ -604,13 +602,11 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  bool extendedNames = v8g->server()
-                           .getFeature<arangodb::DatabaseFeature>()
-                           .extendedNamesForAnalyzers();
-  if (!arangodb::AnalyzerNameValidator::isAllowedName(
-          extendedNames,
-          std::string_view(splittedAnalyzerName.second.data(),
-                           splittedAnalyzerName.second.size()))) {
+  bool extendedNames =
+      v8g->server().getFeature<arangodb::DatabaseFeature>().extendedNames();
+  if (arangodb::AnalyzerNameValidator::validateName(extendedNames,
+                                                    splittedAnalyzerName.second)
+          .fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         std::string("Invalid characters in analyzer name '")

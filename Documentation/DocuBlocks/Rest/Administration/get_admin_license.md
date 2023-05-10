@@ -13,6 +13,7 @@ Can be called on single servers, Coordinators, and DB-Servers.
 @RESTRETURNCODE{200}
 
 @RESTREPLYBODY{features,object,required,license_features}
+The properties of the license.
 
 @RESTSTRUCT{expires,license_features,number,required,}
 The `expires` key lists the expiry date as Unix timestamp (seconds since

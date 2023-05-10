@@ -20,9 +20,15 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
+
 #include <memory>
 #include <string>
+
+namespace arangodb {
+struct DeferredAction;
+}
 
 namespace arangodb::replication2 {
 struct LogIndex;
@@ -33,13 +39,14 @@ struct IReplicatedLogFollowerMethods;
 inline namespace comp {
 struct IStateHandleManager {
   virtual ~IStateHandleManager() = default;
-  virtual void updateCommitIndex(LogIndex) noexcept = 0;
+  virtual auto updateCommitIndex(LogIndex) noexcept -> DeferredAction = 0;
   virtual auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> = 0;
   virtual void becomeFollower(
       std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
   virtual void acquireSnapshot(ParticipantId const& leader,
                                std::uint64_t version) noexcept = 0;
 };
+
 }  // namespace comp
 }  // namespace replicated_log
 }  // namespace arangodb::replication2

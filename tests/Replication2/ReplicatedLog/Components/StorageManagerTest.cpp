@@ -30,6 +30,7 @@
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/StorageEngineMethodsMock.h"
+#include "Replication2/Mocks/SchedulerMocks.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -41,6 +42,8 @@ struct StorageManagerTest : ::testing::Test {
   LogId const logId = LogId{12};
   std::shared_ptr<test::DelayedExecutor> executor =
       std::make_shared<test::DelayedExecutor>();
+  std::shared_ptr<test::SyncScheduler> scheduler =
+      std::make_shared<test::SyncScheduler>();
   test::FakeStorageEngineMethodsContext methods{
       objectId,
       logId,
@@ -54,8 +57,8 @@ struct StorageManagerTest : ::testing::Test {
           .generation = {},
           .specification = {}}};
   std::shared_ptr<StorageManager> storageManager =
-      std::make_shared<StorageManager>(methods.getMethods(),
-                                       LoggerContext{Logger::REPLICATION2});
+      std::make_shared<StorageManager>(
+          methods.getMethods(), LoggerContext{Logger::REPLICATION2}, scheduler);
 };
 
 TEST_F(StorageManagerTest, transaction_resign) {
@@ -260,10 +263,12 @@ struct StorageEngineMethodsMockFactory {
 
 struct StorageManagerGMockTest : ::testing::Test {
   StorageEngineMethodsMockFactory methods;
+  std::shared_ptr<test::SyncScheduler> scheduler =
+      std::make_shared<test::SyncScheduler>();
 
   std::shared_ptr<StorageManager> storageManager =
       std::make_shared<StorageManager>(methods.create(),
-                                       LoggerContext{Logger::FIXME});
+                                       LoggerContext{Logger::FIXME}, scheduler);
 
   using StorageEngineFuture =
       futures::Promise<ResultT<IStorageEngineMethods::SequenceNumber>>;

@@ -41,6 +41,7 @@ namespace replication2 {
 struct LogRange;
 struct LogIndex;
 class LogEntryView;
+struct PersistedLogIterator;
 template<typename T>
 struct TypedLogRangeIterator;
 namespace replicated_log {
@@ -78,6 +79,8 @@ struct IStorageManager {
       -> std::unique_ptr<TypedLogRangeIterator<LogEntryView>> = 0;
   [[nodiscard]] virtual auto getCommittedMetaInfo() const
       -> replicated_state::PersistedStateInfo = 0;
+  [[nodiscard]] virtual auto getPersistedLogIterator(LogIndex first) const
+      -> std::unique_ptr<PersistedLogIterator> = 0;
 
   virtual auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> = 0;
   virtual auto commitMetaInfoTrx(std::unique_ptr<IStateInfoTransaction>)

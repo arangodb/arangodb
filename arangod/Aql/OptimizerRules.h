@@ -144,6 +144,10 @@ void interchangeAdjacentEnumerationsRule(Optimizer*,
 void substituteClusterSingleDocumentOperationsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
 
+/// @brief replace multiple document operations in cluster by special handling
+void substituteClusterMultipleDocumentOperationsRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
+
 #ifdef USE_ENTERPRISE
 /// @brief optimize queries in the cluster so that the entire query gets pushed
 /// to a single server

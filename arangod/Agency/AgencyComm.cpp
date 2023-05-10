@@ -596,12 +596,11 @@ VPackBuilder AgencyCommResult::toVelocyPack() const {
   return builder;
 }
 
-namespace std {
-ostream& operator<<(ostream& out, AgencyCommResult const& a) {
+std::ostream& arangodb::operator<<(std::ostream& out,
+                                   AgencyCommResult const& a) {
   out << a.toVelocyPack().toJson();
   return out;
 }
-}  // namespace std
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 AgencyCommHelper

@@ -24,8 +24,6 @@
 #include "LogBufferFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
@@ -64,7 +62,7 @@ class LogAppenderRingBuffer final : public LogAppender {
  public:
   explicit LogAppenderRingBuffer(LogLevel minLogLevel)
       : LogAppender(), _minLogLevel(minLogLevel), _id(0) {
-    MUTEX_LOCKER(guard, _lock);
+    std::lock_guard guard{_lock};
     _buffer.resize(LogBufferFeature::BufferSize);
   }
 
@@ -77,7 +75,7 @@ class LogAppenderRingBuffer final : public LogAppender {
 
     double timestamp = TRI_microtime();
 
-    MUTEX_LOCKER(guard, _lock);
+    std::lock_guard guard{_lock};
 
     uint64_t n = _id++;
     LogBuffer& ptr = _buffer[n % LogBufferFeature::BufferSize];
@@ -91,7 +89,7 @@ class LogAppenderRingBuffer final : public LogAppender {
   }
 
   void clear() {
-    MUTEX_LOCKER(guard, _lock);
+    std::lock_guard guard{_lock};
     _id = 0;
     _buffer.clear();
     _buffer.resize(LogBufferFeature::BufferSize);
@@ -113,7 +111,7 @@ class LogAppenderRingBuffer final : public LogAppender {
       search = arangodb::basics::StringUtils::tolower(searchString);
     }
 
-    MUTEX_LOCKER(guard, _lock);
+    std::lock_guard guard{_lock};
 
     if (_id >= LogBufferFeature::BufferSize) {
       s = _id % LogBufferFeature::BufferSize;
@@ -155,7 +153,7 @@ class LogAppenderRingBuffer final : public LogAppender {
   }
 
  private:
-  Mutex _lock;
+  std::mutex _lock;
   LogLevel const _minLogLevel;
   uint64_t _id;
   std::vector<LogBuffer> _buffer;

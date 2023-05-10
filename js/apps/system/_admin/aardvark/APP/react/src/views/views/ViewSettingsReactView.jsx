@@ -1,10 +1,7 @@
-/* global frontendConfig */
 import React from "react";
-import { ViewSettings } from "./ViewSettings";
+import { ViewSettingsWrap } from "./ViewSettingsWrap";
 
 const ViewSettingsReactView = ({ name }) => {
-  return (
-      <ViewSettings isCluster={frontendConfig.isCluster} name={name} />
-  );
+  return <ViewSettingsWrap name={name} />;
 };
 window.ViewSettingsReactView = ViewSettingsReactView;

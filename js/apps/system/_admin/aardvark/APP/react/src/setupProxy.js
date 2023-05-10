@@ -1,24 +1,18 @@
-
-
 /*
  * Proxy Configuration (see routes array for details)
  */
 
 const ARANGODB_PORT = 8529;
 
-const routes = [
-  '/_db/_system/_admin/aardvark/img/*', // Images
-  '/_db/_system/_admin/aardvark/statistics/*', // Statistics (foxx)
-  '/_db/_system/_api/' // ArangoDB API
-];
-
-const proxy = require('http-proxy-middleware');
+const { createProxyMiddleware } = require("http-proxy-middleware");
 module.exports = function (app) {
+  app.get("/", (_req, res) => {
+    res.redirect("/_db/_system/_admin/aardvark/index.html");
+  });
   app.use(
-    routes,
-    proxy({
+    createProxyMiddleware(["/_db/**", "!/_db/*/_admin/aardvark/index.html"], {
       target: `http://localhost:${ARANGODB_PORT}`,
-      changeOrigin: true
+      changeOrigin: true,
     })
   );
 };

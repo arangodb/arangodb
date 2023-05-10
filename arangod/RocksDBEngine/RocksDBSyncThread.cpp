@@ -23,7 +23,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RocksDBSyncThread.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/RocksDBUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -57,7 +56,7 @@ Result RocksDBSyncThread::syncWal() {
   // set time of last syncing under the lock
   auto const now = std::chrono::steady_clock::now();
   {
-    CONDITION_LOCKER(guard, _condition);
+    std::lock_guard guard{_condition.mutex};
 
     if (now > _lastSyncTime) {
       // update last sync time...
@@ -90,8 +89,8 @@ void RocksDBSyncThread::beginShutdown() {
   Thread::beginShutdown();
 
   // wake up the thread that may be waiting in run()
-  CONDITION_LOCKER(guard, _condition);
-  guard.broadcast();
+  std::lock_guard guard{_condition.mutex};
+  _condition.cv.notify_all();
 }
 
 void RocksDBSyncThread::run() {
@@ -112,15 +111,15 @@ void RocksDBSyncThread::run() {
 
       {
         // wait for time to elapse, and after that update last sync time
-        CONDITION_LOCKER(guard, _condition);
+        std::unique_lock guard{_condition.mutex};
 
         previousLastSequenceNumber = _lastSequenceNumber;
         previousLastSyncTime = _lastSyncTime;
         auto const end = _lastSyncTime + _interval;
         if (end > now) {
-          guard.wait(std::chrono::microseconds(
-              std::chrono::duration_cast<std::chrono::microseconds>(end -
-                                                                    now)));
+          _condition.cv.wait_for(
+              guard,
+              std::chrono::duration_cast<std::chrono::microseconds>(end - now));
         }
 
         if (_lastSyncTime > previousLastSyncTime) {
@@ -159,7 +158,7 @@ void RocksDBSyncThread::run() {
 
       if (res.ok()) {
         // success case
-        CONDITION_LOCKER(guard, _condition);
+        std::lock_guard guard{_condition.mutex};
 
         if (lastSequenceNumber > _lastSequenceNumber) {
           // bump last sequence number we have synced

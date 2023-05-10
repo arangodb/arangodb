@@ -397,11 +397,14 @@ void ResignLeadership::scheduleJobsR2(std::shared_ptr<Builder>& trx,
         continue;
       }
 
+      auto undo =
+          _undoMoves ? std::optional<std::string>{_server} : std::nullopt;
       ReconfigureReplicatedLog(
           _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
           database, logTarget.id,
           {ReconfigureOperation{
-              ReconfigureOperation::SetLeader{.participant = replacement}}})
+              ReconfigureOperation::SetLeader{.participant = replacement}}},
+          std::move(undo))
           .create(trx);
     }
   }

@@ -71,7 +71,7 @@
             if (isCoordinator) {
               newname = this.model.get('name');
             } else {
-              newname = $('#change-collection-name').val();
+              newname = String($('#change-collection-name').val()).normalize();
             }
 
             var self = this;
@@ -82,7 +82,7 @@
                 arangoHelper.arangoError('Collection error: ' + data.responseJSON.errorMessage);
               } else {
                 arangoHelper.arangoNotification('Collection: ' + 'Successfully changed.');
-                window.App.navigate('#cSettings/' + newname, {trigger: true});
+                window.App.navigate('#cSettings/' + encodeURIComponent(newname), {trigger: true});
               }
             };
 
@@ -159,14 +159,6 @@
                   true,
                   [
                     {
-                      rule: Joi.string().regex(/^[a-zA-Z]/),
-                      msg: 'Collection name must always start with a letter.'
-                    },
-                    {
-                      rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-                      msg: 'Only Symbols "_" and "-" are allowed.'
-                    },
-                    {
                       rule: Joi.string().required(),
                       msg: 'No collection name given.'
                     }
@@ -183,14 +175,6 @@
                   '',
                   true,
                   [
-                    {
-                      rule: Joi.string().regex(/^[a-zA-Z]/),
-                      msg: 'Collection name must always start with a letter.'
-                    },
-                    {
-                      rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-                      msg: 'Only Symbols "_" and "-" are allowed.'
-                    },
                     {
                       rule: Joi.string().required(),
                       msg: 'No collection name given.'
@@ -239,10 +223,8 @@
                 this.saveModifiedCollection.bind(this)
               )
             );
-
+            var templates = ['modalTable.ejs'];
             var tabBar = ['General', 'Indexes'];
-            var templates = ['modalTable.ejs', 'indicesView.ejs'];
-
             window.modalView.show(
               templates,
               'Modify Collection',

@@ -47,7 +47,7 @@ if (getOptions === true) {
     'log.in-memory': 'true',
     'log.level': 'info',
     'log.escape-unicode-chars': 'true',
-    'database.extended-names-databases': 'true',
+    'database.extended-names': 'true',
     'server.authentication': 'false',
   };
 }

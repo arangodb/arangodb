@@ -39,6 +39,10 @@
 #include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
+#endif
+
 #include <formats/formats.hpp>
 #include <index/heap_iterator.hpp>
 
@@ -72,6 +76,9 @@ class IResearchViewExecutorInfos {
       iresearch::ViewSnapshotPtr reader, RegisterId outRegister,
       RegisterId searchDocRegister, std::vector<RegisterId> scoreRegisters,
       aql::QueryContext& query,
+#ifdef USE_ENTERPRISE
+      iresearch::IResearchOptimizeTopK const& optimizeTopK,
+#endif
       std::vector<iresearch::SearchFunc> const& scorers,
       std::pair<iresearch::IResearchSortBase const*, size_t> sort,
       iresearch::IResearchViewStoredValues const& storedValues,
@@ -112,6 +119,12 @@ class IResearchViewExecutorInfos {
     return _filterOptimization;
   }
 
+#ifdef USE_ENTERPRISE
+  iresearch::IResearchOptimizeTopK const& optimizeTopK() const noexcept {
+    return _optimizeTopK;
+  }
+#endif
+
   // first - sort
   // second - number of sort conditions to take into account
   std::pair<iresearch::IResearchSortBase const*, size_t> const& sort()
@@ -134,6 +147,9 @@ class IResearchViewExecutorInfos {
   size_t _scoreRegistersCount;
   iresearch::ViewSnapshotPtr const _reader;
   aql::QueryContext& _query;
+#ifdef USE_ENTERPRISE
+  iresearch::IResearchOptimizeTopK const& _optimizeTopK;
+#endif
   std::vector<iresearch::SearchFunc> const& _scorers;
   std::pair<iresearch::IResearchSortBase const*, size_t> _sort;
   iresearch::IResearchViewStoredValues const& _storedValues;
@@ -176,7 +192,7 @@ ExecutionStats& operator+=(
 
 struct ColumnIterator {
   irs::doc_iterator::ptr itr;
-  const irs::payload* value{};
+  irs::payload const* value{};
 };  // ColumnIterator
 
 struct FilterCtx final : irs::attribute_provider {
@@ -273,7 +289,8 @@ class IndexReadBuffer {
   }
 
   void pushSortedValue(StorageSnapshot const& snapshot, ValueType&& value,
-                       float_t const* scores, size_t count);
+                       std::span<float_t const> scores,
+                       irs::score_threshold* threshold);
 
   void finalizeHeapSort();
   // A note on the scores: instead of saving an array of AqlValues, we could
@@ -564,7 +581,9 @@ class IResearchViewExecutorBase {
   iresearch::ViewSnapshotPtr _reader;
   irs::filter::prepared::ptr _filter;
   irs::filter::prepared const** _filterCookie{};
-  irs::Order _order;
+  containers::SmallVector<irs::Scorer::ptr, 2> _scorersContainer;
+  irs::Scorers _scorers;
+  irs::WandContext _wand;
   std::vector<ColumnIterator> _storedValuesReaders;
   std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
   bool _isInitialized;
@@ -601,7 +620,7 @@ class IResearchViewExecutor
 
   bool resetIterator();
 
-  void reset();
+  void reset(bool needFullCount);
 
  private:
   // Returns true unless the iterator is exhausted. documentId will always be
@@ -702,7 +721,7 @@ class IResearchViewMergeExecutor
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
-  void reset();
+  void reset(bool needFullCount);
   size_t skip(size_t toSkip, IResearchViewStats&);
   size_t skipAll(IResearchViewStats&);
 
@@ -746,7 +765,7 @@ class IResearchViewHeapSortExecutor
   size_t getScanned() const noexcept { return _totalCount; }
   bool canSkipAll() const noexcept { return _bufferFilled && _totalCount; }
 
-  void reset();
+  void reset(bool needFullCount);
   bool fillBuffer(ReadContext& ctx);
   bool fillBufferInternal(size_t skip);
 
@@ -756,7 +775,7 @@ class IResearchViewHeapSortExecutor
   size_t _scannedCount{0};
   size_t _bufferedCount{};
   bool _bufferFilled{false};
-};  // ResearchViewHeapSortExecutor
+};
 
 union UnitedDocumentId {
   irs::doc_id_t irsId;
@@ -831,24 +850,6 @@ struct IResearchViewExecutorTraits<
   using IndexBufferValueType = HeapSortExecutorValue;
   static constexpr bool ExplicitScanned = true;
 };
-
-template<typename T>
-struct IsSearchExecutor : std::false_type {};
-
-template<typename ExecutionTraits>
-struct IsSearchExecutor<IResearchViewExecutor<ExecutionTraits>>
-    : std::true_type {};
-
-template<typename ExecutionTraits>
-struct IsSearchExecutor<IResearchViewMergeExecutor<ExecutionTraits>>
-    : std::true_type {};
-
-template<typename ExecutionTraits>
-struct IsSearchExecutor<IResearchViewHeapSortExecutor<ExecutionTraits>>
-    : std::enable_if_t<(ExecutionTraits::MaterializeType &
-                        iresearch::MaterializeType::LateMaterialize) ==
-                           iresearch::MaterializeType::Undefined,
-                       std::true_type> {};
 
 }  // namespace aql
 }  // namespace arangodb

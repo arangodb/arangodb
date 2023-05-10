@@ -30,6 +30,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Basics/Guarded.h"
 #include "Logger/LogContextKeys.h"
+#include "Replication2/IScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -98,9 +99,8 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
         std::move(mapping),
         [slice = std::move(slice), iter = std::move(iter)](
             StorageManager::IStorageEngineMethods& methods) mutable noexcept {
-          return methods.insert(std::move(iter), {}).thenValue([](auto&& res) {
-            return res.result();
-          });
+          return methods.insert(std::move(iter), {.waitForSync = true})
+              .thenValue([](auto&& res) { return res.result(); });
         });
   }
 
@@ -112,10 +112,12 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
 };
 
 StorageManager::StorageManager(std::unique_ptr<IStorageEngineMethods> methods,
-                               LoggerContext const& loggerContext)
+                               LoggerContext const& loggerContext,
+                               const std::shared_ptr<IScheduler> scheduler)
     : guardedData(std::move(methods)),
       loggerContext(
-          loggerContext.with<logContextKeyLogComponent>("storage-manager")) {}
+          loggerContext.with<logContextKeyLogComponent>("storage-manager")),
+      scheduler(std::move(scheduler)) {}
 
 auto StorageManager::resign() noexcept
     -> std::unique_ptr<IStorageEngineMethods> {
@@ -170,6 +172,11 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
   auto const worker = [](GuardType guard,
                          std::shared_ptr<StorageManager> self) noexcept
       -> futures::Future<futures::Unit> {
+    auto const resolvePromise = [&](futures::Promise<Result> p, Result res) {
+      self->scheduler->queue(
+          [p = std::move(p), res]() mutable { p.setValue(std::move(res)); });
+    };
+
     LOG_CTX("6efe9", TRACE, self->loggerContext)
         << "starting new storage worker";
     while (true) {
@@ -187,8 +194,8 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
         LOG_CTX("4f5e3", DEBUG, self->loggerContext)
             << "aborting storage operation "
             << " because log core gone";
-        req.promise.setValue(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+        resolvePromise(std::move(req.promise),
+                       TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
         guard = self->guardedData.getLockedGuard();
         continue;
       }
@@ -206,7 +213,7 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
         guard->onDiskMapping = std::move(req.mappingResult);
         guard.unlock();
         // then resolve the promise
-        req.promise.setValue(std::move(result));
+        resolvePromise(std::move(req.promise), std::move(result));
         // now lock again
         guard = self->guardedData.getLockedGuard();
       } else {
@@ -223,13 +230,13 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
         guard->queue.clear();
         guard.unlock();
         // resolve everything else
-        req.promise.setValue(std::move(result));
+        resolvePromise(std::move(req.promise), std::move(result));
         for (auto& r : queue) {
           LOG_CTX("507fe", INFO, self->loggerContext)
               << "aborting storage operation because of error in previous "
                  "operation";
-          r.promise.setValue(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_SUBSEQUENT_FAULT);
+          resolvePromise(std::move(r.promise),
+                         TRI_ERROR_REPLICATION_REPLICATED_LOG_SUBSEQUENT_FAULT);
         }
         // and lock again
         guard = self->guardedData.getLockedGuard();
@@ -306,19 +313,25 @@ auto StorageManager::getTermIndexMapping() const -> TermIndexMapping {
   return guardedData.getLockedGuard()->onDiskMapping;
 }
 
-auto StorageManager::getPeristedLogIterator(LogIndex first) const
+auto StorageManager::getPersistedLogIterator(LogIndex first) const
     -> std::unique_ptr<PersistedLogIterator> {
-  return getPeristedLogIterator(
+  return getPersistedLogIterator(
       LogRange{first, LogIndex{static_cast<std::uint64_t>(-1)}});
 }
 
-auto StorageManager::getPeristedLogIterator(std::optional<LogRange> bounds)
+auto StorageManager::getPersistedLogIterator(std::optional<LogRange> bounds)
     const -> std::unique_ptr<PersistedLogIterator> {
   auto range =
       bounds ? *bounds
              : LogRange{LogIndex{0}, LogIndex{static_cast<std::uint64_t>(-1)}};
 
-  auto diskIter = guardedData.getLockedGuard()->methods->read(range.from);
+  auto guard = guardedData.getLockedGuard();
+  if (guard->methods == nullptr) {
+    THROW_ARANGO_EXCEPTION(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+  }
+
+  auto diskIter = guard->methods->read(range.from);
 
   struct Iterator : PersistedLogIterator {
     explicit Iterator(LogRange range,
@@ -346,6 +359,11 @@ auto StorageManager::getPeristedLogIterator(std::optional<LogRange> bounds)
 auto StorageManager::getCommittedLogIterator(
     std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
   auto guard = guardedData.getLockedGuard();
+  if (guard->methods == nullptr) {
+    THROW_ARANGO_EXCEPTION(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+  }
+
   auto range = guard->onDiskMapping.getIndexRange();
   if (bounds) {
     range = intersect(*bounds, range);

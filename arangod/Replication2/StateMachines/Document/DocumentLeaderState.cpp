@@ -36,6 +36,14 @@
 
 namespace arangodb::replication2::replicated_state::document {
 
+DocumentLeaderState::GuardedData::GuardedData(
+    std::unique_ptr<DocumentCore> core,
+    std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
+    : core(std::move(core)) {
+  transactionHandler = handlersFactory->createTransactionHandler(
+      this->core->getVocbase(), this->core->gid, this->core->getShardHandler());
+}
+
 DocumentLeaderState::DocumentLeaderState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
@@ -46,7 +54,7 @@ DocumentLeaderState::DocumentLeaderState(
       _handlersFactory(std::move(handlersFactory)),
       _snapshotHandler(
           _handlersFactory->createSnapshotHandler(core->getVocbase(), gid)),
-      _guardedData(std::move(core)),
+      _guardedData(std::move(core), this->_handlersFactory),
       _transactionManager(transactionManager) {}
 
 auto DocumentLeaderState::resign() && noexcept
@@ -55,6 +63,11 @@ auto DocumentLeaderState::resign() && noexcept
     ADB_PROD_ASSERT(!data.didResign())
         << "resigning leader " << gid
         << " is not possible because it is already resigned";
+
+    auto abortAllRes = data.transactionHandler->applyEntry(
+        ReplicatedOperation::buildAbortAllOngoingTrxOperation());
+    ADB_PROD_ASSERT(abortAllRes.ok()) << abortAllRes;
+
     return std::move(data.core);
   });
 
@@ -94,9 +107,6 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
     }
 
-    auto transactionHandler = data.core->getTransactionHandler();
-    ADB_PROD_ASSERT(transactionHandler != nullptr);
-
     std::unordered_set<TransactionId> activeTransactions;
     while (auto entry = ptr->next()) {
       auto doc = entry->second;
@@ -104,8 +114,8 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       auto res = std::visit(
           overload{
               [&](ModifiesUserTransaction auto& op) -> Result {
-                if (auto res =
-                        transactionHandler->validate(doc.getInnerOperation());
+                if (auto res = data.transactionHandler->validate(
+                        doc.getInnerOperation());
                     res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
                   // The shard might've been dropped before doing recovery.
                   LOG_CTX("e76f8", INFO, self->loggerContext)
@@ -117,7 +127,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                   return res;
                 }
                 activeTransactions.insert(op.tid);
-                return transactionHandler->applyEntry(op);
+                return data.transactionHandler->applyEntry(op);
               },
               [&](FinishesUserTransactionOrIntermediate auto& op) -> Result {
                 // There are two cases where we can end up here:
@@ -128,14 +138,15 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                 if (activeTransactions.erase(op.tid) == 0) {
                   return Result{};
                 }
-                return transactionHandler->applyEntry(op);
+                return data.transactionHandler->applyEntry(op);
               },
               [&](ReplicatedOperation::DropShard& op) -> Result {
                 // Abort all transactions for this shard.
                 for (auto const& tid :
-                     transactionHandler->getTransactionsForShard(op.shard)) {
+                     data.transactionHandler->getTransactionsForShard(
+                         op.shard)) {
                   activeTransactions.erase(tid);
-                  auto abortRes = transactionHandler->applyEntry(
+                  auto abortRes = data.transactionHandler->applyEntry(
                       ReplicatedOperation::buildAbortOperation(tid));
                   if (abortRes.fail()) {
                     LOG_CTX("3eb75", INFO, self->loggerContext)
@@ -145,9 +156,11 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                     return abortRes;
                   }
                 }
-                return transactionHandler->applyEntry(op);
+                return data.transactionHandler->applyEntry(op);
               },
-              [&](auto&& op) { return transactionHandler->applyEntry(op); }},
+              [&](auto&& op) {
+                return data.transactionHandler->applyEntry(op);
+              }},
           doc.getInnerOperation());
 
       if (res.fail()) {
@@ -172,7 +185,8 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       FATAL_ERROR_EXIT();
     }
 
-    for (auto& [tid, trx] : transactionHandler->getUnfinishedTransactions()) {
+    for (auto& [tid, trx] :
+         data.transactionHandler->getUnfinishedTransactions()) {
       try {
         // the log entries contain follower ids, which is fine since during
         // recovery we apply the entries like a follower, but we have to
@@ -186,7 +200,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       }
     }
 
-    auto abortAllResult = transactionHandler->applyEntry(abortAll);
+    auto abortAllResult = data.transactionHandler->applyEntry(abortAll);
     TRI_ASSERT(abortAllResult.ok());
 
     self->release(abortAllRes.get());
@@ -376,34 +390,33 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
     return replicateOperation(op, ReplicationOptions{.waitForCommit = true});
   });
 
-  return std::move(fut).thenValue(
-      [self = shared_from_this(), op = std::move(op)](auto&& result) mutable {
-        if (result.fail()) {
-          return result.result();
-        }
-        auto logIndex = result.get();
+  return std::move(fut).thenValue([self = shared_from_this(),
+                                   op = std::move(op)](auto&& result) mutable {
+    if (result.fail()) {
+      return result.result();
+    }
+    auto logIndex = result.get();
 
-        return self->_guardedData.doUnderLock([&](auto& data) -> Result {
-          if (data.didResign()) {
-            return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
-          }
-          auto transactionHandler = data.core->getTransactionHandler();
-          auto&& applyEntryRes = transactionHandler->applyEntry(std::move(op));
-          if (applyEntryRes.fail()) {
-            LOG_CTX("d11f0", FATAL, self->loggerContext)
-                << "CreateShard operation failed on the leader, after being "
-                   "replicated to followers: "
-                << applyEntryRes;
-            FATAL_ERROR_EXIT();
-          }
+    return self->_guardedData.doUnderLock([&](auto& data) -> Result {
+      if (data.didResign()) {
+        return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+      }
+      auto&& applyEntryRes = data.transactionHandler->applyEntry(std::move(op));
+      if (applyEntryRes.fail()) {
+        LOG_CTX("d11f0", FATAL, self->loggerContext)
+            << "CreateShard operation failed on the leader, after being "
+               "replicated to followers: "
+            << applyEntryRes;
+        FATAL_ERROR_EXIT();
+      }
 
-          if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
-            LOG_CTX("ed8e5", ERR, self->loggerContext)
-                << "Failed to call release: " << releaseRes;
-          }
-          return {};
-        });
-      });
+      if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
+        LOG_CTX("ed8e5", ERR, self->loggerContext)
+            << "Failed to call release: " << releaseRes;
+      }
+      return {};
+    });
+  });
 }
 
 auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
@@ -439,14 +452,13 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
       // dropped anyway.
       self->_snapshotHandler.getLockedGuard().get()->giveUpOnShard(shard);
 
-      auto transactionHandler = data.core->getTransactionHandler();
       self->_activeTransactions.doUnderLock([&](auto& activeTransactions) {
         for (auto const& tid :
-             transactionHandler->getTransactionsForShard(shard)) {
+             data.transactionHandler->getTransactionsForShard(shard)) {
           activeTransactions.markAsInactive(tid);
         }
       });
-      auto&& applyEntryRes = transactionHandler->applyEntry(std::move(op));
+      auto&& applyEntryRes = data.transactionHandler->applyEntry(std::move(op));
       if (applyEntryRes.fail()) {
         LOG_CTX("6865f", FATAL, self->loggerContext)
             << "DropShard operation failed on the leader, after being "

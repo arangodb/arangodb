@@ -33,54 +33,13 @@
 #include "Replication2/ReplicatedLog/Components/FollowerCommitManager.h"
 #include "Replication2/ReplicatedLog/Components/AppendEntriesManager.h"
 #include "Replication2/ReplicatedLog/Components/StateHandleManager.h"
+#include "Replication2/ReplicatedLog/Components/MethodsProvider.h"
+#include "Replication2/ReplicatedLog/Components/MessageIdManager.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 
 namespace arangodb::replication2::replicated_log {
-
-struct MethodsProvider : IReplicatedLogFollowerMethods {
-  explicit MethodsProvider(FollowerManager& fm) : follower(fm) {}
-  auto releaseIndex(LogIndex index) -> void override {
-    follower.compaction->updateReleaseIndex(index);
-  }
-
-  auto getCommittedLogIterator(std::optional<LogRange> range)
-      -> std::unique_ptr<LogRangeIterator> override {
-    return follower.storage->getCommittedLogIterator(range);
-  }
-
-  auto waitFor(LogIndex index) -> ILogParticipant::WaitForFuture override {
-    return follower.commit->waitFor(index);
-  }
-
-  auto waitForIterator(LogIndex index)
-      -> ILogParticipant::WaitForIteratorFuture override {
-    return follower.commit->waitForIterator(index);
-  }
-
-  auto snapshotCompleted(std::uint64_t version) -> Result override {
-    return follower.snapshot->setSnapshotStateAvailable(
-        follower.appendEntriesManager->getLastReceivedMessageId(), version);
-  }
-
-  [[nodiscard]] auto leaderConnectionEstablished() const -> bool override {
-    // Having a commit index means we've got at least one append entries request
-    // which was also applied *successfully*.
-    // Note that this is pessimistic, in the sense that it actually waits for an
-    // append entries request that was sent after leadership was established,
-    // which we don't necessarily need.
-    return follower.commit->getCommitIndex() > LogIndex{0};
-  }
-
-  auto checkSnapshotState() const noexcept
-      -> replicated_log::SnapshotState override {
-    return follower.snapshot->checkSnapshotState();
-  }
-
- private:
-  FollowerManager& follower;
-};
 
 namespace {
 
@@ -95,32 +54,44 @@ auto deriveLoggerContext(FollowerTermInformation const& info,
 }  // namespace
 
 FollowerManager::FollowerManager(
-    std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+    std::unique_ptr<replicated_state::IStorageEngineMethods> storageMethods,
     std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
     std::shared_ptr<FollowerTermInformation const> termInfo,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
-    std::shared_ptr<ILeaderCommunicator> leaderComm, LoggerContext logContext)
+    std::shared_ptr<ILeaderCommunicator> leaderComm,
+    std::shared_ptr<IScheduler> scheduler, LoggerContext logContext)
     : loggerContext(deriveLoggerContext(*termInfo, logContext)),
       options(options),
       metrics(metrics),
-      storage(
-          std::make_shared<StorageManager>(std::move(methods), loggerContext)),
+      storage(std::make_shared<StorageManager>(std::move(storageMethods),
+                                               loggerContext, scheduler)),
       compaction(std::make_shared<CompactionManager>(*storage, options,
                                                      loggerContext)),
-      stateHandle(
-          std::make_shared<StateHandleManager>(std::move(stateHandlePtr))),
+      commit(std::make_shared<FollowerCommitManager>(*storage, loggerContext,
+                                                     scheduler)),
+      stateHandle(std::make_shared<StateHandleManager>(
+          std::move(stateHandlePtr), *commit)),
       snapshot(std::make_shared<SnapshotManager>(
           *storage, *stateHandle, termInfo, leaderComm, loggerContext)),
-      commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle,
-                                                     loggerContext)),
+      messageIdManager(std::make_shared<MessageIdManager>()),
+      methodsProvider(std::make_shared<MethodsProviderManager>(
+          commit, storage, compaction, snapshot, messageIdManager)),
       appendEntriesManager(std::make_shared<AppendEntriesManager>(
-          termInfo, *storage, *snapshot, *compaction, *commit, metrics,
-          loggerContext)),
+          termInfo, *storage, *snapshot, *compaction, *stateHandle,
+          *messageIdManager, metrics, loggerContext)),
       termInfo(termInfo) {
   metrics->replicatedLogFollowerNumber->operator++();
-  auto provider = std::make_unique<MethodsProvider>(*this);
-  stateHandle->becomeFollower(std::move(provider));
+  // TODO The following line creates a dependency loop: It means the StateHandle
+  //      depends on the MethodsProvider, which isn't currently explicit in the
+  //      constructors. This creates the last edge in the loop
+  //               MethodsProviderManager
+  //        ->     SnapshotManager
+  //        ->     StateHandleManager
+  //        -(!)-> MethodsProviderManager
+  //      which can (and probably does) lead to lock
+  //      inversions. We should break it up.
+  stateHandle->becomeFollower(methodsProvider->getMethods());
   // Follower state manager is there, now get a snapshot if we need one.
   snapshot->acquireSnapshotIfNecessary();
 }
@@ -275,7 +246,7 @@ auto LogFollowerImpl::waitForIterator(LogIndex index)
 
 auto LogFollowerImpl::getInternalLogIterator(std::optional<LogRange> bounds)
     const -> std::unique_ptr<PersistedLogIterator> {
-  return guarded.getLockedGuard()->storage->getPeristedLogIterator(bounds);
+  return guarded.getLockedGuard()->storage->getPersistedLogIterator(bounds);
 }
 
 auto LogFollowerImpl::release(LogIndex doneWithIdx) -> Result {
@@ -312,10 +283,11 @@ LogFollowerImpl::LogFollowerImpl(
     std::shared_ptr<const FollowerTermInformation> termInfo,
     std::shared_ptr<const ReplicatedLogGlobalSettings> options,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
-    std::shared_ptr<ILeaderCommunicator> leaderComm, LoggerContext logContext)
+    std::shared_ptr<ILeaderCommunicator> leaderComm,
+    std::shared_ptr<IScheduler> scheduler, LoggerContext logContext)
     : myself(std::move(myself)),
       guarded(std::move(methods), std::move(stateHandlePtr),
               std::move(termInfo), std::move(options), std::move(metrics),
-              std::move(leaderComm), logContext) {}
+              std::move(leaderComm), std::move(scheduler), logContext) {}
 
 }  // namespace arangodb::replication2::replicated_log

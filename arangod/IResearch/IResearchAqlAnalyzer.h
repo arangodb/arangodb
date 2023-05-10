@@ -42,8 +42,7 @@
 
 #include <string>
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 class AqlAnalyzer final : public irs::analysis::analyzer {
  public:
@@ -99,13 +98,16 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
 
   explicit AqlAnalyzer(Options const& options);
 
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override final {
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<AqlAnalyzer>::id();
+  }
+
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(_attrs, type);
   }
 
-  virtual bool next() override;
-  virtual bool reset(std::string_view field) noexcept override;
+  bool next() final;
+  bool reset(std::string_view field) noexcept final;
 
  private:
   using ResetImplFunctor = void (*)(AqlAnalyzer* analyzer);
@@ -135,6 +137,6 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   attributes _attrs;
   size_t _resultRowIdx{0};
   uint32_t _nextIncVal{0};
-};  // AqlAnalyzer
-}  // namespace iresearch
-}  // namespace arangodb
+};
+
+}  // namespace arangodb::iresearch

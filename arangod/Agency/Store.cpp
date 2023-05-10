@@ -25,8 +25,6 @@
 
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -98,8 +96,8 @@ Store::Store(arangodb::ArangodServer& server, Agent* agent,
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
   if (&rhs != this) {
-    MUTEX_LOCKER(otherLock, rhs._storeLock);
-    MUTEX_LOCKER(lock, _storeLock);
+    std::lock_guard otherLock{rhs._storeLock};
+    std::lock_guard lock{_storeLock};
     _agent = rhs._agent;
     _timeTable = rhs._timeTable;
     _observerTable = rhs._observerTable;
@@ -112,8 +110,8 @@ Store& Store::operator=(Store const& rhs) {
 /// Move assignment operator
 Store& Store::operator=(Store&& rhs) {
   if (&rhs != this) {
-    MUTEX_LOCKER(otherLock, rhs._storeLock);
-    MUTEX_LOCKER(lock, _storeLock);
+    std::lock_guard otherLock{rhs._storeLock};
+    std::lock_guard lock{_storeLock};
     _agent = std::move(rhs._agent);
     _timeTable = std::move(rhs._timeTable);
     _observerTable = std::move(rhs._observerTable);
@@ -127,7 +125,7 @@ Store& Store::operator=(Store&& rhs) {
 Store::~Store() = default;
 
 index_t Store::applyTransactions(std::vector<log_t> const& queries) {
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
 
   for (auto const& query : queries) {
     applies(Slice(query.entry->data()));
@@ -159,7 +157,7 @@ std::vector<apply_ret_t> Store::applyTransactions(
           }
         }
 
-        MUTEX_LOCKER(storeLocker, _storeLock);
+        std::lock_guard storeLocker{_storeLock};
         switch (i.length()) {
           case 1:  // No precondition
             success.push_back(applies(i[0]) ? APPLIED : UNKNOWN_ERROR);
@@ -185,8 +183,8 @@ std::vector<apply_ret_t> Store::applyTransactions(
 
       // Wake up TTL processing
       {
-        CONDITION_LOCKER(guard, _cv);
-        _cv.signal();
+        std::lock_guard guard{_cv.mutex};
+        _cv.cv.notify_one();
       }
 
     } catch (std::exception const& e) {  // Catch any errors
@@ -206,7 +204,7 @@ std::vector<apply_ret_t> Store::applyTransactions(
 check_ret_t Store::applyTransaction(VPackSlice query) {
   check_ret_t ret(true);
 
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
 
   if (query.isObject()) {
     ret.successful(applies(query.get("query")));
@@ -233,8 +231,8 @@ check_ret_t Store::applyTransaction(VPackSlice query) {
   }
   // Wake up TTL processing
   {
-    CONDITION_LOCKER(guard, _cv);
-    _cv.signal();
+    std::lock_guard guard{_cv.mutex};
+    _cv.cv.notify_one();
   }
 
   return ret;
@@ -268,7 +266,7 @@ std::vector<bool> Store::applyLogEntries(
 
   // Apply log entries
   {
-    MUTEX_LOCKER(storeLocker, _storeLock);
+    std::lock_guard storeLocker{_storeLock};
 
     for (auto it : VPackArrayIterator(queries.slice())) {
       applied.push_back(applies(it.value()));
@@ -297,7 +295,7 @@ std::vector<bool> Store::applyLogEntries(
             while (true) {
               // TODO: Check if not a special lock will help
               {
-                MUTEX_LOCKER(storeLocker, _storeLock);
+                std::lock_guard storeLocker{_storeLock};
                 auto ret = _observedTable.equal_range(uri);
                 for (auto it = ret.first; it != ret.second; ++it) {
                   in.emplace(it->second, std::make_shared<notify_t>(
@@ -419,8 +417,6 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
   TRI_ASSERT(slice.isObject());
   check_ret_t ret;
   ret.open();
-
-  _storeLock.assertLockedByCurrentThread();
 
   for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
     std::vector<std::string> pv = split(precond.key.stringView());
@@ -705,7 +701,7 @@ bool Store::read(VPackSlice query, Builder& ret) const {
   //   a fast path for exactly one path, in which we do not have to copy all
   //   a slow path for more than one path
 
-  MUTEX_LOCKER(storeLocker, _storeLock);  // Freeze KV-Store for read
+  std::lock_guard storeLocker{_storeLock};  // Freeze KV-Store for read
   if (query_strs.size() == 1) {
     auto const& path = query_strs[0];
     std::vector<std::string> pv = split(path);
@@ -757,7 +753,7 @@ query_t Store::clearExpired() const {
   query_t tmp = std::make_shared<Builder>();
   {
     VPackArrayBuilder t(tmp.get());
-    MUTEX_LOCKER(storeLocker, _storeLock);
+    std::lock_guard storeLocker{_storeLock};
     if (!_timeTable.empty()) {
       for (auto it = _timeTable.cbegin(); it != _timeTable.cend(); ++it) {
         if (it->first < std::chrono::system_clock::now()) {
@@ -781,7 +777,7 @@ query_t Store::clearExpired() const {
 
 /// Dump internal data to builder
 void Store::dumpToBuilder(Builder& builder) const {
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
   toBuilder(builder, true);
 
   std::map<std::string, int64_t> clean;
@@ -821,8 +817,6 @@ void Store::dumpToBuilder(Builder& builder) const {
 
 /// Apply transaction to key value store. Guarded by caller
 bool Store::applies(arangodb::velocypack::Slice const& transaction) {
-  _storeLock.assertLockedByCurrentThread();
-
   auto it = VPackObjectIterator(transaction);
 
   std::vector<std::string> abskeys;
@@ -943,7 +937,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 
 // Clear my data
 void Store::clear() {
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
   _timeTable.clear();
   _observerTable.clear();
   _observedTable.clear();
@@ -956,7 +950,7 @@ Store& Store::operator=(VPackSlice const& s) {
   TRI_ASSERT(s.hasKey("readDB"));
   auto const& slice = s.get("readDB");
 
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
   if (slice.isArray()) {
     TRI_ASSERT(slice.length() == 4);
     _node.applies(slice[0]);
@@ -997,39 +991,32 @@ Store& Store::operator=(VPackSlice const& s) {
 
 /// Put key value store in velocypack, guarded by caller
 void Store::toBuilder(Builder& b, bool showHidden) const {
-  _storeLock.assertLockedByCurrentThread();
   _node.toBuilder(b, showHidden);
 }
 
 /// Time table
-std::multimap<TimePoint, std::string>& Store::timeTable() {
-  _storeLock.assertLockedByCurrentThread();
-  return _timeTable;
-}
+std::multimap<TimePoint, std::string>& Store::timeTable() { return _timeTable; }
 
 /// Time table
 std::multimap<TimePoint, std::string> const& Store::timeTable() const {
-  _storeLock.assertLockedByCurrentThread();
   return _timeTable;
 }
 
 /// Observed table
 std::unordered_multimap<std::string, std::string>& Store::observedTable() {
-  _storeLock.assertLockedByCurrentThread();
   return _observedTable;
 }
 
 /// Observed table
 std::unordered_multimap<std::string, std::string> const& Store::observedTable()
     const {
-  _storeLock.assertLockedByCurrentThread();
   return _observedTable;
 }
 
 /// Get node at path under mutex and store it in velocypack
 void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
                 bool showHidden) const {
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
   if (auto node = _node.hasAsNode(path); node) {
     node.value().get().toBuilder(b, showHidden);
   } else {
@@ -1041,19 +1028,18 @@ void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
 
 /// Get node at path under mutex
 Node Store::get(std::string const& path) const {
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
   return _node.hasAsNode(path).value().get();
 }
 
 /// Get node at path under mutex
 bool Store::has(std::string const& path) const {
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
   return _node.has(path);
 }
 
 /// Remove ttl entry for path, guarded by caller
 void Store::removeTTL(std::string const& uri) {
-  _storeLock.assertLockedByCurrentThread();
   if (!_timeTable.empty()) {
     for (auto it = _timeTable.cbegin(); it != _timeTable.cend();) {
       if (it->second == uri) {

@@ -500,14 +500,20 @@ struct TransactionBuilder {
   }
 
   void operator()(UpdateReplicatedLogConfig const& action) {
-    env = env.write()
-              .emplace_object(basics::StringUtils::concatT(
-                                  "/arango/Target/ReplicatedLogs/", database,
-                                  "/", action.logId, "/config"),
-                              [&](VPackBuilder& builder) {
-                                velocypack::serialize(builder, action.config);
-                              })
-              .end();
+    env =
+        env.write()
+            .emplace_object(basics::StringUtils::concatT(
+                                "/arango/Target/ReplicatedLogs/", database, "/",
+                                action.logId, "/config"),
+                            [&](VPackBuilder& builder) {
+                              velocypack::serialize(builder, action.config);
+                            })
+            .precs()
+            .isNotEmpty(basics::StringUtils::concatT(
+                "/arango/Target/ReplicatedLogs/", database, "/", action.logId))
+            .isNotEmpty(basics::StringUtils::concatT(
+                "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+            .end();
   }
 
   void operator()(UpdateConvergedVersion const& action) {
@@ -518,6 +524,9 @@ struct TransactionBuilder {
                               [&](VPackBuilder& builder) {
                                 velocypack::serialize(builder, action.version);
                               })
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Target/CollectionGroups/", database, "/", gid.id()))
               .end();
   }
 
@@ -529,6 +538,9 @@ struct TransactionBuilder {
                   "/arango/Plan/CollectionGroups/", database, "/", gid.id(),
                   "/collections/", action.cid))
               .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Target/CollectionGroups/", database, "/", gid.id()))
               .end();
   }
 
@@ -545,6 +557,9 @@ struct TransactionBuilder {
                        gid.id(), "/collections/", action.cid),
                    VPackSlice::emptyObjectSlice())
               .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Target/CollectionGroups/", database, "/", gid.id()))
               .end();
   }
 
@@ -558,6 +573,11 @@ struct TransactionBuilder {
                     velocypack::serialize(builder, action.mapping.shards);
                   })
               .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
               .end();
   }
 
@@ -570,6 +590,9 @@ struct TransactionBuilder {
               .inc(basics::StringUtils::concatT(
                   "/arango/Target/ReplicatedLogs/", database, "/", action.logId,
                   "/version"))
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Target/CollectionGroups/", database, "/", gid.id()))
               .end();
   }
 
@@ -581,6 +604,9 @@ struct TransactionBuilder {
               .inc(basics::StringUtils::concatT(
                   "/arango/Target/ReplicatedLogs/", database, "/", action.logId,
                   "/version"))
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Target/CollectionGroups/", database, "/", gid.id()))
               .end();
   }
 
@@ -609,7 +635,11 @@ struct TransactionBuilder {
             velocypack::serialize(builder, spec);
           });
     }
-    env = write.end();
+
+    env = write.precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+              .end();
   }
 
   void operator()(NoActionRequired const&) {}

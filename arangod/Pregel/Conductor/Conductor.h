@@ -23,9 +23,10 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Scheduler/Scheduler.h"
@@ -49,8 +50,8 @@ enum ExecutionState {
   LOADING,      // load graph into memory
   RUNNING,      // during normal operation
   STORING,      // store results
-  DONE,         // after everyting is done
-  CANCELED,     // after an terminal error or manual canceling
+  DONE,         // after everything is done
+  CANCELED,     // after a terminal error or manual canceling
   FATAL_ERROR,  // execution can not continue because of errors
 };
 extern const char* ExecutionStateNames[9];
@@ -70,12 +71,13 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   PregelFeature& _feature;
   const DatabaseGuard _vocbaseGuard;
   ExecutionSpecifications _specifications;
+  std::string _user;
 
   std::unique_ptr<MasterContext> _masterContext;
   std::unique_ptr<IAlgorithm> _algorithm;
 
   ExecutionState _state = ExecutionState::DEFAULT;
-  mutable Mutex
+  mutable std::mutex
       _callbackMutex;  // prevents concurrent calls to finishedGlobalStep
   std::vector<ServerID> _dbServers;
   /// tracks the servers which responded, only used for stages where we expect
@@ -93,11 +95,13 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::chrono::system_clock::time_point _created;
   std::chrono::system_clock::time_point _expires;
   ExecutionTimings _timing;
+  /// Variable to identify whether the graph has been fully loaded.
+  bool _graphLoaded{false};
   /// Variable to identify whether ArangoDB is in shutdown mode.
   bool _shutdown{false};
   // Work in Progress: Move data incrementally into this
-  // struct; sort it into categories and make it (de)serialisable
-  // with the Inspecotr framework
+  // struct; sort it into categories and make it (de)serializable
+  // with the Inspector framework
   ConductorStatus _status;
 
   bool _startGlobalStep();
@@ -117,7 +121,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void finishedWorkerFinalize(Finished const& data);
 
  public:
-  Conductor(ExecutionSpecifications const& specifications,
+  Conductor(ExecutionSpecifications const& specifications, std::string user,
             TRI_vocbase_t& vocbase, PregelFeature& feature);
 
   ~Conductor();

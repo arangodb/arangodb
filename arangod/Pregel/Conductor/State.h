@@ -38,32 +38,32 @@ struct ConductorState {
   ConductorState(std::unique_ptr<IAlgorithm> algorithm,
                  ExecutionSpecifications specifications,
                  std::unique_ptr<CollectionLookup>&& lookupInfo,
-                 actor::ActorPID spawnActor, actor::ActorPID resultActor)
-      : algorithm{std::move(algorithm)},
+                 actor::ActorPID spawnActor, actor::ActorPID resultActor,
+                 actor::ActorPID statusActor, actor::ActorPID metricsActor)
+      : executionState(std::make_unique<Initial>(*this)),
+        algorithm{std::move(algorithm)},
         specifications{std::move(specifications)},
         lookupInfo(std::move(lookupInfo)),
         spawnActor{std::move(spawnActor)},
-        resultActor{std::move(resultActor)} {}
+        resultActor{std::move(resultActor)},
+        statusActor{std::move(statusActor)},
+        metricsActor{std::move(metricsActor)} {}
 
-  ExecutionTimings timing;
-  std::unique_ptr<ExecutionState> executionState = std::make_unique<Initial>();
-  uint64_t globalSuperstep = 0;
-  ConductorStatus status;
+  std::unique_ptr<ExecutionState> executionState;
   std::unordered_set<actor::ActorPID> workers;
   std::unique_ptr<IAlgorithm> algorithm;
   const ExecutionSpecifications specifications;
   std::unique_ptr<CollectionLookup> lookupInfo;
   actor::ActorPID spawnActor;
   actor::ActorPID resultActor;
+  actor::ActorPID statusActor;
+  actor::ActorPID metricsActor;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorState& x) {
   return f.object(x).fields(
-      f.field("timing", x.timing),
-      f.field("globalSuperstep", x.globalSuperstep),
       f.field("executionState", x.executionState->name()),
-      f.field("status", x.status),
       // f.field("workers", x._workers), TODO make set inspectionable
       f.field("specifications", x.specifications));
 }

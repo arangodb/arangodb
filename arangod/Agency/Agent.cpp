@@ -32,7 +32,6 @@
 #include "Agency/AgentCallback.h"
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -200,9 +199,9 @@ bool Agent::mergeConfiguration(VPackSlice persisted) {
 
 /// Wakeup main loop of the agent (needed from Constituent)
 void Agent::wakeupMainLoop() {
-  CONDITION_LOCKER(guard, _appendCV);
+  std::lock_guard guard{_appendCV.mutex};
   _agentNeedsWakeup = true;
-  _appendCV.broadcast();
+  _appendCV.cv.notify_all();
 }
 
 /// Wait until threads are terminated:
@@ -301,7 +300,7 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
   while (true) {
     /// success?
     ///  (_waitForCV's mutex stops writes to _commitIndex)
-    CONDITION_LOCKER(guard, _waitForCV);
+    std::unique_lock guard{_waitForCV.mutex};
     auto ci = _commitIndex.load(std::memory_order_relaxed);
     if (leading()) {
       if (lastCommitIndex != ci) {
@@ -328,7 +327,9 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
     }
 
     // Go to sleep:
-    _waitForCV.wait(static_cast<uint64_t>(1.0e6 * (timeout - d.count())));
+    _waitForCV.cv.wait_for(
+        guard, std::chrono::microseconds{
+                   static_cast<uint64_t>(1.0e6 * (timeout - d.count()))});
 
     // shutting down
     if (isStopping()) {
@@ -348,7 +349,7 @@ bool Agent::isCommitted(index_t index) const {
     return true;
   }
 
-  CONDITION_LOCKER(guard, _waitForCV);
+  std::lock_guard guard{_waitForCV.mutex};
   if (leading()) {
     return _commitIndex.load(std::memory_order_relaxed) >= index;
   } else {
@@ -362,7 +363,7 @@ index_t Agent::index() {
     return 0;
   }
 
-  MUTEX_LOCKER(tiLocker, _tiLock);
+  std::lock_guard tiLocker{_tiLock};
   TRI_ASSERT(_lastAckedIndex.find(id()) != _lastAckedIndex.end());
   return _lastAckedIndex.at(id()).second;
 }
@@ -380,7 +381,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
   if (index == 0) {
     // This is only the empty case (=heartbeat)
-    MUTEX_LOCKER(locker, _emptyAppendLock);
+    std::lock_guard locker{_emptyAppendLock};
     auto n = steady_clock::now();
     auto lastTime = _lastEmptyAcked[peerId];  // intentional to add entry to map
     if (lastTime < n) {
@@ -404,7 +405,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
   // only update the time stamps here:
   {
-    MUTEX_LOCKER(tiLocker, _tiLock);
+    std::lock_guard tiLocker{_tiLock};
 
     // Update last acknowledged answer
     auto t = steady_clock::now();
@@ -445,7 +446,7 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
     // fail, we have to set this earliestPackage time to now such that the
     // main thread tries again immediately: and for that agent starting at 0
     // which effectively will be _state.firstIndex().
-    MUTEX_LOCKER(guard, _tiLock);
+    std::lock_guard guard{_tiLock};
     LOG_TOPIC("9e856", DEBUG, Logger::AGENCY)
         << "Resetting _earliestPackage to now for id " << slaveId;
     _earliestPackage[slaveId] = steady_clock::now() + seconds(1);
@@ -459,7 +460,7 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
     // this, when the agent was able to answer and no or corrupt answer is
     // handled
     if (sent) {
-      MUTEX_LOCKER(guard, _tiLock);
+      std::lock_guard guard{_tiLock};
       TRI_ASSERT(_lastAckedIndex.find(slaveId) != _lastAckedIndex.end());
       auto& [unused, lastIndex] = _lastAckedIndex.at(slaveId);
       lastIndex = 0;
@@ -585,7 +586,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term,
 
   {
     WRITE_LOCKER(oLocker, _outputLock);
-    CONDITION_LOCKER(guard, _waitForCV);
+    std::lock_guard guard{_waitForCV.mutex};
     auto ci = _commitIndex.load(std::memory_order_relaxed);
     index_t const tmp = std::max(ci, std::min(leaderCommitIndex, lastIndex));
     if (tmp > ci) {
@@ -593,7 +594,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term,
     }
     _commitIndex = tmp;
     _local_index = tmp;
-    _waitForCV.broadcast();
+    _waitForCV.cv.notify_all();
     if (leaderCommitIndex >= _state.nextCompactionAfter() &&
         payload[nqs - 1].get("index").getNumber<index_t>() >=
             _state.nextCompactionAfter()) {
@@ -631,7 +632,7 @@ void Agent::sendAppendEntriesRPC() {
 
       {
         t = this->term();
-        MUTEX_LOCKER(tiLocker, _tiLock);
+        std::lock_guard tiLocker{_tiLock};
         TRI_ASSERT(_lastAckedIndex.find(followerId) != _lastAckedIndex.end());
         std::tie(lastAcked, lastConfirmed) = _lastAckedIndex.at(followerId);
         lastSent = _lastSent[followerId];
@@ -797,7 +798,7 @@ void Agent::sendAppendEntriesRPC() {
       // error or successful result occurs.
       earliestPackage = steady_clock::now() + std::chrono::seconds(30);
       {
-        MUTEX_LOCKER(tiLocker, _tiLock);
+        std::lock_guard tiLocker{_tiLock};
         _earliestPackage[followerId] = earliestPackage;
       }
       LOG_TOPIC("99061", DEBUG, Logger::AGENCY)
@@ -825,7 +826,7 @@ void Agent::sendAppendEntriesRPC() {
       // above, we only ever have at most 5 messages in flight.
 
       {
-        MUTEX_LOCKER(tiLocker, _tiLock);
+        std::lock_guard tiLocker{_tiLock};
         _lastSent[followerId] = steady_clock::now();
       }
       // _constituent.notifyHeartbeatSent(followerId);
@@ -931,7 +932,7 @@ void Agent::advanceCommitIndex() {
   // Determine median _confirmed value of followers:
   std::vector<index_t> temp;
   {
-    MUTEX_LOCKER(_tiLocker, _tiLock);
+    std::lock_guard _tiLocker{_tiLock};
     for (auto const& id : config().active()) {
       if (_lastAckedIndex.find(id) != _lastAckedIndex.end()) {
         temp.push_back(_lastAckedIndex[id].second);
@@ -956,7 +957,7 @@ void Agent::advanceCommitIndex() {
     WRITE_LOCKER(oLocker, _outputLock);
 
     if (index > ci) {
-      CONDITION_LOCKER(guard, _waitForCV);
+      std::lock_guard guard{_waitForCV.mutex};
       LOG_TOPIC("e24a9", TRACE, Logger::AGENCY)
           << "Critical mass for commiting " << ci + 1 << " through " << index
           << " to read db";
@@ -972,7 +973,7 @@ void Agent::advanceCommitIndex() {
       _local_index = index;
 
       // Wake up write rest handlers:
-      _waitForCV.broadcast();
+      _waitForCV.cv.notify_all();
 
       logsForTrigger();
 
@@ -995,7 +996,6 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
   // code here answers with a current snapshot of the readDB, whenever it is
   // asked for updates since index 0!
 
-  std::vector<log_t> logs;
   query_t builder;
 
   std::string leader = _constituent.leaderID();
@@ -1005,51 +1005,46 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
   }
 
   {
-    CONDITION_LOCKER(guard, _waitForCV);
+    std::unique_lock guard{_waitForCV.mutex};
     while (getPrepareLeadership() != 0 && !isStopping()) {
-      _waitForCV.wait(100);
+      _waitForCV.cv.wait_for(guard, std::chrono::microseconds{100});
     }
   }
 
   {
     READ_LOCKER(oLocker, _outputLock);
+    auto ci = _commitIndex.load(std::memory_order_relaxed);
     if (index == 0 || index < _state.firstIndex()) {  // deliver as if index = 0
       builder = std::make_shared<VPackBuilder>();
-      VPackObjectBuilder r(builder.get());
+      VPackObjectBuilder r(builder.get(), /*allowUnindexed*/ true);
       builder->add(VPackValue("result"));
-      VPackObjectBuilder r2(builder.get());
-      builder->add("commitIndex",
-                   VPackValue(_commitIndex.load(std::memory_order_relaxed)));
+      VPackObjectBuilder r2(builder.get(), /*allowUnindexed*/ true);
+      builder->add("commitIndex", VPackValue(ci));
       builder->add("firstIndex", VPackValue(0));
       builder->add(VPackValue("readDB"));
       _readDB.get("", *builder, true);
-    } else if (index <= _commitIndex.load(std::memory_order_relaxed)) {
+    } else if (index <= ci) {
       // deliver immediately all logs since index
       builder = std::make_shared<VPackBuilder>();
-      VPackObjectBuilder r(builder.get());
+      VPackObjectBuilder r(builder.get(), /*allowUnindexed*/ true);
       builder->add(VPackValue("result"));
-      VPackObjectBuilder r2(builder.get());
-      auto ci = _commitIndex.load(std::memory_order_relaxed);
-      logs = _state.get(index, ci);
-      builder->add("commitIndex", VPackValue(ci));
-      builder->add("firstIndex", VPackValue(logs.front().index));
+      VPackObjectBuilder r2(builder.get(), /*allowUnindexed*/ true);
       builder->add(VPackValue("log"));
-      VPackArrayBuilder ls(builder.get());
-      for (auto const& l : logs) {
-        VPackObjectBuilder o(builder.get());
-        builder->add("index", VPackValue(l.index));
-        builder->add("query", VPackSlice(l.entry->data()));
-      }
-    }
-    if (builder != nullptr) {
-      return std::tuple<futures::Future<query_t>, bool, std::string>{
-          futures::makeFuture(std::move(builder)), true, std::string()};
+      auto firstIndex = _state.toVelocyPack(*builder, index, ci);
+      builder->add("commitIndex", VPackValue(ci));
+      builder->add("firstIndex", VPackValue(firstIndex));
     }
   }
 
-  std::lock_guard guard(_promLock);
+  if (builder != nullptr) {
+    return std::tuple<futures::Future<query_t>, bool, std::string>{
+        futures::makeFuture(std::move(builder)), true, std::string()};
+  }
+
   auto tp = steady_clock::now() +
             duration_cast<milliseconds>(duration<double>(timeout));
+
+  std::lock_guard guard(_promLock);
 
   try {
     auto res = _promises.emplace(tp, futures::Promise<query_t>());
@@ -1092,8 +1087,7 @@ void Agent::load() {
   }
 
   {
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(guard, _ioLock);  // need this for callback to set _spearhead
+    std::lock_guard guard{_ioLock};  // need this for callback to set _spearhead
     // Note that _state.loadCollections eventually does a callback to the
     // setPersistedState method, which acquires _outputLock and _waitForCV.
 
@@ -1132,7 +1126,7 @@ void Agent::load() {
   if (_inception != nullptr) {  // resilient agency only
     _inception->start();
   } else {
-    MUTEX_LOCKER(guard, _ioLock);  // need this for callback to set _spearhead
+    std::lock_guard guard{_ioLock};  // need this for callback to set _spearhead
     READ_LOCKER(guard2, _outputLock);
     _spearhead = _readDB;
     activateAgency();
@@ -1146,7 +1140,7 @@ void Agent::load() {
 
 /// Still leading? Under MUTEX from ::read or ::write
 bool Agent::challengeLeadership() {
-  MUTEX_LOCKER(tiLocker, _emptyAppendLock);
+  std::lock_guard tiLocker{_emptyAppendLock};
   size_t good = 0;
 
   std::string const myid = id();
@@ -1191,7 +1185,7 @@ void Agent::lastAckedAgo(Builder& ret) const {
   index_t lastCompactionAt, nextCompactionAfter;
 
   {
-    MUTEX_LOCKER(tiLocker, _tiLock);
+    std::lock_guard tiLocker{_tiLock};
     lastAckedIndex = _lastAckedIndex;
     lastSent = _lastSent;
     lastCompactionAt = _state.lastCompactionAt();
@@ -1253,9 +1247,9 @@ trans_ret_t Agent::transact(velocypack::Slice qs) {
   }
 
   {
-    CONDITION_LOCKER(guard, _waitForCV);
+    std::unique_lock guard{_waitForCV.mutex};
     while (getPrepareLeadership() != 0 && !isStopping()) {
-      _waitForCV.wait(100);
+      _waitForCV.cv.wait_for(guard, std::chrono::microseconds{100});
     }
   }
 
@@ -1286,8 +1280,7 @@ trans_ret_t Agent::transact(velocypack::Slice qs) {
       return trans_ret_t(false, NO_LEADER);
     }
 
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(ioLocker, _ioLock);
+    std::lock_guard ioLocker{_ioLock};
 
     for (auto query : VPackArrayIterator(qs)) {
       // Check that we are actually still the leader:
@@ -1337,9 +1330,9 @@ trans_ret_t Agent::transient(velocypack::Slice queries) {
   }
 
   {
-    CONDITION_LOCKER(guard, _waitForCV);
+    std::unique_lock guard{_waitForCV.mutex};
     while (getPrepareLeadership() != 0 && !isStopping()) {
-      _waitForCV.wait(100);
+      _waitForCV.cv.wait_for(guard, std::chrono::microseconds{100});
     }
   }
 
@@ -1355,7 +1348,7 @@ trans_ret_t Agent::transient(velocypack::Slice queries) {
       return trans_ret_t(false, NO_LEADER);
     }
 
-    MUTEX_LOCKER(transientLocker, _transientLock);
+    std::lock_guard transientLocker{_transientLock};
 
     // Read and writes
     for (auto query : VPackArrayIterator(queries)) {
@@ -1402,8 +1395,7 @@ write_ret_t Agent::inquire(velocypack::Slice query) {
     }
   }
 
-  _tiLock.assertNotLockedByCurrentThread();
-  MUTEX_LOCKER(ioLocker, _ioLock);
+  std::lock_guard ioLocker{_ioLock};
 
   ret.indices = _state.inquire(query);
 
@@ -1433,9 +1425,9 @@ write_ret_t Agent::write(velocypack::Slice query, WriteMode const& wmode) {
   }
 
   if (!wmode.discardStartup()) {
-    CONDITION_LOCKER(guard, _waitForCV);
+    std::unique_lock guard{_waitForCV.mutex};
     while (getPrepareLeadership() != 0 && !isStopping()) {
-      _waitForCV.wait(100);
+      _waitForCV.cv.wait_for(guard, std::chrono::microseconds{100});
     }
   }
 
@@ -1491,8 +1483,7 @@ write_ret_t Agent::write(velocypack::Slice query, WriteMode const& wmode) {
         return write_ret_t(false, NO_LEADER);
       }
 
-      _tiLock.assertNotLockedByCurrentThread();
-      MUTEX_LOCKER(ioLocker, _ioLock);
+      std::lock_guard ioLocker{_ioLock};
 
       applied = _spearhead.applyTransactions(chunk.slice(), wmode);
       auto tmp = _state.logLeaderMulti(chunk.slice(), applied, currentTerm);
@@ -1535,9 +1526,9 @@ read_ret_t Agent::read(velocypack::Slice query) {
   }
 
   {
-    CONDITION_LOCKER(guard, _waitForCV);
+    std::unique_lock guard{_waitForCV.mutex};
     while (getPrepareLeadership() != 0 && !isStopping()) {
-      _waitForCV.wait(100);
+      _waitForCV.cv.wait_for(guard, std::chrono::microseconds{100});
     }
   }
 
@@ -1622,7 +1613,7 @@ void Agent::run() {
           // We set the variable to false here, if any change happens during
           // or after the calls in this loop, this will be set to true to
           // indicate no sleeping. Any change will happen under the mutex.
-          CONDITION_LOCKER(guard, _appendCV);
+          std::lock_guard guard{_appendCV.mutex};
           _agentNeedsWakeup = false;
         }
 
@@ -1686,8 +1677,7 @@ void Agent::run() {
           }
 
           if (commenceService) {
-            _tiLock.assertNotLockedByCurrentThread();
-            MUTEX_LOCKER(ioLocker, _ioLock);
+            std::lock_guard ioLocker{_ioLock};
             READ_LOCKER(oLocker, _outputLock);
             _spearhead = _readDB;
             endPrepareLeadership();  // finally service can commence
@@ -1695,18 +1685,20 @@ void Agent::run() {
 
           // Go to sleep some:
           {
-            CONDITION_LOCKER(guard, _appendCV);
+            std::unique_lock guard{_appendCV.mutex};
             if (!_agentNeedsWakeup) {
               // wait up to minPing():
-              _appendCV.wait(static_cast<uint64_t>(1.0e6 * _config.minPing()));
+              _appendCV.cv.wait_for(
+                  guard, std::chrono::microseconds{
+                             static_cast<uint64_t>(1.0e6 * _config.minPing())});
               // We leave minPing here without the multiplier to run this
               // loop often enough in cases of high load.
             }
           }
         } else {
-          CONDITION_LOCKER(guard, _appendCV);
+          std::unique_lock guard{_appendCV.mutex};
           if (!_agentNeedsWakeup) {
-            _appendCV.wait(1000000);
+            _appendCV.cv.wait_for(guard, std::chrono::seconds{1});
           }
         }
       } catch (std::exception const& e) {
@@ -1749,8 +1741,7 @@ void Agent::persistConfiguration(term_t t) {
   {
     // Make sure we have setup the local list of lastAckedIndex
     // only containing the leader
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(tiLocker, _tiLock);
+    std::lock_guard tiLocker{_tiLock};
     if (_lastAckedIndex.find(id()) == _lastAckedIndex.end()) {
       _lastAckedIndex.emplace(id(), std::make_pair(steady_clock::now(), 0));
     }
@@ -1782,8 +1773,8 @@ void Agent::beginShutdown() {
 
   // Wake up all waiting rest handlers
   {
-    CONDITION_LOCKER(guard, _waitForCV);
-    _waitForCV.broadcast();
+    std::lock_guard guard{_waitForCV.mutex};
+    _waitForCV.cv.notify_all();
   }
 
   // Wake up run
@@ -1794,13 +1785,13 @@ bool Agent::prepareLead() {
   {
     // Erase _earliestPackage, which allows for immediate sending of
     // AppendEntriesRPC when we become a leader.
-    MUTEX_LOCKER(tiLocker, _tiLock);
+    std::lock_guard tiLocker{_tiLock};
     _earliestPackage.clear();
   }
 
   {
     // Clear transient for supervision start
-    MUTEX_LOCKER(transientLocker, _transientLock);
+    std::lock_guard transientLocker{_transientLock};
     _transient.clear();
   }
 
@@ -1827,8 +1818,8 @@ void Agent::lead() {
     // DO NOT EDIT without understanding the consequences for sendAppendEntries!
     index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
-    MUTEX_LOCKER(tiLocker, _tiLock);
-    MUTEX_LOCKER(locker, _emptyAppendLock);
+    std::lock_guard tiLocker{_tiLock};
+    std::lock_guard locker{_emptyAppendLock};
     for (auto& i : _lastAckedIndex) {
       if (i.first != id()) {
         i.second.second = commitIndex;
@@ -1941,10 +1932,9 @@ void Agent::notify(velocypack::Slice message) {
 void Agent::rebuildDBs() {
   term_t term = _constituent.term();
 
-  _tiLock.assertNotLockedByCurrentThread();
-  MUTEX_LOCKER(ioLocker, _ioLock);
+  std::lock_guard ioLocker{_ioLock};
   WRITE_LOCKER(oLocker, _outputLock);
-  CONDITION_LOCKER(guard, _waitForCV);
+  std::lock_guard guard{_waitForCV.mutex};
 
   index_t lastCompactionIndex;
 
@@ -1958,7 +1948,7 @@ void Agent::rebuildDBs() {
 
   _commitIndex = lastCompactionIndex;
   _local_index = lastCompactionIndex;
-  _waitForCV.broadcast();
+  _waitForCV.cv.notify_all();
 
   // Apply logs from last applied index to leader's commit index
   LOG_TOPIC("b12cb", DEBUG, Logger::AGENCY)
@@ -2055,8 +2045,7 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
 }
 
 void Agent::executeLockedRead(std::function<void()> const& cb) {
-  _tiLock.assertNotLockedByCurrentThread();
-  MUTEX_LOCKER(ioLocker, _ioLock);
+  std::lock_guard ioLocker{_ioLock};
   READ_LOCKER(oLocker, _outputLock);
   cb();
 }
@@ -2064,16 +2053,15 @@ void Agent::executeLockedRead(std::function<void()> const& cb) {
 #if 0
 // currently not called from anywhere
 void Agent::executeLockedWrite(std::function<void()> const& cb) {
-  _tiLock.assertNotLockedByCurrentThread();
-  MUTEX_LOCKER(ioLocker, _ioLock);
+  std::lock_guard ioLocker{_ioLock};
   WRITE_LOCKER(oLocker, _outputLock);
-  CONDITION_LOCKER(guard, _waitForCV);
+  std::lock_guard guard{_waitForCV.mutex};
   cb();
 }
 #endif
 
 void Agent::executeTransientLocked(std::function<void()> const& cb) {
-  MUTEX_LOCKER(transientLocker, _transientLock);
+  std::lock_guard transientLocker{_transientLock};
   cb();
 }
 
@@ -2081,10 +2069,7 @@ void Agent::executeTransientLocked(std::function<void()> const& cb) {
 /// intentionally no lock is acquired here, so we can return
 /// a const reference
 /// the caller has to make sure the lock is actually held
-Store const& Agent::transient() const {
-  _transientLock.assertLockedByCurrentThread();
-  return _transient;
-}
+Store const& Agent::transient() const { return _transient; }
 
 /// Rebuild from persisted state
 void Agent::setPersistedState(VPackSlice compaction) {
@@ -2094,12 +2079,12 @@ void Agent::setPersistedState(VPackSlice compaction) {
   // Catch up with commit
   try {
     WRITE_LOCKER(oLocker, _outputLock);
-    CONDITION_LOCKER(guard, _waitForCV);
+    std::lock_guard guard{_waitForCV.mutex};
     _readDB = compaction;
     _commitIndex = arangodb::basics::StringUtils::uint64(
         compaction.get(StaticStrings::KeyString).copyString());
     _local_index = _commitIndex.load(std::memory_order_relaxed);
-    _waitForCV.broadcast();
+    _waitForCV.cv.notify_all();
   } catch (std::exception const& e) {
     LOG_TOPIC("70844", ERR, Logger::AGENCY) << e.what();
   }
@@ -2342,7 +2327,7 @@ void Agent::trashStoreCallback(std::string const& url, VPackSlice slice) {
   // we'll remove observation on every key and according observer url
   for (auto const& i : VPackObjectIterator(slice)) {
     if (!i.key.isEqualString("term") && !i.key.isEqualString("index")) {
-      MUTEX_LOCKER(lock, _cbtLock);
+      std::lock_guard lock{_cbtLock};
       _callbackTrashBin[i.key.copyString()].emplace(url);
     }
   }
@@ -2353,8 +2338,7 @@ void Agent::emptyCbTrashBin() {
 
   auto envelope = std::make_shared<VPackBuilder>();
   {
-    _cbtLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(lock, _cbtLock);
+    std::lock_guard lock{_cbtLock};
 
     auto early = std::chrono::duration_cast<std::chrono::seconds>(
                      clock::now() - _callbackLastPurged)
@@ -2451,7 +2435,7 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
 
 void Agent::addTrxsOngoing(Slice trxs) {
   try {
-    MUTEX_LOCKER(guard, _trxsLock);
+    std::lock_guard guard{_trxsLock};
     for (auto const& trx : VPackArrayIterator(trxs)) {
       if (trx.isArray() && trx.length() == 3 && trx[0].isObject() &&
           trx[2].isString()) {
@@ -2465,7 +2449,7 @@ void Agent::addTrxsOngoing(Slice trxs) {
 
 void Agent::removeTrxsOngoing(Slice trxs) noexcept {
   try {
-    MUTEX_LOCKER(guard, _trxsLock);
+    std::lock_guard guard{_trxsLock};
     for (auto const& trx : VPackArrayIterator(trxs)) {
       if (trx.isArray() && trx.length() == 3 && trx[0].isObject() &&
           trx[2].isString()) {
@@ -2478,7 +2462,7 @@ void Agent::removeTrxsOngoing(Slice trxs) noexcept {
 }
 
 bool Agent::isTrxOngoing(std::string const& id) const noexcept {
-  MUTEX_LOCKER(guard, _trxsLock);
+  std::lock_guard guard{_trxsLock};
   auto it = _ongoingTrxs.find(id);
   return it != _ongoingTrxs.end();
 }
@@ -2548,8 +2532,7 @@ void Agent::syncActiveAndAcknowledged() {
   // at least every peer. If there is a new peer it will be inserted
   // with lastAckknowledged NOW for index 0.
   {
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(tiLocker, _tiLock);
+    std::lock_guard tiLocker{_tiLock};
     // The number of Agents is small, so we can afford to always scan linearly
     // here
     for (auto const& peer : _config.active()) {

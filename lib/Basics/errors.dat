@@ -54,6 +54,7 @@ ERROR_HTTP_REQUEST_TIMEOUT,408,"request timeout","Will be raised when a timeout 
 ERROR_HTTP_CONFLICT,409,"conflict","Will be raised when a conflict occurs in an HTTP operation."
 ERROR_HTTP_GONE,410,"content permanently deleted","Will be raised when the requested content has been permanently deleted."
 ERROR_HTTP_PRECONDITION_FAILED,412,"precondition failed","Will be raised when a precondition for an HTTP request is not met."
+ERROR_HTTP_ENHANCE_YOUR_CALM,420,"enhance your calm","Will be raised when too many requests were sent to a rate-limited API."
 ERROR_HTTP_SERVER_ERROR,500,"internal server error","Will be raised when an internal server is encountered."
 ERROR_HTTP_NOT_IMPLEMENTED,501,"not implemented","Will be raised when an API is called this is not implemented in general, or not implemented for the current setup."
 ERROR_HTTP_SERVICE_UNAVAILABLE,503,"service unavailable","Will be raised when a service is temporarily unavailable."
@@ -104,7 +105,6 @@ ERROR_ARANGO_INDEX_NOT_FOUND,1212,"index not found","Will be raised when an inde
 ERROR_ARANGO_CROSS_COLLECTION_REQUEST,1213,"cross collection request not allowed","Will be raised when a cross-collection is requested."
 ERROR_ARANGO_INDEX_HANDLE_BAD,1214,"illegal index identifier","Will be raised when a index identifier is corrupt."
 ERROR_ARANGO_DOCUMENT_TOO_LARGE,1216,"document too large","Will be raised when the document cannot fit into any datafile because of it is too large."
-ERROR_ARANGO_COLLECTION_NOT_UNLOADED,1217,"collection must be unloaded","Will be raised when a collection should be unloaded, but has a different status."
 ERROR_ARANGO_COLLECTION_TYPE_INVALID,1218,"collection type invalid","Will be raised when an invalid collection type is used in a request."
 ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,1220,"parsing attribute name definition failed","Will be raised when parsing an attribute name definition failed."
 ERROR_ARANGO_DOCUMENT_KEY_BAD,1221,"illegal document key","Will be raised when a document key is corrupt."
@@ -197,7 +197,6 @@ ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES,1469,"must not change the valu
 ERROR_CLUSTER_UNSUPPORTED,1470,"unsupported operation or parameter for clusters","Will be raised when there is an attempt to carry out an operation that is not supported in the context of a sharded collection."
 ERROR_CLUSTER_ONLY_ON_COORDINATOR,1471,"this operation is only valid on a coordinator in a cluster","Will be raised if there is an attempt to run a Coordinator-only operation on a different type of node."
 ERROR_CLUSTER_READING_PLAN_AGENCY,1472,"error reading Plan in agency","Will be raised if a Coordinator or DB-Server cannot read the Plan in the Agency."
-ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION,1473,"could not truncate collection","Will be raised if a Coordinator cannot truncate all shards of a cluster collection."
 ERROR_CLUSTER_AQL_COMMUNICATION,1474,"error in cluster internal communication for AQL","Will be raised if the internal communication of the cluster for AQL produces an error."
 ERROR_CLUSTER_ONLY_ON_DBSERVER,1477,"this operation is only valid on a DBserver in a cluster","Will be raised if there is an attempt to run a DB-Server-only operation on a different type of node."
 ERROR_CLUSTER_BACKEND_UNAVAILABLE,1478,"A cluster backend which was required for the operation could not be reached","Will be raised if a required DB-Server can't be reached."
@@ -403,11 +402,6 @@ ERROR_WAS_ERLAUBE,2019,"was erlaube?!","Will be raised if was erlaube?!"
 ################################################################################
 
 ERROR_INTERNAL_AQL,2200,"General internal AQL error","Internal error during AQL execution"
-ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS,2201,"An AQL block wrote too few output registers","An AQL block wrote too few output registers"
-ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS,2202,"An AQL block wrote too many output registers","An AQL block wrote too many output registers"
-ERROR_WROTE_OUTPUT_REGISTER_TWICE,2203,"An AQL block wrote an output register twice","An AQL block wrote an output register twice"
-ERROR_WROTE_IN_WRONG_REGISTER,2204,"An AQL block wrote in a register that is not its output","An AQL block wrote in a register that is not its output"
-ERROR_INPUT_REGISTERS_NOT_COPIED,2205,"An AQL block did not copy its input registers","An AQL block did not copy its input registers"
 
 ################################################################################
 ## Foxx management errors
@@ -488,7 +482,6 @@ ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED,21004,"queue time violated","Will be retur
 ## Maintenance errors
 ################################################################################
 
-ERROR_ACTION_OPERATION_UNABORTABLE,6002,"this maintenance action cannot be stopped","This maintenance action cannot be stopped once it is started"
 ERROR_ACTION_UNFINISHED,6003,"maintenance action still processing","This maintenance action is still processing"
 
 ################################################################################
@@ -511,11 +504,13 @@ ERROR_HOT_BACKUP_DBSERVERS_AWOL,7012,"hot backup not all db servers reachable","
 ################################################################################
 ## Plan Analyzers errors
 ################################################################################
+
 ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,7021,"analyzers in plan could not be modified","Plan could not be modified while creating or deleting Analyzers revision"
 
 ################################################################################
 ## Licensing
 ################################################################################
+
 ERROR_LICENSE_EXPIRED_OR_INVALID,9001,"license has expired or is invalid","The license has expired or is invalid."
 ERROR_LICENSE_SIGNATURE_VERIFICATION,9002,"license verification failed","Verification of license failed."
 ERROR_LICENSE_NON_MATCHING_ID,9003,"non-matching license id","The ID of the license does not match the ID of this instance."

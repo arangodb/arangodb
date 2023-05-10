@@ -12,7 +12,6 @@ exposedBy:
   - agent
   - single
 description: |
-  Total number of read-only transactions. In the cluster, this metric will
-  be collected separately for transactions on Coordinators and the
+  Total number of read-only transactions. In the cluster, this metric is
+  collected separately for transactions on Coordinators and the
   transaction counterparts on leaders and followers.
-

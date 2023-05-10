@@ -366,8 +366,8 @@ const checkRequestResult = function (requestResult, expectingError=false) {
     throw new ArangoError({
       'error': true,
       'code': requestResult.json.code,
-      'errorNum': arangodb.ERROR_INTERNAL,
-      'errorMessage': 'Error during request'
+      'errorNum': requestResult.json.errorNum,
+      'errorMessage': requestResult.json.errorMessage,
     });
   }
 
@@ -565,10 +565,14 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   };
 };
 
-const getSupervisionActionTypes = function (database, logId) {
+const getSupervisionActions = function (database, logId) {
   const {current} = readReplicatedLogAgency(database, logId);
   // filter out all empty actions
-  const actions = _.filter(current.actions, (a) => a.desc.type !== "EmptyAction");
+  return _.filter(current.actions, (a) => a.desc.type !== "EmptyAction");
+};
+
+const getSupervisionActionTypes = function (database, logId) {
+  const actions = getSupervisionActions(database, logId);
   return _.map(actions, (a) => a.desc.type);
 };
 
@@ -591,6 +595,15 @@ const updateReplicatedLogTarget = function(database, id, callback) {
     result = oldTarget;
   }
   replicatedLogSetTarget(database, id, result);
+};
+
+const increaseTargetVersion = function (database, id) {
+  const {target} = readReplicatedLogAgency(database, id);
+  if (target) {
+    target.version = 1 + (target.version || 0);
+    replicatedLogSetTarget(database, id, target);
+    return target.version;
+  }
 };
 
 const sortedArrayEqualOrError = (left, right) => {
@@ -711,6 +724,7 @@ exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
 exports.getServerUrl = getServerUrl;
 exports.getSupervisionActionTypes = getSupervisionActionTypes;
+exports.getSupervisionActions = getSupervisionActions;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.readAgencyValueAt = readAgencyValueAt;
 exports.readReplicatedLogAgency = readReplicatedLogAgency;
@@ -742,3 +756,4 @@ exports.getShardsToLogsMapping = getShardsToLogsMapping;
 exports.replaceParticipant = replaceParticipant;
 exports.createReconfigureJob = createReconfigureJob;
 exports.getAgencyJobStatus = getAgencyJobStatus;
+exports.increaseTargetVersion = increaseTargetVersion;

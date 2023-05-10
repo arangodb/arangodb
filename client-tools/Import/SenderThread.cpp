@@ -24,8 +24,6 @@
 #include "SenderThread.h"
 
 #include "Basics/Common.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -60,8 +58,8 @@ void SenderThread::beginShutdown() {
   Thread::beginShutdown();
 
   // wake up the thread that may be waiting in run()
-  CONDITION_LOCKER(guard, _condition);
-  guard.broadcast();
+  std::lock_guard guard{_condition.mutex};
+  _condition.cv.notify_all();
 }
 
 void SenderThread::sendData(std::string const& url,
@@ -72,11 +70,11 @@ void SenderThread::sendData(std::string const& url,
   _data.swap(data);
 
   // wake up the thread that may be waiting in run()
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   _idle = false;
   _lowLineNumber = lowLine;
   _highLineNumber = highLine;
-  guard.broadcast();
+  _condition.cv.notify_all();
 }
 
 bool SenderThread::hasError() {
@@ -84,7 +82,7 @@ bool SenderThread::hasError() {
   {
     // flag reset after read to prevent multiple reporting
     //  of errors in ImportHelper
-    CONDITION_LOCKER(guard, _condition);
+    std::lock_guard guard{_condition.mutex};
     retFlag = _hasError;
     _hasError = false;
   }
@@ -96,27 +94,27 @@ bool SenderThread::hasError() {
 }
 
 bool SenderThread::isReady() {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   return _ready;
 }
 
 bool SenderThread::isIdle() {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   return _idle;
 }
 
 bool SenderThread::isDone() {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   return _idle || _hasError;
 }
 
 void SenderThread::run() {
   while (!isStopping() && !_hasError) {
     {
-      CONDITION_LOCKER(guard, _condition);
+      std::unique_lock guard{_condition.mutex};
       _ready = true;
       if (_idle) {
-        guard.wait();
+        _condition.cv.wait(guard);
       }
     }
     if (isStopping()) {
@@ -139,10 +137,10 @@ void SenderThread::run() {
         _data.reset();
       }
 
-      CONDITION_LOCKER(guard, _condition);
+      std::lock_guard guard{_condition.mutex};
       _idle = true;
     } catch (...) {
-      CONDITION_LOCKER(guard, _condition);
+      std::lock_guard guard{_condition.mutex};
       _hasError = true;
       _idle = true;
     }
@@ -150,7 +148,7 @@ void SenderThread::run() {
     _wakeup();
   }
 
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   TRI_ASSERT(_idle);
 }
 
@@ -189,7 +187,7 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
 
     {
       // first update all the statistics
-      MUTEX_LOCKER(guard, _stats->_mutex);
+      std::lock_guard guard{_stats->_mutex};
       // look up the "created" flag
       _stats->_numberCreated +=
           arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(

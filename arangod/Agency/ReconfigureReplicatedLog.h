@@ -48,22 +48,24 @@ struct ReconfigureReplicatedLog : Job {
   ReconfigureReplicatedLog(Node const& snapshot, AgentInterface* agent,
                            JOB_STATUS status, std::string const& jobId);
 
-  ReconfigureReplicatedLog(Node const& snapshot, AgentInterface* agent,
-                           std::string const& jobId, std::string const& creator,
-                           std::string const& database,
-                           replication2::LogId logId,
-                           std::vector<ReconfigureOperation> ops);
+  ReconfigureReplicatedLog(
+      Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+      std::string const& creator, std::string const& database,
+      replication2::LogId logId, std::vector<ReconfigureOperation> ops,
+      std::optional<ServerID> undoSetLeader = std::nullopt);
 
   JOB_STATUS status() final;
   bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) final;
   void run(bool&) final;
   bool start(bool&) final;
   Result abort(std::string const& reason) final;
+  void addUndoSetLeader(Builder& trx);
 
   DatabaseID _database;
   replication2::LogId _logId;
   std::uint64_t _expectedVersion{0};
   std::vector<ReconfigureOperation> _operations;
+  std::optional<ServerID> _undoSetLeader;
 };
 
 }  // namespace arangodb::consensus

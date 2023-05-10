@@ -37,5 +37,9 @@ class RestTelemetricsHandler : public arangodb::RestBaseHandler {
   char const* name() const override final { return "RestTelemetricsHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
+
+ private:
+  void resetTelemetricsRequestsCounter();
+  bool trackTelemetricsRequestsCounter();
 };
 }  // namespace arangodb

@@ -1885,7 +1885,7 @@ void Query::debugKillQuery() {
 
   QueryRegistry* registry = QueryRegistryFeature::registry();
   if (registry != nullptr) {
-    isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
+    isInRegistry = registry->queryIsRegistered(_queryId);
   }
   TRI_ASSERT(isInList || isStreaming || isInRegistry ||
              _execState == QueryExecutionState::ValueType::FINALIZATION)

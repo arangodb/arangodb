@@ -46,7 +46,7 @@ function replication2Client(options) {
 
   const opts = _.clone(options);
   opts.dbServers = Math.max(opts.dbServers, 3);
-
+  opts.enableAliveMonitor = false;
   return new tu.runLocalInArangoshRunner(opts, 'replication2_client').run(testCases);
 }
 
@@ -62,7 +62,7 @@ function replication2Server(options) {
   opts.cluster = true;
   opts.dbServers = Math.max(opts.dbServers, 6);
   opts.agencySize = 1;
-
+  opts.enableAliveMonitor = false;
   return new tu.runOnArangodRunner(opts, 'replication2_server', {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',

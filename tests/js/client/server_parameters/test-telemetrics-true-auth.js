@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global getOptions, assertEqual, assertTrue, assertNotNull, assertNotUndefined, arango */
+/* global getOptions, assertEqual, assertNotEqual, assertTrue, assertNotNull, assertNotUndefined, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,18 +27,20 @@ const jwtSecret = 'abc';
 
 if (getOptions === true) {
   return {
-    'server.enable-telemetrics-api': 'true',
+    'server.telemetrics-api': 'true',
+    'server.telemetrics-api-max-requests': '15',
     'server.authentication': 'true',
     'server.jwt-secret': jwtSecret,
   };
 }
 
-let jsunity = require('jsunity');
-let internal = require('internal');
+const jsunity = require('jsunity');
+const internal = require('internal');
 const FoxxManager = require('@arangodb/foxx/manager');
 const path = require('path');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'redirect');
-let arangodb = require('@arangodb');
+const arangodb = require('@arangodb');
+const db = arangodb.db;
 const users = require('@arangodb/users');
 const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
@@ -54,7 +56,6 @@ const cn3 = "edgeTestCollection";
 const vn1 = "testVertex1";
 const vn2 = "testVertex2";
 
-let db = arangodb.db;
 
 function createUser() {
   users.save(userName, '123', true);
@@ -214,9 +215,7 @@ function assertForTelemetricsResponse(telemetrics) {
   parseDatabases(databases);
 }
 
-
 function telemetricsShellReconnectSmartGraphTestsuite() {
-
   return {
 
     setUpAll: function () {
@@ -239,6 +238,11 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
         smartGraph._drop(cn2, true);
       } catch (err) {
       }
+    },
+    
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
     },
 
     testTelemetricsShellRequestByUserAuthorized: function () {
@@ -354,9 +358,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
 }
 
 function telemetricsShellReconnectGraphTestsuite() {
-
   return {
-
     setUpAll: function () {
       db._create(cn);
       let coll = db._createEdgeCollection(cn3, {numberOfShards: 2});
@@ -366,6 +368,11 @@ function telemetricsShellReconnectGraphTestsuite() {
     tearDownAll: function () {
       db._drop(cn);
       db._drop(cn3);
+    },
+
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
     },
 
     testTelemetricsShellRequestByUserAuthorized2: function () {
@@ -465,7 +472,6 @@ function telemetricsShellReconnectGraphTestsuite() {
 
 
 function telemetricsApiReconnectSmartGraphTestsuite() {
-
   return {
 
     setUpAll: function () {
@@ -488,6 +494,11 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
         smartGraph._drop(cn2, true);
       } catch (err) {
       }
+    },
+    
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
     },
 
     testTelemetricsApiRequestByUserAuthorized: function () {
@@ -598,7 +609,6 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
       }
     },
 
-
     testTelemetricsInsertingEndpointReqBodyAsDocument: function () {
       arango.disableAutomaticallySendTelemetricsToEndpoint();
       arango.startTelemetrics();
@@ -609,14 +619,12 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
       assertTrue(doc.hasOwnProperty("_key"));
       assertTrue(doc.hasOwnProperty("_rev"));
       assertForTelemetricsResponse(db[cn].document(doc["_id"]));
-
     },
 
   };
 }
 
 function telemetricsApiReconnectGraphTestsuite() {
-
   return {
 
     setUpAll: function () {
@@ -629,6 +637,11 @@ function telemetricsApiReconnectGraphTestsuite() {
       db._drop(cn);
       db._drop(cn3);
     },
+    
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
+    },
 
     testTelemetricsApiRequestByUserAuthorized2: function () {
       try {
@@ -638,7 +651,6 @@ function telemetricsApiReconnectGraphTestsuite() {
         assertForTelemetricsResponse(telemetrics);
         let deployment = telemetrics["deployment"];
         assertEqual(deployment["databases"].length, 1);
-
 
         db._createDatabase(databaseName);
         db._useDatabase(databaseName);
@@ -721,13 +733,10 @@ function telemetricsApiReconnectGraphTestsuite() {
   };
 }
 
-
 function telemetricsSendToEndpointRedirectTestsuite() {
-
   const mount = '/test-redirect';
 
   return {
-
     setUpAll: function () {
       try {
         FoxxManager.uninstall(mount, {force: true});
@@ -750,6 +759,11 @@ function telemetricsSendToEndpointRedirectTestsuite() {
       } catch (err) {
       }
     },
+    
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
+    },
 
     testTelemetricsSendToEndpointWithRedirection: function () {
       arango.disableAutomaticallySendTelemetricsToEndpoint();
@@ -762,6 +776,43 @@ function telemetricsSendToEndpointRedirectTestsuite() {
   };
 }
 
+function telemetricsEnhancingOurCalm() {
+  return {
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
+    },
+
+    testTelemetricsApiCallWithoutArangoshUserAgent: function () {
+      for (let i = 0; i < 20; ++i) {
+        let res = arango.GET_RAW("/_admin/telemetrics");
+        assertEqual(200, res.code);
+      }
+    },
+    
+    testTelemetricsApiCallAndSetArangoshUserAgent: function () {
+      const n = 50;
+
+      let successful = 0;
+      let failed = 0;
+      for (let i = 0; i < n; ++i) {
+        let res = arango.GET_RAW("/_admin/telemetrics", { "user-agent": "arangosh/3.11.0" });
+        if (res.code === 200) {
+          ++successful;
+        } 
+        if (res.code === 420) {
+          assertEqual(420, res.errorNum);
+          ++failed;
+          break;
+        }
+      }
+      assertNotEqual(failed, 0);
+      assertNotEqual(successful, n);
+    },
+
+  };
+}
+
 if (isEnterprise) {
   jsunity.run(telemetricsShellReconnectSmartGraphTestsuite);
   jsunity.run(telemetricsApiReconnectSmartGraphTestsuite);
@@ -769,6 +820,6 @@ if (isEnterprise) {
 jsunity.run(telemetricsShellReconnectGraphTestsuite);
 jsunity.run(telemetricsApiReconnectGraphTestsuite);
 jsunity.run(telemetricsSendToEndpointRedirectTestsuite);
-
+jsunity.run(telemetricsEnhancingOurCalm);
 
 return jsunity.done();

@@ -12,4 +12,4 @@ exposedBy:
   - single
 description: |
   This metric exposes the current RocksDB WAL sequence number. Any
-  write operations into the database will increase the sequence number.
+  write operations into the database increases the sequence number.

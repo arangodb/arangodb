@@ -42,6 +42,7 @@
 #include <chrono>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -462,21 +463,21 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
 
   // @brief Lock for the above time data about other agents. This
   // protects _confirmed, _lastAcked and _earliestPackage:
-  mutable arangodb::Mutex _tiLock;
+  mutable std::mutex _tiLock;
 
   /// @brief Facilitate quick note of followership on leaders
-  mutable arangodb::Mutex _emptyAppendLock;
+  mutable std::mutex _emptyAppendLock;
   std::unordered_map<std::string, SteadyTimePoint> _lastEmptyAcked;
 
   /// @brief RAFT consistency lock:
   ///   _spearhead
   ///
-  mutable arangodb::Mutex _ioLock;
+  mutable std::mutex _ioLock;
 
   /// @brief Callback trash bin lock
   ///   _callbackTrashBin
   ///
-  mutable arangodb::Mutex _cbtLock;
+  mutable std::mutex _cbtLock;
 
   /// @brief RAFT consistency lock:
   ///   _readDB and _commitIndex
@@ -486,7 +487,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
 
   /// @brief The following mutex protects the _transient store. It is
   /// needed for all accesses to _transient.
-  mutable arangodb::Mutex _transientLock;
+  mutable std::mutex _transientLock;
 
   /// @brief RAFT consistency lock and update notifier:
   ///   _readDB and _commitIndex
@@ -548,7 +549,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   std::unordered_set<std::string> _ongoingTrxs;
 
   // lock for _ongoingTrxs
-  mutable arangodb::Mutex _trxsLock;
+  mutable std::mutex _trxsLock;
 
   // @brief promises for poll interface and the guard
   //        The map holds all current poll promises.

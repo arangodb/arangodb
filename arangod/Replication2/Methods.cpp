@@ -256,37 +256,6 @@ struct VPackLogIterator final : PersistedLogIterator {
   VPackArrayIterator iter;
 };
 
-struct VPackLogIterator2 final : LogIterator {
-  explicit VPackLogIterator2(
-      std::shared_ptr<velocypack::Buffer<uint8_t>> buffer_ptr)
-      : buffer(std::move(buffer_ptr)),
-        iter(VPackSlice(buffer->data()).get("result")) {}
-
-  auto next() -> std::optional<LogEntryView> override {
-    if (iter != std::default_sentinel) {
-      auto slice = *iter++;
-      auto indexSlice = slice.get(StaticStrings::LogIndex);
-      auto payloadSlice = slice.get(StaticStrings::Payload);
-      if (indexSlice.isNone() || payloadSlice.isNone()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            fmt::format("log entry is missing at least one of `{}` or `{}` "
-                        "attributes: {}",
-                        StaticStrings::LogIndex, StaticStrings::Payload,
-                        slice.toJson()));
-      }
-      auto index = indexSlice.getNumber<std::uint64_t>();
-      return LogEntryView(LogIndex(index), payloadSlice);
-    } else {
-      return std::nullopt;
-    }
-  }
-
- private:
-  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer;
-  VPackArrayIterator iter;
-};
-
 }  // namespace
 
 struct ReplicatedLogMethodsCoordinator final

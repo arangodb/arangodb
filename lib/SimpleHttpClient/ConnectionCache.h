@@ -23,11 +23,10 @@
 
 #pragma once
 
-#include "Basics/Mutex.h"
-
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -103,7 +102,7 @@ class ConnectionCache {
 
   Options const _options;
 
-  mutable arangodb::Mutex _lock;
+  mutable std::mutex _lock;
 
   std::unordered_map<std::string,
                      std::vector<std::unique_ptr<GeneralClientConnection>>>

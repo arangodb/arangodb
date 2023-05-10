@@ -1,13 +1,11 @@
-import { JsonEditor as Editor } from 'jsoneditor-react';
-import React, { useEffect, useRef, useState } from 'react';
+import { Box, ListItem, UnorderedList } from '@chakra-ui/react';
 import Ajv2019 from "ajv/dist/2019";
-import { formSchema, FormState, linksSchema } from "../constants";
-import { FormProps, State } from "../../../utils/constants";
-import { Cell, Grid } from "../../../components/pure-css/grid";
+import { JsonEditor as Editor } from 'jsoneditor-react';
 import { cloneDeep, pick } from "lodash";
+import React, { useEffect, useRef, useState } from 'react';
+import { FormProps, State } from "../../../utils/constants";
 import { useJsonFormErrorHandler, useJsonFormUpdateEffect } from "../../../utils/helpers";
-
-declare var frontendConfig: { [key: string]: any };
+import { formSchema, FormState, linksSchema } from "../constants";
 
 const ajv = new Ajv2019({
   allErrors: true,
@@ -63,7 +61,7 @@ const JsonForm = ({ formState, dispatch, renderKey, mode = 'code', isEdit = fals
       fss.properties.writebufferSizeMax = {
         const: formState.writebufferSizeMax
       };
-      if (frontendConfig.isCluster) {
+      if (window.frontendConfig.isCluster) {
         fss.properties.name = {
           const: formState.name
         };
@@ -115,20 +113,28 @@ const JsonForm = ({ formState, dispatch, renderKey, mode = 'code', isEdit = fals
     }
   };
 
-  return <Grid>
-    <Cell size={'1'}>
-      <Editor value={formState} onChange={changeHandler} mode={mode} history={true} key={renderKey} htmlElementProps={{style: {height: '95vh'}}}/>
-    </Cell>
-    {
-      formErrors.length
-        ? <Cell size={'1'} style={{ marginTop: 35 }}>
-          <ul style={{ color: 'red' }}>
-            {formErrors.map((error, idx) => <li key={idx} style={{ marginBottom: 5 }}>{error}</li>)}
-          </ul>
-        </Cell>
-        : null
-    }
-  </Grid>;
+  return (
+    <Box display="grid" gridTemplateRows="1fr 80px" height="full">
+      <Editor
+        value={formState}
+        onChange={changeHandler}
+        mode={mode}
+        history={true}
+        key={renderKey}
+        htmlElementProps={{ style: { height: "100%" } }}
+      />
+
+      {formErrors.length ? (
+        <UnorderedList paddingLeft="4" color="red.600" overflow="auto">
+          {formErrors.map((error, idx) => (
+            <ListItem key={idx} style={{ marginBottom: 5 }}>
+              {error}
+            </ListItem>
+          ))}
+        </UnorderedList>
+      ) : null}
+    </Box>
+  );
 };
 
 export default JsonForm;

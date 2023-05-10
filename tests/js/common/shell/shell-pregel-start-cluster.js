@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue JSON */
+/*global assertEqual, assertNotEqual, assertTrue */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -84,7 +84,6 @@ function shardKeysTestSuite() {
         threshold: 0.0000000001,
         resultField: "result",
         store: false,
-        useMemoryMaps: true,
       });
 
       assertNotEqual(0,pid);
@@ -100,7 +99,6 @@ function shardKeysTestSuite() {
         threshold: 0.0000000001,
         resultField: "result",
         store: false,
-        useMemoryMaps: true,
         shardKeyAttribute: "_key"
       });
       assertNotEqual(0,pid);
@@ -116,7 +114,6 @@ function shardKeysTestSuite() {
         threshold: 0.0000000001,
         resultField: "result",
         store: false,
-        useMemoryMaps: true,
         shardKeyAttribute: "ulf"
       });
       assertNotEqual(0,pid);
@@ -225,12 +222,6 @@ function basicTestSuite() {
       // should test correct convergence behavior, might fail if EPS is too low
       testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
     },
-
-    testPageRankMMap: function () {
-      // should test correct convergence behavior, might fail if EPS is too low
-      testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true, useMemoryMaps: true });
-    },
-
     testPageRankSeeded: function () {
       // test that pagerank picks the seed value
       testAlgo("pagerank", { maxGSS: 1, sourceField: "pagerank", resultField: "result", store: true });
@@ -278,12 +269,7 @@ function basicTestSuite() {
       });
 
       pregel.cancel(pid); // delete contents
-      internal.wait(5.0);
-
-      array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
-      assertEqual(array.length, 1);
-      results = array[0];
-      assertEqual(results.length, 0);
+      pregelTestHelpers.waitForResultsBeeingGarbageCollected(pid, 0);
     }
   };
 };

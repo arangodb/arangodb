@@ -83,19 +83,22 @@ std::shared_ptr<transaction::Context> GraphManager::ctx() const {
 }
 
 Result GraphManager::createEdgeCollection(std::string const& name,
-                                          bool waitForSync,
+                                          bool waitForSyncReplication,
                                           VPackSlice options) {
-  return createCollection(name, TRI_COL_TYPE_EDGE, waitForSync, options);
+  return createCollection(name, TRI_COL_TYPE_EDGE, waitForSyncReplication,
+                          options);
 }
 
 Result GraphManager::createVertexCollection(std::string const& name,
-                                            bool waitForSync,
+                                            bool waitForSyncReplication,
                                             VPackSlice options) {
-  return createCollection(name, TRI_COL_TYPE_DOCUMENT, waitForSync, options);
+  return createCollection(name, TRI_COL_TYPE_DOCUMENT, waitForSyncReplication,
+                          options);
 }
 
 Result GraphManager::createCollection(std::string const& name,
-                                      TRI_col_type_e colType, bool waitForSync,
+                                      TRI_col_type_e colType,
+                                      bool waitForSyncReplication,
                                       VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
@@ -109,7 +112,7 @@ Result GraphManager::createCollection(std::string const& name,
       name,     // collection name
       colType,  // collection type
       options,  // collection properties
-      /*createWaitsForSyncReplication*/ waitForSync,
+      /*createWaitsForSyncReplication*/ waitForSyncReplication,
       /*enforceReplicationFactor*/ true,
       /*isNewDatabase*/ false, coll);
 
@@ -603,15 +606,22 @@ Result GraphManager::ensureCollections(
         }
         return nullptr;
       });
-  // This will only have effect in Enterprise Version
-  auto leadingCollectionResult = graph.getLeadingCollection(
-      documentCollectionsToCreate, edgeCollectionsToCreate, satellites,
-      anyExistingCollection, getLeaderName);
-  // NOTE: I would have loved to use auto [leadingCollection, pickedExisting] =
-  // above but compiler does not make real variables out them so i could not use
-  // them in the following lambdas.
-  auto leadingCollection = leadingCollectionResult.first;
-  auto pickedExisting = leadingCollectionResult.second;
+
+  auto config = _vocbase.getDatabaseConfiguration();
+  std::optional<std::string> leadingCollection = std::nullopt;
+  bool pickedExisting = false;
+
+  if (config.isOneShardDB) {
+    leadingCollection = config.defaultDistributeShardsLike;
+    TRI_ASSERT(leadingCollection.has_value() &&
+               !leadingCollection.value().empty());
+    pickedExisting = true;
+  } else {
+    // This will only have effect in Enterprise Version
+    std::tie(leadingCollection, pickedExisting) = graph.getLeadingCollection(
+        documentCollectionsToCreate, edgeCollectionsToCreate, satellites,
+        anyExistingCollection, getLeaderName);
+  }
 
   // Validate if the existing collections can be used within this graph type.
 
@@ -633,7 +643,6 @@ Result GraphManager::ensureCollections(
   }
 
   std::vector<CreateCollectionBody> createRequests;
-  auto config = _vocbase.getDatabaseConfiguration();
 
   if (leadingCollection.has_value() && graph.requiresInitialUpdate()) {
     // We create the leader within this call, rewire distributeShardsLike
@@ -644,7 +653,8 @@ Result GraphManager::ensureCollections(
          originalCallback = std::move(originalCallback)](
             std::string const& name) -> ResultT<UserInputCollectionProperties> {
       // We can only search for the leading collection.
-      TRI_ASSERT(name == leadingCollection.value());
+      TRI_ASSERT(name == leadingCollection.value())
+          << name << " does not match " << leadingCollection.value();
       for (auto const& c : createRequests) {
         if (c.name == name) {
           // On new graphs the leading collection is in the first position.
@@ -700,18 +710,33 @@ Result GraphManager::ensureCollections(
 #else
   bool const allowEnterpriseCollectionsOnSingleServer = false;
 #endif
+  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
+  bool waitForSyncReplication = cluster.createWaitsForSyncReplication();
+
   OperationOptions opOptions(ExecContext::current());
   auto finalResult = methods::Collections::create(
-      ctx()->vocbase(), opOptions, std::move(createRequests), waitForSync, true,
-      false, allowEnterpriseCollectionsOnSingleServer);
+      ctx()->vocbase(), opOptions, std::move(createRequests),
+      waitForSyncReplication, true, false,
+      allowEnterpriseCollectionsOnSingleServer);
   // We do not care for the Collections here, just forward the result
   // API guarantees all or none.
   if (finalResult.ok() && leadingCollection.has_value() &&
       graph.requiresInitialUpdate()) {
     if (pickedExisting) {
-      // Take initial from the selected existing one
-      graph.updateInitial({anyExistingCollection}, leadingCollection,
-                          getLeaderName);
+      if (config.isOneShardDB) {
+        // We need to shard by the default sharding collection
+        // Take initial from the selected existing one
+        auto defaultSharding =
+            resolver.getCollection(config.defaultDistributeShardsLike);
+        ADB_PROD_ASSERT(defaultSharding != nullptr)
+            << "We have lost the leading collection of a oneShardDatabase";
+        graph.updateInitial({std::move(defaultSharding)}, leadingCollection,
+                            getLeaderName);
+      } else {
+        // Take initial from the selected existing one
+        graph.updateInitial({anyExistingCollection}, leadingCollection,
+                            getLeaderName);
+      }
     } else {
       // Take the initial from freshly created collections
       graph.updateInitial(finalResult.get(), leadingCollection, getLeaderName);

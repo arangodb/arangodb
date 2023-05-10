@@ -49,7 +49,7 @@ static ReadWriteLock ActionsLock;
 TRI_action_result_t TRI_fake_action_t::execute(TRI_vocbase_t*,
                                                arangodb::GeneralRequest*,
                                                arangodb::GeneralResponse*,
-                                               arangodb::Mutex*, void**) {
+                                               std::mutex*, void**) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "TRI_fake_action_t::execute must never be called");
 }

@@ -172,7 +172,7 @@
       var dbname = String($('#newDatabaseName').val()).trim();
       try {
         // create NFC-normalized variant of the database name
-        dbname = dbname.normalize("NFC");
+        dbname = dbname.normalize();
       } catch (err) {
         // for browsers not supporting the normalize API
       }
@@ -259,7 +259,7 @@
         reducedCollection;
 
       searchInput = $('#databaseSearchInput');
-      searchString = arangoHelper.escapeHtml($('#databaseSearchInput').val());
+      searchString = arangoHelper.escapeHtml($('#databaseSearchInput').val().normalize());
       reducedCollection = this.collection.filter(
         function (u) {
           return u.get('name').indexOf(searchString) !== -1;

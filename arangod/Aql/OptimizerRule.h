@@ -204,6 +204,9 @@ struct OptimizerRule {
     // sort values used in IN comparisons of remaining filters
     sortInValuesRule,
 
+    // Replaces the last element of the path on traversals, by direct output.
+    replaceLastAccessOnGraphPathRule,
+
     // merge filters into graph traversals
     optimizeTraversalsRule,
 
@@ -229,6 +232,9 @@ struct OptimizerRule {
     // when we have single document operations, fill in special cluster
     // handling.
     substituteSingleDocumentOperations,
+
+    // special cluster handling for multiple operations (babies)
+    substituteMultipleDocumentOperations,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule,

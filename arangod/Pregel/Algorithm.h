@@ -116,7 +116,7 @@ struct Algorithm : IAlgorithm {
   }
   virtual std::set<std::string> initialActiveSet() { return {}; }
 
-  [[nodiscard]] virtual uint32_t messageBatchSize(
+  [[deprecated]] [[nodiscard]] virtual uint32_t messageBatchSize(
       std::shared_ptr<WorkerConfig const> config,
       MessageStats const& stats) const {
     if (config->localSuperstep() == 0) {

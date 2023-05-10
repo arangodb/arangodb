@@ -28,6 +28,7 @@ const {db, errors} = require('@arangodb');
 const console = require('console');
 const rh = require('@arangodb/testutils/restart-helper');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
+const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const dh = require("@arangodb/testutils/document-state-helper");
 const {getCtrlDBServers} = require('@arangodb/test-helper');
 const {sleep} = require('internal');
@@ -70,7 +71,20 @@ const compareAllDocuments = function (col, expectedKeys) {
   assertEqual(expectedKeys, _.sortBy(actualKeys, _.toNumber));
 };
 
-function testSuite () {
+const restartAndWaitForRebootId = function (servers) {
+  const rebootIds = servers.map(s => [s.id, lh.getServerRebootId(s.id)]);
+  rh.restartServers(servers);
+  lh.waitFor(function () {
+    for (const [server, rid] of rebootIds) {
+      const current = lh.getServerRebootId(server);
+      if (rid > current) {
+        return Error(`server ${server} reboot id is ${current}, expected > ${rid}`);
+      }
+    }
+  });
+};
+
+function testSuite() {
   const databaseName = 'replication2_restart_test_db';
   const colName = 'replication2_restart_test_collection';
 
@@ -99,8 +113,10 @@ function testSuite () {
       enableMaintenanceMode();
       rh.shutdownServers(dbServers);
 
-      rh.restartServers(dbServers);
+      restartAndWaitForRebootId(dbServers);
       disableMaintenanceMode();
+
+      lh.waitFor(lp.allReplicatedStatesConverged(databaseName));
 
       compareAllDocuments(col, expectedKeys);
       // Insert another document to check if the collection is writable (it should)
@@ -117,8 +133,10 @@ function testSuite () {
       enableMaintenanceMode();
       rh.shutdownServers(dbServers);
 
-      rh.restartServers(dbServers);
+      restartAndWaitForRebootId(dbServers);
       disableMaintenanceMode();
+
+      lh.waitFor(lp.allReplicatedStatesConverged(databaseName));
 
       compareAllDocuments(col, expectedKeys);
       // Insert another document to check if the collection is writable (it should)
@@ -140,15 +158,17 @@ function testSuite () {
       enableMaintenanceMode();
       rh.shutdownServers([leader]);
 
-      rh.restartServers([leader]);
+      restartAndWaitForRebootId([leader]);
       disableMaintenanceMode();
+
+      lh.waitFor(lp.replicatedStateConverged(databaseName, logId));
 
       compareAllDocuments(col, expectedKeys);
       // Insert another document to check if the collection is writable (it should)
       col.insert({_key: "another-document"});
     },
 
-    testRestartLeaderDistributeShardsLike: function() {
+    testRestartLeaderDistributeShardsLike: function () {
       const col = db._createDocumentCollection(colName, {numberOfShards: 1, replicationFactor: 2});
       const expectedKeys = _.range(100).map(i => `${i}`);
       col.insert(expectedKeys.map(_key => ({_key})));
@@ -166,8 +186,10 @@ function testSuite () {
       enableMaintenanceMode();
       rh.shutdownServers([leader]);
 
-      rh.restartServers([leader]);
+      restartAndWaitForRebootId([leader]);
       disableMaintenanceMode();
+
+      lh.waitFor(lp.replicatedStateConverged(databaseName, logId));
 
       // query for shards on that server
       const assocShards = dh.getAssociatedShards(lh.getServerUrl(leaderId), databaseName, logId);

@@ -1,2 +1,6 @@
 target_sources(arango_pregel PRIVATE
-  GraphStore.cpp)
+  GraphLoader.cpp
+  GraphStorer.cpp
+  GraphVPackBuilderStorer.cpp
+  Magazine.cpp
+  Quiver.cpp)

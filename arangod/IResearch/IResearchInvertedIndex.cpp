@@ -196,7 +196,7 @@ struct CoveringValue {
 
   irs::doc_iterator::ptr itr;
   std::string_view column;
-  const irs::payload* value{};
+  irs::payload const* value{};
 };
 
 /// @brief Represents virtual "vector" of stored values in the irsesearch index
@@ -391,13 +391,13 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
           irs::proxy_filter::cache_ptr newCache;
           if (condition->type == aql::NODE_TYPE_OPERATOR_NARY_AND) {
             auto res = proxy_filter.set_filter<irs::And>();
-            _immutablePartCache[condition] = res.second;
             immutableRoot = &res.first;
+            _immutablePartCache[condition] = std::move(res.second);
           } else {
             TRI_ASSERT((condition->type == aql::NODE_TYPE_OPERATOR_NARY_OR));
             auto res = proxy_filter.set_filter<irs::Or>();
-            _immutablePartCache[condition] = res.second;
             immutableRoot = &res.first;
+            _immutablePartCache[condition] = std::move(res.second);
           }
 
           auto const conditionSize =
@@ -405,6 +405,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
           for (int64_t i = 0; i < conditionSize; ++i) {
             if (i != _mutableConditionIdx) {
+              // cppcheck-suppress invalidLifetime
               auto& tmp_root = append<irs::Or>(*immutableRoot, filterCtx);
               auto rv = FilterFactory::filter(&tmp_root, filterCtx,
                                               *condition->getMember(i));
@@ -426,7 +427,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       // sorting case
       append<irs::all>(root, filterCtx);
     }
-    _filter = root.prepare(_snapshot, irs::Order::kUnordered, irs::kNoBoost,
+    _filter = root.prepare(_snapshot, irs::Scorers::kUnordered, irs::kNoBoost,
                            &kEmptyAttributeProvider);
     TRI_ASSERT(_filter);
     if (ADB_UNLIKELY(!_filter)) {
@@ -530,10 +531,12 @@ class IResearchInvertedIndexIterator final
         }
         _projections.reset(segmentReader);
 
-        _itr = segmentReader.mask(_filter->execute(
-            irs::ExecutionContext{.segment = segmentReader,
-                                  .scorers = irs::Order::kUnordered,
-                                  .ctx = &kEmptyAttributeProvider}));
+        _itr = segmentReader.mask(_filter->execute({
+            .segment = segmentReader,
+            .scorers = irs::Scorers::kUnordered,
+            .ctx = &kEmptyAttributeProvider,
+            .wand = {},
+        }));
         _doc = irs::get<irs::document>(*_itr);
       } else {
         if constexpr (produce) {
@@ -595,7 +598,7 @@ class IResearchInvertedIndexIterator final
   irs::doc_iterator::ptr _itr;
   irs::doc_iterator::ptr _pkDocItr;
   irs::document const* _doc{};
-  const irs::payload* _pkValue{};
+  irs::payload const* _pkValue{};
   size_t _readerOffset{0};
   CoveringVector _projections;
 };
@@ -860,7 +863,8 @@ Result IResearchInvertedIndex::init(
     irs::IndexReaderOptions readerOptions;
 #ifdef USE_ENTERPRISE
     setupReaderEntepriseOptions(readerOptions,
-                                index().collection().vocbase().server(), _meta);
+                                index().collection().vocbase().server(), _meta,
+                                _useSearchCache);
 #endif
     auto r = initDataStore(pathExists, initCallback,
                            static_cast<uint32_t>(_meta._version), isSorted(),

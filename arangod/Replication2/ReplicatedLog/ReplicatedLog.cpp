@@ -26,7 +26,6 @@
 #include "Logger/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/Components/LogFollower.h"
 #include "Metrics/Counter.h"
@@ -323,11 +322,10 @@ auto DefaultParticipantsFactory::constructFollower(
   return std::make_shared<LogFollowerImpl>(
       info.myself, std::move(methods), std::move(context.stateHandle), info2,
       std::move(context.options), std::move(context.metrics), leaderComm,
-      context.loggerContext);
+      scheduler, context.loggerContext);
 }
 
 auto DefaultParticipantsFactory::constructLeader(
-
     std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
     LeaderTermInfo info, ParticipantContext context)
     -> std::shared_ptr<ILogLeader> {

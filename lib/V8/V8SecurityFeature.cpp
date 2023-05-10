@@ -408,6 +408,10 @@ void V8SecurityFeature::addToInternalAllowList(std::string const& inItem,
   }
 }
 
+bool V8SecurityFeature::isAllowedToControlProcesses() const {
+  return _allowProcessControl;
+}
+
 bool V8SecurityFeature::isAllowedToControlProcesses(
     v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();

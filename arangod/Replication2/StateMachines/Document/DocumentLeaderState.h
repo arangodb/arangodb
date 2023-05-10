@@ -40,6 +40,7 @@ struct IManager;
 
 namespace arangodb::replication2::replicated_state::document {
 
+struct IDocumentStateTransactionHandler;
 struct IDocumentStateSnapshotHandler;
 
 struct DocumentLeaderState
@@ -69,7 +70,6 @@ struct DocumentLeaderState
       -> futures::Future<Result>;
   auto dropShard(ShardID shard, CollectionID collectionId)
       -> futures::Future<Result>;
-  auto modifyShard(ShardID shard) -> futures::Future<Result>;
 
   auto getActiveTransactionsCount() const noexcept -> std::size_t {
     return _activeTransactions.getLockedGuard()->getTransactions().size();
@@ -90,11 +90,13 @@ struct DocumentLeaderState
 
  private:
   struct GuardedData {
-    explicit GuardedData(std::unique_ptr<DocumentCore> core)
-        : core(std::move(core)){};
+    explicit GuardedData(
+        std::unique_ptr<DocumentCore> core,
+        std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
     std::unique_ptr<DocumentCore> core;
+    std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler;
   };
 
   template<class ResultType, class GetFunc, class ProcessFunc>

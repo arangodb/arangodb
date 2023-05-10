@@ -2,7 +2,7 @@
 @startDocuBlock post_api_collection
 @brief creates a collection
 
-@RESTHEADER{POST /_api/collection, Create collection, handleCommandPost:CreateCollection}
+@RESTHEADER{POST /_api/collection, Create collection, createCollection}
 
 @HINTS
 {% hint 'warning' %}
@@ -31,7 +31,7 @@ collections in very special occasions, but normally a regular collection will do
 @RESTBODYPARAM{schema,object,optional,}
 Optional object that specifies the collection level schema for
 documents. The attribute keys `rule`, `level` and `message` must follow the
-rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/documents-schema-validation.html)
+rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/data-modeling-documents-schema-validation.html)
 
 @RESTBODYPARAM{computedValues,array,optional,post_api_collection_computed_field}
 An optional list of objects, each representing a computed value.
@@ -43,7 +43,7 @@ or a shard key attribute.
 
 @RESTSTRUCT{expression,post_api_collection_computed_field,string,required,}
 An AQL `RETURN` operation with an expression that computes the desired value.
-See [Computed Value Expressions](https://www.arangodb.com/docs/devel/data-modeling-documents-computed-values.html#computed-value-expressions) for details.
+See [Computed Value Expressions](https://www.arangodb.com/docs/stable/data-modeling-documents-computed-values.html#computed-value-expressions) for details.
 
 @RESTSTRUCT{overwrite,post_api_collection_computed_field,boolean,required,}
 Whether the computed value shall take precedence over a user-provided or
@@ -96,8 +96,8 @@ Please note that keys are only guaranteed to be truly ascending in single
 server deployments and for collections that only have a single shard (that includes
 collections in a OneShard database).
 The reason is that for collections with more than a single shard, document keys
-are generated on coordinator(s). For collections with a single shard, the document
-keys are generated on the leader DB server, which has full control over the key
+are generated on Coordinator(s). For collections with a single shard, the document
+keys are generated on the leader DB-Server, which has full control over the key
 sequence.
 
 @RESTSTRUCT{allowUserKeys,post_api_collection_opts,boolean,required,}
@@ -147,8 +147,8 @@ and the hash value is used to determine the target shard.
 (The default is `1`): in a cluster, this attribute determines how many copies
 of each shard are kept on different DB-Servers. The value 1 means that only one
 copy (no synchronous replication) is kept. A value of k means that k-1 replicas
-are kept. It can also be the string `"satellite"` for a SatelliteCollection,
-where the replication factor is matched to the number of DB-Servers
+are kept. For SatelliteCollections, it needs to be the string `"satellite"`,
+which matches the replication factor to the number of DB-Servers
 (Enterprise Edition only).
 
 Any two copies reside on different DB-Servers. Replication between them is
@@ -162,9 +162,11 @@ copies take over, usually without an error being reported.
 Write concern for this collection (default: 1).
 It determines how many copies of each shard are required to be
 in sync on the different DB-Servers. If there are less than these many copies
-in the cluster a shard will refuse to write. Writes to shards with enough
-up-to-date copies will succeed at the same time however. The value of
-`writeConcern` cannot be larger than `replicationFactor`. _(cluster only)_
+in the cluster, a shard refuses to write. Writes to shards with enough
+up-to-date copies succeed at the same time, however. The value of
+`writeConcern` cannot be greater than `replicationFactor`.
+For SatelliteCollections, the `writeConcern` is automatically controlled to
+equal the number of DB-Servers and has a value of `0`. _(cluster only)_
 
 @RESTBODYPARAM{shardingStrategy,string,optional,string}
 This attribute specifies the name of the sharding strategy to use for
@@ -318,4 +320,5 @@ If the `collection-name` is unknown, then an *HTTP 404* is returned.
     db._flushCache();
     db._drop("testCollectionUsers");
 @END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock

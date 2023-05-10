@@ -81,7 +81,9 @@ class TelemetricsHandler {
   velocypack::Builder _telemetricsFetchedInfo;
 
   std::thread _telemetricsThread;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool const _sendToEndpoint;
+#endif
 };
 
 }  // namespace arangodb

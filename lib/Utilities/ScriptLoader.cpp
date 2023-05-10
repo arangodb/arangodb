@@ -28,7 +28,6 @@
 #include "ScriptLoader.h"
 
 #include "Basics/FileUtils.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/error.h"
@@ -58,7 +57,7 @@ std::string const& ScriptLoader::getDirectory() const { return _directory; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ScriptLoader::setDirectory(std::string const& directory) {
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   _directory = directory;
 }
@@ -91,7 +90,7 @@ std::string ScriptLoader::buildScript(char const** script) {
 
 void ScriptLoader::defineScript(std::string const& name,
                                 std::string const& script) {
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   _scripts[name] = script;
 }
@@ -103,7 +102,7 @@ void ScriptLoader::defineScript(std::string const& name,
 void ScriptLoader::defineScript(std::string const& name, char const** script) {
   std::string scriptString = buildScript(script);
 
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   _scripts[name] = scriptString;
 }
@@ -113,7 +112,7 @@ void ScriptLoader::defineScript(std::string const& name, char const** script) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string const& ScriptLoader::findScript(std::string const& name) {
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   auto it = _scripts.find(name);
 

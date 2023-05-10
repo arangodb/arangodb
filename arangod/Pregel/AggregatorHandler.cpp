@@ -30,6 +30,12 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
+AggregatorHandler::AggregatorHandler(AggregatorHandler&& other) {
+  WRITE_LOCKER(guard, other._lock);
+  _algorithm = std::move(other._algorithm);
+  _values = std::move(other._values);
+}
+
 AggregatorHandler::~AggregatorHandler() {
   WRITE_LOCKER(guard, _lock);
   for (auto const& it : _values) {

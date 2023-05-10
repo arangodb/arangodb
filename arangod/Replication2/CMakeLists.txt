@@ -7,7 +7,6 @@ add_library(arango_replication2 STATIC
         Version.cpp
         ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogHandler.cpp
         ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogInternalHandler.cpp
-        ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestPrototypeStateHandler.cpp
         ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestDocumentStateHandler.cpp)
 
 
@@ -25,12 +24,6 @@ target_include_directories(arango_replication2 PRIVATE
 
 add_library(arango_replication2_pure STATIC
   MetricsHelper.cpp
-  ReplicatedState/StateStatus.h
-  ReplicatedState/StateCommon.cpp
-  ReplicatedLog/NetworkMessages.cpp
-  ReplicatedLog/Algorithms.cpp
-  ReplicatedLog/ILogInterfaces.cpp
-  ReplicatedLog/TermIndexMapping.cpp
   IScheduler.h)
 
 target_link_libraries(arango_replication2_pure PUBLIC arango_lightweight

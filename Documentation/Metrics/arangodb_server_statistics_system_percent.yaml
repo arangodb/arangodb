@@ -13,5 +13,5 @@ exposedBy:
   - single
 description: |
   Percentage of time that the system CPUs have spent in kernel mode, as
-  a value between 0 and 100, and as reported by the operating system.
+  a value between `0` and `100`, and as reported by the operating system.
   This metric is only reported on some operating systems.

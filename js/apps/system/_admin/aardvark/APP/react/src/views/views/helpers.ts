@@ -8,6 +8,7 @@ import { chain, cloneDeep, get, isNull, merge, omit, set, uniqueId } from 'lodas
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { fixFieldsInit } from './reducerHelper';
+import { encodeHelper } from '../../utils/encodeHelper';
 
 declare var arangoHelper: { [key: string]: any };
 declare var window: any;
@@ -39,7 +40,8 @@ export function useLinkState (formState: { [key: string]: any }, formField: stri
 
 export function useView (name: string) {
   const [view, setView] = useState<Partial<FormState>>({ name });
-  const { data, error } = useSWR(`/view/${name}/properties`,
+  const { encoded: encodedName } = encodeHelper(name);
+  const { data, error } = useSWR(`/view/${encodedName}/properties`,
     path => getApiRouteForCurrentDB().get(path), {
       revalidateOnFocus: false
     });

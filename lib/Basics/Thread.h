@@ -29,13 +29,14 @@
 #include <string_view>
 
 #include "Basics/threads.h"
+#include "Basics/DownCast.h"
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
 namespace basics {
-class ConditionVariable;
+struct ConditionVariable;
 }
 
 class ThreadNameFetcher {
@@ -211,13 +212,7 @@ class ServerThread : public Thread {
       : Thread{server, name, deleteOnExit, terminationTimeout} {}
 
   Server& server() noexcept {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* p = dynamic_cast<Server*>(&Thread::server());
-    TRI_ASSERT(p);
-    return *p;
-#else
-    return static_cast<Server&>(Thread::server());
-#endif
+    return basics::downCast<Server>(Thread::server());
   }
 };
 

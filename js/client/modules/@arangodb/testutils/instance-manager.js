@@ -467,7 +467,7 @@ class instanceManager {
       let deltaStats = {};
       let deltaSum = {};
       this.arangods.forEach((arangod) => {
-        let newStats = arangod.getProcessStats();
+        let newStats = arangod._getProcessStats();
         let myDeltaStats = {};
         for (let key in arangod.stats) {
           if (key.startsWith('sockstat_')) {
@@ -490,7 +490,7 @@ class instanceManager {
       return deltaStats;
     }
     catch (x) {
-      print("aborting stats generation");
+      print("aborting stats generation: " + x);
       return {};
     }
   }
@@ -642,16 +642,24 @@ class instanceManager {
   checkInstanceAlive({skipHealthCheck = false} = {}) {
     this.arangods.forEach(arangod => { arangod.netstat = {'in':{}, 'out': {}};});
     let obj = this;
-    netstat({platform: process.platform}, function (data) {
-      // skip server ports, we know what we bound.
-      if (data.state !== 'LISTEN') {
-        obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+    try {
+      netstat({platform: process.platform}, function (data) {
+        // skip server ports, we know what we bound.
+        if (data.state !== 'LISTEN') {
+          obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+        }
+      });
+      if (!this.options.noStartStopLogs) {
+        this.printNetstat();
       }
-    });
-    if (!this.options.noStartStopLogs) {
-      this.printNetstat();
+    } catch (ex) {
+      let timeout = internal.SetGlobalExecutionDeadlineTo(0.0);
+      print(RED + 'netstat gathering has thrown: ' + (timeout? "because of timeout in execution":""));
+      print(ex, ex.stack);
+      print(RESET);
+      this.cleanup = false;
+      return this._forceTerminate(ex.message + " during health check");
     }
-    
     if (this.options.activefailover &&
         this.hasOwnProperty('authOpts') &&
         (this.url !== this.agencyConfig.urls[0])
@@ -682,7 +690,6 @@ class instanceManager {
       for (
         const start = Date.now();
         !rc && Date.now() < start + seconds(60) && checkAllAlive();
-        internal.sleep(1)
       ) {
         rc = this._checkServersGOOD();
         if (first) {
@@ -690,6 +697,9 @@ class instanceManager {
             print(RESET + "Waiting for all servers to go GOOD...");
           }
           first = false;
+        }
+        if (!rc) {
+          internal.sleep(1);
         }
       }
     }
@@ -712,9 +722,14 @@ class instanceManager {
   // / @brief checks whether any instance has failure points set
   // //////////////////////////////////////////////////////////////////////////////
 
-  checkServerFailurePoints(instanceInfo) {
+  checkServerFailurePoints(instanceMgr = null) {
     let failurePoints = [];
-    instanceInfo.arangods.forEach(arangod => {
+    let im = this;
+    if (instanceMgr !== null) {
+      im = instanceMgr;
+    }
+
+    im.arangods.forEach(arangod => {
       // we don't have JWT success atm, so if, skip:
       if ((!arangod.isAgent()) &&
           !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
@@ -814,20 +829,16 @@ class instanceManager {
   }
 
   _forceTerminate(moreReason="") {
-    print("Aggregating coredumps");
+    if (!this.options.coreCheck && !this.options.setInterruptable) {
+      print("Interactive mode: SIGABRT killing all arangods");
+    } else {
+      print("Aggregating coredumps");
+    }
     this.arangods.forEach((arangod) => {
-      if (arangod.pid !== null) {
-        arangod.killWithCoreDump('forced shutdown because of: ' + moreReason);
-        arangod.serverCrashedLocal = true;
-      } else {
-        print(RED + Date() + 'instance already gone? ' + arangod.name + RESET);
-      }
+      arangod.killWithCoreDump('force terminating');
     });
     this.arangods.forEach((arangod) => {
-      if (arangod.checkArangoAlive()) {
-        crashUtils.aggregateDebugger(arangod, this.options);
-        arangod.waitForExitAfterDebugKill();
-      }
+      arangod.aggregateDebugger();
     });
     return true;
   }
@@ -883,7 +894,7 @@ class instanceManager {
       }
     }
 
-    if (this.options.cluster && this.hasOwnProperty('clusterHealthMonitor')) {
+    if ((this.options.cluster || this.options.agency) && this.hasOwnProperty('clusterHealthMonitor')) {
       try {
         this.clusterHealthMonitor['kill'] = killExternal(this.clusterHealthMonitor.pid);
         this.clusterHealthMonitor['statusExternal'] = statusExternal(this.clusterHealthMonitor.pid, true);
@@ -1070,6 +1081,12 @@ class instanceManager {
         }
         if (haveLeader === 1 && haveConfig === this.agencyConfig.agencySize) {
           print("Agency Up!");
+          try {
+            // set back log level to info for agents
+            for (let agentIndex = 0; agentIndex < this.agencyConfig.agencySize; agentIndex ++) {
+              this.agencyConfig.agencyInstances[agentIndex].getAgent('/_admin/log/level', 'PUT', JSON.stringify({"agency":"info"}));
+            }
+          } catch (err) {}
           return;
         }
         if (count === 0) {
@@ -1415,11 +1432,17 @@ class instanceManager {
       print("spawning cluster health inspector");
       internal.env.INSTANCEINFO = JSON.stringify(this.getStructure());
       internal.env.OPTIONS = JSON.stringify(this.options);
+      let tmp = internal.env.TEMP;
+      internal.env.TMP = this.rootDir;
+      internal.env.TEMP = this.rootDir;
       let args = pu.makeArgs.arangosh(this.options);
+      args['javascript.allow-external-process-control'] =  true;
       args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'testutils', 'clusterstats.js');
       const argv = toArgv(args);
       this.clusterHealthMonitor = executeExternal(pu.ARANGOSH_BIN, argv);
       this.clusterHealthMonitorFile = fs.join(this.rootDir, 'stats.jsonl');
+      internal.env.TMP = tmp;
+      internal.env.TEMP = tmp;
     }
     if (!this.options.disableClusterMonitor) {
       this.initProcessStats();

@@ -23,7 +23,6 @@
 
 #include "QueryCache.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Basics/VelocyPackHelper.h"
@@ -489,7 +488,7 @@ QueryCache::~QueryCache() {
 
 /// @brief return the query cache properties
 void QueryCache::toVelocyPack(VPackBuilder& builder) const {
-  MUTEX_LOCKER(mutexLocker, _propertiesLock);
+  std::lock_guard mutexLocker{_propertiesLock};
 
   builder.openObject();
   builder.add("mode", VPackValue(modeString(mode())));
@@ -502,7 +501,7 @@ void QueryCache::toVelocyPack(VPackBuilder& builder) const {
 
 /// @brief return the query cache properties
 QueryCacheProperties QueryCache::properties() const {
-  MUTEX_LOCKER(mutexLocker, _propertiesLock);
+  std::lock_guard mutexLocker{_propertiesLock};
 
   return QueryCacheProperties{::mode.load(),           ::maxResultsCount.load(),
                               ::maxResultsSize.load(), ::maxEntrySize.load(),
@@ -511,7 +510,7 @@ QueryCacheProperties QueryCache::properties() const {
 
 /// @brief set the cache properties
 void QueryCache::properties(QueryCacheProperties const& properties) {
-  MUTEX_LOCKER(mutexLocker, _propertiesLock);
+  std::lock_guard mutexLocker{_propertiesLock};
 
   setMode(properties.mode);
   setMaxResults(properties.maxResultsCount, properties.maxResultsSize);
@@ -527,7 +526,7 @@ void QueryCache::properties(VPackSlice const& properties) {
         TRI_ERROR_BAD_PARAMETER, "expecting Object for query cache properties");
   }
 
-  MUTEX_LOCKER(mutexLocker, _propertiesLock);
+  std::lock_guard mutexLocker{_propertiesLock};
 
   auto mode = ::mode.load();
   auto maxResultsCount = ::maxResultsCount.load();

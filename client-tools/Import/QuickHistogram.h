@@ -32,7 +32,6 @@
 #include <numeric>
 #include <vector>
 
-#include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Logger/LogMacros.h"
@@ -65,13 +64,13 @@ class QuickHistogram : public arangodb::Thread {
     Thread::beginShutdown();
 
     // wake up the thread that may be waiting in run()
-    CONDITION_LOCKER(guard, _condvar);
-    guard.broadcast();
+    std::lock_guard guard{_condvar.mutex};
+    _condvar.cv.notify_all();
   }
 
   void postLatency(std::chrono::microseconds latency, uint64_t objects = 1) {
     if (_threadRunning.load()) {
-      CONDITION_LOCKER(guard, _condvar);
+      std::lock_guard guard{_condvar.mutex};
 
       // initial case has this called in a destructor ... block exception
       try {
@@ -97,10 +96,10 @@ class QuickHistogram : public arangodb::Thread {
     _threadRunning.store(true);
 
     while (_threadRunning.load()) {
-      CONDITION_LOCKER(guard, _condvar);
+      std::unique_lock guard{_condvar.mutex};
 
       std::chrono::seconds tenSec(10);
-      _condvar.wait(tenSec);
+      _condvar.cv.wait_for(guard, tenSec);
 
       LatencyVec_t* temp;
       temp = _writingLatencies;

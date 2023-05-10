@@ -36,6 +36,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -60,7 +61,7 @@
 #include <velocypack/Builder.h>
 #include <absl/strings/str_replace.h>
 
-#include "Logger/LogMacros.h"
+#include <array>
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -88,7 +89,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
 
   containers::FlatHashMap<std::string_view, uint32_t> dbViews;
   for (auto const& database : databases) {
-    auto vocbase = dbFeature.lookupDatabase(database);
+    auto vocbase = dbFeature.useDatabase(database);
     if (vocbase == nullptr) {
       continue;
     }
@@ -662,14 +663,13 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
 
           if (collsAlreadyVisited.find(planId) == collsAlreadyVisited.end()) {
             auto collType = coll->type();
-            if (collType == TRI_COL_TYPE_DOCUMENT) {
-              numDocColls++;
-              result.add("type", VPackValue("document"));
-            } else if (collType == TRI_COL_TYPE_EDGE) {
+            if (collType == TRI_COL_TYPE_EDGE) {
               result.add("type", VPackValue("edge"));
               numEdgeColls++;
             } else {
-              result.add("type", VPackValue("unknown"));
+              TRI_ASSERT(collType == TRI_COL_TYPE_DOCUMENT);
+              result.add("type", VPackValue("document"));
+              numDocColls++;
             }
             if (coll->isSmart()) {
               numSmartColls++;
@@ -688,7 +688,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
 
             auto flags = Index::makeFlags(Index::Serialize::Estimates,
                                           Index::Serialize::Figures);
-            std::vector<std::string_view> idxTypes = {
+            constexpr std::array<std::string_view, 12> idxTypes = {
                 "edge",     "geo",        "hash",      "fulltext",
                 "inverted", "persistent", "iresearch", "skiplist",
                 "ttl",      "zkd",        "primary",   "unknown"};
@@ -697,8 +697,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             }
 
             VPackBuilder output;
-            std::ignore =
-                methods::Indexes::getAll(coll.get(), flags, false, output);
+            std::ignore = methods::Indexes::getAll(*coll, flags, false, output);
             velocypack::Slice outSlice = output.slice();
 
             result.add("idxs", VPackValue(VPackValueType::Array));
@@ -731,6 +730,9 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
 
               auto idxType = it.get("type").stringView();
               if (idxType == "geo1" || idxType == "geo2") {
+                // older deployments can have indexes of type "geo1"
+                // and "geo2". these are old names for "geo" indexes with
+                // specific setting. simply rename them to "geo" here.
                 idxType = "geo";
               }
               result.add("type", VPackValue(idxType));

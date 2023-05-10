@@ -1,27 +1,20 @@
+import { pick } from 'lodash';
 import React, { MouseEvent, useState } from 'react';
-import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
-import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { mutate } from "swr";
-import { noop, pick } from 'lodash';
-import { FormState } from "./constants";
-import { State } from '../../utils/constants';
-import {isAdminUser as userIsAdmin} from "../../utils/helpers";
-import { Cell, Grid } from "../../components/pure-css/grid";
-import BaseForm from "./forms/BaseForm";
-import FeatureForm from "./forms/FeatureForm";
-import { getForm } from "./helpers";
-import Textarea from "../../components/pure-css/form/Textarea";
 import { IconButton } from "../../components/arango/buttons";
-
-declare var frontendConfig: { [key: string]: any };
-declare var arangoHelper: { [key: string]: any };
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../components/modal";
+import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
+import { State } from '../../utils/constants';
+import { userIsAdmin } from '../../utils/usePermissions';
+import { FormState } from "./constants";
+import { ViewAnalyzerModal } from './ViewAnalyzerModal';
 
 type ButtonProps = {
   analyzer: FormState;
   modalCid: string;
 }
 
-const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
+const DeleteButton = ({ analyzer }: ButtonProps) => {
   const [show, setShow] = useState(false);
   const [forceDelete, setForceDelete] = useState(false);
 
@@ -34,20 +27,22 @@ const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
       const result = await getApiRouteForCurrentDB().delete(`/analyzer/${analyzer.name}`, { force: forceDelete });
 
       if (result.body.error) {
-        arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
+        window.arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
       } else {
-        arangoHelper.arangoNotification('Success', `Deleted Analyzer: ${analyzer.name}`);
+        window.arangoHelper.arangoNotification('Success', `Deleted Analyzer: ${analyzer.name}`);
         await mutate('/analyzer');
       }
-    } catch (e) {
-      arangoHelper.arangoError('Failure', `Got unexpected server response: ${e.message}`);
+    } catch (e: any) {
+      window.arangoHelper.arangoError('Failure', `Got unexpected server response: ${e.message}`);
     }
   };
 
   return <>
-    <IconButton icon={'trash-o'} style={{ background: 'transparent' }} onClick={() => setShow(true)}/>
-    <Modal show={show} setShow={setShow} cid={modalCid}>
-      <ModalHeader title={`Delete Analyzer ${analyzer.name}?`}/>
+    <IconButton icon={'trash-o'} style={{ background: 'transparent' }} onClick={() => setShow(true)} />
+    <Modal isOpen={show} onClose={() => setShow(false)}>
+      <ModalHeader>
+        Delete Analyzer {analyzer.name}?
+      </ModalHeader>
       <ModalBody>
         <p>
           This Analyzer might be in use. Deleting it will impact the Views using it. Clicking on
@@ -57,9 +52,10 @@ const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
           Select the <b>Force Delete</b> option below if you want to delete the Analyzer even if it is being
           used.
         </p>
+        <br />
         <label htmlFor={'force-delete'} className="pure-checkbox">
           <input id={'force-delete'} type={'checkbox'} checked={forceDelete} onChange={toggleForce}
-                 style={{ width: 'auto' }}/> Force Delete
+            style={{ width: 'auto' }} /> Force Delete
         </label>
       </ModalBody>
       <ModalFooter>
@@ -70,7 +66,7 @@ const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
   </>;
 };
 
-const ViewButton = ({ analyzer, modalCid }: ButtonProps) => {
+const ViewButton = ({ analyzer }: ButtonProps) => {
   const [show, setShow] = useState(false);
   const [showJsonForm, setShowJsonForm] = useState(false);
 
@@ -100,59 +96,24 @@ const ViewButton = ({ analyzer, modalCid }: ButtonProps) => {
     jsonRows = jsonFormState.split('\n').length;
   }
 
-  return <>
-    <IconButton icon={'eye'} onClick={handleClick} style={{ background: 'transparent' }}/>
-    <Modal show={show} setShow={setShow} cid={modalCid}>
-      <ModalHeader title={formState.name}>
-        <button className={'button-info'} onClick={toggleJsonForm} style={{ float: 'right' }}>
-          {showJsonForm ? 'Switch to form view' : 'Switch to code view'}
-        </button>
-      </ModalHeader>
-      <ModalBody maximize={true} show={show}>
-        <Grid>
-          {
-            showJsonForm
-              ? <Cell size={'1'}>
-                <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState} rows={jsonRows}
-                          style={{ cursor: 'text' }}/>
-              </Cell>
-              : <>
-                <Cell size={'11-24'}>
-                  <fieldset>
-                    <legend style={{ fontSize: '12pt' }}>Basic</legend>
-                    <BaseForm formState={formState} dispatch={noop} disabled={true}/>
-                  </fieldset>
-                </Cell>
-                <Cell size={'1-12'}/>
-                <Cell size={'11-24'}>
-                  <fieldset>
-                    <legend style={{ fontSize: '12pt' }}>Features</legend>
-                    <FeatureForm formState={formState} dispatch={noop} disabled={true}/>
-                  </fieldset>
-                </Cell>
-
-                {
-                  formState.type === 'identity' ? null
-                    : <Cell size={'1'}>
-                      <fieldset>
-                        <legend style={{ fontSize: '12pt' }}>Configuration</legend>
-                        {getForm({
-                          formState,
-                          dispatch: noop,
-                          disabled: true
-                        })}
-                      </fieldset>
-                    </Cell>
-                }
-              </>
-          }
-        </Grid>
-      </ModalBody>
-      <ModalFooter>
-        <button className="button-close" onClick={() => setShow(false)}>Close</button>
-      </ModalFooter>
-    </Modal>
-  </>;
+  return (
+    <>
+      <IconButton
+        icon={"eye"}
+        onClick={handleClick}
+        style={{ background: "transparent" }}
+      />
+      <ViewAnalyzerModal
+        isOpen={show}
+        onClose={() => setShow(false)}
+        formState={formState}
+        toggleJsonForm={toggleJsonForm}
+        showJsonForm={showJsonForm}
+        jsonFormState={jsonFormState}
+        jsonRows={jsonRows}
+      />
+    </>
+  );
 };
 
 interface ActionProps {
@@ -164,18 +125,18 @@ interface ActionProps {
 const Actions = ({ analyzer, permission, modalCidSuffix }: ActionProps) => {
   const isUserDefined = analyzer.name.includes('::');
   const isSameDB = isUserDefined
-    ? analyzer.name.split('::')[0] === frontendConfig.db
-    : frontendConfig.db === '_system';
+    ? analyzer.name.split('::')[0] === window.frontendConfig.db
+    : window.frontendConfig.db === '_system';
   const isAdminUser = userIsAdmin(permission);
   const canDelete = isUserDefined && isSameDB && isAdminUser;
 
   return <>
-    <ViewButton analyzer={analyzer} modalCid={`modal-content-view-${modalCidSuffix}`}/>
+    <ViewButton analyzer={analyzer} modalCid={`modal-content-view-${modalCidSuffix}`} />
     {
       canDelete
         ? <>
           &nbsp;
-          <DeleteButton analyzer={analyzer} modalCid={`modal-content-delete-${modalCidSuffix}`}/>
+          <DeleteButton analyzer={analyzer} modalCid={`modal-content-delete-${modalCidSuffix}`} />
         </>
         : null
     }

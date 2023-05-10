@@ -25,6 +25,14 @@
 
 #include <chrono>
 #include <v8.h>
+#include <optional>
+#include "Basics/process-utils.h"
+
+namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+}  // namespace arangodb
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort external connection
@@ -36,3 +44,11 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(
 uint32_t correctTimeoutToExecutionDeadline(uint32_t timeout);
 
 void TRI_InitV8Deadline(v8::Isolate* isolate);
+
+// make the deadline handling bite Now.
+void triggerV8DeadlineNow(bool fromSignal);
+
+namespace arangodb {
+extern std::optional<ExternalProcessStatus> getHistoricStatus(
+    TRI_pid_t pid, arangodb::application_features::ApplicationServer& server);
+}

@@ -34,7 +34,7 @@ namespace application_features {
 class ApplicationServer;
 }
 namespace basics {
-class ConditionVariable;
+struct ConditionVariable;
 }
 
 struct LogMessage;

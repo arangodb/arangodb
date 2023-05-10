@@ -606,7 +606,6 @@ void RestHandler::compressResponse() {
         break;
 
       case rest::EncodingType::GZIP:
-        TRI_ASSERT(false);
         _response->gzip();
         _response->setHeaderNC(StaticStrings::ContentEncoding,
                                StaticStrings::EncodingGzip);

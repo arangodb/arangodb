@@ -26,14 +26,16 @@
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require('jsunity');
-let internal = require('internal');
-let arangodb = require('@arangodb');
-let fs = require('fs');
-let pu = require('@arangodb/testutils/process-utils');
-let db = arangodb.db;
-let isCluster = require("internal").isCluster();
-let dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
+const jsunity = require('jsunity');
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const fs = require('fs');
+const pu = require('@arangodb/testutils/process-utils');
+const db = arangodb.db;
+const isCluster = require("internal").isCluster();
+const dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
+const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
+
 const validatorJson = {
   "message": "",
   "level": "new",
@@ -101,22 +103,25 @@ function dumpIntegrationSuite() {
     assertEqual(expected, data);
   };
 
-  let structureFile = function (path, cn) {
-    const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
+  let structureFile = function (path, cn, escapedName = undefined) {
+    if (escapedName === undefined) {
+      escapedName = cn;
+    }
+    const prefix = escapedName + "_" + require("@arangodb/crypto").md5(cn);
     let structure = prefix + ".structure.json";
     if (!fs.isFile(fs.join(path, structure))) {
       // seems necessary in cluster
-      structure = cn + ".structure.json";
+      structure = escapedName + ".structure.json";
     }
     return structure;
   };
 
-  let checkStructureFile = function (tree, path, readable, cn, subdir = "") {
+  let checkStructureFile = function (tree, path, readable, cn, subdir = "", escapedName = undefined) {
     let structurePath = path;
     if (subdir !== "") {
       structurePath = fs.join(path, subdir);
     }
-    let structure = structureFile(structurePath, cn);
+    let structure = structureFile(structurePath, cn, escapedName);
     if (subdir !== "") {
       structure = fs.join(subdir, structure);
     }
@@ -212,8 +217,11 @@ function dumpIntegrationSuite() {
     }
   };
 
-  let checkDataFile = function (tree, path, compressed, envelopes, readable, cn) {
-    const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
+  let checkDataFile = function (tree, path, compressed, envelopes, readable, cn, escapedName = undefined) {
+    if (escapedName === undefined) {
+      escapedName = cn;
+    }
+    const prefix = escapedName + "_" + require("@arangodb/crypto").md5(cn);
     let checkData = function (data, envelopes) {
       assertEqual(1000, data.length);
       data.forEach(function (line) {
@@ -263,7 +271,6 @@ function dumpIntegrationSuite() {
   return {
 
     setUpAll: function () {
-
 
       dbs.forEach((name) => {
         if (name !== "_system") {
@@ -416,7 +423,6 @@ function dumpIntegrationSuite() {
     },
 
     testDumpAutoIncrementKeyGenerator: function () {
-
       let path = fs.getTempFile();
       let args = ['--collection', cn + 'AutoIncrement', '--dump-data', 'false'];
       let tree = runDump(path, args, 0);
@@ -759,6 +765,27 @@ function dumpIntegrationSuite() {
       checkStructureFile(tree, path, true, cn);
       checkDataFile(tree, path, true, false, true, cn);
       fs.removeDirectoryRecursive(path, true);
+    },
+    
+    testDumpCollectionWithExtendedName: function () {
+      let c = db._create(extendedName);
+      try {
+        let docs = [];
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({_key: "test" + i});
+        }
+        c.insert(docs);
+
+        let path = fs.getTempFile();
+        let args = ['--compress-output', 'true', '--collection', extendedName];
+        let tree = runDump(path, args, 0);
+        checkEncryption(tree, path, "none");
+        checkStructureFile(tree, path, true, extendedName, "", String(c._id));
+        checkDataFile(tree, path, true, false, true, extendedName, String(c._id));
+        fs.removeDirectoryRecursive(path, true);
+      } finally {
+        db._drop(extendedName);
+      }
     },
   };
 }

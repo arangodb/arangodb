@@ -23,17 +23,21 @@
 #include "AppendEntriesManager.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Futures/Future.h"
-#include "Replication2/ReplicatedLog/Components/StorageManager.h"
-#include "Replication2/ReplicatedLog/Components/SnapshotManager.h"
 #include "Replication2/coro-helper.h"
+#include "Replication2/ReplicatedLog/Components/IStorageManager.h"
+#include "Replication2/ReplicatedLog/Components/ISnapshotManager.h"
 #include "Replication2/ReplicatedLog/Components/ICompactionManager.h"
 #include "Replication2/ReplicatedLog/Components/IFollowerCommitManager.h"
+#include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
+#include "Replication2/ReplicatedLog/Components/MessageIdManager.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Metrics/Counter.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
@@ -90,12 +94,16 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
 
   {
     auto store = guard->storage.transaction();
-    if (store->getLogBounds().to.saturatedDecrement() !=
-        request.prevLogEntry.index) {
+    auto bounds = store->getLogBounds();
+    if (bounds.to.saturatedDecrement() != request.prevLogEntry.index) {
       auto startRemoveIndex = request.prevLogEntry.index + 1;
+      auto removeRange = intersect(
+          LogRange{startRemoveIndex, LogIndex{static_cast<uint64_t>(-1)}},
+          bounds);
       LOG_CTX("9272b", DEBUG, lctx)
           << "log does not append cleanly, removing starting at "
           << startRemoveIndex;
+      metrics->replicatedLogFollowerEntryDropCount->count(removeRange.count());
       auto f = store->removeBack(startRemoveIndex);
       guard.unlock();
       auto result = co_await asResult(std::move(f));
@@ -138,11 +146,12 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   }
 
   guard->compaction.updateLowestIndexToKeep(request.lowestIndexToKeep);
-  auto action = guard->commit.updateCommitIndex(request.leaderCommit);
+  auto action = guard->stateHandle.updateCommitIndex(request.leaderCommit);
   auto hasSnapshot =
       guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE;
   guard.unlock();
   action.fire();
+  requestGuard.reset();
   LOG_CTX("f5ecd", TRACE, lctx) << "append entries successful";
   co_return AppendEntriesResult::withOk(termInfo->term, request.messageId,
                                         hasSnapshot);
@@ -151,33 +160,30 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
 AppendEntriesManager::AppendEntriesManager(
     std::shared_ptr<FollowerTermInformation const> termInfo,
     IStorageManager& storage, ISnapshotManager& snapshot,
-    ICompactionManager& compaction, IFollowerCommitManager& commit,
+    ICompactionManager& compaction, IStateHandleManager& stateHandle,
+    IMessageIdManager& messageIdManager,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
     LoggerContext const& loggerContext)
     : loggerContext(loggerContext.with<logContextKeyLogComponent>(
           "append-entries-manager")),
       termInfo(std::move(termInfo)),
       metrics(std::move(metrics)),
-      guarded(storage, snapshot, compaction, commit) {}
-
-auto AppendEntriesManager::getLastReceivedMessageId() const noexcept
-    -> MessageId {
-  return guarded.getLockedGuard()->messageIdAcceptor.get();
-}
+      guarded(storage, snapshot, compaction, stateHandle, messageIdManager) {}
 
 auto AppendEntriesManager::resign() && noexcept -> void {
   auto guard = guarded.getLockedGuard();
   return std::move(guard.get()).resign();
 }
 
-AppendEntriesManager::GuardedData::GuardedData(IStorageManager& storage,
-                                               ISnapshotManager& snapshot,
-                                               ICompactionManager& compaction,
-                                               IFollowerCommitManager& commit)
+AppendEntriesManager::GuardedData::GuardedData(
+    IStorageManager& storage, ISnapshotManager& snapshot,
+    ICompactionManager& compaction, IStateHandleManager& stateHandle,
+    IMessageIdManager& messageIdManager)
     : storage(storage),
       snapshot(snapshot),
       compaction(compaction),
-      commit(commit) {}
+      stateHandle(stateHandle),
+      messageIdManager(messageIdManager) {}
 
 auto AppendEntriesManager::GuardedData::preflightChecks(
     AppendEntriesRequest const& request,
@@ -195,10 +201,11 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
         {AppendEntriesErrorReason::ErrorType::kWrongTerm}, false);
   }
 
-  if (not messageIdAcceptor.accept(request.messageId)) {
+  if (not messageIdManager.acceptReceivedMessageId(request.messageId)) {
     LOG_CTX("bef55", INFO, lctx)
         << "rejecting append entries - dropping outdated message "
-        << request.messageId << " expected > " << messageIdAcceptor.get();
+        << request.messageId << " expected > "
+        << messageIdManager.getLastReceivedMessageId();
     return AppendEntriesResult::withRejection(
         termInfo.term, request.messageId,
         {AppendEntriesErrorReason::ErrorType::kMessageOutdated}, false);
@@ -233,12 +240,4 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
 
 auto AppendEntriesManager::GuardedData::resign() && noexcept -> void {
   resigned = true;
-}
-
-auto AppendEntriesMessageIdAcceptor::accept(MessageId id) noexcept -> bool {
-  if (id > lastId) {
-    lastId = id;
-    return true;
-  }
-  return false;
 }

@@ -37,8 +37,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -56,6 +54,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/HttpResponseChecker.h"
@@ -69,6 +68,35 @@
 #endif
 
 namespace {
+
+std::string escapedCollectionName(std::string const& name,
+                                  VPackSlice parameters) {
+  std::string escapedName = name;
+  if (arangodb::CollectionNameValidator::validateName(/*isSystem*/ true, false,
+                                                      name)
+          .fail()) {
+    // we have a collection name with special characters.
+    // we should not try to save the collection under its name in the
+    // filesystem. instead, we will use the collection id as part of the
+    // filename. try looking up collection id in "cid"
+    VPackSlice idSlice = parameters.get(arangodb::StaticStrings::DataSourceCid);
+    if (idSlice.isNone() &&
+        parameters.hasKey(arangodb::StaticStrings::DataSourceId)) {
+      // "cid" not present, try "id" (there seems to be difference between
+      // cluster and single server about which attribute is present)
+      idSlice = parameters.get(arangodb::StaticStrings::DataSourceId);
+    }
+    if (idSlice.isString()) {
+      escapedName = idSlice.copyString();
+    } else if (idSlice.isNumber<uint64_t>()) {
+      escapedName = std::to_string(idSlice.getNumber<uint64_t>());
+    } else {
+      escapedName =
+          std::to_string(arangodb::RandomGenerator::interval(UINT64_MAX));
+    }
+  }
+  return escapedName;
+}
 
 /// @brief return the target replication factor for the specified collection
 uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
@@ -238,8 +266,7 @@ arangodb::Result tryCreateDatabase(
   VPackBuilder builder;
   {
     ObjectBuilder object(&builder);
-    object->add(arangodb::StaticStrings::DatabaseName,
-                VPackValue(normalizeUtf8ToNFC(name)));
+    object->add(arangodb::StaticStrings::DatabaseName, VPackValue(name));
 
     // add replication factor write concern etc
     if (properties.isObject()) {
@@ -586,10 +613,7 @@ arangodb::Result processInputDirectory(
       // loop over all files in InputDirectory, and look for all structure.json
       // files
       for (std::string const& file : files) {
-        size_t const nameLength = file.size();
-
-        if (nameLength > viewsSuffix.size() &&
-            file.substr(file.size() - viewsSuffix.size()) == viewsSuffix) {
+        if (file.ends_with(viewsSuffix)) {
           if (!restrictColls.empty() && restrictViews.empty()) {
             continue;  // skip view if not specifically included
           }
@@ -603,7 +627,7 @@ arangodb::Result processInputDirectory(
                             "': ", directory.status().errorMessage())};
           }
 
-          std::string const name = VelocyPackHelper::getStringValue(
+          std::string name = VelocyPackHelper::getStringValue(
               fileContent, StaticStrings::DataSourceName, "");
           if (!checkRequested(restrictViews, name)) {
             // view name not in list
@@ -614,9 +638,7 @@ arangodb::Result processInputDirectory(
           continue;
         }
 
-        if (nameLength <= collectionSuffix.size() ||
-            file.substr(file.size() - collectionSuffix.size()) !=
-                collectionSuffix) {
+        if (!file.ends_with(collectionSuffix)) {
           // some other file
           continue;
         }
@@ -624,7 +646,7 @@ arangodb::Result processInputDirectory(
         // found a structure.json file
         std::string name =
             file.substr(0, file.size() - collectionSuffix.size());
-        if (!options.includeSystemCollections && name[0] == '_') {
+        if (!options.includeSystemCollections && name.starts_with('_')) {
           continue;
         }
 
@@ -645,12 +667,17 @@ arangodb::Result processInputDirectory(
                       directory.pathToFile(file) +
                       "': file has wrong internal format"};
         }
-        std::string const cname = VelocyPackHelper::getStringValue(
+        std::string cname = VelocyPackHelper::getStringValue(
             parameters, StaticStrings::DataSourceName, "");
+
+        // problem: collection name may contain arbitrary characters
+        std::string escapedName = escapedCollectionName(cname, parameters);
         bool overwriteName = false;
-        if (cname != name &&
+        if (cname != name && name != escapedName &&
             name !=
-                (cname + "_" + arangodb::rest::SslInterface::sslMD5(cname))) {
+                (cname + "_" + arangodb::rest::SslInterface::sslMD5(cname)) &&
+            name != (escapedName + "_" +
+                     arangodb::rest::SslInterface::sslMD5(cname))) {
           // file has a different name than found in structure file
           if (options.importStructure) {
             // we cannot go on if there is a mismatch
@@ -1155,14 +1182,14 @@ Result RestoreFeature::RestoreJob::sendRestoreData(
     // leave readOffset in place in readOffsets, because the job did not succeed
     {
       // store error
-      MUTEX_LOCKER(locker, sharedState->mutex);
+      std::lock_guard locker{sharedState->mutex};
       sharedState->result = res;
     }
   } else {
     // no error
 
     {
-      MUTEX_LOCKER(locker, sharedState->mutex);
+      std::lock_guard locker{sharedState->mutex};
       TRI_ASSERT(!sharedState->readOffsets.empty());
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -1194,7 +1221,7 @@ Result RestoreFeature::RestoreJob::sendRestoreData(
 }
 
 void RestoreFeature::RestoreJob::updateProgress() {
-  MUTEX_LOCKER(locker, sharedState->mutex);
+  std::unique_lock locker{sharedState->mutex};
 
   if (!sharedState->readOffsets.empty()) {
     auto it = sharedState->readOffsets.begin();
@@ -1334,7 +1361,7 @@ Result RestoreFeature::RestoreMainJob::dispatchRestoreData(
 
   {
     // insert the current readoffset
-    MUTEX_LOCKER(locker, sharedState->mutex);
+    std::lock_guard locker{sharedState->mutex};
     sharedState->readOffsets.emplace(readOffset, readLength);
   }
 
@@ -1390,22 +1417,24 @@ Result RestoreFeature::RestoreMainJob::restoreData(
 
   // import data. check if we have a datafile
   //  ... there are 4 possible names
+  std::string escapedName =
+      escapedCollectionName(collectionName, parameters.get("parameters"));
   bool isCompressed = false;
   auto datafile = directory.readableFile(
-      collectionName + "_" +
-      arangodb::rest::SslInterface::sslMD5(collectionName) + ".data.json");
+      escapedName + "_" + arangodb::rest::SslInterface::sslMD5(collectionName) +
+      ".data.json");
   if (!datafile || datafile->status().fail()) {
     datafile = directory.readableFile(
-        collectionName + "_" +
+        escapedName + "_" +
         arangodb::rest::SslInterface::sslMD5(collectionName) + ".data.json.gz");
     isCompressed = true;
   }
   if (!datafile || datafile->status().fail()) {
-    datafile = directory.readableFile(collectionName + ".data.json.gz");
+    datafile = directory.readableFile(escapedName + ".data.json.gz");
     isCompressed = true;
   }
   if (!datafile || datafile->status().fail()) {
-    datafile = directory.readableFile(collectionName + ".data.json");
+    datafile = directory.readableFile(escapedName + ".data.json");
     isCompressed = false;
   }
   if (!datafile || datafile->status().fail()) {
@@ -1518,7 +1547,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
 
       // check if our status was changed by background jobs
       if (result.ok()) {
-        MUTEX_LOCKER(locker, sharedState->mutex);
+        std::lock_guard locker{sharedState->mutex};
 
         if (sharedState->result.fail()) {
           // yes, something failed
@@ -1572,7 +1601,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   // end of main job
   if (result.ok()) {
     {
-      MUTEX_LOCKER(locker, sharedState->mutex);
+      std::lock_guard locker{sharedState->mutex};
       sharedState->readCompleteInputfile = true;
     }
 
@@ -2275,7 +2304,7 @@ ClientTaskQueue<RestoreFeature::RestoreJob>& RestoreFeature::taskQueue() {
 void RestoreFeature::reportError(Result const& error) {
   try {
     {
-      MUTEX_LOCKER(lock, _workerErrorLock);
+      std::lock_guard lock{_workerErrorLock};
       _workerErrors.emplace_back(error);
     }
     _clientTaskQueue.clearQueue();
@@ -2285,7 +2314,7 @@ void RestoreFeature::reportError(Result const& error) {
 
 Result RestoreFeature::getFirstError() const {
   {
-    MUTEX_LOCKER(lock, _workerErrorLock);
+    std::lock_guard lock{_workerErrorLock};
     if (!_workerErrors.empty()) {
       return _workerErrors.front();
     }
@@ -2294,7 +2323,7 @@ Result RestoreFeature::getFirstError() const {
 }
 
 std::unique_ptr<basics::StringBuffer> RestoreFeature::leaseBuffer() {
-  MUTEX_LOCKER(lock, _buffersLock);
+  std::lock_guard lock{_buffersLock};
 
   if (_buffers.empty()) {
     // no buffers present. now insert one
@@ -2316,7 +2345,7 @@ void RestoreFeature::returnBuffer(
   TRI_ASSERT(buffer != nullptr);
   buffer->clear();
 
-  MUTEX_LOCKER(lock, _buffersLock);
+  std::lock_guard lock{_buffersLock};
   try {
     _buffers.emplace_back(std::move(buffer));
   } catch (...) {

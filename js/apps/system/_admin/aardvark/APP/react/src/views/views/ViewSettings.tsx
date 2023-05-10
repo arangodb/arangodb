@@ -1,46 +1,23 @@
-import { Box, ChakraProvider } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import { cloneDeep, isEqual, uniqueId } from "lodash";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { HashRouter } from "react-router-dom";
 import useSWR from "swr";
-import { theme } from "../../theme/theme";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { FormDispatch, State } from "../../utils/constants";
-import {
-  getReducer,
-  isAdminUser as userIsAdmin,
-  usePermissions
-} from "../../utils/helpers";
-import { useDisableNavBar } from "../../utils/useDisableNavBar";
-import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
+import { encodeHelper } from "../../utils/encodeHelper";
+import { getReducer } from "../../utils/helpers";
+import { usePermissions, userIsAdmin } from "../../utils/usePermissions";
 import { FormState, ViewContext } from "./constants";
 import { postProcessor, useView } from "./helpers";
-import "./split-pane-styles.css";
+import { LinksContextProvider } from "./LinksContext";
 import { ViewHeader } from "./ViewHeader";
 import { ViewSection } from "./ViewSection";
 
-export const ViewSettings = ({
-  name,
-  isCluster
-}: {
-  name: string;
-  isCluster: boolean;
-}) => {
-  useDisableNavBar();
-  useGlobalStyleReset();
-  const [editName, setEditName] = useState(false);
-
-  const handleEditName = () => {
-    setEditName(true);
-  };
-
-  const closeEditName = () => {
-    setEditName(false);
-  };
-
+export const ViewSettings = ({ name }: { name: string }) => {
   // if we try to fix this by using inital values for id, type,
   // it causes the navigation to break
-  const initFormState = { name } as any; 
+  const initFormState = { name } as any;
 
   const initialState = useRef<State<FormState>>({
     formState: initFormState,
@@ -53,7 +30,7 @@ export const ViewSettings = ({
     lockJsonForm: false
   });
   // workaround, because useView only exposes partial FormState by default
-  const view = (useView(name) as any) as FormState;
+  const view = useView(name) as any as FormState;
   const [changed, setChanged] = useState(
     !!window.sessionStorage.getItem(`${name}-changed`)
   );
@@ -80,12 +57,12 @@ export const ViewSettings = ({
     });
   }, [view, name]);
 
-  const updateName = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const updateName = (name: string) => {
     dispatch({
       type: "setField",
       field: {
         path: "name",
-        value: event.target && event.target.value
+        value: name
       }
     });
   };
@@ -101,12 +78,12 @@ export const ViewSettings = ({
   }, [isAdminUser, permissions]);
 
   const formState = state.formState;
-  const nameEditDisabled = isCluster || !isAdminUser;
   if (data) {
     if (!isEqual(data.body.result, views)) {
       setViews(data.body.result);
     }
   }
+  const { encoded: encodedName } = encodeHelper(name);
   return (
     <ViewContext.Provider
       value={{
@@ -117,36 +94,26 @@ export const ViewSettings = ({
         setChanged
       }}
     >
-      <HashRouter basename={`view/${name}`} hashType={"noslash"}>
-        <ChakraProvider theme={theme}>
-          <ViewSettingsInner
-            editName={editName}
-            formState={formState}
-            handleEditName={handleEditName}
-            updateName={updateName}
-            nameEditDisabled={nameEditDisabled}
-            closeEditName={closeEditName}
-            isAdminUser={isAdminUser}
-            views={views}
-            dispatch={dispatch}
-            changed={changed}
-            name={name}
-            setChanged={setChanged}
-            state={state}
-          />
-        </ChakraProvider>
+      <HashRouter basename={`view/${encodedName}`} hashType={"noslash"}>
+        <ViewSettingsInner
+          formState={formState}
+          updateName={updateName}
+          isAdminUser={isAdminUser}
+          views={views}
+          dispatch={dispatch}
+          changed={changed}
+          name={name}
+          setChanged={setChanged}
+          state={state}
+        />
       </HashRouter>
     </ViewContext.Provider>
   );
 };
 
 const ViewSettingsInner = ({
-  editName,
   formState,
-  handleEditName,
   updateName,
-  nameEditDisabled,
-  closeEditName,
   isAdminUser,
   views,
   dispatch,
@@ -155,12 +122,8 @@ const ViewSettingsInner = ({
   setChanged,
   state
 }: {
-  editName: boolean;
   formState: FormState;
-  handleEditName: () => void;
-  updateName: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  nameEditDisabled: boolean;
-  closeEditName: () => void;
+  updateName: (name: string) => void;
   isAdminUser: boolean;
   views: never[];
   dispatch: FormDispatch<FormState>;
@@ -170,28 +133,30 @@ const ViewSettingsInner = ({
   state: State<FormState>;
 }) => {
   return (
-    <Box backgroundColor="white">
-      <ViewHeader
-        editName={editName}
-        formState={formState}
-        handleEditName={handleEditName}
-        updateName={updateName}
-        nameEditDisabled={nameEditDisabled}
-        closeEditName={closeEditName}
-        isAdminUser={isAdminUser}
-        views={views}
-        dispatch={dispatch}
-        changed={changed}
-        name={name}
-        setChanged={setChanged}
-      />
-      <ViewSection
-        name={name}
-        formState={formState}
-        dispatch={dispatch}
-        isAdminUser={isAdminUser}
-        state={state}
-      />
-    </Box>
+    <LinksContextProvider>
+      <Box
+        height="calc(100vh - 60px)"
+        display="grid"
+        gridTemplateRows="120px 1fr"
+        width="full"
+      >
+        <ViewHeader
+          formState={formState}
+          updateName={updateName}
+          isAdminUser={isAdminUser}
+          views={views}
+          dispatch={dispatch}
+          changed={changed}
+          name={name}
+          setChanged={setChanged}
+        />
+        <ViewSection
+          formState={formState}
+          dispatch={dispatch}
+          isAdminUser={isAdminUser}
+          state={state}
+        />
+      </Box>
+    </LinksContextProvider>
   );
 };

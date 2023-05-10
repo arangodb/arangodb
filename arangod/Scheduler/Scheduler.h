@@ -73,6 +73,16 @@ class Scheduler {
   void queue(RequestLane lane, F&& fn) noexcept {
     doQueue(lane, std::forward<F>(fn), false);
   }
+  template<typename F, typename R = std::invoke_result_t<F>,
+           std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
+  futures::Future<R> queueWithFuture(RequestLane lane, F&& fn) {
+    auto p = futures::Promise<R>{};
+    auto f = p.getFuture();
+    queue(lane, [p = std::move(p), fn = std::forward<F>(fn)]() mutable {
+      p.setValue(std::forward<F>(fn)());
+    });
+    return f;
+  }
 
   template<typename F,
            std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>

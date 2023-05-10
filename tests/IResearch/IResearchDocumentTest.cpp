@@ -151,7 +151,7 @@ struct TestAttribute : public irs::attribute {
   }
 };
 
-class EmptyAnalyzer : public irs::analysis::analyzer {
+class EmptyAnalyzer final : public irs::analysis::TypedAnalyzer<EmptyAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "iresearch-document-empty";
@@ -165,16 +165,15 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {}
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  EmptyAnalyzer() = default;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::frequency>::id()) {
       return &_attr;
     }
     return nullptr;
   }
-  virtual bool next() override { return false; }
-  virtual bool reset(std::string_view) override { return true; }
+  bool next() final { return false; }
+  bool reset(std::string_view) final { return true; }
 
  private:
   irs::frequency _attr;
@@ -183,7 +182,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make,
                         EmptyAnalyzer::normalize);
 
-class VPackAnalyzer : public irs::analysis::analyzer {
+class VPackAnalyzer final : public irs::analysis::TypedAnalyzer<VPackAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "iresearch-vpack-analyzer";
@@ -197,9 +196,8 @@ class VPackAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  VPackAnalyzer() : irs::analysis::analyzer(irs::type<VPackAnalyzer>::get()) {}
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  VPackAnalyzer() = default;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::term_attribute>::id()) {
       return &_term;
     }
@@ -208,14 +206,14 @@ class VPackAnalyzer : public irs::analysis::analyzer {
     }
     return nullptr;
   }
-  virtual bool next() override {
+  bool next() final {
     if (!irs::IsNull(_term.value)) {
       return false;
     }
     _term.value = irs::ViewCast<irs::byte_type>(std::string_view{_buf});
     return true;
   }
-  virtual bool reset(std::string_view data) override {
+  bool reset(std::string_view data) final {
     _buf = arangodb::iresearch::slice(data).toString();
     _term.value = irs::bytes_view{};
     return true;
@@ -230,7 +228,8 @@ class VPackAnalyzer : public irs::analysis::analyzer {
 REGISTER_ANALYZER_VPACK(VPackAnalyzer, VPackAnalyzer::make,
                         VPackAnalyzer::normalize);
 
-class InvalidAnalyzer : public irs::analysis::analyzer {
+class InvalidAnalyzer final
+    : public irs::analysis::TypedAnalyzer<InvalidAnalyzer> {
  public:
   static bool returnNullFromMake;
   static bool returnFalseFromToString;
@@ -252,17 +251,15 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     return !returnFalseFromToString;
   }
 
-  InvalidAnalyzer()
-      : irs::analysis::analyzer(irs::type<InvalidAnalyzer>::get()) {}
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  InvalidAnalyzer() = default;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<TestAttribute>::id()) {
       return &_attr;
     }
     return nullptr;
   }
-  virtual bool next() override { return false; }
-  virtual bool reset(std::string_view) override { return true; }
+  bool next() final { return false; }
+  bool reset(std::string_view) final { return true; }
 
  private:
   TestAttribute _attr;
@@ -274,7 +271,7 @@ bool InvalidAnalyzer::returnFalseFromToString = false;
 REGISTER_ANALYZER_VPACK(InvalidAnalyzer, InvalidAnalyzer::make,
                         InvalidAnalyzer::normalize);
 
-class TypedAnalyzer : public irs::analysis::analyzer {
+class TypedAnalyzer final : public irs::analysis::TypedAnalyzer<TypedAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "iresearch-document-typed";
@@ -289,8 +286,7 @@ class TypedAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  explicit TypedAnalyzer(std::string_view args)
-      : irs::analysis::analyzer(irs::type<TypedAnalyzer>::get()) {
+  explicit TypedAnalyzer(std::string_view args) {
     VPackSlice slice(irs::ViewCast<irs::byte_type>(args).data());
     if (slice.hasKey("type")) {
       auto type = slice.get("type").stringView();
@@ -314,12 +310,12 @@ class TypedAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual bool reset(std::string_view) override {
+  bool reset(std::string_view) final {
     _resetted = true;
     return true;
   }
 
-  virtual bool next() override {
+  bool next() final {
     if (_resetted) {
       _resetted = false;
       return true;
@@ -328,8 +324,7 @@ class TypedAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::term_attribute>::id()) {
       return &_term;
     }
@@ -359,7 +354,8 @@ class TypedAnalyzer : public irs::analysis::analyzer {
 REGISTER_ANALYZER_VPACK(TypedAnalyzer, TypedAnalyzer::make,
                         TypedAnalyzer::normalize);
 
-class TypedArrayAnalyzer : public irs::analysis::analyzer {
+class TypedArrayAnalyzer final
+    : public irs::analysis::TypedAnalyzer<TypedArrayAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "iresearch-document-typed-array";
@@ -374,12 +370,11 @@ class TypedArrayAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  explicit TypedArrayAnalyzer(std::string_view)
-      : irs::analysis::analyzer(irs::type<TypedArrayAnalyzer>::get()) {
+  explicit TypedArrayAnalyzer(std::string_view) {
     _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
   }
 
-  virtual bool reset(std::string_view data) override {
+  bool reset(std::string_view data) final {
     auto value = std::string(data);
     _values.clear();
     _current = 0;
@@ -389,7 +384,7 @@ class TypedArrayAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  virtual bool next() override {
+  bool next() final {
     if (_current < _values.size()) {
       _typedValue = arangodb::aql::AqlValue(
           arangodb::aql::AqlValueHintDouble(_values[_current++]));
@@ -400,8 +395,7 @@ class TypedArrayAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::increment>::id()) {
       return &_inc;
     }

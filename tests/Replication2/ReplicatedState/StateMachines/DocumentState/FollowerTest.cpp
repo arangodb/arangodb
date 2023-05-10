@@ -1,0 +1,462 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Alexandru Petenchea
+////////////////////////////////////////////////////////////////////////////////
+
+#include "Mocks/Death_Test.h"
+#include "Replication2/ReplicatedState/StateMachines/DocumentState/DocumentStateMachineTest.h"
+
+using namespace arangodb;
+using namespace arangodb::tests;
+using namespace arangodb::replication2;
+using namespace arangodb::replication2::tests;
+using namespace arangodb::replication2::replicated_state;
+using namespace arangodb::replication2::replicated_state::document;
+
+struct DocumentStateFollowerTest : DocumentStateMachineTest {};
+
+TEST_F(DocumentStateFollowerTest, follower_associated_shard_map) {
+  using namespace testing;
+
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
+  auto res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+
+  ON_CALL(*shardHandlerMock, getShardMap()).WillByDefault(Return(shardMap));
+
+  auto shardIds = follower->getAssociatedShardList();
+  EXPECT_EQ(shardIds.size(), 1);
+  EXPECT_EQ(shardIds[0], shardId);
+}
+
+TEST_F(DocumentStateFollowerTest,
+       follower_acquire_snapshot_calls_leader_interface) {
+  using namespace testing;
+
+  auto transactionHandlerMock = createRealTransactionHandler();
+
+  // The first call to applyEntry should be AbortAllOngoingTrx
+  // 3 transactions are expected to be applied
+  // 1 CreateShard due to the snapshot transfer
+  // 1 Insert and 1 Commit due to the first batch
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(Matcher<ReplicatedOperation>(_)))
+      .Times(4);
+  EXPECT_CALL(*leaderInterfaceMock, startSnapshot()).Times(1);
+  EXPECT_CALL(*leaderInterfaceMock, nextSnapshotBatch(SnapshotId{1})).Times(1);
+  EXPECT_CALL(*leaderInterfaceMock, finishSnapshot(SnapshotId{1})).Times(1);
+  EXPECT_CALL(*networkHandlerMock, getLeaderInterface("participantId"))
+      .Times(1);
+
+  auto follower = createFollower();
+  auto res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+
+  Mock::VerifyAndClearExpectations(networkHandlerMock.get());
+  Mock::VerifyAndClearExpectations(leaderInterfaceMock.get());
+  Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
+}
+
+TEST_F(DocumentStateFollowerTest,
+       follower_resigning_while_acquiring_snapshot_concurrently) {
+  using namespace testing;
+
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
+
+  MockDocumentStateSnapshotHandler::rebootTracker.updateServerState(
+      {{"participantId",
+        ServerHealthState{RebootId{1}, arangodb::ServerHealth::kUnclear}}});
+
+  std::atomic<bool> acquireSnapshotCalled = false;
+
+  // The snapshot will not stop until the follower resigns
+  ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
+    acquireSnapshotCalled.store(true);
+    acquireSnapshotCalled.notify_one();
+    return futures::Future<ResultT<SnapshotConfig>>{
+        std::in_place,
+        SnapshotConfig{.snapshotId = SnapshotId{1}, .shards = shardMap}};
+  });
+  auto emptyPayload = velocypack::SharedSlice(std::shared_ptr<uint8_t const>(
+      velocypack::Slice::emptyArraySliceData,
+      [](auto) { /* don't delete the pointer */ }));
+  ON_CALL(*leaderInterfaceMock, nextSnapshotBatch)
+      .WillByDefault([&](SnapshotId id) {
+        return futures::Future<ResultT<SnapshotBatch>>{
+            std::in_place, SnapshotBatch{.snapshotId = id,
+                                         .shardId = shardId,
+                                         .hasMore = true,
+                                         .payload = emptyPayload}};
+      });
+
+  std::thread t([follower]() {
+    auto res = follower->acquireSnapshot("participantId");
+    EXPECT_TRUE(res.isReady());
+    EXPECT_TRUE(res.get().fail());
+    EXPECT_TRUE(res.get().errorNumber() ==
+                TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+  });
+
+  acquireSnapshotCalled.wait(false);
+  std::move(*follower).resign();
+  t.join();
+}
+
+TEST_F(DocumentStateFollowerTest,
+       follower_applyEntries_encounters_AbortAllOngoingTrx_and_aborts_all_trx) {
+  using namespace testing;
+
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
+  auto res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  std::vector<DocumentLogEntry> entries;
+  for (std::uint64_t tid : {6, 10, 14}) {
+    entries.emplace_back(createDocumentEntry(TransactionId{tid}));
+  }
+  entries.emplace_back(DocumentLogEntry{
+      ReplicatedOperation::buildAbortAllOngoingTrxOperation()});
+
+  // AbortAllOngoingTrx should count towards the release index
+  auto expectedReleaseIndex = LogIndex{4};
+  for (std::uint64_t tid : {18, 22}) {
+    entries.emplace_back(createDocumentEntry(TransactionId{tid}));
+  }
+
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+
+  EXPECT_CALL(*stream, release).WillOnce([&](LogIndex index) {
+    EXPECT_EQ(index, expectedReleaseIndex);
+  });
+  follower->applyEntries(std::move(entryIterator));
+}
+
+TEST_F(DocumentStateFollowerTest,
+       follower_applyEntries_applies_transactions_but_does_not_release) {
+  using namespace testing;
+
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
+  auto res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  std::vector<DocumentLogEntry> entries;
+  for (std::uint64_t tid : {6, 10, 14}) {
+    entries.emplace_back(createDocumentEntry(TransactionId{tid}));
+  }
+
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+
+  // We only call release on commit or abort
+  EXPECT_CALL(*stream, release).Times(0);
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
+      .Times(3);
+  follower->applyEntries(std::move(entryIterator));
+}
+
+TEST_F(DocumentStateFollowerTest,
+       follower_intermediate_commit_does_not_release) {
+  using namespace testing;
+
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
+  auto res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  std::vector<DocumentLogEntry> entries;
+  auto tid = TransactionId{6};
+  entries.emplace_back(createDocumentEntry(TransactionId{tid}));
+  entries.emplace_back(
+      DocumentLogEntry{ReplicatedOperation::buildIntermediateCommitOperation(
+          TransactionId{tid})});
+  entries.emplace_back(DocumentLogEntry{
+      ReplicatedOperation::buildIntermediateCommitOperation(TransactionId{8})});
+
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+
+  EXPECT_CALL(*stream, release).Times(0);
+  follower->applyEntries(std::move(entryIterator));
+  Mock::VerifyAndClearExpectations(stream.get());
+}
+
+TEST_F(DocumentStateFollowerTest,
+       follower_applyEntries_dies_if_transaction_fails) {
+  using namespace testing;
+
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
+  auto res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  ON_CALL(*transactionHandlerMock,
+          applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
+      .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
+  std::vector<DocumentLogEntry> entries;
+  entries.emplace_back(
+      DocumentLogEntry{ReplicatedOperation::buildDocumentOperation(
+          TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{6}, shardId,
+          velocypack::SharedSlice())});
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  ASSERT_DEATH_CORE_FREE(follower->applyEntries(std::move(entryIterator)), "");
+}
+
+TEST_F(DocumentStateFollowerTest,
+       follower_applyEntries_commit_and_abort_calls_release) {
+  using namespace testing;
+
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
+  auto res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  // First commit then abort
+  std::vector<DocumentLogEntry> entries;
+  entries.emplace_back(createDocumentEntry(TransactionId{6}));
+  entries.emplace_back(createDocumentEntry(TransactionId{10}));
+  entries.emplace_back(DocumentLogEntry{
+      ReplicatedOperation::buildCommitOperation(TransactionId{6})});
+  entries.emplace_back(createDocumentEntry(TransactionId{14}));
+  entries.emplace_back(createDocumentEntry(TransactionId{18}));
+  entries.emplace_back(DocumentLogEntry{
+      ReplicatedOperation::buildAbortOperation(TransactionId{10})});
+  entries.emplace_back(createDocumentEntry(TransactionId{22}));
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  EXPECT_CALL(*stream, release).WillOnce([&](LogIndex index) {
+    EXPECT_EQ(index.value, 3);
+  });
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
+      .Times(7);
+  follower->applyEntries(std::move(entryIterator));
+  Mock::VerifyAndClearExpectations(stream.get());
+  Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
+
+  // First abort then commit
+  follower = createFollower();
+  res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+  stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+  entries.clear();
+
+  entries.emplace_back(createDocumentEntry(TransactionId{6}));
+  entries.emplace_back(createDocumentEntry(TransactionId{10}));
+  entries.emplace_back(DocumentLogEntry{
+      ReplicatedOperation::buildAbortOperation(TransactionId{6})});
+  entries.emplace_back(createDocumentEntry(TransactionId{14}));
+  entries.emplace_back(createDocumentEntry(TransactionId{18}));
+  entries.emplace_back(DocumentLogEntry{
+      ReplicatedOperation::buildCommitOperation(TransactionId{10})});
+  entries.emplace_back(createDocumentEntry(TransactionId{22}));
+  entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  EXPECT_CALL(*stream, release).WillOnce([&](LogIndex index) {
+    EXPECT_EQ(index.value, 3);
+  });
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
+      .Times(7);
+  follower->applyEntries(std::move(entryIterator));
+}
+
+TEST_F(DocumentStateFollowerTest,
+       follower_applyEntries_creates_and_drops_shard) {
+  using namespace testing;
+
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
+  auto res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  ShardID const myShard = "s12";
+  CollectionID const myCollection = "myCollection";
+
+  std::vector<DocumentLogEntry> entries;
+  entries.emplace_back(
+      DocumentLogEntry{ReplicatedOperation::buildCreateShardOperation(
+          myShard, myCollection, std::make_shared<VPackBuilder>())});
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  EXPECT_CALL(*shardHandlerMock, ensureShard(myShard, myCollection, _))
+      .Times(1);
+  EXPECT_CALL(*stream, release).Times(1);
+  follower->applyEntries(std::move(entryIterator));
+  Mock::VerifyAndClearExpectations(stream.get());
+
+  entries.clear();
+  entries.emplace_back(DocumentLogEntry{
+      ReplicatedOperation::buildDropShardOperation(myShard, myCollection)});
+  entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  EXPECT_CALL(*shardHandlerMock, dropShard(myShard)).Times(1);
+  EXPECT_CALL(*stream, release).Times(1);
+  follower->applyEntries(std::move(entryIterator));
+  Mock::VerifyAndClearExpectations(stream.get());
+
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+}
+
+TEST_F(DocumentStateFollowerTest,
+       follower_dies_if_shard_creation_or_deletion_fails) {
+  using namespace testing;
+
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
+  auto res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  std::vector<DocumentLogEntry> entries;
+  entries.emplace_back(
+      DocumentLogEntry{ReplicatedOperation::buildCreateShardOperation(
+          shardId, collectionId, std::make_shared<VPackBuilder>())});
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  ON_CALL(*shardHandlerMock, ensureShard(shardId, collectionId, _))
+      .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
+  ASSERT_DEATH_CORE_FREE(follower->applyEntries(std::move(entryIterator)), "");
+
+  entries.clear();
+  entries.emplace_back(DocumentLogEntry{
+      ReplicatedOperation::buildDropShardOperation(shardId, collectionId)});
+  entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  ON_CALL(*shardHandlerMock, dropShard(shardId))
+      .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
+  ASSERT_DEATH_CORE_FREE(follower->applyEntries(std::move(entryIterator)), "");
+}
+
+TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
+  using namespace testing;
+
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
+  auto res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  // Try to apply a regular entry, but pretend the shard is not available
+  std::vector<DocumentLogEntry> entries;
+  entries.emplace_back(createDocumentEntry(TransactionId{6}));
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  ON_CALL(*shardHandlerMock, isShardAvailable(shardId))
+      .WillByDefault(Return(false));
+
+  EXPECT_CALL(*shardHandlerMock, isShardAvailable(shardId)).Times(1);
+  EXPECT_CALL(*transactionHandlerMock, applyEntry(entries[0].operation))
+      .Times(0);
+  follower->applyEntries(std::move(entryIterator));
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+  Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
+  ON_CALL(*shardHandlerMock, isShardAvailable(shardId))
+      .WillByDefault(Return(true));
+
+  // Try to commit the previous entry
+  entries.clear();
+  entries.emplace_back(DocumentLogEntry{
+      ReplicatedOperation::buildCommitOperation(TransactionId{6})});
+  entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  EXPECT_CALL(*shardHandlerMock, isShardAvailable(shardId)).Times(0);
+  EXPECT_CALL(*transactionHandlerMock, applyEntry(entries[0].operation))
+      .Times(0);
+  follower->applyEntries(std::move(entryIterator));
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+  Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
+
+  // Try to apply another entry, this time making the shard available
+  entries.clear();
+  entries.emplace_back(createDocumentEntry(TransactionId{10}));
+  entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  EXPECT_CALL(*shardHandlerMock, isShardAvailable(shardId)).Times(1);
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(entries[0].getInnerOperation()))
+      .Times(1);
+  follower->applyEntries(std::move(entryIterator));
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+  Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
+}
+
+TEST_F(DocumentStateFollowerTest,
+       follower_aborts_transactions_of_dropped_shard) {
+  using namespace testing;
+
+  auto transactionHandlerMock = createRealTransactionHandler();
+  auto follower = createFollower();
+  auto res = follower->acquireSnapshot("participantId");
+  EXPECT_TRUE(res.isReady() && res.get().ok());
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  std::vector<DocumentLogEntry> entries;
+  entries.emplace_back(
+      DocumentLogEntry{ReplicatedOperation::buildDocumentOperation(
+          TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{6}, "shard1",
+          velocypack::SharedSlice())});
+  entries.emplace_back(
+      DocumentLogEntry{ReplicatedOperation::buildDocumentOperation(
+          TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{10}, "shard2",
+          velocypack::SharedSlice())});
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  follower->applyEntries(std::move(entryIterator));
+
+  entries.clear();
+  entries.emplace_back(DocumentLogEntry{
+      ReplicatedOperation::buildDropShardOperation("shard1", collectionId)});
+  entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+
+  ON_CALL(*transactionHandlerMock, getTransactionsForShard("shard1"))
+      .WillByDefault(Return(std::vector<TransactionId>{TransactionId{6}}));
+  ON_CALL(*transactionHandlerMock, getTransactionsForShard("shard2"))
+      .WillByDefault(Return(std::vector<TransactionId>{TransactionId{10}}));
+  EXPECT_CALL(*transactionHandlerMock, getTransactionsForShard("shard1"))
+      .Times(1);
+  EXPECT_CALL(
+      *transactionHandlerMock,
+      applyEntry(ReplicatedOperation::buildAbortOperation(TransactionId{6})))
+      .Times(1);
+  EXPECT_CALL(*transactionHandlerMock, getTransactionsForShard("shard2"))
+      .Times(0);
+  EXPECT_CALL(
+      *transactionHandlerMock,
+      applyEntry(ReplicatedOperation::buildAbortOperation(TransactionId{10})))
+      .Times(0);
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(entries[0].getInnerOperation()))
+      .Times(1);
+  EXPECT_CALL(*stream, release(LogIndex{1})).Times(1);
+
+  follower->applyEntries(std::move(entryIterator));
+  Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
+  Mock::VerifyAndClearExpectations(stream.get());
+}

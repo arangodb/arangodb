@@ -344,7 +344,12 @@ function fulltextCreateSuite () {
       var idx3 = c.ensureIndex({ type: "fulltext", fields: ["attr2"] });
 
       assertTrue(c.dropIndex(idx1));
-      assertFalse(c.dropIndex(idx2)); // already deleted
+      try {
+        c.dropIndex(idx2); // already deleted
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
       assertTrue(c.dropIndex(idx3));
     }
 
@@ -404,8 +409,7 @@ function fulltextQuerySuite () {
         try {
           assertEqual(0, collection.fulltext("text", queries[i], idx).toArray().length);
           fail();
-        }
-        catch (e) {
+        } catch (e) {
           assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
         }
       }
@@ -944,13 +948,18 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testDuplicatesMatrix: function () {
-      var text = "";
-      for (var i = 0; i < 1000; ++i) {
+      let text = "";
+      for (let i = 0; i < 1000; ++i) {
         text += "some random text,";
       }
 
-      for (i = 0; i < 1000; ++i) {
-        collection.save({ text: text });
+      const docs = [];
+      const doc = { text: text };
+      for (let i = 0; i < 100; ++i) {
+        docs.push(doc);
+      }
+      for (let i = 0; i < 10; ++i) {
+        collection.save(docs);
       }
      
       assertEqual(1000, collection.fulltext("text", "text,random", idx).toArray().length);
@@ -963,13 +972,17 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testDuplicatesDocuments: function () {
-      var text1 = "this is a short document text";
-      var text2 = "Some longer document text is put in here just to validate whats going on";
+      const text1 = "this is a short document text";
+      const text2 = "Some longer document text is put in here just to validate whats going on";
       
+      const docs = [];
+      const doc1 = { text: text1 };
+      const doc2 = { text: text2 };
       for (var i = 0; i < 2500; ++i) {
-        collection.save({ text: text1 });
-        collection.save({ text: text2 });
+        docs.push(doc1);
+        docs.push(doc2);
       }
+      collection.save(docs);
 
       assertEqual(5000, collection.fulltext("text", "document", idx).toArray().length);
       assertEqual(5000, collection.fulltext("text", "text", idx).toArray().length);
@@ -983,15 +996,19 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testDuplicatesDocuments2: function () {
-      var text1 = "this is a short document text";
-      var text2 = "Some longer document text is put in here just to validate whats going on";
+      const text1 = "this is a short document text";
+      const text2 = "Some longer document text is put in here just to validate whats going on";
 
-      var docs = [ ];
-      
-      for (var i = 0; i < 500; ++i) {
-        docs[i] = collection.save({ text: text1 });
-        collection.save({ text: text2 });
+      let docs1 = [];
+      const docs2 = [];
+      const doc1 = { text: text1 };
+      const doc2 = { text: text2 };
+      for (let i = 0; i < 500; ++i) {
+        docs1.push(doc1);
+        docs2.push(doc2);
       }
+      docs1 = collection.save(docs1);
+      collection.save(docs2);
 
       assertEqual(1000, collection.fulltext("text", "document", idx).toArray().length);
       assertEqual(1000, collection.fulltext("text", "text", idx).toArray().length);
@@ -999,9 +1016,7 @@ function fulltextQuerySuite () {
       assertEqual(500, collection.fulltext("text", "some", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "banana", idx).toArray().length);
 
-      for (i = 0; i < 250; ++i) {
-        collection.remove(docs[i]);
-      }
+      collection.remove(docs1.slice(0, 250));
 
       assertEqual(750, collection.fulltext("text", "document", idx).toArray().length);
       assertEqual(750, collection.fulltext("text", "text", idx).toArray().length);
@@ -1015,12 +1030,14 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testDifferentDocuments: function () {
-      var prefix = "prefix";
+      const prefix = "prefix";
 
-      for (var i = 0; i < 2500; ++i) {
-        var word = prefix + i;
-        collection.save({ text: word });
+      const docs = [];
+      for (let i = 0; i < 2500; ++i) {
+        const word = prefix + i;
+        docs.push({ text: word });
       }
+      collection.save(docs);
      
       assertEqual(1, collection.fulltext("text", "prefix0", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "prefix1", idx).toArray().length);
@@ -1061,11 +1078,13 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testSimilar: function () {
-      var suffix = "a";
-      for (var i = 0; i < 100; ++i) {
-        collection.save({ text: "somerandomstring" + suffix });
+      let suffix = "a";
+      const docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ text: "somerandomstring" + suffix });
         suffix += "a";
       }
+      collection.save(docs);
     
       assertEqual(1, collection.fulltext("text", "somerandomstringa", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "somerandomstringaa", idx).toArray().length);
@@ -1093,7 +1112,7 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUmlauts: function () {
-      var texts = [
+      const texts = [
         "DER MÜLLER GING IN DEN WALD UND aß den HÜHNERBÖREKBÄRENmensch",
         "der peter mag den bÖRGER",
         "der müller ging in den wald un aß den hahn",
@@ -1101,7 +1120,7 @@ function fulltextQuerySuite () {
         "DER MÜLLER GING IN DEN WAL UND aß den HÜHNERBÖREKBÄRENmensch" 
       ];
       
-      for (var i = 0; i < texts.length; ++i) {
+      for (let i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
 
@@ -1130,7 +1149,7 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnicode: function () {
-      var texts = [
+      const texts = [
         "big. Really big. He moment. Magrathea! - insisted Arthur, - I do you can sense no further because it doesn't fit properly. In my the denies faith, and the atmosphere beneath You are not cheap He was was his satchel. He throughout Magrathea. - He pushed a tore the ecstatic crowd. Trillian sat down the time, the existence is it? And he said, - What they don't want this airtight hatchway. - it's we you shooting people would represent their Poet Master Grunthos is in his mind.",
         "מהן יטע המקצועות חצר הַלֶּחֶם תחת זכר שבר יַד לַאֲשֶׁר בְּדָבָר ירה והנשגבים חשבונותי. קר רה עת זז. נראו מאוד לשבת מודד מעול. קם הרמות נח לא לי מעליו מספוא בז זז כר שב. . ההן ביצים מעט מלב קצת לשכרה שנסכה קלונו מנוחה רכב ונס. עבודתנו בעבודתו נִבְרֹא. שבר פרי רסן הַשְּׁטוּת וּגְבוּרָה שְׁאֵלַנִי בְּאוֹתָהּ לִי קַלִּילִים יִכָּנְסוּ מעש. חי הַ פה עם =יחידת עד אם כי",
         "Ultimo cadere chi sedete uso chiuso voluto ora. Scotendosi portartela meraviglia ore eguagliare incessante allegrezza per. Pensava maestro pungeva un le tornano ah perduta. Fianco bearmi storia soffio prende udi poteva una. Cammino fascino elisire orecchi pollici mio cui sai sul. Chi egli sino sei dita ben. Audace agonie groppa afa vai ultima dentro scossa sii. Alcuni mia blocco cerchi eterno andare pagine poi. Ed migliore di sommesso oh ai angoscia vorresti.", 
@@ -1142,7 +1161,7 @@ function fulltextQuerySuite () {
         " 復讐者」. 復讐者」. 伯母さん 復讐者」. 復讐者」. 復讐者」. 復讐者」. 第九章 第五章 第六章 第七章 第八章. 復讐者」 伯母さん. 復讐者」 伯母さん. 第十一章 第十九章 第十四章 第十八章 第十三章 第十五章. 復讐者」 . 第十四章 第十一章 第十二章 第十五章 第十七章 手配書. 第十四章 手配書 第十八章 第十七章 第十六章 第十三章. 第十一章 第十三章 第十八章 第十四章 手配書. 復讐者」."
       ];
 
-      for (var i = 0; i < texts.length; ++i) {
+      for (let i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
 
@@ -1160,7 +1179,7 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFrench: function () {
-      var texts = [
+      const texts = [
         "La nouvelle. Elle, ni le cas de cette dame payés lire Invitation amitié voyager manger tout le sur deux. Vous timide qui peine dépenses débattons hâta résolu. Moment, toujours poli sur l'esprit est la chaleur qu'il cœurs. Downs ceux qui sont encore pleines d'esprit une sorte boules chef ainsi. Moment d'une petite demeurent non non jusqu'à animée. Way affaire peut hors de notre pays régulière pour adapter applaudi.",
         "Lui invitation bruyante avait dépêché connexion habitant de projection. D'un commun accord un danger mr grenier edward un. Détournée, comme ailleurs strictement aucun effort disposition par Stanhill. Cette femme appel le faire soupirer porte pas sentir. Vous et l'ordre demeure malgré vous. Proxénétisme bien appartenant notre nous-mêmes et certainement propre continuelle perpétuelle. Il d'ailleurs parfois d'ou ma certitude. Lain pas que cinq ou moins élevé. Tout voyager régler la littérature de la loi comment.",
         "Est au porte-monnaie essayé blagues Chine prête une carie. Petite son chemin boisé timide avait des bas de puissance. Pour indiquant parlant admis d'apprentissage de mon exercice afin volets po procuré mr il sentiments. Pour ou trois maison offre commence à prendre am. Comme dissuader joyeux surmonté sorte d'amicale il se livrait déballé. Connexion à l'altération de façon me recueillir. Difficile dans une vaste livré à l'allocation direction. Diminution utilisation altération peut mettre considérée sentiments discrétion intéressée. Un voyant faiblement escaliers suis revenu me branche pas.",
@@ -1173,7 +1192,7 @@ function fulltextQuerySuite () {
         "Folly veuve mots d'un des bas âge peu tous les sept ans. Si une partie raté de fait, il parc, juste à montrer. Découvert avaient-elles considérées projection qui favorable. Connaissances nécessaires jusqu'à ce assez. Refusant l'éducation départ est Dashwoods être soit un fichier. Utilisez hors la loi curiosité agréable monsieur ne veut pas déficient instantanément. Facile la vie fait l'esprit de voir a porté dix. Paroisse toute bavard peut Elinor directe de l'ancien. Jusqu'à comme signifié veuve au moins égale une action."
       ];
 
-      for (var i = 0; i < texts.length; ++i) {
+      for (let i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
      
@@ -1206,14 +1225,14 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSpanish: function () {
-      var texts = [
+      const texts = [
         "Nuevo. Ella ni caso a esa señora pagó leer Invitación amistad viajando comer todo lo que el a dos. Shy ustedes que apenas gastos debatiendo apresuró resuelto. Siempre educado momento en que es espíritu calor a los corazones. Downs esos ingeniosos aún un jefe bolas tan así. Momento un poco hasta quedarse sin ninguna animado. Camino de mayo trajo a nuestro país periódicas para adaptarse vitorearon.",
         "Él había enviado invitación bullicioso conexión habitar proyección. Por mutuo un peligro desván mr edward una. Desviado como adición esfuerzo estrictamente ninguna disposición por Stanhill. Esta mujer llamada lo hacen suspirar puerta no sentía. Usted y el orden morada pesar conseguirlo. La adquisición de lejos nuestra pertenencia a nosotros mismos y ciertamente propio perpetuo continuo. Es otra parte de mi a veces o certeza. Lain no como cinco o menos alto. Todo viajar establecer cómo la literatura ley.",
         "Se trató de chistes en bolsa china decaimiento listo un archivo. Pequeño su timidez tenía leñosa poder downs. Para que denota habla admitió aprendiendo mi ejercicio para Adquiridos pulg persianas mr lo sentimientos. Para o tres casa oferta tomado am a comenzar. Como disuadir alegre superó así de amable se entregaba sin envasar. Alteración de conexión así como me coleccionismo. Difícil entregado en extenso en subsidio dirección. Alteración poner disminución uso puede considerarse sentimientos discreción interesado. Un viendo débilmente escaleras soy yo sin ingresos rama.",
         "Contento obtener certeza desconfía más aún son jamón franqueza oculta. En la resolución no afecta a considerar de. No me pareció marido o coronel efectos formando. Shewing End sentado que vio además de musical adaptado hijo. En contraste interesados comer pianoforte alteración simpatizar fue. Él cree que si las familias no sorprender a un interés elegancia. Reposó millas equivocadas una placa tan demora. Ella puso propia relación sobrevivió podrá eliminarse."
       ];
 
-      for (var i = 0; i < texts.length; ++i) {
+      for (let i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
      
@@ -1244,7 +1263,7 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPrefixes1: function () {
-      var texts = [
+      const texts = [
         "Ego sum fidus. Canis sum.",
         "Ibi est Aurelia amica. Aurelia est puelle XI annos nata. Filia est.",
         "Claudia mater est.",
@@ -1255,7 +1274,7 @@ function fulltextQuerySuite () {
         "Aurelius pater est. Est mercator."
       ];
       
-      for (var i = 0; i < texts.length; ++i) {
+      for (let i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
 
@@ -1304,7 +1323,7 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPrefixes2: function () {
-      var texts = [
+      const texts = [
         "Flötenkröten tröten böse wörter nörgelnd",
         "Krötenbrote grölen stoßen GROßE Römermöter",
         "Löwenschützer möchten mächtige Müller ködern",
@@ -1315,7 +1334,7 @@ function fulltextQuerySuite () {
         "Moechten boese wichte wenig mueller melken?"
       ];
       
-      for (var i = 0; i < texts.length; ++i) {
+      for (let i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
 
@@ -1376,7 +1395,7 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLongPrefixes: function () {
-      var texts = [
+      const texts = [
         "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattinsfreundinnenbesucheranlassversammlungsortausschilderungsherstellungsfabrikationsanlagenbetreiberliebhaberliebhaber",
         "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattin",
         "autotuerendellenentfernungsfirmenmitarbeiterverguetungsbewerter",
@@ -1384,7 +1403,7 @@ function fulltextQuerySuite () {
         "Dampfmaschinenfahrzeugsinspektionsverwaltungsstellenmitarbeiterinsignifikant"
       ];
       
-      for (var i = 0; i < texts.length; ++i) {
+      for (let i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
 
@@ -1444,7 +1463,7 @@ function fulltextQuerySuite () {
     testUnicodeSearches: function () {
       idx = collection.ensureIndex({ type: "fulltext", fields: ["text"], minLength: 1 }).id;
 
-      var texts = [
+      const texts = [
         "\u30e3\u30f3\u30da\u30fc\u30f3\u304a\u3088\u3073\u8ffd\u52a0\u60c5\u5831 \u3010\u697d\u5668\u6b73\u672b\u30bb\u30fc\u30eb\u3011\uff1a\u304a\u597d\u304d\u306aCD\u30fbDVD\u3068\u540c\u6642\u8cfc\u5165\u3067\u304a\u5f97\u306a\u30ad\u30e3\u30f3\u30da\u30fc\u30f3 \u3001 \u7279\u5178\u4ed8\u30a8\u30ec\u30ad\u30ae\u30bf\u30fc \u307b\u304b\u3001\u4eca\u5e74\u6700\u5f8c\u306e\u304a\u8cb7\u3044\u5f97\u30ad\u30e3\u30f3\u30da\u30fc\u30f3\uff0112\/16\u307e\u3067\u3002\u306a\u304a\u3001CD\u30fbDVD\u540c\u6642\u8cfc\u5165\u30ad\u30e3\u30f3\u30da\u30fc\u30f3\u306fAmazon\u30de\u30fc\u30b1\u30c3\u30c8\u30d7\u30ec\u30a4\u30b9\u306e\u5546\u54c1\u306f\u30ad\u30e3\u30f3\u30da\u30fc\u30f3\u5bfe\u8c61\u5916\u3067\u3059\u3002 \u300c\u697d\u5668\u6b73\u672b\u30bb\u30fc\u30eb\u300d\u3078 \u2605\u2606\u3010\u304a\u3059\u3059\u3081\u60c5\u5831\u3011\u30a6\u30a3\u30f3\u30bf\u30fc\u30bb\u30fc\u30eb\u30002013\/1\/4\u307e\u3067\u958b\u50ac\u4e2d\u2606\u2605\u2606 \u30bb\u30fc\u30eb\u5bfe\u8c61\u5546\u54c1\u306f\u5404\u30da\u30fc\u30b8\u304b\u3089\u30c1\u30a7\u30c3\u30af\uff1a \u6700\u592770\uff05OFF\uff01\u56fd\u5185\u76e4\u30d0\u30fc\u30b2\u30f3\uff5c \u3010ALL1,000\u5186\u3011\u4eba\u6c17\u8f38\u5165\u76e4\u30ed\u30c3\u30af\u30fb\u30dd\u30c3\u30d7\u30b9\uff5c \u3010\u8f38\u5165\u76e4\u671f\u9593\u9650\u5b9a1,000\u5186\u3011\u30af\u30ea\u30b9\u30de\u30b9CD\u30bb\u30fc\u30eb\uff5c \u3010\u4eba\u6c17\u306e\u8f38\u5165\u76e41,200\u5186\u3011\u7652\u3057\u306e\u97f3\u697d\uff5c \u3010ALL991\u5186\u3011\u58f2\u308c\u7b4b\u8f38\u5165\u76e4\uff5c",
         "\u30103\u679a\u7d44900\u5186\u307b\u304b\u3011NOT NOW MUSIC\u30bb\u30fc\u30eb\uff5c \u30102013\/1\/7\u307e\u3067\u3011\u30df\u30e5\u30fc\u30b8\u30c3\u30afDVD 2\u679a\u4ee5\u4e0a\u30675%OFF\uff01\uff5c \u3000\u203b\u30de\u30fc\u30b1\u30c3\u30c8\u30d7\u30ec\u30a4\u30b9\u306e\u5546\u54c1\u306f\u30bb\u30fc\u30eb\u5bfe\u8c61\u5916\u3068\u306a\u308a\u307e\u3059\u3002\u3010\u9650\u5b9a\u7248\/\u521d\u56de\u7248\u30fb\u7279\u5178\u306b\u3064\u3044\u3066\u3011Amazon\u30de\u30fc\u30b1\u30c3\u30c8\u30d7\u30ec\u30a4\u30b9\u306e\u51fa\u54c1\u8005\u304c\u8ca9\u58f2\u3001\u767a\u9001\u3059\u308b\u5546\u54c1\u306e\u5834\u5408\u306f\u3001\u51fa\u54c1\u8005\u306e\u30b3\u30e1\u30f3\u30c8\u3092\u3054\u78ba\u8a8d\u3044\u305f\u3060\u304f\u304b\u3001\u51fa\u54c1\u8005\u306b\u304a\u554f\u3044\u5408\u308f\u305b\u306e\u4e0a\u3067\u3054\u6ce8\u6587\u304f\u3060\u3055\u3044\u3002",
         "\u56fe\u4e66\u7b80\u4ecb \u4e9a\u9a6c\u900a\u56fe\u4e66\uff0c\u4e2d\u56fd\u6700\u5927\u7684\u7f51\u4e0a\u4e66\u5e97\u3002\u62e5\u6709\u6587\u5b66\uff0c\u7ecf\u6d4e\u7ba1\u7406\uff0c\u5c11\u513f\uff0c\u4eba\u6587\u793e\u79d1\uff0c\u751f\u6d3b\uff0c\u827a\u672f\uff0c\u79d1\u6280\uff0c\u8fdb\u53e3\u539f\u7248\uff0c\u671f\u520a\u6742\u5fd7\u7b49\u5927\u7c7b\uff0c\u6559\u6750\u6559\u8f85\u8003\u8bd5\uff0c\u5386\u53f2\uff0c\u56fd\u5b66\u53e4\u7c4d\uff0c\u6cd5\u5f8b\uff0c\u519b\u4e8b\uff0c\u5b97\u6559\uff0c\u5fc3\u7406\u5b66\uff0c\u54f2\u5b66\uff0c\u5065\u5eb7\u4e0e\u517b\u751f\uff0c\u65c5\u6e38\u4e0e\u5730\u56fe\uff0c\u5a31\u4e50\uff0c\u4e24\u6027\u5a5a\u604b\uff0c\u65f6\u5c1a\uff0c\u5bb6\u5c45\u4f11\u95f2\uff0c\u5b55\u4ea7\u80b2\u513f\uff0c\u6587\u5b66\uff0c\u5c0f\u8bf4\uff0c\u4f20\u8bb0\uff0c\u9752\u6625\u4e0e\u52a8\u6f2b\u7ed8\u672c\uff0c\u5bb6\u5ead\u767e\u79d1\uff0c\u5916\u8bed\uff0c\u5de5\u5177\u4e66\uff0c\u6559\u80b2\uff0c\u5fc3\u7406\u52b1\u5fd7\uff0c\u5fc3\u7075\u8bfb\u7269\uff0c\u5efa\u7b51\uff0c\u8ba1\u7b97\u673a\u4e0e\u7f51\u7edc\uff0c\u79d1\u5b66\u4e0e\u81ea\u7136\u7b49\u6570\u5341\u5c0f\u7c7b\u5171\u8ba1300\u591a\u4e07\u79cd\u4e2d\u5916\u56fe\u4e66\u3002",
@@ -1461,7 +1480,7 @@ function fulltextQuerySuite () {
         "\u10d3\u10d0\u10ee\u10db\u10d0\u10e0\u10d4\u10d1\u10d8\u10e1\u10d7\u10d5\u10d8\u10e1 \u10d2\u10d0\u10d3\u10d0\u10ee\u10d4\u10d3\u10d4\u10d7 \u10d8\u10dc\u10e1\u10e2\u10e0\u10e3\u10e5\u10ea\u10d8\u10d4\u10d1\u10d8\u10e1 \u10d2\u10d5\u10d4\u10e0\u10d3\u10e1, \u10d0\u10dc \u10d3\u10d0\u10e1\u10d5\u10d8\u10d7 \u10d9\u10d8\u10d7\u10ee\u10d5\u10d0 \u10e0\u10d4\u10d3\u10d0\u10e5\u10e2\u10dd\u10e0\u10d4\u10d1\u10d8\u10e1\u10d7\u10d5\u10d8\u10e1.\n\u10e4\u10dd\u10e0\u10e3\u10db\u10d8 \u10d5\u10d8\u10d9\u10d8\u10de\u10d4\u10d3\u10d8\u10d8\u10e1 \u10db\u10d7\u10d0\u10d5\u10d0\u10e0\u10d8 \u10d2\u10d0\u10dc\u10ee\u10d8\u10da\u10d5\u10d8\u10e1 \u10d0\u10d3\u10d2\u10d8\u10da\u10d8\u10d0, \u10e0\u10dd\u10db\u10d4\u10da\u10e8\u10d8\u10ea \u10e0\u10d0\u10db\u10d3\u10d4\u10dc\u10d8\u10db\u10d4 \u10d2\u10d0\u10dc\u10e7\u10dd\u10e4\u10d8\u10da\u10d4\u10d1\u10d0\u10d0: \u10e1\u10d8\u10d0\u10ee\u10da\u10d4\u10d4\u10d1\u10d8, \u10e2\u10d4\u10e5\u10dc\u10d8\u10d9\u10e3\u10e0 \u10e1\u10d0\u10d9\u10e3\u10d7\u10ee\u10d4\u10d1\u10d8, \u10ec\u10d8\u10dc\u10d0\u10d3\u10d0\u10d3\u10d4\u10d1\u10d4\u10d1\u10d8, \u10e3\u10d7\u10d0\u10dc\u10ee\u10db\u10dd\u10d4\u10d1\u10d0, \u10d5\u10d8\u10d9\u10d8\u10e8\u10d4\u10ee\u10d5\u10d4\u10d3\u10e0\u10d4\u10d1\u10d8, \u10d2\u10e0\u10d0\u10e4\u10d8\u10d9\u10e3\u10da \u10e1\u10d0\u10d0\u10db\u10e5\u10e0\u10dd, \u10d3\u10d0\u10ee\u10db\u10d0\u10e0\u10d4\u10d1\u10d0 \u10d3\u10d0 \u10db\u10e0\u10d0\u10d5\u10d0\u10da\u10d4\u10dc\u10dd\u10d5\u10d0\u10dc\u10d8."
       ];
 
-      for (var i = 0; i < texts.length; ++i) {
+      for (let i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
 
@@ -1489,13 +1508,12 @@ function fulltextQuerySuite () {
     },
 
     testQueryingAfterDeletion: function () {
+      const docs = [];
       for (let i = 0; i < 4000; ++i) {
-        collection.save({ _key: "test" + i, text: "test" + i });
+        docs.push({ _key: "test" + i, text: "test" + i });
       }
-
-      for (let i = 2436; i < 3473; ++i) {
-        collection.remove("test" + i);
-      }
+      collection.save(docs);
+      collection.remove(docs.slice(2436, 3473));
 
       for (let i = 0; i < 4000; ++i) {
         assertEqual((i >= 2436 && i < 3473) ? 0 : 1, collection.fulltext("text", "test" + i, idx).toArray().length);

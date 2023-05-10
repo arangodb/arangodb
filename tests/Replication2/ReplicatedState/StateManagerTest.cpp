@@ -44,6 +44,7 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/IScheduler.h"
+#include "Replication2/Mocks/SchedulerMocks.h"
 
 #include <thread>
 
@@ -199,11 +200,13 @@ struct StateManagerTest : testing::Test {
 
   std::shared_ptr<DelayedScheduler> scheduler =
       std::make_shared<DelayedScheduler>();
+  std::shared_ptr<DelayedScheduler> logScheduler =
+      std::make_shared<DelayedScheduler>();
   std::shared_ptr<FakeFollowerFactory> fakeFollowerFactory =
       std::make_shared<FakeFollowerFactory>(vocbaseMock, gid.id);
   std::shared_ptr<DefaultParticipantsFactory> participantsFactory =
       std::make_shared<replicated_log::DefaultParticipantsFactory>(
-          fakeFollowerFactory, scheduler);
+          fakeFollowerFactory, logScheduler);
 
   std::shared_ptr<ReplicatedLog> log =
       std::make_shared<replicated_log::ReplicatedLog>(
@@ -255,11 +258,12 @@ TEST_F(StateManagerTest, get_leader_state_machine_early) {
   // TODO Do we want this loop for the test? On the one hand, it makes the test
   // more complex than strictly necessary.
   //      On the other hand, it makes it more robust to unrelated changes.
-  EXPECT_TRUE(executor->hasWork() or scheduler->hasWork());
+  EXPECT_TRUE(executor->hasWork() or scheduler->hasWork() or
+              logScheduler->hasWork());
   bool runAtLeastOnce = false;
   for (auto status = log->getQuickStatus();
        not status.leadershipEstablished and
-       (executor->hasWork() or scheduler->hasWork());
+       (executor->hasWork() or scheduler->hasWork() or logScheduler->hasWork());
        status = log->getQuickStatus()) {
     runAtLeastOnce = true;
     // While leadership isn't established, the leader state manager isn't yet
@@ -273,8 +277,10 @@ TEST_F(StateManagerTest, get_leader_state_machine_early) {
 
     if (scheduler->hasWork()) {
       scheduler->runOnce();
-    } else {
+    } else if (executor->hasWork()) {
       executor->runOnce();
+    } else {
+      logScheduler->runAll();
     }
   }
   EXPECT_TRUE(runAtLeastOnce);
@@ -377,12 +383,12 @@ TEST_F(StateManagerTest,
   // Process the append entries request, i.e. write to disk.
   executor->runOnce();
   // An apply entries has been scheduled
-  EXPECT_TRUE(scheduler->hasWork());
-  scheduler->runOnce();
+  EXPECT_TRUE(logScheduler->hasWork());
+  logScheduler->runAll();
 
   // We should have converged to a stable state now.
   EXPECT_FALSE(executor->hasWork());
-  EXPECT_FALSE(scheduler->hasWork());
+  EXPECT_FALSE(logScheduler->hasWork());
 
   // The append entries response should be ready.
   {
@@ -402,6 +408,8 @@ TEST_F(StateManagerTest,
     auto const stateMachine = state->getFollower();
     EXPECT_NE(stateMachine, nullptr);
   }
+
+  scheduler->runAll();
 }
 
 TEST_F(
@@ -482,6 +490,7 @@ TEST_F(
   // Process the append entries request, i.e. write to disk.
   executor->runOnce();
   EXPECT_FALSE(executor->hasWork());
+  logScheduler->runOnce();
 
   // The append entries response should be ready.
   {
@@ -513,7 +522,7 @@ TEST_F(
   p.setValue(Result{});
   scheduler->runAll();
   // We should have converged to a stable state now.
-  EXPECT_FALSE(scheduler->hasWork());
+  EXPECT_FALSE(logScheduler->hasWork());
   EXPECT_FALSE(executor->hasWork());
 
   {
@@ -524,6 +533,8 @@ TEST_F(
     auto const stateMachine = state->getFollower();
     EXPECT_NE(stateMachine, nullptr);
   }
+
+  scheduler->runAll();
 }
 
 TEST_F(
@@ -624,6 +635,7 @@ TEST_F(
   executor->runOnce();
   // We should have converged to a stable state now.
   EXPECT_FALSE(executor->hasWork());
+  logScheduler->runAll();
 
   // The append entries response should be ready.
   {
@@ -721,6 +733,7 @@ TEST_F(
   // Process the append entries request, i.e. write to disk.
   executor->runOnce();
   EXPECT_FALSE(executor->hasWork());
+  logScheduler->runAll();
 
   // The append entries response should be ready.
   {
@@ -861,6 +874,7 @@ TEST_F(
   // Process the append entries request, i.e. write to disk.
   executor->runOnce();
   EXPECT_FALSE(executor->hasWork());
+  logScheduler->runAll();
 
   // The append entries response should be ready.
   {

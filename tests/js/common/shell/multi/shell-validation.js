@@ -36,9 +36,16 @@ const ERRORS = arangodb.errors;
 
 // helper
 const isCluster = internal.isCluster();
-let sleepInCluster = () => {
-  if (isCluster) {
-    internal.sleep(2);
+const waitInClusterUntil = func => {
+  if (!isCluster) {
+    return;
+  }
+  let tries = 10;
+  while (tries-- > 0) {
+    internal.wait(0.2, false);
+    if (func()) {
+      return;
+    }
   }
 };
 
@@ -321,7 +328,7 @@ function ValidationBasicsSuite() {
     testLevelNone: () => {
       validatorJson.level = "none";
       testCollection.properties({"schema": validatorJson});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
       testCollection.insert(badDoc);
     },
@@ -329,7 +336,7 @@ function ValidationBasicsSuite() {
     testLevelNew: () => {
       validatorJson.level = "new";
       testCollection.properties({"schema": validatorJson});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let doc = testCollection.insert(badDoc, skipOptions);
@@ -346,7 +353,7 @@ function ValidationBasicsSuite() {
     testLevelModerateInsert: () => {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       testCollection.insert(badDoc, skipOptions);
@@ -361,7 +368,7 @@ function ValidationBasicsSuite() {
     testLevelModerateModifyBadToGood: () => {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let doc;
@@ -376,7 +383,7 @@ function ValidationBasicsSuite() {
     testLevelModerateModifyBadWithBad: () => {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let doc;
@@ -400,7 +407,7 @@ function ValidationBasicsSuite() {
     testLevelModerateUpdateGoodToBad: () => {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let doc = testCollection.insert(goodDoc);
@@ -424,7 +431,7 @@ function ValidationBasicsSuite() {
     testLevelModerateReplaceGoodToBad: () => {
       validatorJson.level = "moderate";
       testCollection.properties({"schema": validatorJson});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let doc = testCollection.insert(goodDoc);
@@ -447,7 +454,7 @@ function ValidationBasicsSuite() {
     testLevelStict: () => {
       validatorJson.level = "strict";
       testCollection.properties({"schema": validatorJson});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       let doc = testCollection.insert(badDoc, skipOptions);
@@ -498,7 +505,7 @@ function ValidationBasicsSuite() {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
       testCollection.properties({"schema": {}});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema == null);
       assertEqual(testCollection.properties().schema, null);
       testCollection.insert(badDoc);
       assertEqual(1, testCollection.count());
@@ -512,7 +519,7 @@ function ValidationBasicsSuite() {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
       testCollection.properties({"schema": null});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema == null);
       assertEqual(testCollection.properties().schema, null);
       testCollection.insert(badDoc);
       assertEqual(1, testCollection.count());
@@ -522,7 +529,8 @@ function ValidationBasicsSuite() {
     testJson: () => {
       validatorJson.level = "strict";
       testCollection.properties({"schema": validatorJson});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
+      assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       testCollection.insert(goodDoc);
       try {
@@ -542,7 +550,8 @@ function ValidationBasicsSuite() {
       validatorJson.level = "strict";
 
       testCollection.properties({"schema": validatorJson});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
+      assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       try {
         // name missing
@@ -578,7 +587,8 @@ function ValidationBasicsSuite() {
     testAQLSchemaGet: () => {
       validatorJson.level = "strict";
       testCollection.properties({"schema": validatorJson});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema.level === validatorJson.level);
+      assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
       // get regular schema
       let res = db._query(`RETURN SCHEMA_GET("${testCollectionName}")`).toArray();
@@ -607,7 +617,7 @@ function ValidationBasicsSuite() {
     testAqlSchemaValidate: () => {
       // unset schema
       testCollection.properties({schema: {}});
-      sleepInCluster();
+      waitInClusterUntil(() => testCollection.properties().schema == null);
 
       let res;
       // doc is not an object

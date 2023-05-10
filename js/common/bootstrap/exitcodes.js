@@ -1,5 +1,4 @@
 /*jshint maxlen: 240 */
-/*global require */
 
 /// auto-generated file generated from exitcodes.dat
 

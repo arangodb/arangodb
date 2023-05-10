@@ -95,6 +95,7 @@
 
 .figuresHeader {
   border-bottom: 1px solid  $c-c2grey;
+  background-color: $c-bluegrey-dark;
 
   th {
     @extend %font-family;

@@ -102,7 +102,7 @@ auto TermIndexMapping::getTermOfIndex(LogIndex idx) const noexcept
 
 auto TermIndexMapping::getLastIndex() const noexcept
     -> std::optional<TermIndexPair> {
-  if (not _mapping.empty()) {
+  if (!_mapping.empty()) {
     auto [term, range] = *_mapping.rbegin();
     return TermIndexPair{term, range.to.saturatedDecrement()};
   }
@@ -111,7 +111,7 @@ auto TermIndexMapping::getLastIndex() const noexcept
 
 auto TermIndexMapping::getFirstIndex() const noexcept
     -> std::optional<TermIndexPair> {
-  if (not _mapping.empty()) {
+  if (!_mapping.empty()) {
     auto [term, range] = *_mapping.begin();
     return TermIndexPair{term, range.from};
   }

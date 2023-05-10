@@ -33,6 +33,7 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string_view>
 #include <thread>
 
@@ -199,7 +200,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestStatistics::Item _statistics;
 
  private:
-  mutable Mutex _executionMutex;
+  mutable std::mutex _executionMutex;
 
   std::function<void(rest::RestHandler*)> _callback;
 

@@ -2,10 +2,10 @@
 @startDocuBlock post_admin_execute
 @brief Execute a script on the server.
 
-@RESTHEADER{POST /_admin/execute, Execute program, RestAdminExecuteHandler}
+@RESTHEADER{POST /_admin/execute, Execute program, executeCode}
 
 @RESTALLBODYPARAM{body,string,required}
-The body to be executed.
+The request body is the JavaScript code to be executed.
 
 @RESTDESCRIPTION
 Executes the javascript code in the body on the server as the body

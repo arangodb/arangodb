@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -54,10 +53,12 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Validators.h"
+#include "velocypack/Builder.h"
 #include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
 #include <absl/strings/str_cat.h>
@@ -165,12 +166,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   TRI_ASSERT(info.isObject());
 
-  bool extendedNames = vocbase.server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
-  if (!CollectionNameValidator::isAllowedName(system(), extendedNames,
-                                              name())) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = CollectionNameValidator::validateName(system(), extendedNames,
+                                                       name());
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   if (_version < minimumVersion()) {
@@ -392,6 +393,29 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   return _sharding->shardIds();
 }
 
+void LogicalCollection::shardMapToVelocyPack(
+    arangodb::velocypack::Builder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+
+  result.add(VPackValue("shards"));
+  serialize(result, *shardIds());
+}
+
+void LogicalCollection::shardIDsToVelocyPack(
+    arangodb::velocypack::Builder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+  result.add(VPackValue("shards"));
+
+  std::vector<ShardID> combinedShardIDs;
+  for (auto sids = shardIds(); auto const& s : *sids) {
+    combinedShardIDs.push_back(s.first);
+  }
+  std::sort(combinedShardIDs.begin(), combinedShardIDs.end(),
+            [&](ShardID const& a, ShardID const& b) { return a < b; });
+
+  serialize(result, combinedShardIDs);
+}
+
 void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
   TRI_ASSERT(_sharding != nullptr);
   _sharding->setShardMap(std::move(map));
@@ -441,28 +465,6 @@ std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(
 std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(
     transaction::Methods* trx) {
   return _physical->getAnyIterator(trx);
-}
-// @brief Return the number of documents in this collection
-uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
-                                            transaction::CountType type) {
-  // detailed results should have been handled in the levels above us
-  TRI_ASSERT(type != transaction::CountType::Detailed);
-
-  uint64_t documents = transaction::CountCache::NotPopulated;
-  if (type == transaction::CountType::ForceCache) {
-    // always return from the cache, regardless what's in it
-    documents = _countCache.get();
-  } else if (type == transaction::CountType::TryCache) {
-    // get data from cache, but only if not expired
-    documents = _countCache.getWithTtl();
-  }
-  if (documents == transaction::CountCache::NotPopulated) {
-    // cache was not populated before or cache value has expired
-    documents = getPhysical()->numberDocuments(trx);
-    _countCache.store(documents);
-  }
-  TRI_ASSERT(documents != transaction::CountCache::NotPopulated);
-  return documents;
 }
 
 bool LogicalCollection::hasClusterWideUniqueRevs() const noexcept {
@@ -799,7 +801,28 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     build.add(StaticStrings::DataSourcePlanId,
               VPackValue(std::to_string(planId().id())));
   }
+
+#ifdef USE_ENTERPRISE
+  if (isSmart() && type() == TRI_COL_TYPE_EDGE &&
+      ServerState::instance()->isRunningInCluster()) {
+    TRI_ASSERT(!isSmartChild());
+    VirtualClusterSmartEdgeCollection const* edgeCollection =
+        static_cast<arangodb::VirtualClusterSmartEdgeCollection const*>(this);
+    if (edgeCollection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to cast smart edge collection");
+    }
+    edgeCollection->shardMapToVelocyPack(build);
+    bool includeShardsEntry = false;
+    _sharding->toVelocyPack(build, ctx != Serialization::List,
+                            includeShardsEntry);
+  } else {
+    _sharding->toVelocyPack(build, ctx != Serialization::List);
+  }
+#else
   _sharding->toVelocyPack(build, ctx != Serialization::List);
+#endif
+
   includeVelocyPackEnterprise(build);
   TRI_ASSERT(build.isOpenObject());
 
@@ -866,7 +889,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   auto& engine =
       vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
-  MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
+  std::lock_guard guard{_infoLock};  // prevent simultaneous updates
 
   auto res = updateSchema(slice.get(StaticStrings::Schema));
   if (res.fail()) {

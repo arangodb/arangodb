@@ -43,27 +43,26 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
-}
+}  // namespace application_features
 class IOHeartbeatThread;
 class LogicalCollection;
-}  // namespace arangodb
-
-namespace arangodb::velocypack {
+namespace velocypack {
 class Builder;
 class Slice;
-}  // namespace arangodb::velocypack
-
-namespace arangodb {
+}  // namespace velocypack
 
 class DatabaseManagerThread final : public ServerThread<ArangodServer> {
  public:
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  explicit DatabaseManagerThread(Server&);
-  ~DatabaseManagerThread();
+  /// @brief database manager thread main loop
+  /// the purpose of this thread is to physically remove directories of
+  /// databases that have been dropped
+  explicit DatabaseManagerThread(Server& server);
+  ~DatabaseManagerThread() final;
 
-  void run() override;
+  void run() final;
 
  private:
   // how long will the thread pause between iterations
@@ -72,22 +71,22 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   }
 };
 
-class DatabaseFeature : public ArangodFeature {
+class DatabaseFeature final : public ArangodFeature {
   friend class DatabaseManagerThread;
 
  public:
   static constexpr std::string_view name() noexcept { return "Database"; }
 
   explicit DatabaseFeature(Server& server);
-  ~DatabaseFeature();
+  ~DatabaseFeature() final;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
-  void unprepare() override final;
-  void prepare() override final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
+  void start() final;
+  void beginShutdown() final;
+  void stop() final;
+  void unprepare() final;
+  void prepare() final;
 
   // used by unit tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -129,8 +128,8 @@ class DatabaseFeature : public ArangodFeature {
 
   Result createDatabase(arangodb::CreateDatabaseInfo&&, TRI_vocbase_t*& result);
 
-  ErrorCode dropDatabase(std::string_view name, bool removeAppsDirectory);
-  ErrorCode dropDatabase(TRI_voc_tick_t id, bool removeAppsDirectory);
+  ErrorCode dropDatabase(std::string_view name);
+  ErrorCode dropDatabase(TRI_voc_tick_t id);
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const&
@@ -139,40 +138,39 @@ class DatabaseFeature : public ArangodFeature {
   VocbasePtr useDatabase(std::string_view name) const;
   VocbasePtr useDatabase(TRI_voc_tick_t id) const;
 
-  TRI_vocbase_t* lookupDatabase(std::string_view name) const;
+  bool existsDatabase(std::string_view name) const;
+
+  // look up a database by name. note: the caller must make sure that the
+  // returned vocbase pointer remains valid (i.e. vocbase is not deleted
+  // concurrently while the returned pointer is used).
+  // this is a potentially unsafe API. if in doubt, prefer using
+  // `useDatabase(...)`, which is safe.
+  [[deprecated]] TRI_vocbase_t* lookupDatabase(std::string_view name) const;
   void enumerateDatabases(
       std::function<void(TRI_vocbase_t& vocbase)> const& func);
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
 
-  bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
-  bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
-  bool checkVersion() const { return _checkVersion; }
-  bool upgrade() const { return _upgrade; }
-  bool waitForSync() const { return _defaultWaitForSync; }
-  replication::Version defaultReplicationVersion() const {
+  bool ignoreDatafileErrors() const noexcept { return _ignoreDatafileErrors; }
+  bool isInitiallyEmpty() const noexcept { return _isInitiallyEmpty; }
+  bool checkVersion() const noexcept { return _checkVersion; }
+  bool upgrade() const noexcept { return _upgrade; }
+  bool waitForSync() const noexcept { return _defaultWaitForSync; }
+  replication::Version defaultReplicationVersion() const noexcept {
     return _defaultReplicationVersion;
   }
 
-  /// @brief whether or not extended names for databases can be used
-  bool extendedNamesForDatabases() const { return _extendedNamesForDatabases; }
+  /// @brief whether or not extended names for databases, collections, views
+  /// and indexes
+  bool extendedNames() const noexcept { return _extendedNames; }
   /// @brief will be called only during startup when reading stored value from
   /// storage engine
-  void extendedNamesForDatabases(bool value) {
-    _extendedNamesForDatabases = value;
-  }
+  void extendedNames(bool value) noexcept { _extendedNames = value; }
 
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForCollections() const { return false; }
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForViews() const { return false; }
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForAnalyzers() const { return false; }
-
-  void enableCheckVersion() { _checkVersion = true; }
-  void enableUpgrade() { _upgrade = true; }
-  void disableUpgrade() { _upgrade = false; }
-  void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
+  void enableCheckVersion() noexcept { _checkVersion = true; }
+  void enableUpgrade() noexcept { _upgrade = true; }
+  void disableUpgrade() noexcept { _upgrade = false; }
+  void isInitiallyEmpty(bool value) noexcept { _isInitiallyEmpty = value; }
 
   static TRI_vocbase_t& getCalculationVocbase();
 
@@ -181,25 +179,14 @@ class DatabaseFeature : public ArangodFeature {
 
   void stopAppliers();
 
-  /// @brief create base app directory
-  ErrorCode createBaseApplicationDirectory(std::string const& appPath,
-                                           std::string const& type);
-
-  /// @brief create app subdirectory for a database
-  ErrorCode createApplicationDirectory(std::string const& name,
-                                       std::string const& basePath,
-                                       bool removeExisting);
-
   /// @brief iterate over all databases in the databases directory and open them
-  ErrorCode iterateDatabases(velocypack::Slice const& databases);
+  ErrorCode iterateDatabases(velocypack::Slice databases);
 
   /// @brief close all opened databases
   void closeOpenDatabases();
 
   /// @brief close all dropped databases
   void closeDroppedDatabases();
-
-  void verifyAppPaths();
 
   /// @brief activates deadlock detection in all existing databases
   void enableDeadlockDetection();
@@ -209,10 +196,10 @@ class DatabaseFeature : public ArangodFeature {
   bool _isInitiallyEmpty{false};
   bool _checkVersion{false};
   bool _upgrade{false};
-  // allow extended database names or not
-  bool _extendedNamesForDatabases{false};
+  // allow extended names for databases, collections, views and indexes
+  bool _extendedNames{false};
   bool _performIOHeartbeat{true};
-  std::atomic<bool> _started{false};
+  std::atomic_bool _started{false};
 
   replication::Version _defaultReplicationVersion{replication::Version::ONE};
 

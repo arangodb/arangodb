@@ -4,7 +4,7 @@
   @include border-radius(8px !important); //.modal has it
 
   height: 80%;
-  margin-left: -$width / 2;
+  margin-left: -$width * 0.5;
   min-width: 780px;
   overflow: auto;
   padding: 10px;

@@ -28,7 +28,7 @@
 #include "ImportFeature.h"
 #include "ImportHelper.h"
 
-#include "Basics/ConditionLocker.h"
+#include "Basics/ConditionVariable.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -72,8 +72,8 @@ void AutoTuneThread::beginShutdown() {
   Thread::beginShutdown();
 
   // wake up the thread that may be waiting in run()
-  CONDITION_LOCKER(guard, _condition);
-  guard.broadcast();
+  std::lock_guard guard{_condition.mutex};
+  _condition.cv.notify_all();
 }
 
 void AutoTuneThread::run() {
@@ -81,8 +81,8 @@ void AutoTuneThread::run() {
 
   while (!isStopping()) {
     {
-      CONDITION_LOCKER(guard, _condition);
-      guard.wait(std::chrono::seconds(period));
+      std::unique_lock guard{_condition.mutex};
+      _condition.cv.wait_for(guard, std::chrono::seconds(period));
     }
     if (!isStopping()) {
       // getMaxUploadSize() is per thread

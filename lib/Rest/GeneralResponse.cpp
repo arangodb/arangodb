@@ -112,6 +112,8 @@ std::string GeneralResponse::responseString(ResponseCode code) {
       return "417 Expectation Failed";
     case ResponseCode::I_AM_A_TEAPOT:
       return "418 I'm a teapot";
+    case ResponseCode::ENHANCE_YOUR_CALM:
+      return "420 Enhance Your Calm";
     case ResponseCode::UNPROCESSABLE_ENTITY:
       return "422 Unprocessable Entity";
     case ResponseCode::LOCKED:
@@ -245,6 +247,8 @@ rest::ResponseCode GeneralResponse::responseCode(std::string const& str) {
       return ResponseCode::EXPECTATION_FAILED;
     case 418:
       return ResponseCode::I_AM_A_TEAPOT;
+    case 420:
+      return ResponseCode::ENHANCE_YOUR_CALM;
     case 422:
       return ResponseCode::UNPROCESSABLE_ENTITY;
     case 423:
@@ -453,6 +457,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED):
     case static_cast<int>(TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED):
     case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE):
+    case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED):
       return ResponseCode::SERVICE_UNAVAILABLE;
 
     case static_cast<int>(TRI_ERROR_HTTP_NOT_IMPLEMENTED):

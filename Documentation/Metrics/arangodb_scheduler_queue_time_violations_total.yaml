@@ -15,14 +15,13 @@ exposedBy:
   - single
 description: |
   Number of tasks/requests dropped because the client-specified queue time
-  requirements, as indicated by client applications in the request header
-  "x-arango-queue-time-seconds" could not be satisfied by the receiving 
-  server instance. This happens when the actual time need to queue/dequeue
-  requests on the scheduler queue exceeds the maximum time value that the
-  client has specified in the request. 
-  Whenever this happens, the client application will get an HTTP 412 error 
+  requirements, as indicated by client applications in the
+  `x-arango-queue-time-seconds` HTTP request header could not be satisfied by
+  the receiving server instance. This happens when the actual time needed to
+  queue/dequeue requests on the scheduler queue exceeds the maximum time value
+  that the client has specified in the request.
+  Whenever this happens, the client application gets an HTTP 412 error 
   response back with error code 21004 ("queue time violated").
-  Although the metric is exposed on all instance types, it will very likely
-  always be 0 on DB servers, simply because coordinators do not forward the
-  "x-arango-queue-time-seconds" when they send internal requests to DB
-  servers.
+  Although the metric is exposed on all instance types, it is likely
+  always `0` on DB-Servers, simply because Coordinators do not forward the
+  `x-arango-queue-time-seconds` when they send internal requests to DB-Servers.

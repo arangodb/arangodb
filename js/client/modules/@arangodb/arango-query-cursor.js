@@ -47,6 +47,11 @@ function ArangoQueryCursor(database, data, stream) {
   this._total = 0;
   this._stream = stream || false;
   this._cached = false;
+  this._retriable = false;
+
+  if (data.hasOwnProperty('nextBatchId')) {
+    this._retriable = true;
+  }
 
   if (data.result !== undefined) {
     this._count = data.result.length;
@@ -56,7 +61,7 @@ function ArangoQueryCursor(database, data, stream) {
       this._hasNext = true;
     }
 
-    if (data.hasMore !== undefined && data.hasMore) {
+    if (data.hasMore) {
       this._hasMore = true;
     }
   }
@@ -234,7 +239,14 @@ ArangoQueryCursor.prototype.next = function () {
         }
       }
 
+      let oldId; // undefined
+      if (this._retriable && this.data.id !== undefined) {
+        oldId = this.data.id;
+      }
       this.data = requestResult;
+      if (oldId !== undefined) {
+        this.data.id = oldId;
+      }
       this._count = requestResult.result.length;
 
       if (this._pos < this._count) {
@@ -265,7 +277,7 @@ ArangoQueryCursor.prototype[Symbol.iterator] = function* () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.dispose = function () {
-  if (!this.data.id || !this._hasMore) {
+  if (!this._retriable && (!this.data.id || !this._hasMore)) {
     // client side only cursor, or already disposed
     return;
   }

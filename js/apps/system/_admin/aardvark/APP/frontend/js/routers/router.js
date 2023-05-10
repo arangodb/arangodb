@@ -1,7 +1,7 @@
 /* jshint unused: false */
 // eslint-disable-next-line no-unused-vars
 /* global window, $, Backbone, document, d3, ReactDOM, React */
-/* global arangoHelper, btoa, atob, _, frontendConfig */
+/* global arangoHelper, _, frontendConfig */
 
 (function () {
   'use strict';
@@ -45,7 +45,7 @@
       'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
-      'visgraphs/:name': 'showVisGraph',
+      'graphs-v2/:name': 'showV2Graph',
       'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',
@@ -159,6 +159,8 @@
           }
 
           // react unmounting
+          const reactRoot = document.getElementById('content-react');
+          if (reactRoot) ReactDOM.unmountComponentAtNode(reactRoot);
           ReactDOM.unmountComponentAtNode(document.getElementById('content'));
         }
       }
@@ -304,7 +306,6 @@
 
         this.arangoCollectionsStore = new window.ArangoCollections();
         this.arangoDocumentStore = new window.ArangoDocument();
-        this.arangoViewsStore = new window.ArangoViews();
 
         // Cluster
         this.coordinatorCollection = new window.ClusterCoordinators();
@@ -378,10 +379,10 @@
         document.getElementById('content')));
     },
 
-    showVisGraph: function (name) {
+    showV2Graph: function (name) {
       this.checkUser();
 
-      this.init.then(() => ReactDOM.render(React.createElement(window.VisGraphReactView),
+      this.init.then(() => ReactDOM.render(React.createElement(window.GraphV2ReactView),
         document.getElementById('content'))
       );
     },
@@ -636,7 +637,7 @@
       const user = u.name;
       const pass = u.passwd;
       const token = user.concat(':', pass);
-      xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
+      xhr.setRequestHeader('Authorization', 'Basic ' + window.btoa(token));
     },
 
     logger: function() {
@@ -787,20 +788,20 @@
         this.arangoCollectionsStore.fetch({
           cache: false,
           success: function () {
-            if (self.indicesView) {
-              self.indicesView.remove();
-            }
-            self.indicesView = new window.IndicesView({
-              collectionName: colname,
-              collection: self.arangoCollectionsStore.findWhere({
-                name: colname
-              })
-            });
-            self.indicesView.render();
-          }
+            ReactDOM.render(
+              React.createElement(window.CollectionIndicesReactView, {
+                collectionName: colname,
+                collection: self.arangoCollectionsStore.findWhere({
+                  name: colname,
+                }),
+              }),
+              document.getElementById("content-react")
+            );
+          },
         });
       });
     },
+
 
     cSettings: function (colname) {
       const self = this;
@@ -1089,8 +1090,8 @@
         if (this.applierView === undefined) {
           this.applierView = new window.ApplierView({});
         }
-        this.applierView.endpoint = atob(endpoint);
-        this.applierView.database = atob(database);
+        this.applierView.endpoint = window.atob(endpoint);
+        this.applierView.database = window.atob(database);
         this.applierView.render();
       });
     },
@@ -1351,21 +1352,14 @@
 
       this.init.then(
         () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
-          document.getElementById('content')));
+          document.getElementById('content-react')));
     },
     views: function () {
       this.checkUser();
-
-      this.init.then(() => {
-        if (this.viewsView) {
-          this.viewsView.remove();
-        }
-
-        this.viewsView = new window.ViewsView({
-          collection: this.arangoViewsStore
-        });
-        this.viewsView.render();
-      });
+      
+      this.init.then(
+       () => ReactDOM.render(React.createElement(window.ViewsListReactView),
+         document.getElementById('content-react')));
     },
 
     fetchDBS: function (callback) {

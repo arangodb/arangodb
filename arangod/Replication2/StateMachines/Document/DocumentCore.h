@@ -47,14 +47,11 @@ struct DocumentCore {
 
   auto getVocbase() -> TRI_vocbase_t&;
   void drop();
-  auto getTransactionHandler()
-      -> std::shared_ptr<IDocumentStateTransactionHandler>;
   auto getShardHandler() -> std::shared_ptr<IDocumentStateShardHandler>;
 
  private:
   TRI_vocbase_t& _vocbase;
   DocumentCoreParameters _params;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
-  std::shared_ptr<IDocumentStateTransactionHandler> _transactionHandler;
 };
 }  // namespace arangodb::replication2::replicated_state::document

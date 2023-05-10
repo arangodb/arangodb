@@ -27,6 +27,7 @@
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Mocks/StorageManagerMock.h"
 
 #include <Futures/Future.h>
 #include <Futures/Promise.h>
@@ -35,11 +36,10 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::test;
 using namespace arangodb::replication2::replicated_log;
 
 namespace {
-
-struct StorageManagerMock;
 
 struct StorageTransactionMock : IStorageTransaction {
   MOCK_METHOD(LogRange, getLogBounds, (), (const, noexcept, override));
@@ -49,21 +49,6 @@ struct StorageTransactionMock : IStorageTransaction {
               (noexcept, override));
   MOCK_METHOD(futures::Future<Result>, appendEntries, (InMemoryLog),
               (noexcept, override));
-};
-
-struct StorageManagerMock : IStorageManager {
-  MOCK_METHOD(std::unique_ptr<IStorageTransaction>, transaction, (),
-              (override));
-  MOCK_METHOD(std::unique_ptr<TypedLogRangeIterator<LogEntryView>>,
-              getCommittedLogIterator, (std::optional<LogRange>),
-              (const, override));
-  MOCK_METHOD(TermIndexMapping, getTermIndexMapping, (), (const, override));
-  MOCK_METHOD(replicated_state::PersistedStateInfo, getCommittedMetaInfo, (),
-              (const, override));
-  MOCK_METHOD(std::unique_ptr<IStateInfoTransaction>, beginMetaInfoTrx, (),
-              (override));
-  MOCK_METHOD(Result, commitMetaInfoTrx,
-              (std::unique_ptr<IStateInfoTransaction>), (override));
 };
 
 }  // namespace

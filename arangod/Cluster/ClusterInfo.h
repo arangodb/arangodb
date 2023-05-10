@@ -35,7 +35,6 @@
 #include <unordered_map>
 
 #include "Agency/AgencyComm.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
@@ -177,28 +176,6 @@ class ClusterInfo final {
   ClusterInfo(ClusterInfo const&) = delete;             // not implemented
   ClusterInfo& operator=(ClusterInfo const&) = delete;  // not implemented
 
-  class ServersKnown {
-   public:
-    ServersKnown() = default;
-    ServersKnown(VPackSlice serversKnownSlice,
-                 containers::FlatHashSet<ServerID> const& servers);
-
-    class KnownServer {
-     public:
-      explicit constexpr KnownServer(RebootId rebootId) : _rebootId(rebootId) {}
-
-      [[nodiscard]] RebootId rebootId() const { return _rebootId; }
-
-     private:
-      RebootId _rebootId;
-    };
-
-    [[nodiscard]] containers::FlatHashMap<ServerID, RebootId> rebootIds() const;
-
-   private:
-    containers::FlatHashMap<ServerID, KnownServer> _serversKnown;
-  };
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
@@ -293,6 +270,9 @@ class ClusterInfo final {
    *        Plan version afterwards will never timeout.
    */
   [[nodiscard]] futures::Future<Result> fetchAndWaitForPlanVersion(
+      network::Timeout timeout) const;
+
+  [[nodiscard]] futures::Future<Result> fetchAndWaitForCurrentVersion(
       network::Timeout timeout) const;
 
   /**
@@ -512,7 +492,7 @@ class ClusterInfo final {
       std::string const& databaseName,
       std::vector<ClusterCollectionCreationInfo>&, double endTime,
       bool isNewDatabase,
-      std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike,
+      std::shared_ptr<LogicalCollection const> const& colToDistributeShardsLike,
       replication::Version replicationVersion);
 
   /// @brief drop collection in coordinator
@@ -711,11 +691,9 @@ class ClusterInfo final {
   std::shared_ptr<std::vector<ServerID> const> getResponsibleServer(
       std::string_view shardID);
 
-  std::shared_ptr<std::vector<ServerID> const> getResponsibleServerReplication1(
-      std::string_view shardID);
-
-  std::shared_ptr<std::vector<ServerID> const> getResponsibleServerReplication2(
-      std::string_view shardID);
+  enum class ShardLeadership { kLeader, kFollower, kUnclear };
+  ShardLeadership getShardLeadership(ServerID const& server,
+                                     ShardID const& shard) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
@@ -728,14 +706,6 @@ class ClusterInfo final {
 
   containers::FlatHashMap<ShardID, ServerID> getResponsibleServers(
       containers::FlatHashSet<ShardID> const&);
-
-  void getResponsibleServersReplication1(
-      containers::FlatHashSet<ShardID> const& shardIds,
-      containers::FlatHashMap<ShardID, ServerID>& result);
-
-  bool getResponsibleServersReplication2(
-      containers::FlatHashSet<ShardID> const& shardIds,
-      containers::FlatHashMap<ShardID, ServerID>& result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
@@ -765,6 +735,14 @@ class ClusterInfo final {
 
   std::shared_ptr<std::vector<ShardID>> getShardList(
       std::string_view collectionID);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the current list of (in-sync, for replication 1) servers of a
+  /// shard
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<std::vector<ServerID> const> getCurrentServersForShard(
+      std::string_view shardId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the list of coordinator server names
@@ -815,9 +793,9 @@ class ClusterInfo final {
   void setShardGroups(
       containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>);
 
-  void setShardIds(
-      containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
-          shardIds);
+  void setShardIds(containers::FlatHashMap<
+                   ShardID, std::shared_ptr<std::vector<ServerID> const>>
+                       shardIds);
 #endif
 
   bool serverExists(std::string_view serverID) const noexcept;
@@ -829,7 +807,7 @@ class ClusterInfo final {
   TEST_VIRTUAL containers::FlatHashMap<ServerID, std::string>
   getServerAliases();
 
-  containers::FlatHashMap<ServerID, RebootId> rebootIds() const;
+  ServersKnown rebootIds() const;
 
   uint64_t getPlanVersion() const {
     READ_LOCKER(guard, _planProt.lock);
@@ -918,7 +896,7 @@ class ClusterInfo final {
   CollectionWithHash buildCollection(
       bool isBuilding, AllCollections::const_iterator existingCollections,
       std::string_view collectionId, arangodb::velocypack::Slice data,
-      TRI_vocbase_t& vocbase, uint64_t planVersion) const;
+      TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
@@ -1025,7 +1003,7 @@ class ClusterInfo final {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    mutable Mutex mutex;
+    mutable std::mutex mutex;
     std::atomic<uint64_t> wantedVersion;
     std::atomic<uint64_t> doneVersion;
     mutable arangodb::basics::ReadWriteLock lock;
@@ -1051,8 +1029,17 @@ class ClusterInfo final {
       _serverTimestamps;  // from Current/ServersRegistered
   ProtectionData _serversProt;
 
+  // TODO: Looks like this is used only in rebootIds() call
+  // and set only together with rebootTracker (the same data).
+  // So should we consider removing this member and use only rebootTracker?
   // Current/ServersKnown:
   ServersKnown _serversKnown;
+
+  // Accounting drops of dangling links. We do not want to pollute
+  // scheduler with drop requests. So we put only one per link at time.
+  // And only if that request fails, we will try again.
+  containers::FlatHashSet<std::uint64_t> _pendingCleanups;
+  mutable containers::FlatHashSet<std::uint64_t> _currentCleanups;
 
   // The DBServers, also from Current:
   // from Current/DBServers
@@ -1108,7 +1095,7 @@ class ClusterInfo final {
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
   // planned shard => servers map
-  containers::FlatHashMap<ShardID, std::vector<ServerID>> _shardServers;
+  containers::FlatHashMap<ShardID, std::vector<ServerID>> _shardsToPlanServers;
   // planned shard ID => collection name
   containers::FlatHashMap<ShardID, CollectionID> _shardToName;
 
@@ -1162,8 +1149,8 @@ class ClusterInfo final {
 
   // The Current state:
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
-  containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
-      _shardIds;  // from Current/Collections/
+  containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID> const>>
+      _shardsToCurrentServers;  // from Current/Collections/
 
   struct NewStuffByDatabase;
   containers::FlatHashMap<DatabaseID, std::shared_ptr<NewStuffByDatabase>>
@@ -1198,7 +1185,7 @@ class ClusterInfo final {
   /// @brief lock for uniqid sequence
   //////////////////////////////////////////////////////////////////////////////
 
-  Mutex _idLock;
+  std::mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief how big a batch is for unique ids

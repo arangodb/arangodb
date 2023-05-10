@@ -78,39 +78,39 @@ class GraphOperations {
 
   /// @brief Get a single edge document from definitionName.
   /// Similar to getVertex().
-  OperationResult getEdge(const std::string& definitionName,
-                          const std::string& key,
+  OperationResult getEdge(std::string const& definitionName,
+                          std::string const& key,
                           std::optional<RevisionId> rev);
 
   /// @brief Remove a single edge document from definitionName.
-  OperationResult removeEdge(const std::string& definitionName,
-                             const std::string& key,
+  OperationResult removeEdge(std::string const& definitionName,
+                             std::string const& key,
                              std::optional<RevisionId> rev, bool waitForSync,
                              bool returnOld);
 
   /// @brief Remove a vertex and all incident edges in the graph
-  OperationResult removeVertex(const std::string& collectionName,
-                               const std::string& key,
+  OperationResult removeVertex(std::string const& collectionName,
+                               std::string const& key,
                                std::optional<RevisionId> rev, bool waitForSync,
                                bool returnOld);
 
   /// @brief Remove an edge or vertex and all incident edges in the graph
-  OperationResult removeEdgeOrVertex(const std::string& collectionName,
-                                     const std::string& key,
+  OperationResult removeEdgeOrVertex(std::string const& collectionName,
+                                     std::string const& key,
                                      std::optional<RevisionId> rev,
                                      bool waitForSync, bool returnOld);
 
-  OperationResult updateEdge(const std::string& definitionName,
-                             const std::string& key, VPackSlice document,
+  OperationResult updateEdge(std::string const& definitionName,
+                             std::string const& key, VPackSlice document,
                              std::optional<RevisionId> rev, bool waitForSync,
                              bool returnOld, bool returnNew, bool keepNull);
 
-  OperationResult replaceEdge(const std::string& definitionName,
-                              const std::string& key, VPackSlice document,
+  OperationResult replaceEdge(std::string const& definitionName,
+                              std::string const& key, VPackSlice document,
                               std::optional<RevisionId> rev, bool waitForSync,
                               bool returnOld, bool returnNew, bool keepNull);
 
-  OperationResult createEdge(const std::string& definitionName,
+  OperationResult createEdge(std::string const& definitionName,
                              VPackSlice document, bool waitForSync,
                              bool returnNew);
 
@@ -118,15 +118,15 @@ class GraphOperations {
   // transaction and calls validateEdgeVertices and validateEdgeContent
   // methods.
   std::pair<OperationResult, std::unique_ptr<transaction::Methods>>
-  validateEdge(const std::string& definitionName, const VPackSlice& document,
+  validateEdge(std::string const& definitionName, const VPackSlice& document,
                bool waitForSync, bool isUpdate);
 
   // @brief This function is checking whether the given _from and _to vertex
   // documents are available or not
-  OperationResult validateEdgeVertices(const std::string& fromCollectionName,
-                                       const std::string& fromCollectionKey,
-                                       const std::string& toCollectionName,
-                                       const std::string& toCollectionKey,
+  OperationResult validateEdgeVertices(std::string const& fromCollectionName,
+                                       std::string const& fromCollectionKey,
+                                       std::string const& toCollectionName,
+                                       std::string const& toCollectionKey,
                                        transaction::Methods& trx);
 
   // @brief This function is checking whether the given document defines _from
@@ -137,17 +137,17 @@ class GraphOperations {
       std::string& fromCollectionKey, std::string& toCollectionName,
       std::string& toCollectionKey, bool isUpdate);
 
-  OperationResult updateVertex(const std::string& collectionName,
-                               const std::string& key, VPackSlice document,
+  OperationResult updateVertex(std::string const& collectionName,
+                               std::string const& key, VPackSlice document,
                                std::optional<RevisionId> rev, bool waitForSync,
                                bool returnOld, bool returnNew, bool keepNull);
 
-  OperationResult replaceVertex(const std::string& collectionName,
-                                const std::string& key, VPackSlice document,
+  OperationResult replaceVertex(std::string const& collectionName,
+                                std::string const& key, VPackSlice document,
                                 std::optional<RevisionId> rev, bool waitForSync,
                                 bool returnOld, bool returnNew, bool keepNull);
 
-  OperationResult createVertex(const std::string& collectionName,
+  OperationResult createVertex(std::string const& collectionName,
                                VPackSlice document, bool waitForSync,
                                bool returnNew);
 
@@ -194,30 +194,30 @@ class GraphOperations {
       transaction::Methods& trx);
 
   void checkForUsedEdgeCollections(
-      const Graph& graph, const std::string& collectionName,
+      const Graph& graph, std::string const& collectionName,
       std::unordered_set<std::string>& possibleEdgeCollections);
 
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
   OperationResult getDocument(std::string const& collectionName,
-                              const std::string& key,
+                              std::string const& key,
                               std::optional<RevisionId> rev);
 
   /// @brief creates a vpack { _key: key } or { _key: key, _rev: rev }
   /// (depending on whether rev is set)
-  VPackBufferPtr _getSearchSlice(const std::string& key,
+  VPackBufferPtr _getSearchSlice(std::string const& key,
                                  std::optional<RevisionId>& rev) const;
 
-  OperationResult modifyDocument(const std::string& collectionName,
-                                 const std::string& key, VPackSlice document,
+  OperationResult modifyDocument(std::string const& collectionName,
+                                 std::string const& key, VPackSlice document,
                                  bool isPatch, std::optional<RevisionId> rev,
                                  bool waitForSync, bool returnOld,
                                  bool returnNew, bool keepNull,
                                  transaction::Methods& trx);
 
   OperationResult createDocument(transaction::Methods* trx,
-                                 const std::string& collectionName,
+                                 std::string const& collectionName,
                                  VPackSlice document, bool waitForSync,
                                  bool returnNew);
 

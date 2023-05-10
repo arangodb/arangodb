@@ -15,5 +15,5 @@ description: |
   This metric exposes the RocksDB WAL sequence number from which onwards 
   WAL files have to kept in the archive because the WAL data could be used
   by the replication.
-  WAL files with sequence numbers higher than this value will not be 
+  WAL files with sequence numbers higher than this value are not 
   garbage-collected.

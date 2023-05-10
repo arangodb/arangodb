@@ -105,6 +105,12 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
   ~IResearchViewCoordinatorTest() = default;
 };
 
+#ifdef USE_ENTERPRISE
+static constexpr size_t kEnterpriseFields = 1;
+#else
+static constexpr size_t kEnterpriseFields = 0;
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
@@ -276,7 +282,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      EXPECT_EQ(18, slice.length());
+      EXPECT_EQ(18 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -309,7 +315,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -1159,7 +1165,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1245,7 +1251,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(18, slice.length());
+    EXPECT_EQ(18 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1323,7 +1329,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1383,7 +1389,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(11, tmpSlice2.length());
+      EXPECT_EQ(11 + kEnterpriseFields, tmpSlice2.length());
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1406,6 +1412,12 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
                   0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
+      auto valueTopK = tmpSlice2.get("optimizeTopK");
+#ifdef USE_ENTERPRISE
+      EXPECT_TRUE(valueTopK.isEmptyArray());
+#else
+      EXPECT_TRUE(valueTopK.isNone());
+#endif
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
       ASSERT_TRUE(tmpSlice2.isArray());
@@ -1529,7 +1541,7 @@ TEST_F(IResearchViewCoordinatorTest,
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1615,7 +1627,7 @@ TEST_F(IResearchViewCoordinatorTest,
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(18, slice.length());
+    EXPECT_EQ(18 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1693,7 +1705,7 @@ TEST_F(IResearchViewCoordinatorTest,
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1753,7 +1765,7 @@ TEST_F(IResearchViewCoordinatorTest,
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(11, tmpSlice2.length());
+      EXPECT_EQ(11 + kEnterpriseFields, tmpSlice2.length());
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1776,6 +1788,12 @@ TEST_F(IResearchViewCoordinatorTest,
       EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
                   0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
+      auto valueTopK = tmpSlice2.get("optimizeTopK");
+#ifdef USE_ENTERPRISE
+      EXPECT_TRUE(valueTopK.isEmptyArray());
+#else
+      EXPECT_TRUE(valueTopK.isNone());
+#endif
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
       ASSERT_TRUE(tmpSlice2.isArray());
@@ -1897,7 +1915,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1983,7 +2001,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(18, slice.length());
+    EXPECT_EQ(18 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -2061,7 +2079,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -2121,7 +2139,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(11, tmpSlice2.length());
+      EXPECT_EQ(11 + kEnterpriseFields, tmpSlice2.length());
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -2144,6 +2162,12 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
                   0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
+      auto valueTopK = tmpSlice2.get("optimizeTopK");
+#ifdef USE_ENTERPRISE
+      EXPECT_TRUE(valueTopK.isEmptyArray());
+#else
+      EXPECT_TRUE(valueTopK.isNone());
+#endif
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
       ASSERT_TRUE(tmpSlice2.isArray());
@@ -2267,7 +2291,7 @@ TEST_F(IResearchViewCoordinatorTest,
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -2353,7 +2377,7 @@ TEST_F(IResearchViewCoordinatorTest,
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(18, slice.length());
+    EXPECT_EQ(18 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -2431,7 +2455,7 @@ TEST_F(IResearchViewCoordinatorTest,
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -2491,7 +2515,7 @@ TEST_F(IResearchViewCoordinatorTest,
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(11, tmpSlice2.length());
+      EXPECT_EQ(11 + kEnterpriseFields, tmpSlice2.length());
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -2514,6 +2538,12 @@ TEST_F(IResearchViewCoordinatorTest,
       EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
                   0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
+      auto valueTopK = tmpSlice2.get("optimizeTopK");
+#ifdef USE_ENTERPRISE
+      EXPECT_TRUE(valueTopK.isEmptyArray());
+#else
+      EXPECT_TRUE(valueTopK.isNone());
+#endif
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
       ASSERT_TRUE(tmpSlice2.isArray());
@@ -2580,7 +2610,7 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -2637,7 +2667,7 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(18, slice.length());
+    EXPECT_EQ(18 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -2725,7 +2755,7 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -5906,12 +5936,11 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     }
 
     // drop link
-    EXPECT_TRUE(
-        (arangodb::methods::Indexes::drop(
-             logicalCollection.get(),
-             arangodb::velocypack::Parser::fromJson(std::to_string(linkId.id()))
-                 ->slice())
-             .ok()));
+    EXPECT_TRUE((arangodb::methods::Indexes::drop(
+                     *logicalCollection, arangodb::velocypack::Parser::fromJson(
+                                             std::to_string(linkId.id()))
+                                             ->slice())
+                     .ok()));
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(
                                   server.server()));  // plan version changed
     planVersion = arangodb::tests::getCurrentPlanVersion(server.server());

@@ -180,6 +180,7 @@ auto DocumentStateTransactionHandler::applyOp(
     auto accessType = std::is_same_v<T, ReplicatedOperation::Truncate>
                           ? AccessMode::Type::EXCLUSIVE
                           : AccessMode::Type::WRITE;
+    TRI_ASSERT(_vocbase != nullptr);
     trx = _factory->createTransaction(*_vocbase, op.tid, op.shard, accessType);
     setTrx(op.tid, trx);
   }

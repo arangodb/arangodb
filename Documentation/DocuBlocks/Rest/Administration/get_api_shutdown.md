@@ -2,7 +2,7 @@
 @startDocuBlock get_api_shutdown
 @brief query progress of soft shutdown process
 
-@RESTHEADER{GET /_admin/shutdown, Query progress of soft shutdown process, RestGetShutdownHandler}
+@RESTHEADER{GET /_admin/shutdown, Query progress of soft shutdown process, getShutdownProgress}
 
 @RESTDESCRIPTION
 <small>Introduced in: v3.7.12, v3.8.1, v3.9.0</small>

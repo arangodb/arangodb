@@ -133,8 +133,8 @@ function projectionsTestSuite () {
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [v.one, e.two, v.three, e.four]`, ["one", "three"], ["_from", "_to", "two", "four"], true, false, false],
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [v.one.two, v.three.four, e.five.six]`, [["one", "two"], ["three", "four"]], ["_from", "_to", ["five", "six"]], true, false, false],
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [v.one, p.vertices[0].two, e.three, p.edges[1].four]`, ["one", "two"], ["_from", "_to", "three", "four"], true, true, true],
-        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [v.one, p.vertices[-1].one.two, e.three, p.edges[-11].three.four]`, ["one"], ["_from", "_to", "three"], true, true, true],
-        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [p.vertices[-1].one.two, p.edges[-11].three.four]`, [["one", "two"]], ["_from", "_to", ["three", "four"]], true, true, true],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [v.one, p.vertices[-1].one.two, e.three, p.edges[-11].three.four]`, ["one"], ["_from", "_to", "three"], true, false, true],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [p.vertices[-1].one.two, p.edges[-11].three.four]`, [["one", "two"]], ["_from", "_to", ["three", "four"]], true, false, true],
         
         /* Test for subqueries */
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} LET sub = (FOR i IN 1..10 RETURN v.testi) RETURN sub`, ["testi"], ["_from", "_to"], true, false, false],

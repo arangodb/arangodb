@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertTrue, assertEqual, assertNotEqual, assertNotNull, assertFalse, arango, instanceManager */
+/* global assertTrue, assertEqual, assertNotEqual, assertNotNull, assertFalse, arango */
 'use strict';
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoDB Enterprise License Tests
@@ -215,11 +215,11 @@ function clusterRebalanceOtherOptionsSuite() {
 
 
     testCalcRebalanceStopServer: function () {
-      const dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
+      const dbServers = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
       assertNotEqual(dbServers.length, 0);
       for (let i = 0; i < dbServers.length; ++i) {
         const dbServer = dbServers[i];
-        assertTrue(suspendExternal(dbServer.pid));
+        assertTrue(dbServer.suspend());
         try {
           let serverHealth = null;
           let startTime = Date.now();
@@ -233,7 +233,6 @@ function clusterRebalanceOtherOptionsSuite() {
             const timeElapsed = (Date.now() - startTime) / 1000;
             assertTrue(timeElapsed < 300, "Server expected status not acquired");
           } while (serverHealth !== "FAILED");
-          dbServer.suspended = true;
           const serverShortName = result[dbServer.id].ShortName;
           assertEqual(serverHealth, "FAILED");
           startTime = Date.now();
@@ -268,7 +267,7 @@ function clusterRebalanceOtherOptionsSuite() {
             assertNotEqual(job.to, dbServer.id);
           }
         } finally {
-          assertTrue(continueExternal(dbServer.pid));
+          assertTrue(dbServer.resume());
           let serverHealth = null;
           const startTime = Date.now();
           do {
@@ -280,7 +279,6 @@ function clusterRebalanceOtherOptionsSuite() {
             const timeElapsed = (Date.now() - startTime) / 1000;
             assertTrue(timeElapsed < 300, "Unable to get server " + dbServer.id + " in good state");
           } while (serverHealth !== "GOOD");
-          dbServer.suspended = false;
         }
       }
     },

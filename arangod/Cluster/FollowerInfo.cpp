@@ -140,7 +140,7 @@ Result FollowerInfo::add(ServerID const& sid) {
             "unable to add follower"};
   }
 
-  MUTEX_LOCKER(locker, _agencyMutex);
+  std::lock_guard locker{_agencyMutex};
 
   std::shared_ptr<std::vector<ServerID>> v;
 
@@ -272,7 +272,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
   LOG_TOPIC("ce460", DEBUG, Logger::CLUSTER)
       << "Removing follower " << sid << " from " << _docColl->name();
 
-  MUTEX_LOCKER(locker, _agencyMutex);
+  std::lock_guard locker{_agencyMutex};
   WRITE_LOCKER(canWriteLocker, _canWriteLock);
   WRITE_LOCKER(
       writeLocker,
@@ -463,7 +463,7 @@ void FollowerInfo::takeOverLeadership(
 ///        _followers == _failoverCandidates
 ////////////////////////////////////////////////////////////////////////////////
 bool FollowerInfo::updateFailoverCandidates() {
-  MUTEX_LOCKER(agencyLocker, _agencyMutex);
+  std::lock_guard agencyLocker{_agencyMutex};
   // Acquire _canWriteLock first
   WRITE_LOCKER(canWriteLocker, _canWriteLock);
   // Next acquire _dataLock

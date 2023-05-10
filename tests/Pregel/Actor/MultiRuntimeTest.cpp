@@ -41,6 +41,9 @@ struct MockScheduler {
   auto start(size_t number_of_threads) -> void{};
   auto stop() -> void{};
   auto operator()(auto fn) { fn(); }
+  auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
+    fn(true);
+  }
 };
 
 template<typename Runtime>

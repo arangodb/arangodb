@@ -1,33 +1,33 @@
 import { useEffect } from "react";
 
-
 /**
  * This funciton disables the bottom nav bar (subNav) using CSS
- * on React component mount, this will hide the nav bar, 
+ * on React component mount, this will hide the nav bar,
  * and show it again when the component unmounts
  */
 export const useDisableNavBar = () => {
   useEffect(() => {
-    const bottomSubNav = $("#subNavigationBar .subMenuEntries.bottom")[0];
-    if (bottomSubNav) {
+    const bottomSubNameSelector = "#subNavigationBar .subMenuEntries.bottom";
+    const bottomSubNav = $(bottomSubNameSelector);
+    if (bottomSubNav.length) {
       $(bottomSubNav).hide();
     }
     const observer = disableSubNav();
 
     return () => {
+      const bottomSubNavEl = $(bottomSubNameSelector);
+      bottomSubNavEl.show();
       observer.disconnect();
-      $(bottomSubNav).show();
     };
   });
 };
 
-/** 
- * Setup observer to watch for container divs creation, 
+/**
+ * Setup observer to watch for container divs creation,
  * then disable subnav.
  * This is used during direct page loads or a page refresh.
  * */
 const disableSubNav = () => {
-
   const target = $("#subNavigationBar")[0];
   const observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {

@@ -23,7 +23,6 @@
 
 #include "V8Context.h"
 
-#include "Basics/MutexLocker.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/arangod.h"
@@ -75,7 +74,7 @@ void V8Context::assertLocked() const {
 }
 
 bool V8Context::hasGlobalMethodsQueued() {
-  MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
+  std::lock_guard mutexLocker{_globalMethodsLock};
   return !_globalMethods.empty();
 }
 
@@ -102,7 +101,7 @@ bool V8Context::shouldBeRemoved(double maxAge, uint64_t maxInvocations) const {
 }
 
 void V8Context::addGlobalContextMethod(GlobalContextMethods::MethodType type) {
-  MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
+  std::lock_guard mutexLocker{_globalMethodsLock};
 
   for (auto const& it : _globalMethods) {
     if (it == type) {
@@ -123,7 +122,7 @@ void V8Context::handleGlobalContextMethods() {
     // the lock while we execute them this avoids potential deadlocks when
     // one of the executed functions itself registers a context method
 
-    MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
+    std::lock_guard mutexLocker{_globalMethodsLock};
     copy.swap(_globalMethods);
   } catch (...) {
     // if we failed, we shouldn't have modified _globalMethods yet, so we

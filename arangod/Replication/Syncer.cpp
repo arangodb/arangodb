@@ -23,9 +23,7 @@
 
 #include "Syncer.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -315,7 +313,7 @@ Syncer::JobSynchronizer::~JobSynchronizer() {
 }
 
 bool Syncer::JobSynchronizer::gotResponse() const noexcept {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   return _gotResponse;
 }
 
@@ -323,13 +321,13 @@ bool Syncer::JobSynchronizer::gotResponse() const noexcept {
 void Syncer::JobSynchronizer::gotResponse(
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response,
     double time) noexcept {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   _res.reset();  // no error!
   _response = std::move(response);
   _gotResponse = true;
   _time = time;
 
-  guard.signal();
+  _condition.cv.notify_one();
 }
 
 /// @brief will be called whenever an error occurred
@@ -338,13 +336,13 @@ void Syncer::JobSynchronizer::gotResponse(arangodb::Result&& res,
                                           double time) noexcept {
   TRI_ASSERT(res.fail());
 
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   _res = std::move(res);
   _response.reset();
   _gotResponse = true;
   _time = time;
 
-  guard.signal();
+  _condition.cv.notify_one();
 }
 
 /// @brief the calling Syncer will call and block inside this function until
@@ -353,10 +351,10 @@ Result Syncer::JobSynchronizer::waitForResponse(
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response) {
   while (true) {
     {
-      CONDITION_LOCKER(guard, _condition);
+      std::unique_lock guard{_condition.mutex};
 
       if (!_gotResponse) {
-        guard.wait(1 * 1000 * 1000);
+        _condition.cv.wait_for(guard, std::chrono::seconds{1});
       }
 
       // check again, _gotResponse may have changed
@@ -371,7 +369,7 @@ Result Syncer::JobSynchronizer::waitForResponse(
       // clear result response
       response.reset();
 
-      CONDITION_LOCKER(guard, _condition);
+      std::lock_guard guard{_condition.mutex};
       _gotResponse = false;
       _response.reset();
       _res.reset();
@@ -408,7 +406,7 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
 /// the syncer was stopped/aborted already)
 bool Syncer::JobSynchronizer::jobPosted() {
   while (true) {
-    CONDITION_LOCKER(guard, _condition);
+    std::unique_lock guard{_condition.mutex};
 
     // _jobsInFlight should be 0 in almost all cases, however, there
     // is a small window in which the request has been processed already
@@ -424,22 +422,22 @@ bool Syncer::JobSynchronizer::jobPosted() {
       // syncer already stopped... no need to carry on here
       return false;
     }
-    guard.wait(10 * 1000);
+    _condition.cv.wait_for(guard, std::chrono::milliseconds{10});
   }
 }
 
 /// @brief notifies that a job was done
 void Syncer::JobSynchronizer::jobDone() noexcept {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
 
   TRI_ASSERT(_jobsInFlight == 1);
   --_jobsInFlight;
-  _condition.signal();
+  _condition.cv.notify_one();
 }
 
 /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
 bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
 
   TRI_ASSERT(_jobsInFlight <= 1);
   return _jobsInFlight > 0;
@@ -551,28 +549,28 @@ TRI_vocbase_t* Syncer::resolveVocbase(velocypack::Slice slice) {
                                    "could not resolve vocbase id / name");
   }
 
-  // will work with either names or id's
-  auto const& it = _state.vocbases.find(name);
+  // database names with a number in front are invalid names and
+  // cannot be handled here
+  TRI_ASSERT(name[0] < '0' || name[0] > '9');
+
+  // will work with either names or ids
+  auto it = _state.vocbases.find(name);
 
   if (it == _state.vocbases.end()) {
     // automatically checks for id in string
     auto& server = _state.applier._server;
-    TRI_vocbase_t* vocbase =
-        server.getFeature<DatabaseFeature>().lookupDatabase(name);
+    auto vocbase = server.getFeature<DatabaseFeature>().useDatabase(name);
 
-    if (vocbase != nullptr) {
-      _state.vocbases.try_emplace(name,
-                                  *vocbase);  // we can not be lazy because of
-                                              // the guard requires a valid ref
-    } else {
+    if (vocbase == nullptr) {
       LOG_TOPIC("9bb38", DEBUG, Logger::REPLICATION)
           << "could not find database '" << name << "'";
+      return nullptr;
     }
-
-    return vocbase;
-  } else {
-    return &(it->second.database());
+    it = _state.vocbases.try_emplace(name, std::move(vocbase)).first;
   }
+
+  TRI_ASSERT(it != _state.vocbases.end());
+  return &(it->second.database());
 }
 
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
@@ -830,7 +828,7 @@ void Syncer::createIndexInternal(velocypack::Slice idxDef,
     std::string name;  // placeholder for now
     CollectionNameResolver resolver(col.vocbase());
     Result res =
-        methods::Indexes::extractHandle(&col, &resolver, idxDef, iid, name);
+        methods::Indexes::extractHandle(col, &resolver, idxDef, iid, name);
     if (res.ok() && iid.isSet()) {
       // lookup by id
       auto byId = physical->lookupIndex(iid);

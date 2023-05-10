@@ -49,6 +49,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Scheduler/Scheduler.h"
 #include "Replication2/IScheduler.h"
+#include "Replication2/ReplicatedLog/Components/InMemoryLogManager.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
 
@@ -75,14 +76,10 @@ namespace arangodb::futures {
 template<typename T>
 class Try;
 }
-namespace arangodb::cluster {
-struct IFailureOracle;
-}
 namespace arangodb::replication2::algorithms {
 struct ParticipantState;
 }
 namespace arangodb::replication2::replicated_log {
-struct LogCore;
 struct ReplicatedLogMetrics;
 }  // namespace arangodb::replication2::replicated_log
 
@@ -127,8 +124,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture override;
 
-  [[nodiscard]] auto getReplicatedLogSnapshot() const -> InMemoryLog::log_type;
-
   // Triggers sending of appendEntries requests to all followers. This continues
   // until all participants are perfectly in sync, and will then stop.
   // Is usually called automatically after an insert, but can be called manually
@@ -152,25 +147,13 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto getInternalLogIterator(std::optional<LogRange> bounds)
       const -> std::unique_ptr<PersistedLogIterator> override;
 
-  // Returns true if the leader has established its leadership: at least one
-  // entry within its term has been committed.
-  [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool;
-
   auto waitForLeadership() -> WaitForFuture override;
   auto ping(std::optional<std::string> message) -> LogIndex override;
-
-  // This function returns the current commit index. Do NOT poll this function,
-  // use waitFor(idx) instead. This function is used in tests.
-  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex;
 
   // Updates the flags of the participants.
   auto updateParticipantsConfig(
       std::shared_ptr<agency::ParticipantsConfig const> const& config)
       -> LogIndex override;
-
-  // Returns [acceptedConfig.generation, committedConfig.?generation]
-  auto getParticipantConfigGenerations() const noexcept
-      -> std::pair<std::size_t, std::optional<std::size_t>>;
 
   auto setSnapshotAvailable(ParticipantId const& participantId,
                             SnapshotAvailableReport report) -> Result;
@@ -297,14 +280,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         -> std::pair<LogIndex, std::vector<algorithms::ParticipantState>>;
 
     [[nodiscard]] auto updateCommitIndexLeader(
-        LogIndex newIndex, std::shared_ptr<QuorumData> quorum)
+        LogIndex newCommitIndex, std::shared_ptr<QuorumData> quorum)
         -> ResolvedPromiseSet;
-
-    [[nodiscard]] auto getInternalLogIterator(LogIndex firstIdx) const
-        -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>>;
-
-    [[nodiscard]] auto getLogConsumerIterator(std::optional<LogRange> bounds)
-        const -> std::unique_ptr<LogRangeIterator>;
 
     [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
 
@@ -312,25 +289,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         FollowerInfo& follower, TermIndexPair const& lastAvailableIndex) const
         -> std::pair<AppendEntriesRequest, TermIndexPair>;
 
-    [[nodiscard]] auto calculateCommitLag() const noexcept
-        -> std::chrono::duration<double, std::milli>;
-
-    auto insertInternal(
-        std::variant<LogMetaPayload, LogPayload>, bool waitForSync,
-        std::optional<InMemoryLogEntry::clock::time_point> insertTp)
-        -> LogIndex;
-
-    [[nodiscard]] auto waitForResign()
-        -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
-
     LogLeader& _self;
-    InMemoryLog _inMemoryLog;
     std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>
         _follower{};
     WaitForQueue _waitForQueue{};
     WaitForBag _waitForResignQueue;
     std::shared_ptr<QuorumData> _lastQuorum{};
-    LogIndex _commitIndex{0};
     bool _didResign{false};
     bool _leadershipEstablished{false};
     CommitFailReason _lastCommitFailReason;
@@ -353,6 +317,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;
   std::shared_ptr<StorageManager> _storageManager;
+  std::shared_ptr<InMemoryLogManager> _inMemoryLogManager;
   std::shared_ptr<CompactionManager> _compactionManager;
   // _localFollower is const after construction
   std::shared_ptr<LocalFollower> _localFollower;

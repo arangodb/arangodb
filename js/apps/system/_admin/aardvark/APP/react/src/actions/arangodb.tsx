@@ -1,7 +1,7 @@
 import { Database } from "arangojs";
 import store from "../configureStore";
-import { MoveShardInfo } from '../store/cluster/types';
 import { checkHealthSuccess, fetchShardDetailsSuccess } from "../store/cluster/actions";
+import { MoveShardInfo } from '../store/cluster/types';
 
 const dispatchError = (error: { message: string }) => {
   console.log(error);
@@ -12,24 +12,13 @@ class ArangoDB {
   private db: Database;
   private clusterApi: ReturnType<typeof Database.prototype.route>;
 
-  constructor () {
-    let url;
-
-    const env = process.env.NODE_ENV;
-    if (env === 'development') {
-      url = process.env.REACT_APP_ARANGODB_HOST;
-    } else {
-      url = window.location.origin;
-    }
-
-    this.db = new Database({
-      url: url
-    });
+  constructor() {
+    this.db = new Database({ url: window.location.origin });
     this.clusterApi = this.db.route('_admin/cluster');
   }
 
-  public async fetchShardSpecifics (collection: string) : Promise<void> {
-    const { body, statusCode } = await this.clusterApi.put('collectionShardDistribution', {collection});
+  public async fetchShardSpecifics(collection: string): Promise<void> {
+    const { body, statusCode } = await this.clusterApi.put('collectionShardDistribution', { collection });
     if (statusCode === 200) {
       store.dispatch(fetchShardDetailsSuccess(body.results));
     } else {
@@ -39,7 +28,7 @@ class ArangoDB {
     }
   }
 
-  public async fetchShardsOverview () : Promise<void> {
+  public async fetchShardsOverview(): Promise<void> {
     const { body, statusCode } = await this.clusterApi.get('shardDistribution');
     if (statusCode === 200) {
       store.dispatch(fetchShardDetailsSuccess(body.results));
@@ -50,7 +39,7 @@ class ArangoDB {
     }
   }
 
-  public async triggerRebalanceShards () : Promise<void> {
+  public async triggerRebalanceShards(): Promise<void> {
     const { statusCode } = await this.clusterApi.post('rebalanceShards', {});
     if (statusCode !== 201) {
       dispatchError({
@@ -59,7 +48,7 @@ class ArangoDB {
     }
   }
 
-  public async triggerMoveShard ({collection, shard, fromServer, toServer} : MoveShardInfo) : Promise<void> {
+  public async triggerMoveShard({ collection, shard, fromServer, toServer }: MoveShardInfo): Promise<void> {
     const { body, statusCode } = await this.clusterApi.post('moveShard', {
       database: this.db.name,
       collection,
@@ -74,7 +63,7 @@ class ArangoDB {
     }
   }
 
-  public async clusterCheckHealth () : Promise<void> {
+  public async clusterCheckHealth(): Promise<void> {
     const { body, statusCode } = await this.clusterApi.get('health');
     if (statusCode === 200) {
       store.dispatch(checkHealthSuccess(body.Health));
@@ -85,13 +74,13 @@ class ArangoDB {
 const Instance = new ArangoDB();
 const WrappedInstance = new Proxy<ArangoDB>(Instance, {
   // We intercept in all method getters
-  get (target: ArangoDB, name: keyof ArangoDB): any {
+  get(target: ArangoDB, name: keyof ArangoDB): any {
     const wrapped: any = target[name];
     if (typeof wrapped === 'function') {
       return async function () {
         try {
           return await wrapped.apply(target, arguments);
-        } catch (e) {
+        } catch (e: any) {
           dispatchError(e);
         }
       };

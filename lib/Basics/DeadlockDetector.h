@@ -23,13 +23,12 @@
 
 #pragma once
 
+#include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 
@@ -48,7 +47,7 @@ class DeadlockDetector {
  public:
   /// @brief add a thread to the list of blocked threads
   int detectDeadlock(TID tid, T const* value, bool isWrite) {
-    MUTEX_LOCKER(mutexLocker, _lock);
+    std::lock_guard mutexLocker{_lock};
     return detectDeadlockNoLock(tid, value, isWrite);
   }
 
@@ -90,13 +89,13 @@ class DeadlockDetector {
 
   /// @brief enable / disable
   void enabled(bool value) {
-    MUTEX_LOCKER(mutexLocker, _lock);
+    std::lock_guard mutexLocker{_lock};
     _enabled = value;
   }
 
   /// @brief return the enabled status
   bool enabled() {
-    MUTEX_LOCKER(mutexLocker, _lock);
+    std::lock_guard mutexLocker{_lock};
     return _enabled;
   }
 
@@ -173,7 +172,7 @@ class DeadlockDetector {
 
   /// @brief add a thread to the list of blocked threads
   ErrorCode setBlocked(TID tid, T const* value, bool isWrite) {
-    MUTEX_LOCKER(mutexLocker, _lock);
+    std::lock_guard mutexLocker{_lock};
 
     if (!_enabled) {
       return TRI_ERROR_NO_ERROR;
@@ -207,7 +206,7 @@ class DeadlockDetector {
 
   /// @brief remove a thread from the list of blocked threads
   void unsetBlocked(TID tid, T const* value, bool isWrite) {
-    MUTEX_LOCKER(mutexLocker, _lock);
+    std::lock_guard mutexLocker{_lock};
 
     if (!_enabled) {
       return;
@@ -219,9 +218,8 @@ class DeadlockDetector {
 
   /// @brief unregister a thread from the list of active threads
   void unsetActive(TID tid, T const* value, bool isWrite) {
-    MUTEX_LOCKER(
-        mutexLocker,
-        _lock);  // note: this lock is expensive when many threads compete
+    std::lock_guard mutexLocker{
+        _lock};  // note: this lock is expensive when many threads compete
 
     if (!_enabled) {
       return;
@@ -281,9 +279,8 @@ class DeadlockDetector {
 
   /// @brief add a reader/writer to the list of active threads
   void addActive(TID tid, T const* value, bool isWrite, bool wasBlockedBefore) {
-    MUTEX_LOCKER(
-        mutexLocker,
-        _lock);  // note: this lock is expensive when many threads compete
+    std::lock_guard mutexLocker{
+        _lock};  // note: this lock is expensive when many threads compete
 
     if (!_enabled) {
       return;
@@ -317,7 +314,7 @@ class DeadlockDetector {
 
  private:
   /// @brief lock for managing the data structures
-  arangodb::Mutex _lock;
+  std::mutex _lock;
 
   /// @brief threads currently blocked
   std::unordered_map<TID, std::pair<T const*, bool>> _blocked;

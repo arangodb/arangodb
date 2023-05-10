@@ -86,7 +86,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
   VPackBuilder output;
-  auto res = methods::Indexes::ensureIndex(collection, builder.slice(), create,
+  auto res = methods::Indexes::ensureIndex(*collection, builder.slice(), create,
                                            output);
 
   if (res.fail()) {
@@ -152,13 +152,13 @@ static void JS_DropIndexVocbaseCol(
   VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
-  auto res = methods::Indexes::drop(collection, builder.slice());
+  auto res = methods::Indexes::drop(*collection, builder.slice());
 
-  if (res.ok()) {
-    TRI_V8_RETURN_TRUE();
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_V8_RETURN_FALSE();
+  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -190,7 +190,7 @@ static void JS_GetIndexesVocbaseCol(
   }
 
   VPackBuilder output;
-  auto res = methods::Indexes::getAll(collection, flags, withHidden, output);
+  auto res = methods::Indexes::getAll(*collection, flags, withHidden, output);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

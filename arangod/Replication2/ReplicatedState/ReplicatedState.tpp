@@ -228,11 +228,12 @@ auto ReplicatedStateManager<S>::getLeader() const
 template<typename S>
 auto ReplicatedStateManager<S>::resign() && -> std::unique_ptr<CoreType> {
   auto guard = _guarded.getLockedGuard();
-  auto&& [core, methods] =
+  auto [core, methods] =
       std::visit([](auto&& mgr) { return std::move(*mgr).resign(); },
                  guard->_currentManager);
   // we should be unconfigured already
   TRI_ASSERT(methods == nullptr);
+  // cppcheck-suppress returnStdMoveLocal ; core is not a local variable
   return std::move(core);
 }
 
@@ -252,6 +253,7 @@ template<typename S, template<typename> typename Interface,
          ValidStreamLogMethods ILogMethodsT>
 auto StreamProxy<S, Interface,
                  ILogMethodsT>::resign() && -> std::unique_ptr<ILogMethodsT> {
+  // cppcheck-suppress returnStdMoveLocal ; bogus
   return std::move(this->_logMethods.getLockedGuard().get());
 }
 
@@ -336,7 +338,8 @@ ProducerStreamProxy<S>::ProducerStreamProxy(
     : StreamProxy<S, streams::ProducerStream,
                   replicated_log::IReplicatedLogLeaderMethods>(
           std::move(methods)) {
-  ADB_PROD_ASSERT(this->_logMethods.getLockedGuard().get() != nullptr);
+  // this produces a lock inversion
+  // ADB_PROD_ASSERT(this->_logMethods.getLockedGuard().get() != nullptr);
 }
 
 template<typename S>
@@ -344,18 +347,6 @@ auto ProducerStreamProxy<S>::insert(const EntryType& v) -> LogIndex {
   auto guard = this->_logMethods.getLockedGuard();
   if (auto& methods = guard.get(); methods != nullptr) [[likely]] {
     return methods->insert(serialize(v));
-  } else {
-    this->throwResignedException();
-  }
-}
-
-template<typename S>
-auto ProducerStreamProxy<S>::insertDeferred(const EntryType& v)
-    -> std::pair<LogIndex, DeferredAction> {
-  // TODO Remove this method, it should be superfluous
-  auto guard = this->_logMethods.getLockedGuard();
-  if (auto& methods = guard.get(); methods != nullptr) [[likely]] {
-    return methods->insertDeferred(serialize(v));
   } else {
     this->throwResignedException();
   }
@@ -395,6 +386,7 @@ auto LeaderStateManager<S>::GuardedData::recoverEntries() {
       std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
           std::move(logIter));
   MeasureTimeGuard timeGuard(*_metrics.replicatedStateRecoverEntriesRtt);
+  // cppcheck-suppress accessMoved ; deserializedIter is only accessed once
   auto fut = _leaderState->recoverEntries(std::move(deserializedIter))
                  .then([guard = std::move(timeGuard)](auto&& res) mutable {
                    guard.fire();
@@ -570,12 +562,8 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
     // Apply at most 1000 entries at once, so we have a smoother progression.
     _applyEntriesIndexInFlight =
         std::min(_commitIndex, _lastAppliedIndex + 1000);
-    // get an iterator for the range [last_applied + 1, commitIndex + 1)
-    auto logIter = _stream->methods()->getCommittedLogIterator(
-        {{_lastAppliedIndex + 1, *_applyEntriesIndexInFlight + 1}});
-    auto deserializedIter = std::make_unique<
-        LazyDeserializingIterator<EntryType const&, Deserializer>>(
-        std::move(logIter));
+    auto range =
+        LogRange{_lastAppliedIndex + 1, *_applyEntriesIndexInFlight + 1};
     auto promise = futures::Promise<Result>();
     auto future = promise.getFuture();
     auto rttGuard = MeasureTimeGuard(*metrics->replicatedStateApplyEntriesRtt);
@@ -583,17 +571,30 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
     // scheduler to avoid blocking the current appendEntries request from
     // returning. By using _applyEntriesIndexInFlight we make sure not to call
     // it multiple time in parallel.
-    scheduler->queue([promise = std::move(promise),
-                      deserializedIter = std::move(deserializedIter),
+    scheduler->queue([promise = std::move(promise), stream = _stream, range,
                       followerState = _followerState,
                       rttGuard = std::move(rttGuard)]() mutable {
-      followerState->applyEntries(std::move(deserializedIter))
-          .thenFinal(
-              [promise = std::move(promise),
-               rttGuard = std::move(rttGuard)](auto&& tryResult) mutable {
-                rttGuard.fire();
-                promise.setTry(std::move(tryResult));
-              });
+      using IterType =
+          LazyDeserializingIterator<EntryType const&, Deserializer>;
+      auto iter = [&]() -> std::unique_ptr<IterType> {
+        auto methods = stream->methods();
+        if (methods.isResigned()) {
+          return nullptr;  // Nothing to do, follower already resigned
+        }
+        // get an iterator for the range [last_applied + 1, commitIndex + 1)
+        auto logIter = methods->getCommittedLogIterator(range);
+        return std::make_unique<IterType>(std::move(logIter));
+      }();
+      if (iter != nullptr) {
+        // cppcheck-suppress accessMoved ; iter is accessed only once - bogus
+        followerState->applyEntries(std::move(iter))
+            .thenFinal(
+                [promise = std::move(promise),
+                 rttGuard = std::move(rttGuard)](auto&& tryResult) mutable {
+                  rttGuard.fire();
+                  promise.setTry(std::move(tryResult));
+                });
+      }
     });
 
     return future;
@@ -712,9 +713,8 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index,
   MeasureTimeGuard rttGuard(*_metrics->replicatedStateAcquireSnapshotRtt);
   GaugeScopedCounter snapshotCounter(
       *_metrics->replicatedStateNumberWaitingForSnapshot);
-  auto fut = _guardedData.doUnderLock([&](auto& self) {
-    return self._followerState->acquireSnapshot(leader, index);
-  });
+  auto fut = _guardedData.doUnderLock(
+      [&](auto& self) { return self._followerState->acquireSnapshot(leader); });
   // note that we release the lock before calling "then" to avoid deadlocks
 
   // must be posted on the scheduler to avoid deadlocks with the log

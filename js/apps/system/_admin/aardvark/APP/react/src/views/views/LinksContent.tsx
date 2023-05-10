@@ -1,20 +1,33 @@
-import React from "react";
-import { Route, Switch } from "react-router-dom";
-import CollectionsDropdown from "./forms/inputs/CollectionsDropdown";
-import LinkPropertiesForm from "./forms/LinkPropertiesForm";
+import React, { useContext } from "react";
+import FieldView from "./Components/FieldView";
+import { ViewLinksBreadcrumbs } from "./Components/ViewLinksBreadcrumbs";
+import { ViewContext } from "./constants";
 
-export const LinksContent = ({ name }: { name: string }) => {
+import CollectionsDropdown from "./forms/inputs/CollectionsDropdown";
+import { useLinksContext } from "./LinksContext";
+
+export const LinksContent = () => {
   return (
-    <div>
-      <Switch>
-        <Route path={"/:link"}>
-          <CollectionsDropdown />
-          <LinkPropertiesForm name={name} />
-        </Route>
-        <Route exact path={"/"}>
-          <CollectionsDropdown />
-        </Route>
-      </Switch>
-    </div>
+    <>
+      <CollectionsDropdown />
+      <LinkPropertiesForm />
+    </>
   );
 };
+
+const LinkPropertiesForm = () => {
+  const { isAdminUser } = useContext(ViewContext);
+  const disabled = !isAdminUser;
+  const { currentField } = useLinksContext();
+  if (!currentField) {
+    return null;
+  }
+  return (
+    <>
+      <ViewLinksBreadcrumbs />
+      <FieldView disabled={disabled} />
+    </>
+  );
+};
+
+export default LinkPropertiesForm;

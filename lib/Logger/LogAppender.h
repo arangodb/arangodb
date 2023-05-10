@@ -42,7 +42,6 @@
 namespace arangodb {
 class LogTopic;
 struct LogMessage;
-class Mutex;
 
 class LogAppender {
  public:

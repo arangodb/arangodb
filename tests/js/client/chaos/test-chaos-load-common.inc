@@ -30,6 +30,7 @@ const _ = require('lodash');
 const jsunity = require('jsunity');
 const internal = require('internal');
 const arangodb = require('@arangodb');
+const analyzers = require("@arangodb/analyzers");
 const request = require("@arangodb/request");
 const db = arangodb.db;
 const {
@@ -115,7 +116,7 @@ const viewName = (name, isSearchAlias) => {
   }
 };
 
-const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
+const checkViewConsistency = (cn, isSearchAlias, isMaterialize, viewCounts) => {
   let runQuery = (query) => {
     return db._query(query).toArray();
   };
@@ -133,7 +134,7 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
     } else {
       result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length")[0];
     }
-    assertEqual(expected, result);
+    viewCounts.push({viewName:vn, viewCount:result, collectionName:cn, collectionCount:expected, isMaterialize: isMaterialize});
   };
 
   vn = viewName(cn + "_view", isSearchAlias);
@@ -164,12 +165,11 @@ function BaseChaosSuite(testOpts) {
   const coordination_cn = cn + "_coord";
 
   const createAnalyzers = () => {
-    let a = require("@arangodb/analyzers");
     try {
-      a.remove("testAnalyzer", true);
+      analyzers.remove("testAnalyzer", true);
     } catch (e) {
     }
-    a.save("testAnalyzer", "delimiter", { delimiter: "/" });
+    analyzers.save("testAnalyzer", "delimiter", { delimiter: "/" });
   };
 
   const removeViews = (isSearchAlias) => {
@@ -339,6 +339,7 @@ function BaseChaosSuite(testOpts) {
       print(Date() + " tearDown: dropping " + coordination_cn);
       db._drop(coordination_cn);
       print(Date() + " tearDown: done.");
+      analyzers.remove('testAnalyzer');
     },
     
     testWorkInParallel: function () {
@@ -477,13 +478,23 @@ function BaseChaosSuite(testOpts) {
           } catch (err) {}
         }
         
-        if (trx) {
-          if (Math.random() < 0.2) {
-            log(`ABORTING`);
-            trx.abort();
-          } else {
-            log(`COMMITING`);
-            trx.commit();
+        let willAbort = Math.random() < 0.2;
+        while(trx) {
+          try {
+            if (willAbort) {
+              log(`ABORTING`);
+              trx.abort();
+            } else {
+              log(`COMMITING`);
+              trx.commit();
+            }
+            trx = null;
+          } catch(e) {
+            // due to contention we could have a lock timeout here
+            if(require("@arangodb").errors.ERROR_LOCKED.code !== e.errorNum) {
+               throw e;
+            }
+            require('internal').sleep(1);
           }
         }
       };
@@ -505,18 +516,28 @@ function BaseChaosSuite(testOpts) {
       waitForShardsInSync(cn);
       print(Date() + " checking consistency");
       checkCollectionConsistency(cn);
+      let viewCounts = [];
       if (testOpts.withViews) {
         print(Date() + " checking view 1 consistency");
-        checkViewConsistency(cn, false, false);
+        checkViewConsistency(cn, false, false, viewCounts);
         print(Date() + " checking view 2 consistency");
-        checkViewConsistency(cn, true, false);
+        checkViewConsistency(cn, true, false, viewCounts);
         print(Date() + " checking view 3 consistency");
-        checkViewConsistency(cn, false, true);
+        checkViewConsistency(cn, false, true, viewCounts);
         print(Date() + " checking view 4 consistency");
-        checkViewConsistency(cn, true, true);
+        checkViewConsistency(cn, true, true, viewCounts);
       }
       print(Date() + " checking consistency done.");
-      client_ret.forEach(client => { if (client.failed) { throw new Error("clients did not finish successfully"); }});
+      let failedViews = "";
+      for (const c of viewCounts) {
+         if(c.viewCount !== c.collectionCount) {
+           print(viewCounts);
+           failedViews = " and views count mismatch";
+           break;
+         }
+      }
+      client_ret.forEach(client => { if (client.failed) { throw new Error("clients did not finish successfully " + failedViews); }});
+      assertEqual(failedViews, "");
     }
   };
 }

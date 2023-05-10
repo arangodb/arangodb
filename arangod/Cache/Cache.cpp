@@ -30,6 +30,7 @@
 
 #include "Cache/Cache.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
 #include "Basics/voc-errors.h"
@@ -174,6 +175,10 @@ bool Cache::isResizing() const noexcept {
     return false;
   }
 
+  return isResizingFlagSet();
+}
+
+bool Cache::isResizingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing();
 }
@@ -183,15 +188,15 @@ bool Cache::isMigrating() const noexcept {
     return false;
   }
 
+  return isMigratingFlagSet();
+}
+
+bool Cache::isMigratingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isMigrating();
 }
 
-bool Cache::isBusy() const noexcept {
-  if (ADB_UNLIKELY(isShutdown())) {
-    return false;
-  }
-
+bool Cache::isResizingOrMigratingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing() || _metadata.isMigrating();
 }
@@ -327,23 +332,17 @@ std::shared_ptr<Table> Cache::table() const {
 }
 
 void Cache::shutdown() {
-  SpinLocker shutdownGuard(SpinLocker::Mode::Write, _shutdownLock);
-
   SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
   auto handle = shared_from_this();  // hold onto self-reference to prevent
                                      // pre-mature shared_ptr destruction
   TRI_ASSERT(handle.get() == this);
   if (!_shutdown.exchange(true)) {
     while (true) {
-      {
-        SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-        if (!_metadata.isMigrating() && !_metadata.isResizing()) {
-          break;
-        }
+      if (!isResizingOrMigratingFlagSet()) {
+        break;
       }
 
       SpinUnlocker taskUnguard(SpinUnlocker::Mode::Write, _taskLock);
-      SpinUnlocker shutdownUnguard(SpinUnlocker::Mode::Write, _shutdownLock);
 
       // sleep a bit without holding the locks
       std::this_thread::sleep_for(std::chrono::microseconds(20));
@@ -376,8 +375,7 @@ bool Cache::canResize() noexcept {
     return false;
   }
 
-  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-  return !(_metadata.isResizing() || _metadata.isMigrating());
+  return !isResizingOrMigratingFlagSet();
 }
 
 /// TODO Improve freeing algorithm
@@ -393,6 +391,8 @@ bool Cache::canResize() noexcept {
 /// That way we still visit the buckets in a sufficiently random order, but we
 /// are guaranteed to make progress in a finite amount of time.
 bool Cache::freeMemory() {
+  TRI_ASSERT(isResizingFlagSet());
+
   if (ADB_UNLIKELY(isShutdown())) {
     return false;
   }
@@ -424,13 +424,19 @@ bool Cache::freeMemory() {
 }
 
 bool Cache::migrate(std::shared_ptr<Table> newTable) {
-  if (ADB_UNLIKELY(isShutdown())) {
-    // unmarking migrating flag
+  TRI_ASSERT(isMigratingFlagSet());
+
+  auto migratingGuard = scopeGuard([this]() noexcept {
+    // unmarking migrating flag if necessary
     SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
 
     TRI_ASSERT(_metadata.isMigrating());
     _metadata.toggleMigrating();
     TRI_ASSERT(!_metadata.isMigrating());
+  });
+
+  if (ADB_UNLIKELY(isShutdown())) {
+    // will trigger the scopeGuard
     return false;
   }
 
@@ -468,6 +474,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
     _metadata.toggleMigrating();
     TRI_ASSERT(!_metadata.isMigrating());
   }
+  migratingGuard.cancel();
 
   // clear out old table and release it
   oldTable->clear();

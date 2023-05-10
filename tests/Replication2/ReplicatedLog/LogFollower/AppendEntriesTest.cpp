@@ -26,6 +26,7 @@
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
+#include "Replication2/Mocks/SchedulerMocks.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include <immer/flex_vector_transient.hpp>
 
@@ -48,6 +49,7 @@ struct ReplicatedStateHandleMock : IReplicatedStateHandle {
   MOCK_METHOD(replicated_state::Status, getInternalStatus, (),
               (const, override));
 };
+
 }  // namespace
 
 struct AppendEntriesFollowerTest : ::testing::Test {
@@ -55,6 +57,8 @@ struct AppendEntriesFollowerTest : ::testing::Test {
   LogId const logId = LogId{12};
   std::shared_ptr<test::SyncExecutor> executor =
       std::make_shared<test::SyncExecutor>();
+  std::shared_ptr<test::SyncScheduler> scheduler =
+      std::make_shared<test::SyncScheduler>();
 
   test::FakeStorageEngineMethodsContext storage{
       objectId,
@@ -84,7 +88,8 @@ struct AppendEntriesFollowerTest : ::testing::Test {
     return std::make_shared<FollowerManager>(
         storage.getMethods(),
         std::unique_ptr<ReplicatedStateHandleMock>(stateHandle), termInfo,
-        options, metrics, nullptr, LoggerContext{Logger::REPLICATION2});
+        options, metrics, nullptr, scheduler,
+        LoggerContext{Logger::REPLICATION2});
   }
 };
 

@@ -381,6 +381,13 @@ void TraversalNode::getVariablesUsedHere(VarSet& result) const {
     }
   }
 
+  for (auto const& postVar : _postFilterVariables) {
+    if (postVar != vertexOutVariable() && postVar != edgeOutVariable() &&
+        postVar != pathOutVariable()) {
+      result.emplace(postVar);
+    }
+  }
+
   if (usesInVariable()) {
     result.emplace(_inVariable);
   }
@@ -954,7 +961,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     /*
      * SmartGraph Traverser
      */
-    waitForSatelliteIfRequired(&engine);
     if (isSmart() && !isDisjoint()) {
       // Note: Using refactored smart graph cluster engine.
       return createBlock(engine, std::move(filterConditionVariables),

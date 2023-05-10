@@ -138,11 +138,8 @@ class IResearchLinkTest
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(IResearchLinkTest, test_format_id) {
-  using namespace arangodb::iresearch;
-  static_assert("1_3simd" == getFormat(LinkVersion::MIN));
-  static_assert("1_4simd" == getFormat(LinkVersion::MAX));
-}
+static_assert("1_3simd" == getFormat(arangodb::iresearch::LinkVersion::MIN));
+static_assert("1_5simd" == getFormat(arangodb::iresearch::LinkVersion::MAX));
 
 TEST_F(IResearchLinkTest, test_defaults) {
   // no view specified
@@ -219,7 +216,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_NE(nullptr, impl);
-    ASSERT_EQ("1_3simd", impl->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN),
+              impl->meta()._version);
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
@@ -295,7 +293,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_NE(nullptr, impl);
-    ASSERT_EQ("1_4simd", impl->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              impl->meta()._version);
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
@@ -626,9 +625,8 @@ TEST_F(IResearchLinkTest, test_self_token) {
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_NE(nullptr, link);
-    ASSERT_EQ(
-        arangodb::iresearch::getFormat(arangodb::iresearch::LinkVersion::MIN),
-        link->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN),
+              link->meta()._version);
     self = link->self();
     EXPECT_NE(nullptr, self);
     auto lock = self->lock();
@@ -888,9 +886,8 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
-    ASSERT_EQ(
-        arangodb::iresearch::getFormat(arangodb::iresearch::LinkVersion::MIN),
-        l->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN),
+              l->meta()._version);
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -954,9 +951,8 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
-    ASSERT_EQ(
-        arangodb::iresearch::getFormat(arangodb::iresearch::LinkVersion::MAX),
-        l->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              l->meta()._version);
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1161,10 +1157,10 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   EXPECT_EQ(2, reader.Reopen().live_docs_count());
   std::set<std::string> expected;
   auto abcSlice = doc0->slice().get("abc");
-  expected.emplace(reinterpret_cast<const char*>(abcSlice.start()),
+  expected.emplace(reinterpret_cast<char const*>(abcSlice.start()),
                    abcSlice.byteSize());
   auto abc2Slice = doc0->slice().get("abc2");
-  expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()),
+  expected.emplace(reinterpret_cast<char const*>(abc2Slice.start()),
                    abc2Slice.byteSize());
   EXPECT_EQ(expected, compressedValues);
 }
@@ -1266,16 +1262,16 @@ TEST_F(IResearchLinkTest,
   EXPECT_EQ(2, reader.Reopen().live_docs_count());
   std::set<std::string> expected;
   auto sortSlice = doc0->slice().get("sort");
-  expected.emplace(reinterpret_cast<const char*>(sortSlice.start()),
+  expected.emplace(reinterpret_cast<char const*>(sortSlice.start()),
                    sortSlice.byteSize());
   auto abcSlice = doc0->slice().get("abc");
-  expected.emplace(reinterpret_cast<const char*>(abcSlice.start()),
+  expected.emplace(reinterpret_cast<char const*>(abcSlice.start()),
                    abcSlice.byteSize());
   auto abc2Slice = doc0->slice().get("abc2");
-  expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()),
+  expected.emplace(reinterpret_cast<char const*>(abc2Slice.start()),
                    abc2Slice.byteSize());
   auto sortSlice1 = doc1->slice().get("sort");
-  expected.emplace(reinterpret_cast<const char*>(sortSlice1.start()),
+  expected.emplace(reinterpret_cast<char const*>(sortSlice1.start()),
                    sortSlice1.byteSize());
   EXPECT_EQ(expected, compressedValues);
 }
@@ -1378,10 +1374,10 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   EXPECT_EQ(2, reader.Reopen().live_docs_count());
   std::set<std::string> expected;
   auto abcSlice = doc0->slice().get("abc");
-  expected.emplace(reinterpret_cast<const char*>(abcSlice.start()),
+  expected.emplace(reinterpret_cast<char const*>(abcSlice.start()),
                    abcSlice.byteSize());
   auto abc2Slice = doc1->slice().get("ghi");
-  expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()),
+  expected.emplace(reinterpret_cast<char const*>(abc2Slice.start()),
                    abc2Slice.byteSize());
   EXPECT_EQ(expected, compressedValues);
 }
@@ -1488,16 +1484,16 @@ TEST_F(IResearchLinkTest,
   EXPECT_EQ(2, reader.Reopen().live_docs_count());
   std::set<std::string> expected;
   auto sortSlice = doc0->slice().get("sort");
-  expected.emplace(reinterpret_cast<const char*>(sortSlice.start()),
+  expected.emplace(reinterpret_cast<char const*>(sortSlice.start()),
                    sortSlice.byteSize());
   auto abcSlice = doc0->slice().get("abc");
-  expected.emplace(reinterpret_cast<const char*>(abcSlice.start()),
+  expected.emplace(reinterpret_cast<char const*>(abcSlice.start()),
                    abcSlice.byteSize());
   auto sortSlice1 = doc1->slice().get("sort");
-  expected.emplace(reinterpret_cast<const char*>(sortSlice1.start()),
+  expected.emplace(reinterpret_cast<char const*>(sortSlice1.start()),
                    sortSlice1.byteSize());
   auto abc2Slice = doc1->slice().get("ghi");
-  expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()),
+  expected.emplace(reinterpret_cast<char const*>(abc2Slice.start()),
                    abc2Slice.byteSize());
   EXPECT_EQ(expected, compressedValues);
 }
@@ -1614,16 +1610,16 @@ TEST_F(
   EXPECT_EQ(2, reader.Reopen().live_docs_count());
   std::set<std::string> expected;
   auto sortSlice = doc0->slice().get("sort");
-  expected.emplace(reinterpret_cast<const char*>(sortSlice.start()),
+  expected.emplace(reinterpret_cast<char const*>(sortSlice.start()),
                    sortSlice.byteSize());
   auto abcSlice = doc0->slice().get("abc");
-  expected.emplace(reinterpret_cast<const char*>(abcSlice.start()),
+  expected.emplace(reinterpret_cast<char const*>(abcSlice.start()),
                    abcSlice.byteSize());
   auto sortSlice1 = doc1->slice().get("sort");
-  expected.emplace(reinterpret_cast<const char*>(sortSlice1.start()),
+  expected.emplace(reinterpret_cast<char const*>(sortSlice1.start()),
                    sortSlice1.byteSize());
   auto abc2Slice = doc1->slice().get("ghi");
-  expected.emplace(reinterpret_cast<const char*>(abc2Slice.start()),
+  expected.emplace(reinterpret_cast<char const*>(abc2Slice.start()),
                    abc2Slice.byteSize());
   EXPECT_EQ(expected, compressedValues);
 }
@@ -2158,19 +2154,20 @@ void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
                         uint64_t& numFiles) {
   std::filesystem::path utf8Path{path};
   auto visitor = [&indexSize, &numFiles,
-                  &utf8Path](const path_char_t* filename) -> bool {
+                  &utf8Path](irs::path_char_t const* filename) -> bool {
     auto pathParts = irs::file_utils::path_parts(filename);
-    std::match_results<typename std::basic_string<path_char_t>::const_iterator>
+    std::match_results<
+        typename std::basic_string<irs::path_char_t>::const_iterator>
         match;
-    std::basic_regex<path_char_t> regex([] {
-      if constexpr (std::is_same_v<path_char_t, wchar_t>) {
+    std::basic_regex<irs::path_char_t> regex([] {
+      if constexpr (std::is_same_v<irs::path_char_t, wchar_t>) {
         return L"^_\\d+$";
       } else {
         return "^_\\d+$";
       }
     }());
-    std::basic_string<path_char_t> name(pathParts.stem.data(),
-                                        pathParts.stem.size());
+    std::basic_string<irs::path_char_t> name(pathParts.stem.data(),
+                                             pathParts.stem.size());
 
     if (std::regex_match(name, match, regex)) {
       // creating abs path to current file
@@ -2189,7 +2186,7 @@ void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
 using LinkStats = arangodb::iresearch::IResearchDataStore::Stats;
 using arangodb::iresearch::MetricStats;
 
-bool operator==(const LinkStats& lhs, const LinkStats& rhs) noexcept {
+bool operator==(LinkStats const& lhs, LinkStats const& rhs) noexcept {
   return lhs.numDocs == rhs.numDocs && lhs.numLiveDocs == rhs.numLiveDocs &&
          lhs.numPrimaryDocs == rhs.numPrimaryDocs &&
          lhs.numSegments == rhs.numSegments && lhs.numFiles == rhs.numFiles &&
@@ -2309,7 +2306,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     auto& f = _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>();
     auto [lock, batch] = f.getBatch("arangodb_search_link_stats");
     EXPECT_TRUE(batch != nullptr);
-    batch->toPrometheus(result, "");
+    batch->toPrometheus(result, "", /*ensureWhitespace*/ false);
   }
 
   double insert(uint64_t begin, uint64_t end, size_t docId,
@@ -2358,7 +2355,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
   std::tuple<uint64_t, uint64_t> numFiles() {
     uint64_t numFiles{0};
     uint64_t indexSize{0};
-    auto visitor = [&](const path_char_t* filename) -> bool {
+    auto visitor = [&](irs::path_char_t const* filename) -> bool {
       ++numFiles;
       auto pathParts = irs::file_utils::path_parts(filename);
       std::filesystem::path absPath = _dirPath;

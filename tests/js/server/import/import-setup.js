@@ -3,8 +3,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup for import tests
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -72,6 +70,7 @@
   db._drop("UnitTestsImportUniqueConstraints");
   db._drop("UnitTestsImportRemoveAttribute");
   db._drop("UnitTestsImportRemoveAttributeJSON");
+  db._drop("Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨");
 
   let dbs = {
     "maçã": true,
@@ -113,6 +112,7 @@
   db._create("UnitTestsImportUniqueConstraints");
   db.UnitTestsImportUniqueConstraints.ensureIndex({type: "hash", fields: ["value"], unique: true});
   db._create("UnitTestsImportCsvMergeAttributes");
+  db._create("Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨");
 })();
 
 return {

@@ -50,7 +50,8 @@ const CopyFromInput = ({ analyzers, dispatch }: CopyFromInputProps) => {
     <Cell size={'2-3'}>
       <select value={selectedAnalyzer.name} style={{
         width: 'auto',
-        float: 'right'
+        float: 'right',
+        fontSize: '14px'
       }} onChange={updateSelectedAnalyzer}>
         {
           sortedAnalyzers.map((analyzer, idx) =>

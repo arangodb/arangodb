@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN, fail */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for single operation nodes in cluster
@@ -32,11 +32,11 @@ const errors = internal.errors;
 const db = require("@arangodb").db;
 const helper = require("@arangodb/aql-helper");
 
-function optimizerClusterSingleDocumentTestSuite () {
+function optimizerClusterSingleDocumentTestSuite() {
   var ruleName = "optimize-cluster-single-document-operations";
   // various choices to control the optimizer:
-  var thisRuleEnabled  = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate", "-parallelize-gather" ] } }; // we can only work after other rules
-  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate", "-parallelize-gather", "-" + ruleName ] } };
+  var thisRuleEnabled = {optimizer: {rules: ["+all", "-move-filters-into-enumerate", "-parallelize-gather"]}}; // we can only work after other rules
+  var thisRuleDisabled = {optimizer: {rules: ["+all", "-move-filters-into-enumerate", "-parallelize-gather", "-" + ruleName]}};
   var notHereDoc = "notHereDoc";
   var yeOldeDoc = "yeOldeDoc";
 
@@ -49,35 +49,38 @@ function optimizerClusterSingleDocumentTestSuite () {
   var cn3 = "UnitTestsCollectionModify";
   var c3;
 
-  var s = function() {};
+  var s = function () {
+  };
 
-  var setupC1 = function() {
+  var setupC1 = function () {
     db._drop(cn1);
-    c1 = db._create(cn1, { numberOfShards: 5 });
+    c1 = db._create(cn1, {numberOfShards: 5});
 
     for (var i = 0; i < 20; ++i) {
-      c1.save({ _key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5 });
+      c1.save({_key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5});
     }
   };
 
-  var setupC2 = function() {
+  var setupC2 = function () {
     db._drop(cn2);
-    c2 = db._create(cn2, { numberOfShards: 5 });
+    c2 = db._create(cn2, {numberOfShards: 5});
     c2.save({_key: yeOldeDoc});
   };
 
-  var setupC3 = function() {
+  var setupC3 = function () {
     db._drop(cn3);
-    c3 = db._create(cn3, { numberOfShards: 5 });
+    c3 = db._create(cn3, {numberOfShards: 5});
 
     for (var i = 0; i < 20; ++i) {
-      c3.save({ _key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5 });
+      c3.save({_key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5});
     }
   };
 
-  var pruneRevisions = function(obj) {
+  var pruneRevisions = function (obj) {
     if (typeof obj instanceof Array) {
-      obj.forEach(function (doc) { pruneRevisions(doc);});
+      obj.forEach(function (doc) {
+        pruneRevisions(doc);
+      });
     } else {
       if ((obj !== null) && (typeof obj !== "string")) {
         if (obj instanceof Object) {
@@ -92,14 +95,15 @@ function optimizerClusterSingleDocumentTestSuite () {
       }
     }
   };
-  
+
   var explain = function (result) {
-    return helper.getCompactPlan(result).map(function(node)
-                                             { return node.type; });
+    return helper.getCompactPlan(result).map(function (node) {
+      return node.type;
+    });
   };
-  var runTestSet = function(sets, expectedRules, expectedNodes) {
+  var runTestSet = function (sets, expectedRules, expectedNodes) {
     let count = 0;
-    sets.forEach(function(set) {
+    sets.forEach(function (set) {
       let queryString = set[0];
       let expectRule = expectedRules[set[1]];
       let expectNode = expectedNodes[set[2]];
@@ -149,20 +153,36 @@ function optimizerClusterSingleDocumentTestSuite () {
     });
   };
 
+  let assertForRuleInQuery = function (queryInfo, res) {
+    if (queryInfo.ruleToRemove.hasOwnProperty("optimizer")) {
+      assertEqual(-1, res.plan.rules.indexOf(ruleName));
+    } else {
+      assertNotEqual(-1, res.plan.rules.indexOf(ruleName), "query does not trigger rule as expected");
+    }
+  };
+
+  let pushStats = function (queryInfo, stats) {
+    queryInfo.statsInfo.push({
+      writesExecuted: stats.writesExecuted,
+      writesIgnored: stats.writesIgnored,
+      scannedIndex: stats.scannedIndex
+    });
+  };
+
   return {
-    setUp : function () {
+    setUp: function () {
       setupC1();
       setupC2();
       setupC3();
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
     },
 
-    testNumericKeyInsert : function () {
+    testNumericKeyInsert: function () {
       try {
         db._query("INSERT { _key: 1234 } INTO " + cn1);
         fail();
@@ -170,8 +190,8 @@ function optimizerClusterSingleDocumentTestSuite () {
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
       }
     },
-    
-    testNumericKeyUpdate : function () {
+
+    testNumericKeyUpdate: function () {
       try {
         db._query("UPDATE { _key: 1234 } WITH { value: 1 } IN " + cn1);
         fail();
@@ -179,8 +199,8 @@ function optimizerClusterSingleDocumentTestSuite () {
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING.code, err.errorNum);
       }
     },
-    
-    testNumericKeyReplace : function () {
+
+    testNumericKeyReplace: function () {
       try {
         db._query("REPLACE { _key: 1234 } WITH { value: 1 } IN " + cn1);
         fail();
@@ -188,8 +208,8 @@ function optimizerClusterSingleDocumentTestSuite () {
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING.code, err.errorNum);
       }
     },
-    
-    testNumericKeyRemove : function () {
+
+    testNumericKeyRemove: function () {
       try {
         db._query("REMOVE { _key: 1234 } IN " + cn1);
         fail();
@@ -198,320 +218,333 @@ function optimizerClusterSingleDocumentTestSuite () {
       }
     },
 
-    testFetchDocumentWithOldAttribute : function() {
-      let doc = c1.save({ _key: "oldDoc", old: "abc" });
-      
+    testFetchDocumentWithOldAttribute: function () {
+      let doc = c1.save({_key: "oldDoc", old: "abc"});
+
       const queries = [
-        [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._id", cn1 + "/oldDoc" ],
-        [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._key", "oldDoc" ],
-        [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._rev", doc._rev ],
-        [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one.old", "abc" ],
-        [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one", { _key: "oldDoc", _rev: doc._rev, old: "abc", _id: cn1 + "/oldDoc" } ],
+        ["FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._id", cn1 + "/oldDoc"],
+        ["FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._key", "oldDoc"],
+        ["FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._rev", doc._rev],
+        ["FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one.old", "abc"],
+        ["FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one", {
+          _key: "oldDoc",
+          _rev: doc._rev,
+          old: "abc",
+          _id: cn1 + "/oldDoc"
+        }],
       ];
 
-      queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query[0], { "@cn1" : cn1 });
+      queries.forEach(function (query) {
+        let result = AQL_EXPLAIN(query[0], {"@cn1": cn1});
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName));
 
-        result = AQL_EXECUTE(query[0], { "@cn1" : cn1 }).json;
+        result = AQL_EXECUTE(query[0], {"@cn1": cn1}).json;
         assertEqual(query[1], result[0]);
       });
     },
-    
-    testFetchDocumentWithNewAttribute : function() {
-      let doc = c1.save({ _key: "newDoc", "new": "abc" });
-      
+
+    testFetchDocumentWithNewAttribute: function () {
+      let doc = c1.save({_key: "newDoc", "new": "abc"});
+
       const queries = [
-        [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._id", cn1 + "/newDoc" ],
-        [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._key", "newDoc" ],
-        [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._rev", doc._rev ],
-        [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one.`new`", "abc" ],
-        [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one", { _key: "newDoc", _rev: doc._rev, "new": "abc", _id: cn1 + "/newDoc" } ],
+        ["FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._id", cn1 + "/newDoc"],
+        ["FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._key", "newDoc"],
+        ["FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._rev", doc._rev],
+        ["FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one.`new`", "abc"],
+        ["FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one", {
+          _key: "newDoc",
+          _rev: doc._rev,
+          "new": "abc",
+          _id: cn1 + "/newDoc"
+        }],
       ];
 
-      queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query[0], { "@cn1" : cn1 });
+      queries.forEach(function (query) {
+        let result = AQL_EXPLAIN(query[0], {"@cn1": cn1});
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName));
 
-        result = AQL_EXECUTE(query[0], { "@cn1" : cn1 }).json;
+        result = AQL_EXECUTE(query[0], {"@cn1": cn1}).json;
         assertEqual(query[1], result[0]);
       });
     },
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test plans that should result
     ////////////////////////////////////////////////////////////////////////////////
 
-    testRuleFetch : function () {
+    testRuleFetch: function () {
       var queries = [
-        [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, 0, true, s, 0],
-        [ "FOR d IN " + cn1 + " FILTER '1' == d._key RETURN d", 0, 0, true, s, 0],
-        [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, 1, false, s, 0],
-        [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN 123", 2, 2, true, s, 0],
-        [ "FOR d IN " + cn1 + " FILTER d._key == '1' LIMIT 10, 1 RETURN d", 3, 3, false, s, 0],
-        [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d._key", 4, 4, true, s, 0],
+        ["FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, 0, true, s, 0],
+        ["FOR d IN " + cn1 + " FILTER '1' == d._key RETURN d", 0, 0, true, s, 0],
+        ["FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, 1, false, s, 0],
+        ["FOR d IN " + cn1 + " FILTER d._key == '1' RETURN 123", 2, 2, true, s, 0],
+        ["FOR d IN " + cn1 + " FILTER d._key == '1' LIMIT 10, 1 RETURN d", 3, 3, false, s, 0],
+        ["FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d._key", 4, 4, true, s, 0],
       ];
-      var expectedRules = [[ "use-indexes",
-                             "remove-filter-covered-by-index",
-                             "remove-unnecessary-calculations-2",
-                             "optimize-cluster-single-document-operations" ],
-                           [ "scatter-in-cluster",
-                             "distribute-filtercalc-to-cluster",
-                             "remove-unnecessary-remote-scatter" ],
-                           [ "move-calculations-up", 
-                             "use-indexes", 
-                             "remove-filter-covered-by-index", 
-                             "remove-unnecessary-calculations-2", 
-                             "optimize-cluster-single-document-operations" ],
-                           [ "use-indexes", "remove-filter-covered-by-index",
-                             "remove-unnecessary-calculations-2",
-                             "scatter-in-cluster", "remove-unnecessary-remote-scatter",
-                             "restrict-to-single-shard"],
-                           [ "move-calculations-up",
-                             "move-filters-up",
-                             "move-calculations-up-2",
-                             "move-filters-up-2",
-                             "use-indexes",
-                             "remove-filter-covered-by-index",
-                             "remove-unnecessary-calculations-2",
-                             "optimize-cluster-single-document-operations" ],
-                          ];
+      var expectedRules = [["use-indexes",
+        "remove-filter-covered-by-index",
+        "remove-unnecessary-calculations-2",
+        "optimize-cluster-single-document-operations"],
+        ["scatter-in-cluster",
+          "distribute-filtercalc-to-cluster",
+          "remove-unnecessary-remote-scatter"],
+        ["move-calculations-up",
+          "use-indexes",
+          "remove-filter-covered-by-index",
+          "remove-unnecessary-calculations-2",
+          "optimize-cluster-single-document-operations"],
+        ["use-indexes", "remove-filter-covered-by-index",
+          "remove-unnecessary-calculations-2",
+          "scatter-in-cluster", "remove-unnecessary-remote-scatter",
+          "restrict-to-single-shard"],
+        ["move-calculations-up",
+          "move-filters-up",
+          "move-calculations-up-2",
+          "move-filters-up-2",
+          "use-indexes",
+          "remove-filter-covered-by-index",
+          "remove-unnecessary-calculations-2",
+          "optimize-cluster-single-document-operations"],
+      ];
 
       var expectedNodes = [
-        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [ "SingletonNode", "EnumerateCollectionNode", "CalculationNode",
-          "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"  ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode",
+        ["SingletonNode", "SingleRemoteOperationNode", "ReturnNode"],
+        ["SingletonNode", "EnumerateCollectionNode", "CalculationNode",
+          "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"],
+        ["SingletonNode", "CalculationNode", "SingleRemoteOperationNode",
           "ReturnNode"],
-        [ "SingletonNode", "IndexNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ],
-        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
+        ["SingletonNode", "IndexNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode"],
+        ["SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
       ];
       runTestSet(queries, expectedRules, expectedNodes);
     },
 
-    testRuleInsert : function () {
+    testRuleInsert: function () {
       var queries = [
         // [ query, expectedRulesField, expectedNodesField, doFullTest, setupFunction, errorCode ]
-        [ `INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
-        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
+        [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0],
+        [`INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0],
 
-        [ `INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0 ],
-        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0 ],
+        [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0],
+        [`INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0],
 
-        [ `INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0 ],
-        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0 ],
+        [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0],
+        [`INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0],
 
-        [ `INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, 0 ],
-        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
+        [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, 0],
+        [`INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
 
-        [ `INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 2, true, setupC2, 0 ],
-        [ `INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 2, true, setupC2, 0 ],
-        [ `LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW, a]`, 2, 2, true, setupC2, 0 ],
-        [ `LET a = { a: 123 } INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW, a: a }`, 2, 2, true, setupC2, 0 ],
-        [ `LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN  ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN a`, 3, 3, true, setupC2, 0 ],
-        [ `INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} RETURN NEW`, 0, 1, true, setupC2, 0 ],
-        [ `INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} RETURN NEW._key`, 0, 2, true, setupC2, 0 ],
+        [`INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 2, true, setupC2, 0],
+        [`INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 2, true, setupC2, 0],
+        [`LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW, a]`, 2, 2, true, setupC2, 0],
+        [`LET a = { a: 123 } INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW, a: a }`, 2, 2, true, setupC2, 0],
+        [`LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN  ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN a`, 3, 3, true, setupC2, 0],
+        [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} RETURN NEW`, 0, 1, true, setupC2, 0],
+        [`INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} RETURN NEW._key`, 0, 2, true, setupC2, 0],
       ];
 
       var expectedRules = [
-        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [ "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-unnecessary-calculations", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "move-calculations-up-2", 
-          "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ]
+        ["remove-data-modification-out-variables", "optimize-cluster-single-document-operations"],
+        ["optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "remove-unnecessary-calculations", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "move-calculations-up-2",
+          "remove-data-modification-out-variables", "optimize-cluster-single-document-operations"]
       ];
       var expectedNodes = [
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
-        [ "SingletonNode", "CalculationNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ]
+        ["SingletonNode", "CalculationNode", "SingleRemoteOperationNode"],
+        ["SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode"],
+        ["SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
+        ["SingletonNode", "CalculationNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode"]
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
 
-    testRuleUpdate : function () {
+    testRuleUpdate: function () {
       var queries = [
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
-        [ "UPDATE {_key: '1', boom: true } INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, true, setupC1, 0],          
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],        
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " RETURN OLD._key", 0, 2, true, s, 0],
-        [ "UPDATE {_key: '1'} WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
-        [ "UPDATE {_key: '1'} WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0],
-        [ "UPDATE {_key: '1'} WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 12, 1, true, setupC1, 0],
-        [ "UPDATE '1' WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
-        [ "UPDATE '1' WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
-        [ "UPDATE '1' WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 4, 3, true, s, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 8, 2, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 8, 1, true, setupC1, 0, "name", "test1"],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 10, 5, true, setupC1, 0, "name", "test1"],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 10, 5, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '${notHereDoc}' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 8, 2, true, setupC1, 0],
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 11, 5, true, setupC1, 0, "name", "test1"],
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 11, 5, true, setupC1, 0],
-        [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN { NEW: NEW, a: a }`, 6, 4, true, s, 0],
-        [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0],
-        [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN [ NEW, a ]`, 6, 4, true, s, 0],
-        [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0],
-        [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [doc, NEW, a]`, 9, 2, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} RETURN OLD._key`, 8, 2, true, setupC1, 0],
+        ["UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
+        ["UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
+        ["UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
+        ["UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
+        ["UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
+        ["UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
+        ["UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
+        ["UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
+        ["UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
+        ["UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
+        ["UPDATE {_key: '1', boom: true } INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, true, setupC1, 0],
+        ["UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
+        ["UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
+        ["UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
+        ["UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],
+        ["UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
+        ["UPDATE {_key: '1'} INTO " + cn1 + " RETURN OLD._key", 0, 2, true, s, 0],
+        ["UPDATE {_key: '1'} WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
+        ["UPDATE {_key: '1'} WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0],
+        ["UPDATE {_key: '1'} WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 12, 1, true, setupC1, 0],
+        ["UPDATE '1' WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
+        ["UPDATE '1' WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
+        ["UPDATE '1' WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
+        [`FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 4, 3, true, s, 0],
+        [`FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 8, 2, true, setupC1, 0],
+        [`FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 8, 1, true, setupC1, 0, "name", "test1"],
+        [`FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 10, 5, true, setupC1, 0, "name", "test1"],
+        [`FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 10, 5, true, setupC1, 0],
+        [`FOR doc IN ${cn1} FILTER doc._key == '${notHereDoc}' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 8, 2, true, setupC1, 0],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 11, 5, true, setupC1, 0, "name", "test1"],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 11, 5, true, setupC1, 0],
+        [`LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN { NEW: NEW, a: a }`, 6, 4, true, s, 0],
+        [`LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0],
+        [`LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN [ NEW, a ]`, 6, 4, true, s, 0],
+        [`LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0],
+        [`LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [doc, NEW, a]`, 9, 2, true, setupC1, 0],
+        [`FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} RETURN OLD._key`, 8, 2, true, setupC1, 0],
       ];
 
       var expectedRules = [
-        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations" ],
-        [ "optimize-cluster-single-document-operations" ],
-        [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-unnecessary-calculations", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
-        [ "move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
-        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        ["remove-data-modification-out-variables", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations"],
+        ["optimize-cluster-single-document-operations"],
+        ["remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "remove-unnecessary-calculations", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard"],
+        ["move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard"],
+        ["move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations"],
       ];
 
       var expectedNodes = [
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
-        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
-        [ "SingletonNode", "CalculationNode", "CalculationNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "DistributeNode", "RemoteNode", "UpdateNode", "RemoteNode", "GatherNode", "ReturnNode" ]
+        ["SingletonNode", "CalculationNode", "SingleRemoteOperationNode"],
+        ["SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode"],
+        ["SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
+        ["SingletonNode", "SingleRemoteOperationNode", "ReturnNode"],
+        ["SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
+        ["SingletonNode", "CalculationNode", "CalculationNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "DistributeNode", "RemoteNode", "UpdateNode", "RemoteNode", "GatherNode", "ReturnNode"]
 
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
 
-    testRuleReplace : function () {
+    testRuleReplace: function () {
       var queries = [
-        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
-        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
-        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
-        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
-        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
-        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
-        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
-        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
-        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
-        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],          
-        [ "REPLACE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
-        [ "REPLACE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
-        [ "REPLACE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD._key", 10, 2, true, setupC1, 0],
-        [ "REPLACE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
-        [ "REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],   
-        [ "REPLACE {_key: '1', boom: true } IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, true, setupC1, 0],
-        [ "REPLACE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
-        [ "REPLACE {_key: '1'} WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
-        [ "REPLACE {_key: '1'} WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0],
-        [ "REPLACE {_key: '1'} WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 13, 1, true, setupC1, 0],
-        [ "REPLACE '1' WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
-        [ "REPLACE '1' WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
-        [ "REPLACE '1' WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
+        ["REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
+        ["REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
+        ["REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
+        ["REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
+        ["REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
+        ["REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
+        ["REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
+        ["REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
+        ["REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
+        ["REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
+        ["REPLACE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
+        ["REPLACE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
+        ["REPLACE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD._key", 10, 2, true, setupC1, 0],
+        ["REPLACE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
+        ["REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],
+        ["REPLACE {_key: '1', boom: true } IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, true, setupC1, 0],
+        ["REPLACE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
+        ["REPLACE {_key: '1'} WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
+        ["REPLACE {_key: '1'} WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0],
+        ["REPLACE {_key: '1'} WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 13, 1, true, setupC1, 0],
+        ["REPLACE '1' WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
+        ["REPLACE '1' WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
+        ["REPLACE '1' WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
 
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 8, 2, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 4, 3, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 8, 1, true, setupC1, 0, "name", "test1"],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 11, 5, true, setupC1, 0, "name", "test1"],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 11, 5, true, setupC1, 0],
+        [`FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 8, 2, true, setupC1, 0],
+        [`FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 4, 3, true, setupC1, 0],
+        [`FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 8, 1, true, setupC1, 0, "name", "test1"],
+        [`FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 11, 5, true, setupC1, 0, "name", "test1"],
+        [`FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 11, 5, true, setupC1, 0],
 
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 12, 5, true, setupC1, 0],
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 12, 5, true, setupC1, 0, "name", "test1"],
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '-1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0 ],
-        
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0],
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [doc, NEW, a]`, 9, 2, true, setupC1, 0],
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN [ NEW, a ]`, 7, 4, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc INTO ${cn1} RETURN OLD._key`, 4, 4, true, setupC1, 0],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 12, 5, true, setupC1, 0],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 12, 5, true, setupC1, 0, "name", "test1"],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '-1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0],
+
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [doc, NEW, a]`, 9, 2, true, setupC1, 0],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN [ NEW, a ]`, 7, 4, true, setupC1, 0],
+        [`FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc INTO ${cn1} RETURN OLD._key`, 4, 4, true, setupC1, 0],
       ];
 
       var expectedRules = [
-        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations" ],
-        [ "optimize-cluster-single-document-operations" ],
-        [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-unnecessary-calculations", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
-        [ "move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
-        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        ["remove-data-modification-out-variables", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations"],
+        ["optimize-cluster-single-document-operations"],
+        ["remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "remove-unnecessary-calculations", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard"],
+        ["move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard"],
+        ["move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations"],
       ];
 
       var expectedNodes = [
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
-        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
-        [ "SingletonNode", "CalculationNode", "CalculationNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "DistributeNode", "RemoteNode", "ReplaceNode", "RemoteNode", "GatherNode", "ReturnNode" ],
+        ["SingletonNode", "CalculationNode", "SingleRemoteOperationNode"],
+        ["SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode"],
+        ["SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
+        ["SingletonNode", "SingleRemoteOperationNode", "ReturnNode"],
+        ["SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
+        ["SingletonNode", "CalculationNode", "CalculationNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "DistributeNode", "RemoteNode", "ReplaceNode", "RemoteNode", "GatherNode", "ReturnNode"],
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
 
-    testRuleRemove : function () {
+    testRuleRemove: function () {
       var queries = [
-        [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
-        [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
-        [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
-        [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
-        [ "REMOVE {_key: '4'} INTO " + cn1 + " RETURN OLD._key", 0, 2, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REMOVE doc IN ${cn1} RETURN OLD`, 1, 1, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD`, 1, 1, true, s, 0],
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' REMOVE doc IN ${cn1} RETURN [OLD, a]`, 2, 2, true, setupC1, 0],
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN [OLD, a]`, 2, 2, true, s, 0],
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN a`, 3, 3, true, s, 0],
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN doc`, 4, 1, true, s, 0],
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD`, 2, 1, true, s, 0],
-        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD._key`, 4, 2, true, s, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD._key`, 1, 2, true, s, 0],
+        ["REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
+        ["REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
+        ["REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
+        ["REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
+        ["REMOVE {_key: '4'} INTO " + cn1 + " RETURN OLD._key", 0, 2, true, setupC1, 0],
+        [`FOR doc IN ${cn1} FILTER doc._key == '1' REMOVE doc IN ${cn1} RETURN OLD`, 1, 1, true, setupC1, 0],
+        [`FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD`, 1, 1, true, s, 0],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' REMOVE doc IN ${cn1} RETURN [OLD, a]`, 2, 2, true, setupC1, 0],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN [OLD, a]`, 2, 2, true, s, 0],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN a`, 3, 3, true, s, 0],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN doc`, 4, 1, true, s, 0],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD`, 2, 1, true, s, 0],
+        [`LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD._key`, 4, 2, true, s, 0],
+        [`FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD._key`, 1, 2, true, s, 0],
       ];
       var expectedRules = [
-        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        ["remove-data-modification-out-variables", "optimize-cluster-single-document-operations"],
+        ["remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        ["remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
       ];
 
       var expectedNodes = [
-        [ "SingletonNode", "SingleRemoteOperationNode" ],
-        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        ["SingletonNode", "SingleRemoteOperationNode"],
+        ["SingletonNode", "SingleRemoteOperationNode", "ReturnNode"],
+        ["SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
+        ["SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode"],
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
 
-    testSelectAndInsert : function() {
-      let result = AQL_EXPLAIN("FOR one IN @@cn1 FILTER one._key == 'a' INSERT one INTO @@cn2", { "@cn1" : cn1, "@cn2" : cn2 });
+    testSelectAndInsert: function () {
+      let result = AQL_EXPLAIN("FOR one IN @@cn1 FILTER one._key == 'a' INSERT one INTO @@cn2", {
+        "@cn1": cn1,
+        "@cn2": cn2
+      });
       assertEqual(-1, result.plan.rules.indexOf(ruleName));
     },
 
-    testSimpleQueriesNotEligible : function() {
+    testSimpleQueriesNotEligible: function () {
       let queries = [
         "FOR one IN @@cn1 FILTER one.abc == 'a' RETURN one",
         "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE 'foo' WITH { two: 1 } IN @@cn1",
@@ -539,7 +572,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         "UPDATE [ {} ] IN @@cn1 RETURN OLD",
         "UPDATE [{ foo: 4 }] IN @@cn1 RETURN OLD",
         "UPDATE 'foo' WITH { two: 1 } INTO @@cn1 OPTIONS { exclusive: true }",
-        
+
         "REPLACE [] IN @@cn1",
         "REPLACE [ {} ] IN @@cn1",
         "REPLACE [{ foo: 3 }] IN @@cn1",
@@ -557,13 +590,13 @@ function optimizerClusterSingleDocumentTestSuite () {
         "REMOVE { _key: 'abc' } INTO @@cn1 OPTIONS { exclusive: true }",
       ];
 
-      queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query, { "@cn1" : cn1 });
+      queries.forEach(function (query) {
+        let result = AQL_EXPLAIN(query, {"@cn1": cn1});
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
 
-    testSimpleQueriesEligible : function() {
+    testSimpleQueriesEligible: function () {
       let queries = [
         "FOR one IN @@cn1 FILTER one._key == 'a' RETURN one",
         "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE one WITH { two: 1 } IN @@cn1",
@@ -583,12 +616,120 @@ function optimizerClusterSingleDocumentTestSuite () {
         "REMOVE { _key: 'abc' } INTO @@cn1 OPTIONS { exclusive: false }",
       ];
 
-      queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query, { "@cn1" : cn1 });
+      queries.forEach(function (query) {
+        let result = AQL_EXPLAIN(query, {"@cn1": cn1});
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
-    }
+    },
 
+    testStatsWhenApplyingRuleOneAtATimeCompare: function () {
+      const collName = "testCollectionStats";
+      const doc = {value1: 1, value2: "a"};
+      const values = [1, 3];
+      // to compare the query stats with and without the rule
+      const queryInfo = [{
+        ruleToRemove: {},
+        statsInfo: []
+      }, {ruleToRemove: {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}}, statsInfo: []}];
+      values.forEach(numShards => {
+        queryInfo.forEach(queryInfo => {
+          try {
+            db._create(collName, {numberOfShards: numShards});
+            let query = `INSERT @doc IN ${collName} OPTIONS {ignoreErrors: true} RETURN NEW`;
+            let res = AQL_EXPLAIN(query, {doc: doc}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {doc: doc}, queryInfo.ruleToRemove);
+            let newDoc = res.toArray()[0];
+            const key = newDoc["_key"];
+            assertEqual(newDoc.value1, 1);
+            assertEqual(newDoc.value2, "a");
+            let stats = res.getExtra().stats;
+            pushStats(queryInfo, stats);
+
+            query = `INSERT {_key: ${key}} IN ${collName} OPTIONS {ignoreErrors: true} RETURN NEW`;
+            res = AQL_EXPLAIN(query, {}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {}, queryInfo.ruleToRemove);
+            assertEqual(res.toArray().length, 0);
+            stats = res.getExtra().stats;
+            pushStats(queryInfo, stats);
+
+            query = `UPDATE {_key: @key} WITH {value1: 2, value2: 'abc'} IN ${collName} RETURN {old: OLD, new: NEW}`;
+            res = AQL_EXPLAIN(query, {key: key}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {key: key}, queryInfo.ruleToRemove);
+            let result = res.toArray()[0];
+            assertEqual(result.old.value1, 1);
+            assertEqual(result.old.value2, "a");
+            assertEqual(result.new.value1, 2);
+            assertEqual(result.new.value2, "abc");
+            stats = res.getExtra().stats;
+            pushStats(queryInfo, stats);
+
+            query = `FOR d IN ${collName} FILTER d._key == @key RETURN d`;
+            res = AQL_EXPLAIN(query, {key: key}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {key: key}, queryInfo.ruleToRemove);
+            result = res.toArray()[0];
+            assertEqual(result["_key"], key);
+            stats = res.getExtra().stats;
+            pushStats(queryInfo, stats);
+
+            query = `UPDATE {_key: "test1"} WITH {value1: 2, value2: 'abc'} IN ${collName} OPTIONS {ignoreErrors: true} RETURN {old: OLD, new: NEW}`;
+            res = AQL_EXPLAIN(query, {}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {}, queryInfo.ruleToRemove);
+            assertEqual(res.toArray().length, 0);
+            stats = res.getExtra().stats;
+            pushStats(queryInfo, stats);
+
+            query = `REPLACE {_key: @key} WITH {value1: 2} IN ${collName} RETURN {old: OLD, new: NEW}`;
+            res = AQL_EXPLAIN(query, {key: key}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {key: key}, queryInfo.ruleToRemove);
+            result = res.toArray()[0];
+            assertEqual(result.old.value1, 2);
+            assertEqual(result.old.value2, "abc");
+            assertFalse(result.new.hasOwnProperty("value2"));
+            assertEqual(result.new.value1, 2);
+            stats = res.getExtra().stats;
+            pushStats(queryInfo, stats);
+
+            query = `REPLACE {_key: "test1"} WITH {value1: 2} IN ${collName} OPTIONS {ignoreErrors: true} RETURN {old: OLD, new: NEW}`;
+            res = AQL_EXPLAIN(query, {}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {}, queryInfo.ruleToRemove);
+            assertEqual(res.toArray().length, 0);
+            stats = res.getExtra().stats;
+            pushStats(queryInfo, stats);
+
+            query = `REMOVE {_key: @key} IN ${collName}`;
+            res = AQL_EXPLAIN(query, {key: key}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {key: key}, queryInfo.ruleToRemove);
+            stats = res.getExtra().stats;
+            pushStats(queryInfo, stats);
+
+            query = `REMOVE {_key: @key} IN ${collName} OPTIONS {ignoreErrors: true} `;
+            res = AQL_EXPLAIN(query, {key: key}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {key: key}, queryInfo.ruleToRemove);
+            stats = res.getExtra().stats;
+            pushStats(queryInfo, stats);
+            assertEqual(db[collName].count(), 0);
+          } finally {
+            db._drop(collName);
+          }
+        });
+        assertEqual(queryInfo[0].statsInfo.length, queryInfo[1].statsInfo.length);
+        queryInfo[0].statsInfo.forEach((info, idx) => {
+          const infoWithoutRule = queryInfo[1].statsInfo;
+          assertEqual(info.writesExecuted, infoWithoutRule[idx].writesExecuted);
+          assertEqual(info.writesIgnored, infoWithoutRule[idx].writesIgnored);
+          assertEqual(info.scannedIndex, infoWithoutRule[idx].scannedIndex);
+        });
+      });
+    },
   };
 }
 

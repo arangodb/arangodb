@@ -80,19 +80,18 @@ function recoverySuite () {
           // intentionally ignore "slow background settings sync: " in case of ASan
           return false;
         }
-        if (line.match(/\[2c0c6\].*Extended names+/)) {
+        if (line.match(/\[2c0c6\].*extended names+/)) {
           // intentionally ignore "extended names for databases is an experimental feature...
-          return false;
-        }
-        if (line.match(/\[1afb1\].*This is an unlicensed ArangoDB instance./)) {
-          // intentionally ignore "This is an unlicensed ArangoDB instance...
           return false;
         }
         if (line.match(/\[de8f3\].*experimental option/)) {
           // intentionally ignore experimental options warnings
           return false;
         }
-
+        if (line.match(/\[1afb1\].*This is an unlicensed ArangoDB instance./)) {
+          // intentionally ignore "This is an unlicensed ArangoDB instance...
+          return false;
+        }
         if (line.match(/\[d72fb\].*Your license will expire/)) {
           // intentionally ignore "This is an unlicensed ArangoDB instance...
           return false;

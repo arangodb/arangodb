@@ -291,33 +291,13 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                                /*showProperties*/ true, FiguresType::None,
                                CountType::None);
 
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      auto shards = ci.getShardList(std::to_string(coll->planId().id()));
-
+      auto shardsMap = coll->shardIds();
       if (_request->parsedValue("details", false)) {
         // with details
-        VPackObjectBuilder arr(&_builder, "shards", true);
-        for (ShardID const& shard : *shards) {
-          std::vector<ServerID> servers;
-          ci.getShardServers(shard, servers);
-
-          if (servers.empty()) {
-            continue;
-          }
-
-          VPackArrayBuilder arr2(&_builder, shard);
-
-          for (auto const& server : servers) {
-            arr2->add(VPackValue(server));
-          }
-        }
+        coll->shardMapToVelocyPack(_builder);
       } else {
-        // no details
-        VPackArrayBuilder arr(&_builder, "shards", true);
-
-        for (ShardID const& shard : *shards) {
-          arr->add(VPackValue(shard));
-        }
+        // without details
+        coll->shardIDsToVelocyPack(_builder);
       }
     }
     return standardResponse();
@@ -791,7 +771,7 @@ RestCollectionHandler::collectionRepresentationAsync(
         }
 
         if (showCount != CountType::None) {
-          auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+          auto trx = ctxt.trx(AccessMode::Type::READ, true);
           TRI_ASSERT(trx != nullptr);
           return trx->countAsync(coll->name(),
                                  showCount == CountType::Detailed
@@ -804,7 +784,7 @@ RestCollectionHandler::collectionRepresentationAsync(
       .thenValue([=, this, &ctxt](OperationResult&& opRes) -> void {
         if (opRes.fail()) {
           if (showCount != CountType::None) {
-            auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+            auto trx = ctxt.trx(AccessMode::Type::READ, true);
             TRI_ASSERT(trx != nullptr);
             std::ignore = trx->finish(opRes.result);
           }

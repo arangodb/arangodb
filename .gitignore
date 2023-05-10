@@ -28,6 +28,7 @@ build-presets
 *.diff
 *.patch
 !js/node/patches/*.patch
+!js/apps/system/_admin/aardvark/APP/react/patches/*.patch
 *.lnk
 Thumbs.db
 
@@ -127,6 +128,7 @@ npm-debug.log
 /log-*
 data-*
 databases
+!/Documentation/DocuBlocks/Rest/Databases
 cluster-init
 
 datafile-*.db

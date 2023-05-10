@@ -4104,7 +4104,7 @@ static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   Result res = ::doSleep(n, v8g->_server);
   if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res.errorNumber());
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -4166,7 +4166,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   Result res = ::doSleep(n, v8g->_server);
   if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res.errorNumber());
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -4525,6 +4525,8 @@ static void JS_GetExternalSpawned(
         "not allowed to execute or modify state of external processes");
   }
 
+  std::lock_guard guard{ExternalProcessesLock};
+
   v8::Handle<v8::Array> spawnedProcesses =
       v8::Array::New(isolate, static_cast<int>(ExternalProcesses.size()));
 
@@ -4698,9 +4700,10 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (isExecutionDeadlineReached(isolate)) {
     return;
   }
-  ExternalId pid;
 
+  ExternalId pid;
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+
   bool wait = false;
   if (args.Length() >= 2) {
     wait = TRI_ObjectToBoolean(isolate, args[1]);
@@ -4712,8 +4715,13 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   timeoutms = correctTimeoutToExecutionDeadline(timeoutms);
 
-  ExternalProcessStatus external =
-      TRI_CheckExternalProcess(pid, wait, timeoutms);
+  ExternalProcessStatus external;
+  auto historicStatus = getHistoricStatus(pid._pid, v8g->_server);
+  if (historicStatus.has_value()) {
+    external = *historicStatus;
+  } else {
+    external = TRI_CheckExternalProcess(pid, wait, timeoutms);
+  }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   auto context = TRI_IGETC;
@@ -4737,7 +4745,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                static_cast<int32_t>(external._exitStatus)))
         .FromMaybe(false);
   }
-  if (external._errorMessage.length() > 0) {
+  if (!external._errorMessage.empty()) {
     result
         ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
               TRI_V8_STD_STRING(isolate, external._errorMessage))
@@ -5828,8 +5836,9 @@ static void JS_IsAllowedDatabaseName(
 
   auto databaseName = TRI_ObjectToString(isolate, args[0]);
   bool isExtendedName = TRI_ObjectToBoolean(isolate, args[1]);
-  bool result = arangodb::DatabaseNameValidator::isAllowedName(
-      true, isExtendedName, databaseName);
+  bool result = arangodb::DatabaseNameValidator::validateName(
+                    true, isExtendedName, databaseName)
+                    .ok();
 
   TRI_V8_RETURN_BOOL(result);
   TRI_V8_TRY_CATCH_END

@@ -13,7 +13,7 @@ exposedBy:
   - single
 description: |
   Number of timeouts when trying to acquire collection exclusive locks.
-  This counter will be increased whenever an exclusive collection lock
+  This counter increases whenever an exclusive collection lock
   cannot be acquired within the configured lock timeout.
 troubleshoot: |
   In case this value is considered too high, check if there are AQL queries

@@ -94,26 +94,21 @@ std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
 
   {
     std::lock_guard lock{_flushSubscriptionsMutex};
-
-    // find min tick and remove stale subscriptions
-    for (auto itr = _flushSubscriptions.begin();
-         itr != _flushSubscriptions.end();) {
-      auto entry = itr->lock();
-
-      if (!entry) {
-        // remove stale
-        itr = _flushSubscriptions.erase(itr);
-        ++stale;
-      } else {
-        LOG_TOPIC("5a4fb", TRACE, arangodb::Logger::FLUSH)
+    auto begin = _flushSubscriptions.begin();
+    auto end = _flushSubscriptions.end();
+    auto it = std::remove_if(begin, end, [&](auto& e) noexcept {
+      if (auto entry = e.lock(); entry) {
+        LOG_TOPIC("5a4fb", TRACE, Logger::FLUSH)
             << "found flush subscription: " << entry->name() << ", tick "
             << entry->tick();
-
         minTick = std::min(minTick, entry->tick());
-        ++active;
-        ++itr;
+        return false;
       }
-    }
+      return true;
+    });
+    stale = static_cast<size_t>(end - it);
+    active = static_cast<size_t>(it - begin);
+    _flushSubscriptions.erase(it, end);
   }
 
   TRI_ASSERT(minTick <= engine.currentTick());

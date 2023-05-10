@@ -553,7 +553,7 @@ static void StateApplierReplicationAll(
   VPackBuilder builder;
   builder.openObject();
   for (auto& name : databaseFeature.getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
+    auto vocbase = databaseFeature.useDatabase(name);
 
     if (vocbase == nullptr) {
       continue;

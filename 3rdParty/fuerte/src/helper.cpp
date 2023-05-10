@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <fuerte/helper.h>
-#include <string.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include "http.h"
+
+#include <string.h>
 #include <sstream>
 #include <stdexcept>
 
@@ -273,7 +275,7 @@ std::string extractPathParameters(std::string_view p, StringMap& params) {
     std::string_view value = pos == p.npos
                                  ? p.substr(pos2 + 1)
                                  : p.substr(pos2 + 1, pos - pos2 - 1);
-    params.emplace(key, value);
+    params.emplace(http::urlDecode(key), http::urlDecode(value));
   }
 
   return result;

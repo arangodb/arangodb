@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global document, frontendConfig, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa, JSONEditor */
+/* global document, frontendConfig, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, JSONEditor */
 /* global numeral */
 
 (function () {
@@ -237,7 +237,7 @@
       var query = this.collection.buildDownloadDocumentQuery();
 
       if (query !== '' || query !== undefined || query !== null) {
-        var url = 'query/result/download/' + btoa(JSON.stringify(query));
+        var url = 'query/result/download/' + encodeURIComponent(arangoHelper.toBinary(JSON.stringify(query)));
         arangoHelper.download(url);
       } else {
         arangoHelper.arangoError('Document error', 'could not download documents');
@@ -539,7 +539,7 @@
 
     addDocumentModal: function (e) {
       if (!$(e.currentTarget).hasClass('disabled')) {
-        var collid = window.location.hash.split('/')[1];
+        var collid = decodeURIComponent(window.location.hash.split('/')[1]);
         var buttons = [];
         var tableContent = [];
         // second parameter is "true" to disable caching of collection type
@@ -764,7 +764,7 @@
     },
 
     addEdge: function () {
-      var collid = window.location.hash.split('/')[1];
+      var collid = decodeURIComponent(window.location.hash.split('/')[1]);
       var from = $('.modal-body #new-edge-from-attr').last().val();
       var to = $('.modal-body #new-edge-to').last().val();
       var key;
@@ -786,7 +786,7 @@
     },
 
     addDocument: function () {
-      var collid = window.location.hash.split('/')[1];
+      var collid = decodeURIComponent(window.location.hash.split('/')[1]);
       var key = $('.modal-body #new-document-key-attr').last().val();
       var body;
       try {
@@ -800,7 +800,7 @@
     },
 
     addSmartAttributeDocument: function () {
-      var collid = window.location.hash.split('/')[1];
+      var collid = decodeURIComponent(window.location.hash.split('/')[1]);
       var key = $('.modal-body #new-document-key-attr').last().val();
       var smartJoinAttributeValue = $('.modal-body #new-smart-val-attr').last().val();
       var body;
@@ -816,7 +816,7 @@
     },
 
     addSmartGraphDocument: function () {
-      var collid = window.location.hash.split('/')[1];
+      var collid = decodeURIComponent(window.location.hash.split('/')[1]);
       var key = $('.modal-body #new-document-key-attr').last().val();
       var smartGraphAttributeValue = $('.modal-body #new-smartGraph-val-attr').last().val();
       var body;

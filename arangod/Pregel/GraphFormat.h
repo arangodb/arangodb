@@ -45,7 +45,7 @@ struct GraphFormat {
   virtual void copyVertexData(arangodb::velocypack::Options const& vpackOptions,
                               std::string const& documentId,
                               arangodb::velocypack::Slice document,
-                              V& targetPtr, uint64_t& vertexIdRange) const = 0;
+                              V& targetPtr, uint64_t vertexId) const = 0;
 
   // the default implementation is to do nothing. only few algorithms actually
   // override this with a more specific behavior
@@ -79,7 +79,7 @@ class NumberGraphFormat : public GraphFormat<V, E> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId,
                       arangodb::velocypack::Slice document, V& targetPtr,
-                      uint64_t& /*vertexIdRange*/) const override {
+                      uint64_t vertexId) const override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     if (std::is_integral<V>::value) {
       if (std::is_signed<V>::value) {
@@ -131,8 +131,7 @@ class InitGraphFormat : public GraphFormat<V, E> {
   virtual void copyVertexData(arangodb::velocypack::Options const&,
                               std::string const& /*documentId*/,
                               arangodb::velocypack::Slice /*document*/,
-                              V& targetPtr,
-                              uint64_t& /*vertexIdRange*/) const override {
+                              V& targetPtr, uint64_t vertexId) const override {
     targetPtr = _vDefault;
   }
 
@@ -163,9 +162,9 @@ class VertexGraphFormat : public GraphFormat<V, E> {
   virtual size_t estimatedEdgeSize() const override { return 0; }
 
   void copyVertexData(arangodb::velocypack::Options const&,
-                      std::string const& /*documentId*/,
-                      arangodb::velocypack::Slice /*document*/, V& targetPtr,
-                      uint64_t& /*vertexIdRange*/) const override {
+                      std::string const& documentId,
+                      arangodb::velocypack::Slice document, V& targetPtr,
+                      uint64_t vertexId) const override {
     targetPtr = _vDefault;
   }
 

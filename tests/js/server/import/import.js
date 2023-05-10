@@ -1519,6 +1519,31 @@ function importTestSuite () {
         db._useDatabase("_system");
       }
     },
+    
+    testJsonImport1ExtendedNames : function () {
+      const expected = [ { "id": 1,
+                         "one": 1,
+                         "three": 3,
+                         "two": 2 },
+                       { "a": 1234,
+                         "b": "the quick fox",
+                         "id": 2,
+                         "jumped":
+                         "over the fox",
+                         "null": null },
+                       { "id": 3,
+                         "not": "important",
+                         "spacing": "is" },
+                       { "  c  ": "h\"'ihi",
+                         "a": true,
+                         "b": false,
+                         "d": "",
+                         "id": 4 },
+                       { "id": 5 } ];
+
+      const actual = getQueryResults("FOR i IN `Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨` SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
 
   };
 }

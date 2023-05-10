@@ -49,6 +49,7 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchDocumentEE.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterFeature.h"
 #endif
 
 #include <index/column_info.hpp>
@@ -57,12 +58,12 @@
 #include <store/store_utils.hpp>
 #include <utils/encryption.hpp>
 #include <utils/singleton.hpp>
-#include <utils/file_utils.hpp>
 #include <chrono>
 #include <string>
 
 #include <absl/cleanup/cleanup.h>
 #include <absl/strings/str_cat.h>
+#include <filesystem>
 
 using namespace std::literals;
 
@@ -159,7 +160,7 @@ struct ThreadGroupStats : std::tuple<size_t, size_t, size_t> {
       : std::tuple<size_t, size_t, size_t>{std::move(stats)} {}
 };
 
-std::ostream& operator<<(std::ostream& out, const ThreadGroupStats& stats) {
+std::ostream& operator<<(std::ostream& out, ThreadGroupStats const& stats) {
   out << "Active=" << std::get<0>(stats) << ", Pending=" << std::get<1>(stats)
       << ", Threads=" << std::get<2>(stats);
   return out;
@@ -181,7 +182,7 @@ struct Task {
         << " pool: " << ThreadGroupStats{async->stats(T::threadGroup())};
 
     if (!asyncLink->empty()) {
-      async->queue(T::threadGroup(), delay, static_cast<const T&>(*this));
+      async->queue(T::threadGroup(), delay, static_cast<T const&>(*this));
     }
   }
 
@@ -393,7 +394,7 @@ struct CommitTask : Task<CommitTask> {
     return ThreadGroup::_0;
   }
 
-  static constexpr const char* typeName() noexcept { return "commit"; }
+  static constexpr char const* typeName() noexcept { return "commit"; }
 
   void operator()();
   void finalize(IResearchDataStore& link,
@@ -442,7 +443,7 @@ void CommitTask::finalize(IResearchDataStore& link,
 }
 
 void CommitTask::operator()() {
-  const char runId = 0;
+  char const runId = 0;
   state->pendingCommits.fetch_sub(1, std::memory_order_release);
 
   auto linkLock = asyncLink->lock();
@@ -537,7 +538,7 @@ struct ConsolidationTask : Task<ConsolidationTask> {
   static constexpr ThreadGroup threadGroup() noexcept {
     return ThreadGroup::_1;
   }
-  static constexpr const char* typeName() noexcept { return "consolidation"; }
+  static constexpr char const* typeName() noexcept { return "consolidation"; }
   void operator()();
   irs::MergeWriter::FlushProgress progress;
   IResearchDataStoreMeta::ConsolidationPolicy consolidationPolicy;
@@ -545,7 +546,7 @@ struct ConsolidationTask : Task<ConsolidationTask> {
 };
 
 void ConsolidationTask::operator()() {
-  const char runId = 0;
+  char const runId = 0;
   state->pendingConsolidations.fetch_sub(1, std::memory_order_release);
 
   auto linkLock = asyncLink->lock();
@@ -634,13 +635,22 @@ void ConsolidationTask::operator()() {
   }
 }
 
-IResearchDataStore::IResearchDataStore(ArangodServer& server)
+IResearchDataStore::IResearchDataStore(
+    ArangodServer& server, [[maybe_unused]] LogicalCollection& collection)
     : _asyncFeature(&server.getFeature<IResearchFeature>()),
       // mark as data store not initialized
       _asyncSelf(std::make_shared<AsyncLinkHandle>(nullptr)),
       _error(DataStoreError::kNoError),
       _maintenanceState(std::make_shared<MaintenanceState>()) {
   // initialize transaction callback
+#ifdef USE_ENTERPRISE
+  if (!collection.isAStub() && _asyncFeature->columnsCacheOnlyLeaders()) {
+    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+    auto r = ci.getShardLeadership(ServerState::instance()->getId(),
+                                   collection.name());
+    _useSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+  }
+#endif
   _beforeCommitCallback = [this](TransactionState& state) {
     auto prev = state.cookie(this);  // get existing cookie
     if (!prev) {
@@ -869,53 +879,67 @@ Result IResearchDataStore::commitUnsafeImpl(
 
       commitLock.lock();
     }
+
+#ifdef USE_ENTERPRISE
+    bool const reopenColumnstore = [&] {
+      if (!_asyncFeature->columnsCacheOnlyLeaders()) {
+        return false;
+      }
+      auto& collection = index().collection();
+      auto& ci = collection.vocbase()
+                     .server()
+                     .getFeature<ClusterFeature>()
+                     .clusterInfo();
+      auto r = ci.getShardLeadership(ServerState::instance()->getId(),
+                                     collection.name());
+      if (r == ClusterInfo::ShardLeadership::kUnclear) {
+        return false;
+      }
+      bool curr = r == ClusterInfo::ShardLeadership::kLeader;
+      bool prev = _useSearchCache.exchange(curr, std::memory_order_relaxed);
+      return prev != curr;
+    }();
+#endif
     auto engineSnapshot = _engine->currentSnapshot();
+    TRI_IF_FAILURE("ArangoSearch::DisableMoveTickInCommit") { return {}; }
     if (ADB_UNLIKELY(!engineSnapshot)) {
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("Failed to get engine snapshot while committing "
                            "ArangoSearch index '",
                            index().id().id(), "'")};
     }
-    auto const lastTickBeforeCommit = engineSnapshot->tick();
-    TRI_ASSERT(_lastCommittedTick <= lastTickBeforeCommit);
-    absl::Cleanup commitGuard = [&, lastCommittedTick =
-                                        _lastCommittedTick]() noexcept {
-      _lastCommittedTick = lastCommittedTick;
+    auto const beforeCommit = engineSnapshot->tick();
+    TRI_ASSERT(_lastCommittedTick <= beforeCommit);
+    absl::Cleanup commitGuard = [&, last = _lastCommittedTick]() noexcept {
+      _lastCommittedTick = last;
     };
-    bool const wereChanges = _dataStore._writer->Commit(
-        _isCreation ? irs::writer_limits::kMaxTick : lastTickBeforeCommit,
-        progress);
+    bool const wereChanges = _dataStore._writer->Commit({
+        .tick = _isCreation ? irs::writer_limits::kMaxTick : beforeCommit,
+        .progress = progress,
+#ifdef USE_ENTERPRISE
+        .reopen_columnstore = reopenColumnstore,
+#endif
+    });
+    // get new reader
+    auto reader = _dataStore._writer->GetSnapshot();
+    TRI_ASSERT(reader != nullptr);
     std::move(commitGuard).Cancel();
     auto& subscription =
         basics::downCast<IResearchFlushSubscription>(*_flushSubscription);
     if (!wereChanges) {
       LOG_TOPIC("7e319", TRACE, TOPIC)
           << "Commit for ArangoSearch index '" << index().id()
-          << "' is no changes, tick " << lastTickBeforeCommit << "'";
-      _lastCommittedTick = lastTickBeforeCommit;
+          << "' is no changes, tick " << beforeCommit << "'";
+      _lastCommittedTick = beforeCommit;
       // no changes, can release the latest tick before commit
       subscription.tick(_lastCommittedTick);
-      auto reader = _dataStore.loadSnapshot()->_reader;
       // TODO(MBkkt) make_shared can throw!
       _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
           std::move(reader), std::move(engineSnapshot)));
       return {};
     }
-    TRI_ASSERT(_isCreation || _lastCommittedTick == lastTickBeforeCommit);
+    TRI_ASSERT(_isCreation || _lastCommittedTick == beforeCommit);
     code = CommitResult::DONE;
-
-    // get new reader
-    auto reader = _dataStore._writer->GetSnapshot();
-
-    if (!reader) {
-      // nothing more to do
-      LOG_TOPIC("37bcf", WARN, TOPIC)
-          << "Failed to update snapshot after commit, reuse "
-             "the existing snapshot for ArangoSearch index '"
-          << index().id() << "'";
-
-      return {};
-    }
 
     // update reader
     TRI_ASSERT(_dataStore.loadSnapshot()->_reader != reader);
@@ -1048,13 +1072,14 @@ void IResearchDataStore::shutdownDataStore() noexcept {
 
 Result IResearchDataStore::deleteDataStore() noexcept {
   shutdownDataStore();
-  bool exists;
+  std::error_code error;
+  std::filesystem::remove_all(_dataStore._path, error);
   // remove persisted data store directory if present
-  if (!irs::file_utils::exists_directory(exists, _dataStore._path.c_str()) ||
-      (exists && !irs::file_utils::remove(_dataStore._path.c_str()))) {
-    return {TRI_ERROR_INTERNAL,
-            absl::StrCat("failed to remove ArangoSearch index '",
-                         index().id().id(), "'")};
+  if (error) {
+    return {
+        TRI_ERROR_INTERNAL,
+        absl::StrCat("failed to remove ArangoSearch index '", index().id().id(),
+                     "' with error code '", error.message(), "'")};
   }
   return {};
 }
@@ -1216,21 +1241,31 @@ Result IResearchDataStore::initDataStore(
 
   _dataStore._path = getPersistedPath(dbPathFeature, *this);
 
-  // Must manually ensure that the data store directory exists (since not
-  // using a lockfile)
-  if (!irs::file_utils::exists_directory(pathExists,
-                                         _dataStore._path.c_str()) ||
-      (!pathExists &&
-       !irs::file_utils::mkdir(_dataStore._path.c_str(), true))) {
+  // Must manually ensure that the data store directory exists
+  // (since not using a lockfile)
+  std::error_code error;
+  pathExists = std::filesystem::exists(_dataStore._path, error);
+  auto createResult = [&](std::string_view what) -> Result {
     return {TRI_ERROR_CANNOT_CREATE_DIRECTORY,
-            absl::StrCat("Failed to create data store directory with path '",
+            absl::StrCat(what, " failed for data store directory with path '",
                          _dataStore._path.string(),
                          "' while initializing ArangoSearch index '",
-                         index().id().id(), "'")};
+                         index().id().id(), "' with error '", error.message(),
+                         "'")};
+  };
+  if (error) {
+    pathExists = true;  // we don't want to remove directory in unknown state
+    return createResult("Exists");
+  }
+  if (!pathExists) {
+    std::filesystem::create_directories(_dataStore._path, error);
+    if (error) {
+      return createResult("Create");
+    }
   }
 
   _dataStore._directory = std::make_unique<irs::MMapDirectory>(
-      _dataStore._path.u8string(),
+      _dataStore._path,
       initCallback ? initCallback() : irs::directory_attributes{});
 
   switch (_engine->recoveryState()) {
@@ -1678,17 +1713,6 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
     }
 
     TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
-
-    // FIXME try to preserve optimization
-    //    // optimization for single-document insert-only transactions
-    //    if (trx.isSingleOperationTransaction() // only for single-docuemnt
-    //    transactions
-    //        && !_dataStore._inRecovery) {
-    //      auto ctx = _dataStore._writer->documents();
-    //
-    //      return insertImpl(ctx);
-    //    }
-
     auto ptr = std::make_unique<IResearchTrxState>(std::move(linkLock),
                                                    *(_dataStore._writer));
 
@@ -1752,9 +1776,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   }
 
   std::lock_guard commitLock{_commitMutex};
-  absl::Cleanup clearGuard = [&, lastCommittedTick =
-                                     _lastCommittedTick]() noexcept {
-    _lastCommittedTick = lastCommittedTick;
+  absl::Cleanup clearGuard = [&, last = _lastCommittedTick]() noexcept {
+    _lastCommittedTick = last;
   };
   try {
     _dataStore._writer->Clear(tick);
@@ -1904,7 +1927,8 @@ void IResearchDataStore::initClusterMetrics() const {
   };
   auto batchToPrometheus = [](std::string& result, std::string_view globals,
                               std::string_view name, std::string_view labels,
-                              ClusterMetricsFeature::MetricValue const& value) {
+                              ClusterMetricsFeature::MetricValue const& value,
+                              bool ensureWhitespace) {
     Metric::addMark(result, name, globals, labels);
     absl::StrAppend(&result, std::get<uint64_t>(value), "\n");
   };
@@ -1957,17 +1981,13 @@ void IResearchDataStore::finishCreation() {
 ////////////////////////////////////////////////////////////////////////////////
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                        IResearchDataStore const& dataStore) {
-  std::filesystem::path dataPath{dbPathFeature.directory()};
-
-  dataPath /= "databases";
   auto& i = dataStore.index();
-  dataPath /= absl::StrCat("database-", i.collection().vocbase().id());
-  dataPath /=
+  auto path = getPersistedPath(dbPathFeature, i.collection().vocbase());
+  path /=
       absl::StrCat(StaticStrings::ViewArangoSearchType, "-",
                    // has to be 'id' since this can be a per-shard collection
                    i.collection().id().id(), "_", i.id().id());
-
-  return dataPath;
+  return path;
 }
 
 template Result

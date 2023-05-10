@@ -30,6 +30,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
 #include "Cluster/ClusterCollectionMethods.h"
@@ -113,14 +114,13 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
                             bool isLocalCollection, bool isSystemName,
                             bool allowSystem = false) {
   // check whether the name of the collection is valid
-  bool extendedNames = vocbase.server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
-  if (!CollectionNameValidator::isAllowedName(allowSystem, extendedNames,
-                                              info.name)) {
-    events::CreateCollection(vocbase.name(), info.name,
-                             TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = CollectionNameValidator::validateName(
+          allowSystem, extendedNames, info.name);
+      res.fail()) {
+    events::CreateCollection(vocbase.name(), info.name, res.errorNumber());
+    return res;
   }
 
   // check the collection type in _info
@@ -416,22 +416,11 @@ Collections::Context::~Context() {
 }
 
 transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
-                                                bool embeddable,
-                                                bool forceLoadCollection) {
+                                                bool embeddable) {
   if (_responsibleForTrx && _trx == nullptr) {
     auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(),
                                                           embeddable);
     auto trx = std::make_unique<SingleCollectionTransaction>(ctx, *_coll, type);
-    if (!trx) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY,
-                                     "Cannot create Transaction");
-    }
-
-    if (!forceLoadCollection) {
-      // we actually need this hint here, so that the collection is not
-      // loaded if it has status unloaded.
-      trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
-    }
 
     Result res = trx->begin();
 
@@ -970,7 +959,8 @@ void Collections::applySystemCollectionProperties(
   if (col.name == designatedLeaderName) {
     // The leading collection needs to define sharding
     col.replicationFactor = vocbase.replicationFactor();
-    if (vocbase.server().hasFeature<ClusterFeature>()) {
+    if (!ServerState::instance()->isSingleServer() &&
+        vocbase.server().hasFeature<ClusterFeature>()) {
       col.replicationFactor =
           (std::max)(col.replicationFactor.value(),
                      static_cast<uint64_t>(vocbase.server()
@@ -1091,7 +1081,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
          StaticStrings::ShardingStrategy, StaticStrings::IsDisjoint});
 
     // this transaction is held longer than the following if...
-    auto trx = ctxt.trx(AccessMode::Type::READ, true, false);
+    auto trx = ctxt.trx(AccessMode::Type::READ, true);
     TRI_ASSERT(trx != nullptr);
   }
 
@@ -1206,23 +1196,23 @@ Result Collections::rename(LogicalCollection& collection,
                            std::string const& newName, bool doOverride) {
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
-    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+    return {TRI_ERROR_CLUSTER_UNSUPPORTED};
   }
 
   if (newName.empty()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "<name> must be non-empty");
+    return {TRI_ERROR_BAD_PARAMETER, "<name> must be non-empty"};
   }
 
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(auth::Level::RW) ||
       !exec.canUseCollection(collection.name(), auth::Level::RW)) {
-    return TRI_ERROR_FORBIDDEN;
+    return {TRI_ERROR_FORBIDDEN};
   }
 
   // check required to pass
   // shell-collection-rocksdb-noncluster.js::testSystemSpecial
   if (collection.system()) {
-    return TRI_ERROR_FORBIDDEN;
+    return {TRI_ERROR_FORBIDDEN};
   }
 
   if (!doOverride) {
@@ -1231,18 +1221,19 @@ Result Collections::rename(LogicalCollection& collection,
     if (isSystem != NameValidator::isSystemName(newName)) {
       // a system collection shall not be renamed to a non-system collection
       // name or vice versa
-      return arangodb::Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
-                              "a system collection shall not be renamed to a "
-                              "non-system collection name or vice versa");
+      return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
+              "a system collection shall not be renamed to a "
+              "non-system collection name or vice versa"};
     }
 
     bool extendedNames = collection.vocbase()
                              .server()
                              .getFeature<DatabaseFeature>()
-                             .extendedNamesForCollections();
-    if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames,
-                                                newName)) {
-      return TRI_ERROR_ARANGO_ILLEGAL_NAME;
+                             .extendedNames();
+    if (auto res = CollectionNameValidator::validateName(
+            isSystem, extendedNames, newName);
+        res.fail()) {
+      return res;
     }
   }
 
@@ -1381,7 +1372,7 @@ futures::Future<OperationResult> Collections::revisionId(
   }
 
   RevisionId rid =
-      ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
+      ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true));
 
   VPackBuilder builder;
   builder.add(VPackValue(rid.toString()));

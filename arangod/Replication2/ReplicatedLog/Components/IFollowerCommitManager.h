@@ -33,11 +33,12 @@ inline namespace comp {
 
 struct IFollowerCommitManager {
   virtual ~IFollowerCommitManager() = default;
-  virtual auto updateCommitIndex(LogIndex) noexcept -> DeferredAction = 0;
-  virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
-  virtual auto waitFor(LogIndex index) noexcept
+  [[nodiscard]] virtual auto updateCommitIndex(LogIndex) noexcept
+      -> std::pair<std::optional<LogIndex>, DeferredAction> = 0;
+  [[nodiscard]] virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
+  [[nodiscard]] virtual auto waitFor(LogIndex index) noexcept
       -> ILogParticipant::WaitForFuture = 0;
-  virtual auto waitForIterator(LogIndex index) noexcept
+  [[nodiscard]] virtual auto waitForIterator(LogIndex index) noexcept
       -> ILogParticipant::WaitForIteratorFuture = 0;
 };
 }  // namespace comp

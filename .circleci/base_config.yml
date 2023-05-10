@@ -19,8 +19,10 @@ jobs:
       - run:
           name: Checkout
           command: |
-            git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --shallow-submodules -j 8 .
-            git reset --hard "$CIRCLE_SHA1"
+            git init
+            git remote add origin https://github.com/arangodb/arangodb.git
+            git fetch --depth 1 origin $CIRCLE_SHA1
+            git checkout $CIRCLE_SHA1
       - persist_to_workspace:
           root: .
           paths:
@@ -69,6 +71,23 @@ jobs:
       - store_artifacts:
           path: /tmp/clang_format_outcome.txt
 
+  eslint:
+    docker:
+      - image: alpine:3.17
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install eslint
+          command: |
+            apk add --no-cache npm
+            npm -g install eslint
+      - run:
+          name: Run eslint
+          command: |
+            utils/eslint.sh
+
   compile-linux:
     parameters:
       preset:
@@ -91,8 +110,14 @@ jobs:
       - run:
           name: Checkout ArangoDB
           command: |
-            git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
-            git reset --hard "$CIRCLE_SHA1"
+            mkdir /root/project && cd /root/project
+            git init
+            git remote add origin https://github.com/arangodb/arangodb.git
+            git fetch --depth 1 origin $CIRCLE_SHA1
+            git checkout $CIRCLE_SHA1
+            git submodule init
+            git submodule update --recursive --depth 1 --jobs 8
+
       - run:
           name: Checkout Enterprise
           command: |
@@ -157,6 +182,7 @@ jobs:
             - utils
             - UnitTests
             - 3rdParty/iresearch/tests/resources
+            - 3rdParty/rta-makedata
 
   run-tests:
     docker:
@@ -206,7 +232,7 @@ jobs:
           when: always
           command: |
             mkdir test-results
-            find testrun -iname *xml -exec cp "{}" --target-directory=./test-results \;
+            find testrunXml -iname *xml -exec cp "{}" --target-directory=./test-results \;
       - store_artifacts:
           destination: << parameters.suiteName >>
           path: ./work/
@@ -224,6 +250,10 @@ workflows:
             - minimal-checkout
       - clang-format:
           name: clang-format
+          requires:
+            - minimal-checkout
+      - eslint:
+          name: eslint
           requires:
             - minimal-checkout
   community-pr:

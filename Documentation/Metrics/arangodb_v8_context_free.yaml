@@ -13,4 +13,4 @@ exposedBy:
   - single
 description: |
   This gauge reflects the number of V8 contexts that are currently free.
-  If this number drops to 0 there might be a shortage of V8 contexts.
+  If this number drops to `0` there might be a shortage of V8 contexts.

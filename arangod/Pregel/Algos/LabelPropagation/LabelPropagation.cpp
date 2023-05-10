@@ -26,7 +26,6 @@
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
@@ -121,8 +120,8 @@ struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/, LPValue& value,
-                      uint64_t& vertexIdRange) const override {
-    value.currentCommunity = vertexIdRange++;
+                      uint64_t vertexId) const override {
+    value.currentCommunity = vertexId;
   }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,

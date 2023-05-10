@@ -43,6 +43,7 @@ class AggregatorHandler {
 
  public:
   explicit AggregatorHandler(IAlgorithm const* c) : _algorithm(c) {}
+  AggregatorHandler(AggregatorHandler&& other);
   ~AggregatorHandler();
 
   IAggregator* getAggregator(std::string const& name);

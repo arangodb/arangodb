@@ -84,14 +84,13 @@ class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
   virtual void Free(void* data, size_t) override { free(data); }
 };
 
-class EmptyAnalyzer : public irs::analysis::analyzer {
+class EmptyAnalyzer final : public irs::analysis::TypedAnalyzer<EmptyAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "v8-analyzer-empty";
   }
-  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {}
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  EmptyAnalyzer() = default;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::frequency>::id()) {
       return &_attr;
     }
@@ -122,8 +121,8 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     out = builder.buffer()->toString();
     return true;
   }
-  virtual bool next() override { return false; }
-  virtual bool reset(std::string_view data) override { return true; }
+  bool next() final { return false; }
+  bool reset(std::string_view data) final { return true; }
 
  private:
   irs::frequency _attr;

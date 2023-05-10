@@ -40,9 +40,6 @@ namespace application_features {
 class ApplicationServer;
 }
 
-// TODO do we need to add some sort of coordinator?
-// builder.add("coordinator", VPackValue(ServerState::instance()->getId()));
-
 struct DBUser {
   DBUser() = default;
   DBUser(DBUser const&) =
@@ -78,12 +75,12 @@ struct DBUser {
 class CreateDatabaseInfo {
  public:
   CreateDatabaseInfo(ArangodServer&, ExecContext const&);
-  Result load(std::string const& name, uint64_t id);
+  Result load(std::string_view name, uint64_t id);
 
-  Result load(std::string const& name, VPackSlice options,
+  Result load(std::string_view name, VPackSlice options,
               VPackSlice users = VPackSlice::emptyArraySlice());
 
-  Result load(std::string const& name, uint64_t id, VPackSlice options,
+  Result load(std::string_view name, uint64_t id, VPackSlice options,
               VPackSlice users);
 
   Result load(VPackSlice options, VPackSlice users);
@@ -93,11 +90,7 @@ class CreateDatabaseInfo {
 
   ArangodServer& server() const;
 
-  uint64_t getId() const {
-    TRI_ASSERT(_valid);
-    TRI_ASSERT(_validId);
-    return _id;
-  }
+  uint64_t getId() const;
 
   void strictValidation(bool value) noexcept { _strictValidation = value; }
 

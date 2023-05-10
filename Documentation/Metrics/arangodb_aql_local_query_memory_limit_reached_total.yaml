@@ -16,5 +16,5 @@ description: |
   a single query tried to allocate more memory than configured in the query's
   `memoryLimit` attribute or the value configured via the startup option
   `--query.memory-limit`.
-  Every time this counter will increase, an AQL query will have aborted with a
+  Every time this counter increases, an AQL query aborted with a
   "resource limit exceeded" error.

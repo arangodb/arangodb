@@ -94,6 +94,22 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
                 return ResultT<SnapshotBatch>::success(std::move(batch));
               }
 
+              TRI_IF_FAILURE("DocumentStateSnapshot::infiniteSnapshot") {
+                // Keep the snapshot alive by returning empty batches.
+                VPackBuilder fakePayload;
+                { VPackArrayBuilder{&fakePayload}; }
+
+                auto batch =
+                    SnapshotBatch{.snapshotId = getId(),
+                                  .shardId = data.shards.back().first,
+                                  .hasMore = true,
+                                  .payload = fakePayload.sharedSlice()};
+
+                // Sleep here, so the follower doesn't go into a busy loop.
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                return ResultT<SnapshotBatch>::success(std::move(batch));
+              }
+
               auto& shard = data.shards.back();
               auto& reader = *shard.second;
               reader.read(ongoing.builder, kBatchSizeLimit);

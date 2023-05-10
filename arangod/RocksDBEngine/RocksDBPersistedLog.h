@@ -25,12 +25,15 @@
 
 #include <rocksdb/db.h>
 
-#include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
+
+#include <function2.hpp>
+#include <Futures/Promise.h>
 
 #include <array>
 #include <variant>

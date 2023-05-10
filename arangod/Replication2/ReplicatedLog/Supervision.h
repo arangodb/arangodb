@@ -49,6 +49,11 @@ auto computeEffectiveWriteConcern(LogTargetConfig const& config,
                                   ParticipantsFlagsMap const& participants,
                                   ParticipantsHealth const& health) -> size_t;
 
+auto computeEffectiveWriteConcern(LogTargetConfig const& config,
+                                  LogCurrent const& current,
+                                  LogPlanSpecification const& plan,
+                                  ParticipantsHealth const& health) -> size_t;
+
 auto isLeaderFailed(ServerInstanceReference const& leader,
                     ParticipantsHealth const& health) -> bool;
 
@@ -62,7 +67,7 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
     -> LogCurrentSupervisionElection;
 
 auto getParticipantsAcceptableAsLeaders(
-    ParticipantId const& currentLeader,
+    ParticipantId const& currentLeader, LogTerm term,
     ParticipantsFlagsMap const& participants,
     std::unordered_map<ParticipantId, LogCurrentLocalState> const& localStates)
     -> std::vector<ParticipantId>;

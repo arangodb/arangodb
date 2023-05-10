@@ -29,7 +29,6 @@
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
@@ -152,11 +151,11 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   size_t estimatedEdgeSize() const override { return 0; }
 
   void copyVertexData(arangodb::velocypack::Options const&,
-                      std::string const& /*documentId*/,
-                      arangodb::velocypack::Slice /*document*/,
-                      SLPAValue& value,
-                      uint64_t& vertexIdRange) const override {
-    value.nodeId = (uint32_t)vertexIdRange++;
+                      std::string const& documentId,
+                      arangodb::velocypack::Slice document, SLPAValue& value,
+                      uint64_t vertexId) const override {
+    // TODO: what about loss of precision here?
+    value.nodeId = static_cast<uint32_t>(vertexId);
   }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,

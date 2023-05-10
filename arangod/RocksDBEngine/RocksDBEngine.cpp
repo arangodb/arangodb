@@ -40,12 +40,14 @@
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
+#include "Cache/Cache.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "IResearch/IResearchCommon.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "IResearch/IResearchCommon.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -106,7 +108,6 @@
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/VocBaseLogManager.h"
 #include "VocBase/ticks.h"
-#include "Inspection/VPack.h"
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
@@ -121,6 +122,8 @@
 #include <rocksdb/transaction_log.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/write_batch.h>
+
+#include <absl/strings/str_cat.h>
 
 #include <velocypack/Iterator.h>
 
@@ -1730,7 +1733,7 @@ TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
 
 void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,
                                         std::string const& collection) {
-  MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+  std::lock_guard locker{_rebuildCollectionsLock};
   _rebuildCollections.emplace(std::make_pair(database, collection),
                               /*started*/ false);
 }
@@ -1752,7 +1755,7 @@ void RocksDBEngine::processTreeRebuilds() {
     std::pair<TRI_voc_tick_t, std::string> candidate{};
 
     {
-      MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+      std::lock_guard locker{_rebuildCollectionsLock};
       if (_rebuildCollections.empty() ||
           _runningRebuilds >= maxParallelRebuilds) {
         // nothing to do, or too much to do
@@ -1816,7 +1819,7 @@ void RocksDBEngine::processTreeRebuilds() {
                 }
                 {
                   // mark as to-be-done again
-                  MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+                  std::lock_guard locker{_rebuildCollectionsLock};
                   auto it = _rebuildCollections.find(candidate);
                   if (it != _rebuildCollections.end()) {
                     (*it).second = false;
@@ -1830,7 +1833,7 @@ void RocksDBEngine::processTreeRebuilds() {
 
           // tree rebuilding finished successfully. now remove from the list
           // to-be-rebuilt candidates
-          MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+          std::lock_guard locker{_rebuildCollectionsLock};
           _rebuildCollections.erase(candidate);
 
         } catch (std::exception const& ex) {
@@ -1843,7 +1846,7 @@ void RocksDBEngine::processTreeRebuilds() {
       }
 
       // always count down _runningRebuilds!
-      MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+      std::lock_guard locker{_rebuildCollectionsLock};
       TRI_ASSERT(_runningRebuilds > 0);
       --_runningRebuilds;
     });
@@ -2738,7 +2741,8 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
 
   auto rv = Result();
 
-  auto iter = _db->NewIterator(readOptions, cfDefs);
+  auto iter =
+      std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(readOptions, cfDefs));
   for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
     ADB_PROD_ASSERT(databaseId == RocksDBKey::databaseId(iter->key()));
 
@@ -2964,10 +2968,15 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       auto const slice = builder.slice();
       TRI_ASSERT(slice.isArray());
 
+      LOG_TOPIC("48f11", TRACE, arangodb::Logger::ENGINES)
+          << "processing views metadata in database '" << vocbase->name()
+          << "': " << slice.toJson();
+
       for (VPackSlice it : VPackArrayIterator(slice)) {
         if (it.get(StaticStrings::DataSourceType).stringView() != type) {
           continue;
         }
+
         // we found a view that is still active
         LOG_TOPIC("4dfdd", TRACE, arangodb::Logger::ENGINES)
             << "processing view metadata in database '" << vocbase->name()
@@ -2975,23 +2984,34 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
         TRI_ASSERT(!it.get("id").isNone());
 
-        LogicalView::ptr view;
-        auto res = LogicalView::instantiate(view, *vocbase, it, false);
+        Result res;
+        try {
+          LogicalView::ptr view;
+          res = LogicalView::instantiate(view, *vocbase, it, false);
+
+          if (res.ok() && !view) {
+            res.reset(TRI_ERROR_INTERNAL);
+          }
+
+          if (!res.ok()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
+
+          TRI_ASSERT(view);
+
+          StorageEngine::registerView(*vocbase, view);
+          view->open();
+        } catch (basics::Exception const& ex) {
+          res.reset(ex.code(), ex.what());
+        }
 
         if (!res.ok()) {
-          THROW_ARANGO_EXCEPTION(res);
-        }
-
-        if (!view) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              std::string("failed to instantiate view in database '") +
-                  vocbase->name() + "' from definition: " + it.toString());
+              res.errorNumber(),
+              absl::StrCat("failed to instantiate view in database '",
+                           vocbase->name(), "' from definition: ",
+                           it.toString(), ": ", res.errorMessage()));
         }
-
-        StorageEngine::registerView(*vocbase, view);
-
-        view->open();
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("584b1", ERR, arangodb::Logger::ENGINES)
@@ -3022,6 +3042,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
+    LOG_TOPIC("f1275", TRACE, arangodb::Logger::ENGINES)
+        << "processing collections metadata in database '" << vocbase->name()
+        << "': " << slice.toJson();
+
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       LOG_TOPIC("b2ef2", TRACE, arangodb::Logger::ENGINES)
@@ -3029,6 +3053,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
           << "': " << it.toJson();
 
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
+      TRI_ASSERT(!it.get("deleted").isTrue());
 
       auto collection = vocbase->createCollectionObject(it, /*isAStub*/ false);
       TRI_ASSERT(collection != nullptr);
@@ -3045,7 +3070,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       StorageEngine::registerCollection(*vocbase, collection);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
-          << "added document collection '" << vocbase->name() << "/"
+          << "added collection '" << vocbase->name() << "/"
           << collection->name() << "'";
 
       if (collection->replicationVersion() ==
@@ -3095,7 +3120,8 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
   auto readOptions = rocksdb::ReadOptions();
   readOptions.iterate_upper_bound = &upper;
 
-  auto iter = _db->NewIterator(readOptions, cfDefs);
+  auto iter =
+      std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(readOptions, cfDefs));
   for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
     ADB_PROD_ASSERT(vocbase.id() == RocksDBKey::databaseId(iter->key()));
 
@@ -3429,32 +3455,36 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
                        : 100));
   }
 
-  cache::Manager* manager =
-      server().getFeature<CacheManagerFeature>().manager();
-  if (manager != nullptr) {
-    // cache turned on
-    cache::Manager::MemoryStats stats = manager->memoryStats();
-    auto rates = manager->globalHitRates();
-    builder.add("cache.limit", VPackValue(stats.globalLimit));
-    builder.add("cache.allocated", VPackValue(stats.globalAllocation));
-    builder.add("cache.active-tables", VPackValue(stats.activeTables));
-    builder.add("cache.unused-memory", VPackValue(stats.spareAllocation));
-    builder.add("cache.unused-tables", VPackValue(stats.spareTables));
+  {
+    // in-memory cache statistics
+    cache::Manager* manager =
+        server().getFeature<CacheManagerFeature>().manager();
+
+    std::optional<cache::Manager::MemoryStats> stats;
+    if (manager != nullptr) {
+      // cache turned on
+      stats = manager->memoryStats(cache::Cache::triesFast);
+    }
+    if (!stats.has_value()) {
+      stats = cache::Manager::MemoryStats{};
+    }
+    TRI_ASSERT(stats.has_value());
+
+    builder.add("cache.limit", VPackValue(stats->globalLimit));
+    builder.add("cache.allocated", VPackValue(stats->globalAllocation));
+    builder.add("cache.active-tables", VPackValue(stats->activeTables));
+    builder.add("cache.unused-memory", VPackValue(stats->spareAllocation));
+    builder.add("cache.unused-tables", VPackValue(stats->spareTables));
+
+    std::pair<double, double> rates;
+    if (manager != nullptr) {
+      rates = manager->globalHitRates();
+    }
     // handle NaN
     builder.add("cache.hit-rate-lifetime",
                 VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
     builder.add("cache.hit-rate-recent",
                 VPackValue(rates.second >= 0.0 ? rates.second : 0.0));
-  } else {
-    // cache turned off
-    builder.add("cache.limit", VPackValue(0));
-    builder.add("cache.allocated", VPackValue(0));
-    builder.add("cache.active-tables", VPackValue(0));
-    builder.add("cache.unused-memory", VPackValue(0));
-    builder.add("cache.unused-tables", VPackValue(0));
-    // handle NaN
-    builder.add("cache.hit-rate-lifetime", VPackValue(0));
-    builder.add("cache.hit-rate-recent", VPackValue(0));
   }
 
   // print column family statistics
@@ -3684,7 +3714,7 @@ HealthData RocksDBEngine::healthCheck() {
   // in addition, serializing access to this function avoids stampedes
   // with multiple threads trying to calculate the free disk space
   // capacity at the same time, which could be expensive.
-  MUTEX_LOCKER(guard, _healthMutex);
+  std::lock_guard guard{_healthMutex};
 
   TRI_IF_FAILURE("RocksDBEngine::healthCheck") {
     _healthData.res.reset(TRI_ERROR_DEBUG, "peng! 💥");

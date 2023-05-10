@@ -28,7 +28,6 @@
 #include <thread>
 #include <iostream>
 
-#include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -65,9 +64,9 @@ class TestProgressHandler : public arangodb::application_features::
       arangodb::application_features::ApplicationServer::State newState) {
     if (arangodb::application_features::ApplicationServer::State::IN_WAIT ==
         newState) {
-      CONDITION_LOCKER(clock, _serverReadyCond);
+      std::lock_guard clock{_serverReadyCond.mutex};
       _serverReady = true;
-      _serverReadyCond.broadcast();
+      _serverReadyCond.cv.notify_all();
     }
   }
 
@@ -117,9 +116,9 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
   ///   Code waits until background ApplicationServer known to have fully
   ///   started.
   void setMaintenanceThreadsMax(uint32_t threads) {
-    CONDITION_LOCKER(clock, _progressHandler._serverReadyCond);
+    std::unique_lock clock{_progressHandler._serverReadyCond.mutex};
     while (!_progressHandler._serverReady) {
-      _progressHandler._serverReadyCond.wait();
+      _progressHandler._serverReadyCond.cv.wait(clock);
     }  // while
 
     _maintenanceThreadsMax = threads;
@@ -182,11 +181,12 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
     }    // for
 
     if (registry.end() != action) {
-      std::cerr << "Found more actions in registry than expected!";
+      std::cerr << "Found more actions in registry than expected!" << std::endl;
       good = false;
     }
     if (expected.end() != check) {
-      std::cerr << "Found fewer actions in registry than expected!";
+      std::cerr << "Found fewer actions in registry than expected!"
+                << std::endl;
       good = false;
     }
     return good;
@@ -194,21 +194,25 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
   }  // verifyRegistryState
 
   /// @brief poll registry until all actions finish
-  void waitRegistryComplete() {
+  std::size_t waitRegistryComplete() {
     bool again;
-
+    std::size_t numActions;
     do {
       again = false;
+      numActions = 0;
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
       VPackBuilder registryBuilder(toVelocyPack());
       VPackArrayIterator registry(registryBuilder.slice());
       for (auto action : registry) {
         VPackSlice state = action.get("state");
+        numActions += 1;
         again =
             again || (COMPLETE != state.getInt() && FAILED != state.getInt());
       }  // for
     } while (again);
+
+    return numActions;
   }  // waitRegistryComplete
 
  public:

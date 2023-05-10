@@ -21,20 +21,30 @@ target_sources(arango_replication2_pure PRIVATE
   Supervision.cpp
   SupervisionAction.cpp
 
-  ReplicatedLogMetrics.tpp
   AgencyLogSpecification.cpp
-  Components/LogFollower.cpp
-  Components/LogFollower.h
-  Components/StorageManager.cpp
-  Components/StorageManager.h
-  Components/CompactionManager.cpp
-  Components/CompactionManager.h
-  Components/SnapshotManager.cpp
-  Components/SnapshotManager.h
-  Components/AppendEntriesManager.cpp
-  Components/AppendEntriesManager.h
+  Algorithms.cpp
+  ILogInterfaces.cpp
+  NetworkMessages.cpp
+  ReplicatedLogMetrics.tpp
+  TermIndexMapping.cpp
+  Components/AppendEntriesManager.cpp Components/AppendEntriesManager.h
+  Components/CompactionManager.cpp Components/CompactionManager.h
   Components/ExclusiveBool.h
-  Components/FollowerCommitManager.cpp
-  Components/FollowerCommitManager.h
-  Components/StateHandleManager.cpp
-  Components/StateHandleManager.h)
+  Components/FollowerCommitManager.cpp Components/FollowerCommitManager.h
+  Components/IAppendEntriesManager.h
+  Components/ICompactionManager.h
+  Components/IFollowerCommitManager.h
+  Components/IInMemoryLogManager.h
+  Components/IMessageIdManager.h
+  Components/IMethodsProvider.h
+  Components/ISnapshotManager.h
+  Components/IStateHandleManager.h
+  Components/IStorageManager.h
+  Components/InMemoryLogManager.cpp Components/InMemoryLogManager.h
+  Components/LogFollower.cpp Components/LogFollower.h
+  Components/MessageIdManager.cpp Components/MessageIdManager.h
+  Components/MethodsProvider.cpp Components/MethodsProvider.h
+  Components/SnapshotManager.cpp Components/SnapshotManager.h
+  Components/StateHandleManager.cpp Components/StateHandleManager.h
+  Components/StorageManager.cpp Components/StorageManager.h
+  )

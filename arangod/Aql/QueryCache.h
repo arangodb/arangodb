@@ -24,13 +24,13 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include "Aql/QueryString.h"
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 
 struct TRI_vocbase_t;
@@ -271,7 +271,7 @@ class QueryCache {
   static constexpr uint64_t numberOfParts = 16;
 
   /// @brief protect mode changes with a mutex
-  mutable arangodb::Mutex _propertiesLock;
+  mutable std::mutex _propertiesLock;
 
   /// @brief read-write lock for the cache
   mutable arangodb::basics::ReadWriteLock _entriesLock[numberOfParts];

@@ -36,6 +36,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -499,8 +500,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   auto ctx = transaction::StandaloneContext::Create(server.getSystemDatabase());
   auto trx = std::make_unique<arangodb::transaction::Methods>(
       ctx, readCollection, noCollections, noCollections, opts);
-  ASSERT_EQ(1, collection->numberDocuments(trx.get(),
-                                           transaction::CountType::Normal));
+  ASSERT_EQ(1, collection->getPhysical()->numberDocuments(trx.get()));
   bool called = false;
   auto result = collection->getPhysical()->read(
       trx.get(), std::string_view{"myKey"},

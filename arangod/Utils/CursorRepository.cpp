@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
-#include "Basics/MutexLocker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -104,7 +103,7 @@ CursorRepository::~CursorRepository() {
   }
 
   {
-    MUTEX_LOCKER(mutexLocker, _lock);
+    std::lock_guard mutexLocker{_lock};
 
     for (auto it : _cursors) {
       delete it.second.first;
@@ -127,7 +126,7 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
   std::string user = ExecContext::current().user();
 
   {
-    MUTEX_LOCKER(mutexLocker, _lock);
+    std::lock_guard mutexLocker{_lock};
     _cursors.emplace(id, std::make_pair(cursor.get(), std::move(user)));
   }
 
@@ -198,7 +197,7 @@ bool CursorRepository::remove(CursorId id) {
   arangodb::Cursor* cursor = nullptr;
 
   {
-    MUTEX_LOCKER(mutexLocker, _lock);
+    std::lock_guard mutexLocker{_lock};
 
     auto it = _cursors.find(id);
     if (it == _cursors.end() || !::authorized(it->second)) {
@@ -235,7 +234,7 @@ Cursor* CursorRepository::find(CursorId id, bool& busy) {
   busy = false;
 
   {
-    MUTEX_LOCKER(mutexLocker, _lock);
+    std::lock_guard mutexLocker{_lock};
 
     auto it = _cursors.find(id);
     if (it == _cursors.end() || !::authorized(it->second)) {
@@ -272,7 +271,7 @@ Cursor* CursorRepository::find(CursorId id, bool& busy) {
 
 void CursorRepository::release(Cursor* cursor) {
   {
-    MUTEX_LOCKER(mutexLocker, _lock);
+    std::lock_guard mutexLocker{_lock};
 
     TRI_ASSERT(cursor->isUsed());
     cursor->release();
@@ -290,7 +289,7 @@ void CursorRepository::release(Cursor* cursor) {
 }
 
 size_t CursorRepository::count() {
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
   return _cursors.size();
 }
 
@@ -299,7 +298,7 @@ size_t CursorRepository::count() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CursorRepository::containsUsedCursor() {
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   for (auto it : _cursors) {
     if (it.second.first->isUsed()) {
@@ -321,7 +320,7 @@ bool CursorRepository::garbageCollect(bool force) {
   try {
     found.reserve(MaxCollectCount);
 
-    MUTEX_LOCKER(mutexLocker, _lock);
+    std::lock_guard mutexLocker{_lock};
 
     for (auto it = _cursors.begin(); it != _cursors.end(); /* no hoisting */) {
       auto cursor = (*it).second.first;

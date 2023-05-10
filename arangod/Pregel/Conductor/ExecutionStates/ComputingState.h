@@ -22,31 +22,50 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <unordered_map>
-#include "Pregel/Conductor/Messages.h"
-#include "Pregel/Conductor/State.h"
-#include "Pregel/MasterContext.h"
-#include "Pregel/Worker/Messages.h"
 #include "State.h"
 
-namespace arangodb::pregel::conductor {
+namespace arangodb::pregel {
+
+class MasterContext;
+
+namespace conductor {
 
 struct ConductorState;
 
 struct Computing : ExecutionState {
   Computing(ConductorState& conductor,
-            std::unique_ptr<MasterContext> masterContext);
-  ~Computing();
+            std::unique_ptr<MasterContext> masterContext,
+            std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor,
+            uint64_t totalSendMessagesCount,
+            uint64_t totalReceivedMessagesCount);
+  ~Computing() override = default;
   auto name() const -> std::string override { return "computing"; };
   auto messages()
       -> std::unordered_map<actor::ActorPID,
                             worker::message::WorkerMessages> override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override;
+      -> std::optional<StateChange> override;
+  auto cancel(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<StateChange> override;
+  struct PostGlobalSuperStepResult {
+    bool finished;
+  };
+  auto _postGlobalSuperStep() -> PostGlobalSuperStepResult;
+  auto _aggregateMessage(message::GlobalSuperStepFinished msg) -> void;
 
   ConductorState& conductor;
   std::unique_ptr<MasterContext> masterContext;
-  std::unordered_map<ServerID, uint64_t> sendCountPerServer;
+  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+
+  std::unordered_set<actor::ActorPID> respondedWorkers;
+  uint64_t totalSendMessagesCount;
+  uint64_t totalReceivedMessagesCount;
+  uint64_t activeCount = 0;
+  uint64_t vertexCount = 0;
+  uint64_t edgeCount = 0;
+  VPackBuilder aggregators;
+  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActorForNextGss;
 };
 
-}  // namespace arangodb::pregel::conductor
+}  // namespace conductor
+}  // namespace arangodb::pregel

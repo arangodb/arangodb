@@ -24,11 +24,11 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 
 #include "Agency/AgencyCommon.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 
 #include <velocypack/Builder.h>
@@ -74,8 +74,8 @@ class Inception : public Thread {
   Agent& _agent;                            //< @brief The agent
   arangodb::basics::ConditionVariable _cv;  //< @brief For proper shutdown
   std::unordered_map<std::string, size_t>
-      _acked;                        //< @brief acknowledged config version
-  mutable arangodb::Mutex _ackLock;  //< @brieg Guard _acked
+      _acked;                   //< @brief acknowledged config version
+  mutable std::mutex _ackLock;  //< @brief Guard _acked
 };
 
 }  // namespace consensus

@@ -29,8 +29,7 @@ set(LIB_ARANGO_DATE
 )
 add_definitions("-DHAS_REMOTE_API=0")
 
-
-add_definitions("-DARCHITECTURE_OPTIMIZATIONS=${ARCHITECTURE_OPTIMIZATIONS}")
+add_definitions("-DARCHITECTURE_OPTIMIZATIONS=\"${ARCHITECTURE_OPTIMIZATIONS}\"")
 
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
@@ -45,15 +44,12 @@ add_library(arango_lightweight STATIC
         ApplicationFeatures/ShellColorsFeature.cpp
         Basics/ArangoGlobalContext.cpp
         Basics/CleanupFunctions.cpp
-        Basics/ConditionLocker.cpp
-        Basics/ConditionVariable.cpp
         Basics/ErrorCode.cpp
         Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
         Basics/FileResult.cpp
         Basics/FileUtils.cpp
         Basics/Guarded.h
         Basics/Identifier.cpp
-        Basics/Mutex.cpp
         Basics/NumberOfCores.cpp
         Basics/PageSize.cpp
         Basics/PhysicalMemory.cpp
@@ -104,13 +100,11 @@ add_library(arango_lightweight STATIC
 
 if (MSVC)
   target_sources(arango_lightweight PRIVATE
-          Basics/locks-win32.cpp
           Basics/terminal-utils-win32.cpp
           Basics/threads-win32.cpp
           )
 else ()
   target_sources(arango_lightweight PRIVATE
-          Basics/locks-posix.cpp
           Basics/terminal-utils-posix.cpp
           Basics/threads-posix.cpp
           )

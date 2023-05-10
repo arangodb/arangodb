@@ -102,6 +102,8 @@ class MasterContext {
   /// @return true to continue the computation
   virtual bool postGlobalSuperstep() { return true; }
 
+  virtual void postApplication() {}
+
   virtual void serializeValues(VPackBuilder& b) {}
 
   /// should indicate if compensation is supposed to start by returning true

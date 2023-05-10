@@ -48,11 +48,10 @@ struct AgencyState {
 
   friend auto operator<<(std::ostream& os, AgencyState const& state)
       -> std::ostream& {
-    // return os;
     auto const print = [&](auto const& x) {
       VPackBuilder builder;
       velocypack::serialize(builder, x);
-      os << builder.toString() << std::endl;
+      os << builder.toJson() << std::endl;
     };
 
     if (state.replicatedLog) {

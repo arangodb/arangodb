@@ -9,8 +9,8 @@ complexity: advanced
 exposedBy:
   - dbserver
 description: |
-  Database servers execute reconciliation actions to let the cluster converge
+  DB-Servers execute reconciliation actions to let the cluster converge
   to the desired state. Actions are created, registered, queued and executed.
-  Once they are done they will eventually be removed.
+  Once they are done, they are eventually removed.
 
   This metric tracks the time actions spend executing in a histogram.

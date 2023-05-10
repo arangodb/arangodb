@@ -27,17 +27,12 @@
 #include "Logger/LogContextKeys.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
+#include "Replication2/IScheduler.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
 auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
-    -> DeferredAction {
-  struct ResolveContext {
-    WaitForResult result;
-    WaitForQueue queue;
-  };
-
-  auto ctx = std::make_unique<ResolveContext>();
+    -> std::pair<std::optional<LogIndex>, DeferredAction> {
   auto guard = guardedData.getLockedGuard();
 
   LOG_CTX("d2083", TRACE, loggerContext)
@@ -51,13 +46,22 @@ auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
   guard->commitIndex = std::max(guard->commitIndex, index);
   auto newResolveIndex = std::min(guard->commitIndex, localSpearhead.index);
 
+  auto resolveIndex = std::optional<LogIndex>();
   if (newResolveIndex > guard->resolveIndex) {
     LOG_CTX("71a8f", TRACE, loggerContext)
         << "resolving commit index up to " << newResolveIndex;
     guard->resolveIndex = newResolveIndex;
-    guard->stateHandle.updateCommitIndex(guard->resolveIndex);
+    resolveIndex = newResolveIndex;
   }
 
+  struct ResolveContext {
+    WaitForResult result;
+    WaitForQueue queue;
+    std::shared_ptr<IScheduler> scheduler;
+  };
+
+  auto ctx = std::make_unique<ResolveContext>();
+  ctx->scheduler = scheduler;
   ctx->result = WaitForResult(guard->commitIndex, nullptr);
 
   auto const end = guard->waitQueue.upper_bound(guard->resolveIndex);
@@ -65,26 +69,30 @@ auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
     ctx->queue.insert(guard->waitQueue.extract(it++));
   }
 
-  return DeferredAction([ctx = std::move(ctx)]() mutable noexcept {
-    for (auto& it : ctx->queue) {
-      if (!it.second.isFulfilled()) {
-        // This only throws if promise was fulfilled earlier.
-        it.second.setValue(ctx->result);
-      }
-    }
-  });
+  return std::pair(
+      resolveIndex, DeferredAction([ctx = std::move(ctx)]() mutable noexcept {
+        for (auto& it : ctx->queue) {
+          if (!it.second.isFulfilled()) {
+            ctx->scheduler->queue([p = std::move(it.second),
+                                   res = std::move(ctx->result)]() mutable {
+              p.setValue(std::move(res));
+            });
+          }
+        }
+      }));
 }
 
 auto FollowerCommitManager::getCommitIndex() const noexcept -> LogIndex {
   return guardedData.getLockedGuard()->commitIndex;
 }
 
-FollowerCommitManager::FollowerCommitManager(IStorageManager& storage,
-                                             IStateHandleManager& stateHandle,
-                                             LoggerContext const& loggerContext)
-    : guardedData(storage, stateHandle),
+FollowerCommitManager::FollowerCommitManager(
+    IStorageManager& storage, LoggerContext const& loggerContext,
+    std::shared_ptr<IScheduler> scheduler)
+    : guardedData(storage),
       loggerContext(loggerContext.with<logContextKeyLogComponent>(
-          "follower-commit-manager")) {}
+          "follower-commit-manager")),
+      scheduler(std::move(scheduler)) {}
 
 auto FollowerCommitManager::waitFor(LogIndex index) noexcept
     -> ILogParticipant::WaitForFuture {
@@ -132,6 +140,5 @@ void FollowerCommitManager::resign() noexcept {
   guard->waitQueue.clear();
 }
 
-FollowerCommitManager::GuardedData::GuardedData(
-    IStorageManager& storage, IStateHandleManager& stateHandle)
-    : storage(storage), stateHandle(stateHandle) {}
+FollowerCommitManager::GuardedData::GuardedData(IStorageManager& storage)
+    : storage(storage) {}

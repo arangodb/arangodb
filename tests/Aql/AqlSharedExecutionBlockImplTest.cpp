@@ -47,6 +47,8 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "RestServer/TemporaryStorageFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/LogicalCollection.h"
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
@@ -358,7 +360,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
       std::shared_ptr<arangodb::LogicalCollection> col =
           server.getSystemDatabase().lookupCollection(collectionName);
-      auto docs = col->numberDocuments(nullptr, transaction::CountType::Normal);
+      auto docs = col->getPhysical()->numberDocuments(nullptr);
       EXPECT_EQ(docs, 3) << "Not all Documents have been properly inserted";
     }
   }
@@ -430,7 +432,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
       std::shared_ptr<arangodb::LogicalCollection> col =
           server.getSystemDatabase().lookupCollection(collectionName);
-      auto docs = col->numberDocuments(nullptr, transaction::CountType::Normal);
+      auto docs = col->getPhysical()->numberDocuments(nullptr);
       EXPECT_EQ(docs, 3) << "Not all Documents have been properly inserted";
     }
   }

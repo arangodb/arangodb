@@ -862,7 +862,11 @@ TEST(MaintenanceFeatureTestThreaded,
 
   //
   // 4. loop while waiting for threads to complete all actions
-  tf.waitRegistryComplete();
+  // Since the rescheduled actions is not visible _before_ the old action
+  // is moved to FINISHED, it is not enough to wait for all actions to be done.
+  // Instead we have to wait for two actions to be done.
+  while (tf.waitRegistryComplete() != 2)
+    ;
 
   //
   // 5. verify completed actions

@@ -32,6 +32,7 @@
 #include "Inspection/VPackWithErrorT.h"
 #include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/ResultMessages.h"
 #include "Pregel/SpawnActor.h"
 #include "Pregel/Utils.h"
 #include "Pregel/ResultActor.h"
@@ -95,18 +96,29 @@ RestStatus RestPregelHandler::execute() {
                                     inspection::json(spawnMessage.get())));
           return RestStatus::DONE;
         }
+        auto spawnWorkerMsg =
+            std::get<message::SpawnWorker>(spawnMessage.get());
 
+        auto resultState = std::make_unique<ResultState>(spawnWorkerMsg.ttl);
+        auto resultData = resultState->data;
         auto resultActorID = _pregel._actorRuntime->spawn<ResultActor>(
-            _vocbase.name(), std::make_unique<ResultState>(),
+            _vocbase.name(), std::move(resultState),
             message::ResultMessages{message::ResultStart{}});
         auto resultActorPID =
             actor::ActorPID{.server = ServerState::instance()->getId(),
                             .database = _vocbase.name(),
                             .id = resultActorID};
-        _pregel._resultActor.emplace(
-            std::get<message::SpawnWorker>(spawnMessage.get())
-                .message.executionNumber,
-            resultActorPID);
+        _pregel._pregelRuns.doUnderLock([&](auto& actors) {
+          actors.emplace(
+              spawnWorkerMsg.message.executionNumber,
+              PregelRun{PregelRunUser(ExecContext::current().user()),
+                        PregelRunActors{.resultActor = resultActorPID,
+                                        .results = resultData,
+                                        .conductor = std::nullopt}});
+        });
+        _pregel._actorRuntime->dispatch<message::ResultMessages>(
+            resultActorPID, spawnWorkerMsg.resultActorOnCoordinator,
+            message::OtherResultActorStarted{});
 
         _pregel._actorRuntime->spawn<SpawnActor>(
             _vocbase.name(),

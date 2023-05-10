@@ -122,6 +122,84 @@ const replicatedLogLeaderEstablished = function (database, logId, term, particip
   };
 };
 
+const replicatedStateAccessible = function (database, logId) {
+  return function () {
+    let {target, plan, current} = LH.readReplicatedLogAgency(database, logId);
+    if (current === undefined) {
+      return Error("current not yet defined");
+    }
+
+    if (!plan.currentTerm || !plan.currentTerm.leader) {
+      return Error("No term with leader present");
+    }
+    const expectedTerm = plan.currentTerm.term;
+    const leaderId = plan.currentTerm.leader.serverId;
+
+
+    const targetLeader = target.leader;
+    if (targetLeader && targetLeader !== leaderId) {
+      return Error(`Leader in target is ${targetLeader}, but current in Plan is ${leaderId}`);
+    }
+
+    const expectedRebootId = plan.currentTerm.leader.rebootId;
+    const actualRebootId = LH.getServerRebootId(leaderId);
+    if (expectedRebootId !== actualRebootId) {
+      return Error(`leader reboot id is ${actualRebootId}, expected ${expectedRebootId}`);
+    }
+
+    if (!current.leader || current.leader.term !== expectedTerm) {
+      return Error("Leader has not yet established its term");
+    }
+    if (!current.leader.leadershipEstablished) {
+      return Error("Leader has not yet established its leadership");
+    }
+
+    // check if leader recovery is completed
+    const leaderLocal = current.localStatus[leaderId];
+    if (leaderLocal.state !== "ServiceOperational" && leaderLocal.term === expectedTerm) {
+      return Error(`Leader state is ${current.localStatus[leaderId].state}.`);
+    }
+
+    return true;
+  };
+};
+
+const allReplicatedStatesAccessible = function (database) {
+  return function () {
+    let plan = LH.readAgencyValueAt(`Plan/ReplicatedLogs/${database}`);
+    for (const logId of Object.keys(plan)) {
+      const result = replicatedStateAccessible(database, logId)();
+      if (result !== true) {
+        return result;
+      }
+    }
+    return true;
+  };
+};
+
+const replicatedStateConverged = function (database, logId) {
+  const version = LH.increaseTargetVersion(database, logId);
+  return replicatedLogTargetVersion(database, logId, version);
+};
+
+const allReplicatedStatesConverged = function (database) {
+  let versions = {};
+  const plan = LH.readAgencyValueAt(`Plan/ReplicatedLogs/${database}`);
+  for (const logId of Object.keys(plan)) {
+    versions[logId] = LH.increaseTargetVersion(database, logId);
+  }
+  return function () {
+    const plan = LH.readAgencyValueAt(`Plan/ReplicatedLogs/${database}`);
+    for (const logId of Object.keys(plan)) {
+      const result = replicatedLogTargetVersion(database, logId, versions[logId])();
+      if (result !== true) {
+        return result;
+      }
+    }
+    return true;
+  };
+};
+
 const allServersHealthy = function () {
   return function () {
     for (const server of LH.dbservers) {
@@ -321,6 +399,26 @@ const agencyJobIn = function (jobId, where) {
   };
 };
 
+const allServicesOperational = function (database, logId) {
+  return function () {
+    const {plan, current} = LH.readReplicatedLogAgency(database, logId);
+
+    if (current === undefined || current.localStatus === undefined) {
+      return Error("status in current not yet defined");
+    }
+    if (plan === undefined || plan.participantsConfig === undefined) {
+      return Error("participantsConfig in plan not yet defined");
+    }
+
+    for (const [pid, _] of Object.entries(plan.participantsConfig.participants)) {
+      if (pid in current.localStatus && current.localStatus[pid].state !== "ServiceOperational") {
+        return Error(`Participant ${pid} not yet operational`);
+      }
+    }
+    return true;
+  };
+};
+
 exports.allServersHealthy = allServersHealthy;
 exports.replicatedLogIsGone = replicatedLogIsGone;
 exports.replicatedLogIsReady = replicatedLogIsReady;
@@ -336,3 +434,8 @@ exports.replicatedLogReplicationCompleted = replicatedLogReplicationCompleted;
 exports.serverFailed = serverFailed;
 exports.serverHealthy = serverHealthy;
 exports.agencyJobIn = agencyJobIn;
+exports.replicatedStateAccessible = replicatedStateAccessible;
+exports.allReplicatedStatesAccessible = allReplicatedStatesAccessible;
+exports.allServicesOperational = allServicesOperational;
+exports.replicatedStateConverged = replicatedStateConverged;
+exports.allReplicatedStatesConverged = allReplicatedStatesConverged;

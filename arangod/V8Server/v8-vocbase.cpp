@@ -45,7 +45,6 @@
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
 #include "Basics/HybridLogicalClock.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
@@ -84,7 +83,6 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-general-graph.h"
 #include "V8Server/v8-replicated-logs.h"
-#include "V8Server/v8-prototype-state.h"
 #include "V8Server/v8-pregel.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
@@ -2235,7 +2233,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_InitV8Pregel(isolate, ArangoNS);
   TRI_InitV8Views(*v8g, isolate);
   TRI_InitV8ReplicatedLogs(v8g, isolate);
-  TRI_InitV8PrototypeStates(v8g, isolate);
   TRI_InitV8Users(context, &vocbase, v8g, isolate);
   TRI_InitV8GeneralGraph(context, &vocbase, v8g, isolate);
 
@@ -2372,6 +2369,15 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "__dbcache__"),
                           v8::Object::New(isolate), v8::DontEnum)
+      .FromMaybe(false);  // ignore result
+
+  // extended names enabled
+  context->Global()
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FE_EXTENDED_NAMES"),
+          v8::Boolean::New(
+              isolate, server.getFeature<DatabaseFeature>().extendedNames()),
+          v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   // current thread number

@@ -79,4 +79,9 @@ struct ThreadPoolScheduler {
     }
     mutex_condition.notify_one();
   }
+
+  auto delay(std::chrono::seconds delay, std::function<void(bool)> job)
+      -> void {
+    // not implemented
+  }
 };

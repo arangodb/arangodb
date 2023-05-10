@@ -34,7 +34,6 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -270,7 +269,7 @@ std::vector<index_t> State::logLeaderMulti(
                                    "Invalid transaction syntax");
   }
 
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::lock_guard mutexLocker{_logLock};
 
   TRI_ASSERT(!_log.empty());  // log must never be empty
 
@@ -304,7 +303,7 @@ std::vector<index_t> State::logLeaderMulti(
 
 index_t State::logLeaderSingle(arangodb::velocypack::Slice slice, term_t term,
                                std::string const& clientId) {
-  MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
+  std::lock_guard mutexLocker{_logLock};  // log entries must stay in order
   using namespace std::chrono;
   return logNonBlocking(
       _log.back().index + 1, slice, term,
@@ -317,8 +316,6 @@ index_t State::logLeaderSingle(arangodb::velocypack::Slice slice, term_t term,
 index_t State::logNonBlocking(index_t idx, velocypack::Slice slice, term_t term,
                               uint64_t millis, std::string const& clientId,
                               bool leading, bool reconfiguration) {
-  _logLock.assertLockedByCurrentThread();
-
   // verbose logging for all agency operations
   // there are two different log levels in use here for the AGENCYSTORE topic
   // - DEBUG: will log writes only on the leader
@@ -391,7 +388,7 @@ index_t State::logFollower(VPackSlice transactions) {
   bool gotSnapshot = transactions.length() > 0 && transactions[0].isObject() &&
                      !transactions[0].get("readDB").isNone();
 
-  MUTEX_LOCKER(logLock, _logLock);
+  std::lock_guard logLock{_logLock};
 
   // In case of a snapshot, there are three possibilities:
   //   1. Our highest log index is smaller than the snapshot index, in this
@@ -609,14 +606,10 @@ void State::logEraseNoLock(std::deque<log_t>::iterator rbegin,
   _log_size -= delSize;
 }
 
-/// Get log entries from indices "start" to "end"
-std::vector<log_t> State::get(index_t start, index_t end) const {
-  std::vector<log_t> entries;
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
-
-  if (_log.empty()) {
-    return entries;
-  }
+std::pair<index_t, index_t> State::determineLogBounds(
+    index_t start, index_t end) const noexcept {
+  // _logLock must be held when this method is called
+  TRI_ASSERT(!_log.empty());
 
   // start must be greater than or equal to the lowest index
   // and smaller than or equal to the largest index
@@ -639,17 +632,51 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
   start -= _cur;
   end -= (_cur - 1);
 
-  for (size_t i = start; i < end; ++i) {
+  TRI_ASSERT(start <= end);
+  return std::make_pair(start, end);
+}
+
+/// Get log entries from indices "start" to "end"
+std::vector<log_t> State::get(index_t start, index_t end) const {
+  std::vector<log_t> entries;
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
+
+  if (_log.empty()) {
+    return entries;
+  }
+
+  auto [s, e] = determineLogBounds(start, end);
+  for (size_t i = s; i < e; ++i) {
     entries.push_back(_log[i]);
   }
 
   return entries;
 }
 
+/// Get log entries from indices "start" to "end", into the builder as an array
+index_t State::toVelocyPack(velocypack::Builder& result, index_t start,
+                            index_t end) const {
+  VPackArrayBuilder guard(&result, /*allowUnindexed*/ true);
+
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
+
+  if (_log.empty()) {
+    return 0;
+  }
+
+  auto [s, e] = determineLogBounds(start, end);
+
+  for (size_t i = s; i < e; ++i) {
+    _log[i].toVelocyPackCompact(result);
+  }
+
+  return _log[s].index;
+}
+
 /// Get log entries from indices "start" to "end"
 /// Throws std::out_of_range exception
 log_t State::at(index_t index) const {
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
   return atNoLock(index);
 }
 
@@ -680,41 +707,31 @@ log_t State::atNoLock(index_t index) const {
 /// with index `index`, 1, if it does contain one with term `term` and
 /// -1, if it does contain one with another term than `term`:
 int State::checkLog(index_t index, term_t term) const {
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
 
   // If index above highest entry
-  if (_log.size() > 0 && index > _log.back().index) {
+  if (!_log.empty() && index > _log.back().index) {
     return -1;
   }
 
   // Catch exceptions and avoid overflow:
-  if (index < _cur || index - _cur > _log.size()) {
+  if (index < _cur || index - _cur >= _log.size()) {
     return 0;
   }
 
-  try {
-    return _log.at(index - _cur).term == term ? 1 : -1;
-  } catch (...) {
-  }
-
-  return 0;
+  return _log[index - _cur].term == term ? 1 : -1;
 }
 
 /// Have log with specified index and term
 bool State::has(index_t index, term_t term) const {
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
 
   // Catch exceptions and avoid overflow:
-  if (index < _cur || index - _cur > _log.size()) {
+  if (index < _cur || index - _cur >= _log.size()) {
     return false;
   }
 
-  try {
-    return _log.at(index - _cur).term == term;
-  } catch (...) {
-  }
-
-  return false;
+  return _log[index - _cur].term == term;
 }
 
 /// Get vector of past transaction from 'start' to 'end'
@@ -722,7 +739,7 @@ VPackBuilder State::slices(index_t start, index_t end) const {
   VPackBuilder slices;
   slices.openArray();
 
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::unique_lock mutexLocker{_logLock};  // Cannot be read lock (Compaction)
 
   if (!_log.empty()) {
     if (start < _log.front().index) {  // no start specified
@@ -773,7 +790,7 @@ VPackBuilder State::slices(index_t start, index_t end) const {
 /// Get log entry by log index, copy entry because we do no longer have the
 /// lock after the return
 log_t State::operator[](index_t index) const {
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
   TRI_ASSERT(index - _cur < _log.size());
   return _log.at(index - _cur);
 }
@@ -781,7 +798,7 @@ log_t State::operator[](index_t index) const {
 /// Get last log entry, copy entry because we do no longer have the lock
 /// after the return
 log_t State::lastLog() const {
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
   TRI_ASSERT(!_log.empty());
   return _log.back();
 }
@@ -866,7 +883,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
   _options.silent = true;
 
   if (loadPersisted()) {
-    MUTEX_LOCKER(logLock, _logLock);
+    std::lock_guard logLock{_logLock};
     if (_log.empty()) {
       std::shared_ptr<Buffer<uint8_t>> buf =
           std::make_shared<Buffer<uint8_t>>();
@@ -990,7 +1007,7 @@ index_t State::loadCompacted() {
     // Result can only have length 0 or 1.
     VPackSlice ii = result[0];
 
-    MUTEX_LOCKER(logLock, _logLock);
+    std::lock_guard logLock{_logLock};
     _agent->setPersistedState(ii);
     try {
       _cur = extractIndexFromKey(ii);
@@ -1066,7 +1083,7 @@ bool State::loadOrPersistConfiguration() {
 
   } else {  // Fresh start or disaster recovery
 
-    MUTEX_LOCKER(guard, _configurationWriteLock);
+    std::lock_guard guard{_configurationWriteLock};
 
     LOG_TOPIC("a27cb", DEBUG, Logger::AGENCY) << "New agency!";
 
@@ -1142,7 +1159,7 @@ bool State::loadRemaining(index_t cind) {
     // we are using the initial _cur value only as a lower bound in the
     // AQL query, but use the second _cur value for the actual, per-log
     // entry filtering.
-    MUTEX_LOCKER(logLock, _logLock);
+    std::lock_guard logLock{_logLock};
     lastIndex = _cur;
   }
 
@@ -1171,7 +1188,7 @@ bool State::loadRemaining(index_t cind) {
 
   auto result = queryResult.data->slice();
 
-  MUTEX_LOCKER(logLock, _logLock);
+  std::lock_guard logLock{_logLock};
   if (result.isArray() && result.length() > 0) {
     TRI_ASSERT(_log.empty());  // was cleared in loadCompacted
     // We know that _cur has been set in loadCompacted to the index of the
@@ -1247,11 +1264,11 @@ bool State::loadRemaining(index_t cind) {
 
 /// Find entry by index and term
 bool State::find(index_t prevIndex, term_t prevTerm) {
-  MUTEX_LOCKER(mutexLocker, _logLock);
-  if (prevIndex > _log.size()) {
+  std::lock_guard mutexLocker{_logLock};
+  if (prevIndex >= _log.size()) {
     return false;
   }
-  return _log.at(prevIndex).term == prevTerm;
+  return _log[prevIndex].term == prevTerm;
 }
 
 index_t State::lastCompactionAt() const { return _lastCompactionAt; }
@@ -1266,7 +1283,7 @@ bool State::compact(index_t cind, index_t keep) {
   // We keep at least `keep` log entries before the compacted state,
   // for forensic analysis and such that the log is never empty.
   {
-    MUTEX_LOCKER(_logLocker, _logLock);
+    std::lock_guard _logLocker{_logLock};
     if (cind <= _cur) {
       LOG_TOPIC("69afe", DEBUG, Logger::AGENCY)
           << "Not compacting log at index " << cind
@@ -1340,7 +1357,7 @@ bool State::compactVolatile(index_t cind, index_t keep) {
   }
   TRI_ASSERT(keep < cind);
   index_t cut = cind - keep;
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::lock_guard mutexLocker{_logLock};
   if (!_log.empty() && cut > _cur && cut - _cur < _log.size()) {
     logEraseNoLock(_log.begin(), _log.begin() + (cut - _cur));
     TRI_ASSERT(_log.begin()->index == cut);
@@ -1506,8 +1523,6 @@ bool State::persistCompactionSnapshot(index_t cind,
 /// complete log and persists the given snapshot. After this operation, the
 /// log is empty and something ought to be appended to it rather quickly.
 bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
-  _logLock.assertLockedByCurrentThread();
-
   if (!persistCompactionSnapshot(index, term, snapshot)) {
     LOG_TOPIC("a3f20", ERR, Logger::AGENCY)
         << "Could not persist received log snapshot.";
@@ -1560,7 +1575,7 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
 
   transaction::StandaloneContext ctx(*_vocbase);
 
-  MUTEX_LOCKER(guard, _configurationWriteLock);
+  std::lock_guard guard{_configurationWriteLock};
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
@@ -1593,7 +1608,7 @@ query_t State::allLogs() const {
 
   TRI_ASSERT(nullptr != _vocbase);
 
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::lock_guard mutexLocker{_logLock};
 
   auto compq = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(comp),
@@ -1645,7 +1660,7 @@ std::vector<index_t> State::inquire(velocypack::Slice query) const {
   std::vector<index_t> result;
   size_t pos = 0;
 
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
   for (auto i : VPackArrayIterator(query)) {
     if (!i.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1670,14 +1685,14 @@ std::vector<index_t> State::inquire(velocypack::Slice query) const {
 
 // Index of last log entry
 index_t State::lastIndex() const {
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::lock_guard mutexLocker{_logLock};
   TRI_ASSERT(!_log.empty());
   return _log.back().index;
 }
 
 // Index of last log entry
 index_t State::firstIndex() const {
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::lock_guard mutexLocker{_logLock};
   TRI_ASSERT(!_log.empty());
   return _cur;
 }
@@ -1879,7 +1894,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 /// @brief dump the entire in-memory state to velocypack.
 /// should be used for testing only
 void State::toVelocyPack(velocypack::Builder& builder) const {
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::lock_guard mutexLocker{_logLock};
 
   builder.openObject();
   builder.add("current", VPackValue(_cur));

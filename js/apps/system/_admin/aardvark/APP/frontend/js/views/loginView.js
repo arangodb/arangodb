@@ -244,10 +244,6 @@
 
       let path = window.location.protocol + '//' + window.location.host +
         frontendConfig.basePath + '/_db/' + encodeURIComponent(database) + '/_admin/aardvark/index.html';
-      if (frontendConfig.react) {
-        path = window.location.protocol + '//' + window.location.host +
-          '/_db/' + encodeURIComponent(database) + '/_admin/aardvark/index.html';
-      }
 
       $.ajax({
         url: path,

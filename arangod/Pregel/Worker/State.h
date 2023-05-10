@@ -22,9 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <chrono>
+#include <utility>
 #include "Actor/ActorPID.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/CollectionSpecifications.h"
+#include "Pregel/GraphStore/Magazine.h"
+#include "Pregel/GraphStore/Quiver.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelOptions.h"
@@ -40,85 +44,66 @@ template<typename V, typename E, typename M>
 struct WorkerState {
   WorkerState(std::unique_ptr<WorkerContext> workerContext,
               actor::ActorPID conductor,
-              worker::message::CreateWorker specifications,
-              std::unique_ptr<MessageFormat<M>> messageFormat,
-              std::unique_ptr<MessageCombiner<M>> messageCombiner,
+              const worker::message::CreateWorker& specifications,
+              std::chrono::seconds messageTimeout,
+              std::unique_ptr<MessageFormat<M>> newMessageFormat,
+              std::unique_ptr<MessageCombiner<M>> newMessageCombiner,
               std::unique_ptr<Algorithm<V, E, M>> algorithm,
-              TRI_vocbase_t& vocbase, actor::ActorPID resultActor)
+              TRI_vocbase_t& vocbase, actor::ActorPID spawnActor,
+              actor::ActorPID resultActor, actor::ActorPID statusActor,
+              actor::ActorPID metricsActor)
       : config{std::make_shared<WorkerConfig>(&vocbase)},
         workerContext{std::move(workerContext)},
-        messageFormat{std::move(messageFormat)},
-        messageCombiner{std::move(messageCombiner)},
+        messageTimeout{messageTimeout},
+        messageFormat{std::move(newMessageFormat)},
+        messageCombiner{std::move(newMessageCombiner)},
         conductor{std::move(conductor)},
         algorithm{std::move(algorithm)},
         vocbaseGuard{vocbase},
-        resultActor(resultActor) {
+        spawnActor(std::move(spawnActor)),
+        resultActor(std::move(resultActor)),
+        statusActor(std::move(statusActor)),
+        metricsActor(std::move(metricsActor)) {
     config->updateConfig(specifications);
 
     if (messageCombiner) {
-      readCache.reset(new CombiningInCache<M>(config, messageFormat.get(),
-                                              messageCombiner.get()));
-      writeCache.reset(new CombiningInCache<M>(config, messageFormat.get(),
-                                               messageCombiner.get()));
-      for (size_t i = 0; i < config->parallelism(); i++) {
-        auto incoming = std::make_unique<CombiningInCache<M>>(
-            nullptr, messageFormat.get(), messageCombiner.get());
-        inCaches.push_back(std::move(incoming));
-        outCaches.push_back(std::make_unique<CombiningOutCache<M>>(
-            config, messageFormat.get(), messageCombiner.get()));
-      }
+      readCache = std::make_unique<CombiningInCache<M>>(
+          config->localPregelShardIDs(), messageFormat.get(),
+          messageCombiner.get());
+      writeCache = std::make_unique<CombiningInCache<M>>(
+          config->localPregelShardIDs(), messageFormat.get(),
+          messageCombiner.get());
     } else {
-      readCache.reset(new ArrayInCache<M>(config, messageFormat.get()));
-      writeCache.reset(new ArrayInCache<M>(config, messageFormat.get()));
-      for (size_t i = 0; i < config->parallelism(); i++) {
-        auto incoming =
-            std::make_unique<ArrayInCache<M>>(nullptr, messageFormat.get());
-        inCaches.push_back(std::move(incoming));
-        outCaches.push_back(
-            std::make_unique<ArrayOutCache<M>>(config, messageFormat.get()));
-      }
+      readCache = std::make_unique<ArrayInCache<M>>(
+          config->localPregelShardIDs(), messageFormat.get());
+      writeCache = std::make_unique<ArrayInCache<M>>(
+          config->localPregelShardIDs(), messageFormat.get());
     }
-  }
-
-  auto observeStatus() -> Status const {
-    auto currentGss = currentGssObservables.observe();
-    auto fullGssStatus = allGssStatus.copy();
-
-    if (!currentGss.isDefault()) {
-      fullGssStatus.gss.emplace_back(currentGss);
-    }
-    return Status{
-        .graphStoreStatus =
-            GraphStoreStatus{},  // TODO GORDO-1546 graphStore->status(),
-        .allGssStatus = fullGssStatus.gss.size() > 0
-                            ? std::optional{fullGssStatus}
-                            : std::nullopt};
   }
 
   std::shared_ptr<WorkerConfig> config;
 
   // only needed in computing state
   std::unique_ptr<WorkerContext> workerContext;
-  std::vector<worker::message::PregelMessage> messagesForNextGss;
-  // distinguishes config.globalSuperStep being initialized to 0 and
-  // config.globalSuperStep being explicitely set to 0 when the first superstep
-  // starts: needed to process incoming messages in its dedicated gss
-  bool computationStarted = false;
+  std::chrono::seconds messageTimeout;
+  std::optional<std::chrono::steady_clock::time_point>
+      isWaitingForAllMessagesSince;
   std::unique_ptr<MessageFormat<M>> messageFormat;
   std::unique_ptr<MessageCombiner<M>> messageCombiner;
   std::unique_ptr<InCache<M>> readCache = nullptr;
   std::unique_ptr<InCache<M>> writeCache = nullptr;
-  std::vector<std::unique_ptr<InCache<M>>> inCaches;
-  std::vector<std::unique_ptr<OutCache<M>>> outCaches;
+  uint32_t messageBatchSize = 500;
+  std::unordered_map<ShardID, actor::ActorPID> responsibleActorPerShard;
 
-  actor::ActorPID conductor;
+  const actor::ActorPID conductor;
   std::unique_ptr<Algorithm<V, E, M>> algorithm;
   const DatabaseGuard vocbaseGuard;
+  const actor::ActorPID spawnActor;
   const actor::ActorPID resultActor;
-  // TODO GORDO-1546
-  // GraphStore graphStore;
-  GssObservables currentGssObservables;
-  Guarded<AllGssStatus> allGssStatus;
+  const actor::ActorPID statusActor;
+  const actor::ActorPID metricsActor;
+  Magazine<V, E> magazine;
+  MessageStats messageStats;
 };
 template<typename V, typename E, typename M, typename Inspector>
 auto inspect(Inspector& f, WorkerState<V, E, M>& x) {

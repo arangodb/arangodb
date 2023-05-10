@@ -41,6 +41,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <optional>
 #include <stack>
 #include <utility>
 
@@ -168,7 +169,8 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return some statistics about available caches
   //////////////////////////////////////////////////////////////////////////////
-  [[nodiscard]] MemoryStats memoryStats() const noexcept;
+  [[nodiscard]] std::optional<MemoryStats> memoryStats(
+      std::uint64_t maxTries) const noexcept;
 
   [[nodiscard]] std::pair<double, double> globalHitRates();
 

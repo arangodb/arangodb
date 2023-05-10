@@ -59,6 +59,8 @@ struct QuickLogStatus {
   std::shared_ptr<agency::ParticipantsConfig const>
       committedParticipantsConfig{};
 
+  std::vector<ParticipantId> followersWithSnapshot{};
+
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] auto getLocalStatistics() const noexcept
       -> std::optional<LogStatistics>;
@@ -91,6 +93,7 @@ auto inspect(Inspector& f, QuickLogStatus& x) {
       f.field("leadershipEstablished", x.leadershipEstablished),
       f.field("snapshotAvailable", x.snapshotAvailable),
       f.field("commitFailReason", x.commitFailReason),
+      f.field("followersWithSnapshot", x.followersWithSnapshot),
       f.field("activeParticipantsConfig", activeParticipantsConfig),
       f.field("committedParticipantsConfig", committedParticipantsConfig));
   if constexpr (Inspector::isLoading) {
@@ -107,6 +110,7 @@ struct FollowerStatistics : LogStatistics {
   std::chrono::duration<double, std::milli> lastRequestLatencyMS;
   FollowerState internalState;
   LogIndex nextPrevLogIndex;
+  bool snapshotAvailable{false};
 
   friend auto operator==(FollowerStatistics const& left,
                          FollowerStatistics const& right) noexcept
@@ -123,6 +127,7 @@ auto inspect(Inspector& f, FollowerStatistics& x) {
       f.field(StaticStrings::ReleaseIndex, x.releaseIndex),
       f.field("nextPrevLogIndex", x.nextPrevLogIndex),
       f.field("lastErrorReason", x.lastErrorReason),
+      f.field("snapshotAvailable", x.snapshotAvailable),
       f.field("lastRequestLatencyMS", x.lastRequestLatencyMS)
           .transformWith(inspection::DurationTransformer<
                          std::chrono::duration<double, std::milli>>{}),

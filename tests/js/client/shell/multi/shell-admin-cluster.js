@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertMatch, assertTrue, assertFalse, arango, db, Buffer */
+/* global fail, assertEqual, assertMatch, assertTrue, assertFalse, arango, db */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -210,11 +210,11 @@ function adminClusterSuite() {
         let id = res.parsedBody.id;
 
         // Now wait until the job is finished and check that it has failed:
-        let count = 10;
+        let count = 30;
         while (--count >= 0) {
-          require("internal").wait(1.0, false);
+          require("internal").wait(0.5, false);
           res = arango.GET_RAW("/_admin/cluster/queryAgencyJob?id=" + id);
-          if (res.code !== 200) {
+          if (res.code !== 200 || res.parsedBody.status === "ToDo") {
             continue;
           }
           assertTrue(res.parsedBody.hasOwnProperty("creator"));

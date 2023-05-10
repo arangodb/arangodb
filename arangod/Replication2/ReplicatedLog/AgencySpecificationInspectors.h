@@ -39,9 +39,7 @@ auto constexpr ParticipantsAvailable =
     std::string_view{"participantsAvailable"};
 auto constexpr Details = std::string_view{"details"};
 auto constexpr ElectibleLeaderSet = std::string_view{"electibleLeaderSet"};
-auto constexpr Election = std::string_view{"election"};
 auto constexpr Error = std::string_view{"error"};
-auto constexpr StatusMessage = std::string_view{"StatusMessage"};
 auto constexpr StatusReport = std::string_view{"StatusReport"};
 auto constexpr LeadershipEstablished =
     std::string_view{"leadershipEstablished"};
@@ -56,7 +54,6 @@ auto constexpr MaxActionsTraceLength =
 auto constexpr Code = std::string_view{"code"};
 auto constexpr Message = std::string_view{"message"};
 auto constexpr LastTimeModified = std::string_view{"lastTimeModified"};
-auto constexpr Participant = std::string_view{"participant"};
 auto constexpr Owner = std::string_view{"owner"};
 auto constexpr AssumedWriteConcern = std::string_view{"assumedWriteConcern"};
 auto constexpr AssumedWaitForSync = std::string_view{"assumedWaitForSync"};

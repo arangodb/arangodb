@@ -118,17 +118,16 @@ struct TestIndex : public arangodb::Index {
   void unload() override {}
 };
 
-class ReNormalizingAnalyzer : public irs::analysis::analyzer {
+class ReNormalizingAnalyzer final
+    : public irs::analysis::TypedAnalyzer<ReNormalizingAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "ReNormalizingAnalyzer";
   }
 
-  ReNormalizingAnalyzer()
-      : irs::analysis::analyzer(irs::type<ReNormalizingAnalyzer>::get()) {}
+  ReNormalizingAnalyzer() = default;
 
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<TestAttribute>::id()) {
       return &_attr;
     }
@@ -137,8 +136,12 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
 
   static ptr make(std::string_view args) {
     auto slice = arangodb::iresearch::slice(args);
-    if (slice.isNull()) throw std::exception();
-    if (slice.isNone()) return nullptr;
+    if (slice.isNull()) {
+      throw std::exception{};
+    }
+    if (slice.isNone()) {
+      return nullptr;
+    }
     return std::make_unique<ReNormalizingAnalyzer>();
   }
 
@@ -167,9 +170,9 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  virtual bool next() override { return false; }
+  bool next() final { return false; }
 
-  virtual bool reset(std::string_view) override { return false; }
+  bool reset(std::string_view) final { return false; }
 
  private:
   TestAttribute _attr;
@@ -178,7 +181,8 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
 REGISTER_ANALYZER_VPACK(ReNormalizingAnalyzer, ReNormalizingAnalyzer::make,
                         ReNormalizingAnalyzer::normalize);
 
-class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
+class TestTokensTypedAnalyzer final
+    : public irs::analysis::TypedAnalyzer<TestTokensTypedAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "iresearch-tokens-typed";
@@ -193,8 +197,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  explicit TestTokensTypedAnalyzer(std::string_view args)
-      : irs::analysis::analyzer(irs::type<TestTokensTypedAnalyzer>::get()) {
+  explicit TestTokensTypedAnalyzer(std::string_view args) {
     VPackSlice slice(irs::ViewCast<irs::byte_type>(args).data());
     if (slice.hasKey("type")) {
       auto type = slice.get("type").stringView();
@@ -215,7 +218,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual bool reset(std::string_view data) override {
+  bool reset(std::string_view data) final {
     if (!irs::IsNull(data)) {
       _strVal = data;
     } else {
@@ -224,7 +227,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  virtual bool next() override {
+  bool next() final {
     if (!_strVal.empty()) {
       switch (_returnType.value) {
         case arangodb::iresearch::AnalyzerValueType::Bool:
@@ -254,8 +257,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::term_attribute>::id()) {
       return &_term;
     }
@@ -1166,7 +1168,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
   void TearDown() override {
     // Not allowed to assert here
     if (server.server().hasFeature<arangodb::DatabaseFeature>()) {
-      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(dbName, true);
+      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(dbName);
       _vocbase = nullptr;
     }
     analyzerFeature.unprepare();
@@ -1388,8 +1390,7 @@ class IResearchAnalyzerFeatureCoordinatorTest
   void TearDown() override {
     // Not allowed to assert here
     if (server.server().hasFeature<arangodb::DatabaseFeature>()) {
-      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(_dbName,
-                                                                  true);
+      server.getFeature<arangodb::DatabaseFeature>().dropDatabase(_dbName);
       _vocbase = nullptr;
     }
   }
@@ -1511,7 +1512,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
                 arangodb::velocypack::Slice::emptyArraySlice());
     builder.add("id", VPackValue("43"));
     builder.close();
-    res = arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
+    res = arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                   builder.slice(), true, tmp);
     EXPECT_TRUE(res.ok());
   }

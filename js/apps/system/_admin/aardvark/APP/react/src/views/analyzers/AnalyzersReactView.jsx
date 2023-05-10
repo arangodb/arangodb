@@ -1,13 +1,16 @@
 /* global $ */
 
+import { ChakraProvider } from '@chakra-ui/react';
 import { isEqual, map, sortBy } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { ArangoTable, ArangoTD, ArangoTH } from '../../components/arango/table';
-import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/modal/Modal';
+import { Modal, ModalBody, ModalFooter, ModalHeader } from '../../components/modal';
 import { Cell, Grid } from '../../components/pure-css/grid';
+import { theme } from '../../theme/theme';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { facetedFilter, getChangeHandler, isAdminUser, usePermissions } from '../../utils/helpers';
+import { facetedFilter, getChangeHandler } from '../../utils/helpers';
+import { usePermissions, userIsAdmin } from "../../utils/usePermissions";
 import Actions from './Actions';
 import AddAnalyzer from './AddAnalyzer';
 import { typeNameMap } from './constants';
@@ -28,7 +31,7 @@ const FilterHelpModal = () => {
         fontSize: '18px'
       }}/>
     </a>
-    <Modal show={show} setShow={setShow} cid={'modal-content-filter-help'}>
+    <Modal isOpen={show} onClose={() => setShow(false)} cid={'modal-content-filter-help'}>
       <ModalHeader title={'Filter Help'}/>
       <ModalBody>
         <dl>
@@ -106,12 +109,12 @@ const AnalyzersReactView = () => {
       processAndSetFilteredAnalyzers(data.body.result);
     }
 
-    return <>
+    return <ChakraProvider theme={theme}>
       <div className="headerBar">
         <div className="search-field">
           <input type={'text'} id={'filterInput'} className={'search-input'} value={filterExpr}
                  onChange={getChangeHandler(setFilterExpr)} placeholder={'Filter...'}/>
-          <i id="searchSubmit" className="fa fa-search"/>
+          <i className="fa fa-search" style={{ cursor: 'default' }}/>
         </div>
         <div className="headerButtonBar">
           <ul className="headerButtonList">
@@ -151,7 +154,7 @@ const AnalyzersReactView = () => {
         <Grid>
           <Cell size={'1'}>
             {
-              isAdminUser(permissions)
+              userIsAdmin(permissions)
                 ? <div className={'sectionHeader'}>
                   <div className={'title'}><AddAnalyzer analyzers={analyzers}/></div>
                 </div>
@@ -175,7 +178,8 @@ const AnalyzersReactView = () => {
                       <ArangoTD seq={1}>{analyzer.name}</ArangoTD>
                       <ArangoTD seq={2}>{typeNameMap[analyzer.type]}</ArangoTD>
                       <ArangoTD seq={3}>
-                        <Actions analyzer={analyzer} permission={permissions} modalCidSuffix={analyzer.name}/>
+                        <Actions analyzer={analyzer} permission={permissions}
+                                 modalCidSuffix={analyzer.name}/>
                       </ArangoTD>
                     </tr>
                   ))
@@ -190,7 +194,7 @@ const AnalyzersReactView = () => {
           </Cell>
         </Grid>
       </div>
-    </>;
+    </ChakraProvider>;
   }
 
   return <h1>Analyzers</h1>;

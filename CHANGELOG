@@ -1,6 +1,299 @@
 devel
 -----
 
+* FE-22: Don't display collection content by default when clicking on a
+  collection in the Web UI.
+
+* FE-251: bugfix - prohibit multiple expansions of the same node in the graph
+  viewer.
+
+* FE-162: Fix display of geodesic lines.
+
+* Fixed a race in the Maintenance, impacting leaders that have just been
+  resigned. During a MoveShard job, the old leader could sabotage the whole
+  operation by removing the newly added follower from Current. The solution is
+  to update Current using local collection information, instead of the
+  potentially outdated velocypack slice.
+
+* FE-254: bugfix - filter out empty storedValues for persistent index.
+
+* FE-253: bugfix - validate JSON, show errors & disable save when error.
+
+* FE-252: bugfix - canvas image screenshot breaks graph colors.
+
+* Fix incompatibility between 3.9 and 3.10 w.r.t. to serialization of AQL array
+  filters (i.e. `[* FILTER ...]`). The array filters were serialized in a
+  different way in 3.9 than they are serialized in 3.10. 3.10 also expected the
+  new serialization format when unserializing a plan.
+  The fix now enables support for both formats.
+
+* Fixed issue #18769: Input validation allows invalid UTF-8 code points.
+  
+  This change enforces the validation of UTF-8 surrogate pairs in incoming JSON
+  data. Previously, the following loopholes existed when validating UTF-8
+  surrogate pair data:
+  - a high surrogate, followed by something other than a low surrogate (or the
+    end of the string)
+  - a low surrogate, not preceeded by a high surrogate
+  These loopholes are now closed, which means that any JSON inputs with invalid
+  surrogate pair data will be rejected by the server.
+
+  Note that the extended validation for surrogates can be turned off along with
+  other UTF-8 string validation by setting the server startup option
+  `--server.validate-utf8-strings` to `false`. This is not recommended though,
+  but should only be used in situations when a database is known to contain
+  invalid data and must continue supporting it.
+
+* Updated rclone to v1.62.2 custom build with go1.20.3.
+
+* Changed return code of APIs that create databases from previously 1229
+  (`ERROR_ARANGO_DATABASE_NAME_INVALID`) to 1208 (`ERROR_ARANGO_ILLEGAL_NAME`)
+  in case an invalid database name is used.
+  This is a downwards-incompatible change, but unifies the behavior for
+  database creation with the behavior of collection and view creation,
+  which also return error 1208 in case the specified name is invalid.
+
+* FE-236: bugfix - remove unused files, use new tooltip in views UI.
+
+* FE-238: Added auto-login support in core web UI - disabled logout when
+  auto-login is enabled, set sessionStorage "jwtUser" value when login is
+  skipped.
+
+* FE-233: bugfix - fix query spotlight search not working.
+
+* FE-349: bugfix - filter out empty primarySort field in UI.
+
+* FE-247: bugfix - missing storedValues field in persistent index form.
+
+* FE 242, FE-244: bugfix - add support for cache fields, fix inverted index name
+  undefined.
+
+* FE-241: bugfix - filter predefined queries based on search term.
+
+* Adjusted timeouts for cluster internal commit and abort requests to withstand
+  network delays better. This fixes some problems when the networking
+  infrastructure delays requests.
+
+* Added sent time accounting and some metrics to fuerte and the NetworkFeature.
+  This can detect delays in the network infrastructure.
+
+* Added startup option `--server.ensure-whitespace-metrics-format`, which
+  controls whether additional whitespace is used in the metrics output 
+  format. If set to `true`, then whitespace is emitted between the exported
+  metric value and the preceeding token (metric name or labels).
+  Using whitespace may be required to make the metrics output compatible with
+  some processing tools, although Prometheus itself doesn't need it.
+
+  The option defaults to `true`, which adds additional whitespace by default.
+
+* Automatically repair revision trees after several failed shard
+  synchronization attempts. This can help to get permanently out-of-sync
+  shards back into sync.
+
+  The functionality can be turned off by setting the startup option
+  `--replication.auto-repair-revision-trees` to `false` on DB-Servers.
+
+* SEARCH-461: Added option "--arangosearch.columns-cache-only-leader". Used only
+  on EE DBServers. Default is false.
+  If set to true only leader shards have ArangoSearch caches enabled - this will
+  reduce RAM usage. In case of failover happens - in background caches are
+  populated for the new leader. Some queries that run at during a failover may
+  still run without caches.
+
+* FE-216: bugfix - make view patches async in the UI.
+
+* FE-212: bugfix: links not getting removed when copying from another view in
+  UI.
+
+* SEARCH-466 Fix leaking into individual link definition inherited properties
+  from view.
+
+* FE-222: Fix - Allow additional properties in arangosearch, allow no fields in
+  inverted index when 'includeAllFIelds' is true.
+
+* APM-183: Support UTF-8 on UI (collection/view/index names).
+
+* FE-199: Remove URL handling of fields on view screen.
+
+* MDS-1098: In 3.10 we have introduced an optimization on Traversals to pull
+  post-filter conditions into the traversal-statements, like the following:
+
+      FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
+        FILTER v.isRelevant == true
+        RETURN p
+
+  If the comparison side contains a variable and the same variable is used as
+  the start vertex e.g. like this:
+
+  FOR candidate IN ["vertices/1", "vertices/2"]
+    FOR v,e,p IN 1 OUTBOUND candidate GRAPH "myGraph"
+      FILTER e.MostLikedNeighbor == candidate
+      RETURN v
+
+  There is a chance that we prematurely discarded this variable (candidate in
+  the example) if it is not used later. This has lead to incorrect results.
+
+* Changed the behavior of the following JavaScript functions in arangosh and
+  arangod (e.g. when used from a Foxx service):
+
+  - `db.<collection>.dropIndex(id)`: this function now throws if no index
+    exists with the specified id. Previously the function only returned the
+    value `false`.
+  - `db._dropIndex(id)`: this function now throws if no index exists with the
+    specified id. Previously the function only returned the value `false`.
+
+  These changes are not downwards-compatible, but they can be easily worked
+  around by wrapping dropIndex calls into a try ... catch.
+
+  The HTTP API for dropping indexes is not affected by these changes, as it
+  previously returned HTTP 404 already when the specified index could not be
+  found.
+
+* Added `--dump-views` option to arangodump, to control whether arangosearch 
+  view definitions should be stored as part of the dump. The option defaults
+  to `true`.
+
+* APM-183: optionally allow special characters and Unicode characters in
+  collection names, view names and index names.
+
+  This feature allows toggling the naming convention for collection names,
+  view names and index names from the previous strict mode, which only allowed
+  selected ASCII characters, to an extended, more relaxed mode. The extended 
+  mode allows additional ASCII characters as well as non-ASCII UTF-8 characters
+  in database names, collection names, index names and view names.
+  The extended mode can be enabled by setting the new startup option
+  - `--database.extended-names`
+  to true. It is turned off by default and requires an explicit opt-in, simply 
+  because some drivers and client applications may not be ready for it yet. 
+  The arangod server, the ArangoDB web interface and the following bundled 
+  client tools are prepared and ready for using the extended names:
+  - arangobench
+  - arangodump
+  - arangoexport
+  - arangoimport
+  - arangorestore
+  - arangosh
+  More tools and the drivers shipped by ArangoDB may be added to the list in
+  the future.
+
+  Please note that the extended names should not be turned on during upgrades 
+  from previous versions, but only once the upgrade has been completed 
+  successfully. In addition, the extended names should not be used in 
+  environments that require extracting data into a previous version of 
+  ArangoDB, or when database dumps may be restored into a previous version 
+  of ArangoDB. This is because older versions will not be able to handle the 
+  extended names. 
+  Finally, it should not be turned on in environments in which drivers are 
+  in use that haven't been prepared to work with the extended naming 
+  convention.
+
+  Warning: turning on the `--database.extended-names` option for a deployment 
+  requires it to stay enabled permanently, i.e. it can be changed
+  from `false` to `true` but not back. When enabling it, it is also required
+  to do this consistently on all coordinators and DB servers.
+
+  The extended names for databases, collections, views and indexes will be 
+  enabled by default in one of the future releases of ArangoDB, once enough 
+  drivers and other client tools have had the chance to adapt.
+
+* FE-200: Adds smart & enterprise graph support in the UI. 
+
+* Forward the `ttl` cursor option for AQL queries in the JavaScript API
+  from the `db._query()` and the `db._createStatement()` methods to the server.
+
+* APM-407: add an optimization for inserting multiple documents at the same
+  time via an AQL INSERT query.
+
+  There is an optimizer rule `optimize-cluster-multiple-document-operations`,
+  which fires in case an AQL query has one of the patterns
+  - `FOR doc IN @docs INSERT doc INTO ...` (where `@docs` is a bind parameter
+    with an array of documents to be inserted),
+  - `FOR doc IN [...] INSERT doc INTO ...` (where the FOR loop iterates over
+    an array of input documents known at query compile time),
+  - `LET docs = [...] FOR doc IN docs INSERT doc INTO ...` (where the documents
+    set up by the LET are some static documents known at query compile time),
+
+  If a query has such pattern, and all the following restrictions are met, then
+  the optimization is triggered:
+
+  - there are no following RETURN nodes (including any RETURN OLD, RETURN NEW)
+  - the FOR loop is not contained in another outer FOR loop or subquery
+  - there are no other nodes (e.g. LET, FILTER) between the FOR and the INSERT
+  - the INSERT is not used on a SmartGraph edge collection
+  - the FOR loop is iterating over a constant, deterministic expression
+
+  The optimization will then add a `MultipleRemoteExecutionNode` to the query
+  execution plan, which will care about inserting all documents into the 
+  collection in one go. Further optimizer rules are skipped if the optimization
+  is triggered.
+
+  Future versions of ArangoDB may lift some of the restrictions for the query
+  pattern, so that the optimization may be triggered in more cases in the
+  future.
+
+* FE-200: Add canvas interactions to Graph Viewer.
+
+* Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
+
+* FE-218: Updated WebUI dependencies.
+
+* Fixed statistics values for writes executed and writes ignored when a query 
+  is executed using the rule `optimize-cluster-single-document-operations`.
+  It was always increasing the amount of writes executed, even if the operation
+  wasn't successful, and also never increasing the amount of writes ignored 
+  when needed.
+
+* Make REST API `/_admin/shutdown` sleep for only half a second until it
+  initiates the server shutdown. Previously it slept for 2 seconds, but half
+  a second should already be enough to send the server's response out.
+
+* MDS-1001: Performance improvement in AQL. If you are using a traversal like
+  `FOR v, e, p IN <....>` and later in the query access the last vertex on the path e.g.:
+  `FILTER p.vertices[-1].name == "ArangoDB"` it will now be transformed to
+  `FILTER v.name == "ArangoDB"` which is an equivalent statement. The latter however
+  is cheaper to compute, as we do not need to create an in-memory representation
+  of the path. Furthermore we can apply additional optimizations on `v` which are not
+  possible on `p`. The same optimization holds true for `p.edges[-1]` which is equivalent
+  to `e`. The optimization rule for this is called "optimize-traversal-last-element-access".
+
+* Updated arangosync to v2.16.1.
+
+* FE-142: Updates indices view list & index addition to React.
+
+* A Pregel execution now stores its state during and after execution
+  into a system collection. To read or delete entries the new API
+  `/_api/control_pregel/history[/<id>]` has been added. Additionally, the 
+  Pregel JavaScript module has been extended to support access as well.
+  Read history `<PregelModule>.history(<pid>)`.
+  Remove history `<PregelModule>.removeHistory(<pid>)`.
+
+* SEARCH-300: Fixed a rare case when arangosearch data folders might be left on
+  disk after database is dropped.
+
+* Marked all memory-mapping options for Pregel as obsolete;
+  The memory mapping code was removed as it did not provide any advantages
+  over spilling into system-provided swap space.
+
+* FE-139 adds new search view type (search-alias).
+
+* Fixed BTS-902 (clicking on the search icon in the analyzers filter input used
+  to take the user to the collections view).
+
+* Ran automated migrations on all .scss files to remove deprecated division
+  operator usage.
+
+* Fixed ES-1508: (EE only) when deleting edges in a SmartGraph via
+  DELETE /_api/document/{collection} using _key or _id values as document
+  selectors, the INBOUND and OUTBOUND entries of the SmartEdges could diverge.
+  Using a document like {_key: "xxxx"} as a selector was always correct.
+  Now _key and _id variants are supported as intended.
+
+* BTS-1272: Fixed metric `arangodb_connection_pool_connections_current`. In
+  some cases where multiple connections to a server are canceled the metric
+  could miss-count, as for now it only counted individually closed connections.
+  The wrong counted situations are: other server crashes, restore of a
+  HotBackup, rotation of JWT secret.
+
 * SEARCH-279 Fix consistency during update/replace operations
   for arangosearch links and inverted indexes.
 
@@ -9,13 +302,13 @@ devel
 * APM-294: Added telemetrics API that gathers anonymous feature usage
   statistics from a deployment. The API is accessible via the endpoint
   `/_admin/telemetrics`. The API is enabled by default in release builds, but
-  disabled by default in maintainer mode. It can be explicitly turned on/off 
-  with the server startup parameter `--server.enable-telemetrics-api`. 
-  The required access privileges to access the telemetrics API can be 
+  disabled by default in maintainer mode. It can be explicitly turned on/off
+  with the server startup parameter `--server.telemetrics-api`.
+  The required access privileges to access the telemetrics API can be
   configured via the server startup option `--server.support-info-api`.
-  The telemetrics API is used by the arangosh: every time the arangosh is 
+  The telemetrics API is used by the arangosh: every time the arangosh is
   started, it will send a request to the connected server to gather telemetrics
-  from the `/_admin/telemetrics` endpoint. The telemetrics data are then 
+  from the `/_admin/telemetrics` endpoint. The telemetrics data are then
   sent to an aggregation service that is run by ArangoDB.
 
 * Added the following metrics for WAL file tracking:
@@ -46,8 +339,8 @@ devel
 
 * Changed path were test scripts locate configuration files from `etc/relative`
   to `etc/testing`. These paths contain `arangosh.conf`, which we were reading
-  from `etc/relative` in test environment. 
-  
+  from `etc/relative` in test environment.
+
 * Made the return code configurable that is delivered if a write fails because
   the write concern is not fulfilled (not enough in-sync replicas available).
   Previously (and now by default), a code of HTTP 403 is returned and the
@@ -67,14 +360,14 @@ devel
   of live WAL files exceeds a certain threshold. This is to make sure that
   WAL files are moved to the archive when there are a lot of live WAL files
   present (e.g. after a restart; in this case RocksDB does not count any
-  previously existing WAL files when calculating the size of WAL files and 
+  previously existing WAL files when calculating the size of WAL files and
   comparing it `max_total_wal_size`.
   The feature can be configured via the following startup options:
   - `--rocksdb.auto-flush-min-live-wal-files`: minimum number of live WAL
     files that triggers an auto-flush. Defaults to `10`.
   - `--rocksdb.auto-flush-check-interval`: interval (in seconds) in which
     auto-flushes are executed. Defaults to `3600`.
-  Note that an auto-flush is only executed if the number of live WAL files 
+  Note that an auto-flush is only executed if the number of live WAL files
   exceeds the configured threshold and the last auto-flush is longer ago than
   the configured auto-flush check interval. That way too frequent auto-flushes
   can be avoided.
@@ -90,7 +383,7 @@ devel
   - `rocksdb_wal_released_tick_replication`: lower bound sequence number from
     which onwards WAL files will be kept because they may be needed by the
     replication.
-  - `arangodb_flush_subscriptions`: number of currently active flush 
+  - `arangodb_flush_subscriptions`: number of currently active flush
     subscriptions.
 
 * Updated internal JavaScript dependencies:
@@ -121,11 +414,11 @@ devel
 * Allow usage of projections and covering indexes in more cases.
   Previously, projections were not used if there were complex filter conditions
   on the index attribute(s) that contained the `[*]` expansion operator
-  with inline FILTERs or RETURNs, e.g. 
+  with inline FILTERs or RETURNs, e.g.
   `FILTER doc.addrs[* FILTER CURRENT.country == 'US'].zip`.
 
 * PRESUPP-546: make AQL optimizer rule `simplify-conditions` correctly report
-  that it was triggered. Previously that rule never reported that it was 
+  that it was triggered. Previously that rule never reported that it was
   triggered although even though it actually was.
 
 * Added startup option `--rocksdb.auto-refill-index-caches-on-followers` to
@@ -148,24 +441,24 @@ devel
 
   The following experimental options are available:
 
-  - `--rocksdb.enable-blob-files`: Enable the usage of blob files for the 
+  - `--rocksdb.enable-blob-files`: Enable the usage of blob files for the
     documents column family. This option defaults to `false`. All following
     options are only relevant if this option is set to `true`.
-  - `--rocksdb.min-blob-size`: Size threshold for storing large documents in 
+  - `--rocksdb.min-blob-size`: Size threshold for storing large documents in
     blob files (in bytes, 0 = store all documents in blob files).
-  - `--rocksdb.blob-file-size`: Size limit for blob files in the documents 
+  - `--rocksdb.blob-file-size`: Size limit for blob files in the documents
     column family (in bytes).
   - `--rocksdb.blob-compression-type`: Compression algorithm to use for blob
     data in the documents column family.
   - `--rocksdb.enable-blob-garbage-collection`: Enable blob garbage collection
-    during compaction in the documents column family. 
-  - `--rocksdb.blob-garbage-collection-age-cutoff`: Age cutoff for garbage 
-    collecting blob files in the documents column family (percentage value from 
-    0 to 1 determines how many blob files are garbage collected during 
+    during compaction in the documents column family.
+  - `--rocksdb.blob-garbage-collection-age-cutoff`: Age cutoff for garbage
+    collecting blob files in the documents column family (percentage value from
+    0 to 1 determines how many blob files are garbage collected during
     compaction).
-  - `--rocksdb.blob-garbage-collection-force-threshold`: Garbage ratio 
-    threshold for scheduling targeted compactions for the oldest blob files 
-    in the documents column family. 
+  - `--rocksdb.blob-garbage-collection-force-threshold`: Garbage ratio
+    threshold for scheduling targeted compactions for the oldest blob files
+    in the documents column family.
 
 * FE-132: Added query sorting (in web UI) by modified date, option to sort
   order.
@@ -177,13 +470,13 @@ devel
   transformation to disjunctive normal form (DNF). This transformation can use
   a lot of memory for complex filter conditions, which was previously not
   accounted for. Now, if the transformation uses a lot of memory and hits the
-  configured query memory limit, the query will rather be aborted with a 
+  configured query memory limit, the query will rather be aborted with a
   proper error message than overuse memory.
   For very complex conditions that would use massive amounts of memory when
   transformed into DNF, the DNF conversion is also aborted at some threshold
-  complexity value. If the threshold is hit, the query continues with a 
-  simplified representation of the condition, which will not be usable in 
-  index lookups. However, this should still be better than overusing memory 
+  complexity value. If the threshold is hit, the query continues with a
+  simplified representation of the condition, which will not be usable in
+  index lookups. However, this should still be better than overusing memory
   or taking a very long time to compute the DNF version.
   The complexity threshold value can be configured per query by setting the
   new `maxDNFConditionMembers` query option. There is also a new startup
@@ -191,16 +484,16 @@ devel
   servers to adjust the threshold value globally.
 
 * ES-1428: make the maximum number of V8 contexts depend on the maximum number
-  of server threads, if `--javascript.v8-contexts` is not set explicitly. 
+  of server threads, if `--javascript.v8-contexts` is not set explicitly.
   Previously the maximum number of V8 contexts was hard-coded to 16 when the
   option `--javascript.v8-contexts` option was not set explicitly.
   Now the maximum number defaults to 7/8 of the value of the startup option
-  `--server.maximal-threads`, regardless of if it is explicitly configured or 
+  `--server.maximal-threads`, regardless of if it is explicitly configured or
   the default value is used. Only 7/8 are used to leave some headroom for other
   important maintenance tasks.
-  A server with default configuration should now not block waiting for V8 
-  contexts to become available, but it may use more memory for the additional V8 
-  contexts if there are many concurrent requests that invoke JavaScript actions 
+  A server with default configuration should now not block waiting for V8
+  contexts to become available, but it may use more memory for the additional V8
+  contexts if there are many concurrent requests that invoke JavaScript actions
   (e.g. requests using the web UI or Foxx).
 
 * Fixed a bug in the API used by `arangorestore`: On restore, a new _rev value
@@ -273,7 +566,7 @@ devel
 * Allow usage of document projections and traversal projections in slightly
   more cases, specifically when the document's or traversal's output
   variables were used in subqueries. Previously the usage of the document or
-  traversal output variables in subqueries could lead to projections being 
+  traversal output variables in subqueries could lead to projections being
   disabled.
 
 * FE-133: Alphabetical sorting for collections on user permissions page.
@@ -287,11 +580,11 @@ devel
 
 * Fixed issue #18053: Computed Values become null when Schema is modified.
 
-* BTS-1193: Fix for schema update. When removing a field and then inserting a 
-  new field into the schema, previously, both old and new schema would be 
-  merged, meaning it would maintain the old field and add the new one. 
+* BTS-1193: Fix for schema update. When removing a field and then inserting a
+  new field into the schema, previously, both old and new schema would be
+  merged, meaning it would maintain the old field and add the new one.
 
-* Added startup option `--javascript.user-defined-functions`. 
+* Added startup option `--javascript.user-defined-functions`.
   This option controls whether JavaScript user-defined functions (UDFs) can
   be used in AQL queries. The option defaults to `true`. The option can be
   set to `false` to disallow using JavaScript UDFs from inside AQL queries.
@@ -316,13 +609,13 @@ devel
 * Fix bug in hotbackup download/restore to make sure no data is mixed up
   between servers. This fixes a bug introduced in 3.10.
 
-* BTS-266: When starting up a cluster without `--cluster.force-one-shard`, 
+* BTS-266: When starting up a cluster without `--cluster.force-one-shard`,
   creating a database and then restarting the cluster with the startup option
   `--cluster.force-one-shard` set to true, when the formerly created database
-  has more than one shard, but the flag is set to true, this could lead to 
-  arangosearch's analyzers to use optimizations that should not be used if not 
-  in a single shard mode. For this not to happen, the verification of the 
-  parameter being true as a condition to run optimizations was removed. 
+  has more than one shard, but the flag is set to true, this could lead to
+  arangosearch's analyzers to use optimizations that should not be used if not
+  in a single shard mode. For this not to happen, the verification of the
+  parameter being true as a condition to run optimizations was removed.
 
 * Removed CMake variable `ARANGODB_BITS`, which was only used in one place.
 
@@ -352,7 +645,7 @@ devel
   within a JavaScript context (e.g. from Foxx or from the server's console
   mode) **and** the query has multiple coordinator snippets of which except
   the outermost one invokes a JavaScript function.
-  Instead of crashing, coordinators will now respond with the exception 
+  Instead of crashing, coordinators will now respond with the exception
   "no v8 context available to enter for current transaction context".
   For AQL queries that called one of the AQL functions `CALL` or `APPLY` with
   a fixed function name, e.g. `APPLY('CONCAT', ...)`, it is now also assumed
@@ -363,11 +656,11 @@ devel
 * Prevent agency configuration confusion by an agent which comes back without
   its data directory and thus without its UUID.
 
-* APM-592: In batched query results, when executing requests for `/_api/cursor`, 
+* APM-592: In batched query results, when executing requests for `/_api/cursor`,
   there might be a connection error and the user might not be able to retrieve
   the latest batch from the cursor. For that, a query option flag `allowRetry` was
   added. When set to `true`, if the latest batch response object wasn't
-  successfully received, the user can send a retry request to receive it with 
+  successfully received, the user can send a retry request to receive it with
   a POST request to `/_api/cursor/<cursorId>/<batchId>`. Only the latest batch
   is cached, meaning former batches cannot be retrieved again later.
 
@@ -384,10 +677,10 @@ devel
 * Use more compact and efficient representation for arrays and objects during
   AQL AST serialization and deserialization. This can help to reduce the size
   of messages exchanged between coordinator and database servers during query
-  setup, and also reduce the time needed for parsing these messages. This 
+  setup, and also reduce the time needed for parsing these messages. This
   especially helps when there are large bind parameter values that are arrays
   or objects.
-  The more efficient format is used also inside an AQL query's "explain" and 
+  The more efficient format is used also inside an AQL query's "explain" and
   "profile" methods, and thus any callers that process the return values of
   explain and profile operations may now receive the new format. All callers
   inside the ArangoDB code have been adjusted, but any external callers that
@@ -403,21 +696,21 @@ devel
 * Added new stage "instantiating executors" to the query profiling output.
   The time spent in "instantiating executors" is the time needed to create
   the query executors from the final query execution time. In cluster mode,
-  this stage also includes the time needed for physically distributing the 
+  this stage also includes the time needed for physically distributing the
   query snippets to the participating database servers.
   Previously, the time spent for instantiating executors and the physical
   distribution was contained in the "optimizing plan" stage, which was
   misleading.
 
-* Removed constant values for query variables from query plan serialization 
+* Removed constant values for query variables from query plan serialization
   in cases they were not needed. Previously, constant values of query variables
   were always serialized for all occurrences of a variable in a query plan.
   If the constant values were large, this contributed to higher serialization
   and thus query setup times. Now the constant values are only serialized
   for relevant parts of query execution plans.
 
-* BTS-199: remove check for environment variable `GLIBCXX_FORCE_NEW` from 
-  server start, and remove setting this variable from startup scripts. 
+* BTS-199: remove check for environment variable `GLIBCXX_FORCE_NEW` from
+  server start, and remove setting this variable from startup scripts.
   The reason is that the environment variable only controls the behavior of
   programs linked against glibc, but our release builds are linked to libmusl.
 
@@ -428,20 +721,20 @@ devel
 
 * Updated ArangoDB Starter to 0.15.6-preview-1.
 
-* Acquire a snapshot of the (list of) indexes when starting document insert, 
-  update/replace and remove operations, and use that snapshot throughout the 
+* Acquire a snapshot of the (list of) indexes when starting document insert,
+  update/replace and remove operations, and use that snapshot throughout the
   operation. Previously, the list of indexes was acquired multiple times during
   a write operation, and it was (at least in theory) possible that the list of
   indexes changed between the individual acquisitions.
-  The PR also contains an optimization to not fetch the full document from the 
+  The PR also contains an optimization to not fetch the full document from the
   storage engine for remove and replace operations in case the full document is
-  not needed to process the operation. This is the case when the collection 
+  not needed to process the operation. This is the case when the collection
   does not contain any secondary indexes and `returnOld` is not used.
 
 * Added experimental startup option `--rocksdb.block-cache-jemalloc-allocator`.
-  This option defaults to `false`. When set to `true`, a jemalloc-based memory 
-  allocator will be used to allocate memory for the RocksDB block cache. 
-  This allocator will also mark the memory of the block cache to be excluded 
+  This option defaults to `false`. When set to `true`, a jemalloc-based memory
+  allocator will be used to allocate memory for the RocksDB block cache.
+  This allocator will also mark the memory of the block cache to be excluded
   from coredumps, potentially reducing coredump size a lot.
 
 * Use intermediate commits in old shard synchronization protocol. This avoids
@@ -458,7 +751,7 @@ devel
   for the case that the server comes back quickly. If the server is
   permanently failed, an `AddFollower` job will be created anyway eventually.
 
-* Print the pid of the process which sent a SIGABRT or other fatal 
+* Print the pid of the process which sent a SIGABRT or other fatal
   signal that shuts down ArangoDB ungracefully.
 
 * Avoid write-write conflicts for single document operations performed via the
@@ -512,8 +805,8 @@ devel
   settings for new databases were not bounds-checked, only for new
   collections.
 
-* BTS-1141: Changed the default value of startup option 
-  `--rocksdb.enforce-block-cache-size-limit` from `true` to `false`. 
+* BTS-1141: Changed the default value of startup option
+  `--rocksdb.enforce-block-cache-size-limit` from `true` to `false`.
   This change prevents RocksDB from going into read-only mode when an internal
   operation tries to insert some value into the block cache, but can't do so
   because the block cache's capacity limit is reached.
@@ -531,10 +824,10 @@ devel
   - single-document insert, update, replace and remove operations
   - multi-document insert, update, replace and remove operations
 
-  If the option is set to `true` every currently running transaction will 
-  keep track of which in-memory index cache entries were invalidated by 
+  If the option is set to `true` every currently running transaction will
+  keep track of which in-memory index cache entries were invalidated by
   the transaction, and will try to (re-)fill them later.
-  Currently edge indexes and velocypack-based indexes (persistent, hash, 
+  Currently edge indexes and velocypack-based indexes (persistent, hash,
   skiplist index) are supported. For velocypack-based indexes, the refilling
   will only happen if the index was set up with an in-memory cache (i.e. the
   `cacheEnabled` flag was set during index creation).
@@ -549,58 +842,58 @@ devel
   - `REPLACE { ... } WITH { ... } INTO <collection> OPTIONS { refillIndexCaches: true }`
   - `REMOVE { ... } IN <collection> OPTIONS { refillIndexCaches: true }`
 
-  The refilling of the in-memory caches for indexes is performed by a 
-  background thread, so that the foreground write operation shouldn't be 
-  slowed down a lot. The background thread may however cause additional 
+  The refilling of the in-memory caches for indexes is performed by a
+  background thread, so that the foreground write operation shouldn't be
+  slowed down a lot. The background thread may however cause additional
   I/O for looking up the data in RocksDB and for repopulating the caches.
 
-  The background refilling is done in a best-effort way and is not guaranteed 
-  to always succeed, e.g. if there is no memory available for the cache 
+  The background refilling is done in a best-effort way and is not guaranteed
+  to always succeed, e.g. if there is no memory available for the cache
   subsystem, or when an in-memory cache table is currently in a migration phase
   (grow/shrink operation).
 
   There is a new startup option `--rocksdb.auto-refill-index-caches-on-modify`
-  for DB-Servers and single servers, which currently defaults to `false`. If 
+  for DB-Servers and single servers, which currently defaults to `false`. If
   it is set to `true`, the cache refilling will be turned on automatically for
-  all insert/update/replace/remove operations, so that it doesn't need to be 
+  all insert/update/replace/remove operations, so that it doesn't need to be
   specified on the per-operation/per-query level.
 
   The new startup option `--rocksdb.auto-refill-index-caches-queue-capacity`
-  can be used to limit the number of index cache entries that the background 
-  thread will queue. This is a safeguard to keep the memory usage at bay in 
-  case the background thread is slower than concurrent threads that perform 
+  can be used to limit the number of index cache entries that the background
+  thread will queue. This is a safeguard to keep the memory usage at bay in
+  case the background thread is slower than concurrent threads that perform
   ingestions.
 
-  There are also new startup options to control whether or not the in-memory 
+  There are also new startup options to control whether or not the in-memory
   caches should automatically be seeded upon server restart.
-  The option `--rocksdb.auto-fill-index-caches-on-startup` for DB-Servers and 
+  The option `--rocksdb.auto-fill-index-caches-on-startup` for DB-Servers and
   single servers enables this functionality. It currently defaults to `false`.
   If it is set to `true`, the in-memory caches of all eligible indexes will be
-  automatically pre-seeded after the server startup. Note that this may cause 
+  automatically pre-seeded after the server startup. Note that this may cause
   additional CPU and I/O load.
   The option `--rocksdb.max-concurrent-index-fill-tasks` is available to limit
-  the impact of the automatic index filling at startup. It controls how many 
+  the impact of the automatic index filling at startup. It controls how many
   full index filling operations can execute concurrently. The lower this number
-  is, the lower the impact of cache filling, but the longer it will take. 
-  The default value for this option depends on the number of available cores, 
-  and is at least `1`. A value of `0` cannot be used. 
-  This option is only relevant if `--rocksdb.auto-fill-index-caches-on-startup` 
+  is, the lower the impact of cache filling, but the longer it will take.
+  The default value for this option depends on the number of available cores,
+  and is at least `1`. A value of `0` cannot be used.
+  This option is only relevant if `--rocksdb.auto-fill-index-caches-on-startup`
   is set to `true`.
 
   The PR also adds the following metrics:
-  - `rocksdb_cache_auto_refill_loaded_total`: Total number of queued items for 
-    in-memory index caches refilling. It will always report a value of zero on 
+  - `rocksdb_cache_auto_refill_loaded_total`: Total number of queued items for
+    in-memory index caches refilling. It will always report a value of zero on
     coordinators.
-  - `rocksdb_cache_auto_refill_dropped_total`: Total number of dropped items 
-    for in-memory index caches refilling (because number of queued items would 
-    exceed the value of `--rocksdb.auto-refill-index-caches-queue-capacity`). 
+  - `rocksdb_cache_auto_refill_dropped_total`: Total number of dropped items
+    for in-memory index caches refilling (because number of queued items would
+    exceed the value of `--rocksdb.auto-refill-index-caches-queue-capacity`).
     It will always report a value of zero on coordinators.
   - `rocksdb_cache_full_index_refills_total`: Total number of in-memory index
     caches refill operations for entire indexes. The counter gets increased for
-    every index automatically loaded (because startup option 
+    every index automatically loaded (because startup option
     `--rocksdb.auto-fill-index-caches-on-startup` is set to `true`) or when
-    full indexes are loaded into memory manually. 
-    In cluster deployments the counter will be increased once per eligible 
+    full indexes are loaded into memory manually.
+    In cluster deployments the counter will be increased once per eligible
     index per shard. It will always report a value of zero on coordinators.
 
 * Add missing metrics for user traffic: Histograms:
@@ -625,7 +918,7 @@ devel
 
 * Deleted customizable Pregel (AIR) and Greenspun library.
 
-* Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
+* Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup
   options.
 
 * Fix HTTP/VST traffic accounting in internal statistics / metrics.
@@ -638,8 +931,8 @@ devel
   `--server.authentication-unix-sockets`, which made them do the opposite
   of what their names suggest.
 
-* Removed more assertions from cluster rebalance js test that obligated the 
-  rebalance plan to always have moves, but there were cases in which all 
+* Removed more assertions from cluster rebalance js test that obligated the
+  rebalance plan to always have moves, but there were cases in which all
   there are none.
 
 * Log startup warnings for any experimental, deprecated, obsolete or renamed
@@ -695,7 +988,7 @@ devel
 * Improve memory usage tracking for IN list lookups and other RocksDB-based
   lookups.
 
-* Remove inactive query plan cache code (was only a stub and never enabled 
+* Remove inactive query plan cache code (was only a stub and never enabled
   before).
 
 * Fixed BTS-441: Honor read only mode with disabled authentication
@@ -709,7 +1002,7 @@ devel
 
 * Updated OpenSSL to 1.1.1s.
 
-* BTS-483: Added restriction for usage of query cache for streaming and JS 
+* BTS-483: Added restriction for usage of query cache for streaming and JS
   transactions when they are not read-only.
 
 * Remove map and map.gz files from repository and add them to gitignore.
@@ -736,8 +1029,8 @@ devel
   required. However they are invisible (nothing shown) if I open DB settings
   after creation. Those settings should be visible in readonly mode (grey out).
 
-* BTS-209: Fixed requests to `_admin/execute` treating every payload as plain 
-  text when they're in JSON or velocypack format, but will only treat the 
+* BTS-209: Fixed requests to `_admin/execute` treating every payload as plain
+  text when they're in JSON or velocypack format, but will only treat the
   payload as velocypack if specified in the header's `content-type`.
 
 * Fixed issue #17394: Unnecessary document-lookup instead of Index-Only query.
@@ -805,9 +1098,9 @@ devel
   that was invoked from the llhttp C code dispatcher. That dispatcher code
   couldn't handle C++ exceptions properly.
 
-* Fixed BTS-1073: Fix encoding and decoding of revision ids in replication 
-  incremental sync protocol. Previously, the encoding of revision ids could 
-  be ambiguous under some circumstances, which could prevent shards from 
+* Fixed BTS-1073: Fix encoding and decoding of revision ids in replication
+  incremental sync protocol. Previously, the encoding of revision ids could
+  be ambiguous under some circumstances, which could prevent shards from
   getting into sync.
 
 * Log better diagnosis information in case multiple servers in a cluster are
@@ -842,8 +1135,8 @@ devel
 
 * BTS-1061: ARM was not recognized on Apple M1.
 
-* BTS-977: Added an error message for when an unauthorized user makes an 
-  HTTP GET request to current database from a database name that exists which 
+* BTS-977: Added an error message for when an unauthorized user makes an
+  HTTP GET request to current database from a database name that exists which
   the user can't access and from a database name that doesn't exist, so both
   requests have the same error message (`_db/<dbName>/_api/database/current`).
 

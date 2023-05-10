@@ -19,6 +19,6 @@ class CheckHealthTask implements Task {
 // TODO: Current workaround, we need frontendConfig state to be within redux
 // and overall be accessible.
 
-if ((window as any).frontendConfig.isCluster) {
+if (window.frontendConfig.isCluster) {
   taskRepeater.registerTask("healthCheck", new CheckHealthTask());
 }

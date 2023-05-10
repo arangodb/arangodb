@@ -26,7 +26,6 @@
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedState/ReplicatedStateToken.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/ReplicatedState/WaitForQueue.h"
@@ -62,11 +61,9 @@ struct ReplicatedLog;
 struct ILogFollower;
 struct ILogLeader;
 struct ILogParticipant;
-struct LogUnconfiguredParticipant;
 }  // namespace replicated_log
 
 namespace replicated_state {
-struct StatePersistorInterface;
 struct ReplicatedStateMetrics;
 struct IReplicatedLeaderStateBase;
 struct IReplicatedFollowerStateBase;
@@ -179,9 +176,6 @@ struct ProducerStreamProxy
 
   // TODO waitForSync parameter is missing
   auto insert(EntryType const& v) -> LogIndex override;
-
-  auto insertDeferred(EntryType const& v)
-      -> std::pair<LogIndex, DeferredAction> override;
 
  private:
   auto serialize(EntryType const& v) -> LogPayload;
