@@ -158,10 +158,17 @@ std::pair<uint64_t, uint64_t> getMinMaxDepths(AstNode const* steps) {
   return {minDepth, maxDepth};
 }
 
-void parseGraphCollectionRestriction(std::vector<std::string>& collections,
+void parseGraphCollectionRestriction(Ast* ast,
+                                     std::vector<std::string>& collections,
                                      AstNode const* src) {
+  auto addCollection = [&collections, ast](std::string&& name) {
+    ast->createNodeDataSource(ast->query().resolver(), name,
+                              AccessMode::Type::READ, true, true);
+    collections.emplace_back(std::move(name));
+  };
+
   if (src->isStringValue()) {
-    collections.emplace_back(src->getString());
+    addCollection(src->getString());
   } else if (src->type == NODE_TYPE_ARRAY) {
     size_t const n = src->numMembers();
     collections.reserve(n);
@@ -173,7 +180,7 @@ void parseGraphCollectionRestriction(std::vector<std::string>& collections,
             "collection restrictions option must be either a string or an "
             "array of collection names");
       }
-      collections.emplace_back(c->getStringValue(), c->getStringLength());
+      addCollection(c->getString());
     }
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -259,9 +266,10 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
                 "or 'none' instead");
           }
         } else if (name == "edgeCollections") {
-          parseGraphCollectionRestriction(options->edgeCollections, value);
+          parseGraphCollectionRestriction(ast, options->edgeCollections, value);
         } else if (name == "vertexCollections") {
-          parseGraphCollectionRestriction(options->vertexCollections, value);
+          parseGraphCollectionRestriction(ast, options->vertexCollections,
+                                          value);
         } else if (name == StaticStrings::GraphQueryOrder && !hasBFS) {
           // dfs is the default
           if (value->stringEqualsCaseInsensitive(

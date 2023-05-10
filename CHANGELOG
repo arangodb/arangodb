@@ -1,6 +1,9 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* ES-1566: fix an issue when trying to restrict traversals to non-existing
+  collections with `edgeCollections` traversal option.
+
 * FE-243: add support for geo_s2 analyzer.
 
 * FE-22: Don't display collection content by default when clicking on a
