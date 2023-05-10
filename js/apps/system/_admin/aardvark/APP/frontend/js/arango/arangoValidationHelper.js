@@ -69,8 +69,8 @@
       return [
         keySpecialCharactersValidation,
         {
-          rule: Joi.string().max(256, "utf8"),
-          msg: "Document name max length is 256.",
+          rule: Joi.string().max(254, "utf8"),
+          msg: "Document key max length is 254.",
         },
         {
           rule: Joi.string().allow("").optional(),
