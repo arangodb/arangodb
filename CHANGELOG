@@ -1,9 +1,6 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
-* Got rid of hard timeout of 10s in sub-arangoshs of tests to make chaos
-  tests more stable.
-
 * FE-243: add support for geo_s2 analyzer.
 
 * FE-22: Don't display collection content by default when clicking on a
