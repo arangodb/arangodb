@@ -112,7 +112,7 @@
         : traditionalCollectionNameValidation;
       collectionNameValidations = collectionNameValidations.concat(
         {
-          rule: Joi.normalize().string().max(256, "utf8"),
+          rule: Joi.string().normalize().max(256, "utf8"),
           msg: "Collection name max length is 256.",
         },
         {
