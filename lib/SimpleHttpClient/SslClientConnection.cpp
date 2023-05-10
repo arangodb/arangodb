@@ -33,7 +33,11 @@
 #include <WinSock2.h>
 #endif
 
+#if defined(__linux__) || defined(__APPLE__)
 #include <fcntl.h>
+#else
+#include <winsock2.h>
+#endif
 #include <openssl/opensslv.h>
 #include <openssl/ssl.h>
 #ifndef OPENSSL_VERSION_NUMBER
@@ -314,6 +318,7 @@ bool SslClientConnection::connectSocket() {
   }
 
   if (_isSocketNonBlocking) {
+#if defined(__linux__) || defined(__APPLE__)
     _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
     if (_socketFlags == -1) {
       _errorDetails = "Socket file descriptor read returned with error " +
@@ -322,10 +327,8 @@ bool SslClientConnection::connectSocket() {
       disconnectSocket();
       return false;
     }
-    if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags | O_NONBLOCK) ==
-        -1) {
-      _errorDetails = "Attempt to create non-blocking socket generated error " +
-                      std::to_string(errno);
+#endif
+    if (!setSocketToNonBlocking()) {
       _isConnected = false;
       disconnectSocket();
       return false;
@@ -402,9 +405,7 @@ bool SslClientConnection::connectSocket() {
   }
 
   if (_isSocketNonBlocking) {
-    if (cleanUpSocketFlags() == -1) {
-      _errorDetails = "Attempt to make socket blocking generated error " +
-                      std::to_string(errno);
+    if (!cleanUpSocketFlags()) {
       disconnectSocket();
       _isConnected = false;
       return false;
@@ -655,6 +656,37 @@ bool SslClientConnection::readable() {
   return false;
 }
 
-int SslClientConnection::cleanUpSocketFlags() {
-  return fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags & ~O_NONBLOCK);
+bool SslClientConnection::setSocketToNonBlocking() {
+#if defined(__linux__) || defined(__APPLE__)
+  if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags | O_NONBLOCK) == -1) {
+    _errorDetails = "Attempt to create non-blocking socket generated error " +
+                    std::to_string(errno);
+    return false;
+  }
+#else
+  if (ioctlsocket(s, FIONBIO, 1) != 0) {
+    _errorDetails = "Attempt to create non-blocking socket generated error " +
+                    std::to_string(WSAGetLastError());
+    return false;
+  }
+#endif
+  return true;
+}
+
+bool SslClientConnection::cleanUpSocketFlags() {
+#if defined(__linux__) || defined(__APPLE__)
+  if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags & ~O_NONBLOCK) ==
+      -1) {
+    _errorDetails = "Attempt to make socket blocking generated error " +
+                    std::to_string(errno);
+    return false;
+  }
+#else
+  if (ioctlsocket(s, FIONBIO, 0) != 0) {
+    _errorDetails = "Attempt to make socket blocking generated error " +
+                    std::to_string(WSAGetLastError());
+    return false;
+  }
+#endif
+  return true;
 }
