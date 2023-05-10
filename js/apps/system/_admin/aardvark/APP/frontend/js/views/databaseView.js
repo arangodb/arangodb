@@ -386,7 +386,8 @@
       var dbDefaultProperties = data;
       var buttons = [];
       var tableContent = [];
-
+      var databaseNameValidations =
+        window.arangoValidationHelper.getDatabaseNameValidations();
       // Database Name
       tableContent.push(
         window.modalView.createTextEntry(
@@ -396,12 +397,7 @@
           false,
           'Database Name',
           true,
-          [
-            {
-              rule: Joi.string().required(),
-              msg: 'No database name given.'
-            }
-          ]
+          databaseNameValidations
         )
       );
 
