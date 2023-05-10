@@ -106,71 +106,6 @@ StatResultType statResultType(std::string const& path) {
   return statResultType(stbuf);
 }
 
-void processFiles(std::string const& directory,
-                  std::function<void(std::string const&)> const& cb) {
-#ifdef TRI_HAVE_WIN32_LIST_FILES
-  std::string filter = directory + "\\*";
-  std::wstring f = arangodb::basics::toWString(filter);
-  struct _wfinddata_t oneItem;
-  intptr_t handle = _wfindfirst(f.data(), &oneItem);
-
-  if (handle == -1) {
-    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
-    auto message = arangodb::basics::StringUtils::concatT(
-        "failed to enumerate files in directory '", directory,
-        "': ", TRI_last_error());
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
-  }
-
-  auto guard = arangodb::scopeGuard([&]() noexcept { _findclose(handle); });
-
-  std::string rcs;
-  do {
-    rcs = arangodb::basics::fromWString((wchar_t*)oneItem.name,
-                                        wcslen(oneItem.name));
-    if (rcs != "." && rcs != "..") {
-      // run callback function
-      cb(rcs);
-    }
-
-    // advance to next entry
-  } while (_wfindnext(handle, &oneItem) != -1);
-
-#else
-  DIR* d = opendir(directory.c_str());
-
-  if (d == nullptr) {
-    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
-    auto message = arangodb::basics::StringUtils::concatT(
-        "failed to enumerate files in directory '", directory,
-        "': ", TRI_last_error());
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
-  }
-
-  auto guard = arangodb::scopeGuard([&]() noexcept { closedir(d); });
-
-  std::string rcs;
-  dirent* de = readdir(d);
-
-  while (de != nullptr) {
-    // stringify filename (convert to std::string). we take this performance
-    // hit because we will need to strlen anyway and need to pass it to a
-    // function that will likely use its stringified value anyway
-    rcs.assign(de->d_name);
-
-    if (rcs != "." && rcs != "..") {
-      // run callback function
-      cb(rcs);
-    }
-
-    // advance to next entry
-    de = readdir(d);
-  }
-#endif
-}
-
 }  // namespace
 
 namespace arangodb::basics::FileUtils {
@@ -417,7 +352,7 @@ bool createDirectory(std::string const& name, int mask,
     }
   }
 
-  return result == 0;
+  return (result != 0) ? false : true;
 }
 
 /// @brief will not copy files/directories for which the filter function
@@ -442,24 +377,34 @@ bool copyRecursive(
     std::string const& source, std::string const& target,
     std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
     std::string& error) {
+  bool ret_bool = false;
+
   if (isDirectory(source)) {
-    return copyDirectoryRecursive(source, target, filter, error);
-  }
+    ret_bool = copyDirectoryRecursive(source, target, filter, error);
+  } else {
+    switch (filter(source)) {
+      case TRI_COPY_IGNORE:
+        ret_bool =
+            true;  // original TRI_ERROR_NO_ERROR implies "false", seems wrong
+        break;
 
-  switch (filter(source)) {
-    case TRI_COPY_IGNORE:
-      return true;  // original TRI_ERROR_NO_ERROR implies "false", seems wrong
+      case TRI_COPY_COPY:
+        ret_bool = TRI_CopyFile(source, target, error);
+        break;
 
-    case TRI_COPY_COPY:
-      return TRI_CopyFile(source, target, error);
+      case TRI_COPY_LINK:
+        ret_bool = TRI_CreateHardlink(source, target, error);
+        break;
 
-    case TRI_COPY_LINK:
-      return TRI_CreateHardlink(source, target, error);
+      default:
+        ret_bool =
+            false;  // TRI_ERROR_BAD_PARAMETER seems wrong since returns "true"
+        break;
+    }  // switch
+  }    // else
 
-    default:
-      return false;  // TRI_ERROR_BAD_PARAMETER seems wrong since returns "true"
-  }
-}
+  return ret_bool;
+}  // copyRecursive (TRI_copy_recursive_e filter())
 
 /// @brief will not copy files/directories for which the filter function
 /// returns true
@@ -604,9 +549,69 @@ bool copyDirectoryRecursive(
 std::vector<std::string> listFiles(std::string const& directory) {
   std::vector<std::string> result;
 
-  ::processFiles(directory, [&result](std::string const& filename) {
-    result.push_back(filename);
-  });
+#ifdef TRI_HAVE_WIN32_LIST_FILES
+  char* fn = nullptr;
+
+  struct _wfinddata_t oneItem;
+  intptr_t handle;
+  std::string rcs;
+
+  std::string filter = directory + "\\*";
+  icu::UnicodeString f(filter.c_str());
+  handle = _wfindfirst(
+      reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
+
+  if (handle == -1) {
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+    auto message =
+        StringUtils::concatT("failed to enumerate files in directory '",
+                             directory, "': ", TRI_last_error());
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
+  }
+
+  do {
+    rcs.clear();
+    icu::UnicodeString d((wchar_t*)oneItem.name,
+                         static_cast<int32_t>(wcslen(oneItem.name)));
+    d.toUTF8String<std::string>(rcs);
+    fn = (char*)rcs.c_str();
+
+    if (!strcmp(fn, ".") || !strcmp(fn, "..")) {
+      continue;
+    }
+
+    result.push_back(rcs);
+  } while (_wfindnext(handle, &oneItem) != -1);
+
+  _findclose(handle);
+
+#else
+
+  DIR* d = opendir(directory.c_str());
+
+  if (d == nullptr) {
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+    auto message =
+        StringUtils::concatT("failed to enumerate files in directory '",
+                             directory, "': ", TRI_last_error());
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
+  }
+
+  dirent* de = readdir(d);
+
+  while (de != nullptr) {
+    if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
+      result.push_back(de->d_name);
+    }
+
+    de = readdir(d);
+  }
+
+  closedir(d);
+
+#endif
 
   return result;
 }
@@ -614,8 +619,69 @@ std::vector<std::string> listFiles(std::string const& directory) {
 size_t countFiles(std::string const& directory) {
   size_t result = 0;
 
-  ::processFiles(directory,
-                 [&result](std::string const& filename) { ++result; });
+#ifdef TRI_HAVE_WIN32_LIST_FILES
+  char* fn = nullptr;
+
+  struct _wfinddata_t oneItem;
+  intptr_t handle;
+  std::string rcs;
+
+  std::string filter = directory + "\\*";
+  icu::UnicodeString f(filter.c_str());
+  handle = _wfindfirst(
+      reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
+
+  if (handle == -1) {
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+    auto message =
+        StringUtils::concatT("failed to enumerate files in directory '",
+                             directory, "': ", TRI_last_error());
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
+  }
+
+  do {
+    rcs.clear();
+    icu::UnicodeString d((wchar_t*)oneItem.name,
+                         static_cast<int32_t>(wcslen(oneItem.name)));
+    d.toUTF8String<std::string>(rcs);
+    fn = (char*)rcs.c_str();
+
+    if (!strcmp(fn, ".") || !strcmp(fn, "..")) {
+      continue;
+    }
+
+    ++result;
+  } while (_wfindnext(handle, &oneItem) != -1);
+
+  _findclose(handle);
+
+#else
+
+  DIR* d = opendir(directory.c_str());
+
+  if (d == nullptr) {
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+    auto message =
+        StringUtils::concatT("failed to enumerate files in directory '",
+                             directory, "': ", TRI_last_error());
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
+  }
+
+  dirent* de = readdir(d);
+
+  while (de != nullptr) {
+    if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
+      ++result;
+    }
+
+    de = readdir(d);
+  }
+
+  closedir(d);
+
+#endif
 
   return result;
 }
