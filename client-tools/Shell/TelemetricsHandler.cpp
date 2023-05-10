@@ -322,8 +322,10 @@ void TelemetricsHandler::getTelemetricsInfo(velocypack::Builder& builder) {
   std::unique_lock lk(_mtx);
 
   if (_telemetricsFetchResponse.ok() && !_telemetricsFetchedInfo.isEmpty()) {
+    LOG_DEVEL << "ok";
     builder.add(_telemetricsFetchedInfo.slice());
   } else if (_telemetricsFetchResponse.fail()) {
+    LOG_DEVEL << "fail";
     builder.openObject();
     builder.add(StaticStrings::ErrorNum,
                 VPackValue(_telemetricsFetchResponse.errorNumber()));
@@ -347,6 +349,7 @@ void TelemetricsHandler::arrangeTelemetrics() {
       constexpr bool sendToEndpoint = true;
 #endif
       if (sendToEndpoint) {
+        LOG_DEVEL << "will send to endpoint";
         sendTelemetricsToEndpoint(::kTelemetricsGatheringUrl);
       }
     }

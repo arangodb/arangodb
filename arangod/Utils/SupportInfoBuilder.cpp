@@ -98,7 +98,6 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                            [&dbViews, &database = std::as_const(database)](
                                LogicalView::ptr const& view) -> bool {
                              dbViews[database]++;
-
                              return true;
                            });
   }
@@ -702,6 +701,13 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
 
             result.add("idxs", VPackValue(VPackValueType::Array));
             for (auto const it : velocypack::ArrayIterator(outSlice)) {
+              auto idxType = it.get("type").stringView();
+              // this is a view that is considered as an index here, but doesn't
+              // contain standard index information that would be in the indexes
+              // object, so we just count it as a view
+              if (idxType == "arangosearch") {
+                continue;
+              }
               result.openObject();
 
               if (auto figures = it.get("figures"); !figures.isNone()) {
@@ -728,7 +734,6 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
                 result.add("cache_usage", VPackValue(cacheUsage));
               }
 
-              auto idxType = it.get("type").stringView();
               if (idxType == "geo1" || idxType == "geo2") {
                 // older deployments can have indexes of type "geo1"
                 // and "geo2". these are old names for "geo" indexes with
