@@ -33,34 +33,50 @@ using namespace arangodb::basics;
 
 static DebugRaceController Instance{};
 
-DebugRaceController::DebugRaceController() {}
-
 DebugRaceController& DebugRaceController::sharedInstance() { return Instance; }
 
 void DebugRaceController::reset() {
   {
-    std::scoped_lock<std::mutex> guard(_mutex);
+    auto guard = std::scoped_lock<std::mutex>(_mutex);
     _data.clear();
   }
   _condVariable.notify_all();
 }
 
+bool DebugRaceController::didTrigger(
+    std::unique_lock<std::mutex> const& guard,
+    std::size_t numberOfThreadsToWaitFor) const {
+  TRI_ASSERT(guard.owns_lock());
+  TRI_ASSERT(_data.size() <= numberOfThreadsToWaitFor);
+  return numberOfThreadsToWaitFor == _data.size();
+}
+
 auto DebugRaceController::waitForOthers(
     size_t numberOfThreadsToWaitFor, std::any myData,
-    arangodb::application_features::ApplicationServer const& server) -> std::optional<std::vector<std::any>> {
-  auto notifyGuard = scopeGuard([this]() noexcept { _condVariable.notify_all(); });
-  std::unique_lock<std::mutex> guard(_mutex);
+    application_features::ApplicationServer const& server)
+    -> std::optional<std::vector<std::any>> {
+  auto notifyGuard =
+      scopeGuard([this]() noexcept { _condVariable.notify_all(); });
+  {
+    std::unique_lock<std::mutex> guard(_mutex);
 
-  _data.emplace_back(std::move(myData));
-  _condVariable.wait(guard, [&] {
-    // check empty to continue after being reset
-    return _data.empty() || _data.size() == numberOfThreadsToWaitFor || server.isStopping();
-  });
+    if (didTrigger(guard, numberOfThreadsToWaitFor)) {
+      return std::nullopt;
+    }
 
-  if (_data.size() == numberOfThreadsToWaitFor) {
-    return {_data};
-  } else {
-    return std::nullopt;
+    _data.reserve(numberOfThreadsToWaitFor);
+    _data.emplace_back(std::move(myData));
+    _condVariable.wait(guard, [&] {
+      // check empty to continue after being reset
+      return _data.empty() || _data.size() == numberOfThreadsToWaitFor ||
+             server.isStopping();
+    });
+
+    if (didTrigger(guard, numberOfThreadsToWaitFor)) {
+      return {_data};
+    } else {
+      return std::nullopt;
+    }
   }
 }
 

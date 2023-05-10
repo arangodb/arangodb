@@ -27,6 +27,7 @@
 
 #include <any>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <vector>
@@ -43,7 +44,7 @@ class DebugRaceController {
  public:
   static DebugRaceController& sharedInstance();
 
-  DebugRaceController();
+  DebugRaceController() = default;
 
   // Reset the stored state here, will free the stored data.
   void reset();
@@ -52,8 +53,13 @@ class DebugRaceController {
   // Otherwise, a concurrent thread might try to read it,
   // after the caller has freed the memory.
   auto waitForOthers(
-      size_t numberOfThreadsToWaitFor, std::any myData,
+      std::size_t numberOfThreadsToWaitFor, std::any myData,
       arangodb::application_features::ApplicationServer const& server) -> std::optional<std::vector<std::any>>;
+
+ private:
+  bool didTrigger(
+      std::unique_lock<std::mutex> const& guard,
+      std::size_t numberOfThreadsToWaitFor) const;
 
  private:
   std::mutex mutable _mutex{};
