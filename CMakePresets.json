@@ -98,7 +98,7 @@
     {
       "name": "community",
       "inherits": "release-base",
-      "displayName": "Build ArangoDB Community Edition",
+      "displayName": "Build ArangoDB Community Edition (Release Build)",
       "binaryDir": "${sourceDir}/build-presets/${presetName}",
       "cacheVariables": {
       }
