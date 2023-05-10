@@ -1,6 +1,9 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* ES-1566: fix an issue when trying to restrict traversals to non-existing
+  collections with `edgeCollections` traversal option.
+
 * Add metric `arangodb_file_descriptors_limit` to expose the system limit for
   the number of open files for the arangod process.
 
