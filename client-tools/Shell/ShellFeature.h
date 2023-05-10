@@ -93,6 +93,7 @@ class ShellFeature final : public ArangoshFeature {
   bool _runMain{false};
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   bool _automaticallySendTelemetricsToEndpoint{true};
+  std::vector<std::string> _failurePoints;
 #endif
 };
 

@@ -302,6 +302,7 @@ TelemetricsHandler::buildHttpClient(std::string& url) const {
             cf.getCommFeaturePhase(), newEndpoint, 30, 60, 3, sslProtocol));
 
     if (connection != nullptr) {
+      connection->setSocketNonBlocking(true);
       // note: the returned SimpleHttpClient instance takes over ownership
       // for the connection object
       return std::make_pair(
