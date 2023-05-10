@@ -40,8 +40,11 @@ const extendedNameSchema = Yup.string()
   )
   .matches(/^(?![0-9])/, "Index name cannot start with a number.")
   .matches(/^\S(.*\S)?$/, "Index name cannot contain leading/trailing spaces.")
-  .matches(/^(?!.*[/])/, "Index name cannot contain a forward slash (/).");
-
+  .matches(/^(?!.*[/])/, "Index name cannot contain a forward slash (/).")
+  .matches(
+    window.arangoValidationHelper.getControlCharactersRegex(),
+    "Index name cannot contain control characters (0-31)."
+  );
 const extendedNames = window.frontendConfig.extendedNames;
 
 export const commonSchema = {

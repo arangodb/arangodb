@@ -56,6 +56,10 @@ const extendedNameSchema = Yup.string()
   .matches(/^(?![0-9])/, "View name cannot start with a number.")
   .matches(/^\S(.*\S)?$/, "View name cannot contain leading/trailing spaces.")
   .matches(/^(?!.*[/])/, "View name cannot contain a forward slash (/).")
+  .matches(
+    window.arangoValidationHelper.getControlCharactersRegex(),
+    "View name cannot contain control characters (0-31)."
+  )
   .required("Name is required");
 
 const viewSchema = Yup.object({

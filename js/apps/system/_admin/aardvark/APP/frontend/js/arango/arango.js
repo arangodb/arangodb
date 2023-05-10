@@ -1446,6 +1446,9 @@
   };
 
   window.arangoValidationHelper = {
+    getControlCharactersRegex: () => {
+      return /[^\u0000-\u001F]/;
+    },
     getDocumentKeySpecialCharactersValidation: () => {
       var keySpecialCharactersValidation = {
         rule: Joi.string().regex(/^[a-zA-Z0-9_\-:\.@()\+,=;$!*\%']+$/),
@@ -1481,7 +1484,7 @@
           msg: "Collection name cannot start with a number, a dot (.), or an underscore (_).",
         },
         {
-          rule: Joi.string().regex(/[\u0000-\u001F]/),
+          rule: Joi.string().regex(window.arangoValidationHelper.getControlCharactersRegex()),
           msg: "Collection name cannot contain control characters (0-31).",
         },
         {
