@@ -303,10 +303,9 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
                 assertEqual(coll.idxs.length, 4);
               } else {
                 assertEqual(nDocs, 0);
-                //system collections have replication factor 2
-                if (!isCluster) {
-                  assertEqual(coll["rep_factor"], 1);
-                }
+                //system collections would have replication factor 2, our one has 1, so both are allowed
+                // We cannot distinguish which variant we analyse.
+                assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 0);
                 assertEqual(coll["n_geo"], 0);
@@ -319,9 +318,9 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
-              if (!isCluster) {
-                assertEqual(coll["rep_factor"], 1);
-              }
+              //system collections would have replication factor 2, our one has 1, so both are allowed
+              // We cannot distinguish which variant we analyse.
+              assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
               assertEqual(coll["n_geo"], 0);
             });
           }
@@ -435,9 +434,9 @@ function telemetricsShellReconnectGraphTestsuite() {
               } else {
                 assertEqual(nDocs, 0);
                 //system collections have replication factor 2
-                if (!isCluster) {
-                  assertEqual(coll["rep_factor"], 1);
-                }
+                //system collections would have replication factor 2, our one has 1, so both are allowed
+                // We cannot distinguish which variant we analyse.
+                assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 0);
                 assertEqual(coll["n_geo"], 0);
@@ -451,9 +450,9 @@ function telemetricsShellReconnectGraphTestsuite() {
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
-              if (!isCluster) {
-                assertEqual(coll["rep_factor"], 1);
-              }
+              //system collections would have replication factor 2, our one has 1, so both are allowed
+              // We cannot distinguish which variant we analyse.
+              assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
               assertEqual(coll["n_geo"], 0);
             });
           }
@@ -558,9 +557,9 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
               } else {
                 assertEqual(nDocs, 0);
                 //system collections would have replication factor 2
-                if (!isCluster) {
-                  assertEqual(coll["rep_factor"], 1);
-                }
+                //system collections would have replication factor 2, our one has 1, so both are allowed
+                // We cannot distinguish which variant we analyse.
+                assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 0);
                 assertEqual(coll["n_geo"], 0);
@@ -573,9 +572,9 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
-              if (!isCluster) {
-                assertEqual(coll["rep_factor"], 1);
-              }
+              //system collections would have replication factor 2, our one has 1, so both are allowed
+              // We cannot distinguish which variant we analyse.
+              assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
               assertEqual(coll["n_geo"], 0);
             });
           }
@@ -698,10 +697,9 @@ function telemetricsApiReconnectGraphTestsuite() {
                 assertEqual(coll.idxs.length, 4);
               } else {
                 assertEqual(nDocs, 0);
-                //system collections would have replication factor 2
-                if (!isCluster) {
-                  assertEqual(coll["rep_factor"], 1);
-                }
+                //system collections would have replication factor 2, our one has 1, so both are allowed
+                // We cannot distinguish which variant we analyse.
+                assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 0);
                 assertEqual(coll["n_geo"], 0);
@@ -714,9 +712,7 @@ function telemetricsApiReconnectGraphTestsuite() {
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
-              if (!isCluster) {
-                assertEqual(coll["rep_factor"], 1);
-              }
+              assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
               assertEqual(coll["n_geo"], 0);
             });
           }
