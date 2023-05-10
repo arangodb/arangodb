@@ -106,7 +106,7 @@ class Action {
   bool matches(std::unordered_set<std::string> const& labels) const;
 
   /// @brief return progress statistic
-  uint64_t getProgress() const { return _action->getProgress(); }
+  double getProgress() const { return _action->getProgress(); }
 
   /// @brief Once PreAction completes, remove its pointer
   void clearPreAction() { _action->clearPreAction(); }
