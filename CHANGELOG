@@ -1,6 +1,9 @@
 devel
 -----
 
+* Got rid of hard timeout of 10s in sub-arangoshs of tests to make chaos
+  tests more stable.
+
 * Added metric `rocksdb_cache_peak_allocated` to store the peak memory
   allocation value for in-memory caches.
 
