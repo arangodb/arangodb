@@ -106,7 +106,7 @@
     {
       "name": "enterprise",
       "inherits": "release-base",
-      "displayName": "Build ArangoDB Enterprise Edition",
+      "displayName": "Build ArangoDB Enterprise Edition (Release Build)",
       "cacheVariables": {
         "USE_ENTERPRISE": "On"
       }
