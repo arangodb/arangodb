@@ -1,6 +1,40 @@
 devel
 -----
 
+* FE-255: add validation for collection, document, graph, view and database
+  names.
+
+* Added metric `rocksdb_cache_peak_allocated` to store the peak memory
+  allocation value for in-memory caches.
+
+* Remove leftover in-memory cache tables after dropping collections that
+  had their `cacheEnabled` flag set to `true`. Previously some memory 
+  could remain allocated in the in-memory cache even after such collections
+  were dropped.
+
+* Remove function `getFishbowlStorage()` from bundled JavaScript module 
+  `@arangodb/foxx/manager`. This function was publicly exposed in previous
+  versions, and returned a handle to the `_fishbowl` system collection.
+  Applications should not have depended on it, because that collection was
+  only used to temporarily store the list of Foxx applications stored in
+  a central Github repository maintained by ArangoDB.
+
+* BTS-486: fishbowl collection creation interferes with hot backup.
+
+  Do not dynamically create the `_fishbowl` system collections anymore to
+  store the list of Foxx applications stored from a central Github repository 
+  maintained by ArangoDB. Instead, store the list in memory.
+  This has the advantage that the `_fishbowl` system collection does not need
+  to be created on the fly, which could have interfered with backups running
+  at the very same time. 
+  Additionally the previous `_fishbowl` collection was database-specific, so
+  one instance of the collection could be created per database in a deployment.
+  Now, the list of applications stored in memory is shared between all 
+  databases in a deployment.
+
+* Add metric `arangodb_file_descriptors_limit` to expose the system limit for
+  the number of open files for the arangod process.
+
 * Fix an issue that causes followers to be dropped due to premature transaction
   abortions as a result of query failures.
   When we have a query that results in a failure this will cause the leaders to
