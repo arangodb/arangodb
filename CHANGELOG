@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-211: Allow admins to edit gravatar email
+
 * MDS-1098: In 3.10 we have introduced an optimization on Traversals to pull
   post-filter conditions into the traversal-statements, like the following:
 
