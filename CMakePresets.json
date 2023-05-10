@@ -74,7 +74,8 @@
       "name": "tsan",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "-fsanitize=thread",
-        "CMAKE_C_FLAGS": "-fsanitize=thread"
+        "CMAKE_C_FLAGS": "-fsanitize=thread",
+        "USE_JEMALLOC": "Off"
       }
     },
     {
