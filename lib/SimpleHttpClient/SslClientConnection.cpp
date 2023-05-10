@@ -662,8 +662,8 @@ bool SslClientConnection::setSocketToNonBlocking() {
     return false;
   }
 #else
-  if (ioctlsocket(_socket.fileDescriptor, FIONBIO,
-                  std::static_cast<u_long>(1)) != 0) {
+  u_long nonBlocking = 1;
+  if (ioctlsocket(_socket.fileDescriptor, FIONBIO, &nonBlocking) != 0) {
     _errorDetails = "Attempt to create non-blocking socket generated error " +
                     std::to_string(WSAGetLastError());
     return false;
@@ -681,7 +681,8 @@ bool SslClientConnection::cleanUpSocketFlags() {
     return false;
   }
 #else
-  if (ioctlsocket(_socket.fileDescriptor, FIONBIO, 0) != 0) {
+  u_long nonBlocking = 0;
+  if (ioctlsocket(_socket.fileDescriptor, FIONBIO, &nonBlocking) != 0) {
     _errorDetails = "Attempt to make socket blocking generated error " +
                     std::to_string(WSAGetLastError());
     return false;
