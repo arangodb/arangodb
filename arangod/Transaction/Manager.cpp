@@ -93,7 +93,7 @@ Manager::Manager(ManagerFeature& feature)
       _nrRunning(0),
       _nrReadLocked(0),
       _disallowInserts(false),
-      _writeLockHeld(false),
+      _hotbackupCommitLockHeld(false),
       _streamingLockTimeout(feature.streamingLockTimeout()),
       _softShutdownOngoing(false) {}
 
@@ -108,7 +108,6 @@ void Manager::registerTransaction(TransactionId transactionId,
   if (!isReadOnlyTransaction && !isFollowerTransaction) {
     LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS)
         << "Acquiring read lock for tid " << transactionId.id();
-    _rwLock.lockRead();
     _nrReadLocked.fetch_add(1, std::memory_order_relaxed);
     LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS)
         << "Got read lock for tid " << transactionId.id()
@@ -126,7 +125,6 @@ void Manager::unregisterTransaction(TransactionId transactionId,
   auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction,
                            &isFollowerTransaction]() noexcept {
     if (!isReadOnlyTransaction && !isFollowerTransaction) {
-      _rwLock.unlockRead();
       _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
       LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS)
           << "Released lock for tid " << transactionId.id()
@@ -1020,6 +1018,7 @@ Result Manager::statusChangeWithTimeout(TransactionId tid,
 
 Result Manager::commitManagedTrx(TransactionId tid,
                                  std::string const& database) {
+  READ_LOCKER(guard, _hotbackupCommitLock);
   return statusChangeWithTimeout(tid, database, transaction::Status::COMMITTED);
 }
 
