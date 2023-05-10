@@ -26,7 +26,6 @@ export const commonFieldsMap = {
     tooltip: "Create the index in background."
   }
 };
-
 const traditionalNameSchema = Yup.string()
   .max(256, "Index name max length is 256.")
   .matches(/^[a-zA-Z]/, "Index name must always start with a letter.")

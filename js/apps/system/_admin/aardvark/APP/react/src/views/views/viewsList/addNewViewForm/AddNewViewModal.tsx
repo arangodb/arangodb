@@ -46,7 +46,6 @@ const traditionalNameSchema = Yup.string()
   .matches(/^[a-zA-Z]/, "View name must always start with a letter.")
   .matches(/^[a-zA-Z0-9\-_]*$/, 'Only symbols, "_" and "-" are allowed.')
   .required("Name is required");
-
 const extendedNameSchema = Yup.string()
   .test(
     "normalizedByteLength",
