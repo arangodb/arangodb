@@ -88,7 +88,7 @@ TEST_F(DocumentStateMachineTest,
       *transactionHandlerMock,
       applyEntry(ReplicatedOperation::buildAbortAllOngoingTrxOperation()))
       .Times(1);
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
 

@@ -324,10 +324,9 @@ struct DocumentFollowerStateWrapper
     return std::move(*this).DocumentFollowerState::resign();
   }
 
-  auto acquireSnapshot(ParticipantId const& destination,
-                       LogIndex waitForIndex) noexcept
+  auto acquireSnapshot(ParticipantId const& destination) noexcept
       -> futures::Future<Result> override {
-    return DocumentFollowerState::acquireSnapshot(destination, waitForIndex);
+    return DocumentFollowerState::acquireSnapshot(destination);
   }
 
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
