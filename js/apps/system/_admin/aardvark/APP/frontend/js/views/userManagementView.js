@@ -154,10 +154,21 @@
       this.createCreateUserModal();
     },
 
+    parseImgString: function (img) {
+      // if already md5
+      if (img.indexOf('@') === -1) {
+        return img;
+      }
+      // else generate md5
+      return CryptoJS.MD5(img).toString();
+    },
+
     submitCreateUser: function () {
       var self = this;
       var userName = $('#newUsername').val();
       var name = $('#newName').val();
+      var profileImg = $('#profileImg').val();
+      profileImg = this.parseImgString(profileImg);
       var userPassword = $('#newPassword').val();
       var status = $('#newStatus').is(':checked');
       if (!this.validateUserInfo(name, userName, userPassword, status)) {
@@ -167,7 +178,7 @@
         user: userName,
         passwd: userPassword,
         active: status,
-        extra: {name: name}
+        extra: {name: name, img: profileImg}
       };
 
       if (frontendConfig.isEnterprise && $('#newRole').is(':checked')) {
@@ -268,6 +279,19 @@
       tableContent.push(
         window.modalView.createTextEntry('newName', 'Name', '', false, 'Name', false)
       );
+      if(frontendConfig.db === '_system') {
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'profileImg',
+            'Gravatar account (Mail)',
+            '',
+            'Mailaddress or its md5 representation of your gravatar account.' +
+            'The address will be converted into a md5 string. ' +
+            'Only the md5 string will be stored, not the mailaddress.',
+            'myAccount(at)gravatar.com'
+          )
+        );
+      }
       tableContent.push(
         window.modalView.createPasswordEntry('newPassword', 'Password', '', false, '', false)
       );
