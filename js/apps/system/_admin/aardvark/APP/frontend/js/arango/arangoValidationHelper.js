@@ -122,5 +122,22 @@
       );
       return collectionNameValidations;
     },
+    getGraphNameValidations: () => {
+      var keySpecialCharactersValidation =
+        window.arangoValidationHelper.getDocumentKeySpecialCharactersValidation();
+
+      var graphNameValidations = [
+        keySpecialCharactersValidation,
+        {
+          rule: Joi.string().normalize().max(254, "utf8"),
+          msg: "Graph name max length is 254 bytes.",
+        },
+        {
+          rule: Joi.string().required(),
+          msg: "No graph name given.",
+        },
+      ];
+      return graphNameValidations;
+    },
   };
 })();
