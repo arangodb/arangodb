@@ -1303,36 +1303,40 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
     
     const generateNodeObject = (node) => {
       nodeNames[node._id] = true;
+      var label = "";
 
       if (config.nodeLabel) {
         if (config.nodeLabel.indexOf('.') > -1) {
-          nodeLabel = getAttributeByKey(node, config.nodeLabel);
-          if (nodeLabel === undefined || nodeLabel === '') {
-            nodeLabel = node._id;
+          label = getAttributeByKey(node, config.nodeLabel);
+          if (label === undefined || label === '') {
+            label = node._id;
           }
         } else {
-          if (node[config.nodeLabel] !== undefined) {
-            if (typeof node[config.nodeLabel] === 'string') {
-              nodeLabel = node[config.nodeLabel];
-            } else {
-              // in case we do not have a string here, we need to stringify it
-              // otherwise we might end up sending not displayable values.
-              nodeLabel = JSON.stringify(node[config.nodeLabel]);
+          var nodeLabelArr = config.nodeLabel.split(" ");
+          _.each(nodeLabelArr, function (attr) {
+
+            var attrVal = getAttributeByKey(node, attr);
+            if(attrVal !== undefined) {
+              if (typeof attrVal === 'string') {
+                label += attr + ": " + getAttributeByKey(node, attr).substring(0, 16) + "; ";
+              } else {
+                // in case we do not have a string here, we need to stringify it
+                // otherwise we might end up sending not displayable values.
+                label += attr + ": " + JSON.stringify(getAttributeByKey(node, attr)) + "; ";
+              }
             }
-          } else {
-            // in case the document does not have the nodeLabel in it, return fallback string
-            nodeLabel = notFoundString;
-          }
+            //nodesArr.push(node);
+          });
         }
       } else {
-        nodeLabel = node._key || node._id;
+        label = node._key || node._id;
       }
 
       if (config.nodeLabelByCollection === 'true') {
-        nodeLabel += ' - ' + node._id.split('/')[0];
+        label += ' - ' + node._id.split('/')[0];
       }
-      if (typeof nodeLabel === 'number') {
-        nodeLabel = JSON.stringify(nodeLabel);
+      if (typeof label === 'number') {
+        label = JSON.stringify(label);
       }
       let sizeAttributeFound;
       if (config.nodeSize && config.nodeSizeByEdges === 'false') {
@@ -1358,7 +1362,7 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
         
       nodeObj = {
         id: node._id,
-        label: nodeLabel,
+        label: label,
         size: nodeSize || 20,
         value: nodeSize || 20,
         sizeCategory: sizeCategory || '',
