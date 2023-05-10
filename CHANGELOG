@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-255: add validation for collection, document, graph, view and database
+  names.
+
 * Added metric `rocksdb_cache_peak_allocated` to store the peak memory
   allocation value for in-memory caches.
 

@@ -1253,7 +1253,8 @@
 
         // create graph section
         title = 'Create Graph';
-
+        var graphNameValidations = 
+          window.arangoValidationHelper.getGraphNameValidations();
         tableContent.push(
           window.modalView.createTextEntry(
             'createNewGraphName',
@@ -1261,7 +1262,8 @@
             '',
             rowDescription.graphName.description,
             rowDescription.graphName.placeholder,
-            true
+            true,
+            graphNameValidations
           )
         );
 
