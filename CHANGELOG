@@ -11,6 +11,19 @@ devel
   names are provided in an array of strings, just like in 
   `--server.failure-point` for arangod.
 
+* ES-1566: fix an issue when trying to restrict traversals to non-existing
+  collections with the `edgeCollections` traversal option.
+  
+  If a non-existing collection is specified in the `edgeCollections` or
+  `vertexCollections` options of an AQL traversal, the query will now fail 
+  with a `collection or view not found` error. This is a behavior change
+  compared to previous versions, which ignored non-existing vertex
+  collections and had undefined behavior when specifying non-existing
+  edge collections.
+
+* Got rid of hard timeout of 10s in sub-arangoshs of tests to make chaos
+  tests more stable.
+
 * Updated arangosync to v2.17.0.
 
 * FE-255: add validation for collection, document, graph, view and database
