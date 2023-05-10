@@ -148,11 +148,6 @@
     },
 
     createEditUserModal: function (username, name, active) {
-      var isAdmin = frontendConfig.db === '_system';
-      var url = arangoHelper.databaseUrl('/_api/user/' +
-        encodeURIComponent(window.App.userCollection.activeUser || "root") +
-        '/database/' + encodeURIComponent(frontendConfig.db));
-
       var buttons, tableContent;
       tableContent = [
         {
