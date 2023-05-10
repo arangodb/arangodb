@@ -647,15 +647,26 @@ void PregelFeature::start() {
 void PregelFeature::beginShutdown() {
   TRI_ASSERT(isStopping());
 
-  std::lock_guard guard{_mutex};
+  // Copy the _conductors and _workers maps here, because in the case of a
+  // single server there is a lock order inversion.  This is because the
+  // conductor code directly calls back into the feature while holding the
+  // _callbackMutex.  At the same time there is code that calls into the feature
+  // trying to acquire _mutex while holding _callbackMutex.
+  //
+  // This code will go away as soon as the actor code is used.
+  std::unique_lock guard{_mutex};
   _gcHandle.reset();
 
+  auto cs = _conductors;
+  auto ws = _workers;
+  guard.unlock();
+
   // cancel all conductors and workers
-  for (auto& it : _conductors) {
+  for (auto& it : cs) {
     it.second.conductor->_shutdown = true;
     it.second.conductor->cancel();
   }
-  for (auto it : _workers) {
+  for (auto it : ws) {
     it.second.second->cancelGlobalStep(VPackSlice());
   }
 }
