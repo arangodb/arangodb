@@ -138,7 +138,8 @@ Result TransactionState::addCollection(DataSourceId cid,
     defined(ARANGODB_ENABLE_FAILURE_TESTS)
   TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
     auto& raceController = basics::DebugRaceController::sharedInstance();
-    if (auto data = raceController.waitForOthers(2, _id, vocbase().server()); data) {
+    if (auto data = raceController.waitForOthers(2, _id, vocbase().server());
+        data) {
       TRI_ASSERT(data->size() == 2);
       // Slice out the first char, then we have a number
       uint32_t shardNum = basics::StringUtils::uint32(&cname.back(), 1);

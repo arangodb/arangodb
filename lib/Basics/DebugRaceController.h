@@ -54,12 +54,12 @@ class DebugRaceController {
   // after the caller has freed the memory.
   auto waitForOthers(
       std::size_t numberOfThreadsToWaitFor, std::any myData,
-      arangodb::application_features::ApplicationServer const& server) -> std::optional<std::vector<std::any>>;
+      arangodb::application_features::ApplicationServer const& server)
+      -> std::optional<std::vector<std::any>>;
 
  private:
-  bool didTrigger(
-      std::unique_lock<std::mutex> const& guard,
-      std::size_t numberOfThreadsToWaitFor) const;
+  bool didTrigger(std::unique_lock<std::mutex> const& guard,
+                  std::size_t numberOfThreadsToWaitFor) const;
 
  private:
   std::mutex mutable _mutex{};
