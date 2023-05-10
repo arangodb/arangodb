@@ -1,4 +1,6 @@
 /* jshint unused: false */
+/* global window, Joi */
+
 (function () {
   "use strict";
 
