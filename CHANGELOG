@@ -6,6 +6,9 @@ v3.11.0 (XXXX-XX-XX)
   starting point. As telemetrics is transparent to the end user, the error
   message interferes with the user experience if keeps appearing.
 
+* FE-255: add validation for collection, document, graph, view and database
+  names.
+
 * Add metric `arangodb_file_descriptors_limit` to expose the system limit for
   the number of open files for the arangod process.
 
