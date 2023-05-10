@@ -558,7 +558,6 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
     VPackBuilder stats;
     StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
     engine.getStatistics(stats);
-
     auto names = {
         // edge cache
         "cache.limit",
@@ -688,9 +687,8 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             auto flags = Index::makeFlags(Index::Serialize::Estimates,
                                           Index::Serialize::Figures);
             constexpr std::array<std::string_view, 12> idxTypes = {
-                "edge",     "geo",        "hash",      "fulltext",
-                "inverted", "persistent", "iresearch", "skiplist",
-                "ttl",      "zkd",        "primary",   "unknown"};
+                "edge",       "geo",      "hash", "fulltext", "inverted",
+                "persistent", "skiplist", "ttl",  "zkd",      "primary"};
             for (auto const& type : idxTypes) {
               idxTypesToAmounts.try_emplace(type, 0);
             }
@@ -702,9 +700,10 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             result.add("idxs", VPackValue(VPackValueType::Array));
             for (auto const it : velocypack::ArrayIterator(outSlice)) {
               auto idxType = it.get("type").stringView();
-              // this is a view that is considered as an index here, but doesn't
+              // this is an invisible index that's created when a link between a
+              // collection and an arangosearch view is created, but doesn't
               // contain standard index information that would be in the indexes
-              // object, so we just count it as a view
+              // object, so we skip it
               if (idxType == "arangosearch") {
                 continue;
               }
