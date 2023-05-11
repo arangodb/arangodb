@@ -4017,7 +4017,8 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
       return arangodb::Result(
           TRI_ERROR_HTTP_CORRUPTED_JSON,
           std::string("result to take snapshot on ") + r.destination +
-              " not an object or has no 'result' attribute");
+              " not an object or has no 'result' attribute: " +
+              resSlice.toJson());
     }
     resSlice = resSlice.get("result");
 
