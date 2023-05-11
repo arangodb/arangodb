@@ -53,6 +53,8 @@ struct CreateWorkers : ExecutionState {
       -> std::unordered_map<ServerID, worker::message::CreateWorker>;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<StateChange> override;
+  auto cancel(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<StateChange> override;
 
   ConductorState& conductor;
   std::unordered_map<ShardID, actor::ActorPID> actorForShard;

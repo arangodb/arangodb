@@ -484,8 +484,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
-      withId, _config, _algorithm->inputFormat(),
-      std::move(_makeStatusCallback()));
+      withId, _config, _algorithm->inputFormat());
 
   storer->store(_magazine).get();
   return PregelResults{.results =

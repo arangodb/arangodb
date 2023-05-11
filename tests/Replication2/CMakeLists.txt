@@ -4,8 +4,6 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   #Mocks/AsyncFollower.h
   #Mocks/AsyncLeader.cpp
   #Mocks/FakeAbstractFollower.h
-  #Mocks/FakeFailureOracle.cpp
-  #Mocks/FakeFailureOracle.h
   Mocks/FakeFollower.cpp
   Mocks/FakeFollower.h
   #Mocks/FakeLeader.cpp

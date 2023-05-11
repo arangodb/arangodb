@@ -50,6 +50,7 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utilities/NameValidator.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-deadline.h"
@@ -314,7 +315,7 @@ std::string V8ClientConnection::endpointSpecification() const {
 ArangoshServer& V8ClientConnection::server() { return _server; }
 
 void V8ClientConnection::setDatabaseName(std::string const& value) {
-  _databaseName = normalizeUtf8ToNFC(value);
+  _databaseName = value;
 }
 
 double V8ClientConnection::timeout() const { return _requestTimeout.count(); }
@@ -619,6 +620,11 @@ static void ClientConnection_reconnect(
   std::string const endpoint = TRI_ObjectToString(isolate, args[0]);
   std::string databaseName = TRI_ObjectToString(isolate, args[1]);
 
+  if (auto res = DatabaseNameValidator::validateName(true, true, databaseName);
+      res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
   std::string username;
 
   if (args.Length() < 3) {
@@ -663,6 +669,7 @@ static void ClientConnection_reconnect(
         TRI_ERROR_FORBIDDEN,
         std::string("not allowed to connect to this endpoint") + endpoint);
   }
+
   client->setEndpoint(endpoint);
   client->setDatabaseName(databaseName);
   client->setUsername(username);

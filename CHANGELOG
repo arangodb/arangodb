@@ -1,6 +1,64 @@
 devel
 -----
 
+* FE-22: Don't display collection content by default when clicking on a
+  collection in the Web UI.
+
+* FE-251: bugfix - prohibit multiple expansions of the same node in the graph
+  viewer.
+
+* FE-162: Fix display of geodesic lines.
+
+* Fixed a race in the Maintenance, impacting leaders that have just been
+  resigned. During a MoveShard job, the old leader could sabotage the whole
+  operation by removing the newly added follower from Current. The solution is
+  to update Current using local collection information, instead of the
+  potentially outdated velocypack slice.
+
+* FE-254: bugfix - filter out empty storedValues for persistent index.
+
+* FE-253: bugfix - validate JSON, show errors & disable save when error.
+
+* FE-252: bugfix - canvas image screenshot breaks graph colors.
+
+* Fix incompatibility between 3.9 and 3.10 w.r.t. to serialization of AQL array
+  filters (i.e. `[* FILTER ...]`). The array filters were serialized in a
+  different way in 3.9 than they are serialized in 3.10. 3.10 also expected the
+  new serialization format when unserializing a plan.
+  The fix now enables support for both formats.
+
+* Fixed issue #18769: Input validation allows invalid UTF-8 code points.
+  
+  This change enforces the validation of UTF-8 surrogate pairs in incoming JSON
+  data. Previously, the following loopholes existed when validating UTF-8
+  surrogate pair data:
+  - a high surrogate, followed by something other than a low surrogate (or the
+    end of the string)
+  - a low surrogate, not preceeded by a high surrogate
+  These loopholes are now closed, which means that any JSON inputs with invalid
+  surrogate pair data will be rejected by the server.
+
+  Note that the extended validation for surrogates can be turned off along with
+  other UTF-8 string validation by setting the server startup option
+  `--server.validate-utf8-strings` to `false`. This is not recommended though,
+  but should only be used in situations when a database is known to contain
+  invalid data and must continue supporting it.
+
+* Updated rclone to v1.62.2 custom build with go1.20.3.
+
+* Changed return code of APIs that create databases from previously 1229
+  (`ERROR_ARANGO_DATABASE_NAME_INVALID`) to 1208 (`ERROR_ARANGO_ILLEGAL_NAME`)
+  in case an invalid database name is used.
+  This is a downwards-incompatible change, but unifies the behavior for
+  database creation with the behavior of collection and view creation,
+  which also return error 1208 in case the specified name is invalid.
+
+* FE-236: bugfix - remove unused files, use new tooltip in views UI.
+
+* FE-238: Added auto-login support in core web UI - disabled logout when
+  auto-login is enabled, set sessionStorage "jwtUser" value when login is
+  skipped.
+
 * FE-233: bugfix - fix query spotlight search not working.
 
 * FE-349: bugfix - filter out empty primarySort field in UI.

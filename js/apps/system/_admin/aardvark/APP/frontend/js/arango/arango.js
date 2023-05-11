@@ -122,6 +122,16 @@
       sessionStorage.setItem('jwtUser', username);
     },
 
+    setCurrentJwtUser: function (username) {
+      sessionStorage.setItem('jwtUser', username);
+    },
+    setAutoLoginEnabled: function (autoLoginEnabled) {
+      sessionStorage.setItem('autoLoginEnabled', autoLoginEnabled);
+    },
+    getAutoLoginEnabled: function (autoLoginEnabled) {
+      return sessionStorage.getItem('autoLoginEnabled');
+    },
+
     checkJwt: function () {
       $.ajax({
         type: 'GET',
@@ -611,14 +621,14 @@
       var defaultRoute = '#collection/' + encodeURIComponent(collectionName);
 
       var menus = {
+        "Info": {
+          route: '#cInfo/' + encodeURIComponent(collectionName)
+        },
         "Content": {
           route: defaultRoute + '/documents/1'
         },
         "Indexes": {
           route: '#cIndices/' + encodeURIComponent(collectionName)
-        },
-        "Info": {
-          route: '#cInfo/' + encodeURIComponent(collectionName)
         },
         "Settings": {
           route: '#cSettings/' + encodeURIComponent(collectionName)

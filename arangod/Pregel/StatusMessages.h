@@ -27,6 +27,7 @@
 #include "Actor/ActorPID.h"
 #include "Pregel/PregelOptions.h"
 #include "Inspection/Types.h"
+#include "MetricsMessages.h"
 
 namespace arangodb::pregel::message {
 
@@ -37,6 +38,13 @@ struct TimingInMicroseconds {
         .value = static_cast<uint64_t>(
             std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now().time_since_epoch())
+                .count())};
+  }
+  static auto systemNow() -> TimingInMicroseconds {
+    return TimingInMicroseconds{
+        .value = static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch())
                 .count())};
   }
 };
@@ -57,6 +65,7 @@ auto inspect(Inspector& f, TimingInMicroseconds& x) {
 struct StatusStart {
   std::string state;
   ExecutionNumber id;
+  std::string user;
   std::string database;
   std::string algorithm;
   TTL ttl;
@@ -65,14 +74,14 @@ struct StatusStart {
 template<typename Inspector>
 auto inspect(Inspector& f, StatusStart& x) {
   return f.object(x).fields(
-      f.field("state", x.state), f.field("id", x.id),
+      f.field("state", x.state), f.field("id", x.id), f.field("user", x.user),
       f.field("database", x.database), f.field("algorithm", x.algorithm),
       f.field("ttl", x.ttl), f.field("parallelism", x.parallelism));
 }
 
 struct PregelStarted {
   std::string state;
-  TimingInMicroseconds time = TimingInMicroseconds::now();
+  TimingInMicroseconds time = TimingInMicroseconds::systemNow();
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PregelStarted& x) {
@@ -169,11 +178,14 @@ auto inspect(Inspector& f, PregelFinished& x) {
 
 struct InFatalError {
   std::string state;
+  std::string errorMessage;
   TimingInMicroseconds time = TimingInMicroseconds::now();
 };
 template<typename Inspector>
 auto inspect(Inspector& f, InFatalError& x) {
-  return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
+  return f.object(x).fields(f.field("state", x.state),
+                            f.field("errorMessage", x.errorMessage),
+                            f.field("time", x.time));
 }
 
 struct Canceled {
@@ -185,17 +197,23 @@ auto inspect(Inspector& f, Canceled& x) {
   return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
 }
 
+struct Cleanup {};
+template<typename Inspector>
+auto inspect(Inspector& f, Cleanup& x) {
+  return f.object(x).fields();
+}
+
 struct StatusMessages
     : std::variant<StatusStart, PregelStarted, LoadingStarted,
                    GraphLoadingUpdate, ComputationStarted,
                    GlobalSuperStepStarted, GlobalSuperStepUpdate,
                    StoringStarted, GraphStoringUpdate, PregelFinished,
-                   InFatalError, Canceled> {
+                   InFatalError, Canceled, Cleanup> {
   using std::variant<StatusStart, PregelStarted, LoadingStarted,
                      GraphLoadingUpdate, ComputationStarted,
                      GlobalSuperStepStarted, GlobalSuperStepUpdate,
                      StoringStarted, GraphStoringUpdate, PregelFinished,
-                     InFatalError, Canceled>::variant;
+                     InFatalError, Canceled, Cleanup>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusMessages& x) {
@@ -213,7 +231,8 @@ auto inspect(Inspector& f, StatusMessages& x) {
       arangodb::inspection::type<GraphStoringUpdate>("GraphStoringUpdate"),
       arangodb::inspection::type<PregelFinished>("PregelFinished"),
       arangodb::inspection::type<InFatalError>("InFatalError"),
-      arangodb::inspection::type<Canceled>("Canceled"));
+      arangodb::inspection::type<Canceled>("Canceled"),
+      arangodb::inspection::type<Cleanup>("Cleanup"));
 }
 
 }  // namespace arangodb::pregel::message

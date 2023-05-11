@@ -37,7 +37,7 @@ TEST_F(DocumentStateFollowerTest, follower_associated_shard_map) {
 
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
   ON_CALL(*shardHandlerMock, getShardMap()).WillByDefault(Return(shardMap));
@@ -67,7 +67,7 @@ TEST_F(DocumentStateFollowerTest,
       .Times(1);
 
   auto follower = createFollower();
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
   Mock::VerifyAndClearExpectations(networkHandlerMock.get());
@@ -109,7 +109,7 @@ TEST_F(DocumentStateFollowerTest,
       });
 
   std::thread t([follower]() {
-    auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+    auto res = follower->acquireSnapshot("participantId");
     EXPECT_TRUE(res.isReady());
     EXPECT_TRUE(res.get().fail());
     EXPECT_TRUE(res.get().errorNumber() ==
@@ -127,7 +127,7 @@ TEST_F(DocumentStateFollowerTest,
 
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
@@ -159,7 +159,7 @@ TEST_F(DocumentStateFollowerTest,
 
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
@@ -185,7 +185,7 @@ TEST_F(DocumentStateFollowerTest,
 
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
@@ -212,7 +212,7 @@ TEST_F(DocumentStateFollowerTest,
 
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
@@ -235,7 +235,7 @@ TEST_F(DocumentStateFollowerTest,
 
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
@@ -264,7 +264,7 @@ TEST_F(DocumentStateFollowerTest,
 
   // First abort then commit
   follower = createFollower();
-  res = follower->acquireSnapshot("participantId", LogIndex{1});
+  res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
   stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
@@ -295,7 +295,7 @@ TEST_F(DocumentStateFollowerTest,
 
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
   auto stream = std::make_shared<MockProducerStream>();
@@ -333,7 +333,7 @@ TEST_F(DocumentStateFollowerTest,
 
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
@@ -361,7 +361,7 @@ TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
 
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
@@ -413,7 +413,7 @@ TEST_F(DocumentStateFollowerTest,
 
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);

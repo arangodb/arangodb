@@ -51,6 +51,37 @@
     return c;
   }
 
+  function waitForCollInSync(collName) {
+    let res;
+    let numSecs = 0.5;
+    let collDistribution = {};
+    let collDistributionPlan = {};
+    let collDistributionCurrent = {};
+    const numSecsLimit = 16;
+    while (true) {
+      const dbName = db._name();
+      const res = db._connection.GET("/_db/" + dbName + "/_admin/cluster/shardDistribution");
+      const colls = res["results"];
+      for (const key in colls) {
+        if (key === collName) {
+          collDistribution = colls[key];
+          break;
+        }
+      }
+      assertFalse(_.isEmpty(collDistribution));
+      collDistributionPlan = collDistribution["Plan"];
+      collDistributionCurrent = collDistribution["Current"];
+      assertFalse(_.isEmpty(collDistributionPlan));
+      assertFalse(_.isEmpty(collDistributionCurrent));
+      if (_.isEqual(collDistributionPlan, collDistributionCurrent) || numSecs >= numSecsLimit) {
+        break;
+      }
+      internal.sleep(numSecs);
+      numSecs *= 2;
+    }
+    assertTrue(numSecs < numSecsLimit, "reached timeout waited for collection " + collName + " to get in sync");
+  }
+
   const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -604,6 +635,9 @@
           assertEqual(i, doc.value);
           assertEqual({value: [i, i]}, doc.more);
         }
+        if (isCluster) {
+          waitForCollInSync("UnitTestsDumpKeygen");
+        }
         if (args.autoIncDocCount === 1001) {
           doc = c.save({});
           assertEqual(doc._key, "42091");
@@ -654,6 +688,9 @@
           assertEqual({value: [i, i]}, doc.more);
           lastKey = doc._key;
         }
+        if (isCluster) {
+          waitForCollInSync("UnitTestsDumpKeygenPadded");
+        }
         if (args.paddedDocCount === 1001) {
           assertTrue(nonDeletedDoc._key > lastKey, nonDeletedDoc._key + ">" + lastKey);
           lastKey = nonDeletedDoc._key;
@@ -691,6 +728,9 @@
         let docs = [];
         for (var i = 0; i < 1000; ++i) docs.push({"a": i});
 
+        if (isCluster) {
+          waitForCollInSync("UnitTestsDumpKeygenUuid");
+        }
         let savedDocs = c.save(docs);
         savedDocs.forEach(doc => {
           assertFalse(allDocs.hasOwnProperty(doc._key), "found " + doc._key + "!");

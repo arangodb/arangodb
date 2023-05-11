@@ -1137,6 +1137,8 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 
     if (res.fail()) {
       std::string errorMsg;
+      // note: TRI_ERROR_ARANGO_DATABASE_NAME_INVALID should not be
+      // used anymore in 3.11 and higher.
       if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID) ||
           res.is(TRI_ERROR_ARANGO_ILLEGAL_NAME)) {
         // special case: if we find an invalid database name during startup,

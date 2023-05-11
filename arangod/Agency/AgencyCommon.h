@@ -138,6 +138,13 @@ struct log_t {
         clientId(clientId),
         timestamp(m) {}
 
+  void toVelocyPackCompact(velocypack::Builder& builder) const {
+    builder.openObject(/*allowUnindexed*/ true);
+    builder.add("index", VPackValue(index));
+    builder.add("query", VPackSlice(entry->data()));
+    builder.close();
+  }
+
   void toVelocyPack(velocypack::Builder& builder) const {
     builder.openObject();
 

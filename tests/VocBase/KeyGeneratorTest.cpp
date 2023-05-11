@@ -244,7 +244,10 @@ TEST(KeyGeneratorTest, validateId) {
   EXPECT_FALSE(::validateIdWrapper("abc123/mötör", false, 6));
   EXPECT_FALSE(::validateIdWrapper("abc123/😀", false, 6));
   EXPECT_FALSE(::validateIdWrapper("abc123/ﻚﻠﺑ ﻞﻄﻴﻓ", false, 6));
-  EXPECT_TRUE(::validateIdWrapper(" a + & ? = abc/!", true, 14));
+  EXPECT_TRUE(::validateIdWrapper("a + & ? = abc/!", true, 13));
+  EXPECT_FALSE(::validateIdWrapper(" a + & ? = abc/!", true, 14));
+  EXPECT_FALSE(::validateIdWrapper("a + & ? = abc /!", true, 14));
+  EXPECT_FALSE(::validateIdWrapper("a + & ? = abc/! ", true, 13));
   EXPECT_TRUE(::validateIdWrapper("<script>alert(1);/!", true, 17));
   EXPECT_TRUE(::validateIdWrapper("a b c/123", true, 5));
   EXPECT_TRUE(::validateIdWrapper("test123 & ' \" <> abc/123abc", true, 20));
@@ -300,7 +303,10 @@ TEST(KeyGeneratorTest, validateId) {
   EXPECT_FALSE(::validateIdWrapper("maçã/ﻚﻠﺑ ﻞﻄﻴﻓ", false, 6));
 
   // Special characters
-  EXPECT_TRUE(::validateIdWrapper(" a + & ? = abc/!", true, 14));
+  EXPECT_TRUE(::validateIdWrapper("a + & ? = abc/!", true, 13));
+  EXPECT_FALSE(::validateIdWrapper(" a + & ? = abc/!", true, 14));
+  EXPECT_FALSE(::validateIdWrapper("a + & ? = abc /!", true, 14));
+  EXPECT_FALSE(::validateIdWrapper("a + & ? = abc/! ", true, 13));
   EXPECT_TRUE(::validateIdWrapper("<script>alert(1);/!", true, 17));
   EXPECT_TRUE(::validateIdWrapper("a b c/123", true, 5));
   EXPECT_TRUE(::validateIdWrapper("test123 & ' \" <> abc/123abc", true, 20));

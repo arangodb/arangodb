@@ -4091,11 +4091,6 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     double timeout  // request timeout
 ) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  if (dbName.empty() || (dbName[0] > '0' && dbName[0] < '9')) {
-    events::DropCollection(dbName, collectionID,
-                           TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-  }
 
   AgencyComm ac(_server);
   AgencyCommResult res;

@@ -25,12 +25,17 @@
 #include <chrono>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
+#include "Basics/TimeString.h"
 #include "Inspection/Status.h"
 #include "Inspection/Format.h"
+#include "Inspection/VPackWithErrorT.h"
 #include "Pregel/DatabaseTypes.h"
 #include "Pregel/StatusMessages.h"
+#include "Utils/DatabaseGuard.h"
+#include "VocBase/vocbase.h"
 #include "fmt/core.h"
 #include "fmt/chrono.h"
+#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 
 namespace arangodb::pregel {
 
@@ -51,7 +56,8 @@ auto inspect(Inspector& f, PrintableTiming& x) {
     }
     return res;
   } else {
-    return f.apply(fmt::format("{:.6f} s", x.timing.value / 1000000.));
+    return f.apply(x.timing.value / 1000000.);
+    // return f.apply(fmt::format("{:.6f} s", x.timing.value / 1000000.));
   }
 }
 struct PrintableDuration {
@@ -113,10 +119,11 @@ struct PregelTimings {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PregelTimings& x) {
-  return f.object(x).fields(
-      f.field("totalRuntime", x.totalRuntime), f.field("loading", x.loading),
-      f.field("computation", x.computation), f.field("storing", x.storing),
-      f.field("gss", x.gss));
+  return f.object(x).fields(f.field("totalRuntime", x.totalRuntime),
+                            f.field("startupTime", x.loading),
+                            f.field("computationTime", x.computation),
+                            f.field("storageTime", x.storing),
+                            f.field("gssTimes", x.gss));
 }
 
 struct GraphLoadingDetails {
@@ -178,7 +185,7 @@ auto inspect(Inspector& f, Details& x) {
                             f.field("graphStoring", x.storing));
 }
 struct StatusDetails {
-  auto update(ServerID server, GraphLoadingDetails const& loadingDetails)
+  auto update(const ServerID& server, GraphLoadingDetails const& loadingDetails)
       -> void {
     perWorker[server].loading = loadingDetails;
     // update combined
@@ -188,7 +195,7 @@ struct StatusDetails {
     }
     combined.loading = loadingCombined;
   }
-  auto update(ServerID server, GraphStoringDetails const& storingDetails)
+  auto update(const ServerID& server, GraphStoringDetails const& storingDetails)
       -> void {
     perWorker[server].storing = storingDetails;
     // update combined
@@ -198,7 +205,7 @@ struct StatusDetails {
     }
     combined.storing = storingCombined;
   }
-  auto update(ServerID server, uint64_t gss,
+  auto update(const ServerID& server, uint64_t gss,
               GlobalSuperStepDetails const& gssDetails) -> void {
     auto gssName = fmt::format("gss_{}", gss);
     perWorker[server].computing[gssName] = gssDetails;
@@ -222,38 +229,56 @@ auto inspect(Inspector& f, StatusDetails& x) {
                             f.field("perWorker", x.perWorker));
 }
 
-struct StatusState {
+struct PregelDate {
+  std::chrono::system_clock::time_point time_point{};
+};
+template<class Inspector>
+auto inspect(Inspector& f, PregelDate& x) {
+  if constexpr (Inspector::isLoading) {
+    return inspection::Status{};
+  } else {
+    return f.apply(timepointToString(x.time_point));
+  }
+}
+struct ExecutionNumberAsString {
+  ExecutionNumber number;
+};
+template<class Inspector>
+auto inspect(Inspector& f, ExecutionNumberAsString& x) {
+  if constexpr (Inspector::isLoading) {
+    return inspection::Status{};
+  } else {
+    return f.apply(std::to_string(x.number.value));
+  }
+}
+
+struct PregelStatus {
   std::string stateName;
-  ExecutionNumber id;
+  std::optional<std::string> errorMessage;
+  ExecutionNumberAsString id;
+  std::string user;
   std::string database;
   std::string algorithm;
-  std::chrono::steady_clock::time_point created;
-  std::optional<std::chrono::steady_clock::time_point> expires;
-  TTL ttl;
-  size_t parallelism;
+  PregelDate created;
+  std::optional<PregelDate> expires;
+  TTL ttl{};
+  size_t parallelism{};
   PregelTimings timings;
-  uint64_t gss;
+  uint64_t gss{};
   VPackBuilder aggregators;
-  uint64_t vertexCount;
-  uint64_t edgeCount;
+  uint64_t vertexCount{};
+  uint64_t edgeCount{};
   StatusDetails details;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, StatusState& x) {
-  // TODO: Fix formatting.
-  auto formatted_created = fmt::format("{}", x.created.time_since_epoch());
-  auto formatted_expires =
-      x.expires.has_value()
-          ? fmt::format("{}", x.expires.value().time_since_epoch())
-          : "0";
-
+auto inspect(Inspector& f, PregelStatus& x) {
   return f.object(x).fields(
-      f.field("state", x.stateName), f.field("id", x.id),
+      f.field("state", x.stateName), f.field("errorMessage", x.errorMessage),
+      f.field("id", x.id), f.field("user", x.user),
       f.field("database", x.database), f.field("algorithm", x.algorithm),
-      f.field("created", formatted_created),
-      f.field("expires", formatted_expires), f.field("ttl", x.ttl),
-      f.field("parallelism", x.parallelism), f.field("timings", x.timings),
-      f.field("gss", x.gss),
+      f.field("created", x.created), f.field("expires", x.expires),
+      f.field("ttl", x.ttl), f.field("parallelism", x.parallelism),
+      f.embedFields(x.timings), f.field("gss", x.gss),
 
       // TODO embed aggregators field (it already has "aggregators" as key)
       f.field("aggregators", x.aggregators),
@@ -261,16 +286,66 @@ auto inspect(Inspector& f, StatusState& x) {
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
       f.field("details", x.details));
 }
+struct StatusState {
+  StatusState(TRI_vocbase_t& vocbase) : vocbaseGuard{vocbase} {}
+
+  std::shared_ptr<PregelStatus> status = std::make_shared<PregelStatus>();
+  const DatabaseGuard vocbaseGuard;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, StatusState& x) {
+  return f.object(x).fields(f.field("status", x.status));
+}
 
 template<typename Runtime>
 struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
+  auto updateStatusDocument() {
+    statuswriter::CollectionStatusWriter cWriter{
+        this->state->vocbaseGuard.database(), this->state->status->id.number};
+    auto serializedStatus =
+        inspection::serializeWithErrorT(this->state->status);
+    if (serializedStatus.ok()) {
+      auto updateResult = cWriter.updateResult(serializedStatus.get().slice());
+      if (updateResult.ok()) {
+        LOG_TOPIC("a63f3", TRACE, Logger::PREGEL)
+            << fmt::format("Updated status document of pregel run {}",
+                           inspection::json(this->state->status->id));
+      } else {
+        LOG_TOPIC("b63f3", TRACE, Logger::PREGEL)
+            << fmt::format("Could not update status document of pregel run {}",
+                           inspection::json(this->state->status->id));
+      }
+    }
+  }
+  auto createStatusDocument() {
+    statuswriter::CollectionStatusWriter cWriter{
+        this->state->vocbaseGuard.database(), this->state->status->id.number};
+    auto serializedStatus =
+        inspection::serializeWithErrorT(this->state->status);
+    if (serializedStatus.ok()) {
+      auto createResult = cWriter.createResult(serializedStatus.get().slice());
+      if (createResult.ok()) {
+        LOG_TOPIC("c63f3", TRACE, Logger::PREGEL)
+            << fmt::format("Created status document of pregel run {}",
+                           inspection::json(this->state->status->id));
+      } else {
+        LOG_TOPIC("d63f3", TRACE, Logger::PREGEL)
+            << fmt::format("Could not create status document of pregel run {}",
+                           inspection::json(this->state->status->id));
+      }
+    }
+  }
+
   auto operator()(message::StatusStart& msg) -> std::unique_ptr<StatusState> {
-    this->state->stateName = msg.state;
-    this->state->id = msg.id;
-    this->state->database = msg.database;
-    this->state->algorithm = msg.algorithm;
-    this->state->ttl = msg.ttl;
-    this->state->parallelism = msg.parallelism;
+    this->state->status->stateName = msg.state;
+    this->state->status->id = ExecutionNumberAsString{.number = msg.id};
+    this->state->status->user = msg.user;
+    this->state->status->database = msg.database;
+    this->state->status->algorithm = msg.algorithm;
+    this->state->status->ttl = msg.ttl;
+    this->state->status->parallelism = msg.parallelism;
+
+    createStatusDocument();
 
     LOG_TOPIC("ea4f4", INFO, Logger::PREGEL)
         << fmt::format("Status Actor {} started", this->self);
@@ -279,26 +354,31 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
 
   auto operator()(message::LoadingStarted loading)
       -> std::unique_ptr<StatusState> {
-    this->state->stateName = loading.state;
-    this->state->timings.loading.setStart(loading.time);
+    this->state->status->stateName = loading.state;
+    this->state->status->timings.loading.setStart(loading.time);
+
+    updateStatusDocument();
+
     return std::move(this->state);
   }
+
   auto operator()(message::GraphLoadingUpdate msg)
       -> std::unique_ptr<StatusState> {
-    this->state->details.update(
+    this->state->status->details.update(
         this->sender.server,
         GraphLoadingDetails{.verticesLoaded = msg.verticesLoaded,
                             .edgesLoaded = msg.edgesLoaded,
                             .memoryBytesUsed = msg.memoryBytesUsed});
-    this->state->vertexCount =
-        this->state->details.combined.loading.verticesLoaded;
-    this->state->edgeCount = this->state->details.combined.loading.edgesLoaded;
+    this->state->status->vertexCount =
+        this->state->status->details.combined.loading.verticesLoaded;
+    this->state->status->edgeCount =
+        this->state->status->details.combined.loading.edgesLoaded;
     return std::move(this->state);
   }
 
   auto operator()(message::GlobalSuperStepUpdate msg)
       -> std::unique_ptr<StatusState> {
-    this->state->details.update(
+    this->state->status->details.update(
         this->sender.server, msg.gss,
         GlobalSuperStepDetails{
             .verticesProcessed = msg.verticesProcessed,
@@ -310,80 +390,107 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
 
   auto operator()(message::GraphStoringUpdate msg)
       -> std::unique_ptr<StatusState> {
-    this->state->details.update(
+    this->state->status->details.update(
         this->sender.server,
         GraphStoringDetails{.verticesStored = msg.verticesStored});
     return std::move(this->state);
   }
 
   auto operator()(message::PregelStarted msg) -> std::unique_ptr<StatusState> {
-    this->state->stateName = msg.state;
-    this->state->timings.totalRuntime.setStart(msg.time);
+    this->state->status->stateName = msg.state;
+    this->state->status->timings.totalRuntime.setStart(msg.time);
 
     auto duration = std::chrono::microseconds{msg.time.value};
-    this->state->created =
-        std::chrono::time_point<std::chrono::steady_clock>{duration};
+    this->state->status->created = PregelDate{
+        .time_point =
+            std::chrono::time_point<std::chrono::system_clock>{duration}};
+
+    updateStatusDocument();
 
     return std::move(this->state);
   }
 
   auto operator()(message::ComputationStarted msg)
       -> std::unique_ptr<StatusState> {
-    this->state->stateName = msg.state;
-    this->state->timings.loading.setStop(msg.time);
-    this->state->timings.computation.setStart(msg.time);
-    this->state->timings.gss.push_back(PrintableDuration::withStart(msg.time));
+    this->state->status->stateName = msg.state;
+    this->state->status->timings.loading.setStop(msg.time);
+    this->state->status->timings.computation.setStart(msg.time);
+    this->state->status->timings.gss.push_back(
+        PrintableDuration::withStart(msg.time));
+
+    updateStatusDocument();
+
     return std::move(this->state);
   }
 
   auto operator()(message::StoringStarted msg) -> std::unique_ptr<StatusState> {
-    this->state->stateName = msg.state;
-    this->state->timings.computation.setStop(msg.time);
+    this->state->status->stateName = msg.state;
+    this->state->status->timings.computation.setStop(msg.time);
 
-    if (not this->state->timings.gss.empty()) {
-      this->state->timings.gss.back().setStop(msg.time);
+    if (not this->state->status->timings.gss.empty()) {
+      this->state->status->timings.gss.back().setStop(msg.time);
     }
 
-    this->state->timings.storing.setStart(msg.time);
+    this->state->status->timings.storing.setStart(msg.time);
+
+    updateStatusDocument();
+
     return std::move(this->state);
   }
 
   auto operator()(message::GlobalSuperStepStarted msg)
       -> std::unique_ptr<StatusState> {
-    this->state->stateName = msg.state;
-    this->state->gss = msg.gss;
-    if (not this->state->timings.gss.empty()) {
-      this->state->timings.gss.back().setStop(msg.time);
+    this->state->status->stateName = msg.state;
+    this->state->status->gss = msg.gss;
+    if (not this->state->status->timings.gss.empty()) {
+      this->state->status->timings.gss.back().setStop(msg.time);
     }
-    this->state->timings.gss.push_back(PrintableDuration::withStart(msg.time));
-    this->state->aggregators = std::move(msg.aggregators);
-    this->state->vertexCount = msg.vertexCount;
-    this->state->edgeCount = msg.edgeCount;
+    this->state->status->timings.gss.push_back(
+        PrintableDuration::withStart(msg.time));
+    this->state->status->aggregators = std::move(msg.aggregators);
+    this->state->status->vertexCount = msg.vertexCount;
+    this->state->status->edgeCount = msg.edgeCount;
+
+    updateStatusDocument();
+
     return std::move(this->state);
   }
 
   auto operator()(message::PregelFinished& msg)
       -> std::unique_ptr<StatusState> {
-    this->state->stateName = msg.state;
-    this->state->expires =
-        std::chrono::steady_clock::now() + this->state->ttl.duration;
-    this->state->timings.storing.setStop(msg.time);
-    this->state->timings.totalRuntime.setStop(msg.time);
+    this->state->status->stateName = msg.state;
+    this->state->status->expires =
+        PregelDate{.time_point = std::chrono::system_clock::now() +
+                                 this->state->status->ttl.duration};
+    this->state->status->timings.storing.setStop(msg.time);
+    this->state->status->timings.totalRuntime.setStop(msg.time);
+
+    updateStatusDocument();
 
     return std::move(this->state);
   }
 
   auto operator()(message::InFatalError& msg) -> std::unique_ptr<StatusState> {
-    this->state->stateName = msg.state;
-    this->state->timings.stopAll(msg.time);
+    this->state->status->stateName = msg.state;
+    this->state->status->errorMessage = msg.errorMessage;
+    this->state->status->timings.stopAll(msg.time);
+
+    updateStatusDocument();
 
     return std::move(this->state);
   }
 
   auto operator()(message::Canceled& msg) -> std::unique_ptr<StatusState> {
-    this->state->stateName = msg.state;
-    this->state->timings.stopAll(msg.time);
+    this->state->status->stateName = msg.state;
+    this->state->status->timings.stopAll(msg.time);
 
+    updateStatusDocument();
+
+    return std::move(this->state);
+  }
+
+  auto operator()(message::Cleanup& msg) -> std::unique_ptr<StatusState> {
+    this->finish();
     return std::move(this->state);
   }
 
@@ -408,8 +515,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] auto&& rest)
-      -> std::unique_ptr<StatusState> {
+  auto operator()(auto&& rest) -> std::unique_ptr<StatusState> {
     LOG_TOPIC("e9df2", INFO, Logger::PREGEL)
         << "Status Actor: Got unhandled message";
     return std::move(this->state);

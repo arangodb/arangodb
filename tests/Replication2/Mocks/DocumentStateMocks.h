@@ -324,10 +324,9 @@ struct DocumentFollowerStateWrapper
     return std::move(*this).DocumentFollowerState::resign();
   }
 
-  auto acquireSnapshot(ParticipantId const& destination,
-                       LogIndex waitForIndex) noexcept
+  auto acquireSnapshot(ParticipantId const& destination) noexcept
       -> futures::Future<Result> override {
-    return DocumentFollowerState::acquireSnapshot(destination, waitForIndex);
+    return DocumentFollowerState::acquireSnapshot(destination);
   }
 
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
@@ -369,9 +368,6 @@ struct MockProducerStream
   MOCK_METHOD(void, release, (LogIndex), (override));
   // ProducerStream<T>
   MOCK_METHOD(LogIndex, insert,
-              (replicated_state::document::DocumentLogEntry const&),
-              (override));
-  MOCK_METHOD((std::pair<LogIndex, DeferredAction>), insertDeferred,
               (replicated_state::document::DocumentLogEntry const&),
               (override));
 

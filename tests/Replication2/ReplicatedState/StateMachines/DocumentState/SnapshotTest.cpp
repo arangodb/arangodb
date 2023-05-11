@@ -93,7 +93,7 @@ TEST_F(DocumentStateSnapshotTest,
 
   // Acquire a snapshot containing a single shard
   auto follower = createFollower();
-  auto res = follower->acquireSnapshot("participantId", LogIndex{1});
+  auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
   // We now acquire a second snapshot with a different set of shards
@@ -119,7 +119,7 @@ TEST_F(DocumentStateSnapshotTest,
       .Times(1);
   EXPECT_CALL(*shardHandlerMock, ensureShard(shardId2, collectionId, _))
       .Times(1);
-  follower->acquireSnapshot("participantId", LogIndex{1});
+  follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
