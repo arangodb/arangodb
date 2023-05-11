@@ -11,6 +11,17 @@ devel
   names are provided in an array of strings, just like in 
   `--server.failure-point` for arangod.
 
+* Add metric `arangodb_file_descriptors_current` to expose the number of
+  file descriptors currently opened by the arangod process. This metric is
+  available on Linux only.
+  As counting the number of open file descriptors can be expensive, this
+  metric is only updated in a configurable interval. The new startup option
+  `--server.descriptors-count-interval` can be used to specify the update
+  interval (in milliseconds). It defaults to 60,000 (i.e. once per minute).
+  The startup option can be set to a value of `0` to disable the counting
+  of open file descriptors for performance reasons.
+  If counting is turned off, the metric will report a value of `0`.
+
 * ES-1566: fix an issue when trying to restrict traversals to non-existing
   collections with the `edgeCollections` traversal option.
   
