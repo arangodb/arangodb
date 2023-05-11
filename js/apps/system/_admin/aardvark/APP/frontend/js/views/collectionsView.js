@@ -498,6 +498,8 @@
           var tableContent = [];
           var advanced = {};
           var advancedTableContent = [];
+          var collectionNameValidations = 
+            window.arangoValidationHelper.getCollectionNameValidations();
 
           tableContent.push(
             window.modalView.createTextEntry(
@@ -507,12 +509,7 @@
               false,
               '',
               true,
-              [
-                {
-                  rule: Joi.string().required(),
-                  msg: 'No collection name given.'
-                }
-              ]
+              collectionNameValidations
             )
           );
 

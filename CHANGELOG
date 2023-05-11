@@ -1,16 +1,47 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
-* Add metric `arangodb_file_descriptors_current` to expose the number of
-  file descriptors currently opened by the arangod process. This metric is
-  available on Linux only.
-  As counting the number of open file descriptors can be expensive, this
-  metric is only updated in a configurable interval. The new startup option
+* Add metric `arangodb_file_descriptors_current` to expose the number of file
+  descriptors currently opened by the arangod process. This metric is available
+  on Linux only.
+  As counting the number of open file descriptors can be expensive, this metric
+  is only updated in a configurable interval. The new startup option
   `--server.descriptors-count-interval` can be used to specify the update
   interval (in milliseconds). It defaults to 60,000 (i.e. once per minute).
-  The startup option can be set to a value of `0` to disable the counting
-  of open file descriptors for performance reasons.
+  The startup option can be set to a value of `0` to disable the counting of
+  open file descriptors for performance reasons.
   If counting is turned off, the metric will report a value of `0`.
+
+* ES-1566: fix an issue when trying to restrict traversals to non-existing
+  collections with `edgeCollections` traversal option.
+
+  If a non-existing collection is specified in the `edgeCollections` or
+  `vertexCollections` options of an AQL traversal, the query will now fail with
+  a `collection or view not found` error. This is a behavior change compared to
+  previous versions, which ignored non-existing vertex collections and had
+  undefined behavior when specifying non-existing edge collections.
+
+* Added metric `rocksdb_cache_peak_allocated` to store the peak memory
+  allocation value for in-memory caches.
+
+* Remove leftover in-memory cache tables after dropping collections that
+  had their `cacheEnabled` flag set to `true`. Previously some memory 
+  could remain allocated in the in-memory cache even after such collections
+  were dropped.
+
+* BTS-1315: Fixed spurious occurring failures during Foxx Application
+  installation in case a Load Balancer is being used in front of the
+  coordinators.
+
+* Updated arangosync to v2.17.0.
+
+* BTS-1343: Removed an error message of endpoint being invalid when attempting
+  fetch telemetrics from the servers by having the invalid endpoint as a
+  starting point. As telemetrics is transparent to the end user, the error
+  message interferes with the user experience if keeps appearing.
+
+* FE-255: add validation for collection, document, graph, view and database
+  names.
 
 * Add metric `arangodb_file_descriptors_limit` to expose the system limit for
   the number of open files for the arangod process.
