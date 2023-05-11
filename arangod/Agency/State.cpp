@@ -615,9 +615,12 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
     return entries;
   }
 
+  index_t origStart = start;
+  index_t origEnd = end;
+
   // start must be greater than or equal to the lowest index
   // and smaller than or equal to the largest index
-  if (start < _log[0].index) {
+  if (start < _log.front().index) {
     start = _log.front().index;
   } else if (start > _log.back().index) {
     start = _log.back().index;
@@ -632,11 +635,25 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
     end = _log.back().index;
   }
 
+  // only for debugging purposes
+  auto dump = [&]() {
+    std::stringstream s;
+    s << "log size: " << _log.size() << ", start: " << start << ", end: " << end
+      << ", cur: " << _cur << ", orig start: " << origStart
+      << ", orig end: " << origEnd << ", log entry indexes:";
+    for (auto const& it : _log) {
+      s << " " << it.index;
+    }
+    return s.str();
+  };
+
   // subtract offset _cur
+  TRI_ASSERT(start >= _cur) << dump();
   start -= _cur;
   end -= (_cur - 1);
 
   for (size_t i = start; i < end; ++i) {
+    TRI_ASSERT(i < _log.size()) << dump();
     entries.push_back(_log[i]);
   }
 

@@ -49,7 +49,7 @@ Result ClientManager::getConnectedClient(
     bool logServerVersion, bool logDatabaseNotFound, bool quiet,
     size_t threadNumber) const {
   try {
-    httpClient = _client.createHttpClient(threadNumber);
+    httpClient = _client.createHttpClient(threadNumber, force);
   } catch (...) {
     if (!force) {
       LOG_TOPIC("2b5fd", FATAL, _topic)

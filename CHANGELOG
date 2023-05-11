@@ -5,6 +5,19 @@ v3.11.0 (XXXX-XX-XX)
   installation in case a Load Balancer is being used in front of the
   coordinators.
 
+* Updated arangosync to v2.17.0.
+
+* BTS-1343: Removed an error message of endpoint being invalid when attempting
+  fetch telemetrics from the servers by having the invalid endpoint as a
+  starting point. As telemetrics is transparent to the end user, the error
+  message interferes with the user experience if keeps appearing.
+
+* FE-255: add validation for collection, document, graph, view and database
+  names.
+
+* Add metric `arangodb_file_descriptors_limit` to expose the system limit for
+  the number of open files for the arangod process.
+
 * Fix an issue that causes followers to be dropped due to premature transaction
   abortions as a result of query failures.
   When we have a query that results in a failure this will cause the leaders to
