@@ -1,6 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* FE-258: allow specifying optimizeTopK during arangosearch view creation.
+
 * Updated arangosync to v2.17.0.
 
 * BTS-1343: Removed an error message of endpoint being invalid when attempting
