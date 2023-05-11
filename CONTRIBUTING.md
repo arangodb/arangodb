@@ -261,7 +261,7 @@ build directory:
     cmake --build . --target frontend
 
 Note that as of 3.12 the frontend target is part of the default target. To avoid building the frontend and
-skip the CMake checks for yarn and node you can disable this using `-DSKIP_FRONTEND`.
+skip the CMake checks for yarn and node you can disable this using `-DUSE_FRONTEND=Off`.
 
 For Oskar you may use the following:
 

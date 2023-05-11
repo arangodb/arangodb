@@ -44,6 +44,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 option(SKIP_PACKAGING "" OFF)
 
+# enable frontend build
+option(USE_FRONTEND "build the browser-based frontend (requires yarn and nodejs)" ON)
+
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
@@ -1167,7 +1170,9 @@ endif()
 
 add_subdirectory(Documentation)
 include(ArangoDBInstall)
-include(frontend/aardvark)
+if(USE_FRONTEND)
+  include(frontend/aardvark)
+endif()
 if (NOT(SKIP_PACKAGING))
   include(packages/packages)
 endif()
