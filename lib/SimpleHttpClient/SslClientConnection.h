@@ -46,7 +46,8 @@ class SslClientConnection final : public GeneralClientConnection {
  private:
   SslClientConnection(SslClientConnection const&);
   SslClientConnection& operator=(SslClientConnection const&);
-  int cleanUpSocketFlags();
+  bool cleanUpSocketFlags();
+  bool setSocketToNonBlocking();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
