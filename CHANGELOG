@@ -1,6 +1,10 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* BTS-1315: Fixed spurious occurring failures during Foxx Application
+  installation in case a Load Balancer is being used in front of the
+  coordinators.
+
 * Updated arangosync to v2.17.0.
 
 * BTS-1343: Removed an error message of endpoint being invalid when attempting
