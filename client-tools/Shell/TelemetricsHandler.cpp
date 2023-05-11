@@ -55,15 +55,7 @@ std::string const kTelemetricsGatheringUrl =
 namespace arangodb {
 TelemetricsHandler::TelemetricsHandler(ArangoshServer& server,
                                        bool sendToEndpoint)
-    :
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _server(server),
-      _sendToEndpoint(sendToEndpoint) {
-}
-#else
-      _server(server) {
-}
-#endif
+    : _server(server), _sendToEndpoint(sendToEndpoint) {}
 
 TelemetricsHandler::~TelemetricsHandler() {
   if (_telemetricsThread.joinable()) {
@@ -119,6 +111,18 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
       _httpClient = clientManager.getConnectedClient(true, false, false, 0);
 
       if (_httpClient != nullptr && _httpClient->isConnected()) {
+        std::string role;
+        Result result;
+        std::tie(result, role) =
+            clientManager.getArangoIsCluster(*(_httpClient.get()));
+        if (result.fail()) {
+          LOG_TOPIC("a3146", WARN, arangodb::Logger::FIXME)
+              << "Error: could not detect ArangoDB instance type: "
+              << result.errorMessage();
+        } else if (role != "COORDINATOR" && role != "SINGLE") {
+          _sendToEndpoint = false;
+        }
+
         auto& clientParams = _httpClient->params();
         clientParams.setRequestTimeout(30);
         lk.unlock();
@@ -336,18 +340,15 @@ void TelemetricsHandler::getTelemetricsInfo(velocypack::Builder& builder) {
 
 void TelemetricsHandler::arrangeTelemetrics() {
   try {
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    _sendToEndpoint = true;
+#endif
     fetchTelemetricsFromServer();
 
     std::unique_lock lk(_mtx);
     if (_telemetricsFetchResponse.ok() && !_telemetricsFetchedInfo.isEmpty()) {
       lk.unlock();
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      bool sendToEndpoint = _sendToEndpoint;
-#else
-      constexpr bool sendToEndpoint = true;
-#endif
-      if (sendToEndpoint) {
+      if (_sendToEndpoint) {
         sendTelemetricsToEndpoint(::kTelemetricsGatheringUrl);
       }
     }

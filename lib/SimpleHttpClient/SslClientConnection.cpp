@@ -415,8 +415,8 @@ bool SslClientConnection::connectSocket() {
 
     long certError;
 
-    if ((errorDetail == SSL_ERROR_WANT_READ) ||
-        (errorDetail == SSL_ERROR_WANT_WRITE)) {
+    if (!_isSocketNonBlocking && ((errorDetail == SSL_ERROR_WANT_READ) ||
+                                  (errorDetail == SSL_ERROR_WANT_WRITE))) {
       return true;
     }
 
