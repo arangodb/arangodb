@@ -4494,13 +4494,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
     // Call lock on all database servers
 
     std::vector<ServerID> dbServers = ci.getCurrentDBServers();
-    std::vector<ServerID> allServers = [&]() {
-      std::vector<ServerID> s = ci.getCurrentCoordinators();
-      s.reserve(dbServers.size());
-      std::copy(dbServers.begin(), dbServers.end(), std::back_inserter(s));
-      return s;
-    }();
-    LOG_DEVEL << "sending lock command to " << allServers;
+    std::vector<ServerID> serversToBeLocked = ci.getCurrentCoordinators();
+    LOG_DEVEL << "sending lock command to " << serversToBeLocked;
     std::vector<ServerID> lockedServers;
     // We try to hold all write transactions on all servers at the same time.
     // The default timeout to get to this state is 120s. We first try for a
@@ -4510,7 +4505,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
     // 15, 30 and 60 to try before the default timeout of 120s has been reached.
     double lockWait(15.0);
     while (steady_clock::now() < end && !feature.server().isStopping()) {
-      result = lockServersTrxCommit(pool, backupId, allServers, lockWait,
+      result = lockServersTrxCommit(pool, backupId, serversToBeLocked, lockWait,
                                     lockedServers);
       if (!result.ok()) {
         unlockServersTrxCommit(pool, backupId, lockedServers);
@@ -4563,7 +4558,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
 
       // send the locks
       result = hotbackupAsyncLockDBServersTransactions(
-          pool, backupId, allServers, lockWait, lockJobIds);
+          pool, backupId, serversToBeLocked, lockWait, lockJobIds);
       if (result.fail()) {
         events::CreateHotbackup(timeStamp + "_" + backupId,
                                 result.errorNumber());
@@ -4607,7 +4602,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
     // In the case we left the above loop with a negative result,
     // and we are in the case of a force backup we want to continue here
     if (!gotLocks && !allowInconsistent) {
-      unlockServersTrxCommit(pool, backupId, allServers);
+      unlockServersTrxCommit(pool, backupId, serversToBeLocked);
       // release the lock
       releaseAgencyLock.fire();
       result.reset(
@@ -4621,14 +4616,14 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
     }
 
     BackupMeta meta(backupId, "", timeStamp, std::vector<std::string>{}, 0, 0,
-                    static_cast<unsigned int>(allServers.size()), "",
+                    static_cast<unsigned int>(serversToBeLocked.size()), "",
                     !gotLocks);  // Temporary
     std::vector<std::string> dummy;
     result = hotBackupDBServers(pool, backupId, timeStamp, dbServers,
                                 agency->slice(),
                                 /* force */ !gotLocks, meta);
     if (!result.ok()) {
-      unlockServersTrxCommit(pool, backupId, allServers);
+      unlockServersTrxCommit(pool, backupId, serversToBeLocked);
       // release the lock
       releaseAgencyLock.fire();
       result.reset(
@@ -4641,7 +4636,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
       return result;
     }
 
-    unlockServersTrxCommit(pool, backupId, allServers);
+    unlockServersTrxCommit(pool, backupId, serversToBeLocked);
     // release the lock
     releaseAgencyLock.fire();
 
