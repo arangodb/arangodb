@@ -4496,7 +4496,6 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
 
     std::vector<ServerID> dbServers = ci.getCurrentDBServers();
     std::vector<ServerID> serversToBeLocked = ci.getCurrentCoordinators();
-    LOG_DEVEL << "sending lock command to " << serversToBeLocked;
     std::vector<ServerID> lockedServers;
     // We try to hold all write transactions on all servers at the same time.
     // The default timeout to get to this state is 120s. We first try for a
