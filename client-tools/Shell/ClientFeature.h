@@ -117,12 +117,12 @@ class ClientFeature final : public HttpEndpointProvider {
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      size_t threadNumber = 0) const;
+      size_t threadNumber = 0, bool suppressError = false) const;
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      std::string const& definition) const;
+      std::string const& definition, bool suppressError = false) const;
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      std::string const& definition,
-      httpclient::SimpleHttpClientParams const&) const;
+      std::string const& definition, httpclient::SimpleHttpClientParams const&,
+      bool suppressError = false) const;
   std::vector<std::string> httpEndpoints() override;
 
   CommunicationFeaturePhase& getCommFeaturePhase() { return _comm; }
