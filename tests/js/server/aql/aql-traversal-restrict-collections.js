@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, assertTrue, fail */
+/*global assertEqual, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for regression returning blocks to the manager
@@ -31,60 +31,54 @@
 const jsunity = require("jsunity");
 const internal = require("internal");
 const db = require("@arangodb").db;
+const errors = internal.errors;
 
 const vc1Name = "v1";
 const vc2Name = "v2";
-const ecName = "edges";
+const ec1Name = "e1";
+const ec2Name = "e2";
 
-var cleanup = function() {
+const cleanup = function() {
   db._drop(vc1Name);
   db._drop(vc2Name);
-  db._drop(ecName);
+  db._drop(ec1Name);
+  db._drop(ec2Name);
 };
 
-var createBaseGraph = function () {
+const createBaseGraph = function () {
   const vc1 = db._create(vc1Name);
   const vc2 = db._create(vc2Name);
-  const ec = db._createEdgeCollection(ecName);
+  const ec1 = db._createEdgeCollection(ec1Name);
+  const ec2 = db._createEdgeCollection(ec2Name);
 
+  let docs = [];
   for (let i = 0; i < 10; ++i) {
-    const doc = { _key: "node_" + i, value: i };
-    vc1.save(doc);
-    vc2.save(doc);
+    docs.push({ _key: "node_" + i, value: i });
   }
+  vc1.insert(docs);
+  vc2.insert(docs);
 
+  docs = [];
   for (let i = 0; i < 10; ++i) {
-    ec.save({_from: vc1Name + "/node_" + i, _to: vc2Name + "/node_" + i});
-    ec.save({_from: vc2Name + "/node_" + i, _to: vc1Name + "/node_" + i});
+    docs.push({_from: vc1Name + "/node_" + i, _to: vc2Name + "/node_" + i});
+    docs.push({_from: vc2Name + "/node_" + i, _to: vc1Name + "/node_" + i});
     if (i < 9) {
-      ec.save({_from: vc1Name + "/node_" + i, _to: vc1Name + "/node_" + (i + 1)});
+      docs.push({_from: vc1Name + "/node_" + i, _to: vc1Name + "/node_" + (i + 1)});
     }
     if (i > 0) {
-      ec.save({_from: vc2Name + "/node_" + i, _to: vc2Name + "/node_" + (i - 1)});
+      docs.push({_from: vc2Name + "/node_" + i, _to: vc2Name + "/node_" + (i - 1)});
     }
   }
+  ec1.insert(docs);
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
 
 function vertexCollectionRestrictionSuite() {
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUpAll : function () {
       cleanup();
       createBaseGraph();
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll : function () {
       cleanup();
@@ -96,11 +90,11 @@ function vertexCollectionRestrictionSuite() {
 
     testNoRestriction : function () {
       const query = `WITH @@vc1, @@vc2
-                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
-      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName}).toArray();
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name}).toArray();
       const expected = [
         vc1Name + "/node_4",
         vc1Name + "/node_6",
@@ -115,12 +109,12 @@ function vertexCollectionRestrictionSuite() {
 
     testNoPracticalRestriction: function () {
       const query = `WITH @@vc1, @@vc2
-                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
                        OPTIONS {vertexCollections: ["${vc1Name}", "${vc2Name}"]}
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
-      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
       const expected = [
         vc1Name + "/node_4",
         vc1Name + "/node_6",
@@ -135,12 +129,12 @@ function vertexCollectionRestrictionSuite() {
 
     testRestrict1: function () {
       const query = `WITH @@vc1, @@vc2
-                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
                        OPTIONS {vertexCollections: ["${vc1Name}"]}
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
-      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
       const expected = [
         vc1Name + "/node_8",
       ];
@@ -150,12 +144,12 @@ function vertexCollectionRestrictionSuite() {
 
     testRestrict2: function () {
       const query = `WITH @@vc1, @@vc2
-                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
                        OPTIONS {vertexCollections: ["${vc2Name}"]}
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
-      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
       const expected = [
         vc2Name + "/node_3",
       ];
@@ -165,12 +159,12 @@ function vertexCollectionRestrictionSuite() {
 
     testNoRestrictionBfs : function () {
       const query = `WITH @@vc1, @@vc2
-                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
                        OPTIONS {bfs: true}
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
-      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName}).toArray();
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name}).toArray();
       const expected = [
         vc1Name + "/node_4",
         vc1Name + "/node_6",
@@ -185,12 +179,12 @@ function vertexCollectionRestrictionSuite() {
 
     testNoPracticalRestrictionBfs: function () {
       const query = `WITH @@vc1, @@vc2
-                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
                        OPTIONS {bfs: true, vertexCollections: ["${vc1Name}", "${vc2Name}"]}
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
-      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
       const expected = [
         vc1Name + "/node_4",
         vc1Name + "/node_6",
@@ -205,12 +199,12 @@ function vertexCollectionRestrictionSuite() {
 
     testRestrict1Bfs: function () {
       const query = `WITH @@vc1, @@vc2
-                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
                        OPTIONS {bfs: true, vertexCollections: ["${vc1Name}"]}
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
-      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
       const expected = [
         vc1Name + "/node_8",
       ];
@@ -220,27 +214,92 @@ function vertexCollectionRestrictionSuite() {
 
     testRestrict2Bfs: function () {
       const query = `WITH @@vc1, @@vc2
-                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
                        OPTIONS {bfs: true, vertexCollections: ["${vc2Name}"]}
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
-      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec': ecName }).toArray();
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
       const expected = [
         vc2Name + "/node_3",
       ];
 
       assertEqual(actual, expected);
     },
+    
+    testRestrictEmptyVertexCollections: function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                       OPTIONS {vertexCollections: []}
+                       SORT v._id
+                       RETURN DISTINCT v._id`;
+
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+      const expected = [
+        vc1Name + "/node_4",
+        vc1Name + "/node_6",
+        vc1Name + "/node_8",
+        vc2Name + "/node_3",
+        vc2Name + "/node_5",
+        vc2Name + "/node_7",
+      ];
+
+      assertEqual(actual, expected);
+    },
+    
+    testRestrictInvalidVertexCollections: function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                       OPTIONS {vertexCollections: ["piff", "paff"]}
+                       SORT v._id
+                       RETURN DISTINCT v._id`;
+
+      try {
+        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+    },
+    
+    testRestrictEmptyEdgeCollections: function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                       OPTIONS {edgeCollections: []}
+                       SORT v._id
+                       RETURN DISTINCT v._id`;
+
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+      const expected = [
+        vc1Name + "/node_4",
+        vc1Name + "/node_6",
+        vc1Name + "/node_8",
+        vc2Name + "/node_3",
+        vc2Name + "/node_5",
+        vc2Name + "/node_7",
+      ];
+
+      assertEqual(actual, expected);
+    },
+    
+    testRestrictInvalidEdgeCollections: function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                       OPTIONS {edgeCollections: ["piff", "paff"]}
+                       SORT v._id
+                       RETURN DISTINCT v._id`;
+
+      try {
+        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+    },
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(vertexCollectionRestrictionSuite);
 
 return jsunity.done();
-
