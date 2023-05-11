@@ -1,6 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* FE-265: Fix user permissions radio button shadow.
+
 * Updated arangosync to v2.17.0.
 
 * BTS-1343: Removed an error message of endpoint being invalid when attempting
