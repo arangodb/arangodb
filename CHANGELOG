@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
+  for GeoJSON.
+
 * Add metric `arangodb_file_descriptors_current` to expose the number of
   file descriptors currently opened by the arangod process. This metric is
   available on Linux only.
