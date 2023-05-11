@@ -284,12 +284,12 @@ function saveToJunitXML(options, results) {
           message: ((results.crashed)? "SUT crashed: \n": "SUT was aborted: \n") +results.crashreport
         }
       },
-      staus: false,
+      status: false,
       failed: 1,
     };
   }
 
-  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient)? 'EE_' : 'CE_';
+  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient ? 'EE_' : 'CE_');
   iterateTestResults(options, results, xmlState, {
     testRun: function(options, state, testRun, testRunName) {state.testRunName = testRunName;},
     testSuite: function(options, state, testSuite, testSuiteName) {
