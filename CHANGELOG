@@ -1,6 +1,8 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue #18942: arangorestore ignores the HTTP status code.
+
 * Fix MDS-1070 Update iresearch submodule.
 
 * Updated arangosync to v2.17.0.
