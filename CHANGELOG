@@ -1,6 +1,9 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
+  for GeoJSON.
+
 * Fix MDS-1070 Update iresearch submodule.
 
 * Updated arangosync to v2.17.0.
