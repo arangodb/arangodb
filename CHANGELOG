@@ -1,6 +1,12 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* BTS-1350: Fixed imprecision in index info in telemetrics object for cluster.
+  When the collection also had an arangosearch view, telemetrics showed
+  imprecise index values because the view was being considered as an index of
+  type arangosearch, and its object wouldn't contain expected fields that would
+  be found in other indexes' objects.
+
 * Add metric `arangodb_file_descriptors_current` to expose the number of file
   descriptors currently opened by the arangod process. This metric is available
   on Linux only.
