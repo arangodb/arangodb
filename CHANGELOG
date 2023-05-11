@@ -1,6 +1,8 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue #18942: arangorestore ignores the HTTP status code.
+
 * Updated arangosync to v2.17.0.
 
 * Got rid of hard timeout of 10s in sub-arangoshs of tests to make chaos
