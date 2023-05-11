@@ -85,6 +85,22 @@ jobs:
           command: |
             utils/eslint.sh
 
+  frontend:
+    docker:
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.0.8
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Configure
+          command: |
+            cmake --preset community-pr -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
+      - run:
+          name: Build Frontend
+          command: |
+            cmake --build --preset community-pr --parallel 8 --target frontend
+
   compile-linux:
     parameters:
       preset:
