@@ -2,7 +2,14 @@ v3.9.11 (XXXX-XX-XX)
 --------------------
 
 * ES-1566: fix an issue when trying to restrict traversals to non-existing
-  collections with `edgeCollections` traversal option.
+  collections with the `edgeCollections` traversal option.
+  
+  If a non-existing collection is specified in the `edgeCollections` or
+  `vertexCollections` options of an AQL traversal, the query will now fail 
+  with a `collection or view not found` error. This is a behavior change
+  compared to previous versions, which ignored non-existing vertex
+  collections and had undefined behavior when specifying non-existing
+  edge collections.
 
 * BTS-1148: Fix a race when aborting/finishing a currently active query on a
   DB-Server. This race could cause the query to remain in the server's query
