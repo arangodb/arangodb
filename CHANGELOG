@@ -17,10 +17,15 @@ devel
   
   If a non-existing collection is specified in the `edgeCollections` or
   `vertexCollections` options of an AQL traversal, the query will now fail 
-  with a `collection or view not found` error. This is a behavior change
-  compared to previous versions, which ignored non-existing vertex
-  collections and had undefined behavior when specifying non-existing
-  edge collections.
+  with a `collection or view not found` error. Also, if wrong collection
+  types are used (e.g. an edge collection for `vertexCollections` or a
+  document collection for `edgeCollections`), then an error is raised about
+  an invalid collection type being used.
+
+  This is a behavior change compared to previous versions, which ignored 
+  specifying non-existing vertex collections and had undefined behavior when 
+  specifying non-existing edge collections or using a vertex collection
+  instead of an edge collection.
 
 * Got rid of hard timeout of 10s in sub-arangoshs of tests to make chaos
   tests more stable.
