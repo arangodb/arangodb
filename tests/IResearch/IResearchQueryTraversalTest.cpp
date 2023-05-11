@@ -34,7 +34,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace arangodb::tests {
 namespace {
@@ -95,7 +94,7 @@ class QueryTraversal : public QueryTest {
       auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_NE(nullptr, collection);
 
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 

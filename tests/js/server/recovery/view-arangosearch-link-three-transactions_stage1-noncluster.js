@@ -46,8 +46,6 @@ function runSetup() {
   }
   db.UnitTestsRecoveryDummy.save(data);
   db._query("FOR d IN UnitTestsRecoveryView OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
-  internal.debugSetFailAt("ArangoSearch::ThreeTransactionsMisorder");
-  internal.debugSetFailAt("ArangoSearch::ThreeTransactionsMisorder::StageOneKill");
   tasks.register({
     id: "doc-1",
     command: function (params) {
