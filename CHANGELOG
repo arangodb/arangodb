@@ -27,9 +27,6 @@ devel
   specifying non-existing edge collections or using a vertex collection
   instead of an edge collection.
 
-* Got rid of hard timeout of 10s in sub-arangoshs of tests to make chaos
-  tests more stable.
-
 * Updated arangosync to v2.17.0.
 
 * FE-255: add validation for collection, document, graph, view and database
