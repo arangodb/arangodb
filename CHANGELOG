@@ -11,6 +11,8 @@ v3.10.7 (XXXX-XX-XX)
   collections and had undefined behavior when specifying non-existing
   edge collections.
 
+* Updated arangosync to v2.17.9.
+
 * FE-243: add support for geo_s2 analyzer.
 
 * FE-22: Don't display collection content by default when clicking on a
