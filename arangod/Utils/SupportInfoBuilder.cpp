@@ -98,7 +98,6 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                            [&dbViews, &database = std::as_const(database)](
                                LogicalView::ptr const& view) -> bool {
                              dbViews[database]++;
-
                              return true;
                            });
   }
@@ -559,7 +558,6 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
     VPackBuilder stats;
     StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
     engine.getStatistics(stats);
-
     auto names = {
         // edge cache
         "cache.limit",
@@ -689,9 +687,9 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             auto flags = Index::makeFlags(Index::Serialize::Estimates,
                                           Index::Serialize::Figures);
             constexpr std::array<std::string_view, 12> idxTypes = {
-                "edge",     "geo",        "hash",      "fulltext",
-                "inverted", "persistent", "iresearch", "skiplist",
-                "ttl",      "zkd",        "primary",   "unknown"};
+                "edge",     "geo",        "hash",     "fulltext",
+                "inverted", "persistent", "skiplist", "ttl",
+                "zkd",      "iresearch",  "primary",  "unknown"};
             for (auto const& type : idxTypes) {
               idxTypesToAmounts.try_emplace(type, 0);
             }
@@ -702,6 +700,14 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
 
             result.add("idxs", VPackValue(VPackValueType::Array));
             for (auto const it : velocypack::ArrayIterator(outSlice)) {
+              auto idxType = it.get("type").stringView();
+              // this is an invisible index that's created when a link between a
+              // collection and an arangosearch view is created, but doesn't
+              // contain standard index information that would be in the indexes
+              // object, so we skip it
+              if (idxType == "arangosearch") {
+                continue;
+              }
               result.openObject();
 
               if (auto figures = it.get("figures"); !figures.isNone()) {
@@ -728,7 +734,6 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
                 result.add("cache_usage", VPackValue(cacheUsage));
               }
 
-              auto idxType = it.get("type").stringView();
               if (idxType == "geo1" || idxType == "geo2") {
                 // older deployments can have indexes of type "geo1"
                 // and "geo2". these are old names for "geo" indexes with
