@@ -43,6 +43,7 @@
     "marked": "^0.7.0",
     "memory-fs": "^0.5.0",
     "minimatch": "^3.1.2",
+    "moment": "2.18.1",
     "noty": "^3.2.0-beta",
     "nvd3": "^1.8.6",
     "parse-prometheus-text-format": "^1.1.1",
