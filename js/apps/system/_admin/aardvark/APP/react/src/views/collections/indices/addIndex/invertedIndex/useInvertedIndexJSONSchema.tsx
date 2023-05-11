@@ -258,7 +258,7 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
     }
   },
   required: ["type"],
-  additionalProperties: false
+  additionalProperties: true
 };
 
 /**
