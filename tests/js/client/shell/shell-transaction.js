@@ -838,7 +838,12 @@ function transactionCollectionsSuite() {
       }
 
       c2 = null;
-      internal.wait(0);
+      
+      if (c3 !== null) {
+        c3.drop();
+      }
+
+      c3 = null;
     },
 
     // //////////////////////////////////////////////////////////////////////////////
