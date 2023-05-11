@@ -29,6 +29,9 @@ export const InvertedIndexAnalyzerDropdown = ({
   const [formikField] = useField(field.name);
   const fieldValue = formikField.value;
   React.useEffect(() => {
+    if (field.isDisabled) {
+      return;
+    }
     if (fieldValue) {
       const features = analyzersList?.find(
         analyzer => analyzer.name === fieldValue
