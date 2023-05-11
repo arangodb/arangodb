@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fix a data race on the collection list in TransactionState
+* BTS-1181: fix a data race on the collection list in TransactionState
   This race could happen in the cluster when a collection is sharded by a
   different attribute than `_key` and a document lookup by _key is performed.
   This requires the lookup to be sent to each shard, since we cannot deduce
