@@ -43,7 +43,6 @@ set(FRONTEND_SRC
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/lib/jquery.csv.min.js
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/lib/jquery.form.js
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/lib/jquery.uploadfile.min.js
-  ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/lib/moment.min.js
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/lib/numeral.min.js
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/lib/pretty-bytes.js
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/lib/randomColor.js
