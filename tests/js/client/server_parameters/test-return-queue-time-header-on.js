@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertTrue, assertMatch, arango */
+/* global getOptions, assertEqual, assertFalse, assertTrue, assertMatch, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -32,13 +32,65 @@ if (getOptions === true) {
 }
 const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
+const internal = require('internal');
+const isCluster = internal.isCluster();
+const { getEndpointsByType, debugCanUseFailAt, debugSetFailAt, debugClearFailAt } = require('@arangodb/test-helper');
 
 function testSuite() {  
   const header = "x-arango-queue-time-seconds";
+  
+  let waitForJobsToFinish = () => {
+    let tries = 30;
+    let pending = [];
+    while (tries-- > 0) {
+      pending = arango.GET("/_api/job/pending?count=999999");
+      assertTrue(Array.isArray(pending), pending);
+      if (pending.length === 0) {
+        return;
+      }
+      internal.sleep(1);
+    }
+    assertFalse(true, pending);
+  };
+
+  let waitForPending = (pendingAtStart, min, max) => {
+    let pending = {};
+    let tries = 0;
+    while (tries++ < 120) {
+      pending = arango.GET_RAW("/_api/job/pending?count=999999");
+      let jobs = pending.parsedBody;
+      // must have processed at least 50 jobs and must have at least 1 left
+      if (jobs.length - pendingAtStart.length >= min && 
+          jobs.length - pendingAtStart.length <= max) {
+        return pending;
+      }
+
+      require("internal").sleep(0.25);
+    }
+    assertFalse(true, { tries, pending, pendingAtStart, min, max });
+  };
 
   let jobs = [];
+  let endpoints = [];
 
   return {
+    setUpAll: function() {
+      if (isCluster) {
+        endpoints = getEndpointsByType('coordinator');
+      } else {
+        endpoints = getEndpointsByType('single');
+      }
+      if (endpoints.length && debugCanUseFailAt(endpoints[0])) {
+        endpoints.forEach((ep) => debugSetFailAt(ep, "Scheduler::alwaysSetDequeueTime"));
+      }
+    },
+
+    tearDownAll: function() {
+      if (endpoints.length && debugCanUseFailAt(endpoints[0])) {
+        endpoints.forEach((ep) => debugClearFailAt(ep));
+      }
+    },
+
     setUp: function() {
       jobs = [];
     },
@@ -50,6 +102,8 @@ function testSuite() {
         arango.PUT_RAW("/_api/job/" + job + "/cancel", '');
         arango.DELETE_RAW("/_api/job/" + job, '');
       });
+      // don't leak our jobs into other tests/testsuites
+      waitForJobsToFinish();
     },
 
     testQueueTimeHeaderReturned : function() {
@@ -80,22 +134,14 @@ function testSuite() {
 
       // now wait until some of the requests have been processed,
       // and (hopefully) the dequeue time was updated at least once.
-      let tries = 0;
-      while (tries++ < 60) {
-        let pending = arango.GET("/_api/job/pending?count=999999");
-        if (pending.length - pendingAtStart.length > n - 100 && 
-            pending.length - pendingAtStart.length <= n - 60) {
-          break;
-        }
-        require("internal").sleep(0.5);
-      }
-      
-      let result = arango.GET_RAW("/_api/version");
-      assertTrue(result.headers.hasOwnProperty(header));
-      let value = result.headers[header];
+      let pending = waitForPending(pendingAtStart, 1, n - 30);
+    
+      // process queue time value in last answer we got
+      assertTrue(pending.headers.hasOwnProperty(header));
+      let value = pending.headers[header];
       assertMatch(/^([0-9]*\.)?[0-9]+$/, value);
       value = parseFloat(value);
-      assertTrue(value > 0, value);
+      assertTrue(value > 0, value); 
     },
     
     testRejectBecauseOfTooHighQueueTime : function() {
@@ -111,15 +157,9 @@ function testSuite() {
         assertMatch(/^([0-9]*\.)?[0-9]+$/, value);
       }
       
-      let tries = 0;
-      while (tries++ < 60) {
-        let pending = arango.GET("/_api/job/pending?count=999999");
-        if (pending.length - pendingAtStart.length > n - 100 && 
-            pending.length - pendingAtStart.length <= n - 60) {
-          break;
-        }
-        require("internal").sleep(0.5);
-      }
+      // now wait until some of the requests have been processed,
+      // and (hopefully) the dequeue time was updated at least once.
+      waitForPending(pendingAtStart, 1, n - 30);
 
       let result = arango.GET("/_api/version", { "x-arango-queue-time-seconds": "0.00001" });
       assertEqual(412, result.code);
@@ -143,15 +183,7 @@ function testSuite() {
         assertMatch(/^([0-9]*\.)?[0-9]+$/, value);
       }
 
-      let tries = 0;
-      while (tries++ < 60) {
-        let pending = arango.GET("/_api/job/pending?count=999999");
-        if (pending.length - pendingAtStart.length > n - 100 && 
-            pending.length - pendingAtStart.length <= n - 60) {
-          break;
-        }
-        require("internal").sleep(0.5);
-      }
+      waitForPending(pendingAtStart, 1, n - 30);
       
       let result = arango.GET("/_api/version", { "x-arango-queue-time-seconds": "0" });
       assertEqual("arango", result.server);
