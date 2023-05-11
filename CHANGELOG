@@ -1,6 +1,10 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* BTS-1315: Fixed spurious occurring failures during Foxx Application
+  installation in case a Load Balancer is being used in front of the
+  coordinators.
+
 * Fix an issue that causes followers to be dropped due to premature transaction
   abortions as a result of query failures.
   When we have a query that results in a failure this will cause the leaders to
@@ -101,9 +105,6 @@ v3.11.0-alpha.1 (2023-05-03)
 * FE-238: Added auto-login support in core web UI - disabled logout when
   auto-login is enabled, set sessionStorage "jwtUser" value when login is
   skipped.
-
-* BTS-1315: Fixed spurious occurring failures during Foxx Application installation
-  in case a Load Balancer is being used in front of the coordinators.
 
 * FE-233: bugfix - fix query spotlight search not working.
 
