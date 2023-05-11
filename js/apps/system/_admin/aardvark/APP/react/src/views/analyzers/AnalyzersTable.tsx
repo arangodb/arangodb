@@ -136,6 +136,7 @@ export const AnalyzersTable = () => {
         ]}
         columns={TABLE_COLUMNS}
         data={newAnalyzers || []}
+        emptyStateMessage="No analyzers found"
       />
       <ViewAnalyzerModal />
     </>
