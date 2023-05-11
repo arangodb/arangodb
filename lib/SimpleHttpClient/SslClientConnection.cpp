@@ -673,6 +673,7 @@ bool SslClientConnection::setSocketToNonBlocking() {
 }
 
 bool SslClientConnection::cleanUpSocketFlags() {
+  TRI_ASSERT(_isSocketNonBlocking);
 #if defined(__linux__) || defined(__APPLE__)
   if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags & ~O_NONBLOCK) ==
       -1) {
