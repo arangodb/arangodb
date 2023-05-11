@@ -99,7 +99,6 @@ arangodb::Result HotBackup::executeCoordinator(std::string const& command,
   if (command == "create") {
     return hotBackupCoordinator(feature, payload, report);
   } else if (command == "lock" || command == "unlock") {
-    LOG_DEVEL << "got " << command << " on coordinator";
     // forward to dbserver part
     executeDBServer(command, payload, report);
   } else if (command == "restore") {
