@@ -1028,7 +1028,7 @@ void SupervisedScheduler::trackEndOngoingLowPriorityTask() noexcept {
   --_ongoingLowPriorityGauge;
 }
 
-void SupervisedScheduler::trackQueueTimeViolation() {
+void SupervisedScheduler::trackQueueTimeViolation() noexcept {
   ++_metricsQueueTimeViolations;
 }
 
@@ -1039,8 +1039,15 @@ uint64_t SupervisedScheduler::getLastLowPriorityDequeueTime() const noexcept {
 
 void SupervisedScheduler::setLastLowPriorityDequeueTime(
     uint64_t time) noexcept {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  bool setDequeueTime = false;
+  TRI_IF_FAILURE("Scheduler::alwaysSetDequeueTime") { setDequeueTime = true; }
+#else
+  constexpr bool setDequeueTime = false;
+#endif
+
   // update only probabilistically, in order to reduce contention on the gauge
-  if ((_sharedPRNG.rand() & 7) == 0) {
+  if (setDequeueTime || (_sharedPRNG.rand() & 7) == 0) {
     _metricsLastLowPriorityDequeueTime.operator=(time);
   }
 }
