@@ -272,7 +272,7 @@ function saveToJunitXML(options, results) {
     testRunName: '',
     seenTestCases: false,
   };
-  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient)? 'EE_' : 'CE_';
+  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient ? 'EE_' : 'CE_');
 
   if (results.hasOwnProperty('crashreport')) {
     results['crash'] = {
