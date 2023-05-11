@@ -1,7 +1,7 @@
 devel
 -----
 
-* FE-267: fix Custom analyzer & features not showing up in inverted index
+* FE-267: fix custom analyzer & features not showing up in inverted index
   view, and support for basic fields definition.
 
 * Add metric `arangodb_file_descriptors_current` to expose the number of
