@@ -1,7 +1,7 @@
 devel
 -----
 
-* BTS-1340: Fixed telemetrics api making shell hang when logging into it and 
+* BTS-1340: Fixed telemetrics API making shell hang when logging into it and 
   leaving it too quickly so the telemetrics API doesn't have time to send the 
   data to the warehouse. The thread could be hanging on SSL_connect() until 
   the connection timeout if the socket is blocking, so the socket was made 
@@ -10,6 +10,12 @@ devel
   `--client.failure-points` for arangosh which enables failure points whose 
   names are provided in an array of strings, just like in 
   `--server.failure-point` for arangod.
+
+* BTS-1350: Fixed imprecision in index info in telemetrics object for cluster.
+  When the collection also had an arangosearch view, telemetrics showed 
+  imprecise index values because the view was being considered as an index 
+  of type arangosearch, and its object wouldn't contain expected fields that 
+  would be found in other indexes' objects. 
 
 * Add metric `arangodb_file_descriptors_current` to expose the number of
   file descriptors currently opened by the arangod process. This metric is

@@ -45,6 +45,7 @@ const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'a
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const users = require('@arangodb/users');
+const analyzers = require("@arangodb/analyzers");
 const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 let smartGraph = null;
@@ -275,8 +276,14 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
         db[cn].ensureIndex({type: "persistent", fields: ["value"], name: "persistentIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
+        analyzers.save("testAnalyzer", "delimiter", { delimiter: " " }, [ "frequency"]);
 
-        db._createView('testView1', 'arangosearch', {});
+
+        db._createView('testView1', 'arangosearch', { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
+        let db1DocsCount = 0;
+        db._collections().forEach((coll) => {
+          db1DocsCount += coll.count();
+        });
         db._useDatabase("_system");
 
         arango.restartTelemetrics();
@@ -302,11 +309,12 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
                 assertEqual(coll["rep_factor"], 1);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 1);
+                assertEqual(coll["n_iresearch"], 1);
                 assertEqual(coll["n_geo"], 2);
                 numColls++;
-                assertEqual(coll.idxs.length, 4);
+                assertEqual(coll.idxs.length, 5);
               } else {
-                assertEqual(nDocs, 0);
+                assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections have replication factor 2
                 if (!isCluster) {
                   assertEqual(coll["rep_factor"], 1);
@@ -316,7 +324,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
                 assertEqual(coll["n_geo"], 0);
               }
             });
-            assertEqual(totalNumDocs, 2000);
+            assertEqual(totalNumDocs, db1DocsCount);
           } else {
             //includes the collections created for the smart graph
             assertEqual(database["n_doc_colls"], 15);
@@ -407,8 +415,13 @@ function telemetricsShellReconnectGraphTestsuite() {
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
 
-        db._createView('testView1', 'arangosearch', {});
+        analyzers.save("testAnalyzer", "delimiter", { delimiter: " " }, [ "frequency"]);
 
+        db._createView('testView1', 'arangosearch', { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
+        let db1DocsCount = 0;
+        db._collections().forEach((coll) => {
+          db1DocsCount += coll.count();
+        });
         db._useDatabase("_system");
 
         arango.restartTelemetrics();
@@ -434,11 +447,12 @@ function telemetricsShellReconnectGraphTestsuite() {
                 assertEqual(coll["rep_factor"], 1);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 1);
+                assertEqual(coll["n_iresearch"], 1);
                 assertEqual(coll["n_geo"], 2);
                 numColls++;
-                assertEqual(coll.idxs.length, 4);
+                assertEqual(coll.idxs.length, 5);
               } else {
-                assertEqual(nDocs, 0);
+                assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections have replication factor 2
                 if (!isCluster) {
                   assertEqual(coll["rep_factor"], 1);
@@ -448,7 +462,7 @@ function telemetricsShellReconnectGraphTestsuite() {
                 assertEqual(coll["n_geo"], 0);
               }
             });
-            assertEqual(totalNumDocs, 2000);
+            assertEqual(totalNumDocs, db1DocsCount);
           } else {
             // there are already 12 collections in the _system database + 2 created here
             assertEqual(database["n_doc_colls"], 14);
@@ -577,8 +591,14 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
         db[cn].ensureIndex({type: "persistent", fields: ["value"], name: "persistentIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
+        analyzers.save("testAnalyzer", "delimiter", { delimiter: " " }, [ "frequency"]);
 
-        db._createView('testView1', 'arangosearch', {});
+
+        db._createView('testView1', 'arangosearch',{ links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
+        let db1DocsCount = 0;
+        db._collections().forEach((coll) => {
+          db1DocsCount += coll.count();
+        });
         db._useDatabase("_system");
         telemetrics = arango.GET("/_admin/telemetrics");
 
@@ -602,11 +622,12 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
                 assertEqual(coll["rep_factor"], 1);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 1);
+                assertEqual(coll["n_iresearch"], 1);
                 assertEqual(coll["n_geo"], 2);
                 numColls++;
-                assertEqual(coll.idxs.length, 4);
+                assertEqual(coll.idxs.length, 5);
               } else {
-                assertEqual(nDocs, 0);
+                assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections would have replication factor 2
                 if (!isCluster) {
                   assertEqual(coll["rep_factor"], 1);
@@ -616,7 +637,7 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
                 assertEqual(coll["n_geo"], 0);
               }
             });
-            assertEqual(totalNumDocs, 2000);
+            assertEqual(totalNumDocs, db1DocsCount);
           } else {
             //includes the collections created for the smart graph
             assertEqual(database["n_doc_colls"], 15);
@@ -719,8 +740,14 @@ function telemetricsApiReconnectGraphTestsuite() {
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
 
-        db._createView('testView1', 'arangosearch', {});
-        db._useDatabase("_system");
+        analyzers.save("testAnalyzer", "delimiter", { delimiter: " " }, [ "frequency"]);
+
+
+        db._createView('testView1', 'arangosearch', { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
+        let db1DocsCount = 0;
+        db._collections().forEach((coll) => {
+          db1DocsCount += coll.count();
+        });
         telemetrics = arango.GET("/_admin/telemetrics");
 
         assertForTelemetricsResponse(telemetrics);
@@ -743,11 +770,12 @@ function telemetricsApiReconnectGraphTestsuite() {
                 assertEqual(coll["rep_factor"], 1);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 1);
+                assertEqual(coll["n_iresearch"], 1);
                 assertEqual(coll["n_geo"], 2);
                 numColls++;
-                assertEqual(coll.idxs.length, 4);
+                assertEqual(coll.idxs.length, 5);
               } else {
-                assertEqual(nDocs, 0);
+                assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections would have replication factor 2
                 if (!isCluster) {
                   assertEqual(coll["rep_factor"], 1);
@@ -757,7 +785,7 @@ function telemetricsApiReconnectGraphTestsuite() {
                 assertEqual(coll["n_geo"], 0);
               }
             });
-            assertEqual(totalNumDocs, 2000);
+            assertEqual(totalNumDocs, db1DocsCount);
           } else {
             assertEqual(database["n_doc_colls"], 14);
             assertEqual(database["n_edge_colls"], 1);
