@@ -269,6 +269,11 @@ workflows:
           name: eslint
           requires:
             - minimal-checkout
+      - frontend:
+          name: frontend
+          requires:
+            - minimal-checkout
+
   community-pr:
     jobs:
       - compile-linux:
