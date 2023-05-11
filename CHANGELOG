@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-258: allow specifying optimizeTopK during arangosearch view creation.
+
 * ES-1566: fix an issue when trying to restrict traversals to non-existing
   collections with the `edgeCollections` traversal option.
   
