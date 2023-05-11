@@ -316,16 +316,6 @@ bool SslClientConnection::connectSocket() {
   }
 
   if (_isSocketNonBlocking) {
-#if defined(__linux__) || defined(__APPLE__)
-    _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
-    if (_socketFlags == -1) {
-      _errorDetails = "Socket file descriptor read returned with error " +
-                      std::to_string(errno);
-      _isConnected = false;
-      disconnectSocket();
-      return false;
-    }
-#endif
     if (!setSocketToNonBlocking()) {
       _isConnected = false;
       disconnectSocket();
@@ -656,6 +646,12 @@ bool SslClientConnection::readable() {
 
 bool SslClientConnection::setSocketToNonBlocking() {
 #if defined(__linux__) || defined(__APPLE__)
+  _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
+  if (_socketFlags == -1) {
+    _errorDetails = "Socket file descriptor read returned with error " +
+                    std::to_string(errno);
+    return false;
+  }
   if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags | O_NONBLOCK) == -1) {
     _errorDetails = "Attempt to create non-blocking socket generated error " +
                     std::to_string(errno);
