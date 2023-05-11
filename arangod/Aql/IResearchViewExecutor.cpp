@@ -118,14 +118,14 @@ lookupCollection(arangodb::transaction::Methods& trx, DataSourceId cid,
 }
 
 [[maybe_unused]] inline irs::doc_iterator::ptr pkColumn(
-    irs::sub_reader const& segment) {
+    irs::SubReader const& segment) {
   auto const* reader = segment.column(DocumentPrimaryKey::PK());
 
   return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
 }
 
 [[maybe_unused]] inline irs::doc_iterator::ptr sortColumn(
-    irs::sub_reader const& segment) {
+    irs::SubReader const& segment) {
   auto const* reader = segment.sort();
 
   return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
@@ -770,10 +770,10 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
     if (infos().volatileSort() || !_isInitialized) {
       auto const& scorers = infos().scorers();
 
-      containers::SmallVector<irs::sort::ptr, 2> order;
-      order.reserve(scorers.size());
+      _scorersContainer.clear();
+      _scorersContainer.reserve(scorers.size());
 
-      for (irs::sort::ptr scorer; auto const& scorerNode : scorers) {
+      for (irs::Scorer::ptr scorer; auto const& scorerNode : scorers) {
         TRI_ASSERT(scorerNode.node);
 
         if (!order_factory::scorer(&scorer, *scorerNode.node, queryCtx)) {
@@ -783,15 +783,15 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
         }
 
         assert(scorer);
-        order.emplace_back(std::move(scorer));
+        _scorersContainer.emplace_back(std::move(scorer));
       }
 
       // compile order
-      _order = irs::Order::Prepare(order);
+      _scorers = irs::Scorers::Prepare(_scorersContainer);
     }
 
     // compile filter
-    _filter = root.prepare(*_reader, _order, irs::kNoBoost, &_filterCtx);
+    _filter = root.prepare(*_reader, _scorers, irs::kNoBoost, &_filterCtx);
 
     if constexpr (ExecutionTraits::EmitSearchDoc) {
       TRI_ASSERT(_filterCookie);
@@ -849,7 +849,7 @@ inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
   auto const& storedValue = storedValues[index];
   TRI_ASSERT(!storedValue.empty());
   auto const totalSize = storedValue.size();
-  VPackSlice slice{storedValue.c_str()};
+  VPackSlice slice{storedValue.data()};
   size_t size = 0;
   size_t i = 0;
   for (auto const& [fieldNum, registerId] : fieldsRegs) {
@@ -933,7 +933,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     // we should have written exactly all score registers by now
     TRI_ASSERT(scoreRegIter == scoreRegisters.end());
   } else {
-    UNUSED(bufferEntry);
+    IRS_IGNORE(bufferEntry);
   }
   return true;
 }
@@ -969,7 +969,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::pushStoredValues(
 
 template<typename Impl, typename ExecutionTraits>
 bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
-    irs::sub_reader const& segmentReader, size_t storedValuesIndex /*= 0*/) {
+    irs::SubReader const& segmentReader, size_t storedValuesIndex /*= 0*/) {
   auto const& columnsFieldsRegs = _infos.getOutNonMaterializedViewRegs();
   if (!columnsFieldsRegs.empty()) {
     auto columnFieldsRegs = columnsFieldsRegs.cbegin();
@@ -1083,9 +1083,9 @@ size_t IResearchViewHeapSortExecutor<ExecutionTraits>::skipAll(
     for (size_t readerOffset = 0; readerOffset < count; ++readerOffset) {
       auto& segmentReader = (*this->_reader)[readerOffset];
       auto itr = this->_filter->execute({.segment = segmentReader,
-                                         .scorers = this->_order,
+                                         .scorers = this->_scorers,
                                          .ctx = &this->_filterCtx,
-                                         .mode = irs::ExecutionMode::kAll});
+                                         .wand = {}});
       TRI_ASSERT(itr);
       if (!itr) {
         continue;
@@ -1185,9 +1185,9 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
     if (!itr) {
       auto& segmentReader = (*this->_reader)[readerOffset];
       itr = this->_filter->execute({.segment = segmentReader,
-                                    .scorers = this->_order,
+                                    .scorers = this->_scorers,
                                     .ctx = &this->_filterCtx,
-                                    .mode = irs::ExecutionMode::kAll});
+                                    .wand = {}});
       TRI_ASSERT(itr);
       doc = irs::get<irs::document>(*itr);
       TRI_ASSERT(doc);
@@ -1471,9 +1471,9 @@ bool IResearchViewExecutor<ExecutionTraits>::resetIterator() {
   }
 
   _itr = this->_filter->execute({.segment = segmentReader,
-                                 .scorers = this->_order,
+                                 .scorers = this->_scorers,
                                  .ctx = &this->_filterCtx,
-                                 .mode = irs::ExecutionMode::kAll});
+                                 .wand = {}});
   TRI_ASSERT(_itr);
   _doc = irs::get<irs::document>(*_itr);
   TRI_ASSERT(_doc);
@@ -1699,11 +1699,10 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset() {
   for (size_t i = 0; i < size; ++i) {
     auto& segment = (*this->_reader)[i];
 
-    auto it = segment.mask(
-        this->_filter->execute({.segment = segment,
-                                .scorers = this->_order,
-                                .ctx = &this->_filterCtx,
-                                .mode = irs::ExecutionMode::kAll}));
+    auto it = segment.mask(this->_filter->execute({.segment = segment,
+                                                   .scorers = this->_scorers,
+                                                   .ctx = &this->_filterCtx,
+                                                   .wand = {}}));
     TRI_ASSERT(it);
 
     auto const* doc = irs::get<irs::document>(*it);

@@ -18,6 +18,10 @@ v3.10.7 (XXXX-XX-XX)
 
 * Updated arangosync to v2.17.9.
 
+* Fix MDS-1070 Update iresearch submodule.
+
+* Updated arangosync to v2.17.0.
+
 * FE-243: add support for geo_s2 analyzer.
 
 * FE-22: Don't display collection content by default when clicking on a

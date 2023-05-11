@@ -32,7 +32,7 @@
 namespace arangodb::iresearch {
 
 template<typename Sort>
-class VPackComparer final : public irs::comparer {
+class VPackComparer final : public irs::Comparer {
  public:
   VPackComparer();
 
@@ -50,7 +50,7 @@ class VPackComparer final : public irs::comparer {
   bool empty() const noexcept { return 0 == _size; }
 
  private:
-  int CompareImpl(irs::bytes_ref lhs, irs::bytes_ref rhs) const final;
+  int CompareImpl(irs::bytes_view lhs, irs::bytes_view rhs) const final;
 
   Sort const* _sort;
   size_t _size;  // number of buckets to compare

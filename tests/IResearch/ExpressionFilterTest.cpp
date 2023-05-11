@@ -34,7 +34,6 @@
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/utf8_path.hpp"
 
 #include "velocypack/Iterator.h"
 
@@ -83,163 +82,139 @@ extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
 
-struct custom_sort : public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
+struct custom_sort final : public irs::ScorerBase<void> {
+  static constexpr std::string_view type_name() noexcept {
     return "custom_sort";
   }
 
-  class prepared : public irs::PreparedSortBase<void> {
+  class field_collector final : public irs::FieldCollector {
    public:
-    class field_collector : public irs::sort::field_collector {
-     public:
-      field_collector(const custom_sort& sort) : sort_(sort) {}
+    field_collector(const custom_sort& sort) : sort_(sort) {}
 
-      virtual void collect(const irs::sub_reader& segment,
-                           const irs::term_reader& field) override {
-        if (sort_.field_collector_collect) {
-          sort_.field_collector_collect(segment, field);
-        }
-      }
-
-      virtual void collect(irs::bytes_ref in) override {}
-
-      virtual void reset() override {}
-
-      virtual void write(irs::data_output& out) const override {}
-
-     private:
-      const custom_sort& sort_;
-    };
-
-    class term_collector : public irs::sort::term_collector {
-     public:
-      term_collector(const custom_sort& sort) : sort_(sort) {}
-
-      virtual void collect(const irs::sub_reader& segment,
-                           const irs::term_reader& field,
-                           const irs::attribute_provider& term_attrs) override {
-        if (sort_.term_collector_collect) {
-          sort_.term_collector_collect(segment, field, term_attrs);
-        }
-      }
-
-      virtual void collect(irs::bytes_ref in) override {}
-
-      virtual void reset() override {}
-
-      virtual void write(irs::data_output& out) const override {}
-
-     private:
-      const custom_sort& sort_;
-    };
-
-    struct scorer : public irs::score_ctx {
-      scorer(const custom_sort& sort, const irs::sub_reader& segment_reader,
-             const irs::term_reader& term_reader, const irs::byte_type* stats,
-             const irs::attribute_provider& document_attrs)
-          : document_attrs_(document_attrs),
-            stats_(stats),
-            segment_reader_(segment_reader),
-            sort_(sort),
-            term_reader_(term_reader) {}
-
-      const irs::attribute_provider& document_attrs_;
-      const irs::byte_type* stats_;
-      const irs::sub_reader& segment_reader_;
-      const custom_sort& sort_;
-      const irs::term_reader& term_reader_;
-    };
-
-    static ptr make(prepared);
-
-    prepared(const custom_sort& sort) : sort_(sort) {}
-
-    virtual void collect(irs::byte_type* filter_attrs,
-                         const irs::index_reader& index,
-                         const irs::sort::field_collector* field,
-                         const irs::sort::term_collector* term) const override {
-      if (sort_.collector_finish) {
-        sort_.collector_finish(filter_attrs, index);
+    void collect(const irs::SubReader& segment,
+                 const irs::term_reader& field) final {
+      if (sort_.fieldCollectorCollect) {
+        sort_.fieldCollectorCollect(segment, field);
       }
     }
 
-    virtual irs::IndexFeatures features() const override {
-      return irs::IndexFeatures::NONE;
-    }
+    void collect(irs::bytes_view in) final {}
 
-    virtual irs::sort::field_collector::ptr prepare_field_collector()
-        const override {
-      if (sort_.prepare_field_collector) {
-        return sort_.prepare_field_collector();
-      }
+    void reset() final {}
 
-      return irs::memory::make_unique<custom_sort::prepared::field_collector>(
-          sort_);
-    }
-
-    virtual irs::ScoreFunction prepare_scorer(
-        irs::sub_reader const& segment_reader,
-        irs::term_reader const& term_reader,
-        irs::byte_type const* filter_node_attrs,
-        irs::attribute_provider const& document_attrs,
-        irs::score_t boost) const override {
-      if (sort_.prepare_scorer) {
-        return sort_.prepare_scorer(segment_reader, term_reader,
-                                    filter_node_attrs, document_attrs, boost);
-      }
-
-      return {
-          std::make_unique<custom_sort::prepared::scorer>(
-              sort_, segment_reader, term_reader, filter_node_attrs,
-              document_attrs),
-          [](irs::score_ctx* ctx, irs::score_t* res) {
-            auto& ctxImpl =
-                *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
-
-            EXPECT_TRUE(res);
-
-            auto doc_id =
-                irs::get<irs::document>(ctxImpl.document_attrs_)->value;
-
-            if (ctxImpl.sort_.scorer_score) {
-              ctxImpl.sort_.scorer_score(doc_id, res);
-            }
-          }};
-    }
-
-    virtual irs::sort::term_collector::ptr prepare_term_collector()
-        const override {
-      if (sort_.prepare_term_collector) {
-        return sort_.prepare_term_collector();
-      }
-
-      return irs::memory::make_unique<custom_sort::prepared::term_collector>(
-          sort_);
-    }
+    void write(irs::data_output& out) const final {}
 
    private:
     const custom_sort& sort_;
   };
 
-  std::function<void(const irs::sub_reader&, const irs::term_reader&)>
-      field_collector_collect;
-  std::function<void(const irs::sub_reader&, const irs::term_reader&,
-                     const irs::attribute_provider&)>
-      term_collector_collect;
-  std::function<void(irs::byte_type*, const irs::index_reader&)>
-      collector_finish;
-  std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
-  std::function<irs::ScoreFunction(
-      const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
-      const irs::attribute_provider&, irs::score_t)>
-      prepare_scorer;
-  std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
-  std::function<void(irs::doc_id_t&, irs::score_t*)> scorer_score;
+  class term_collector final : public irs::TermCollector {
+   public:
+    term_collector(const custom_sort& sort) : sort_(sort) {}
 
-  custom_sort() : sort(irs::type<custom_sort>::get()) {}
-  virtual prepared::ptr prepare() const override {
-    return std::make_unique<custom_sort::prepared>(*this);
+    void collect(const irs::SubReader& segment, const irs::term_reader& field,
+                 const irs::attribute_provider& term_attrs) final {
+      if (sort_.termCollectorCollect) {
+        sort_.termCollectorCollect(segment, field, term_attrs);
+      }
+    }
+
+    void collect(irs::bytes_view in) final {}
+
+    void reset() final {}
+
+    void write(irs::data_output& out) const final {}
+
+   private:
+    const custom_sort& sort_;
+  };
+
+  struct scorer final : public irs::score_ctx {
+    scorer(const custom_sort& sort, irs::ColumnProvider const& segment,
+           std::map<irs::type_info::type_id, irs::field_id> const& features,
+           irs::byte_type const* stats,
+           irs::attribute_provider const& doc_attrs)
+        : document_attrs_(doc_attrs),
+          stats_(stats),
+          segment_reader_(segment),
+          sort_(sort) {}
+
+    const irs::attribute_provider& document_attrs_;
+    const irs::byte_type* stats_;
+    const irs::ColumnProvider& segment_reader_;
+    const custom_sort& sort_;
+  };
+
+  void collect(irs::byte_type* filter_attrs, const irs::FieldCollector* field,
+               const irs::TermCollector* term) const final {
+    if (collectorFinish) {
+      collectorFinish(filter_attrs, field, term);
+    }
   }
+
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
+  }
+
+  irs::FieldCollector::ptr prepare_field_collector() const final {
+    if (prepareFieldCollector) {
+      return prepareFieldCollector();
+    }
+
+    return std::make_unique<custom_sort::field_collector>(*this);
+  }
+
+  irs::ScoreFunction prepare_scorer(
+      irs::ColumnProvider const& segment,
+      std::map<irs::type_info::type_id, irs::field_id> const& features,
+      irs::byte_type const* stats, irs::attribute_provider const& doc_attrs,
+      irs::score_t boost) const final {
+    if (prepareScorer) {
+      return prepareScorer(segment, features, stats, doc_attrs, boost);
+    }
+
+    return irs::ScoreFunction::Make<custom_sort::scorer>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          auto& ctxImpl = *reinterpret_cast<const custom_sort::scorer*>(ctx);
+
+          EXPECT_TRUE(res);
+
+          auto doc_id = irs::get<irs::document>(ctxImpl.document_attrs_)->value;
+
+          if (ctxImpl.sort_.scorerScore) {
+            ctxImpl.sort_.scorerScore(doc_id, res);
+          }
+        },
+        *this, segment, features, stats, doc_attrs);
+  }
+
+  irs::TermCollector::ptr prepare_term_collector() const final {
+    if (prepareTermCollector) {
+      return prepareTermCollector();
+    }
+
+    return std::make_unique<custom_sort::term_collector>(*this);
+  }
+
+  std::function<void(const irs::SubReader&, const irs::term_reader&)>
+      fieldCollectorCollect;
+  std::function<void(const irs::SubReader&, const irs::term_reader&,
+                     const irs::attribute_provider&)>
+      termCollectorCollect;
+  std::function<void(irs::byte_type*, irs::FieldCollector const*,
+                     irs::TermCollector const*)>
+      collectorFinish;
+  std::function<irs::FieldCollector::ptr()> prepareFieldCollector;
+  std::function<irs::ScoreFunction(
+      const irs::ColumnProvider& segment,
+      std::map<irs::type_info::type_id, irs::field_id> const& features,
+      irs::byte_type const* stats, irs::attribute_provider const& doc_attrs,
+      irs::score_t boost)>
+      prepareScorer;
+  std::function<irs::TermCollector::ptr()> prepareTermCollector;
+  std::function<void(irs::doc_id_t&, irs::score_t*)> scorerScore;
+
+  custom_sort() = default;
 };
 
 struct IResearchExpressionFilterTest
@@ -280,7 +255,7 @@ struct IResearchExpressionFilterTest
         server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
                           false);  // must be first
-    system = irs::memory::make_unique<TRI_vocbase_t>(
+    system = std::make_unique<TRI_vocbase_t>(
         TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
     features.emplace_back(
         server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
@@ -386,7 +361,7 @@ struct FilterCtx : irs::attribute_provider {
 TEST_F(IResearchExpressionFilterTest, test) {
   arangodb::velocypack::Builder testData;
   {
-    irs::utf8_path resource;
+    std::filesystem::path resource;
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
     testData = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
@@ -405,25 +380,25 @@ TEST_F(IResearchExpressionFilterTest, test) {
         return true;
       }
 
-      irs::string_ref name() const { return "name"; }
+      std::string_view name() const { return "name"; }
 
-      irs::string_ref str;
+      std::string_view str;
     } storedField;
 
     auto writer =
-        irs::index_writer::make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
+        irs::IndexWriter::Make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
     ASSERT_TRUE(writer);
 
     for (auto data : arangodb::velocypack::ArrayIterator(testDataRoot)) {
       storedField.str = arangodb::iresearch::getStringRef(data.get("name"));
 
-      auto ctx = writer->documents();
-      auto doc = ctx.insert();
-      EXPECT_TRUE(doc.insert<irs::Action::STORE>(storedField));
+      auto ctx = writer->GetBatch();
+      auto doc = ctx.Insert();
+      EXPECT_TRUE(doc.Insert<irs::Action::STORE>(storedField));
       EXPECT_TRUE(doc);
     }
 
-    writer->commit();
+    writer->Commit();
   }
 
   // setup ArangoDB database
@@ -445,7 +420,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
   }
 
   // open reader
-  auto reader = irs::directory_reader::open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1U, reader->size());
   auto& segment = (*reader)[0];
@@ -529,11 +504,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(*reader, irs::Order::kUnordered, &queryCtx);
+    auto prepared =
+        filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
     auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Order::kUnordered,
+                                   .scorers = irs::Scorers::kUnordered,
                                    .ctx = &queryCtx,
-                                   .mode = irs::ExecutionMode::kAll});
+                                   .wand = {}});
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -603,11 +579,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(*reader, irs::Order::kUnordered);
+    auto prepared = filter.prepare(*reader, irs::Scorers::kUnordered);
     auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Order::kUnordered,
+                                   .scorers = irs::Scorers::kUnordered,
                                    .ctx = &queryCtx,
-                                   .mode = irs::ExecutionMode::kAll});
+                                   .wand = {}});
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -677,7 +653,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(*reader, irs::Order::kUnordered, &queryCtx);
+    auto prepared =
+        filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
     EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
     EXPECT_EQ(
         typeid(prepared.get()),
@@ -689,9 +666,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto* value = irs::get<irs::payload>(*columnValues);
     ASSERT_NE(nullptr, value);
     auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Order::kUnordered,
+                                   .scorers = irs::Scorers::kUnordered,
                                    .ctx = &queryCtx,
-                                   .mode = irs::ExecutionMode::kAll});
+                                   .wand = {}});
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
@@ -702,7 +679,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(docs->next());
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value->value.c_str()));
+                  irs::to_string<std::string_view>(value->value.data()));
     }
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -772,9 +749,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared =
-        filter.prepare(*reader, irs::Order::kUnordered);  // no context provided
-    EXPECT_EQ(irs::kNoBoost, prepared->boost());          // no boost set
+    auto prepared = filter.prepare(
+        *reader, irs::Scorers::kUnordered);       // no context provided
+    EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
     EXPECT_EQ(
         typeid(prepared.get()),
         typeid(irs::all().prepare(*reader).get()));  // should be same type
@@ -785,9 +762,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto* value = irs::get<irs::payload>(*columnValues);
     ASSERT_NE(nullptr, value);
     auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Order::kUnordered,
+                                   .scorers = irs::Scorers::kUnordered,
                                    .ctx = &queryCtx,
-                                   .mode = irs::ExecutionMode::kAll});
+                                   .wand = {}});
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
@@ -798,7 +775,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(docs->next());
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value->value.c_str()));
+                  irs::to_string<std::string_view>(value->value.data()));
     }
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -868,7 +845,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = nullptr;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(*reader, irs::Order::kUnordered,
+    auto prepared = filter.prepare(*reader, irs::Scorers::kUnordered,
                                    &queryCtx);    // invalid context provided
     EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
     auto column = segment.column("name");
@@ -879,9 +856,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     ASSERT_NE(nullptr, value);
     execCtx.ctx = &ctx;  // fix context
     auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Order::kUnordered,
+                                   .scorers = irs::Scorers::kUnordered,
                                    .ctx = &queryCtx,
-                                   .mode = irs::ExecutionMode::kAll});
+                                   .wand = {}});
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
@@ -892,7 +869,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(docs->next());
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value->value.c_str()));
+                  irs::to_string<std::string_view>(value->value.data()));
     }
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -963,13 +940,13 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = nullptr;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared =
-        filter.prepare(*reader, irs::Order::kUnordered);  // no context provided
-    EXPECT_EQ(irs::kNoBoost, prepared->boost());          // no boost set
+    auto prepared = filter.prepare(
+        *reader, irs::Scorers::kUnordered);       // no context provided
+    EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
     auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Order::kUnordered,
+                                   .scorers = irs::Scorers::kUnordered,
                                    .ctx = &queryCtx,
-                                   .mode = irs::ExecutionMode::kAll});
+                                   .wand = {}});
     EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
     EXPECT_FALSE(docs->next());
   }
@@ -1039,13 +1016,13 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = nullptr;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared =
-        filter.prepare(*reader, irs::Order::kUnordered);  // no context provided
-    EXPECT_EQ(irs::kNoBoost, prepared->boost());          // no boost set
+    auto prepared = filter.prepare(
+        *reader, irs::Scorers::kUnordered);       // no context provided
+    EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
     auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Order::kUnordered,
+                                   .scorers = irs::Scorers::kUnordered,
                                    .ctx = &queryCtx,
-                                   .mode = irs::ExecutionMode::kAll});
+                                   .wand = {}});
     EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
     EXPECT_FALSE(docs->next());
   }
@@ -1110,7 +1087,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(*reader, irs::Order::kUnordered, &queryCtx);
+    auto prepared =
+        filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
     auto column = segment.column("name");
     ASSERT_TRUE(column);
     auto columnValues = column->iterator(irs::ColumnHint::kNormal);
@@ -1118,13 +1096,13 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto* value = irs::get<irs::payload>(*columnValues);
     ASSERT_NE(nullptr, value);
     auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Order::kUnordered,
+                                   .scorers = irs::Scorers::kUnordered,
                                    .ctx = &queryCtx,
-                                   .mode = irs::ExecutionMode::kAll});
+                                   .wand = {}});
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_EQ(*score, irs::ScoreFunction::kDefault);
+    EXPECT_TRUE(*score == irs::ScoreFunction::DefaultScore);
 
     // set reachable filter condition
     {
@@ -1141,7 +1119,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(docs->next());
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value->value.c_str()));
+                  irs::to_string<std::string_view>(value->value.data()));
       it.next();
     }
 
@@ -1160,7 +1138,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
   // query with nondeterministic expression and custom order
   {
-    std::array<irs::sort::ptr, 1> order{std::make_unique<custom_sort>()};
+    std::array<irs::Scorer::ptr, 1> order{std::make_unique<custom_sort>()};
 
     size_t collector_finish_count = 0;
     size_t field_collector_collect_count = 0;
@@ -1168,29 +1146,29 @@ TEST_F(IResearchExpressionFilterTest, test) {
     size_t scorer_score_count = 0;
     auto& sort = static_cast<custom_sort&>(*order.front());
 
-    sort.field_collector_collect = [&field_collector_collect_count](
-                                       const irs::sub_reader&,
-                                       const irs::term_reader&) -> void {
+    sort.fieldCollectorCollect = [&field_collector_collect_count](
+                                     const irs::SubReader&,
+                                     const irs::term_reader&) -> void {
       ++field_collector_collect_count;
     };
-    sort.collector_finish = [&collector_finish_count](
-                                irs::byte_type*,
-                                const irs::index_reader&) -> void {
+    sort.collectorFinish = [&collector_finish_count](
+                               irs::byte_type*, irs::FieldCollector const*,
+                               irs::TermCollector const*) -> void {
       ++collector_finish_count;
     };
-    sort.term_collector_collect = [&term_collector_collect_count](
-                                      const irs::sub_reader&,
-                                      const irs::term_reader&,
-                                      const irs::attribute_provider&) -> void {
+    sort.termCollectorCollect = [&term_collector_collect_count](
+                                    const irs::SubReader&,
+                                    const irs::term_reader&,
+                                    const irs::attribute_provider&) -> void {
       ++term_collector_collect_count;
     };
-    sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc,
-                                              irs::score_t* res) -> void {
+    sort.scorerScore = [&scorer_score_count](irs::doc_id_t doc,
+                                             irs::score_t* res) -> void {
       ASSERT_NE(nullptr, res);
       ++scorer_score_count;
       *res = static_cast<irs::score_t>(doc);
     };
-    auto preparedOrder = irs::Order::Prepare(order);
+    auto preparedOrder = irs::Scorers::Prepare(order);
 
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER "
@@ -1265,11 +1243,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto docs = prepared->execute({.segment = segment,
                                    .scorers = preparedOrder,
                                    .ctx = &queryCtx,
-                                   .mode = irs::ExecutionMode::kAll});
+                                   .wand = {}});
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_NE(*score, irs::ScoreFunction::kDefault);
+    EXPECT_FALSE(*score == irs::ScoreFunction::DefaultScore);
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),
@@ -1292,7 +1270,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       (*score)(&scoreValue);
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value->value.c_str()));
+                  irs::to_string<std::string_view>(value->value.data()));
       it.next();
     }
 
@@ -1376,7 +1354,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(*reader, irs::Order::kUnordered, &queryCtx);
+    auto prepared =
+        filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
     auto column = segment.column("name");
     ASSERT_TRUE(column);
     auto columnValues = column->iterator(irs::ColumnHint::kNormal);
@@ -1384,13 +1363,13 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto* value = irs::get<irs::payload>(*columnValues);
     ASSERT_NE(nullptr, value);
     auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Order::kUnordered,
+                                   .scorers = irs::Scorers::kUnordered,
                                    .ctx = &queryCtx,
-                                   .mode = irs::ExecutionMode::kAll});
+                                   .wand = {}});
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_EQ(*score, irs::ScoreFunction::kDefault);
+    EXPECT_TRUE(*score == irs::ScoreFunction::DefaultScore);
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),
@@ -1419,7 +1398,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(docs->next());
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value->value.c_str()));
+                  irs::to_string<std::string_view>(value->value.data()));
       it.next();
     }
 
