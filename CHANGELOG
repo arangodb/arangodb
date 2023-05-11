@@ -4,6 +4,12 @@ v3.11.0 (XXXX-XX-XX)
 * ES-1566: fix an issue when trying to restrict traversals to non-existing
   collections with `edgeCollections` traversal option.
 
+  If a non-existing collection is specified in the `edgeCollections` or
+  `vertexCollections` options of an AQL traversal, the query will now fail with
+  a `collection or view not found` error. This is a behavior change compared to
+  previous versions, which ignored non-existing vertex collections and had
+  undefined behavior when specifying non-existing edge collections.
+
 * Added metric `rocksdb_cache_peak_allocated` to store the peak memory
   allocation value for in-memory caches.
 
