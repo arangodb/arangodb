@@ -37,7 +37,6 @@
 #include "common.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace arangodb::tests {
 namespace {
@@ -4087,7 +4086,7 @@ class QueryPhrase : public QueryTest {
       auto collection = vocbase.createCollection(createJson->slice());
       ASSERT_NE(nullptr, collection);
 
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
@@ -4159,7 +4158,7 @@ class QueryPhrase : public QueryTest {
       auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_NE(nullptr, collection);
 
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
@@ -6399,15 +6398,15 @@ class QueryPhraseView : public QueryPhrase {
         "testCollection0": {
           "analyzers": [ "test_analyzer", "identity", "::ngram_test_analyzer13", "::ngram_test_analyzer2" ],
           "includeAllFields": true,
-          "version": %u,
+          "version": $0,
           "trackListPositions": true },
         "testCollection1": {
           "analyzers": [ "::test_analyzer", "identity", "::ngram_test_analyzer13", "::ngram_test_analyzer2" ],
-          "version": %u,
+          "version": $0,
           "includeAllFields": true }
     }})";
 
-      auto viewDefinition = irs::string_utils::to_string(
+      auto viewDefinition = absl::Substitute(
           viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
           static_cast<uint32_t>(linkVersion()));
 
@@ -6446,15 +6445,15 @@ class QueryPhraseView : public QueryPhrase {
         "testCollection0": {
           "analyzers": [ "test_analyzer", "::test_analyzer", "identity", "::ngram_test_analyzer13", "::ngram_test_analyzer2" ],
           "includeAllFields": true,
-          "version": %u,
+          "version": $0,
           "trackListPositions": true },
         "testCollection1": {
           "analyzers": [ "test_analyzer", "_system::test_analyzer", "identity", "::ngram_test_analyzer13", "::ngram_test_analyzer2" ],
-          "version": %u,
+          "version": $0,
           "includeAllFields": true }
     }})";
 
-      auto viewDefinition = irs::string_utils::to_string(
+      auto viewDefinition = absl::Substitute(
           viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
           static_cast<uint32_t>(linkVersion()));
 
