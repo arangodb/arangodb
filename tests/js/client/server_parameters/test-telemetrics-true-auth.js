@@ -240,7 +240,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
       } catch (err) {
       }
     },
-
+    
     setUp: function () {
       // clear access counters
       arango.DELETE("/_admin/telemetrics");
@@ -275,7 +275,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
         analyzers.save("testAnalyzer", "delimiter", { delimiter: " " }, [ "frequency"]);
 
 
-        db._createView('testView1', 'arangosearch', {}, { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
+        db._createView('testView1', 'arangosearch', { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
         let db1DocsCount = 0;
         db._collections().forEach((coll) => {
           db1DocsCount += coll.count();
@@ -305,9 +305,10 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
                 assertEqual(coll["rep_factor"], 1);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 1);
+                assertEqual(coll["n_iresearch"], 1);
                 assertEqual(coll["n_geo"], 2);
                 numColls++;
-                assertEqual(coll.idxs.length, 4);
+                assertEqual(coll.idxs.length, 5);
               } else {
                 assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections have replication factor 2
@@ -411,7 +412,7 @@ function telemetricsShellReconnectGraphTestsuite() {
 
         analyzers.save("testAnalyzer", "delimiter", { delimiter: " " }, [ "frequency"]);
 
-        db._createView('testView1', 'arangosearch', {}, { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
+        db._createView('testView1', 'arangosearch', { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
         let db1DocsCount = 0;
         db._collections().forEach((coll) => {
           db1DocsCount += coll.count();
@@ -441,9 +442,10 @@ function telemetricsShellReconnectGraphTestsuite() {
                 assertEqual(coll["rep_factor"], 1);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 1);
+                assertEqual(coll["n_iresearch"], 1);
                 assertEqual(coll["n_geo"], 2);
                 numColls++;
-                assertEqual(coll.idxs.length, 4);
+                assertEqual(coll.idxs.length, 5);
               } else {
                 assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections have replication factor 2
@@ -507,7 +509,7 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
       } catch (err) {
       }
     },
-
+    
     setUp: function () {
       // clear access counters
       arango.DELETE("/_admin/telemetrics");
@@ -542,7 +544,7 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
         analyzers.save("testAnalyzer", "delimiter", { delimiter: " " }, [ "frequency"]);
 
 
-        db._createView('testView1', 'arangosearch', {}, { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
+        db._createView('testView1', 'arangosearch',{ links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
         let db1DocsCount = 0;
         db._collections().forEach((coll) => {
           db1DocsCount += coll.count();
@@ -570,9 +572,10 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
                 assertEqual(coll["rep_factor"], 1);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 1);
+                assertEqual(coll["n_iresearch"], 1);
                 assertEqual(coll["n_geo"], 2);
                 numColls++;
-                assertEqual(coll.idxs.length, 4);
+                assertEqual(coll.idxs.length, 5);
               } else {
                 assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections would have replication factor 2
@@ -655,7 +658,7 @@ function telemetricsApiReconnectGraphTestsuite() {
       db._drop(cn);
       db._drop(cn3);
     },
-
+    
     setUp: function () {
       // clear access counters
       arango.DELETE("/_admin/telemetrics");
@@ -690,7 +693,7 @@ function telemetricsApiReconnectGraphTestsuite() {
         analyzers.save("testAnalyzer", "delimiter", { delimiter: " " }, [ "frequency"]);
 
 
-        db._createView('testView1', 'arangosearch', {}, { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
+        db._createView('testView1', 'arangosearch', { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
         let db1DocsCount = 0;
         db._collections().forEach((coll) => {
           db1DocsCount += coll.count();
@@ -717,9 +720,10 @@ function telemetricsApiReconnectGraphTestsuite() {
                 assertEqual(coll["rep_factor"], 1);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 1);
+                assertEqual(coll["n_iresearch"], 1);
                 assertEqual(coll["n_geo"], 2);
                 numColls++;
-                assertEqual(coll.idxs.length, 4);
+                assertEqual(coll.idxs.length, 5);
               } else {
                 assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections would have replication factor 2
@@ -783,7 +787,7 @@ function telemetricsSendToEndpointRedirectTestsuite() {
       } catch (err) {
       }
     },
-
+    
     setUp: function () {
       // clear access counters
       arango.DELETE("/_admin/telemetrics");
@@ -813,7 +817,7 @@ function telemetricsEnhancingOurCalm() {
         assertEqual(200, res.code);
       }
     },
-
+    
     testTelemetricsApiCallAndSetArangoshUserAgent: function () {
       const n = 50;
 
@@ -823,7 +827,7 @@ function telemetricsEnhancingOurCalm() {
         let res = arango.GET_RAW("/_admin/telemetrics", { "user-agent": "arangosh/3.11.0" });
         if (res.code === 200) {
           ++successful;
-        }
+        } 
         if (res.code === 420) {
           assertEqual(420, res.errorNum);
           ++failed;

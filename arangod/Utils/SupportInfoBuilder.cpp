@@ -98,6 +98,7 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                            [&dbViews, &database = std::as_const(database)](
                                LogicalView::ptr const& view) -> bool {
                              dbViews[database]++;
+
                              return true;
                            });
   }
@@ -558,6 +559,7 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
     VPackBuilder stats;
     StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
     engine.getStatistics(stats);
+
     auto names = {
         // edge cache
         "cache.limit",
@@ -695,19 +697,12 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             }
 
             VPackBuilder output;
-            std::ignore = methods::Indexes::getAll(*coll, flags, false, output);
+            std::ignore = methods::Indexes::getAll(*coll, flags, true, output);
             velocypack::Slice outSlice = output.slice();
 
             result.add("idxs", VPackValue(VPackValueType::Array));
             for (auto const it : velocypack::ArrayIterator(outSlice)) {
               auto idxType = it.get("type").stringView();
-              // this is an invisible index that's created when a link between a
-              // collection and an arangosearch view is created, but doesn't
-              // contain standard index information that would be in the indexes
-              // object, so we skip it
-              if (idxType == "arangosearch") {
-                continue;
-              }
               result.openObject();
 
               if (auto figures = it.get("figures"); !figures.isNone()) {
@@ -734,6 +729,14 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
                 result.add("cache_usage", VPackValue(cacheUsage));
               }
 
+              if (idxType == "arangosearch") {
+                // this is because the telemetrics parser for the object in the
+                // endpoint should contain the arangosearch index with the name
+                // "iresearch" hardcoded, so, until it's changed, we write the
+                // amounts of indexes of this type as "iresearch" in the object
+                idxType = "iresearch";
+              }
+
               if (idxType == "geo1" || idxType == "geo2") {
                 // older deployments can have indexes of type "geo1"
                 // and "geo2". these are old names for "geo" indexes with
@@ -741,8 +744,16 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
                 idxType = "geo";
               }
               result.add("type", VPackValue(idxType));
-              bool isSparse = it.get("sparse").getBoolean();
-              bool isUnique = it.get("unique").getBoolean();
+              bool isSparse = false;
+              auto idxSlice = it.get("sparse");
+              if (!idxSlice.isNone()) {
+                isSparse = idxSlice.getBoolean();
+              }
+              bool isUnique = false;
+              idxSlice = it.get("unique");
+              if (!idxSlice.isNone()) {
+                isUnique = idxSlice.getBoolean();
+              }
               result.add("sparse", VPackValue(isSparse));
               result.add("unique", VPackValue(isUnique));
               idxTypesToAmounts[idxType]++;
