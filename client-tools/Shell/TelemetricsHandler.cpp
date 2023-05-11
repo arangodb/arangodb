@@ -111,8 +111,7 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
       _httpClient = clientManager.getConnectedClient(true, false, false, 0);
 
       if (_httpClient != nullptr && _httpClient->isConnected()) {
-        auto [result, role ] =
-            clientManager.getArangoIsCluster(*_httpClient);
+        auto [result, role] = clientManager.getArangoIsCluster(*_httpClient);
         if (result.fail()) {
           LOG_TOPIC("a3146", WARN, arangodb::Logger::FIXME)
               << "Error: could not detect ArangoDB instance type: "
