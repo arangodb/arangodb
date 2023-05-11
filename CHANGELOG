@@ -1,5 +1,7 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
+* FE-267: fix Custom analyzer & features not showing up in inverted index
+  view, and support for 'basic fields'
 
 * ES-1566: fix an issue when trying to restrict traversals to non-existing
   collections with `edgeCollections` traversal option.
