@@ -746,7 +746,7 @@ void Conductor::persistPregelState(ExecutionState state) {
   // Including those lambda helper methods.
   stateBuilder.openObject();  // opens main builder
   addMinimalOutputToBuilder(stateBuilder);
-  addAdditionalOutputToBuilder(stateBuilder);
+  //  addAdditionalOutputToBuilder(stateBuilder);
   stateBuilder.close();  // closes main builder
 
   TRI_ASSERT(state != ExecutionState::DEFAULT);
