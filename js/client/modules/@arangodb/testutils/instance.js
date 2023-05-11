@@ -891,14 +891,17 @@ class instance {
     }
   }
   killWithCoreDump (message) {
+    let pid = this.pid;
     if (this.options.enableAliveMonitor) {
       internal.removePidFromMonitor(this.pid);
     }
     this.getInstanceProcessStatus();
     this.serverCrashedLocal = true;
     if (this.pid === null) {
+      this.pid = pid;
       print(`${RED}${Date()} instance already gone? ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
       this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
+      this.pid = null;
     } else {
       print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
       crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
