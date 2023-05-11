@@ -308,12 +308,9 @@ function vertexCollectionRestrictionSuite() {
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
-      try {
-        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
-      }
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+      const expected = [];
+      assertEqual(actual, expected);
     },
     
     testRestrictViewAsVertexCollection: function () {
