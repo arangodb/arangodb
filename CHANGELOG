@@ -1,5 +1,6 @@
 devel
 -----
+* FE-257: allow additional properties in inverted index creation.
 
 * ES-1566: fix an issue when trying to restrict traversals to non-existing
   collections with the `edgeCollections` traversal option.
