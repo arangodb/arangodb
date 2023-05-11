@@ -2,7 +2,14 @@ v3.10.7 (XXXX-XX-XX)
 --------------------
 
 * ES-1566: fix an issue when trying to restrict traversals to non-existing
-  collections with `edgeCollections` traversal option.
+  collections with the `edgeCollections` traversal option.
+  
+  If a non-existing collection is specified in the `edgeCollections` or
+  `vertexCollections` options of an AQL traversal, the query will now fail 
+  with a `collection or view not found` error. This is a behavior change
+  compared to previous versions, which ignored non-existing vertex
+  collections and had undefined behavior when specifying non-existing
+  edge collections.
 
 * FE-243: add support for geo_s2 analyzer.
 
