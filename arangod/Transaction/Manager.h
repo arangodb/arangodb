@@ -35,6 +35,7 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
+#include "Basics/ReadLocker.h"
 #include <absl/hash/hash.h>
 #include <atomic>
 #include <functional>
@@ -240,6 +241,12 @@ class Manager final : public IManager {
 
   void initiateSoftShutdown() {
     _softShutdownOngoing.store(true, std::memory_order_relaxed);
+  }
+
+  template<typename F>
+  auto performCommit(F&& fn) {
+    READ_LOCKER(guard, _hotbackupCommitLock);
+    return std::forward<F>(fn)();
   }
 
  private:

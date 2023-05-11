@@ -32,6 +32,8 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
 #include "Metrics/Counter.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 
@@ -204,7 +206,10 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
   LOG_TOPIC("0fe63", DEBUG, Logger::ENGINES) << "executing intermediate commit";
 #endif
 
-  Result res = doCommit();
+  // We have to make sure that no intermediate commit happens while we
+  // create a hotbackup.
+  Result res = arangodb::transaction::ManagerFeature::manager()->performCommit(
+      [&] { return doCommit(); });
   if (res.fail()) {
     // FIXME: do we abort the transaction ?
     return res;
