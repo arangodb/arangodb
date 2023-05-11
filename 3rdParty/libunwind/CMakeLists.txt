@@ -40,7 +40,7 @@ if (LINUX)
                   CFLAGS=${CMAKE_C_FLAGS}
                   CXXFLAGS=${CMAKE_CXX_FLAGS}
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
-                  --disable-shared --enable-static --disable-tests --disable-documentation --disable-per-thread-cache --disable-coredump --disable-ptrace --disable-setjmp --disable-debug --enable-debug-frame --disable-zlibdebuginfo --disable-minidebuginfo --enable-cxx-exceptions --disable-weak-backtrace --disable-unwind-header
+                  --disable-shared --enable-static --disable-tests --disable-documentation --disable-per-thread-cache --disable-coredump --disable-ptrace --disable-setjmp --disable-debug --enable-debug-frame --disable-zlibdebuginfo --disable-minidebuginfo --disable-cxx-exceptions --disable-weak-backtrace --disable-unwind-header
     BUILD_COMMAND
       $(MAKE)
     BUILD_IN_SOURCE
