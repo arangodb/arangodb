@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-265: Fix user permissions radio button shadow.
+
 * ES-1566: fix an issue when trying to restrict traversals to non-existing
   collections with the `edgeCollections` traversal option.
   
