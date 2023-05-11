@@ -174,6 +174,11 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     ResourceUsageScope scope(_resourceMonitor, _keys.size());
     // now we are responsible for tracking memory usage
     _memoryUsage += scope.trackedAndSteal();
+
+    // added this assertion only to check if libubwind produces proper
+    // backtraces on all systems. TODO: obviously remove this assertion
+    // again!
+    TRI_ASSERT(false);
   }
 
   ~RocksDBEdgeIndexLookupIterator() override {
