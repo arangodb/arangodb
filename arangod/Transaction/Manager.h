@@ -131,6 +131,7 @@ class Manager final : public IManager {
                              bool isFollowerTransaction);
 
   uint64_t getActiveTransactionCount();
+  uint64_t getCommittingTransactionCount() { return _nrCommitting; }
 
   void disallowInserts() {
     _disallowInserts.store(true, std::memory_order_release);
@@ -207,7 +208,7 @@ class Manager final : public IManager {
   // Hotbackup Stuff
   // ---------------------------------------------------------------------------
 
-  // temporarily block all new transactions
+  // temporarily block all transactions from committing
   template<typename TimeOutType>
   bool holdTransactions(TimeOutType timeout) {
     bool ret = false;
@@ -303,6 +304,8 @@ class Manager final : public IManager {
   /// Nr of running transactions
   std::atomic<uint64_t> _nrRunning;
   std::atomic<uint64_t> _nrReadLocked;
+  /// Nr of transactions that want to commit
+  std::atomic<uint64_t> _nrCommitting;
 
   std::atomic<bool> _disallowInserts;
 
