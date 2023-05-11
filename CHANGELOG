@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #18942: arangorestore ignores the HTTP status code.
+
 * Add metric `arangodb_file_descriptors_current` to expose the number of
   file descriptors currently opened by the arangod process. This metric is
   available on Linux only.
