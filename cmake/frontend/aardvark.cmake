@@ -70,7 +70,6 @@ set(FRONTEND_SRC
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/lib/wheelnav.min.js
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/lib/wheelnav.slicePath.js
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/lib/select2.js
-  ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/lib/leaflet.js
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/models/arangoDatabase.js
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/models/arangoDocument.js
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/frontend/js/models/arangoQuery.js
@@ -178,8 +177,11 @@ set(FRONTEND_SRC
   ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/aardvark.js
   )
 
+
+set(FRONTEND_DESTINATION ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/react/build)
+
 add_custom_target(frontend ALL
-  DEPENDS ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/react/build
+  DEPENDS ${FRONTEND_DESTINATION}
 )
 add_custom_command(# frontend
   COMMENT "create frontend build"
@@ -191,7 +193,7 @@ add_custom_command(# frontend
 )
 
 add_custom_target(frontend_clean
-  COMMAND ${CMAKE_COMMAND} -E remove_directory ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/react/node_modules
-  COMMENT "Removing frontend node modules"
+  COMMAND ${CMAKE_COMMAND} -E remove_directory ${FRONTEND_DESTINATION}
+  COMMENT "Removing frontend artefacts"
   )
 
