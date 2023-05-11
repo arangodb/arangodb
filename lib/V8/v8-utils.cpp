@@ -49,6 +49,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <string_view>
@@ -116,6 +117,7 @@
 #include <unistd.h>
 #endif
 
+#include <velocypack/Builder.h>
 #include <velocypack/Validator.h>
 
 using namespace arangodb;
@@ -133,8 +135,8 @@ static UniformCharacter JSSaltGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}"
     "[]:;<>,.?/|");
 
-arangodb::Result doSleep(
-    double n, arangodb::application_features::ApplicationServer& server) {
+Result doSleep(double n,
+               arangodb::application_features::ApplicationServer& server) {
   double until = TRI_microtime() + n;
 
   while (true) {
@@ -153,6 +155,17 @@ arangodb::Result doSleep(
     std::this_thread::sleep_for(std::chrono::microseconds(duration));
   }
 }
+
+// the following is a local, in-memory replacement for what used to be the
+// _fishbowl collection. instead of creating the collection _fishbowl, we
+// now will simply store the Foxx apps information in memory. there are
+// functions FISHBOWL_SET and FISHBOWL_GET to access the contents. these
+// functions are supposed to be used only internally
+
+// lock for protecting access to fishbowlData
+std::mutex fishbowlLock;
+// contents of _fishbowl
+std::shared_ptr<velocypack::Builder> fishbowlData;
 
 }  // namespace
 
@@ -4757,6 +4770,50 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the scheduler priority of an external process
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_SetPriority(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "setPriorityExternal(<external-identifier>, <priority>)");
+  }
+
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_v8security;
+
+  if (!v8security.isAllowedToControlProcesses(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external processes");
+  }
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  ExternalId pid;
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+
+  uint32_t priority =
+      static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[1], true));
+
+  auto ret = TRI_SetPriority(pid, priority);
+
+  if (ret.length() != 0) {
+    TRI_V8_THROW_ERROR(ret);
+  }
+
+  // return the result
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a external program
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5122,6 +5179,53 @@ static void JS_termsize(v8::FunctionCallbackInfo<v8::Value> const& args) {
   list->Set(context, 1, v8::Integer::New(isolate, s.columns)).FromMaybe(false);
 
   TRI_V8_RETURN(list);
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_FishbowlSet(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 1 || !args[0]->IsArray()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("FISHBOWL_SET(<value>)");
+  }
+
+  ISOLATE;
+  auto builder = std::make_shared<VPackBuilder>();
+  TRI_V8ToVPack(isolate, *builder, args[0], false);
+
+  std::lock_guard<std::mutex> guard(::fishbowlLock);
+  ::fishbowlData = std::move(builder);
+
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_FishbowlGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("FISHBOWL_GET()");
+  }
+
+  std::shared_ptr<VPackBuilder> builder;
+  {
+    std::lock_guard<std::mutex> guard(::fishbowlLock);
+    builder = ::fishbowlData;
+  }
+
+  ISOLATE;
+  v8::Handle<v8::Value> result;
+  if (builder == nullptr) {
+    result = v8::Array::New(isolate);
+  } else {
+    result = TRI_VPackToV8(isolate, builder->slice());
+  }
+
+  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -6019,6 +6123,9 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_STATUS_EXTERNAL"),
       JS_StatusExternal);
   TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SET_PRIORITY_EXTERNAL"),
+      JS_SetPriority);
+  TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_LOAD"), JS_Load);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_LOG"),
                                JS_Log);
@@ -6098,6 +6205,13 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_STOPPING"), JS_IsStopping);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_TERMINAL_SIZE"), JS_termsize);
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "FISHBOWL_GET"),
+                               JS_FishbowlGet, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "FISHBOWL_SET"),
+                               JS_FishbowlSet, true);
 
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "V8_TO_VPACK"), JS_V8ToVPack);

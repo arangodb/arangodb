@@ -409,8 +409,12 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     while (true) {
       var job = queryAgencyJob(result.json.id);
       console.info("Status of cleanOutServer job:", job.status);
-      if (job.error === false && job.status === "Finished") {
-        return result;
+      if (job.error === false) {
+        if (job.status === "Finished") {
+          return result;
+        } else if (job.status === "Failed") {
+          return false;
+        }
       }
       if (count-- < 0) {
         console.error(

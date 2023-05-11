@@ -3,6 +3,102 @@ devel
 
 * Upgraded bundled version of RocksDB to 8.2.
 
+* Add metric `arangodb_file_descriptors_current` to expose the number of
+  file descriptors currently opened by the arangod process. This metric is
+  available on Linux only.
+  As counting the number of open file descriptors can be expensive, this
+  metric is only updated in a configurable interval. The new startup option
+  `--server.descriptors-count-interval` can be used to specify the update
+  interval (in milliseconds). It defaults to 60,000 (i.e. once per minute).
+  The startup option can be set to a value of `0` to disable the counting
+  of open file descriptors for performance reasons.
+  If counting is turned off, the metric will report a value of `0`.
+
+* ES-1566: fix an issue when trying to restrict traversals to non-existing
+  collections with the `edgeCollections` traversal option.
+  
+  If a non-existing collection is specified in the `edgeCollections` or
+  `vertexCollections` options of an AQL traversal, the query will now fail 
+  with a `collection or view not found` error. This is a behavior change
+  compared to previous versions, which ignored non-existing vertex
+  collections and had undefined behavior when specifying non-existing
+  edge collections.
+
+* Updated arangosync to v2.17.0.
+
+* FE-255: add validation for collection, document, graph, view and database
+  names.
+
+* Added metric `rocksdb_cache_peak_allocated` to store the peak memory
+  allocation value for in-memory caches.
+
+* Remove leftover in-memory cache tables after dropping collections that
+  had their `cacheEnabled` flag set to `true`. Previously some memory 
+  could remain allocated in the in-memory cache even after such collections
+  were dropped.
+
+* Remove function `getFishbowlStorage()` from bundled JavaScript module 
+  `@arangodb/foxx/manager`. This function was publicly exposed in previous
+  versions, and returned a handle to the `_fishbowl` system collection.
+  Applications should not have depended on it, because that collection was
+  only used to temporarily store the list of Foxx applications stored in
+  a central Github repository maintained by ArangoDB.
+
+* BTS-486: fishbowl collection creation interferes with hot backup.
+
+  Do not dynamically create the `_fishbowl` system collections anymore to
+  store the list of Foxx applications stored from a central Github repository 
+  maintained by ArangoDB. Instead, store the list in memory.
+  This has the advantage that the `_fishbowl` system collection does not need
+  to be created on the fly, which could have interfered with backups running
+  at the very same time. 
+  Additionally the previous `_fishbowl` collection was database-specific, so
+  one instance of the collection could be created per database in a deployment.
+  Now, the list of applications stored in memory is shared between all 
+  databases in a deployment.
+
+* Add metric `arangodb_file_descriptors_limit` to expose the system limit for
+  the number of open files for the arangod process.
+
+* Fix an issue that causes followers to be dropped due to premature transaction
+  abortions as a result of query failures.
+  When we have a query that results in a failure this will cause the leaders to
+  abort the transaction on the followers. However, if the followers have
+  transactions that are shared with leaders of other shards, and if one of those
+  leaders has not yet seen the error, then it will happily continue to replicate
+  to that follower. But if the follower has already aborted the transaction,
+  then it will reject the replication request. Previously this would cause the
+  follower to be dropped, but now this should be handled gracefully.
+
+* BTS-1343: Removed an error message of endpoint being invalid when attempting 
+  fetch telemetrics from the servers by having the invalid endpoint as a 
+  starting point. As telemetrics is transparent to the end user, the error 
+  message interferes with the user experience if keeps appearing. 
+
+* Updated arangosync to v2.17.0-preview-1.
+
+* FE-243: add support for geo_s2 analyzer.
+
+* FE-22: Don't display collection content by default when clicking on a
+  collection in the Web UI.
+
+* FE-251: bugfix - prohibit multiple expansions of the same node in the graph
+  viewer.
+
+* FE-162: Fix display of geodesic lines.
+
+* Fixed a race in the Maintenance, impacting leaders that have just been
+  resigned. During a MoveShard job, the old leader could sabotage the whole
+  operation by removing the newly added follower from Current. The solution is
+  to update Current using local collection information, instead of the
+  potentially outdated velocypack slice.
+
+* FE-254: bugfix - filter out empty storedValues for persistent index.
+
+* FE-253: bugfix - validate JSON, show errors & disable save when error.
+
+* FE-252: bugfix - canvas image screenshot breaks graph colors.
+
 * Fix incompatibility between 3.9 and 3.10 w.r.t. to serialization of AQL array
   filters (i.e. `[* FILTER ...]`). The array filters were serialized in a
   different way in 3.9 than they are serialized in 3.10. 3.10 also expected the
@@ -10,7 +106,7 @@ devel
   The fix now enables support for both formats.
 
 * Fixed issue #18769: Input validation allows invalid UTF-8 code points.
-  
+
   This change enforces the validation of UTF-8 surrogate pairs in incoming JSON
   data. Previously, the following loopholes existed when validating UTF-8
   surrogate pair data:
@@ -40,6 +136,9 @@ devel
 * FE-238: Added auto-login support in core web UI - disabled logout when
   auto-login is enabled, set sessionStorage "jwtUser" value when login is
   skipped.
+
+* BTS-1315: Fixed spurious occurring failures during Foxx Application installation
+  in case a Load Balancer is being used in front of the coordinators.
 
 * FE-233: bugfix - fix query spotlight search not working.
 

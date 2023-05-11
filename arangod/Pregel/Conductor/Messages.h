@@ -75,34 +75,21 @@ auto inspect(Inspector& f, SendCountPerActor& x) {
 
 struct GlobalSuperStepFinished {
   GlobalSuperStepFinished() noexcept = default;
-  GlobalSuperStepFinished(MessageStats messageStats,
+  GlobalSuperStepFinished(uint64_t sendMessagesCount,
+                          uint64_t receivedMessagesCount,
                           std::vector<SendCountPerActor> sendCountPerActor,
                           uint64_t activeCount, uint64_t vertexCount,
                           uint64_t edgeCount, VPackBuilder aggregators)
-      : messageStats{std::move(messageStats)},
+      : sendMessagesCount{sendMessagesCount},
+        receivedMessagesCount{receivedMessagesCount},
         sendCountPerActor{std::move(sendCountPerActor)},
         activeCount{activeCount},
         vertexCount{vertexCount},
         edgeCount{edgeCount},
         aggregators{std::move(aggregators)} {};
-  auto add(GlobalSuperStepFinished const& other) -> void {
-    messageStats.accumulate(other.messageStats);
-    activeCount += other.activeCount;
-    vertexCount += other.vertexCount;
-    edgeCount += other.edgeCount;
-    // TODO directly aggregate in here when aggregators have an inspector
-    VPackBuilder newAggregators;
-    {
-      VPackArrayBuilder ab(&newAggregators);
-      if (!aggregators.isEmpty()) {
-        newAggregators.add(VPackArrayIterator(aggregators.slice()));
-      }
-      newAggregators.add(other.aggregators.slice());
-    }
-    aggregators = newAggregators;
-  }
 
-  MessageStats messageStats;
+  uint64_t sendMessagesCount = 0;
+  uint64_t receivedMessagesCount = 0;
   std::vector<SendCountPerActor> sendCountPerActor;
   uint64_t activeCount = 0;
   uint64_t vertexCount = 0;
@@ -111,12 +98,13 @@ struct GlobalSuperStepFinished {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
-  return f.object(x).fields(f.field("messageStats", x.messageStats),
-                            f.field("sendCount", x.sendCountPerActor),
-                            f.field("activeCount", x.activeCount),
-                            f.field("vertexCount", x.vertexCount),
-                            f.field("edgeCount", x.edgeCount),
-                            f.field("aggregators", x.aggregators));
+  return f.object(x).fields(
+      f.field("sendMessagesCount", x.sendMessagesCount),
+      f.field("receivedMessagesCount", x.receivedMessagesCount),
+      f.field("sendCountPerActor", x.sendCountPerActor),
+      f.field("activeCount", x.activeCount),
+      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
+      f.field("aggregators", x.aggregators));
 }
 
 struct Stored {};

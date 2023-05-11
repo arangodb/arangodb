@@ -35,10 +35,12 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Actor/ActorPID.h"
 #include "Pregel/ArangoExternalDispatcher.h"
 #include "Actor/Runtime.h"
 #include "Basics/Common.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/ResultActor.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/StatusActor.h"
@@ -52,6 +54,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 struct OperationResult;
+class ExecContext;
 namespace rest {
 enum class RequestType;
 }
@@ -71,6 +74,37 @@ struct PregelScheduler {
     auto workItem = scheduler->queueDelayed(
         "pregel-actors", RequestLane::INTERNAL_LOW, delay, fn);
   }
+};
+
+struct PregelRunUser {
+  PregelRunUser(std::string name) : name{std::move(name)} {}
+  auto authorized(ExecContext const& userContext) const -> bool;
+
+ private:
+  std::string name;
+};
+struct PregelRunActors {
+  actor::ActorPID resultActor;
+  std::shared_ptr<PregelResult> results;
+
+  // following members are only relevant on coordinator
+  std::optional<actor::ActorPID> conductor;
+};
+struct PregelRun {
+  PregelRun(PregelRunUser user, PregelRunActors actors)
+      : user{std::move(user)}, actors{std::move(actors)} {}
+  auto getActorsInternally() const -> PregelRunActors { return actors; }
+  auto getActorsFromUser(ExecContext const& userContext) const
+      -> std::optional<PregelRunActors> {
+    if (not user.authorized(userContext)) {
+      return std::nullopt;
+    }
+    return actors;
+  }
+
+ private:
+  PregelRunUser user;
+  PregelRunActors actors;
 };
 
 class Conductor;
@@ -110,7 +144,6 @@ class PregelFeature final : public ArangodFeature {
   void cleanupConductor(ExecutionNumber executionNumber);
   void cleanupWorker(ExecutionNumber executionNumber);
   [[nodiscard]] ResultT<PregelResults> getResults(ExecutionNumber execNr);
-  [[nodiscard]] ResultT<StatusState> getStatus(ExecutionNumber execNr);
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
@@ -160,10 +193,13 @@ class PregelFeature final : public ArangodFeature {
     std::shared_ptr<Conductor> conductor;
   };
 
-  std::unordered_map<ExecutionNumber, ConductorEntry> _conductors;
-  std::unordered_map<ExecutionNumber,
-                     std::pair<std::string, std::shared_ptr<IWorker>>>
-      _workers;
+  using ConductorMap = std::unordered_map<ExecutionNumber, ConductorEntry>;
+  ConductorMap _conductors;
+
+  using WorkerMap =
+      std::unordered_map<ExecutionNumber,
+                         std::pair<std::string, std::shared_ptr<IWorker>>>;
+  WorkerMap _workers;
 
   std::atomic<bool> _softShutdownOngoing;
 
@@ -172,11 +208,7 @@ class PregelFeature final : public ArangodFeature {
  public:
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
-
-  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _resultActor;
-  // conductor actor is only used on the coordinator
-  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _conductorActor;
-  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _statusActors;
+  Guarded<std::unordered_map<ExecutionNumber, PregelRun>> _pregelRuns;
 };
 
 }  // namespace arangodb::pregel
