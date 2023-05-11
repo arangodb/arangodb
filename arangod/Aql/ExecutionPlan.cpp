@@ -197,15 +197,6 @@ void parseGraphCollectionRestriction(Ast* ast, std::string_view typeName,
             std::string("data source type for '") + std::string(typeName) +
                 "' option must be an edge collection");
       }
-    } else if (typeName == "vertexCollections") {
-      if (type != TRI_COL_TYPE_DOCUMENT) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
-            std::string("data source type for '") + std::string(typeName) +
-                "' option must be a document collection");
-      }
-    } else {
-      TRI_ASSERT(false);
     }
 
     collections.emplace_back(std::move(name));
