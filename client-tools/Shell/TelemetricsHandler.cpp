@@ -337,9 +337,6 @@ void TelemetricsHandler::getTelemetricsInfo(velocypack::Builder& builder) {
 
 void TelemetricsHandler::arrangeTelemetrics() {
   try {
-#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-    _sendToEndpoint = true;
-#endif
     fetchTelemetricsFromServer();
 
     std::unique_lock lk(_mtx);
