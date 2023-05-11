@@ -53,10 +53,10 @@ class SearchDoc {
 
   constexpr SearchDoc() = default;
 
-  SearchDoc(irs::sub_reader const& segment, irs::doc_id_t doc) noexcept
+  SearchDoc(irs::SubReader const& segment, irs::doc_id_t doc) noexcept
       : _segment{&segment}, _doc{doc} {}
 
-  irs::sub_reader const* segment() const noexcept { return _segment; }
+  irs::SubReader const* segment() const noexcept { return _segment; }
 
   irs::doc_id_t doc() const noexcept { return _doc; }
 
@@ -79,7 +79,7 @@ class SearchDoc {
   }
 
  private:
-  irs::sub_reader const* _segment{};
+  irs::SubReader const* _segment{};
   irs::doc_id_t _doc{irs::doc_limits::invalid()};
 };
 

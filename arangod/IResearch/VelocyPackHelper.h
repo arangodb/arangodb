@@ -29,7 +29,7 @@
 
 #include <velocypack/Slice.h>
 
-#include "utils/string.hpp"  // for irs::string_ref
+#include "utils/string.hpp"  // for std::string_view
 
 namespace arangodb {
 namespace velocypack {
@@ -47,20 +47,20 @@ uint8_t const COMPACT_ARRAY = 0x13;
 uint8_t const COMPACT_OBJECT = 0x14;
 
 template<typename Char>
-irs::basic_string_ref<Char> ref(VPackSlice slice) {
+std::basic_string_view<Char> ref(VPackSlice slice) {
   static_assert(sizeof(Char) == sizeof(uint8_t),
                 "sizeof(Char) != sizeof(uint8_t)");
 
-  return irs::basic_string_ref<Char>(
+  return std::basic_string_view<Char>(
       reinterpret_cast<Char const*>(slice.begin()), slice.byteSize());
 }
 
 template<typename Char>
-VPackSlice slice(irs::basic_string_ref<Char> const& ref) {
+VPackSlice slice(std::basic_string_view<Char> const& ref) {
   static_assert(sizeof(Char) == sizeof(uint8_t),
                 "sizeof(Char) != sizeof(uint8_t)");
 
-  return VPackSlice(reinterpret_cast<uint8_t const*>(ref.c_str()));
+  return VPackSlice(reinterpret_cast<uint8_t const*>(ref.data()));
 }
 
 template<typename Char>
@@ -75,37 +75,37 @@ VPackSlice slice(std::basic_string<Char> const& ref) {
 /// @brief add a string_ref value to the 'builder' (for JSON arrays)
 ////////////////////////////////////////////////////////////////////////////////
 velocypack::Builder& addBytesRef(velocypack::Builder& builder,
-                                 irs::bytes_ref value);
+                                 irs::bytes_view value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON objects)
 ////////////////////////////////////////////////////////////////////////////////
 velocypack::Builder& addBytesRef(velocypack::Builder& builder,
-                                 irs::string_ref key, irs::bytes_ref value);
+                                 std::string_view key, irs::bytes_view value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON arrays)
 ////////////////////////////////////////////////////////////////////////////////
 velocypack::Builder& addStringRef(velocypack::Builder& builder,
-                                  irs::string_ref value);
+                                  std::string_view value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps bytes ref with VPackValuePair
 ////////////////////////////////////////////////////////////////////////////////
-inline velocypack::ValuePair toValuePair(irs::bytes_ref ref) {
-  TRI_ASSERT(!ref.null());  // consumers of ValuePair usually use memcpy(...)
-                            // which cannot handle nullptr
-  return velocypack::ValuePair(ref.c_str(), ref.size(),
+inline velocypack::ValuePair toValuePair(irs::bytes_view ref) {
+  TRI_ASSERT(!irs::IsNull(ref));  // consumers of ValuePair usually use
+                                  // memcpy(...) which cannot handle nullptr
+  return velocypack::ValuePair(ref.data(), ref.size(),
                                velocypack::ValueType::Binary);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps string ref with VPackValuePair
 ////////////////////////////////////////////////////////////////////////////////
-inline velocypack::ValuePair toValuePair(irs::string_ref ref) {
-  TRI_ASSERT(!ref.null());  // consumers of ValuePair usually use memcpy(...)
-                            // which cannot handle nullptr
-  return velocypack::ValuePair(ref.c_str(), ref.size(),
+inline velocypack::ValuePair toValuePair(std::string_view ref) {
+  TRI_ASSERT(!irs::IsNull(ref));  // consumers of ValuePair usually use
+                                  // memcpy(...) which cannot handle nullptr
+  return velocypack::ValuePair(ref.data(), ref.size(),
                                velocypack::ValueType::String);
 }
 
@@ -113,7 +113,7 @@ inline velocypack::ValuePair toValuePair(irs::string_ref ref) {
 /// @brief add a string_ref value to the 'builder' (for JSON objects)
 ////////////////////////////////////////////////////////////////////////////////
 velocypack::Builder& addStringRef(velocypack::Builder& builder,
-                                  irs::string_ref key, irs::string_ref value);
+                                  std::string_view key, std::string_view value);
 
 inline bool isArrayOrObject(VPackSlice slice) {
   auto const type = slice.type();
@@ -132,9 +132,9 @@ inline bool isCompactArrayOrObject(VPackSlice slice) {
 ///        must be a string
 /// @return extracted string_ref
 //////////////////////////////////////////////////////////////////////////////
-inline irs::string_ref getStringRef(VPackSlice slice) {
+inline std::string_view getStringRef(VPackSlice slice) {
   if (slice.isNull()) {
-    return irs::string_ref::NIL;
+    return std::string_view{};
   }
 
   TRI_ASSERT(slice.isString());
@@ -145,7 +145,7 @@ inline irs::string_ref getStringRef(VPackSlice slice) {
   static_assert(sizeof(velocypack::ValueLength) == sizeof(size_t),
                 "sizeof(arangodb::velocypack::ValueLength) != sizeof(size_t)");
 
-  return irs::string_ref(str, size);
+  return std::string_view(str, size);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -153,7 +153,7 @@ inline irs::string_ref getStringRef(VPackSlice slice) {
 ///        must be a string
 /// @return extracted string_ref
 //////////////////////////////////////////////////////////////////////////////
-inline irs::bytes_ref getBytesRef(VPackSlice const& slice) {
+inline irs::bytes_view getBytesRef(VPackSlice const& slice) {
   TRI_ASSERT(slice.isString());
 
   velocypack::ValueLength size;
@@ -162,7 +162,7 @@ inline irs::bytes_ref getBytesRef(VPackSlice const& slice) {
   static_assert(sizeof(velocypack::ValueLength) == sizeof(size_t),
                 "sizeof(arangodb::velocypack::ValueLength) != sizeof(size_t)");
 
-  return irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(str), size);
+  return irs::bytes_view(reinterpret_cast<irs::byte_type const*>(str), size);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -240,9 +240,9 @@ inline bool getString(std::string& buf, velocypack::Slice const& slice,
 /// @brief parses a string sub-element, or uses a default if it does not exist
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
-inline bool getString(irs::string_ref& buf, velocypack::Slice const& slice,
+inline bool getString(std::string_view& buf, velocypack::Slice const& slice,
                       std::string_view fieldName, bool& seen,
-                      irs::string_ref fallback) noexcept {
+                      std::string_view fallback) noexcept {
   seen = slice.hasKey(fieldName.data(), fieldName.length());
 
   if (!seen) {
@@ -296,7 +296,7 @@ bool mergeSlice(velocypack::Builder& builder, velocypack::Slice slice);
 //////////////////////////////////////////////////////////////////////////////
 bool mergeSliceSkipKeys(
     velocypack::Builder& builder, velocypack::Slice slice,
-    std::function<bool(irs::string_ref key)> const& acceptor);
+    std::function<bool(std::string_view key)> const& acceptor);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief append the contents of the slice to the builder skipping offsets
@@ -355,7 +355,7 @@ bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction);
 
 bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction);
 
-bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key);
+bool keyFromSlice(VPackSlice keySlice, std::string_view& key);
 
 }  // namespace iresearch
 }  // namespace arangodb

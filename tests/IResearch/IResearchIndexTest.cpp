@@ -28,8 +28,6 @@
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
-#include "utils/utf8_path.hpp"
-
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 
@@ -74,7 +72,7 @@ static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 struct TestAttributeX : public irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestAttributeX";
   }
 };
@@ -83,7 +81,7 @@ REGISTER_ATTRIBUTE(TestAttributeX);  // required to open reader on segments with
                                      // analized fields
 
 struct TestAttributeY : public irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestAttributeY";
   }
 };
@@ -91,18 +89,17 @@ struct TestAttributeY : public irs::attribute {
 REGISTER_ATTRIBUTE(TestAttributeY);  // required to open reader on segments with
                                      // analized fields
 
-class TestAnalyzer : public irs::analysis::analyzer {
+class TestAnalyzer : public irs::analysis::TypedAnalyzer<TestAnalyzer> {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestInsertAnalyzer";
   }
 
-  static ptr make(irs::string_ref args) {
-    PTR_NAMED(TestAnalyzer, ptr, args);
-    return ptr;
+  static ptr make(std::string_view args) {
+    return std::make_unique<TestAnalyzer>(args);
   }
 
-  static bool normalize(irs::string_ref args, std::string& out) {
+  static bool normalize(std::string_view args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return false;
@@ -124,8 +121,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  TestAnalyzer(irs::string_ref value)
-      : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {
+  TestAnalyzer(std::string_view value) {
     auto slice = arangodb::iresearch::slice(value);
     auto arg = slice.get("args").copyString();
 
@@ -155,20 +151,20 @@ class TestAnalyzer : public irs::analysis::analyzer {
 
   virtual bool next() override {
     _term.value = _data;
-    _data = irs::bytes_ref::NIL;
+    _data = irs::bytes_view{};
 
-    return !_term.value.null();
+    return !irs::IsNull(_term.value);
   }
 
-  virtual bool reset(irs::string_ref data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
-    _term.value = irs::bytes_ref::NIL;
+  virtual bool reset(std::string_view data) override {
+    _data = irs::ViewCast<irs::byte_type>(data);
+    _term.value = irs::bytes_view{};
 
     return true;
   }
 
  private:
-  irs::bytes_ref _data;
+  irs::bytes_view _data;
   irs::increment _inc;
   irs::term_attribute _term;
   TestAttributeX _x;
@@ -564,7 +560,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
       arangodb::velocypack::Builder builder;
 
       try {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
 
         resource /= std::string_view(arangodb::tests::testResourceDir);
         resource /= std::string_view("simple_sequential.json");
@@ -606,7 +602,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
       arangodb::velocypack::Builder builder;
 
       try {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
 
         resource /= std::string_view(arangodb::tests::testResourceDir);
         resource /= std::string_view("simple_sequential.json");

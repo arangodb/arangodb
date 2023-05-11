@@ -58,7 +58,7 @@ class NondeterministicExpressionIteratorBase : public irs::doc_iterator {
   }
 
  private:
-  FORCE_INLINE void destroy() noexcept {
+  IRS_FORCE_INLINE void destroy() noexcept {
     if (_destroy) {
       _val.destroy();
     }
@@ -70,7 +70,7 @@ class NondeterministicExpressionIteratorBase : public irs::doc_iterator {
   bool _destroy{false};
 };
 
-class NondeterministicExpressionIterator final
+class NondeterministicExpressionIterator
     : public NondeterministicExpressionIteratorBase {
  public:
   NondeterministicExpressionIterator(irs::doc_iterator::ptr&& it,
@@ -116,7 +116,7 @@ class NondeterministicExpressionIterator final
 
 class ExpressionQuery : public irs::filter::prepared {
  public:
-  void visit(irs::sub_reader const& segment, irs::PreparedStateVisitor& visitor,
+  void visit(irs::SubReader const& segment, irs::PreparedStateVisitor& visitor,
              irs::score_t boost) const final {
     return _allQuery->visit(segment, visitor, boost);
   }
@@ -134,7 +134,7 @@ class ExpressionQuery : public irs::filter::prepared {
   ExpressionCompilationContext _ctx;
 };
 
-class NondeterministicExpressionQuery final : public ExpressionQuery {
+class NondeterministicExpressionQuery : public ExpressionQuery {
  public:
   explicit NondeterministicExpressionQuery(
       ExpressionCompilationContext const& ctx,
@@ -163,7 +163,7 @@ class NondeterministicExpressionQuery final : public ExpressionQuery {
   }
 };
 
-class DeterministicExpressionQuery final : public ExpressionQuery {
+class DeterministicExpressionQuery : public ExpressionQuery {
  public:
   explicit DeterministicExpressionQuery(
       ExpressionCompilationContext const& ctx,
@@ -207,9 +207,6 @@ size_t ExpressionCompilationContext::hash() const noexcept {
       irs::hash_combine(1610612741, aql::AstNodeValueHash()(node.get())), ast);
 }
 
-ByExpression::ByExpression() noexcept
-    : irs::filter{irs::type<ByExpression>::get()} {}
-
 void ByExpression::init(QueryContext const& ctx, aql::AstNode& node) noexcept {
   return init(ctx, std::shared_ptr<aql::AstNode>{&node, [](aql::AstNode*) {}});
 }
@@ -230,7 +227,7 @@ bool ByExpression::equals(irs::filter const& rhs) const noexcept {
 size_t ByExpression::hash() const noexcept { return _ctx.hash(); }
 
 irs::filter::prepared::ptr ByExpression::prepare(
-    irs::index_reader const& index, irs::Order const& order,
+    irs::IndexReader const& index, irs::Scorers const& order,
     irs::score_t filter_boost, irs::attribute_provider const* ctx) const {
   if (!bool(*this)) {
     // uninitialized filter

@@ -27,31 +27,31 @@
 #include <utils/attributes.hpp>
 
 struct TestAttribute : public irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestAttribute";
   }
 };
 
-class TestAnalyzer : public irs::analysis::analyzer {
+class TestAnalyzer final : public irs::analysis::TypedAnalyzer<TestAnalyzer> {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestAnalyzer";
   }
 
   TestAnalyzer();
 
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final;
 
-  static ptr make(irs::string_ref args);
+  static ptr make(std::string_view args);
 
-  static bool normalize(irs::string_ref args, std::string& definition);
+  static bool normalize(std::string_view args, std::string& definition);
 
-  bool next() override;
+  bool next() final;
 
-  bool reset(irs::string_ref data) override;
+  bool reset(std::string_view data) final;
 
  private:
-  irs::bytes_ref _data;
+  irs::bytes_view _data;
   irs::increment _increment{};
   irs::term_attribute _term{};
   TestAttribute _attr;
