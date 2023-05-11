@@ -111,10 +111,8 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
       _httpClient = clientManager.getConnectedClient(true, false, false, 0);
 
       if (_httpClient != nullptr && _httpClient->isConnected()) {
-        std::string role;
-        Result result;
-        std::tie(result, role) =
-            clientManager.getArangoIsCluster(*(_httpClient.get()));
+        auto [result, role ] =
+            clientManager.getArangoIsCluster(*_httpClient);
         if (result.fail()) {
           LOG_TOPIC("a3146", WARN, arangodb::Logger::FIXME)
               << "Error: could not detect ArangoDB instance type: "
