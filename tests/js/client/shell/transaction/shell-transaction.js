@@ -972,7 +972,7 @@ function transactionCollectionsSuite (dbParams) {
       const doc2 = db[cn2].insert({});
       const doc3 = db[cn3].insert({});
       for (let i = 0; i < 100; ++i) {
-        const trx = db._createTransaction(trxOpts)
+        const trx = db._createTransaction(trxOpts);
         try {
           let tc1 = trx.collection(c1.name());
           tc1.document(doc1._key);
