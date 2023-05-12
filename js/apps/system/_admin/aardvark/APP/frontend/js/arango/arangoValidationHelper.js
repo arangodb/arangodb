@@ -8,9 +8,14 @@
     getControlCharactersRegex: () => {
       return /^[^\u0000-\u001F]+$/;
     },
+    getDocumentKeyRegex: () => {
+      return /^[a-zA-Z0-9_\-:\.@()\+,=;$!*%']+$/;
+    },
     getDocumentKeySpecialCharactersValidation: () => {
+      var documentKeyRegex =
+        window.arangoValidationHelper.getDocumentKeyRegex();
       var keySpecialCharactersValidation = {
-        rule: Joi.string().regex(/^[a-zA-Z0-9_\-:\.@()\+,=;$!*%']+$/),
+        rule: Joi.string().regex(documentKeyRegex),
         msg: "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %.",
       };
       return keySpecialCharactersValidation;
@@ -66,12 +71,16 @@
       return databaseNameValidations;
     },
     getDocumentNameValidations: () => {
-      var keySpecialCharactersValidation =
-        window.arangoValidationHelper.getDocumentKeySpecialCharactersValidation();
+      var documentKeyRegex =
+        window.arangoValidationHelper.getDocumentKeyRegex();
+      var keySpecialCharactersValidation = {
+        rule: Joi.string().regex(documentKeyRegex).allow(""),
+        msg: "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %.",
+      };
       return [
         keySpecialCharactersValidation,
         {
-          rule: Joi.string().max(254, "utf8"),
+          rule: Joi.string().max(254, "utf8").allow(""),
           msg: "Document key max length is 254.",
         },
         {
