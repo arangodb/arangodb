@@ -1,6 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* FE-258: allow specifying optimizeTopK during arangosearch view creation.
+
 * FE-257: allow additional properties in inverted index creation.
 
 * UI Fix - allow empty keys in document key validation.
