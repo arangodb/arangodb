@@ -28,6 +28,7 @@
 
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
+#include "Graph/Types/ValidationResult.h"
 #include "Transaction/Methods.h"
 
 namespace arangodb::graph {
@@ -117,6 +118,7 @@ class ClusterProviderStep
            _fetchedStatus == FetchedType::EDGES_FETCHED ||
            _fetchedStatus == FetchedType::VERTEX_FETCHED;
   }
+  bool isUnknown() const noexcept { return _validationStatus.isUnknown(); }
 
   // beware: returns a *copy* of the vertex id
   [[nodiscard]] VertexType getVertexIdentifier() const {
@@ -144,6 +146,7 @@ class ClusterProviderStep
       _fetchedStatus = FetchedType::VERTEX_FETCHED;
     }
   }
+
   void setEdgesFetched() noexcept {
     if (vertexFetched()) {
       _fetchedStatus = FetchedType::VERTEX_AND_EDGES_FETCHED;
@@ -152,10 +155,15 @@ class ClusterProviderStep
     }
   }
 
+  void setValidationResult(ValidationResult res) noexcept {
+    _validationStatus = res;
+  }
+
  private:
   Vertex _vertex;
   Edge _edge;
   FetchedType _fetchedStatus;
+  ValidationResult _validationStatus;
 };
 
 }  // namespace arangodb::graph
