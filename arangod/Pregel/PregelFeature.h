@@ -160,10 +160,13 @@ class PregelFeature final : public ArangodFeature {
     std::shared_ptr<Conductor> conductor;
   };
 
-  std::unordered_map<ExecutionNumber, ConductorEntry> _conductors;
-  std::unordered_map<ExecutionNumber,
-                     std::pair<std::string, std::shared_ptr<IWorker>>>
-      _workers;
+  using ConductorMap = std::unordered_map<ExecutionNumber, ConductorEntry>;
+  ConductorMap _conductors;
+
+  using WorkerMap =
+      std::unordered_map<ExecutionNumber,
+                         std::pair<std::string, std::shared_ptr<IWorker>>>;
+  WorkerMap _workers;
 
   std::atomic<bool> _softShutdownOngoing;
 

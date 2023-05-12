@@ -3,6 +3,73 @@ v3.11.0 (XXXX-XX-XX)
 
 * FE-265: Fix user permissions radio button shadow.
 
+* FE-268: remove 'switch to new graph' when no defined graph is present.
+
+* FE-258: allow specifying optimizeTopK during arangosearch view creation.
+
+* FE-257: allow additional properties in inverted index creation.
+
+* UI Fix - allow empty keys in document key validation.
+
+* BTS-1181: fix a data race on the collection list in TransactionState.
+  This race could happen in the cluster when a collection is sharded by a
+  different attribute than `_key` and a document lookup by _key is performed.
+  This requires the lookup to be sent to each shard, since we cannot deduce the
+  shard based on the `_key` value. If this lookup is done as part of a stream
+  transaction, and if the collection has not been declared in the transaction's
+  `read` list, then the collection is added lazily. Previously this would result
+  in a race if multiple shards are located on the same server.
+  For transactions with `allowDirtyReads` set to true read collections are
+  always added lazily, which made this race more likely.
+
+* BTS-1340: Fixed telemetrics api making shell hang when logging into it and
+  leaving it too quickly so the telemetrics API doesn't have time to send the
+  data to the warehouse. The thread could be hanging on SSL_connect() until the
+  connection timeout if the socket is blocking, so the socket was made
+  non-blocking for the thread to leave SSL_connect() after the connection is
+  interrupted when leaving the shell. Also created startup parameter
+  `--client.failure-points`for arangosh which enables failure points whose names
+  are provided in an array of strings, just like in `--server.failure-point` for
+  arangod.
+
+* BTS-1350: Fixed imprecision in index info in telemetrics object for cluster.
+  When the collection also had an arangosearch view, telemetrics showed
+  imprecise index values because the view was being considered as an index of
+  type arangosearch, and its object wouldn't contain expected fields that would
+  be found in other indexes' objects.
+
+* Add metric `arangodb_file_descriptors_current` to expose the number of file
+  descriptors currently opened by the arangod process. This metric is available
+  on Linux only.
+  As counting the number of open file descriptors can be expensive, this metric
+  is only updated in a configurable interval. The new startup option
+  `--server.descriptors-count-interval` can be used to specify the update
+  interval (in milliseconds). It defaults to 60,000 (i.e. once per minute).
+  The startup option can be set to a value of `0` to disable the counting of
+  open file descriptors for performance reasons.
+  If counting is turned off, the metric will report a value of `0`.
+
+* ES-1566: fix an issue when trying to restrict traversals to non-existing
+  collections with `edgeCollections` traversal option.
+
+  If a non-existing collection is specified in the `edgeCollections` or
+  `vertexCollections` options of an AQL traversal, the query will now fail with
+  a `collection or view not found` error. This is a behavior change compared to
+  previous versions, which ignored non-existing vertex collections and had
+  undefined behavior when specifying non-existing edge collections.
+
+* Added metric `rocksdb_cache_peak_allocated` to store the peak memory
+  allocation value for in-memory caches.
+
+* Remove leftover in-memory cache tables after dropping collections that
+  had their `cacheEnabled` flag set to `true`. Previously some memory 
+  could remain allocated in the in-memory cache even after such collections
+  were dropped.
+
+* BTS-1315: Fixed spurious occurring failures during Foxx Application
+  installation in case a Load Balancer is being used in front of the
+  coordinators.
+
 * Updated arangosync to v2.17.0.
 
 * BTS-1343: Removed an error message of endpoint being invalid when attempting
