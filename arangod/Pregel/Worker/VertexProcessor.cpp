@@ -44,7 +44,7 @@ VertexProcessor<V, E, M>::VertexProcessor(
     std::unique_ptr<Algorithm<V, E, M>>& algorithm,
     std::unique_ptr<WorkerContext>& workerContext,
     std::unique_ptr<MessageCombiner<M>>& messageCombiner,
-    std::unique_ptr<MessageFormat<M>>& messageFormat, size_t messageBatchSize) {
+    std::unique_ptr<MessageFormat<M>>& messageFormat, uint32_t messageBatchSize) {
   if (messageCombiner != nullptr) {
     localMessageCache = std::make_shared<CombiningInCache<M>>(
         containers::FlatHashSet<PregelShard>{}, messageFormat.get(),

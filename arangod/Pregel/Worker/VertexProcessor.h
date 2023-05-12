@@ -55,7 +55,7 @@ struct VertexProcessor {
                   std::unique_ptr<WorkerContext>& workerContext,
                   std::unique_ptr<MessageCombiner<M>>& messageCombiner,
                   std::unique_ptr<MessageFormat<M>>& messageFormat,
-                  size_t messageBatchSize);
+                  uint32_t messageBatchSize);
   ~VertexProcessor();
 
   auto process(Vertex<V, E>* vertexEntry, MessageIterator<M> messages) -> void;
