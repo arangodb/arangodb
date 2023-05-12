@@ -320,6 +320,36 @@
       );
       assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
+    
+    testPointOutsideOfPolygon : function () {
+      let l = [];
+      for (let size = 1; size <= 11; size += 1) {
+        for (let lon = 11; lon <= 30; lon += 0.1) {
+          l.push({
+            geo: {
+              type: "Polygon",
+              coordinates: [[[lon - size, 10 - size], [lon + size, 10 - size],
+                [lon + size, 10 + size], [lon - size, 10 + size],
+                [lon - size, 10 - size]]]
+            },
+            centroid: {type: "Point", coordinates: [lon, 10]}
+          });
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      let c = compare(
+        `FILTER GEO_DISTANCE(d.geo, GEO_POINT(6.93, 10.94)) > 0`,
+        `SEARCH ANALYZER(GEO_DISTANCE(d.geo, GEO_POINT(6.93, 10.94)) > 0, "${analyzerName}")`
+      );
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test near query with grid of points, upper bound
