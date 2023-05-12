@@ -479,8 +479,7 @@ irs::filter::prepared::ptr prepareOpenInterval(
             auto& excl = root.add<irs::Not>().filter<GeoDistanceFilter>();
             *excl.mutable_field() = field;
             auto& opts = *excl.mutable_options();
-            opts.prefix = options.prefix;
-            opts.options = options.options;
+            opts = options;
             opts.range.min = 0;
             opts.range.min_type = irs::BoundType::INCLUSIVE;
             opts.range.max = 0;
