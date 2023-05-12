@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, strict: false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertNull, assertTrue, AQL_EXECUTE */
+/*global assertEqual, assertFalse, assertNull, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
@@ -28,6 +28,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+const arangodb = require('@arangodb');
+const isEnterprise = require("internal").isEnterprise();
 var db = require("@arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
@@ -271,12 +273,84 @@ function ahuacatlClusterUpsertNonKeySuite () {
   };
 }
 
+function parallelizeGatherUpsert () {
+
+  // Regression tests for https://arangodb.atlassian.net/browse/BTS-1400 and https://arangodb.atlassian.net/browse/BTS-1401
+  return {
+    setUpAll: function() {
+      db._createDatabase("test");
+      db._useDatabase("test");
+      db._create("coll", {"replicationFactor" : 3, "numberOfShards" : 40});
+      db._query("FOR i IN 1..100000  INSERT { value: i } INTO coll");
+    },
+  
+    tearDownAll: function() {
+      db._useDatabase("_system");
+      db._dropDatabase("test");
+    },
+
+    // https://arangodb.atlassian.net/browse/BTS-1400 
+    testEqualErrorCodes: function() {
+      try {
+        db._query(`FOR d IN coll UPSERT {'value': d.value + 500000} 
+          INSERT { _key: d.value + 500000} REPLACE { _key: d.value + 500000} in coll`, {}, {optimizer: {rules: ["-parallelize-gather"]}});
+      } catch (err) {
+        assertEqual(arangodb.ERROR_ARANGO_DOCUMENT_KEY_BAD, err.errorNum);
+      }
+
+      try {
+        db._query(`FOR d IN coll UPSERT {'value': d.value + 500000} 
+          INSERT { _key: d.value + 500000} REPLACE { _key: d.value + 500000} in coll`, {}, {optimizer: {rules: ["+parallelize-gather"]}});
+      } catch (err) {
+        assertEqual(arangodb.ERROR_ARANGO_DOCUMENT_KEY_BAD, err.errorNum);
+      }
+    },
+
+    // https://arangodb.atlassian.net/browse/BTS-1401
+    testUpsertQuery: function() {
+      db._query("FOR i IN 1..100000 UPSERT {'value': i} INSERT { value: i} REPLACE { value: i + 1} in coll", {}, {optimizer: {rules: ["+parallelize-gather"]}});
+      db._query("FOR i IN 1..100000 UPSERT {'value': i} INSERT { value: i} REPLACE { value: i + 1} in coll", {}, {optimizer: {rules: ["-parallelize-gather"]}});
+    }
+  }
+}
+
+function parallelizeGatherExplainOneShard () {
+
+  // Regression test for https://arangodb.atlassian.net/browse/BTS-1402
+  return {
+    setUpAll: function() {
+      db._createDatabase("oneShardDB", { sharding: "single", replicationFactor: 3 })
+      db._useDatabase("oneShardDB");
+
+      db._create("coll1", {"replicationFactor" : 3, "numberOfShards" : 40})
+      db._create("coll2", {"replicationFactor" : "satellite"});
+    },
+  
+    tearDownAll: function() {
+      db._useDatabase("_system");
+      db._dropDatabase("oneShardDB");
+    },
+
+    testExplainPlans: function() {
+      let c1Plan = AQL_EXPLAIN("FOR i IN 1..1000000  INSERT { value: i } INTO coll1").plan;
+      let c2Plan = AQL_EXPLAIN("FOR i IN 1..1000000  INSERT { value: i } INTO coll2").plan;
+
+      assertEqual(-1, c1Plan.rules.indexOf("parallelize-gather"));
+      assertEqual(-1, c2Plan.rules.indexOf("parallelize-gather"));
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlClusterUpsertKeySuite);
 jsunity.run(ahuacatlClusterUpsertNonKeySuite);
+jsunity.run(parallelizeGatherUpsert);
+if (isEnterprise) {
+  jsunity.run(parallelizeGatherExplainOneShard);
+}
 
 return jsunity.done();
 
