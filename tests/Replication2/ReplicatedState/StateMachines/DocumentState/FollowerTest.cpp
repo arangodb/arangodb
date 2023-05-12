@@ -87,6 +87,8 @@ TEST_F(DocumentStateFollowerTest,
         ServerHealthState{RebootId{1}, arangodb::ServerHealth::kUnclear}}});
 
   std::atomic<bool> acquireSnapshotCalled = false;
+  std::atomic<bool> followerResigned = false;
+  int batchesSent = 0;
 
   // The snapshot will not stop until the follower resigns
   ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
@@ -101,6 +103,13 @@ TEST_F(DocumentStateFollowerTest,
       [](auto) { /* don't delete the pointer */ }));
   ON_CALL(*leaderInterfaceMock, nextSnapshotBatch)
       .WillByDefault([&](SnapshotId id) {
+        // In the event that the system is under heavy load, we want to prevent
+        // a stack overflow
+        ++batchesSent;
+        if (batchesSent > 16) {
+          followerResigned.wait(false);
+        }
+
         return futures::Future<ResultT<SnapshotBatch>>{
             std::in_place, SnapshotBatch{.snapshotId = id,
                                          .shardId = shardId,
@@ -116,8 +125,15 @@ TEST_F(DocumentStateFollowerTest,
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
   });
 
+  // Wait for the snapshot to start
   acquireSnapshotCalled.wait(false);
+
   std::move(*follower).resign();
+
+  // Let the other thread know that the follower resigned
+  followerResigned.store(true);
+  followerResigned.notify_one();
+
   t.join();
 }
 
