@@ -1,6 +1,9 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* Improved error reporting for system calls on Windows and fixed a
+  Windows-specific issue of the IOHeartbeatThread.
+
 * Fixed issue #18942: arangorestore ignores the HTTP status code.
 
 * Updated arangosync to v2.17.0.
