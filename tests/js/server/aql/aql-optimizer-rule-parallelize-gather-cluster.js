@@ -76,7 +76,11 @@ function optimizerRuleTestSuite () {
     },
 
     testRuleNoEffect : function () {
-      let queries = [
+      let queries = [  
+        "FOR doc IN " + cn + " LIMIT 10 UPDATE doc WITH {} IN " + cn,
+        "FOR i IN 1..1000 INSERT {} IN " + cn,
+        "FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FILTER doc1._key == doc2._key RETURN doc1",
+        "FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FOR doc3 IN " + cn + " FILTER doc1._key == doc2._key FILTER doc2._key == doc3._key RETURN doc1",
         "FOR i IN 1..100 LET sub = (FOR doc IN " + cn + " FILTER doc.value == i RETURN doc) RETURN sub",
         "LET sub = (FOR doc IN " + cn + " FILTER doc.value == 12 LIMIT 10 RETURN doc) FOR doc IN sub RETURN doc",
         "FOR v, e, p IN 1..1 OUTBOUND '" + cn + "/1' " + en + " RETURN p",
@@ -104,21 +108,22 @@ function optimizerRuleTestSuite () {
         "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000 RETURN doc",
         "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000, 1000 RETURN doc",
         "FOR i IN 1..1000 FOR doc IN " + cn + " FILTER doc.value == i RETURN doc",
-        "FOR doc IN " + cn + " LIMIT 10 UPDATE doc WITH {} IN " + cn,
-        "FOR i IN 1..1000 INSERT {} IN " + cn,
-        "FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FILTER doc1._key == doc2._key RETURN doc1",
-        "FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FOR doc3 IN " + cn + " FILTER doc1._key == doc2._key FILTER doc2._key == doc3._key RETURN doc1",
-        "FOR doc IN " + cn + " REMOVE doc IN " + cn,
-        "FOR doc IN " + cn + " REMOVE doc._key IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc WITH {a: 1} IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc._key WITH {} IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc._key WITH {a:1} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
       ];
+
+      if (require("internal").options()["query.parallelize-gather-writes"]) {
+        queries.concat([
+          "FOR doc IN " + cn + " REMOVE doc IN " + cn,
+          "FOR doc IN " + cn + " REMOVE doc._key IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc WITH {a: 1} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc._key WITH {} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc._key WITH {a:1} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
+        ]);
+      }
 
       queries.forEach(function(query) {
         // the one rule is singled out here because it leads to a different execution
@@ -137,17 +142,22 @@ function optimizerRuleTestSuite () {
         "FOR doc IN " + cn + " SORT doc.value1 RETURN doc",
         "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000 RETURN doc",
         "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000, 1000 RETURN doc",
-        "FOR doc IN " + cn + " REMOVE doc IN " + cn,
-        "FOR doc IN " + cn + " REMOVE doc._key IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc WITH {a: 1} IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc._key WITH {} IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc._key WITH {a:1} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
       ];
+
+      if (require("internal").options()["query.parallelize-gather-writes"]) {
+        queries.concat([
+          "FOR doc IN " + cn + " REMOVE doc IN " + cn,
+          "FOR doc IN " + cn + " REMOVE doc._key IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc WITH {a: 1} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc._key WITH {} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc._key WITH {a:1} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
+        ]);
+      }
 
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query,);
