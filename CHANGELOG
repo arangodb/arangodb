@@ -1,6 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
+
 * FE-256: Minor Graph Viewer improvements:
   - re-order right click menu
   - Make Right click menu and toolbar work in full screen
