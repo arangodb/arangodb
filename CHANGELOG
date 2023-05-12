@@ -1,6 +1,9 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
+  for GeoJSON.
+
 * Fixed issue #18942: arangorestore ignores the HTTP status code.
 
 * FE-267: fix custom analyzer & features not showing up in inverted index view,
