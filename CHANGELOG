@@ -1,7 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
-* FE-267: fix custom analyzer & features not showing up in inverted index
-  view, and support for basic fields definition.
+
+* FE-267: fix custom analyzer & features not showing up in inverted index view,
+  and support for basic fields definition.
 
 * FE-268: remove 'switch to new graph' when no defined graph is present.
 
