@@ -26,6 +26,7 @@
 #include "Actor/ActorPID.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashSet.h"
 #include "Pregel/Worker/Messages.h"
 #include "VocBase/voc-types.h"
 
