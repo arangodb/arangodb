@@ -8,7 +8,6 @@ import {
 } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { useGraph } from "../GraphContext";
-import { AttributesInfo } from "./AttributesInfo";
 import { useNodeData } from "./useNodeData";
 
 const useDeleteNodeAction = ({ deleteEdges }: { deleteEdges: boolean }) => {
@@ -62,7 +61,7 @@ const useDeleteNodeAction = ({ deleteEdges }: { deleteEdges: boolean }) => {
 export const DeleteNodeModal = () => {
   const { onClearAction } = useGraph();
   const [deleteEdges, setDeleteEdges] = useState(true);
-  const { nodeId, nodeData, deleteNode } = useDeleteNodeAction({
+  const { nodeId, deleteNode } = useDeleteNodeAction({
     deleteEdges
   });
 
@@ -75,7 +74,6 @@ export const DeleteNodeModal = () => {
       <ModalHeader>Delete Node: {nodeId}?</ModalHeader>
       <ModalBody>
         <Stack spacing="4">
-          <AttributesInfo attributes={nodeData} />
           <Checkbox
             isChecked={deleteEdges}
             onChange={() => {

@@ -3,6 +3,12 @@ devel
 
 * FE-263: Improve forceAtlas layout in the Graph Viewer.
 
+* FE-256: Minor Graph Viewer improvements:
+  - re-order right click menu
+  - Make Right click menu and toolbar work in full screen
+  - Remove editable attributes in edit and delete (nodes and edges) modals
+  - Add "tree"-mode to editor in edit (nodes and edges) modals
+
 * FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
   for GeoJSON.
 
