@@ -1,6 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* FE-257: allow additional properties in inverted index creation.
+
 * UI Fix - allow empty keys in document key validation.
 
 * BTS-1181: fix a data race on the collection list in TransactionState.
