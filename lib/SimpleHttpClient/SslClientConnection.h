@@ -46,6 +46,8 @@ class SslClientConnection final : public GeneralClientConnection {
  private:
   SslClientConnection(SslClientConnection const&);
   SslClientConnection& operator=(SslClientConnection const&);
+  bool cleanUpSocketFlags();
+  bool setSocketToNonBlocking();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -123,6 +125,12 @@ class SslClientConnection final : public GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   uint64_t _sslProtocol;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief socket flags
+  //////////////////////////////////////////////////////////////////////////////
+
+  int _socketFlags;
 };
 }  // namespace httpclient
 }  // namespace arangodb
