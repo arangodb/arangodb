@@ -3,6 +3,12 @@ devel
 
 * FE-268: remove 'switch to new graph' when no defined graph is present.
 
+* FE-258: allow specifying optimizeTopK during arangosearch view creation.
+
+* FE-257: allow additional properties in inverted index creation.
+
+* UI Fix - allow empty keys in document key validation.
+
 * BTS-1181: fix a data race on the collection list in TransactionState
   This race could happen in the cluster when a collection is sharded by a
   different attribute than `_key` and a document lookup by _key is performed.
@@ -29,7 +35,7 @@ devel
   When the collection also had an arangosearch view, telemetrics showed 
   imprecise index values because the view was being considered as an index 
   of type arangosearch, and its object wouldn't contain expected fields that 
-  would be found in other indexes' objects. 
+  would be found in other indexes' objects.
 
 * Add metric `arangodb_file_descriptors_current` to expose the number of
   file descriptors currently opened by the arangod process. This metric is
