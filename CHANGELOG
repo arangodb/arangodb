@@ -1,6 +1,9 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* Improved error reporting for system calls on Windows and fixed a
+  Windows-specific issue of the IOHeartbeatThread.
+
 * FE-256: Minor Graph Viewer improvements:
   - re-order right click menu
   - Make Right click menu and toolbar work in full screen
