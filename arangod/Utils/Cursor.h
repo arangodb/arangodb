@@ -40,6 +40,8 @@
 #include <string>
 #include <string_view>
 
+#include "Logger/LogMacros.h"
+
 namespace arangodb {
 
 namespace transaction {
@@ -117,12 +119,10 @@ class Cursor {
   uint64_t storedBatchId() const { return _currentBatchResult.first; }
 
   void handleNextBatchIdValue(VPackBuilder& builder, bool hasMore) {
-    if (isRetriable()) {
-      _currentBatchResult.first = ++_currentBatchId;
-      if (hasMore) {
-        builder.add("nextBatchId", std::to_string(_currentBatchId + 1));
-        _lastAvailableBatchId = _currentBatchId + 1;
-      }
+    _currentBatchResult.first = ++_currentBatchId;
+    if (hasMore) {
+      builder.add("nextBatchId", std::to_string(_currentBatchId + 1));
+      _lastAvailableBatchId = _currentBatchId + 1;
     }
   }
 

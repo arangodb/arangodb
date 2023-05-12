@@ -43,6 +43,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -653,7 +655,9 @@ RestStatus RestCursorHandler::showLatestBatch() {
     return RestStatus::DONE;
   }
 
-  lookupCursor(suffixes[0], /*mustBeRetriable*/ true);
+  uint64_t batchId = basics::StringUtils::uint64(suffixes[1]);
+
+  lookupCursor(suffixes[0], batchId);
 
   if (_cursor == nullptr) {
     // error response already built here
@@ -662,8 +666,6 @@ RestStatus RestCursorHandler::showLatestBatch() {
 
   _cursor->setWakeupHandler(withLogContext(
       [self = shared_from_this()]() { return self->wakeupHandler(); }));
-
-  uint64_t batchId = basics::StringUtils::uint64(suffixes[1]);
 
   // POST /_api/cursor/<cid>/x and the current batchId on the server is y, then:
   //   if x == y, resend the current batch
@@ -701,7 +703,7 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
   // the call to lookupCursor will populate _cursor if the cursor can be
   // found. otherwise, _cursor will remain a nullptr and an error will
   // be written to the response
-  lookupCursor(suffixes[0], /*mustBeRetriable*/ false);
+  lookupCursor(suffixes[0]);
 
   if (_cursor == nullptr) {
     return RestStatus::DONE;
@@ -751,7 +753,7 @@ RestStatus RestCursorHandler::deleteQueryCursor() {
 /// @brief look up cursor by id. side-effect: populates _cursor in case cursor
 /// was found. in case cursor was not found, writes an error into the response
 void RestCursorHandler::lookupCursor(std::string_view id,
-                                     bool mustBeRetriable) {
+                                     std::optional<uint64_t> batchId) {
   TRI_ASSERT(_cursor == nullptr);
 
   auto cursors = _vocbase.cursorRepository();
@@ -775,7 +777,8 @@ void RestCursorHandler::lookupCursor(std::string_view id,
 
   TRI_ASSERT(_cursor != nullptr);
 
-  if (mustBeRetriable && !_cursor->isRetriable()) {
+  if (batchId.has_value() && _cursor->isCurrentBatchId(batchId.value()) &&
+      !_cursor->isRetriable()) {
     releaseCursor();
     TRI_ASSERT(_cursor == nullptr);
 

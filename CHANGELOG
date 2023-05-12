@@ -1,6 +1,13 @@
 devel
 -----
 
+* In batched query results, when executing requests for 
+  `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user 
+  would only be able to fetch the next batch using the next batch id in 
+  <batchId> if the query option `allowRetry` was set to true, but maintained
+  the restriction that the user can only retrieve the latest batch if the
+  query option `allowRetry` is set to true.
+
 * FE-263: Improve forceAtlas layout in the Graph Viewer.
 
 * FE-256: Minor Graph Viewer improvements:
