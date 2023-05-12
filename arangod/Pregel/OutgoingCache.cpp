@@ -52,15 +52,14 @@ using namespace arangodb::pregel::algos;
 
 template<typename M>
 OutCache<M>::OutCache(std::shared_ptr<WorkerConfig const> state,
+                      std::set<PregelShard> localShards,
                       MessageFormat<M> const* format)
-    : _config(state),
+    : _config(std::move(state)),
+      _localShards(std::move(localShards)),
       _format(format),
       _baseUrl(Utils::baseUrl(Utils::workerPrefix)) {}
 
 // ================= ArrayOutCache ==================
-
-template<typename M>
-ArrayOutCache<M>::~ArrayOutCache() = default;
 
 template<typename M>
 void ArrayOutCache<M>::_removeContainedMessages() {
@@ -74,7 +73,7 @@ template<typename M>
 void ArrayOutCache<M>::appendMessage(PregelShard shard,
                                      std::string_view const& key,
                                      M const& data) {
-  if (this->_config->isLocalVertexShard(shard)) {
+  if (this->isLocalShard(shard)) {
     this->_localCache->storeMessageNoLock(shard, key, data);
     this->_sendCount++;
   } else {
@@ -143,7 +142,7 @@ void ArrayOutCache<M>::flushMessages() {
     buffer.append(serialized.get().slice().begin(),
                   serialized.get().slice().byteSize());
     responses.emplace_back(network::sendRequest(
-        pool, "shard:" + this->_config->globalShardID(shard),
+        pool, "shard:" + this->_config->graphSerdeConfig().shardID(shard),
         fuerte::RestVerb::Post, this->_baseUrl + Utils::messagesPath,
         std::move(buffer), reqOpts));
 
@@ -156,16 +155,6 @@ void ArrayOutCache<M>::flushMessages() {
 }
 
 // ================= CombiningOutCache ==================
-
-template<typename M>
-CombiningOutCache<M>::CombiningOutCache(
-    std::shared_ptr<WorkerConfig const> state, MessageFormat<M> const* format,
-    MessageCombiner<M> const* combiner)
-    : OutCache<M>(state, format), _combiner(combiner) {}
-
-template<typename M>
-CombiningOutCache<M>::~CombiningOutCache() = default;
-
 template<typename M>
 void CombiningOutCache<M>::_removeContainedMessages() {
   for (auto& pair : _shardMap) {
@@ -178,7 +167,7 @@ template<typename M>
 void CombiningOutCache<M>::appendMessage(PregelShard shard,
                                          std::string_view const& key,
                                          M const& data) {
-  if (this->_config->isLocalVertexShard(shard)) {
+  if (this->isLocalShard(shard)) {
     this->_localCache->storeMessageNoLock(shard, key, data);
     this->_sendCount++;
   } else {
@@ -249,7 +238,7 @@ void CombiningOutCache<M>::flushMessages() {
     buffer.append(serialized.get().slice().begin(),
                   serialized.get().slice().byteSize());
     responses.emplace_back(network::sendRequest(
-        pool, "shard:" + this->_config->globalShardID(shard),
+        pool, "shard:" + this->_config->graphSerdeConfig().shardID(shard),
         fuerte::RestVerb::Post, this->_baseUrl + Utils::messagesPath,
         std::move(buffer), reqOpts));
 
@@ -275,9 +264,9 @@ template<typename M>
 void ArrayOutActorCache<M>::appendMessage(PregelShard shard,
                                           std::string_view const& key,
                                           M const& data) {
-  _sendCountPerActor[_responsibleActorPerShard
-                         [this->_config->globalShardIDs()[shard.value]]]++;
-  if (this->_config->isLocalVertexShard(shard)) {
+  _sendCountPerActor[_responsibleActorPerShard[this->_config->graphSerdeConfig()
+                                                   .shardID(shard)]]++;
+  if (this->isLocalShard(shard)) {
     this->_localCache->storeMessageNoLock(shard, key, data);
     this->_sendCount++;
   } else {
@@ -329,7 +318,8 @@ void ArrayOutActorCache<M>::flushMessages() {
         .shard = shard,
         .messages = messages};
     auto actor =
-        _responsibleActorPerShard[this->_config->globalShardIDs()[shard.value]];
+        _responsibleActorPerShard[this->_config->graphSerdeConfig().shardID(
+            shard)];
     _dispatch(actor, pregelMessage);
 
     this->_sendCount += shardMessageCount;
@@ -354,9 +344,10 @@ template<typename M>
 void CombiningOutActorCache<M>::appendMessage(PregelShard shard,
                                               std::string_view const& key,
                                               M const& data) {
-  if (this->_config->isLocalVertexShard(shard)) {
-    _sendCountPerActor[_responsibleActorPerShard
-                           [this->_config->globalShardIDs()[shard.value]]]++;
+  if (this->isLocalShard(shard)) {
+    _sendCountPerActor
+        [_responsibleActorPerShard[this->_config->graphSerdeConfig().shardID(
+            shard)]]++;
     this->_localCache->storeMessageNoLock(shard, key, data);
     this->_sendCount++;
   } else {
@@ -366,8 +357,9 @@ void CombiningOutActorCache<M>::appendMessage(PregelShard shard,
       auto& ref = (*it).second;   // will be modified by combine(...)
       _combiner->combine(ref, data);
     } else {  // first message for this vertex
-      _sendCountPerActor[_responsibleActorPerShard
-                             [this->_config->globalShardIDs()[shard.value]]]++;
+      _sendCountPerActor
+          [_responsibleActorPerShard[this->_config->graphSerdeConfig().shardID(
+              shard)]]++;
       vertexMap.try_emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
@@ -412,7 +404,8 @@ void CombiningOutActorCache<M>::flushMessages() {
         .shard = shard,
         .messages = messagesToVPack(vertexMessageMap)};
     auto actor =
-        _responsibleActorPerShard[this->_config->globalShardIDs()[shard.value]];
+        _responsibleActorPerShard[this->_config->graphSerdeConfig().shardID(
+            shard)];
     _dispatch(actor, pregelMessage);
 
     this->_sendCount += vertexMessageMap.size();

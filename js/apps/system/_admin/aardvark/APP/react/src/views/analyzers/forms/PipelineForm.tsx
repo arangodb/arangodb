@@ -9,7 +9,7 @@ import { getPath } from "../../../utils/helpers";
 import { ArangoTable, ArangoTD } from "../../../components/arango/table";
 import { IconButton } from "../../../components/arango/buttons";
 
-const restrictedTypeNameMap = omit(typeNameMap, 'geojson', 'geopoint', 'pipeline', 'identity');
+const restrictedTypeNameMap = omit(typeNameMap, 'geojson', 'geopoint', 'pipeline', 'identity', 'geo_s2');
 
 const PipelineForm = ({ formState, dispatch, disabled }: FormProps<PipelineStates>) => {
   const items = formState.properties.pipeline;

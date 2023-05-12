@@ -9,6 +9,7 @@ import {
   formSchema,
   GeoJsonState,
   GeoPointState,
+  GeoS2State,
   NearestNeighborsState,
   NGramState,
   NormState,
@@ -27,6 +28,7 @@ import TextForm from "./forms/TextForm";
 import AqlForm from "./forms/AqlForm";
 import GeoJsonForm from "./forms/GeoJsonForm";
 import GeoPointForm from "./forms/GeoPointForm";
+import GeoS2Form from "./forms/GeoS2Form";
 import React, { Dispatch } from "react";
 import PipelineForm from "./forms/PipelineForm";
 import StopwordsForm from "./forms/StopwordsForm";
@@ -135,6 +137,12 @@ export function getForm (formProps: FormProps<AnalyzerTypeState>) {
       const { disabled, dispatch, formState } = getConstrainedFormProps<GeoPointState>(formProps);
 
       return <GeoPointForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
+
+    case 'geo_s2': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<GeoS2State>(formProps);
+
+      return <GeoS2Form formState={formState} dispatch={dispatch} disabled={disabled}/>;
     }
   }
 }

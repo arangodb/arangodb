@@ -5,19 +5,13 @@
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/State.h"
 #include "Pregel/MasterContext.h"
+#include "CanceledState.h"
 
 using namespace arangodb::pregel::conductor;
 
 Loading::Loading(ConductorState& conductor,
                  std::unordered_map<ShardID, actor::ActorPID> actorForShard)
-    : conductor{conductor}, actorForShard{std::move(actorForShard)} {
-  // TODO GORDO-1510
-  // _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
-}
-Loading::~Loading() {
-  // TODO GORDO-1510
-  // conductor._feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
-}
+    : conductor{conductor}, actorForShard{std::move(actorForShard)} {}
 
 auto Loading::messages()
     -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
@@ -28,7 +22,22 @@ auto Loading::messages()
                                  .responsibleActorPerShard = actorForShard});
   }
   return messages;
-};
+}
+
+auto Loading::cancel(arangodb::pregel::actor::ActorPID sender,
+                     message::ConductorMessages message)
+    -> std::optional<StateChange> {
+  auto newState = std::make_unique<Canceled>(conductor);
+  auto stateName = newState->name();
+
+  return StateChange{
+      .statusMessage = pregel::message::Canceled{.state = stateName},
+      .metricsMessage =
+          pregel::metrics::message::ConductorFinished{
+              .previousState =
+                  pregel::metrics::message::PreviousState::LOADING},
+      .newState = std::move(newState)};
+}
 
 auto Loading::receive(actor::ActorPID sender,
                       message::ConductorMessages message)
@@ -44,6 +53,10 @@ auto Loading::receive(actor::ActorPID sender,
                 .errorMessage =
                     fmt::format("In {}: Received unexpected message {} from {}",
                                 name(), inspection::json(message), sender)},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
+                .previousState =
+                    pregel::metrics::message::PreviousState::LOADING},
         .newState = std::move(newState)};
   }
   auto graphLoaded = std::get<ResultT<message::GraphLoaded>>(message);
@@ -57,6 +70,10 @@ auto Loading::receive(actor::ActorPID sender,
                 .errorMessage = fmt::format(
                     "In {}: Received error {} from {}", name(),
                     inspection::json(graphLoaded.errorMessage()), sender)},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
+                .previousState =
+                    pregel::metrics::message::PreviousState::LOADING},
         .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);
@@ -75,8 +92,9 @@ auto Loading::receive(actor::ActorPID sender,
     return StateChange{
         .statusMessage =
             pregel::message::ComputationStarted{.state = stateName},
+        .metricsMessage = pregel::metrics::message::ConductorComputingStarted{},
         .newState = std::move(newState)};
   }
 
   return std::nullopt;
-};
+}

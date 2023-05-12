@@ -27,6 +27,7 @@
 #include "Actor/ActorPID.h"
 #include "Pregel/PregelOptions.h"
 #include "Inspection/Types.h"
+#include "MetricsMessages.h"
 
 namespace arangodb::pregel::message {
 
@@ -80,11 +81,16 @@ auto inspect(Inspector& f, StatusStart& x) {
 
 struct PregelStarted {
   std::string state;
-  TimingInMicroseconds time = TimingInMicroseconds::systemNow();
+  // we need two timings here:
+  // time is used to measure the pregel run duration (based on the steady_clock)
+  // systemTime is used to set the created datetime (based on the system_clock)
+  TimingInMicroseconds time = TimingInMicroseconds::now();
+  TimingInMicroseconds systemTime = TimingInMicroseconds::systemNow();
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PregelStarted& x) {
-  return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
+  return f.object(x).fields(f.field("state", x.state), f.field("time", x.time),
+                            f.field("systemTime", x.systemTime));
 }
 
 struct LoadingStarted {

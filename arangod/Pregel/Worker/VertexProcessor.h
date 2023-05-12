@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <Cluster/ServerState.h>
+
 #include <Pregel/Algorithm.h>
 #include <Pregel/Iterators.h>
 #include <Pregel/MessageCombiner.h>
@@ -74,7 +76,7 @@ struct VertexProcessor {
   std::shared_ptr<VertexComputation<V, E, M>> vertexComputation;
   std::unique_ptr<AggregatorHandler> workerAggregator;
 
-  uint32_t messageBatchSize = 500;
+  uint32_t messageBatchSize = 5000;
 };
 
 struct ActorVertexProcessorResult {
@@ -122,7 +124,7 @@ struct ActorVertexProcessor {
   std::shared_ptr<VertexComputation<V, E, M>> vertexComputation;
   std::unique_ptr<AggregatorHandler> workerAggregator;
 
-  uint32_t messageBatchSize = 500;
+  uint32_t messageBatchSize = 5000;
 };
 
 }  // namespace arangodb::pregel

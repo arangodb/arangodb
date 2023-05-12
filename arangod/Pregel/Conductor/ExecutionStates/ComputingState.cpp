@@ -6,6 +6,7 @@
 #include "Pregel/Conductor/ExecutionStates/StoringState.h"
 #include "Pregel/Conductor/State.h"
 #include "Pregel/MasterContext.h"
+#include "CanceledState.h"
 
 using namespace arangodb::pregel::conductor;
 
@@ -17,10 +18,7 @@ Computing::Computing(
       masterContext{std::move(masterContext)},
       sendCountPerActor{std::move(sendCountPerActor)},
       totalSendMessagesCount{totalSendMessagesCount},
-      totalReceivedMessagesCount{totalReceivedMessagesCount} {
-  // TODO GORDO-1510
-  // _feature.metrics()->pregelConductorsRunningNumber->fetch_add(1);
-}
+      totalReceivedMessagesCount{totalReceivedMessagesCount} {}
 
 auto Computing::messages()
     -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
@@ -48,6 +46,20 @@ auto Computing::messages()
   }
   return out;
 }
+auto Computing::cancel(arangodb::pregel::actor::ActorPID sender,
+                       message::ConductorMessages message)
+    -> std::optional<StateChange> {
+  auto newState = std::make_unique<Canceled>(conductor);
+  auto stateName = newState->name();
+
+  return StateChange{
+      .statusMessage = pregel::message::Canceled{.state = stateName},
+      .metricsMessage =
+          pregel::metrics::message::ConductorFinished{
+              .previousState =
+                  pregel::metrics::message::PreviousState::COMPUTING},
+      .newState = std::move(newState)};
+}
 auto Computing::receive(actor::ActorPID sender,
                         message::ConductorMessages message)
     -> std::optional<StateChange> {
@@ -63,6 +75,10 @@ auto Computing::receive(actor::ActorPID sender,
                 .errorMessage =
                     fmt::format("In {}: Received unexpected message {} from {}",
                                 name(), inspection::json(message), sender)},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
+                .previousState =
+                    pregel::metrics::message::PreviousState::COMPUTING},
         .newState = std::move(newState)};
   }
   auto gssFinished =
@@ -77,6 +93,10 @@ auto Computing::receive(actor::ActorPID sender,
                 .errorMessage = fmt::format(
                     "In {}: Received error {} from {}", name(),
                     inspection::json(gssFinished.errorMessage()), sender)},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
+                .previousState =
+                    pregel::metrics::message::PreviousState::COMPUTING},
         .newState = std::move(newState)};
   }
   LOG_TOPIC("543aa", INFO, Logger::PREGEL) << fmt::format(
@@ -97,14 +117,14 @@ auto Computing::receive(actor::ActorPID sender,
 
     if (postGss.finished) {
       masterContext->postApplication();
-      // TODO GORDO-1510
-      // conductor._feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
       if (conductor.specifications.storeResults) {
         auto newState = std::make_unique<Storing>(conductor);
         auto stateName = newState->name();
         return StateChange{
             .statusMessage =
                 pregel::message::StoringStarted{.state = stateName},
+            .metricsMessage =
+                pregel::metrics::message::ConductorStoringStarted{},
             .newState = std::move(newState)};
       }
 
@@ -112,6 +132,7 @@ auto Computing::receive(actor::ActorPID sender,
       auto stateName = newState->name();
       return StateChange{
           .statusMessage = pregel::message::StoringStarted{.state = stateName},
+          .metricsMessage = pregel::metrics::message::ConductorStoringStarted{},
           .newState = std::move(newState)};
     }
 
@@ -135,6 +156,7 @@ auto Computing::receive(actor::ActorPID sender,
                                .edgeCount = edgeCount,
                                .aggregators = std::move(aggregators),
                                .state = stateName},
+                       .metricsMessage = std::nullopt,
                        .newState = std::move(newState)};
   }
 
