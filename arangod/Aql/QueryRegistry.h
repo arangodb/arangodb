@@ -26,10 +26,12 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/ErrorCode.h"
+#include "Basics/ResultT.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
 #include "Futures/Promise.h"
 
+#include <deque>
 #include <unordered_map>
 
 namespace arangodb {
@@ -47,6 +49,8 @@ class QueryRegistry {
 
  public:
   enum class EngineType : uint8_t { Execution = 1, Graph = 2 };
+
+  using EngineCallback = std::function<void()>;
 
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already
@@ -71,15 +75,23 @@ class QueryRegistry {
   /// Note that an open query will not expire, so users should please
   /// protect against leaks. If an already open query is found, an exception
   /// is thrown.
-  void* openEngine(EngineId eid, EngineType type);
-  ExecutionEngine* openExecutionEngine(EngineId eid) {
-    return static_cast<ExecutionEngine*>(
-        openEngine(eid, EngineType::Execution));
+  ResultT<void*> openEngine(EngineId eid, EngineType type,
+                            EngineCallback callback);
+  ResultT<ExecutionEngine*> openExecutionEngine(EngineId eid,
+                                                EngineCallback callback) {
+    auto res = openEngine(eid, EngineType::Execution, std::move(callback));
+    if (res.fail()) {
+      return std::move(res).result();
+    }
+    return static_cast<ExecutionEngine*>(res.get());
   }
 
   traverser::BaseEngine* openGraphEngine(EngineId eid) {
-    return static_cast<traverser::BaseEngine*>(
-        openEngine(eid, EngineType::Graph));
+    auto res = openEngine(eid, EngineType::Graph, {});
+    if (res.fail()) {
+      return nullptr;
+    }
+    return static_cast<traverser::BaseEngine*>(res.get());
   }
 
   /// @brief close, return a query to the registry, if the query is not found,
@@ -183,10 +195,18 @@ class QueryRegistry {
           _type(EngineType::Graph),
           _isOpen(false) {}
 
+    ~EngineInfo();
+
+    void scheduleCallback();
+
     void* _engine;
     QueryInfo* _queryInfo;
     const EngineType _type;
     bool _isOpen;
+
+    // list of callbacks from handlers that are waiting for the engine to become
+    // available
+    std::deque<EngineCallback> _waitingCallbacks;
   };
 
   using QueryInfoMap = std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>;
