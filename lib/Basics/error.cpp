@@ -26,6 +26,7 @@
 
 #include <frozen/unordered_map.h>
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/error-registry.h"
@@ -62,8 +63,16 @@ std::string TRI_last_error() {
     if (LastError._sys == 0) {
       return {};
     }
-    LPSTR messageBuffer = nullptr;
-    std::size_t size = FormatMessageA(
+
+    std::size_t size{0};
+    LPSTR messageBuffer{nullptr};
+    auto sg = arangodb::ScopeGuard([&]() noexcept {
+      if (messageBuffer != nullptr && size != 0) {
+        LocalFree(messageBuffer);
+      }
+    });
+
+    size = FormatMessageA(
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
             FORMAT_MESSAGE_IGNORE_INSERTS,
         nullptr, LastError._sys, 0, (LPSTR)&messageBuffer, 0, nullptr);
@@ -71,9 +80,8 @@ std::string TRI_last_error() {
       return "failed to get error message, the error code is " +
              std::to_string(LastError._sys);
     }
-    std::string message(messageBuffer, size);
-    LocalFree(messageBuffer);
-    return message;
+
+    return std::string{messageBuffer, size};
 #else
     return strerror(LastError._sys);
 #endif
