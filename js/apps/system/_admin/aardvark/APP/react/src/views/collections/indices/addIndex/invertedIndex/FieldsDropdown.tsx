@@ -45,7 +45,6 @@ const MultiValueLabel = (
 export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
   const [formikField] = useField<InvertedIndexValuesType[]>(field.name);
   const { setCurrentFieldData } = useInvertedIndexContext();
-  console.log("formikField", formikField.value);
   const dropdownValue =
     formikField.value?.map(data => {
       if (typeof data === "string") {
