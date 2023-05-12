@@ -48,9 +48,6 @@
 #include "Basics/socket-utils.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "SimpleHttpClient/ClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
 
@@ -82,6 +79,7 @@ GeneralClientConnection::GeneralClientConnection(
       _connectRetries(connectRetries),
       _numConnectRetries(0),
       _freeEndpointOnDestruction(false),
+      _isSocketNonBlocking(false),
       _isConnected(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _read(0),
@@ -102,6 +100,7 @@ GeneralClientConnection::GeneralClientConnection(
       _connectRetries(connectRetries),
       _numConnectRetries(0),
       _freeEndpointOnDestruction(true),
+      _isSocketNonBlocking(false),
       _isConnected(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _read(0),
