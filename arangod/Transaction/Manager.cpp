@@ -1018,8 +1018,6 @@ Result Manager::statusChangeWithTimeout(TransactionId tid,
 
 Result Manager::commitManagedTrx(TransactionId tid,
                                  std::string const& database) {
-  _nrCommitting += 1;
-  ScopeGuard counterGuard([&]() noexcept { _nrCommitting -= 1; });
   READ_LOCKER(guard, _hotbackupCommitLock);
   return statusChangeWithTimeout(tid, database, transaction::Status::COMMITTED);
 }

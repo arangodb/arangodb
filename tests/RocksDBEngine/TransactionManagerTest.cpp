@@ -71,41 +71,31 @@ TEST(RocksDBTransactionManager, test_overlapping) {
   transaction::Manager tm(feature);
 
   std::chrono::milliseconds five(5);
-  std::mutex mu;
-  std::condition_variable cv;
-  std::condition_variable cv2;
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
   EXPECT_TRUE(tm.holdTransactions(500));
 
-  std::unique_lock<std::mutex> lock(mu);
-
   tm.registerTransaction(trxId, false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
 
+  std::atomic<bool> done;
+
   auto getReadLock = [&]() -> void {
-    {
-      std::unique_lock<std::mutex> innerLock(mu);
-      cv.notify_all();
-    }
     tm.commitManagedTrx(trxId, "foo");
+    done = true;
   };
 
   std::thread reader(getReadLock);
 
-  cv.wait(lock);
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  EXPECT_EQ(tm.getCommittingTransactionCount(), 0);
   std::this_thread::sleep_for(five);
+  EXPECT_FALSE(done);
 
-  // there should be one transaction in commit
-  EXPECT_EQ(tm.getCommittingTransactionCount(), 1);
   tm.releaseTransactions();
 
   reader.join();
+
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  EXPECT_EQ(tm.getCommittingTransactionCount(), 0);
   tm.unregisterTransaction(trxId, false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
-  EXPECT_EQ(tm.getCommittingTransactionCount(), 0);
 }
