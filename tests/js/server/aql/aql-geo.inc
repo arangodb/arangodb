@@ -346,7 +346,7 @@
       waitForArangoSearch();
       let c = compare(
         `FILTER GEO_DISTANCE(d.geo, GEO_POINT(6.93, 10.94)) > 0`,
-        `SEARCH ANALYZER(GEO_DISTANCE(d.geo, GEO_POINT(6.93, 10.94)) > 0, "${analyzerName}")`
+        `SEARCH ANALYZER(GEO_DISTANCE(d.geo, GEO_POINT(6.93, 10.94)) > 0, "geo_json")`
       );
       assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
