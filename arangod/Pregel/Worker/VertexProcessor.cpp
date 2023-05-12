@@ -48,7 +48,8 @@ VertexProcessor<V, E, M>::VertexProcessor(
     std::unique_ptr<MessageFormat<M>>& messageFormat) {
   if (messageCombiner != nullptr) {
     localMessageCache = std::make_shared<CombiningInCache<M>>(
-        std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
+        containers::FlatHashSet<PregelShard>{}, messageFormat.get(),
+        messageCombiner.get());
     outCache = std::make_shared<CombiningOutCache<M>>(
         workerConfig,
         workerConfig->graphSerdeConfig().localPregelShardIDs(
@@ -56,7 +57,7 @@ VertexProcessor<V, E, M>::VertexProcessor(
         messageFormat.get(), messageCombiner.get());
   } else {
     localMessageCache = std::make_shared<ArrayInCache<M>>(
-        std::set<PregelShard>{}, messageFormat.get());
+        containers::FlatHashSet<PregelShard>{}, messageFormat.get());
     outCache = std::make_shared<ArrayOutCache<M>>(
         workerConfig,
         workerConfig->graphSerdeConfig().localPregelShardIDs(
@@ -122,7 +123,8 @@ ActorVertexProcessor<V, E, M>::ActorVertexProcessor(
         responsibleActorPerShard) {
   if (messageCombiner != nullptr) {
     localMessageCache = std::make_shared<CombiningInCache<M>>(
-        std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
+        containers::FlatHashSet<PregelShard>{}, messageFormat.get(),
+        messageCombiner.get());
     outCache = std::make_shared<CombiningOutActorCache<M>>(
         workerConfig,
         workerConfig->graphSerdeConfig().localPregelShardIDs(
@@ -130,7 +132,7 @@ ActorVertexProcessor<V, E, M>::ActorVertexProcessor(
         messageFormat.get(), messageCombiner.get());
   } else {
     localMessageCache = std::make_shared<ArrayInCache<M>>(
-        std::set<PregelShard>{}, messageFormat.get());
+        containers::FlatHashSet<PregelShard>{}, messageFormat.get());
     outCache = std::make_shared<ArrayOutActorCache<M>>(
         workerConfig,
         workerConfig->graphSerdeConfig().localPregelShardIDs(

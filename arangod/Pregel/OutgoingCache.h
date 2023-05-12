@@ -26,6 +26,7 @@
 #include "Actor/ActorPID.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashSet.h"
 #include "Pregel/Worker/Messages.h"
 #include "VocBase/voc-types.h"
 
@@ -55,7 +56,7 @@ template<typename M>
 class OutCache {
  protected:
   std::shared_ptr<WorkerConfig const> _config;
-  std::set<PregelShard> _localShards;
+  containers::FlatHashSet<PregelShard> _localShards;
   MessageFormat<M> const* _format;
   InCache<M>* _localCache = nullptr;
   InCache<M>* _localCacheNextGSS = nullptr;
@@ -74,7 +75,8 @@ class OutCache {
 
  public:
   OutCache(std::shared_ptr<WorkerConfig const> state,
-           std::set<PregelShard> localShards, MessageFormat<M> const* format);
+           containers::FlatHashSet<PregelShard> localShards,
+           MessageFormat<M> const* format);
   virtual ~OutCache() = default;
 
   size_t sendCount() const { return _sendCount; }
@@ -118,7 +120,7 @@ class ArrayOutCache : public OutCache<M> {
 
  public:
   ArrayOutCache(std::shared_ptr<WorkerConfig const> state,
-                std::set<PregelShard> localShards,
+                containers::FlatHashSet<PregelShard> localShards,
                 MessageFormat<M> const* format)
       : OutCache<M>(std::move(state), std::move(localShards), format) {}
   ~ArrayOutCache() = default;
@@ -144,7 +146,7 @@ class CombiningOutCache : public OutCache<M> {
 
  public:
   CombiningOutCache(std::shared_ptr<WorkerConfig const> state,
-                    std::set<PregelShard> localShards,
+                    containers::FlatHashSet<PregelShard> localShards,
                     MessageFormat<M> const* format,
                     MessageCombiner<M> const* combiner)
       : OutCache<M>(std::move(state), std::move(localShards), format),
@@ -181,7 +183,7 @@ class ArrayOutActorCache : public OutCache<M> {
 
  public:
   ArrayOutActorCache(std::shared_ptr<WorkerConfig const> state,
-                     std::set<PregelShard> localShards,
+                     containers::FlatHashSet<PregelShard> localShards,
                      MessageFormat<M> const* format)
       : OutCache<M>{std::move(state), std::move(localShards), format} {};
   ~ArrayOutActorCache() = default;
@@ -228,7 +230,7 @@ class CombiningOutActorCache : public OutCache<M> {
 
  public:
   CombiningOutActorCache(std::shared_ptr<WorkerConfig const> state,
-                         std::set<PregelShard> localShards,
+                         containers::FlatHashSet<PregelShard> localShards,
                          MessageFormat<M> const* format,
                          MessageCombiner<M> const* combiner)
       : OutCache<M>{state, std::move(localShards), format},

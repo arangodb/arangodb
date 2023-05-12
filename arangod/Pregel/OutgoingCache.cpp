@@ -52,7 +52,7 @@ using namespace arangodb::pregel::algos;
 
 template<typename M>
 OutCache<M>::OutCache(std::shared_ptr<WorkerConfig const> state,
-                      std::set<PregelShard> localShards,
+                      containers::FlatHashSet<PregelShard> localShards,
                       MessageFormat<M> const* format)
     : _config(std::move(state)),
       _localShards(std::move(localShards)),
