@@ -1,6 +1,9 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* Improved error reporting for system calls on Windows and fixed a
+  Windows-specific issue of the IOHeartbeatThread.
+
 * Fix MDS-1070 Update iresearch submodule.
 
 * Updated arangosync to v2.17.0.
