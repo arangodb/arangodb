@@ -4,6 +4,32 @@ devel
 * Improved error reporting for system calls on Windows and fixed a
   Windows-specific issue of the IOHeartbeatThread.
 
+* FE-263: Improve forceAtlas layout in the Graph Viewer.
+
+* FE-256: Minor Graph Viewer improvements:
+  - re-order right click menu
+  - Make Right click menu and toolbar work in full screen
+  - Remove editable attributes in edit and delete (nodes and edges) modals
+  - Add "tree"-mode to editor in edit (nodes and edges) modals
+
+* FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
+  for GeoJSON.
+
+* Fixed issue #18942: arangorestore ignores the HTTP status code.
+
+* FE-267: fix custom analyzer & features not showing up in inverted index
+  view, and support for basic fields definition.
+
+* FE-265: Fix user permissions radio button shadow.
+
+* FE-268: remove 'switch to new graph' when no defined graph is present.
+
+* FE-258: allow specifying optimizeTopK during arangosearch view creation.
+
+* FE-257: allow additional properties in inverted index creation.
+
+* UI Fix - allow empty keys in document key validation.
+
 * BTS-1181: fix a data race on the collection list in TransactionState
   This race could happen in the cluster when a collection is sharded by a
   different attribute than `_key` and a document lookup by _key is performed.
