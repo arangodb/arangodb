@@ -69,6 +69,8 @@
 #include <TlHelp32.h>
 #include "Basics/socket-utils.h"
 #include "Basics/win-utils.h"
+#else
+#include <sys/resource.h>
 #endif
 #include <fcntl.h>
 
@@ -1564,4 +1566,34 @@ void TRI_ShutdownProcess() {
     delete external;
   }
   ExternalProcesses.clear();
+}
+
+std::string TRI_SetPriority(ExternalId pid, int prio) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifndef _WIN32
+  errno = 0;
+  int ret = setpriority(PRIO_PROCESS, pid._pid, prio);
+  if (ret == -1) {
+    int err = errno;
+    if (err != 0) {
+      std::stringstream ss;
+      ss << "setting process priority for : '" << pid._pid
+         << "' failed with error: " << strerror(err);
+      return ss.str();
+    }
+  }
+#else
+  HANDLE processHandle = OpenProcess(PROCESS_SET_INFORMATION, FALSE, pid._pid);
+  DWORD dwPriorityClass;
+  if (prio == 0) {
+    dwPriorityClass = NORMAL_PRIORITY_CLASS;
+  } else {
+    dwPriorityClass = IDLE_PRIORITY_CLASS;
+  }
+  SetPriorityClass(processHandle, dwPriorityClass);
+#endif
+  return "";
+#else
+  return "only available in maintainer mode";
+#endif
 }

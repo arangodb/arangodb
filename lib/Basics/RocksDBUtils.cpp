@@ -94,15 +94,15 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
     case rocksdb::Status::Code::kNotFound:
       switch (hint) {
         case StatusHint::collection:
-          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, status.ToString()};
+          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
         case StatusHint::database:
-          return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, status.ToString()};
+          return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
         case StatusHint::document:
-          return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, status.ToString()};
+          return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
         case StatusHint::index:
-          return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND, status.ToString()};
+          return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
         case StatusHint::view:
-          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, status.ToString()};
+          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
         case StatusHint::wal:
           // suppress this error if the WAL is queried for changes that are not
           // available
