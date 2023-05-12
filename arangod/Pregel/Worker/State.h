@@ -70,7 +70,8 @@ struct WorkerState {
           config->localPregelShardIDs(), messageFormat.get(),
           messageCombiner.get());
       inCache = std::make_unique<CombiningInCache<M>>(
-          std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
+          containers::FlatHashSet<PregelShard>{}, messageFormat.get(),
+          messageCombiner.get());
       outCache = std::make_unique<CombiningOutActorCache<M>>(
           config, messageFormat.get(), messageCombiner.get());
     } else {
@@ -78,8 +79,8 @@ struct WorkerState {
           config->localPregelShardIDs(), messageFormat.get());
       writeCache = std::make_unique<ArrayInCache<M>>(
           config->localPregelShardIDs(), messageFormat.get());
-      inCache = std::make_unique<ArrayInCache<M>>(std::set<PregelShard>{},
-                                                  messageFormat.get());
+      inCache = std::make_unique<ArrayInCache<M>>(
+          containers::FlatHashSet<PregelShard>{}, messageFormat.get());
       outCache =
           std::make_unique<ArrayOutActorCache<M>>(config, messageFormat.get());
     }
