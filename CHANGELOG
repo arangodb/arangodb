@@ -74,10 +74,14 @@ devel
   
   If a non-existing collection is specified in the `edgeCollections` or
   `vertexCollections` options of an AQL traversal, the query will now fail 
-  with a `collection or view not found` error. This is a behavior change
-  compared to previous versions, which ignored non-existing vertex
-  collections and had undefined behavior when specifying non-existing
-  edge collections.
+  with a `collection or view not found` error. Also, if wrong collection
+  types are used (e.g. a document collection or a view for `edgeCollections`), 
+  then an error is raised about an invalid collection type being used.
+
+  This is a behavior change compared to previous versions, which ignored 
+  specifying non-existing vertex collections and had undefined behavior when 
+  specifying non-existing edge collections or using a vertex collection
+  instead of an edge collection.  
 
 * Updated arangosync to v2.17.0.
 
