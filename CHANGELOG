@@ -1,6 +1,10 @@
 devel
 -----
 
+* BTS-1331: Reduced the amount of required network calls when using
+  traversals combined with FILTER and/or PRUNE statements in a
+  GeneralGraph in combination with a clustered environment.
+
 * FE-256: Minor Graph Viewer improvements:
   - re-order right click menu
   - Make Right click menu and toolbar work in full screen
