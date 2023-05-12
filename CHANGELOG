@@ -1,6 +1,8 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* FE-265: Fix user permissions radio button shadow.
+
 * FE-268: remove 'switch to new graph' when no defined graph is present.
 
 * FE-258: allow specifying optimizeTopK during arangosearch view creation.
