@@ -222,7 +222,7 @@ CombiningInCache<M>::CombiningInCache(
       _combiner(combiner),
       _localShards(std::move(localShards)) {
   // one mutex per shard, we will see how this scales
-  for (PregelShard const& pregelShard : localShards) {
+  for (PregelShard const& pregelShard : _localShards) {
     this->_bucketLocker[pregelShard];
     _shardMap[pregelShard];
   }
