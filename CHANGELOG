@@ -146,6 +146,8 @@ v3.11.0-alpha.1 (2023-05-03)
 
 * FE-162: Fix display of geodesic lines.
 
+* FE-263: Improve forceAtlas layout in the Graph Viewer.
+
 * Fixed a race in the Maintenance, impacting leaders that have just been
   resigned. During a MoveShard job, the old leader could sabotage the whole
   operation by removing the newly added follower from Current. The solution
