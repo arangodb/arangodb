@@ -86,8 +86,8 @@ void ArrayOutCache<M>::appendMessage(PregelShard shard,
 }
 template<typename M>
 auto ArrayOutCache<M>::messagesToVPack(
-    std::unordered_map<std::string, std::vector<M>> const& messagesForVertices)
-    -> std::tuple<size_t, VPackBuilder> {
+    containers::NodeHashMap<std::string, std::vector<M>> const&
+        messagesForVertices) -> std::tuple<size_t, VPackBuilder> {
   VPackBuilder messagesVPack;
   size_t messageCount = 0;
   {
@@ -182,7 +182,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
     this->_localCache->storeMessageNoLock(shard, key, data);
     this->_sendCount++;
   } else {
-    std::unordered_map<std::string_view, M>& vertexMap = _shardMap[shard];
+    auto& vertexMap = _shardMap[shard];
     auto it = vertexMap.find(key);
     if (it != vertexMap.end()) {  // more than one message
       auto& ref = (*it).second;   // will be modified by combine(...)
@@ -199,7 +199,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
 
 template<typename M>
 auto CombiningOutCache<M>::messagesToVPack(
-    std::unordered_map<std::string_view, M> const& messagesForVertices)
+    containers::NodeHashMap<std::string_view, M> const& messagesForVertices)
     -> VPackBuilder {
   VPackBuilder messagesVPack;
   {
@@ -289,8 +289,8 @@ void ArrayOutActorCache<M>::appendMessage(PregelShard shard,
 }
 template<typename M>
 auto ArrayOutActorCache<M>::messagesToVPack(
-    std::unordered_map<std::string, std::vector<M>> const& messagesForVertices)
-    -> std::tuple<size_t, VPackBuilder> {
+    containers::NodeHashMap<std::string, std::vector<M>> const&
+        messagesForVertices) -> std::tuple<size_t, VPackBuilder> {
   VPackBuilder messagesVPack;
   size_t messageCount = 0;
   {
@@ -360,7 +360,7 @@ void CombiningOutActorCache<M>::appendMessage(PregelShard shard,
     this->_localCache->storeMessageNoLock(shard, key, data);
     this->_sendCount++;
   } else {
-    std::unordered_map<std::string_view, M>& vertexMap = _shardMap[shard];
+    auto& vertexMap = _shardMap[shard];
     auto it = vertexMap.find(key);
     if (it != vertexMap.end()) {  // more than one message
       auto& ref = (*it).second;   // will be modified by combine(...)
@@ -379,7 +379,7 @@ void CombiningOutActorCache<M>::appendMessage(PregelShard shard,
 
 template<typename M>
 auto CombiningOutActorCache<M>::messagesToVPack(
-    std::unordered_map<std::string_view, M> const& messagesForVertices)
+    containers::NodeHashMap<std::string_view, M> const& messagesForVertices)
     -> VPackBuilder {
   VPackBuilder messagesVPack;
   {

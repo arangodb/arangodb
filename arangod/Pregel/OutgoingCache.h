@@ -26,6 +26,9 @@
 #include "Actor/ActorPID.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
+#include "Containers/NodeHashMap.h"
 #include "Pregel/Worker/Messages.h"
 #include "VocBase/voc-types.h"
 
@@ -101,15 +104,15 @@ class OutCache {
 template<typename M>
 class ArrayOutCache : public OutCache<M> {
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard,
-                     std::unordered_map<std::string, std::vector<M>>>
+  containers::NodeHashMap<PregelShard,
+                          containers::NodeHashMap<std::string, std::vector<M>>>
       _shardMap;
   std::unordered_map<ShardID, uint64_t> _sendCountPerShard;
 
   void _removeContainedMessages() override;
-  auto messagesToVPack(std::unordered_map<std::string, std::vector<M>> const&
-                           messagesForVertices)
-      -> std::tuple<size_t, VPackBuilder>;
+  auto messagesToVPack(
+      containers::NodeHashMap<std::string, std::vector<M>> const&
+          messagesForVertices) -> std::tuple<size_t, VPackBuilder>;
 
  public:
   ArrayOutCache(std::shared_ptr<WorkerConfig const> state,
@@ -127,13 +130,14 @@ class CombiningOutCache : public OutCache<M> {
   MessageCombiner<M> const* _combiner;
 
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard, std::unordered_map<std::string_view, M>>
+  containers::NodeHashMap<PregelShard,
+                          containers::NodeHashMap<std::string_view, M>>
       _shardMap;
-  std::unordered_map<ShardID, uint64_t> _sendCountPerShard;
+  containers::FlatHashMap<ShardID, uint64_t> _sendCountPerShard;
 
   void _removeContainedMessages() override;
   auto messagesToVPack(
-      std::unordered_map<std::string_view, M> const& messagesForVertices)
+      containers::NodeHashMap<std::string_view, M> const& messagesForVertices)
       -> VPackBuilder;
 
  public:
@@ -155,8 +159,8 @@ class ArrayOutActorCache : public OutCache<M> {
       _dispatch;
 
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard,
-                     std::unordered_map<std::string, std::vector<M>>>
+  containers::NodeHashMap<PregelShard,
+                          containers::NodeHashMap<std::string, std::vector<M>>>
       _shardMap;
   std::unordered_map<actor::ActorPID, uint64_t> _sendCountPerActor;
 
@@ -165,9 +169,9 @@ class ArrayOutActorCache : public OutCache<M> {
   auto _clearSendCountPerActor() -> void override {
     _sendCountPerActor.clear();
   }
-  auto messagesToVPack(std::unordered_map<std::string, std::vector<M>> const&
-                           messagesForVertices)
-      -> std::tuple<size_t, VPackBuilder>;
+  auto messagesToVPack(
+      containers::NodeHashMap<std::string, std::vector<M>> const&
+          messagesForVertices) -> std::tuple<size_t, VPackBuilder>;
 
  public:
   ArrayOutActorCache(std::shared_ptr<WorkerConfig const> state,
@@ -202,7 +206,8 @@ class CombiningOutActorCache : public OutCache<M> {
       _dispatch;
 
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard, std::unordered_map<std::string_view, M>>
+  containers::NodeHashMap<PregelShard,
+                          containers::NodeHashMap<std::string_view, M>>
       _shardMap;
   std::unordered_map<actor::ActorPID, uint64_t> _sendCountPerActor;
 
@@ -212,7 +217,7 @@ class CombiningOutActorCache : public OutCache<M> {
     _sendCountPerActor.clear();
   }
   auto messagesToVPack(
-      std::unordered_map<std::string_view, M> const& messagesForVertices)
+      containers::NodeHashMap<std::string_view, M> const& messagesForVertices)
       -> VPackBuilder;
 
  public:

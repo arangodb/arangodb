@@ -103,11 +103,11 @@ void InCache<M>::storeMessage(PregelShard shard, std::string_view vertexId,
 // ================== ArrayIncomingCache ==================
 
 template<typename M>
-ArrayInCache<M>::ArrayInCache(std::set<PregelShard> localShards,
+ArrayInCache<M>::ArrayInCache(containers::FlatHashSet<PregelShard> localShards,
                               MessageFormat<M> const* format)
-    : InCache<M>(format), _localShards(localShards) {
+    : InCache<M>(format), _localShards(std::move(localShards)) {
   // one mutex per shard, we will see how this scales
-  for (PregelShard pregelShard : _localShards) {
+  for (PregelShard const& pregelShard : _localShards) {
     this->_bucketLocker[pregelShard];
     _shardMap[pregelShard];
   }
@@ -215,12 +215,14 @@ void ArrayInCache<M>::forEach(
 // ================== CombiningIncomingCache ==================
 
 template<typename M>
-CombiningInCache<M>::CombiningInCache(std::set<PregelShard> localShards,
-                                      MessageFormat<M> const* format,
-                                      MessageCombiner<M> const* combiner)
-    : InCache<M>(format), _combiner(combiner), _localShards(localShards) {
+CombiningInCache<M>::CombiningInCache(
+    containers::FlatHashSet<PregelShard> localShards,
+    MessageFormat<M> const* format, MessageCombiner<M> const* combiner)
+    : InCache<M>(format),
+      _combiner(combiner),
+      _localShards(std::move(localShards)) {
   // one mutex per shard, we will see how this scales
-  for (PregelShard pregelShard : localShards) {
+  for (PregelShard const& pregelShard : _localShards) {
     this->_bucketLocker[pregelShard];
     _shardMap[pregelShard];
   }
