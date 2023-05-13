@@ -24,6 +24,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -67,7 +68,10 @@ class ApplicationFeature {
   bool isOptional() const { return _optional; }
   bool isRequired() const { return !_optional; }
 
-  State state() const { return _state; }
+  State state() const {
+    std::unique_lock lk(_mtx);
+    return _state;
+  }
 
   // whether or not the feature is enabled
   bool isEnabled() const { return _enabled; }
@@ -218,7 +222,10 @@ class ApplicationFeature {
 
   // set a feature's state. this method should be called by the
   // application server only
-  void state(State state) { _state = state; }
+  void state(State state) {
+    std::unique_lock lk(_mtx);
+    _state = state;
+  }
 
   // determine all direct and indirect ancestors of a feature
   void determineAncestors(size_t as);
@@ -250,6 +257,9 @@ class ApplicationFeature {
 
   // state of feature
   State _state;
+
+  // for race condition in writing to/reading from _state
+  std::mutex mutable _mtx;
 
   // whether or not the feature is enabled
   bool _enabled;
