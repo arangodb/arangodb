@@ -24,6 +24,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <shared_mutex>
 #include <string>
 #include <vector>
@@ -259,7 +260,7 @@ class ApplicationFeature {
   State _state;
 
   // for race condition in writing to/reading from _state
-  std::mutex mutable _mtx;
+  std::shared_mutex mutable _mtx;
 
   // whether or not the feature is enabled
   bool _enabled;
