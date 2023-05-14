@@ -25,6 +25,7 @@
 
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -69,7 +70,7 @@ class ApplicationFeature {
   bool isRequired() const { return !_optional; }
 
   State state() const {
-    std::unique_lock lk(_mtx);
+    std::shared_lock lk(_mtx);
     return _state;
   }
 
@@ -259,7 +260,7 @@ class ApplicationFeature {
   State _state;
 
   // for race condition in writing to/reading from _state
-  std::mutex mutable _mtx;
+  std::shared_mutex mutable _mtx;
 
   // whether or not the feature is enabled
   bool _enabled;
