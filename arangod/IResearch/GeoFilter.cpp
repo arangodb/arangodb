@@ -484,7 +484,6 @@ irs::filter::prepared::ptr prepareOpenInterval(
             opts.range.min_type = irs::BoundType::INCLUSIVE;
             opts.range.max = 0;
             opts.range.max_type = irs::BoundType::INCLUSIVE;
-            opts.origin = origin;
           }
 
           return root.prepare(index, order, boost);
