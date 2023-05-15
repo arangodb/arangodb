@@ -678,7 +678,11 @@ static void ClientConnection_reconnect(
   }
 
   if (args.Length() > 5 && !args[5]->IsUndefined()) {
+    // only use JWT from parameters when specified
     client->setJwtSecret(TRI_ObjectToString(isolate, args[5]));
+  } else if (args.Length() >= 4) {
+    // password specified, but no JWT
+    client->setJwtSecret("");
   }
 
   client->setEndpoint(endpoint);
@@ -700,6 +704,39 @@ static void ClientConnection_reconnect(
       isolate, isolate->GetCurrentContext(),
       TRI_V8_STRING(isolate, "require('internal').db._flushCache();"),
       TRI_V8_ASCII_STRING(isolate, "reload db object"), false);
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+static void ClientConnection_setJwtSecret(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
+  if (v8connection == nullptr || client == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "setJwtSecret() must be invoked on an arango connection object "
+        "instance.");
+  }
+
+  if (args.Length() != 1 || !args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("setJwtSecret(<value>)");
+  }
+
+  std::string const value = TRI_ObjectToString(isolate, args[0]);
+  client->setJwtSecret(value);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -2893,6 +2930,10 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
       isolate, "setDatabaseName",
       v8::FunctionTemplate::New(isolate, ClientConnection_setDatabaseName,
                                 v8client));
+
+  connection_proto->Set(isolate, "setJwtSecret",
+                        v8::FunctionTemplate::New(
+                            isolate, ClientConnection_setJwtSecret, v8client));
 
   connection_proto->Set(
       isolate, "importCsv",
