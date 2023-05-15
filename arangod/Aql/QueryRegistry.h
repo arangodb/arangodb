@@ -86,13 +86,7 @@ class QueryRegistry {
     return static_cast<ExecutionEngine*>(res.get());
   }
 
-  traverser::BaseEngine* openGraphEngine(EngineId eid) {
-    auto res = openEngine(eid, EngineType::Graph, {});
-    if (res.fail()) {
-      return nullptr;
-    }
-    return static_cast<traverser::BaseEngine*>(res.get());
-  }
+  traverser::BaseEngine* openGraphEngine(EngineId eid);
 
   /// @brief close, return a query to the registry, if the query is not found,
   /// an exception is thrown. If the ttl is negative (the default is), the

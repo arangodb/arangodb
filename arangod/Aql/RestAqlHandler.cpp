@@ -369,7 +369,8 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
   }
 
   if (!_engine) {  // the PUT verb
-    // TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE);
+    TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE ||
+               this->state() == RestHandler::HandlerState::PAUSED);
 
     auto res = findEngine(idString);
     if (res.fail()) {
@@ -503,7 +504,6 @@ RestStatus RestAqlHandler::continueExecute() {
   if (type == rest::RequestType::PUT) {
     // This cannot be changed!
     TRI_ASSERT(suffixes.size() == 2);
-    // TRI_ASSERT(_engine != nullptr);
     return useQuery(suffixes[0], suffixes[1]);
   } else if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "finish") {
     return RestStatus::DONE;  // uses futures

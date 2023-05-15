@@ -190,6 +190,19 @@ ResultT<void*> QueryRegistry::openEngine(EngineId id, EngineType type,
   return {ei._engine};
 }
 
+traverser::BaseEngine* QueryRegistry::openGraphEngine(EngineId eid) {
+  auto res = openEngine(eid, EngineType::Graph, {});
+  if (res.fail()) {
+    if (res.is(TRI_ERROR_LOCKED)) {
+      // To be consistent with the old interface we have to throw in this case
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_LOCKED, "query with given vocbase and id is already open");
+    }
+    return nullptr;
+  }
+  return static_cast<traverser::BaseEngine*>(res.get());
+}
+
 /// @brief close
 void QueryRegistry::closeEngine(EngineId engineId) {
   LOG_TOPIC("3f0c9", DEBUG, arangodb::Logger::AQL)
@@ -612,8 +625,8 @@ QueryRegistry::QueryInfo::QueryInfo(ErrorCode errorCode, double ttl)
 QueryRegistry::QueryInfo::~QueryInfo() = default;
 
 QueryRegistry::EngineInfo::~EngineInfo() {
-  // TODO - can we guarantee this?
-  TRI_ASSERT(_waitingCallbacks.empty());
+  // If we still have requests waiting for this engine, we need to wake schedule
+  // them so they can abort properly.
   while (!_waitingCallbacks.empty()) {
     scheduleCallback();
   }
