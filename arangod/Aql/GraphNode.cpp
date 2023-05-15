@@ -311,7 +311,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     }
     auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     auto& collections = plan->getAst()->query().collections();
-    for (const auto& n : eColls) {
+    for (auto const& n : eColls) {
       if (_options->shouldExcludeEdgeCollection(n)) {
         // excluded edge collection
         continue;
