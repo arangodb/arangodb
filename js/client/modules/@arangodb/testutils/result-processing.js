@@ -290,16 +290,22 @@ function saveToJunitXML(options, results) {
   }
 
   let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient ? 'EE_' : 'CE_');
+  const addOptionalDuration = (elem, test) => {
+    if (test.hasOwnProperty('duration')) {
+      // time is in seconds
+      elem['time'] =  test.duration / 1000;
+    }
+    return elem;
+  };
+
   iterateTestResults(options, results, xmlState, {
     testRun: function(options, state, testRun, testRunName) {state.testRunName = testRunName;},
     testSuite: function(options, state, testSuite, testSuiteName) {
-      let total = 0;
+      const total = testSuite.hasOwnProperty('total') ? testSuite.total : 0;
+      const failed = testSuite.hasOwnProperty('failed') ? testSuite.failed : 0;
       state.seenTestCases = false;
       state.xml = buildXml();
       state.xmlName = prefix + state.testRunName + '__' + makePathGeneric(testSuiteName).join('_');
-      if (testSuite.hasOwnProperty('total')) {
-        total = testSuite.total;
-      }
       let msg = "";
       let errors = 0;
       if (!testSuite.status && testSuite.hasOwnProperty('message')) {
@@ -308,24 +314,16 @@ function saveToJunitXML(options, results) {
       }
       let elm = {
         errors: errors,
-        failures: msg,
+        failures: failed,
         tests: total,
         name: state.xmlName,
       };
-      if (testSuite.hasOwnProperty('duration')) {
-        // time is in seconds
-        elm['time'] =  testSuite.duration / 1000;
-      }
-      state.xml.elem('testsuite', elm);
+      state.xml.elem('testsuite', addOptionalDuration(elm, testSuite));
     },
     testCase: function(options, state, testCase, testCaseName) {
       const success = (testCase.status === true);
 
-      state.xml.elem('testcase', {
-        name: prefix + testCaseName,
-        // time is in seconds
-        time: testCase.duration / 1000
-      }, success);      
+      state.xml.elem('testcase', addOptionalDuration({ name: prefix + testCaseName }, testCase), success);      
 
       state.seenTestCases = true;
       if (!success) {
@@ -350,18 +348,11 @@ function saveToJunitXML(options, results) {
         state.xml.elem('skipped/', true);
         state.xml.elem('/testcase');
       } else if (!state.seenTestCases) {
-        if (testSuite.failed === 0) {
-          state.xml.elem('testcase', {
-            name: 'all_tests_in_' + state.xmlName,
-            time: 0 + testSuite.duration
-          }, true);
-        } else {
-          state.xml.elem('testcase', {
-            name: 'all_tests_in_' + state.xmlName,
-            failures: testSuite.failuresFound,
-            time: 0 + testSuite.duration
-          }, true);
-        }
+        const elem = addOptionalDuration({ name: 'all_tests_in_' + state.xmlName }, testSuite);
+        if (testSuite.failed !== 0 || testSuite.failed !== undefined) {
+          elem['failures'] = testSuite.failures;
+        } 
+        state.xml.elem('testcase', elem, true);
       }
       state.xml.elem('/testsuite');
       let fn;
