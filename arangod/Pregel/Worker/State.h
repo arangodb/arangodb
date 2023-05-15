@@ -98,7 +98,7 @@ struct WorkerState {
   std::unique_ptr<MessageCombiner<M>> messageCombiner;
   std::unique_ptr<InCache<M>> readCache = nullptr;
   std::unique_ptr<InCache<M>> writeCache = nullptr;
-  uint32_t messageBatchSize = 500;
+  size_t messageBatchSize = 500;
   std::unordered_map<ShardID, actor::ActorPID> responsibleActorPerShard;
 
   const actor::ActorPID conductor;
