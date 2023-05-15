@@ -125,9 +125,9 @@ function ShellAqlParallelGatherSuite() {
       // However, there is no good reason to give up after 30s. In fact, there are
       // enough cases where the upstream operation can take longer than 30s, so we
       // have to wait for as long as it takes.
-      assertEqual(1, db[colName].count);
+      assertEqual(1, db[colName].count());
       db._query("FOR d in @@col  LET x = SLEEP(35) INSERT {} INTO @@col", { "@col": colName });
-      assertEqual(2, db[colName].count);
+      assertEqual(2, db[colName].count());
 
       // The explain output for this query looks as follows:
       // Execution plan:
