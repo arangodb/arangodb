@@ -344,6 +344,23 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
                  algorithmName.begin(), ::tolower);
 
   auto en = createExecutionNumber();
+  {
+    statuswriter::CollectionStatusWriter cWriter{vocbase, en};
+    VPackBuilder stateBuilder;
+    // TODO: Here we should also write the Coordinator's ServerID into the
+    // collection
+    auto storeResult = cWriter.createResult(stateBuilder.slice());
+    if (storeResult.ok()) {
+      LOG_PREGEL("063x1", INFO)
+          << "Stored result into: \"" << StaticStrings::PregelCollection
+          << "\" collection for PID: " << executionNumber();
+    } else {
+      LOG_PREGEL("063x2", INFO)
+          << "Could not store result into: \""
+          << StaticStrings::PregelCollection
+          << "\" collection for PID: " << executionNumber();
+    }
+  }
 
   auto executionSpecifications = ExecutionSpecifications{
       .executionNumber = en,
