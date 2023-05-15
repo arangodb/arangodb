@@ -65,15 +65,17 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks)
   return {readInput, writeOutput, regs, regs, toClear, toKeep};
 }
 }  // namespace
+
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(
     ExecutionEngine* engine, ExecutionNode const* node,
     std::deque<SharedAqlItemBlockPtr>&& data, WaitingBehaviour variant,
-    size_t subqueryDepth)
+    size_t subqueryDepth, WakeupCallback wakeUpCallback)
     : ExecutionBlock(engine, node),
       _hasWaited(false),
       _variant{variant},
       _infos{::blocksToInfos(data)},
-      _blockData{*engine, node, _infos} {
+      _blockData{*engine, node, _infos},
+      _wakeUpCallback(std::move(wakeUpCallback)) {
   SkipResult s;
   for (size_t i = 0; i < subqueryDepth; ++i) {
     s.incrementSubquery();

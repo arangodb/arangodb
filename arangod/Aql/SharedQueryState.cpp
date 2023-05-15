@@ -36,8 +36,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SharedQueryState::SharedQueryState(ArangodServer& server)
+SharedQueryState::SharedQueryState(ArangodServer& server,
+                                   SharedQueryState::Scheduler* scheduler)
     : _server(server),
+      _scheduler(scheduler),
       _wakeupCb(nullptr),
       _numWakeups(0),
       _cbVersion(0),
@@ -124,8 +126,7 @@ void SharedQueryState::queueHandler() {
     return;
   }
 
-  auto scheduler = SchedulerFeature::SCHEDULER;
-  if (ADB_UNLIKELY(scheduler == nullptr)) {
+  if (ADB_UNLIKELY(_scheduler == nullptr)) {
     // We are shutting down
     return;
   }
@@ -134,7 +135,7 @@ void SharedQueryState::queueHandler() {
                         ? RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR
                         : RequestLane::CLUSTER_AQL;
 
-  bool queued = scheduler->tryBoundedQueue(
+  bool queued = _scheduler->tryBoundedQueue(
       lane, [self = shared_from_this(), cb = _wakeupCb, v = _cbVersion]() {
         std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
@@ -170,9 +171,10 @@ void SharedQueryState::queueHandler() {
 }
 
 bool SharedQueryState::queueAsyncTask(fu2::unique_function<void()> cb) {
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  if (scheduler) {
-    return scheduler->tryBoundedQueue(RequestLane::CLUSTER_AQL, std::move(cb));
+  if (_scheduler) {
+    return _scheduler->tryBoundedQueue(RequestLane::CLUSTER_AQL, std::move(cb));
   }
   return false;
 }
+
+bool SharedQueryState::noTasksRunning() { return _numTasks.load() == 0; }

@@ -48,9 +48,7 @@
 #include <numeric>
 #include <tuple>
 
-namespace arangodb {
-namespace tests {
-namespace aql {
+namespace arangodb::tests::aql {
 /**
  * @brief Static helper class just offers helper methods
  * Do never instantiate
@@ -184,6 +182,13 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto setWakeupCallback(
+      WaitingExecutionBlockMock::WakeupCallback wakeupCallback)
+      -> ExecutorTestHelper& {
+    _wakeupCallback = std::move(wakeupCallback);
+    return *this;
+  }
+
   auto expectOutput(
       std::array<RegisterId, outputColumns> const& regs,
       MatrixBuilder<outputColumns> const& out,
@@ -198,7 +203,7 @@ struct ExecutorTestHelper {
   template<typename... Ts>
   auto expectOutputValueList(Ts&&... ts) -> ExecutorTestHelper& {
     static_assert(outputColumns == 1);
-    _outputRegisters[0] = 1;
+    _outputRegisters[0] = 0;
     _output = MatrixBuilder<outputColumns>{{ts}...};
     return *this;
   }
@@ -297,47 +302,42 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  auto run(bool const loop = false) -> void {
+  void prepareInput() {
     auto inputBlock = generateInputRanges(_itemBlockManager);
-
-    auto skippedTotal = SkipResult{};
-    auto finalState = ExecutionState::HASMORE;
 
     TRI_ASSERT(!_pipeline.empty());
 
     _pipeline.addDependency(std::move(inputBlock));
-
-    BlockCollector allResults{&_itemBlockManager};
+  }
+  void executeOnce() {
+    auto const [state, skipped, result] =
+        _pipeline.get().front()->execute(_callStack);
+    _finalState = state;
+    auto& call = _callStack.modifyTopCall();
+    _skippedTotal.merge(skipped, false);
+    call.didSkip(skipped.getSkipCount());
+    if (result != nullptr) {
+      call.didProduce(result->numRows());
+      _allResults.add(result);
+    }
+    call.resetSkipCount();
+  }
+  auto run(bool const loop = false) -> void {
+    prepareInput();
 
     if (!loop) {
-      auto const [state, skipped, result] =
-          _pipeline.get().front()->execute(_callStack);
-      skippedTotal.merge(skipped, false);
-      finalState = state;
-      if (result != nullptr) {
-        allResults.add(result);
-      }
+      executeOnce();
     } else {
       do {
-        auto const [state, skipped, result] =
-            _pipeline.get().front()->execute(_callStack);
-        finalState = state;
-        auto& call = _callStack.modifyTopCall();
-        skippedTotal.merge(skipped, false);
-        call.didSkip(skipped.getSkipCount());
-        if (result != nullptr) {
-          call.didProduce(result->numRows());
-          allResults.add(result);
-        }
-        call.resetSkipCount();
+        executeOnce();
       } while (
-          finalState != ExecutionState::DONE &&
+          _finalState != ExecutionState::DONE &&
           (!_callStack.peek().hasSoftLimit() ||
            (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
     }
-    EXPECT_EQ(skippedTotal, _expectedSkip);
-    EXPECT_EQ(finalState, _expectedState);
-    SharedAqlItemBlockPtr result = allResults.steal();
+    EXPECT_EQ(_skippedTotal, _expectedSkip);
+    EXPECT_EQ(_finalState, _expectedState);
+    SharedAqlItemBlockPtr result = _allResults.steal();
     if (result == nullptr) {
       // Empty output, possible if we skip all
       EXPECT_EQ(_output.size(), 0)
@@ -366,6 +366,19 @@ struct ExecutorTestHelper {
       EXPECT_EQ(actualStats, _expectedStats);
     }
   };
+
+  auto query() -> Query& { return _query; }
+  auto query() const -> Query const& { return _query; }
+  auto engine() const -> ExecutionEngine const* { return query().rootEngine(); }
+  auto sharedState() const -> std::shared_ptr<SharedQueryState> const& {
+    return engine()->sharedState();
+  }
+  template<typename F>
+  auto setWakeupHandler(F&& func)
+    requires std::is_invocable_r_v<bool, F>
+  {
+    return sharedState()->setWakeupHandler(std::forward<F>(func));
+  }
 
  private:
   /**
@@ -442,7 +455,7 @@ struct ExecutorTestHelper {
 
     return std::make_unique<WaitingExecutionBlockMock>(
         _query.rootEngine(), _dummyNode.get(), std::move(blockDeque),
-        _waitingBehaviour);
+        _waitingBehaviour, 0, _wakeupCallback);
   }
 
   // Default initialize with a fetchAll call.
@@ -458,6 +471,7 @@ struct ExecutorTestHelper {
   ExecutionNode::NodeType _testeeNodeType{ExecutionNode::MAX_NODE_TYPE_VALUE};
   WaitingExecutionBlockMock::WaitingBehaviour _waitingBehaviour =
       WaitingExecutionBlockMock::NEVER;
+  WaitingExecutionBlockMock::WakeupCallback _wakeupCallback{};
   bool _unorderedOutput;
   bool _appendEmptyBlock;
   std::size_t _unorderedSkippedRows;
@@ -470,8 +484,11 @@ struct ExecutorTestHelper {
   std::unique_ptr<arangodb::aql::ExecutionNode> _dummyNode;
   Pipeline _pipeline;
   std::vector<std::unique_ptr<MockTypedNode>> _execNodes;
+
+  // results
+  ExecutionState _finalState = ExecutionState::HASMORE;
+  SkipResult _skippedTotal{};
+  BlockCollector _allResults{&_itemBlockManager};
 };
 
-}  // namespace aql
-}  // namespace tests
-}  // namespace arangodb
+}  // namespace arangodb::tests::aql

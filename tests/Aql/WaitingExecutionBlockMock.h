@@ -55,6 +55,8 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
     ALWAYS  // Return WAITING once for every execute Call.
   };
 
+  using WakeupCallback = std::function<void()>;
+
   /**
    * @brief Create a WAITING ExecutionBlockMock
    *
@@ -68,8 +70,8 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
       arangodb::aql::ExecutionEngine* engine,
       arangodb::aql::ExecutionNode const* node,
       std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data,
-      WaitingBehaviour variant = WaitingBehaviour::ALWAYS,
-      size_t subqueryDepth = 0);
+      WaitingBehaviour variant, size_t subqueryDepth = 0,
+      WakeupCallback wakeUpCallback = {});
 
   /**
    * @brief Initialize the cursor. Return values will be alternating.
@@ -100,6 +102,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   bool _shouldLieOnLastRow{false};
   arangodb::aql::RegisterInfos _infos;
   typename arangodb::aql::ScatterExecutor::ClientBlockData _blockData;
+  std::function<void()> _wakeUpCallback;
 };
 }  // namespace aql
 

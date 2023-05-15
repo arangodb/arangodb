@@ -44,8 +44,14 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
-                                                      AsyncNode const* node)
+                                                      ExecutionNode const* node)
     : ExecutionBlock(engine, node), _sharedState(engine->sharedState()) {}
+
+ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
+                                                      ExecutionNode const* node,
+                                                      RegisterInfos,
+                                                      AsyncExecutor::Infos)
+    : ExecutionBlockImpl(engine, node) {}
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack const& stack) {
