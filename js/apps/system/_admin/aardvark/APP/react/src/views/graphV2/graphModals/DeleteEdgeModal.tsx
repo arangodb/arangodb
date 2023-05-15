@@ -1,8 +1,7 @@
-import { Box, Button, HStack, Tag } from "@chakra-ui/react";
+import { Button, HStack } from "@chakra-ui/react";
 import React from "react";
 import {
   Modal,
-  ModalBody,
   ModalFooter,
   ModalHeader
 } from "../../../components/modal";
@@ -40,7 +39,7 @@ const useDeleteEdgeAction = (selectedAction?: SelectedActionType) => {
 };
 export const DeleteEdgeModal = () => {
   const { selectedAction, onClearAction } = useGraph();
-  const { edgeId, edgeData, deleteEdge } = useDeleteEdgeAction(selectedAction);
+  const { edgeId, deleteEdge } = useDeleteEdgeAction(selectedAction);
 
   if (!edgeId) {
     return null;
@@ -49,9 +48,6 @@ export const DeleteEdgeModal = () => {
   return (
     <Modal isOpen onClose={onClearAction}>
       <ModalHeader>Delete Edge: {edgeId}?</ModalHeader>
-      <ModalBody>
-        <AttributesInfo attributes={edgeData} />
-      </ModalBody>
       <ModalFooter>
         <HStack>
           <Button onClick={onClearAction}>Cancel</Button>
@@ -66,22 +62,5 @@ export const DeleteEdgeModal = () => {
         </HStack>
       </ModalFooter>
     </Modal>
-  );
-};
-
-const AttributesInfo = ({
-  attributes
-}: {
-  attributes?: { [key: string]: string };
-}) => {
-  if (!attributes) {
-    return null;
-  }
-  return (
-    <Box>
-      {Object.keys(attributes).map(key => (
-        <Tag key={key}>{`${key}: ${JSON.stringify(attributes[key])}`}</Tag>
-      ))}
-    </Box>
   );
 };
