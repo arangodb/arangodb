@@ -26,6 +26,9 @@
 #include "Actor/ActorPID.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
+#include "Containers/NodeHashMap.h"
 #include "Pregel/Worker/Messages.h"
 #include "VocBase/voc-types.h"
 
@@ -55,12 +58,12 @@ template<typename M>
 class OutCache {
  protected:
   std::shared_ptr<WorkerConfig const> _config;
-  std::set<PregelShard> _localShards;
+  containers::FlatHashSet<PregelShard> _localShards;
   MessageFormat<M> const* _format;
   InCache<M>* _localCache = nullptr;
   InCache<M>* _localCacheNextGSS = nullptr;
   std::string _baseUrl;
-  uint32_t _batchSize = 1000;
+  size_t _batchSize = 1000;
 
   /// @brief current number of vertices stored
   size_t _containedMessages = 0;
@@ -74,12 +77,13 @@ class OutCache {
 
  public:
   OutCache(std::shared_ptr<WorkerConfig const> state,
-           std::set<PregelShard> localShards, MessageFormat<M> const* format);
+           containers::FlatHashSet<PregelShard> localShards,
+           MessageFormat<M> const* format);
   virtual ~OutCache() = default;
 
   size_t sendCount() const { return _sendCount; }
-  uint32_t batchSize() const { return _batchSize; }
-  void setBatchSize(uint32_t bs) { _batchSize = bs; }
+  size_t batchSize() const { return _batchSize; }
+  void setBatchSize(size_t bs) { _batchSize = bs; }
   inline void setLocalCache(InCache<M>* cache) { _localCache = cache; }
 
   void clear() {
@@ -106,19 +110,19 @@ class OutCache {
 template<typename M>
 class ArrayOutCache : public OutCache<M> {
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard,
-                     std::unordered_map<std::string, std::vector<M>>>
+  containers::NodeHashMap<PregelShard,
+                          containers::NodeHashMap<std::string, std::vector<M>>>
       _shardMap;
   std::unordered_map<ShardID, uint64_t> _sendCountPerShard;
 
   void _removeContainedMessages() override;
-  auto messagesToVPack(std::unordered_map<std::string, std::vector<M>> const&
-                           messagesForVertices)
-      -> std::tuple<size_t, VPackBuilder>;
+  auto messagesToVPack(
+      containers::NodeHashMap<std::string, std::vector<M>> const&
+          messagesForVertices) -> std::tuple<size_t, VPackBuilder>;
 
  public:
   ArrayOutCache(std::shared_ptr<WorkerConfig const> state,
-                std::set<PregelShard> localShards,
+                containers::FlatHashSet<PregelShard> localShards,
                 MessageFormat<M> const* format)
       : OutCache<M>(std::move(state), std::move(localShards), format) {}
   ~ArrayOutCache() = default;
@@ -133,18 +137,19 @@ class CombiningOutCache : public OutCache<M> {
   MessageCombiner<M> const* _combiner;
 
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard, std::unordered_map<std::string_view, M>>
+  containers::NodeHashMap<PregelShard,
+                          containers::NodeHashMap<std::string_view, M>>
       _shardMap;
-  std::unordered_map<ShardID, uint64_t> _sendCountPerShard;
+  containers::FlatHashMap<ShardID, uint64_t> _sendCountPerShard;
 
   void _removeContainedMessages() override;
   auto messagesToVPack(
-      std::unordered_map<std::string_view, M> const& messagesForVertices)
+      containers::NodeHashMap<std::string_view, M> const& messagesForVertices)
       -> VPackBuilder;
 
  public:
   CombiningOutCache(std::shared_ptr<WorkerConfig const> state,
-                    std::set<PregelShard> localShards,
+                    containers::FlatHashSet<PregelShard> localShards,
                     MessageFormat<M> const* format,
                     MessageCombiner<M> const* combiner)
       : OutCache<M>(std::move(state), std::move(localShards), format),
@@ -165,8 +170,8 @@ class ArrayOutActorCache : public OutCache<M> {
       _dispatch;
 
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard,
-                     std::unordered_map<std::string, std::vector<M>>>
+  containers::NodeHashMap<PregelShard,
+                          containers::NodeHashMap<std::string, std::vector<M>>>
       _shardMap;
   std::unordered_map<actor::ActorPID, uint64_t> _sendCountPerActor;
 
@@ -175,13 +180,13 @@ class ArrayOutActorCache : public OutCache<M> {
   auto _clearSendCountPerActor() -> void override {
     _sendCountPerActor.clear();
   }
-  auto messagesToVPack(std::unordered_map<std::string, std::vector<M>> const&
-                           messagesForVertices)
-      -> std::tuple<size_t, VPackBuilder>;
+  auto messagesToVPack(
+      containers::NodeHashMap<std::string, std::vector<M>> const&
+          messagesForVertices) -> std::tuple<size_t, VPackBuilder>;
 
  public:
   ArrayOutActorCache(std::shared_ptr<WorkerConfig const> state,
-                     std::set<PregelShard> localShards,
+                     containers::FlatHashSet<PregelShard> localShards,
                      MessageFormat<M> const* format)
       : OutCache<M>{std::move(state), std::move(localShards), format} {};
   ~ArrayOutActorCache() = default;
@@ -213,7 +218,8 @@ class CombiningOutActorCache : public OutCache<M> {
       _dispatch;
 
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard, std::unordered_map<std::string_view, M>>
+  containers::NodeHashMap<PregelShard,
+                          containers::NodeHashMap<std::string_view, M>>
       _shardMap;
   std::unordered_map<actor::ActorPID, uint64_t> _sendCountPerActor;
 
@@ -223,12 +229,12 @@ class CombiningOutActorCache : public OutCache<M> {
     _sendCountPerActor.clear();
   }
   auto messagesToVPack(
-      std::unordered_map<std::string_view, M> const& messagesForVertices)
+      containers::NodeHashMap<std::string_view, M> const& messagesForVertices)
       -> VPackBuilder;
 
  public:
   CombiningOutActorCache(std::shared_ptr<WorkerConfig const> state,
-                         std::set<PregelShard> localShards,
+                         containers::FlatHashSet<PregelShard> localShards,
                          MessageFormat<M> const* format,
                          MessageCombiner<M> const* combiner)
       : OutCache<M>{state, std::move(localShards), format},
