@@ -26,6 +26,8 @@
 #include <set>
 #include <unordered_set>
 
+#include "Containers/FlatHashSet.h"
+
 #include "Pregel/GraphStore/PregelShard.h"
 #include "Pregel/GraphStore/LoadableVertexShard.h"
 #include "Pregel/DatabaseTypes.h"
@@ -64,8 +66,8 @@ struct GraphSerdeConfig {
 
   // Actual set of pregel shard id's located here
   [[nodiscard]] auto localPregelShardIDs(ServerID server) const
-      -> std::set<PregelShard> {
-    auto result = std::set<PregelShard>{};
+      -> containers::FlatHashSet<PregelShard> {
+    auto result = containers::FlatHashSet<PregelShard>{};
 
     for (auto&& loadableVertexShard : loadableVertexShards) {
       if (loadableVertexShard.responsibleServer == server) {
