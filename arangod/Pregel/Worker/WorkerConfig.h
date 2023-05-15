@@ -31,6 +31,8 @@
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 
+#include "Containers/FlatHashSet.h"
+
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/DatabaseTypes.h"
 #include "Pregel/ExecutionNumber.h"
@@ -109,7 +111,8 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
   }
 
   /// Actual set of pregel shard id's located here
-  inline std::set<PregelShard> const& localPregelShardIDs() const {
+  inline containers::FlatHashSet<PregelShard> const& localPregelShardIDs()
+      const {
     return _localPregelShardIDs;
   }
 
@@ -156,7 +159,7 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
 
   /// cache these ids as much as possible, since we access them often
   std::unordered_map<std::string, PregelShard> _pregelShardIDs;
-  std::set<PregelShard> _localPregelShardIDs;
+  containers::FlatHashSet<PregelShard> _localPregelShardIDs;
   std::unordered_set<PregelShard> _localPShardIDs_hash;
 };
 

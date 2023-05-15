@@ -23,6 +23,7 @@
 
 #include "ShellFeature.h"
 
+#include "Basics/debugging.h"
 #include "FeaturePhases/V8ShellFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -84,6 +85,13 @@ void ShellFeature::collectOptions(
   options->addOption("--javascript.run-main", "Execute main function.",
                      new BooleanParameter(&_runMain));
 #endif
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  options->addOption(
+      "--client.failure-points",
+      "The failure point to set during shell startup (requires compilation "
+      "with failure points support).",
+      new VectorParameter<StringParameter>(&_failurePoints));
+#endif
 }
 
 void ShellFeature::validateOptions(
@@ -141,6 +149,12 @@ void ShellFeature::validateOptions(
         << "you cannot specify more than one type ("
         << "jslint, execute, execute-string, check-syntax, unit-tests)";
   }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  for (auto const& it : _failurePoints) {
+    TRI_AddFailurePointDebugging(it);
+  }
+#endif
 }
 
 void ShellFeature::start() {
@@ -161,6 +175,9 @@ void ShellFeature::start() {
       case RunMode::EXECUTE_SCRIPT:
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
         startTelemetrics();
+#endif
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        TRI_IF_FAILURE("startTelemetricsForTest") { startTelemetrics(); }
 #endif
         ok = shell.runScript(_executeScripts, _positionals, true,
                              _scriptParameters, _runMain);

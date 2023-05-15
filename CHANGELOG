@@ -1,6 +1,62 @@
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
+
+* Improved error reporting for system calls on Windows and fixed a
+  Windows-specific issue of the IOHeartbeatThread.
+
+* FE-256: Minor Graph Viewer improvements:
+  - re-order right click menu
+  - Make Right click menu and toolbar work in full screen
+  - Remove editable attributes in edit and delete (nodes and edges) modals
+  - Add "tree"-mode to editor in edit (nodes and edges) modals
+
+* FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
+  for GeoJSON.
+
+* Fixed issue #18942: arangorestore ignores the HTTP status code.
+
+* FE-267: fix custom analyzer & features not showing up in inverted index view,
+  and support for basic fields definition.
+
+* FE-265: Fix user permissions radio button shadow.
+
+* FE-268: remove 'switch to new graph' when no defined graph is present.
+
+* FE-258: allow specifying optimizeTopK during arangosearch view creation.
+
+* FE-257: allow additional properties in inverted index creation.
+
+* UI Fix - allow empty keys in document key validation.
+
+* BTS-1181: fix a data race on the collection list in TransactionState.
+  This race could happen in the cluster when a collection is sharded by a
+  different attribute than `_key` and a document lookup by _key is performed.
+  This requires the lookup to be sent to each shard, since we cannot deduce the
+  shard based on the `_key` value. If this lookup is done as part of a stream
+  transaction, and if the collection has not been declared in the transaction's
+  `read` list, then the collection is added lazily. Previously this would result
+  in a race if multiple shards are located on the same server.
+  For transactions with `allowDirtyReads` set to true read collections are
+  always added lazily, which made this race more likely.
+
+* BTS-1340: Fixed telemetrics api making shell hang when logging into it and
+  leaving it too quickly so the telemetrics API doesn't have time to send the
+  data to the warehouse. The thread could be hanging on SSL_connect() until the
+  connection timeout if the socket is blocking, so the socket was made
+  non-blocking for the thread to leave SSL_connect() after the connection is
+  interrupted when leaving the shell. Also created startup parameter
+  `--client.failure-points`for arangosh which enables failure points whose names
+  are provided in an array of strings, just like in `--server.failure-point` for
+  arangod.
+
+* BTS-1350: Fixed imprecision in index info in telemetrics object for cluster.
+  When the collection also had an arangosearch view, telemetrics showed
+  imprecise index values because the view was being considered as an index of
+  type arangosearch, and its object wouldn't contain expected fields that would
+  be found in other indexes' objects.
+
 * Add metric `arangodb_file_descriptors_current` to expose the number of file
   descriptors currently opened by the arangod process. This metric is available
   on Linux only.
@@ -16,10 +72,15 @@ v3.11.0 (XXXX-XX-XX)
   collections with `edgeCollections` traversal option.
 
   If a non-existing collection is specified in the `edgeCollections` or
-  `vertexCollections` options of an AQL traversal, the query will now fail with
-  a `collection or view not found` error. This is a behavior change compared to
-  previous versions, which ignored non-existing vertex collections and had
-  undefined behavior when specifying non-existing edge collections.
+  `vertexCollections` options of an AQL traversal, the query will now fail 
+  with a `collection or view not found` error. Also, if wrong collection
+  types are used (e.g. a document collection or a view for `edgeCollections`), 
+  then an error is raised about an invalid collection type being used.
+
+  This is a behavior change compared to previous versions, which ignored 
+  specifying non-existing vertex collections and had undefined behavior when 
+  specifying non-existing edge collections or using a vertex collection
+  instead of an edge collection.
 
 * Added metric `rocksdb_cache_peak_allocated` to store the peak memory
   allocation value for in-memory caches.
@@ -94,6 +155,8 @@ v3.11.0-alpha.1 (2023-05-03)
   viewer.
 
 * FE-162: Fix display of geodesic lines.
+
+* FE-263: Improve forceAtlas layout in the Graph Viewer.
 
 * Fixed a race in the Maintenance, impacting leaders that have just been
   resigned. During a MoveShard job, the old leader could sabotage the whole
