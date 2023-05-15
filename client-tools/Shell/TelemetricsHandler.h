@@ -53,6 +53,8 @@ class TelemetricsHandler {
   void runTelemetrics();
 
   void beginShutdown();
+  
+  void joinThread();
 
   void getTelemetricsInfo(velocypack::Builder& builder);
 
