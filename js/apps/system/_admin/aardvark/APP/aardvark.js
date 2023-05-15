@@ -1312,14 +1312,14 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
             var attrVal = getAttributeByKey(node, attr);
             if(attrVal !== undefined) {
               if (typeof attrVal === 'string') {
-                label += attr + ": " + getAttributeByKey(node, attr).substring(0, 16) + "; ";
+                label += "<b>" + attr + ":</b> " + getAttributeByKey(node, attr).substring(0, 16) + "...; ";
               } else {
                 // in case we do not have a string here, we need to stringify it
                 // otherwise we might end up sending not displayable values.
-                label += attr + ": " + JSON.stringify(getAttributeByKey(node, attr)) + "; ";
+                label += "<b>" + attr + ":</b> " + JSON.stringify(getAttributeByKey(node, attr)) + "; ";
               }
             } else {
-              label += attr + ": " + notFoundString + "; ";
+              label += "<b>" + attr + ":</b> " + notFoundString + "; ";
             }
             
           });
@@ -1364,6 +1364,7 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
         shape: "dot",
         color: calculatedNodeColor,
         font: {
+          multi: 'html',
           strokeWidth: 2,
           strokeColor: '#ffffff',
           vadjust: -7
