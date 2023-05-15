@@ -38,6 +38,7 @@ const vc2Name = "v2";
 const ec1Name = "e1";
 const ec2Name = "e2";
 const viewName = "vvvv";
+const gn = "connectedComponentsGraph";
 
 const cleanup = function() {
   db._dropView(viewName);
@@ -45,6 +46,11 @@ const cleanup = function() {
   db._drop(vc2Name);
   db._drop(ec1Name);
   db._drop(ec2Name);
+
+  try {
+    require("@arangodb/general-graph")._drop(gn, true);
+  } catch (err) {
+  }
 };
 
 const createBaseGraph = function () {
@@ -81,6 +87,8 @@ function vertexCollectionRestrictionSuite() {
       cleanup();
       createBaseGraph();
       db._createView(viewName, "arangosearch", {});
+
+      require("@arangodb/graph-examples/example-graph").loadGraph(gn);
     },
 
     tearDownAll : function () {
@@ -433,6 +441,42 @@ function vertexCollectionRestrictionSuite() {
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
+      }
+    },
+
+    testAccessCollectionNamedGraphInvalidType: function () {
+      try {
+        db._query(`FOR v IN ANY "components/A1" GRAPH "${gn}" OPTIONS { edgeCollections: "${vc1Name}" } RETURN v`);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
+      }
+    },
+  
+    testAccessCollectionNamedGraphInvalidEdgeCollection: function () {
+      try {
+        db._query(`FOR v IN ANY "components/A1" GRAPH "${gn}" OPTIONS { edgeCollections: "piff" } RETURN v`);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+    },
+    
+    testAccessCollectionNamedGraphEdgeCollectionNotInGraph: function () {
+      try {
+        db._query(`FOR v IN ANY "components/A1" GRAPH "${gn}" OPTIONS { edgeCollections: "${ec1Name}" } RETURN v`);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST.code, err.errorNum);
+      }
+    },
+    
+    testAccessCollectionNamedGraphVertexCollectionNotInGraph: function () {
+      try {
+        db._query(`FOR v IN ANY "components/A1" GRAPH "${gn}" OPTIONS { vertexCollections: "${vc1Name}" } RETURN v`);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code, err.errorNum);
       }
     },
 
