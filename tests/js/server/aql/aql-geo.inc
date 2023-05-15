@@ -515,8 +515,17 @@
       testPointNearCentroidOfPolygon : function () {
         chooseCollectionSet('createThreePolygons');
         let c = compare(
-          `FILTER GEO_DISTANCE([15, 15], d.geo) <= 5000`,
-          `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 5000, "${analyzerName}")`
+          `FILTER GEO_DISTANCE([25, 15], d.geo) <= 5000`,
+          `SEARCH ANALYZER(GEO_DISTANCE([25, 15], d.geo) <= 5000, "${analyzerName}")`
+        );
+        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
+      },
+      
+      testPointOutsideOfPolygon : function () {
+        chooseCollectionSet('createNearSlidingObject');
+        let c = compare(
+          `FILTER GEO_DISTANCE(d.geo, GEO_POINT(6.93, 10.94)) > 0`,
+          `SEARCH ANALYZER(GEO_DISTANCE(d.geo, GEO_POINT(6.93, 10.94)) > 0, "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
