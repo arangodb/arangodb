@@ -38,5 +38,4 @@ struct AsyncExecutorTest : AqlExecutorTestCase<false> {
   FakeScheduler scheduler;
 };
 
-TEST_F(AsyncExecutorTest, sleepingBeauty) {
-}
+TEST_F(AsyncExecutorTest, sleepingBeauty) {}
