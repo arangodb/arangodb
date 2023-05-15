@@ -9,6 +9,8 @@ require('nvd3');
 // parse prometheus
 const parsePrometheusTextFormat = require('parse-prometheus-text-format');
 
+require('../../frontend/js/arango/arangoValidationHelper.js');
+
 // import new react views
 // require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');

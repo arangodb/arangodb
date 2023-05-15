@@ -1725,11 +1725,13 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
             },
           },
           physics: {
-              forceAtlas2Based: {
-                  springLength: 100
-              },
-              minVelocity: 0.75,
-              solver: "forceAtlas2Based"
+            forceAtlas2Based: {
+              springLength: 10,
+              springConstant: 1.5,
+              gravitationalConstant: -500
+            },
+            minVelocity: 0.75,
+            solver: "forceAtlas2Based"
           }
       };
 

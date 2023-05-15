@@ -1,4 +1,4 @@
-import { MenuItem, MenuList, MenuOptionGroup } from "@chakra-ui/react";
+import { MenuDivider, MenuItem, MenuList, MenuOptionGroup } from "@chakra-ui/react";
 import React, { forwardRef, LegacyRef } from "react";
 import { useGraph } from "../GraphContext";
 
@@ -14,22 +14,23 @@ export const EdgeRightClickMenu = forwardRef(
           <MenuItem
             onClick={() =>
               setSelectedAction({
-                action: "delete",
-                entity: rightClickedEntity
-              })
-            }
-          >
-            Delete Edge
-          </MenuItem>
-          <MenuItem
-            onClick={() =>
-              setSelectedAction({
                 action: "edit",
                 entity: rightClickedEntity
               })
             }
           >
             Edit Edge
+          </MenuItem>
+          <MenuDivider />
+          <MenuItem
+            onClick={() =>
+              setSelectedAction({
+                action: "delete",
+                entity: rightClickedEntity
+              })
+            }
+          >
+            Delete Edge
           </MenuItem>
         </MenuOptionGroup>
       </MenuList>
