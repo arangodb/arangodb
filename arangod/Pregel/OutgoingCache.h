@@ -63,7 +63,7 @@ class OutCache {
   InCache<M>* _localCache = nullptr;
   InCache<M>* _localCacheNextGSS = nullptr;
   std::string _baseUrl;
-  uint32_t _batchSize = 1000;
+  size_t _batchSize = 1000;
 
   /// @brief current number of vertices stored
   size_t _containedMessages = 0;
@@ -82,8 +82,8 @@ class OutCache {
   virtual ~OutCache() = default;
 
   size_t sendCount() const { return _sendCount; }
-  uint32_t batchSize() const { return _batchSize; }
-  void setBatchSize(uint32_t bs) { _batchSize = bs; }
+  size_t batchSize() const { return _batchSize; }
+  void setBatchSize(size_t bs) { _batchSize = bs; }
   inline void setLocalCache(InCache<M>* cache) { _localCache = cache; }
 
   void clear() {
