@@ -62,18 +62,31 @@ const runFinished = (stats) => runFinishedSuccessfully(stats) || runFinishedUnsu
 const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sleepIntervalSeconds = 0.2) {
   let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
   var status;
+  // Note: This is added because there is a race between the conductor for pid
+  // being created and the user asking for the status of a pregel run for the
+  // first time.
+  //
+  // The *correct* fix for this is that once a client gets to know an
+  // ExecutionNumber this should be valid for being requested.
   do {
     internal.sleep(sleepIntervalSeconds);
-    // Note: This is added because there is a race between the conductor for pid
-    // being created and the user asking for the status of a pregel run for the
-    // first time.
-    //
-    // The *correct* fix for this is that once a client gets to know an
-    // ExecutionNumber this should be valid for being requested.
     try {
       status = pregel.status(pid);
     } catch(e) {
       require('console').warn("ExecutionNumber ${pid} does not exist (yet).");
+    }
+    if (wakeupsLeft-- === 0) {
+      assertTrue(false, "Pregel did not start after timeout");
+      return;
+    }
+  } while(status === undefined);
+  do {
+    internal.sleep(sleepIntervalSeconds);
+    try {
+      status = pregel.status(pid);
+    } catch(e) {
+      require('console').warn("ExecutionNumber ${pid} does not exist.");
+      return;
     }
     if (wakeupsLeft-- === 0) {
       assertTrue(false, "Pregel did not finish after timeout but is in state " + status.state);
