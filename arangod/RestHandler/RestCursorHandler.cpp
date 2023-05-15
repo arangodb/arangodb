@@ -43,8 +43,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;

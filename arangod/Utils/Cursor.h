@@ -40,8 +40,6 @@
 #include <string>
 #include <string_view>
 
-#include "Logger/LogMacros.h"
-
 namespace arangodb {
 
 namespace transaction {
