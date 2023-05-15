@@ -309,6 +309,7 @@ struct ExecutorTestHelper {
 
     _pipeline.addDependency(std::move(inputBlock));
   }
+
   void executeOnce() {
     auto const [state, skipped, result] =
         _pipeline.get().front()->execute(_callStack);
@@ -322,19 +323,8 @@ struct ExecutorTestHelper {
     }
     call.resetSkipCount();
   }
-  auto run(bool const loop = false) -> void {
-    prepareInput();
 
-    if (!loop) {
-      executeOnce();
-    } else {
-      do {
-        executeOnce();
-      } while (
-          _finalState != ExecutionState::DONE &&
-          (!_callStack.peek().hasSoftLimit() ||
-           (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
-    }
+  void checkExpectations() {
     EXPECT_EQ(_skippedTotal, _expectedSkip);
     EXPECT_EQ(_finalState, _expectedState);
     SharedAqlItemBlockPtr result = _allResults.steal();
@@ -365,6 +355,22 @@ struct ExecutorTestHelper {
       }
       EXPECT_EQ(actualStats, _expectedStats);
     }
+  }
+
+  auto run(bool const loop = false) -> void {
+    prepareInput();
+
+    if (!loop) {
+      executeOnce();
+    } else {
+      do {
+        executeOnce();
+      } while (
+          _finalState != ExecutionState::DONE &&
+          (!_callStack.peek().hasSoftLimit() ||
+           (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
+    }
+    checkExpectations();
   };
 
   auto query() -> Query& { return _query; }
