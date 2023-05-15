@@ -8348,6 +8348,11 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
                                           OptimizerRule const& rule) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
+  if (plan->getAst()->query().vocbase().isOneShard()) {
+    opt->addPlan(std::move(plan), rule, false);
+    return;
+  }
+
   bool modified = false;
 
   containers::SmallVector<ExecutionNode*, 8> nodes;
