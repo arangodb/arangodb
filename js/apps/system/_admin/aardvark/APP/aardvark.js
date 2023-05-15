@@ -1306,12 +1306,6 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
       var label = "";
 
       if (config.nodeLabel) {
-        if (config.nodeLabel.indexOf('.') > -1) {
-          label = getAttributeByKey(node, config.nodeLabel);
-          if (label === undefined || label === '') {
-            label = node._id;
-          }
-        } else {
           var nodeLabelArr = config.nodeLabel.split(" ");
           _.each(nodeLabelArr, function (attr) {
 
@@ -1324,10 +1318,11 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
                 // otherwise we might end up sending not displayable values.
                 label += attr + ": " + JSON.stringify(getAttributeByKey(node, attr)) + "; ";
               }
+            } else {
+              label += attr + ": " + notFoundString + "; ";
             }
-            //nodesArr.push(node);
+            
           });
-        }
       } else {
         label = node._key || node._id;
       }
