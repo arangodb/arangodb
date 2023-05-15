@@ -370,7 +370,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
 
   if (!_engine) {  // the PUT verb
     TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE ||
-               this->state() == RestHandler::HandlerState::PAUSED);
+               this->state() == RestHandler::HandlerState::CONTINUED);
 
     auto res = findEngine(idString);
     if (res.fail()) {
