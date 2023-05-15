@@ -312,11 +312,12 @@ void Worker<V, E, M>::_startProcessing() {
   for (auto futureN = size_t{0}; futureN < _config->parallelism(); ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
         RequestLane::INTERNAL_LOW, [self, this, quiverIdx, futureN]() {
-          LOG_PREGEL("ee2ac", DEBUG)
-              << fmt::format("Starting vertex processor number {}", futureN);
-          auto processor =
-              VertexProcessor<V, E, M>(_config, _algorithm, _workerContext,
-                                       _messageCombiner, _messageFormat);
+          LOG_PREGEL("ee2ac", DEBUG) << fmt::format(
+              "Starting vertex processor number {} with batch size", futureN,
+              _messageBatchSize);
+          auto processor = VertexProcessor<V, E, M>(
+              _config, _algorithm, _workerContext, _messageCombiner,
+              _messageFormat, _messageBatchSize);
 
           while (true) {
             auto myCurrentQuiver = quiverIdx->fetch_add(1);

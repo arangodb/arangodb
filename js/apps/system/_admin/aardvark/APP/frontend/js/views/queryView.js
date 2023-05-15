@@ -2211,7 +2211,7 @@
                 }
               } else if (geometry.type === 'Polygon' || geometry.type === 'LineString' || geometry.type === 'MultiLineString' || geometry.type === 'MultiPolygon') {
                 try {
-                  geojson = new L.Geodesic(geometry.coordinates).addTo(self.maps[counter]);
+                  geojson = new L.Geodesic().fromGeoJson(geometry).addTo(self.maps[counter]);
                   markers.push(geojson);
                 } catch (ignore) {
                   invalidGeoJSON++;
