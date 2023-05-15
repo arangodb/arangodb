@@ -1,6 +1,9 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* fix(UI): query editor null/undefined check filters out 
+  bindParams with value 0.
+
 * Fixed issue #18942: arangorestore ignores the HTTP status code.
 
 * Updated arangosync to v2.17.0.
