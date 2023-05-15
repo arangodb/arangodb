@@ -141,11 +141,11 @@ Result PregelFeature::persistExecution(TRI_vocbase_t& vocbase,
   // collection
   auto storeResult = cWriter.createResult(stateBuilder.slice());
   if (storeResult.ok()) {
-    LOG_TOPIC("063x1", INFO, Logger::PREGEL) << fmt::format(
+    LOG_TOPIC("a63f1", INFO, Logger::PREGEL) << fmt::format(
         "[job {}] Stored result into: {}", en, StaticStrings::PregelCollection);
     return {};
   } else {
-    LOG_TOPIC("063x2", WARN, Logger::PREGEL)
+    LOG_TOPIC("063f2", WARN, Logger::PREGEL)
         << fmt::format("[job {}] Could not store result into: {}", en,
                        StaticStrings::PregelCollection);
     return TRI_ERROR_INTERNAL;
