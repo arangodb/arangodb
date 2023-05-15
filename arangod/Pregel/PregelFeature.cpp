@@ -122,6 +122,25 @@ auto PregelRunUser::authorized(ExecContext const& userContext) const -> bool {
   return name == userContext.user();
 }
 
+Result PregelFeature::persistExecution(TRI_vocbase_t& vocbase,
+                                       ExecutionNumber en) {
+  statuswriter::CollectionStatusWriter cWriter{vocbase, en};
+  VPackBuilder stateBuilder;
+  // TODO: Here we should also write the Coordinator's ServerID into the
+  // collection
+  auto storeResult = cWriter.createResult(stateBuilder.slice());
+  if (storeResult.ok()) {
+    LOG_TOPIC("063x1", INFO, Logger::PREGEL) << fmt::format(
+        "[job {}] Stored result into: {}", en, StaticStrings::PregelCollection);
+    return {};
+  } else {
+    LOG_TOPIC("063x2", WARN, Logger::PREGEL)
+        << fmt::format("[job {}] Could not store result into: {}", en,
+                       StaticStrings::PregelCollection);
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
 ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
                                                        PregelOptions options) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
@@ -181,22 +200,10 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   auto graphSerdeConfig = maybeGraphSerdeConfig.get();
 
   auto en = createExecutionNumber();
-  {
-    statuswriter::CollectionStatusWriter cWriter{vocbase, en};
-    VPackBuilder stateBuilder;
-    // TODO: Here we should also write the Coordinator's ServerID into the
-    // collection
-    auto storeResult = cWriter.createResult(stateBuilder.slice());
-    if (storeResult.ok()) {
-      LOG_PREGEL("063x1", INFO)
-          << "Stored result into: \"" << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    } else {
-      LOG_PREGEL("063x2", INFO)
-          << "Could not store result into: \""
-          << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    }
+
+  auto persistResult = persistExecution(vocbase, en);
+  if (!persistResult.ok()) {
+    return persistResult;
   }
 
   auto executionSpecifications = ExecutionSpecifications{
