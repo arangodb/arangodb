@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fixed race condition in which the main thread was writing to the state 
+  member of ApplicationFeature whilst it was attempting to be read from 
+  the telemetrics API's http request to send the telemtrics info to the 
+  endpoint by adding a mutex to it.
+
 * Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 
 * Improved error reporting for system calls on Windows and fixed a
