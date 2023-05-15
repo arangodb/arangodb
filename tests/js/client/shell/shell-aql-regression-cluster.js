@@ -105,5 +105,28 @@ function ShellAqlRegressionSuite () {
   };
 }
 
+function ShellAqlParallelGatherSuite() {
+  const colName = 'UnitTestsCollection';
+  return {
+    setUpAll: function () {
+      const numberOfShards = 2;
+      const col = db._create(colName, {numberOfShards});
+      col.insert({});
+    },
+
+    tearDownAll: function () {
+      db._drop(colName);
+    },
+
+    testLongRunningUpstream: function () {
+      // Regression test for https://arangodb.atlassian.net/browse/BTS-1400
+      // Previously an upstream operation that took longer than 30s would cause
+      // the request to abort with an error "query ID xxx not found"
+      db._query("FOR d in @@col  LET x = SLEEP(35) INSERT {} INTO @@col", { "@col": colName });
+    },
+  };
+}
+
 jsunity.run(ShellAqlRegressionSuite);
+jsunity.run(ShellAqlParallelGatherSuite);
 return jsunity.done();
