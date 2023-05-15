@@ -214,7 +214,6 @@
           title: 'Save',
           type: window.modalView.buttons.SUCCESS,
           callback: this.submitEditUser.bind(this, username)
-          //callback: this.submitEditUser.bind(this)
         }
       );
 

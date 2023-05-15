@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global frontendConfig, window, Backbone, $, arangoHelper, templateEngine, Joi */
+/* global frontendConfig, window, Backbone, $, arangoHelper, templateEngine, Joi, _ */
 (function () {
   'use strict';
 
@@ -178,8 +178,12 @@
         user: userName,
         passwd: userPassword,
         active: status,
-        extra: {name: name, img: profileImg}
+        extra: {name: name}
       };
+
+      if(!_.isEmpty(profileImg)) {
+        options.extra.img = profileImg;
+      }
 
       if (frontendConfig.isEnterprise && $('#newRole').is(':checked')) {
         options.user = ':role:' + userName;
