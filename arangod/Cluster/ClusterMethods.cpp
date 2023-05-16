@@ -360,6 +360,12 @@ OperationResult handleCRUDShardResponsesFast(
 
   fuerte::StatusCode code = fuerte::StatusInternalError;
   // If none of the shards responded we return a SERVER_ERROR;
+  if constexpr (std::is_same_v<CT, InsertOperationCtx>) {
+    if (opCtx.reverseMapping.size() == opCtx.localErrors.size()) {
+      // all requests contain an error, return Accepted
+      code = fuerte::StatusAccepted;
+    }
+  }
 
   for (Try<arangodb::network::Response> const& tryRes : results) {
     network::Response const& res = tryRes.get();  // throws exceptions upwards
@@ -412,6 +418,7 @@ OperationResult handleCRUDShardResponsesFast(
         resultBody.add(StaticStrings::ErrorMessage,
                        VPackValue(res.errorMessage()));
         resultBody.close();
+        ++errorCounter[res.errorNumber()];
         continue;
       }
     }
