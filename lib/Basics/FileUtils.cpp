@@ -230,6 +230,16 @@ static void throwFileWriteError(std::string const& filename) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
 }
 
+static void throwFileCreateError(std::string const& filename) {
+  TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+  auto message = StringUtils::concatT("failed to create file '", filename,
+                                      "': ", TRI_last_error());
+  LOG_TOPIC("208ba", TRACE, arangodb::Logger::FIXME) << "" << message;
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
+}
+
 static void fillString(int fd, std::string const& filename, size_t filesize,
                        std::string& result) {
   constexpr size_t chunkSize = 8192;
@@ -288,7 +298,7 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
                  S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
-    throwFileWriteError(filename);
+    throwFileCreateError(filename);
   }
 
   auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
