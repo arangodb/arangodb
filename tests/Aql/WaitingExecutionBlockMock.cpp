@@ -102,6 +102,7 @@ WaitingExecutionBlockMock::initializeCursor(
     arangodb::aql::InputAqlItemRow const& input) {
   if (!_hasWaited) {
     _hasWaited = true;
+    wakeupCallback();
     return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
   }
   _hasWaited = false;
@@ -127,6 +128,7 @@ WaitingExecutionBlockMock::executeWithoutTrace(AqlCallStack stack) {
   if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
     // If we ordered waiting check on _hasWaited and wait if not
     _hasWaited = true;
+    wakeupCallback();
     return {ExecutionState::WAITING, SkipResult{}, nullptr};
   }
   if (_variant == WaitingBehaviour::ALWAYS) {
@@ -194,5 +196,11 @@ WaitingExecutionBlockMock::executeWithoutTrace(AqlCallStack stack) {
       // We have a valid result.
       return {state, localSkipped, result};
     }
+  }
+}
+
+void WaitingExecutionBlockMock::wakeupCallback() {
+  if (_wakeUpCallback) {
+    _wakeUpCallback();
   }
 }

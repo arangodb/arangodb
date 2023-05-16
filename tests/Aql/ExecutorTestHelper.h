@@ -302,15 +302,17 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  void prepareInput() {
+  auto prepareInput() -> ExecutorTestHelper& {
     auto inputBlock = generateInputRanges(_itemBlockManager);
 
     TRI_ASSERT(!_pipeline.empty());
 
     _pipeline.addDependency(std::move(inputBlock));
+
+    return *this;
   }
 
-  void executeOnlyOnce() {
+  auto executeOnlyOnce() -> ExecutorTestHelper& {
     auto const [state, skipped, result] =
         _pipeline.get().front()->execute(_callStack);
     _finalState = state;
@@ -318,9 +320,11 @@ struct ExecutorTestHelper {
     if (result != nullptr) {
       _allResults.add(result);
     }
+
+    return *this;
   }
 
-  void executeOnce() {
+  auto executeOnce() -> ExecutorTestHelper& {
     auto const [state, skipped, result] =
         _pipeline.get().front()->execute(_callStack);
     _finalState = state;
@@ -332,9 +336,11 @@ struct ExecutorTestHelper {
       _allResults.add(result);
     }
     call.resetSkipCount();
+
+    return *this;
   }
 
-  void checkExpectations() {
+  auto checkExpectations() -> ExecutorTestHelper& {
     EXPECT_EQ(_skippedTotal, _expectedSkip);
     EXPECT_EQ(_finalState, _expectedState);
     SharedAqlItemBlockPtr result = _allResults.steal();
@@ -365,6 +371,8 @@ struct ExecutorTestHelper {
       }
       EXPECT_EQ(actualStats, _expectedStats);
     }
+
+    return *this;
   }
 
   auto run(bool const loop = false) -> void {

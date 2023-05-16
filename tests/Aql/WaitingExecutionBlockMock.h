@@ -95,6 +95,8 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
              arangodb::aql::SharedAqlItemBlockPtr>
   executeWithoutTrace(arangodb::aql::AqlCallStack stack);
 
+  void wakeupCallback();
+
  private:
   bool _hasWaited;
   WaitingBehaviour _variant;
