@@ -308,9 +308,9 @@ void Worker<V, E, M>::_startProcessing() {
         RequestLane::INTERNAL_LOW, [self, this, quiverIdx, futureN]() {
           LOG_PREGEL("ee2ac", DEBUG)
               << fmt::format("Starting vertex processor number {}", futureN);
-          auto processor =
-              VertexProcessor<V, E, M>(_config, _algorithm, _workerContext,
-                                       _messageCombiner, _messageFormat);
+          auto processor = VertexProcessor<V, E, M>(
+              _config, _algorithm, _workerContext, _messageCombiner,
+              _messageFormat, _messageBatchSize);
 
           while (true) {
             auto myCurrentQuiver = quiverIdx->fetch_add(1);

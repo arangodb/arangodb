@@ -37,8 +37,10 @@ const vc1Name = "v1";
 const vc2Name = "v2";
 const ec1Name = "e1";
 const ec2Name = "e2";
+const viewName = "vvvv";
 
 const cleanup = function() {
+  db._dropView(viewName);
   db._drop(vc1Name);
   db._drop(vc2Name);
   db._drop(ec1Name);
@@ -78,6 +80,7 @@ function vertexCollectionRestrictionSuite() {
     setUpAll : function () {
       cleanup();
       createBaseGraph();
+      db._createView(viewName, "arangosearch", {});
     },
 
     tearDownAll : function () {
@@ -227,6 +230,40 @@ function vertexCollectionRestrictionSuite() {
       assertEqual(actual, expected);
     },
     
+    testRestrictOnlySomeVertexCollections: function () {
+      {
+        // specify only vc1
+        const query = `WITH @@vc1, @@vc2
+                       FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                         OPTIONS {vertexCollections: ["${vc1Name}"]}
+                         SORT v._id
+                         RETURN DISTINCT v._id`;
+
+        const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+        const expected = [
+          vc1Name + "/node_8",
+        ];
+
+        assertEqual(actual, expected);
+      }
+      
+      {
+        // specify only vc2
+        const query = `WITH @@vc1, @@vc2
+                       FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                         OPTIONS {vertexCollections: ["${vc2Name}"]}
+                         SORT v._id
+                         RETURN DISTINCT v._id`;
+
+        const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+        const expected = [
+          vc2Name + "/node_3",
+        ];
+
+        assertEqual(actual, expected);
+      }
+    },
+    
     testRestrictEmptyVertexCollections: function () {
       const query = `WITH @@vc1, @@vc2
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
@@ -250,6 +287,7 @@ function vertexCollectionRestrictionSuite() {
     testRestrictInvalidVertexCollections: function () {
       const query = `WITH @@vc1, @@vc2
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                       // specify non-existing vertex collections
                        OPTIONS {vertexCollections: ["piff", "paff"]}
                        SORT v._id
                        RETURN DISTINCT v._id`;
@@ -259,6 +297,71 @@ function vertexCollectionRestrictionSuite() {
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+    },
+    
+    testRestrictInvalidVertexCollectionType: function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                       // specify an edge collection instead of a vertex collection
+                       OPTIONS {vertexCollections: ["${ec1Name}"]}
+                       SORT v._id
+                       RETURN DISTINCT v._id`;
+
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+      const expected = [];
+      assertEqual(actual, expected);
+    },
+    
+    testRestrictViewAsVertexCollection: function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                       // specify a view collection instead of a vertex collection
+                       OPTIONS {vertexCollections: ["${viewName}"]}
+                       SORT v._id
+                       RETURN DISTINCT v._id`;
+
+      try {
+        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
+      }
+    },
+    
+    testRestrictOnlySomeEdgeCollections: function () {
+      {
+        // specify only ec1
+        const query = `WITH @@vc1, @@vc2
+                       FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1, @@ec2
+                         OPTIONS {edgeCollections: ["${ec1Name}"]}
+                         SORT v._id
+                         RETURN DISTINCT v._id`;
+
+        const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name, '@ec2': ec2Name }).toArray();
+        const expected = [
+          vc1Name + "/node_4",
+          vc1Name + "/node_6",
+          vc1Name + "/node_8",
+          vc2Name + "/node_3",
+          vc2Name + "/node_5",
+          vc2Name + "/node_7",
+        ];
+
+        assertEqual(actual, expected);
+      }
+      
+      {
+        // specify only ec2
+        const query = `WITH @@vc1, @@vc2
+                       FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1, @@ec2
+                         OPTIONS {edgeCollections: ["${ec2Name}"]}
+                         SORT v._id
+                         RETURN DISTINCT v._id`;
+
+        const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name, '@ec2': ec2Name }).toArray();
+        const expected = [];
+        assertEqual(actual, expected);
       }
     },
     
@@ -285,6 +388,7 @@ function vertexCollectionRestrictionSuite() {
     testRestrictInvalidEdgeCollections: function () {
       const query = `WITH @@vc1, @@vc2
                      FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                       // specify non-existing edge collections
                        OPTIONS {edgeCollections: ["piff", "paff"]}
                        SORT v._id
                        RETURN DISTINCT v._id`;
@@ -294,6 +398,38 @@ function vertexCollectionRestrictionSuite() {
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+    },
+    
+    testRestrictInvalidEdgeCollectionType: function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                       // specify a vertex collection instead of an edge collection
+                       OPTIONS {edgeCollections: ["${vc1Name}"]}
+                       SORT v._id
+                       RETURN DISTINCT v._id`;
+
+      try {
+        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
+      }
+    },
+    
+    testRestrictViewAsEdgeCollection: function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                       // specify a view instead of an edge collection
+                       OPTIONS {edgeCollections: ["${viewName}"]}
+                       SORT v._id
+                       RETURN DISTINCT v._id`;
+
+      try {
+        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
       }
     },
 
