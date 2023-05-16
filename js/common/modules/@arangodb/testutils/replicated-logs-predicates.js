@@ -93,6 +93,11 @@ const replicatedLogLeaderEstablished = function (database, logId, term, particip
     if (current === undefined) {
       return Error("current not yet defined");
     }
+    if (plan === undefined) {
+      // This may seem strange, but it's actually needed. Due to supervision logging actions to Current,
+      // we can end up with an entry in Current, before the Plan is created.
+      return Error("plan not yet defined");
+    }
 
     for (const srv of participants) {
       if (!current.localStatus || !current.localStatus[srv]) {
