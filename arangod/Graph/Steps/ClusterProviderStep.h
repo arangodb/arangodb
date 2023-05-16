@@ -98,7 +98,9 @@ class ClusterProviderStep
   [[nodiscard]] Edge const& getEdge() const noexcept { return _edge; }
 
   [[nodiscard]] std::string toString() const {
-    return "<Step><Vertex>: " + _vertex.getID().toString();
+    return "<Step><Vertex>: " + _vertex.getID().toString() +
+           " <Depth>: " + std::to_string(getDepth()) +
+           " <Weight>: " + std::to_string(getWeight());
   }
 
   bool vertexFetched() const noexcept {
