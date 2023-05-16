@@ -57,7 +57,9 @@ TelemetricsHandler::TelemetricsHandler(ArangoshServer& server,
                                        bool sendToEndpoint)
     : _server(server), _sendToEndpoint(sendToEndpoint) {}
 
-TelemetricsHandler::~TelemetricsHandler() {
+TelemetricsHandler::~TelemetricsHandler() { joinThread(); }
+
+void TelemetricsHandler::joinThread() {
   if (_telemetricsThread.joinable()) {
     _telemetricsThread.join();
   }
