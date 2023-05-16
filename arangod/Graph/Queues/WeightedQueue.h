@@ -153,7 +153,7 @@ class WeightedQueue {
 
   void getStepsWithoutFetchedEdges(std::vector<Step*>& steps) {
     for (auto& step : _queue) {
-      if (!step.edgeFetched()) {
+      if (!step.edgeFetched() && !step.isUnknown()) {
         steps.emplace_back(&step);
       }
     }
