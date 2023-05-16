@@ -1,6 +1,10 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+
+* Improved error reporting for system calls on Windows and fixed a
+  Windows-specific issue of the IOHeartbeatThread.
+
 * BTS-1181: fix a data race on the collection list in TransactionState
   This race could happen in the cluster when a collection is sharded by a
   different attribute than `_key` and a document lookup by _key is performed.
