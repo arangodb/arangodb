@@ -5,10 +5,6 @@ import os
 
 from enum import Enum
 
-class Status(Enum):
-    OK = 0
-    FAIL = 1
-
 import re
 g_log_topic_pattern = re.compile(r'(?P<macro>LOG_(TOPIC(_IF)?|TRX|CTX(_IF)?|QUERY|PREGEL))\((?P<param>[^),]*),(?P<rest>.*)')
 
@@ -60,8 +56,6 @@ def check_log_ids_main(root_directory, directories_to_include, directories_or_fi
     exclude = [ root_directory + os.path.sep + d for d in directories_or_files_to_exclude ]
 
     for root, dirs, files in os.walk(root_directory):
-        status = Status.OK
-
         dirs[:] = [ d for d in dirs if (root + os.path.sep + d).startswith(tuple(include)) ]
         if root in exclude:
             continue
@@ -71,7 +65,7 @@ def check_log_ids_main(root_directory, directories_to_include, directories_or_fi
             if fullpath in exclude:
                 continue
             if filename.endswith((".cpp", ".h", ".tpp")):
-                status = check_file(fullpath, root_directory, id_database, invalid_logid_database)
+                check_file(fullpath, root_directory, id_database, invalid_logid_database)
 
     return [id_database, invalid_logid_database]
 
