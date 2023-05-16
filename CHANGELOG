@@ -47,7 +47,6 @@ v3.10.7 (XXXX-XX-XX)
 * Updated arangosync to v2.17.0.
 
 * FE-243: add support for geo_s2 analyzer.
->>>>>>> d810b7b177b8938241f82c55e2a0a92d058f0e8c
 
 * FE-22: Don't display collection content by default when clicking on a
   collection in the Web UI.
