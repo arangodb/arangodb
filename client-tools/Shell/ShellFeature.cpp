@@ -221,6 +221,12 @@ void ShellFeature::beginShutdown() {
   }
 }
 
+void ShellFeature::stop() {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->joinThread();
+  }
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 void ShellFeature::getTelemetricsInfo(VPackBuilder& builder) {
