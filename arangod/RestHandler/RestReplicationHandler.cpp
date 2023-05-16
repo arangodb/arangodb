@@ -1384,13 +1384,13 @@ Result RestReplicationHandler::processRestoreCollection(
     // Remove ShadowCollections entry
     toMerge.add(StaticStrings::ShadowCollections,
                 arangodb::velocypack::Slice::nullSlice());
-    toMerge.close();  // TopLevel
 
     VPackSlice const type = parameters.get("type");
-    if (!type.isNumber()) {
-      return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "collection type not given or wrong");
+    if (!type.isNumber() || (type.getNumericValue<TRI_col_type_e>() != TRI_COL_TYPE_DOCUMENT &&
+                                 type.getNumericValue<TRI_col_type_e>() != TRI_COL_TYPE_EDGE)) {
+      toMerge.add(StaticStrings::DataSourceType, VPackValue(TRI_COL_TYPE_DOCUMENT));
     }
+    toMerge.close();  // TopLevel
 
     VPackSlice const sliceToMerge = toMerge.slice();
     VPackBuilder mergedBuilder = VPackCollection::merge(
