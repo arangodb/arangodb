@@ -118,6 +118,26 @@ jobs:
           command: |
             utils/eslint.sh
 
+  pylint:
+    docker:
+      - image: cimg/python:3.11.1
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+        name: Install pylint
+        command: |
+            python -m pip install --upgrade pip
+            pip install pylint
+            pip install pylint_junit
+      - run:
+          name: Run pylint
+          command: |
+            pylint --output-format=pylint_junit.JUnitReporter --output test_pylint.xml utils/ scripts/
+      - store_test_results:
+          path: test_pylint.xml
+
   compile-linux:
     parameters:
       preset:
