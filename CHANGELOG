@@ -1,6 +1,8 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* Enable SSE4.2 and AVX CPU optimizations when compiling RocksDB.
+
 * Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 
 * Fix MDS-1070 Update iresearch submodule.
