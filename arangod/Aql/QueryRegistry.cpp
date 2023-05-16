@@ -638,7 +638,7 @@ void QueryRegistry::EngineInfo::scheduleCallback() {
     // schedule the callback to be executed so request handler can continue
     auto callback = std::move(_waitingCallbacks.front());
     _waitingCallbacks.pop_front();
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                       std::move(callback));
+    SchedulerFeature::SCHEDULER->queue(
+        RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR, std::move(callback));
   }
 }
