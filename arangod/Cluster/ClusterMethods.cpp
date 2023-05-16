@@ -1570,6 +1570,15 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     if (res != TRI_ERROR_NO_ERROR) {
       return makeFuture(OperationResult(res, options));
     }
+    if (!opCtx.localErrors.empty()) {
+      return makeFuture(OperationResult(opCtx.localErrors.front(), options));
+    }
+  }
+
+  if (opCtx.shardMap.empty()) {
+    return handleCRUDShardResponsesFast(network::clusterResultInsert, opCtx,
+                                        {});
+    // all operations failed with a local error
   }
 
   bool const isJobsCollection =
