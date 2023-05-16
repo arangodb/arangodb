@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added metric "rocksdb_total_sst_files" to count the number of sst files,
+  aggregated over all levels of the LSM tree.
+
 * In batched query results, when executing requests for 
   `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user 
   would only be able to fetch the next batch using the next batch id in 
