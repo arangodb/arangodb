@@ -1386,9 +1386,14 @@ Result RestReplicationHandler::processRestoreCollection(
                 arangodb::velocypack::Slice::nullSlice());
 
     VPackSlice const type = parameters.get("type");
-    if (!type.isNumber() || (type.getNumericValue<TRI_col_type_e>() != TRI_COL_TYPE_DOCUMENT &&
-                                 type.getNumericValue<TRI_col_type_e>() != TRI_COL_TYPE_EDGE)) {
-      toMerge.add(StaticStrings::DataSourceType, VPackValue(TRI_COL_TYPE_DOCUMENT));
+    if (!type.isNumber()) {
+      // Just ignore non numbers
+      toMerge.add(StaticStrings::DataSourceType,
+                  VPackValue(TRI_COL_TYPE_DOCUMENT));
+    } else if (type.getNumericValue<TRI_col_type_e>() !=
+                   TRI_COL_TYPE_DOCUMENT &&
+               type.getNumericValue<TRI_col_type_e>() != TRI_COL_TYPE_EDGE) {
+      return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID};
     }
     toMerge.close();  // TopLevel
 
