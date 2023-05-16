@@ -70,7 +70,7 @@ def check_log_ids_main(root_directory, directories_to_include, directories_or_fi
             fullpath = root + os.path.sep + filename
             if fullpath in exclude:
                 continue
-            if (filename.endswith((".cpp", ".h", ".tpp"))):
+            if filename.endswith((".cpp", ".h", ".tpp")):
                 status = check_file(fullpath, root_directory, id_database, invalid_logid_database)
 
     return [id_database, invalid_logid_database]
