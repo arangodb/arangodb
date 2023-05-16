@@ -123,7 +123,7 @@ void Conductor::start() {
   auto res = _initializeWorkers();
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::CANCELED);
-    _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
+    _feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
     LOG_PREGEL("30171", ERR) << "Not all DBServers started the execution";
   }
 }
