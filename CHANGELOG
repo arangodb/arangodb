@@ -1,6 +1,9 @@
 devel
 -----
 
+* Invalid keys are now reported as individual error for batch operations
+  and no longer abort the whole batch.
+
 * In batched query results, when executing requests for 
   `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user 
   would only be able to fetch the next batch using the next batch id in 
