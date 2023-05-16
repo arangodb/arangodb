@@ -333,6 +333,9 @@ class TransactionState {
   /// @brief current status
   transaction::Status _status;
 
+  // in case of read-only transactions collections can be added lazily.
+  // this can happen concurrently, so for this we need to protect the list
+  mutable std::mutex _collectionsLock;
   using ListType = arangodb::containers::SmallVector<TransactionCollection*>;
   ListType::allocator_type::arena_type _arena;  // memory for collections
   ListType _collections;  // list of participating collections

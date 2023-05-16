@@ -1,6 +1,17 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* BTS-1181: fix a data race on the collection list in TransactionState.
+  This race could happen in the cluster when a collection is sharded by a
+  different attribute than `_key` and a document lookup by _key is performed.
+  This requires the lookup to be sent to each shard, since we cannot deduce the
+  shard based on the `_key` value. If this lookup is done as part of a stream
+  transaction, and if the collection has not been declared in the transaction's
+  `read` list, then the collection is added lazily. Previously this would result
+  in a race if multiple shards are located on the same server.
+  For transactions with `allowDirtyReads` set to true read collections are
+  always added lazily, which made this race more likely.
+
 * Improved error reporting for system calls on Windows and fixed a
   Windows-specific issue of the IOHeartbeatThread.
 
