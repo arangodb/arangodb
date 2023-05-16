@@ -77,6 +77,10 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(
       InputAqlItemRow const& input) override;
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  void setFailureCallback(std::function<void()> cb);
+#endif
+
  private:
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
   executeWithoutTrace(AqlCallStack const& stack);
@@ -94,6 +98,9 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   ExecutionState _returnState = ExecutionState::HASMORE;
   AsyncState _internalState = AsyncState::Empty;
   int _numWakeupsQueued = 0;
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  std::function<void()> _failureCallback;
+#endif
 };
 
 }  // namespace aql

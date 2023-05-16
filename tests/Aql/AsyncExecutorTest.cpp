@@ -38,4 +38,61 @@ struct AsyncExecutorTest : AqlExecutorTestCase<false> {
   FakeScheduler scheduler;
 };
 
-TEST_F(AsyncExecutorTest, sleepingBeauty) {}
+TEST_F(AsyncExecutorTest, sleepingBeauty) {
+  auto registerInfos = RegisterInfos(RegIdSet{}, RegIdSet{}, 1, 1,
+                                     RegIdFlatSet{}, RegIdFlatSetStack{{0}});
+
+  TRI_AddFailurePointDebugging("AsyncExecutor::SleepWhenWaiting");
+
+  auto testHelper = makeExecutorTestHelper();
+  testHelper.addConsumer<AsyncExecutor>(registerInfos, {}, ExecutionNode::ASYNC)
+      .addConsumer<AsyncExecutor>(registerInfos, {}, ExecutionNode::ASYNC)
+      .setInputFromRowNum(1)
+      .setWaitingBehaviour(WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS)
+      .setCall(AqlCall{0u, AqlCall::Infinity{}, AqlCall::Infinity{}, false});
+
+  // one initial "wakeup" to start execution
+  auto wakeupsQueued = 1;
+  auto wakeupHandler = [&wakeupsQueued]() noexcept {
+    ++wakeupsQueued;
+    return true;
+  };
+  testHelper.setWakeupHandler(wakeupHandler);
+  testHelper.setWakeupCallback(wakeupHandler);
+  testHelper.prepareInput();
+
+  auto* block = testHelper.pipeline().get()[0].get();
+  auto* asyncBlock = dynamic_cast<ExecutionBlockImpl<AsyncExecutor>*>(block);
+  asyncBlock->setFailureCallback([&] {
+    while (!scheduler.queueEmpty()) {
+      scheduler.runOnce();
+    }
+    while (wakeupsQueued > 0) {
+      --wakeupsQueued;
+      testHelper.executeOnce();
+    }
+  });
+  block = testHelper.pipeline().get()[1].get();
+  asyncBlock = dynamic_cast<ExecutionBlockImpl<AsyncExecutor>*>(block);
+  asyncBlock->setFailureCallback([] {});
+
+  while (wakeupsQueued > 0 || !scheduler.queueEmpty()) {
+    while (wakeupsQueued > 0) {
+      --wakeupsQueued;
+      testHelper.executeOnce();
+    }
+    if (!scheduler.queueEmpty()) {
+      scheduler.runOnce();
+    }
+  };
+
+  EXPECT_EQ(0, wakeupsQueued);
+  EXPECT_TRUE(scheduler.queueEmpty());
+
+  testHelper.expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {{0}})
+      .expectSkipped(0)
+      .checkExpectations();
+
+  ASSERT_TRUE(testHelper.sharedState()->noTasksRunning());
+}

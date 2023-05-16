@@ -402,24 +402,25 @@ struct ExecutorTestHelper {
     return sharedState()->setWakeupHandler(std::forward<F>(func));
   }
 
- private :
-     /**
-      * @brief create an ExecutionBlock without tying it into the pipeline.
-      *
-      * @tparam E The executor template parameter
-      * @param executorInfos to build the executor
-      * @param nodeType The type of executor node, only used for debug printing,
-      * defaults to SINGLETON
-      * @return ExecBlock
-      *
-      * Now private to prevent us from leaking memory
-      */
-     template<typename E>
-     auto
-     createExecBlock(
-         RegisterInfos registerInfos, typename E::Infos executorInfos,
-         ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
-         -> ExecBlock {
+  auto pipeline() -> Pipeline& { return _pipeline; }
+
+ private:
+  /**
+   * @brief create an ExecutionBlock without tying it into the pipeline.
+   *
+   * @tparam E The executor template parameter
+   * @param executorInfos to build the executor
+   * @param nodeType The type of executor node, only used for debug printing,
+   * defaults to SINGLETON
+   * @return ExecBlock
+   *
+   * Now private to prevent us from leaking memory
+   */
+  template<typename E>
+  auto createExecBlock(
+      RegisterInfos registerInfos, typename E::Infos executorInfos,
+      ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+      -> ExecBlock {
     auto& testeeNode = _execNodes.emplace_back(std::make_unique<MockTypedNode>(
         _query.plan(), ExecutionNodeId{_execNodes.size()}, nodeType));
     return std::make_unique<ExecutionBlockImpl<E>>(

@@ -113,6 +113,12 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
 
         try {
           auto [state, skip, block] = _dependencies[0]->execute(stack);
+
+          TRI_IF_FAILURE("AsyncExecutor::SleepWhenWaiting") {
+            TRI_ASSERT(_failureCallback);
+            _failureCallback();
+          }
+
           if (isAsync) {
             guard.lock();
 
@@ -223,3 +229,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
   _internalState = AsyncState::Empty;
   return res;
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+void ExecutionBlockImpl<AsyncExecutor>::setFailureCallback(
+    std::function<void()> cb) {
+  _failureCallback = std::move(cb);
+}
+#endif
