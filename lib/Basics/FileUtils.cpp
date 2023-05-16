@@ -315,13 +315,23 @@ static void throwFileWriteError(std::string const& filename) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
 }
 
+static void throwFileCreateError(std::string const& filename) {
+  TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+  auto message = StringUtils::concatT("failed to create file '", filename,
+                                      "': ", TRI_last_error());
+  LOG_TOPIC("208ba", TRACE, arangodb::Logger::FIXME) << "" << message;
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
+}
+
 void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
   int fd =
       TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
-    throwFileWriteError(filename);
+    throwFileCreateError(filename);
   }
 
   auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
