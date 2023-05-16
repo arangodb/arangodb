@@ -67,7 +67,6 @@
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "utils/string.hpp"
-#include "utils/utf8_path.hpp"
 
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 
@@ -82,13 +81,15 @@
 extern const char* ARGV0;  // defined in main.cpp
 
 // GTEST printers for IResearch filters
-namespace iresearch {
+namespace irs {
 std::ostream& operator<<(std::ostream& os, filter const& filter);
 
 std::ostream& operator<<(std::ostream& os, by_range const& range) {
   os << "Range(" << range.field();
-  std::string termValueMin(ref_cast<char>(range.options().range.min));
-  std::string termValueMax(ref_cast<char>(range.options().range.max));
+  std::string termValueMin(
+      ViewCast<char>(irs::bytes_view{range.options().range.min}));
+  std::string termValueMax(
+      ViewCast<char>(irs::bytes_view{range.options().range.max}));
   if (!termValueMin.empty()) {
     os << " "
        << (range.options().range.min_type == irs::BoundType::INCLUSIVE ? ">="
@@ -109,7 +110,7 @@ std::ostream& operator<<(std::ostream& os, by_range const& range) {
 }
 
 std::ostream& operator<<(std::ostream& os, by_term const& term) {
-  std::string termValue(ref_cast<char>(term.options().term));
+  std::string termValue(ViewCast<char>(irs::bytes_view{term.options().term}));
   return os << "Term(" << term.field() << "=" << termValue << ")";
 }
 
@@ -183,8 +184,9 @@ std::ostream& operator<<(std::ostream& os,
 std::ostream& operator<<(std::ostream& os, by_edit_distance const& lev) {
   os << "LEVENSHTEIN_MATCH[";
   os << lev.field() << ", '";
-  std::string termValue(ref_cast<char>(lev.options().term));
-  std::string prefixValue(ref_cast<char>(lev.options().prefix));
+  std::string termValue(ViewCast<char>(irs::bytes_view{lev.options().term}));
+  std::string prefixValue(
+      ViewCast<char>(irs::bytes_view{lev.options().prefix}));
   os << termValue << "', " << static_cast<int>(lev.options().max_distance)
      << ", " << lev.options().with_transpositions << ", "
      << lev.options().max_terms << ", '" << prefixValue << "']";
@@ -194,7 +196,7 @@ std::ostream& operator<<(std::ostream& os, by_edit_distance const& lev) {
 std::ostream& operator<<(std::ostream& os, by_prefix const& filter) {
   os << "STARTS_WITH[";
   os << filter.field() << ", '";
-  std::string termValue(ref_cast<char>(filter.options().term));
+  std::string termValue(ViewCast<char>(irs::bytes_view{filter.options().term}));
   os << termValue << "', " << filter.options().scored_terms_limit << "]";
   return os;
 }
@@ -203,7 +205,7 @@ std::ostream& operator<<(std::ostream& os, by_terms const& filter) {
   os << "TERMS[";
   os << filter.field() << ", {";
   for (auto& [term, boost] : filter.options().terms) {
-    os << "[" << ref_cast<char>(term) << ", " << boost << "],";
+    os << "[" << ViewCast<char>(irs::bytes_view{term}) << ", " << boost << "],";
   }
   os << "}, " << filter.options().min_match << "]";
   return os;
@@ -256,132 +258,122 @@ std::string to_string(irs::filter const& f) {
   ss << f;
   return ss.str();
 }
-}  // namespace iresearch
+}  // namespace irs
 
 namespace {
 
-struct BoostScorer : public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
+struct BoostScorer final : public irs::ScorerBase<void> {
+  static constexpr std::string_view type_name() noexcept {
     return "boostscorer";
   }
 
-  struct Prepared : public irs::PreparedSortBase<void> {
-   public:
-    Prepared() = default;
+  void collect(irs::byte_type* stats, irs::FieldCollector const*,
+               irs::TermCollector const*) const final {
+    // NOOP
+  }
 
-    virtual void collect(irs::byte_type*, const irs::index_reader&,
-                         const irs::sort::field_collector*,
-                         const irs::sort::term_collector*) const override {
-      // NOOP
-    }
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
+  }
 
-    virtual irs::IndexFeatures features() const override {
-      return irs::IndexFeatures::NONE;
-    }
+  irs::FieldCollector::ptr prepare_field_collector() const final {
+    return nullptr;
+  }
 
-    virtual irs::sort::field_collector::ptr prepare_field_collector()
-        const override {
-      return nullptr;
-    }
+  irs::TermCollector::ptr prepare_term_collector() const final {
+    return nullptr;
+  }
 
-    virtual irs::sort::term_collector::ptr prepare_term_collector()
-        const override {
-      return nullptr;
-    }
+  irs::ScoreFunction prepare_scorer(
+      irs::ColumnProvider const&,
+      std::map<irs::type_info::type_id, irs::field_id> const&,
+      irs::byte_type const* stats, irs::attribute_provider const&,
+      irs::score_t boost) const final {
+    struct ScoreCtx final : public irs::score_ctx {
+      explicit ScoreCtx(irs::score_t b) noexcept : boost{b} {}
 
-    virtual irs::ScoreFunction prepare_scorer(
-        irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
-        irs::attribute_provider const&, irs::score_t boost) const override {
-      struct ScoreCtx : public irs::score_ctx {
-        explicit ScoreCtx(irs::score_t boost) noexcept : boost{boost} {}
+      irs::score_t boost;
+    };
 
-        irs::score_t boost;
-      };
+    return irs::ScoreFunction::Make<ScoreCtx>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          *res = static_cast<ScoreCtx*>(ctx)->boost;
+        },
+        boost);
+  }
 
-      return {std::make_unique<ScoreCtx>(boost),
-              [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-                *res = static_cast<ScoreCtx*>(ctx)->boost;
-              }};
-    }
-  };  // namespace
-
-  static irs::sort::ptr make(irs::string_ref) {
+  static irs::Scorer::ptr make(std::string_view) {
     return std::make_unique<BoostScorer>();
   }
 
-  BoostScorer() : irs::sort(irs::type<BoostScorer>::get()) {}
-
-  virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>();
-  }
-};  // BoostScorer
+  BoostScorer() = default;
+};
 
 REGISTER_SCORER_JSON(BoostScorer, BoostScorer::make);
 
-struct CustomScorer : public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
+struct CustomScorer final : public irs::ScorerBase<void> {
+  static constexpr std::string_view type_name() noexcept {
     return "customscorer";
   }
 
-  struct Prepared : public irs::PreparedSortBase<void> {
-   public:
-    Prepared(float_t i) : i(i) {}
+  void collect(irs::byte_type*, irs::FieldCollector const*,
+               irs::TermCollector const*) const final {
+    // NOOP
+  }
 
-    virtual void collect(irs::byte_type*, const irs::index_reader&,
-                         const irs::sort::field_collector*,
-                         const irs::sort::term_collector*) const override {
-      // NOOP
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
+  }
+
+  irs::FieldCollector::ptr prepare_field_collector() const final {
+    return nullptr;
+  }
+
+  irs::TermCollector::ptr prepare_term_collector() const final {
+    return nullptr;
+  }
+
+  irs::ScoreFunction prepare_scorer(
+      irs::ColumnProvider const&,
+      std::map<irs::type_info::type_id, irs::field_id> const&,
+      irs::byte_type const* stats, irs::attribute_provider const&,
+      irs::score_t) const final {
+    struct ScoreCtx : public irs::score_ctx {
+      ScoreCtx(float v) noexcept : scoreValue{v} {}
+
+      float scoreValue;
+    };
+
+    return irs::ScoreFunction::Make<ScoreCtx>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          *res = static_cast<ScoreCtx const*>(ctx)->scoreValue;
+        },
+        this->i);
+  }
+
+  bool equals(irs::Scorer const& other) const noexcept final {
+    if (!Scorer::equals(other)) {
+      return false;
     }
+    auto const& p = down_cast<CustomScorer>(other);
+    return p.i == i;
+  }
 
-    virtual irs::IndexFeatures features() const override {
-      return irs::IndexFeatures::NONE;
-    }
-
-    virtual irs::sort::field_collector::ptr prepare_field_collector()
-        const override {
-      return nullptr;
-    }
-
-    virtual irs::sort::term_collector::ptr prepare_term_collector()
-        const override {
-      return nullptr;
-    }
-
-    virtual irs::ScoreFunction prepare_scorer(irs::sub_reader const&,
-                                              irs::term_reader const&,
-                                              irs::byte_type const*,
-                                              irs::attribute_provider const&,
-                                              irs::score_t) const override {
-      struct ScoreCtx : public irs::score_ctx {
-        ScoreCtx(float_t scoreValue) noexcept : scoreValue(scoreValue) {}
-
-        float_t scoreValue;
-      };
-
-      return {std::make_unique<ScoreCtx>(this->i),
-              [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-                *res = static_cast<ScoreCtx const*>(ctx)->scoreValue;
-              }};
-    }
-
-    float_t i;
-  };
-
-  static irs::sort::ptr make(irs::string_ref args) {
-    if (args.null()) {
+  static irs::Scorer::ptr make(std::string_view args) {
+    if (irs::IsNull(args)) {
       return std::make_unique<CustomScorer>(0u);
     }
 
     // velocypack::Parser::fromJson(...) will throw exception on parse error
     auto json =
-        arangodb::velocypack::Parser::fromJson(args.c_str(), args.size());
+        arangodb::velocypack::Parser::fromJson(args.data(), args.size());
     auto slice = json ? json->slice() : arangodb::velocypack::Slice();
 
     if (!slice.isArray()) {
       return nullptr;  // incorrect argument format
     }
 
-    arangodb::velocypack::ArrayIterator itr(slice);
+    arangodb::velocypack::ArrayIterator itr{slice};
 
     if (!itr.valid()) {
       return nullptr;
@@ -389,21 +381,16 @@ struct CustomScorer : public irs::sort {
 
     auto const value = itr.value();
 
-    if (!value.isNumber()) {
+    if (!value.isNumber<size_t>()) {
       return nullptr;
     }
-
-    return std::make_unique<CustomScorer>(itr.value().getNumber<size_t>());
+    return std::make_unique<CustomScorer>(value.getNumber<size_t>());
   }
 
-  CustomScorer(size_t i) : irs::sort(irs::type<CustomScorer>::get()), i(i) {}
+  CustomScorer(size_t i) noexcept : i{static_cast<float>(i)} {}
 
-  virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
-  }
-
-  size_t i;
-};  // CustomScorer
+  float i;
+};
 
 REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 
@@ -624,7 +611,7 @@ uint64_t getCurrentPlanVersion(arangodb::ArangodServer& server) {
 }
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature) {
-  irs::utf8_path path;
+  std::filesystem::path path;
 
   path /= TRI_GetTempPath();
   path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
@@ -748,7 +735,7 @@ void assertFilterOptimized(
         .trx = &trx,
         .ast = plan->getAst(),
         .ctx = exprCtx,
-        .index = &irs::sub_reader::empty(),
+        .index = &irs::SubReader::empty(),
         .ref = &viewNode->outVariable(),
         .filterOptimization = viewNode->filterOptimization(),
         .isSearchQuery = true};
@@ -760,7 +747,7 @@ void assertFilterOptimized(
                     &actualFilter, filterCtx, viewNode->filterCondition())
                     .ok());
     EXPECT_FALSE(actualFilter.empty());
-    EXPECT_EQ(expectedFilter, *actualFilter.begin());
+    EXPECT_EQ(expectedFilter, **actualFilter.begin());
   }
 }
 
@@ -838,7 +825,7 @@ void assertExpressionFilter(
         .trx = &trx,
         .ast = ast,
         .ctx = &exprCtx,
-        .index = &irs::sub_reader::empty(),
+        .index = &irs::SubReader::empty(),
         .ref = ref,
         .isSearchQuery = true};
 
@@ -855,7 +842,7 @@ void assertExpressionFilter(
                                                            *filterNode)
                     .ok());
     EXPECT_EQ(expected, actual);
-    EXPECT_EQ(boost, actual.begin()->boost());
+    EXPECT_EQ(boost, (*actual.begin())->boost());
   }
 }
 
@@ -876,7 +863,7 @@ void assertFilterBoost(irs::filter const& expected, irs::filter const& actual) {
 
     for (auto actualBegin = actualBooleanFilter->begin();
          expectedBegin != expectedEnd;) {
-      assertFilterBoost(*expectedBegin, *actualBegin);
+      assertFilterBoost(**expectedBegin, **actualBegin);
       ++expectedBegin;
       ++actualBegin;
     }
@@ -974,7 +961,7 @@ void buildActualFilter(
         .trx = &trx,
         .ast = ast,
         .ctx = exprCtx,
-        .index = &irs::sub_reader::empty(),
+        .index = &irs::SubReader::empty(),
         .ref = ref,
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -1079,7 +1066,7 @@ void assertFilter(
         .trx = &trx,
         .ast = ast,
         .ctx = exprCtx,
-        .index = &irs::sub_reader::empty(),
+        .index = &irs::SubReader::empty(),
         .ref = ref,
         .filterOptimization = filterOptimization,
         .namePrefix = arangodb::iresearch::nestedRoot(hasNested),

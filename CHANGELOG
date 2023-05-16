@@ -18,6 +18,34 @@ v3.10.7 (XXXX-XX-XX)
   vector has reached some size threshold, and also to use intermediate commits
   during the removals.
 
+* Improved error reporting for system calls on Windows and fixed a
+  Windows-specific issue of the IOHeartbeatThread.
+
+* BTS-1181: fix a data race on the collection list in TransactionState
+  This race could happen in the cluster when a collection is sharded by a
+  different attribute than `_key` and a document lookup by _key is performed.
+  This requires the lookup to be sent to each shard, since we cannot deduce
+  the shard based on the `_key` value. If this lookup is done as part of a
+  stream transaction, and if the collection has not been declared in the
+  transaction's `read` list, then the collection is added lazily. Previously
+  this would result in a race if multiple shards are located on the same
+  server.
+  For transactions with `allowDirtyReads` set to true read collections are
+  always added lazily, which made this race more likely.
+
+* Updated arangosync to v2.17.9.
+
+* Fixed issue #18942: arangorestore ignores the HTTP status code.
+
+* Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
+
+* Fix MDS-1070 Update iresearch submodule.
+
+* Updated arangosync to v2.17.0.
+
+* FE-243: add support for geo_s2 analyzer.
+>>>>>>> d810b7b177b8938241f82c55e2a0a92d058f0e8c
+
 * FE-22: Don't display collection content by default when clicking on a
   collection in the Web UI.
 
@@ -42,12 +70,6 @@ v3.10.7 (XXXX-XX-XX)
 
 v3.10.6 (2023-04-27)
 --------------------
-
-* Fixed a race in the Maintenance, impacting leaders that have just been
-  resigned. During a MoveShard job, the old leader could sabotage the whole
-  operation by removing the newly added follower from Current. The solution
-  is to update Current using local collection information, instead of the
-  potentially outdated velocypack slice.
 
 * Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
 

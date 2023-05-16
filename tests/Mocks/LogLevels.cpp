@@ -20,17 +20,28 @@
 ///
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "LogLevels.h"
 
 #include "utils/log.hpp"
 
+#include <iostream>
+
 namespace arangodb {
 namespace tests {
 
-IResearchLogSuppressor::IResearchLogSuppressor() {
-  irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
+static void LogCallback(irs::SourceLocation&& source,
+                        std::string_view message) {
+  std::cerr << source.file << ":" << source.line << ": " << source.func << ": "
+            << message << std::endl;
 }
 
+IResearchLogSuppressor::IResearchLogSuppressor() {
+  irs::log::SetCallback(irs::log::Level::kFatal, &LogCallback);
+  irs::log::SetCallback(irs::log::Level::kError, nullptr);
+  irs::log::SetCallback(irs::log::Level::kWarn, nullptr);
+  irs::log::SetCallback(irs::log::Level::kInfo, nullptr);
+  irs::log::SetCallback(irs::log::Level::kDebug, nullptr);
+  irs::log::SetCallback(irs::log::Level::kTrace, nullptr);
+}
 }  // namespace tests
 }  // namespace arangodb

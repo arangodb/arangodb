@@ -48,15 +48,15 @@ using namespace std::string_view_literals;
 auto makeByTerms(std::string_view name,
                  std::span<const std::string_view> values, size_t match_count,
                  irs::score_t boost,
-                 irs::sort::MergeType type = irs::sort::MergeType::kSum) {
+                 irs::ScoreMergeType type = irs::ScoreMergeType::kSum) {
   irs::by_terms filter;
   *filter.mutable_field() = name;
   filter.boost(boost);
   auto& [terms, min_match, merge_type] = *filter.mutable_options();
   min_match = match_count;
   merge_type = type;
-  for (irs::string_ref value : values) {
-    terms.emplace(irs::ref_cast<irs::byte_type>(value), irs::kNoBoost);
+  for (std::string_view value : values) {
+    terms.emplace(irs::ViewCast<irs::byte_type>(value), irs::kNoBoost);
   }
   return filter;
 }

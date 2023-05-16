@@ -80,6 +80,7 @@ TransactionCollection* TransactionState::collection(
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
+  std::lock_guard lock(_collectionsLock);
   auto collectionOrPos = findCollectionOrPos(cid);
 
   return std::visit(
@@ -200,6 +201,8 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
                                                AccessMode::Type accessType,
                                                bool lockUsage) {
   Result res;
+
+  std::lock_guard lock(_collectionsLock);
 
   // check if we already got this collection in the _collections vector
   auto colOrPos = findCollectionOrPos(cid);

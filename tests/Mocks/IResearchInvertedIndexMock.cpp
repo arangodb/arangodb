@@ -156,7 +156,7 @@ void IResearchInvertedIndexMock::invalidateQueryCache(TRI_vocbase_t* vocbase) {
   return IResearchInvertedIndex::invalidateQueryCache(vocbase);
 }
 
-irs::comparer const* IResearchInvertedIndexMock::getComparator()
+irs::Comparer const* IResearchInvertedIndexMock::getComparator()
     const noexcept {
   return IResearchInvertedIndex::getComparator();
 }

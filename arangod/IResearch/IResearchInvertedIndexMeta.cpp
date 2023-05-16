@@ -41,7 +41,7 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 constexpr auto consistencyTypeMap =
-    frozen::map<irs::string_ref, Consistency, 2>(
+    frozen::map<std::string_view, Consistency, 2>(
         {{"eventual", Consistency::kEventual},
          {"immediate", Consistency::kImmediate}});
 
@@ -138,7 +138,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
                                       VPackSlice const& slice,
                                       bool readAnalyzerDefinition,
                                       std::string& errorField,
-                                      irs::string_ref const defaultVocbase) {
+                                      std::string_view const defaultVocbase) {
   if (!IResearchDataStoreMeta::init(slice, errorField, DEFAULT(), nullptr)) {
     return false;
   }
@@ -263,7 +263,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
           }
 
           name = value.get(kSubFieldName).copyString();
-          if (!defaultVocbase.null()) {
+          if (!irs::IsNull(defaultVocbase)) {
             name =
                 IResearchAnalyzerFeature::normalize(name, defaultVocbase, true);
           }
@@ -563,7 +563,7 @@ bool InvertedIndexField::init(
     InvertedIndexField::AnalyzerDefinitions& analyzerDefinitions,
     LinkVersion version, bool extendedNames,
     IResearchAnalyzerFeature& analyzers, InvertedIndexField const& parent,
-    irs::string_ref const defaultVocbase, bool rootMode,
+    std::string_view const defaultVocbase, bool rootMode,
     std::string& errorField) {
   // Fill inherited fields
   if (!rootMode) {
@@ -641,7 +641,7 @@ bool InvertedIndexField::init(
       if (analyzerSlice.isString()) {
         auto name = analyzerSlice.copyString();
         auto shortName = name;
-        if (!defaultVocbase.null()) {
+        if (!irs::IsNull(defaultVocbase)) {
           name = IResearchAnalyzerFeature::normalize(name, defaultVocbase);
           shortName =
               IResearchAnalyzerFeature::normalize(name, defaultVocbase, false);
@@ -649,7 +649,7 @@ bool InvertedIndexField::init(
 
         bool found = false;
         if (!analyzerDefinitions.empty()) {
-          auto it = analyzerDefinitions.find(irs::string_ref(name));
+          auto it = analyzerDefinitions.find(std::string_view(name));
 
           if (it != analyzerDefinitions.end()) {
             analyzer = *it;
