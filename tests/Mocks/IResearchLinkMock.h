@@ -45,7 +45,7 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
   [[nodiscard]] static auto setCallbackForScope(
       std::function<irs::directory_attributes()> const& callback) {
     InitCallback = callback;
-    return irs::make_finally([]() noexcept { InitCallback = nullptr; });
+    return irs::Finally([]() noexcept { InitCallback = nullptr; });
   }
 
   bool canBeDropped() const override { return IResearchLink::canBeDropped(); }
@@ -56,22 +56,24 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
     return IResearchLink::hasSelectivityEstimate();
   }
 
-  arangodb::Result insert(arangodb::transaction::Methods& trx,
-                          arangodb::LocalDocumentId const& documentId,
-                          arangodb::velocypack::Slice const doc) {
+  Result insert(arangodb::transaction::Methods& trx,
+                arangodb::LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const doc) {
     return IResearchDataStore::insert<FieldIterator<FieldMeta>,
                                       IResearchLinkMeta>(trx, documentId, doc,
                                                          meta(), nullptr);
   }
 
-  arangodb::Result insertInRecovery(arangodb::transaction::Methods& trx,
-                                    arangodb::LocalDocumentId const& documentId,
-                                    arangodb::velocypack::Slice doc,
-                                    uint64_t tick) {
+  Result insertInRecovery(arangodb::transaction::Methods& trx,
+                          arangodb::LocalDocumentId const& documentId,
+                          arangodb::velocypack::Slice doc, uint64_t tick) {
     return IResearchDataStore::insert<FieldIterator<FieldMeta>,
                                       IResearchLinkMeta>(trx, documentId, doc,
                                                          meta(), &tick);
   }
+
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
+                bool nested, uint64_t const* recoveryTick);
 
   bool isSorted() const override { return IResearchLink::isSorted(); }
 

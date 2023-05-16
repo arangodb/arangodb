@@ -61,31 +61,29 @@ using namespace std::literals::string_literals;
 
 namespace {
 
-class EmptyAnalyzer : public irs::analysis::analyzer {
+class EmptyAnalyzer final : public irs::analysis::TypedAnalyzer<EmptyAnalyzer> {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "rest-analyzer-empty";
   }
-  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {}
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  EmptyAnalyzer() = default;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::frequency>::id()) {
       return &_attr;
     }
 
     return nullptr;
   }
-  static ptr make(irs::string_ref) {
-    PTR_NAMED(EmptyAnalyzer, ptr);
-    return ptr;
+  static ptr make(std::string_view) {
+    return std::make_unique<EmptyAnalyzer>();
   }
-  static bool normalize(irs::string_ref, std::string& out) {
+  static bool normalize(std::string_view, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
     std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
     return true;
   }
-  virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref data) override { return true; }
+  bool next() final { return false; }
+  bool reset(std::string_view data) final { return true; }
 
  private:
   irs::frequency _attr;

@@ -68,7 +68,7 @@ class QueryInRange : public QueryTest {
       auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_TRUE(collection);
 
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view{testResourceDir};
       resource /= std::string_view{"simple_sequential.json"};
 

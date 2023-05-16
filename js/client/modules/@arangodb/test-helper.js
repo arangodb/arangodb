@@ -236,7 +236,6 @@ const runShell = function(args, prefix) {
     'server.database': arango.getDatabaseName(),
     'server.username': arango.connectedUser(),
     'server.password': '',
-    'server.request-timeout': '10',
     'log.foreground-tty': 'false',
     'log.output': 'file://' + prefix + '.log'
   };

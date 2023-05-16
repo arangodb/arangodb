@@ -28,7 +28,6 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
-#include "utils/utf8_path.hpp"
 
 #include "IResearch/IResearchTestCommon.h"
 #include "IResearch/RestHandlerMock.h"
@@ -118,35 +117,37 @@ struct TestIndex : public arangodb::Index {
   void unload() override {}
 };
 
-class ReNormalizingAnalyzer : public irs::analysis::analyzer {
+class ReNormalizingAnalyzer final
+    : public irs::analysis::TypedAnalyzer<ReNormalizingAnalyzer> {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "ReNormalizingAnalyzer";
   }
 
-  ReNormalizingAnalyzer()
-      : irs::analysis::analyzer(irs::type<ReNormalizingAnalyzer>::get()) {}
+  ReNormalizingAnalyzer() = default;
 
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<TestAttribute>::id()) {
       return &_attr;
     }
     return nullptr;
   }
 
-  static ptr make(irs::string_ref args) {
+  static ptr make(std::string_view args) {
     auto slice = arangodb::iresearch::slice(args);
-    if (slice.isNull()) throw std::exception();
-    if (slice.isNone()) return nullptr;
-    PTR_NAMED(ReNormalizingAnalyzer, ptr);
-    return ptr;
+    if (slice.isNull()) {
+      throw std::exception{};
+    }
+    if (slice.isNone()) {
+      return nullptr;
+    }
+    return std::make_unique<ReNormalizingAnalyzer>();
   }
 
   // test implementation
   // string will be normalized as is. But object will be converted!
   // need this to test comparison "old-normalized"  against "new-normalized"
-  static bool normalize(irs::string_ref args, std::string& definition) {
+  static bool normalize(std::string_view args, std::string& definition) {
     auto slice = arangodb::iresearch::slice(args);
     arangodb::velocypack::Builder builder;
     if (slice.isString()) {
@@ -168,9 +169,9 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  virtual bool next() override { return false; }
+  bool next() final { return false; }
 
-  virtual bool reset(irs::string_ref) override { return false; }
+  bool reset(std::string_view) final { return false; }
 
  private:
   TestAttribute _attr;
@@ -179,25 +180,24 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
 REGISTER_ANALYZER_VPACK(ReNormalizingAnalyzer, ReNormalizingAnalyzer::make,
                         ReNormalizingAnalyzer::normalize);
 
-class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
+class TestTokensTypedAnalyzer final
+    : public irs::analysis::TypedAnalyzer<TestTokensTypedAnalyzer> {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch-tokens-typed";
   }
 
-  static ptr make(irs::string_ref args) {
-    PTR_NAMED(TestTokensTypedAnalyzer, ptr, args);
-    return ptr;
+  static ptr make(std::string_view args) {
+    return std::make_unique<TestTokensTypedAnalyzer>(args);
   }
 
-  static bool normalize(irs::string_ref args, std::string& out) {
-    out.assign(args.c_str(), args.size());
+  static bool normalize(std::string_view args, std::string& out) {
+    out.assign(args.data(), args.size());
     return true;
   }
 
-  explicit TestTokensTypedAnalyzer(irs::string_ref args)
-      : irs::analysis::analyzer(irs::type<TestTokensTypedAnalyzer>::get()) {
-    VPackSlice slice(irs::ref_cast<irs::byte_type>(args).c_str());
+  explicit TestTokensTypedAnalyzer(std::string_view args) {
+    VPackSlice slice(irs::ViewCast<irs::byte_type>(args).data());
     if (slice.hasKey("type")) {
       auto type = slice.get("type").stringView();
       if (type == "number") {
@@ -209,7 +209,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
         _returnType.value = arangodb::iresearch::AnalyzerValueType::Bool;
       } else if (type == "string") {
         _returnType.value = arangodb::iresearch::AnalyzerValueType::String;
-        _term.value = irs::ref_cast<irs::byte_type>(_strVal);
+        _term.value = irs::ViewCast<irs::byte_type>(std::string_view{_strVal});
       } else {
         // Failure here means we have unexpected type
         EXPECT_TRUE(false);
@@ -217,8 +217,8 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual bool reset(irs::string_ref data) override {
-    if (!data.null()) {
+  bool reset(std::string_view data) final {
+    if (!irs::IsNull(data)) {
       _strVal = data;
     } else {
       _strVal.clear();
@@ -226,7 +226,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  virtual bool next() override {
+  bool next() final {
     if (!_strVal.empty()) {
       switch (_returnType.value) {
         case arangodb::iresearch::AnalyzerValueType::Bool:
@@ -241,7 +241,8 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
           _vpackTerm.value = _typedValue.slice();
           break;
         case arangodb::iresearch::AnalyzerValueType::String:
-          _term.value = irs::ref_cast<irs::byte_type>(_strVal);
+          _term.value =
+              irs::ViewCast<irs::byte_type>(std::string_view{_strVal});
           break;
         default:
           // New return type was added?
@@ -255,8 +256,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::term_attribute>::id()) {
       return &_term;
     }
@@ -286,18 +286,18 @@ REGISTER_ANALYZER_VPACK(TestTokensTypedAnalyzer, TestTokensTypedAnalyzer::make,
                         TestTokensTypedAnalyzer::normalize);
 
 struct Analyzer {
-  irs::string_ref type;
+  std::string_view type;
   VPackSlice properties;
   arangodb::iresearch::Features features;
 
   Analyzer() = default;
-  Analyzer(irs::string_ref const t, irs::string_ref const p,
+  Analyzer(std::string_view const t, std::string_view const p,
            arangodb::iresearch::Features f = {})
       : type(t), features(f) {
-    if (p.null()) {
+    if (irs::IsNull(p)) {
       properties = VPackSlice::nullSlice();
     } else {
-      propBuilder = VPackParser::fromJson(p.c_str(), p.size());
+      propBuilder = VPackParser::fromJson(p.data(), p.size());
       properties = propBuilder->slice();
     }
   }
@@ -307,11 +307,11 @@ struct Analyzer {
   std::shared_ptr<VPackBuilder> propBuilder;
 };
 
-std::map<irs::string_ref, Analyzer> const& staticAnalyzers() {
-  static const std::map<irs::string_ref, Analyzer> analyzers = {
+std::map<std::string_view, Analyzer> const& staticAnalyzers() {
+  static const std::map<std::string_view, Analyzer> analyzers = {
       {"identity",
        {"identity",
-        irs::string_ref::NIL,
+        std::string_view{},
         {arangodb::iresearch::FieldFeatures::NORM, irs::IndexFeatures::FREQ}}},
       {"text_de",
        {"text",
@@ -785,9 +785,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_during_recovery) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   auto before = StorageEngineMock::recoveryStateResult;
   StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() noexcept {
+  irs::Finally restore = [&before]() noexcept {
     StorageEngineMock::recoveryStateResult = before;
-  });
+  };
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice());
   // emplace should return OK for the sake of recovery
@@ -1543,12 +1543,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_static) {
   ASSERT_NE(nullptr, term);
   EXPECT_TRUE(analyzer->reset("abc def ghi"));
   EXPECT_TRUE(analyzer->next());
-  EXPECT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abc def ghi")),
+  EXPECT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abc def ghi")),
             term->value);
   EXPECT_FALSE(analyzer->next());
   EXPECT_TRUE(analyzer->reset("123 456"));
   EXPECT_TRUE(analyzer->next());
-  EXPECT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("123 456")),
+  EXPECT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("123 456")),
             term->value);
   EXPECT_FALSE(analyzer->next());
 }
@@ -1572,12 +1572,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_registered) {
   EXPECT_FALSE(analyzer->next());
   EXPECT_TRUE(analyzer->reset("abc def ghi"));
   EXPECT_TRUE(analyzer->next());
-  EXPECT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abc def ghi")),
+  EXPECT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abc def ghi")),
             term->value);
   EXPECT_FALSE(analyzer->next());
   EXPECT_TRUE(analyzer->reset("123 456"));
   EXPECT_TRUE(analyzer->next());
-  EXPECT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("123 456")),
+  EXPECT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("123 456")),
             term->value);
   EXPECT_FALSE(analyzer->next());
   feature.unprepare();
@@ -1595,7 +1595,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize 'identity' (with prefix)
   {
-    irs::string_ref analyzer = "identity";
+    std::string_view analyzer = "identity";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), true);
     EXPECT_EQ(std::string("identity"), normalized);
@@ -1603,7 +1603,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize 'identity' (without prefix)
   {
-    irs::string_ref analyzer = "identity";
+    std::string_view analyzer = "identity";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), true);
     EXPECT_EQ(std::string("identity"), normalized);
@@ -1611,7 +1611,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize NIL (with prefix)
   {
-    irs::string_ref analyzer = irs::string_ref::NIL;
+    std::string_view analyzer = std::string_view{};
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), true);
     EXPECT_EQ(std::string("active::"), normalized);
@@ -1619,7 +1619,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize NIL (without prefix)
   {
-    irs::string_ref analyzer = irs::string_ref::NIL;
+    std::string_view analyzer = std::string_view{};
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), false);
     EXPECT_EQ(std::string(""), normalized);
@@ -1627,7 +1627,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize EMPTY (with prefix)
   {
-    irs::string_ref analyzer = irs::string_ref::EMPTY;
+    std::string_view analyzer = irs::kEmptyStringView<char>;
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), true);
     EXPECT_EQ(std::string("active::"), normalized);
@@ -1635,7 +1635,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize EMPTY (without prefix)
   {
-    irs::string_ref analyzer = irs::string_ref::EMPTY;
+    std::string_view analyzer = irs::kEmptyStringView<char>;
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), false);
     EXPECT_EQ(std::string(""), normalized);
@@ -1643,7 +1643,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize delimiter (with prefix)
   {
-    irs::string_ref analyzer = "::";
+    std::string_view analyzer = "::";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), true);
     EXPECT_EQ(std::string("_system::"), normalized);
@@ -1651,7 +1651,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize delimiter (without prefix)
   {
-    irs::string_ref analyzer = "::";
+    std::string_view analyzer = "::";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), false);
     EXPECT_EQ(std::string("::"), normalized);
@@ -1659,7 +1659,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize delimiter + name (with prefix)
   {
-    irs::string_ref analyzer = "::name";
+    std::string_view analyzer = "::name";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), true);
     EXPECT_EQ(std::string("_system::name"), normalized);
@@ -1667,7 +1667,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize delimiter + name (without prefix)
   {
-    irs::string_ref analyzer = "::name";
+    std::string_view analyzer = "::name";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), false);
     EXPECT_EQ(std::string("::name"), normalized);
@@ -1675,7 +1675,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize no-delimiter + name (with prefix)
   {
-    irs::string_ref analyzer = "name";
+    std::string_view analyzer = "name";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), true);
     EXPECT_EQ(std::string("active::name"), normalized);
@@ -1683,7 +1683,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize no-delimiter + name (without prefix)
   {
-    irs::string_ref analyzer = "name";
+    std::string_view analyzer = "name";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), false);
     EXPECT_EQ(std::string("name"), normalized);
@@ -1691,7 +1691,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize system + delimiter (with prefix)
   {
-    irs::string_ref analyzer = "_system::";
+    std::string_view analyzer = "_system::";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), true);
     EXPECT_EQ(std::string("_system::"), normalized);
@@ -1699,7 +1699,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize system + delimiter (without prefix)
   {
-    irs::string_ref analyzer = "_system::";
+    std::string_view analyzer = "_system::";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), false);
     EXPECT_EQ(std::string("::"), normalized);
@@ -1707,7 +1707,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize vocbase + delimiter (with prefix)
   {
-    irs::string_ref analyzer = "active::";
+    std::string_view analyzer = "active::";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), true);
     EXPECT_EQ(std::string("active::"), normalized);
@@ -1715,7 +1715,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize vocbase + delimiter (without prefix)
   {
-    irs::string_ref analyzer = "active::";
+    std::string_view analyzer = "active::";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), false);
     EXPECT_EQ(std::string(""), normalized);
@@ -1723,7 +1723,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize system + delimiter + name (with prefix)
   {
-    irs::string_ref analyzer = "_system::name";
+    std::string_view analyzer = "_system::name";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), true);
     EXPECT_EQ(std::string("_system::name"), normalized);
@@ -1731,7 +1731,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize system + delimiter + name (without prefix)
   {
-    irs::string_ref analyzer = "_system::name";
+    std::string_view analyzer = "_system::name";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), false);
     EXPECT_EQ(std::string("::name"), normalized);
@@ -1739,7 +1739,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize system + delimiter + name (without prefix) in system
   {
-    irs::string_ref analyzer = "_system::name";
+    std::string_view analyzer = "_system::name";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, system.name(), false);
     EXPECT_EQ(std::string("name"), normalized);
@@ -1747,7 +1747,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize vocbase + delimiter + name (with prefix)
   {
-    irs::string_ref analyzer = "active::name";
+    std::string_view analyzer = "active::name";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), true);
     EXPECT_EQ(std::string("active::name"), normalized);
@@ -1755,7 +1755,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
 
   // normalize vocbase + delimiter + name (without prefix)
   {
-    irs::string_ref analyzer = "active::name";
+    std::string_view analyzer = "active::name";
     auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
         analyzer, active.name(), false);
     EXPECT_EQ(std::string("name"), normalized);
@@ -1833,7 +1833,7 @@ TEST_F(IResearchAnalyzerFeatureTest,
       trx.commit();
     }
 
-    std::map<std::string, std::pair<irs::string_ref, irs::string_ref>>
+    std::map<std::string, std::pair<std::string_view, std::string_view>>
         expected = {};
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
 
@@ -2034,7 +2034,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
     }
 
     {
-      std::map<std::string, std::pair<irs::string_ref, irs::string_ref>>
+      std::map<std::string, std::pair<std::string_view, std::string_view>>
           expected = {
               {"text_de",
                {"text",
@@ -2116,7 +2116,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
                 expectedProperties, analyzer->type(),
                 irs::type<irs::text_format::vpack>::get(),
                 arangodb::iresearch::ref<char>(
-                    VPackParser::fromJson(itr->second.second.c_str(),
+                    VPackParser::fromJson(itr->second.second.data(),
                                           itr->second.second.size())
                         ->slice()),
                 false));
@@ -2138,7 +2138,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
     }
 
     {
-      std::map<std::string, std::pair<irs::string_ref, irs::string_ref>>
+      std::map<std::string, std::pair<std::string_view, std::string_view>>
           expected = {};
       arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
 
@@ -2500,9 +2500,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
 
     EXPECT_FALSE(feature
                      .remove(arangodb::StaticStrings::SystemDatabase +
@@ -2519,9 +2519,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto beforeRole = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restoreRole = irs::make_finally([&beforeRole]() noexcept {
+    irs::Finally restoreRole = [&beforeRole]() noexcept {
       arangodb::ServerState::instance()->setRole(beforeRole);
-    });
+    };
 
     // create a new instance of an ApplicationServer and fill it with the
     // required features cannot use the existing server since its features
@@ -2603,9 +2603,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto beforeRole = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restoreRole = irs::make_finally([&beforeRole]() noexcept {
+    irs::Finally restoreRole = [&beforeRole]() noexcept {
       arangodb::ServerState::instance()->setRole(beforeRole);
-    });
+    };
 
     arangodb::ArangodServer newServer(nullptr, nullptr);
     newServer.addFeature<arangodb::metrics::MetricsFeature>();
@@ -2674,9 +2674,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
 
     EXPECT_TRUE(feature
                     .remove(arangodb::StaticStrings::SystemDatabase +
@@ -2779,9 +2779,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
   auto before = StorageEngineMock::recoveryStateResult;
   StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() noexcept {
+  irs::Finally restore = [&before]() noexcept {
     StorageEngineMock::recoveryStateResult = before;
-  });
+  };
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   EXPECT_TRUE(feature.visit(
       [](auto) { return false; }));  // ensure feature is empty after creation
@@ -2841,9 +2841,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
@@ -2918,9 +2918,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
     feature.prepare();  // add static analyzers
     feature.start();    // doesn't load persisted analyzers
@@ -3193,9 +3193,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   {
     std::string analyzer(arangodb::StaticStrings::SystemDatabase +
                          "::test_analyzer");
-    irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
+    std::string_view data("abcdefghijklmnopqrstuvwxyz");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(data.c_str(), data.size());
+    args->emplace_back(data.data(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
     AqlValueWrapper result(impl(&exprCtx, node, *args));
     EXPECT_TRUE(result->isArray());
@@ -3207,14 +3207,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       EXPECT_TRUE(entry.isString());
       auto value = arangodb::iresearch::getStringRef(entry.slice());
       EXPECT_EQ(1, value.size());
-      EXPECT_EQ('a' + i, value.c_str()[0]);
+      EXPECT_EQ('a' + i, value.data()[0]);
     }
   }
   // test default analyzer
   {
-    irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
+    std::string_view data("abcdefghijklmnopqrstuvwxyz");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(data.c_str(), data.size());
+    args->emplace_back(data.data(), data.size());
     AqlValueWrapper result(impl(&exprCtx, node, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(1, result->length());
@@ -3229,9 +3229,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   {
     std::string analyzer(arangodb::StaticStrings::SystemDatabase +
                          "::test_number_analyzer");
-    irs::string_ref data("123");
+    std::string_view data("123");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(data.c_str(), data.size());
+    args->emplace_back(data.data(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
     AqlValueWrapper result(impl(&exprCtx, node, *args));
     ASSERT_TRUE(result->isArray());
@@ -3257,9 +3257,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   {
     std::string analyzer(arangodb::StaticStrings::SystemDatabase +
                          "::test_bool_analyzer");
-    irs::string_ref data("123");
+    std::string_view data("123");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(data.c_str(), data.size());
+    args->emplace_back(data.data(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
     AqlValueWrapper result(impl(&exprCtx, node, *args));
     ASSERT_TRUE(result->isArray());
@@ -3284,13 +3284,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // test invalid arg count
   // 3 parameters. More than expected
   {
-    irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
-    irs::string_ref analyzer("identity");
-    irs::string_ref unexpectedParameter("something");
+    std::string_view data("abcdefghijklmnopqrstuvwxyz");
+    std::string_view analyzer("identity");
+    std::string_view unexpectedParameter("something");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(data.c_str(), data.size());
-    args->emplace_back(analyzer.c_str(), analyzer.size());
-    args->emplace_back(unexpectedParameter.c_str(), unexpectedParameter.size());
+    args->emplace_back(data.data(), data.size());
+    args->emplace_back(analyzer.data(), analyzer.size());
+    args->emplace_back(unexpectedParameter.data(), unexpectedParameter.size());
     EXPECT_THROW(AqlValueWrapper(impl(&exprCtx, node, *args)),
                  arangodb::basics::Exception);
   }
@@ -3397,20 +3397,20 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   }
   // test double type with not needed analyzer (invalid analyzer type)
   {
-    irs::string_ref analyzer("invalid_analyzer");
+    std::string_view analyzer("invalid_analyzer");
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
-    args->emplace_back(analyzer.c_str(), analyzer.size());
+    args->emplace_back(analyzer.data(), analyzer.size());
     EXPECT_THROW(AqlValueWrapper(impl(&exprCtx, node, *args)),
                  arangodb::basics::Exception);
   }
   // test invalid analyzer (when analyzer needed for text)
   {
-    irs::string_ref analyzer("invalid");
-    irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
+    std::string_view analyzer("invalid");
+    std::string_view data("abcdefghijklmnopqrstuvwxyz");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(data.c_str(), data.size());
-    args->emplace_back(analyzer.c_str(), analyzer.size());
+    args->emplace_back(data.data(), data.size());
+    args->emplace_back(analyzer.data(), analyzer.size());
     EXPECT_THROW(AqlValueWrapper(impl(&exprCtx, node, *args)),
                  arangodb::basics::Exception);
   }
@@ -3492,8 +3492,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     auto aqlValue = arangodb::aql::AqlValue(std::move(buffer));
     VPackFunctionParametersWrapper args;
     args->push_back(std::move(aqlValue));
-    irs::string_ref analyzer("text_en");
-    args->emplace_back(analyzer.c_str(), analyzer.size());
+    std::string_view analyzer("text_en");
+    args->emplace_back(analyzer.data(), analyzer.size());
     auto result = AqlValueWrapper(impl(&exprCtx, node, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(3, result->length());
@@ -3566,8 +3566,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
     auto aqlValue = arangodb::aql::AqlValue(std::move(buffer));
     args->push_back(std::move(aqlValue));
-    irs::string_ref analyzer("text_en");
-    args->emplace_back(analyzer.c_str(), analyzer.size());
+    std::string_view analyzer("text_en");
+    args->emplace_back(analyzer.data(), analyzer.size());
     auto result = AqlValueWrapper(impl(&exprCtx, node, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(9, result->length());
@@ -4089,9 +4089,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     std::string _name;
     std::string _properties;
     std::string _type;
-    ExpectedType(irs::string_ref name, irs::string_ref properties,
+    ExpectedType(std::string_view name, std::string_view properties,
                  arangodb::iresearch::Features const& features,
-                 irs::string_ref type)
+                 std::string_view type)
         : _features(features),
           _name(name),
           _properties(properties),
