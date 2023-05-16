@@ -77,7 +77,7 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(
       InputAqlItemRow const& input) override;
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   void setFailureCallback(std::function<void()> cb);
 #endif
 

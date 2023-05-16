@@ -27,6 +27,8 @@
 
 #include "Aql/AsyncExecutor.h"
 
+#include <random>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::tests;
@@ -38,18 +40,32 @@ struct AsyncExecutorTest : AqlExecutorTestCase<false> {
   FakeScheduler scheduler;
 };
 
+// Regression test for https://arangodb.atlassian.net/browse/BTS-1325.
+// See https://github.com/arangodb/arangodb/pull/18729 for details.
 TEST_F(AsyncExecutorTest, sleepingBeauty) {
+  auto seed = std::random_device{}();
+  auto gen = std::mt19937();
+  gen.seed(seed);
+  RecordProperty("seed", seed);
+  SCOPED_TRACE(fmt::format("seed={}", seed));
+
   auto registerInfos = RegisterInfos(RegIdSet{}, RegIdSet{}, 1, 1,
                                      RegIdFlatSet{}, RegIdFlatSetStack{{0}});
 
-  TRI_AddFailurePointDebugging("AsyncExecutor::SleepWhenWaiting");
-
   auto testHelper = makeExecutorTestHelper();
-  testHelper.addConsumer<AsyncExecutor>(registerInfos, {}, ExecutionNode::ASYNC)
-      .addConsumer<AsyncExecutor>(registerInfos, {}, ExecutionNode::ASYNC)
+  testHelper
+      .addDependency<AsyncExecutor>(registerInfos, {}, ExecutionNode::ASYNC)
+      .addDependency<AsyncExecutor>(registerInfos, {}, ExecutionNode::ASYNC)
       .setInputFromRowNum(1)
       .setWaitingBehaviour(WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS)
       .setCall(AqlCall{0u, AqlCall::Infinity{}, AqlCall::Infinity{}, false});
+
+  auto* asyncBlock0 = dynamic_cast<ExecutionBlockImpl<AsyncExecutor>*>(
+      testHelper.pipeline().get().at(0).get());
+  ASSERT_EQ(asyncBlock0->getPlanNode()->id().id(), 0);
+  auto* asyncBlock1 = dynamic_cast<ExecutionBlockImpl<AsyncExecutor>*>(
+      testHelper.pipeline().get().at(1).get());
+  ASSERT_EQ(asyncBlock1->getPlanNode()->id().id(), 1);
 
   // one initial "wakeup" to start execution
   auto wakeupsQueued = 1;
@@ -61,30 +77,46 @@ TEST_F(AsyncExecutorTest, sleepingBeauty) {
   testHelper.setWakeupCallback(wakeupHandler);
   testHelper.prepareInput();
 
-  auto* block = testHelper.pipeline().get()[0].get();
-  auto* asyncBlock = dynamic_cast<ExecutionBlockImpl<AsyncExecutor>*>(block);
-  asyncBlock->setFailureCallback([&] {
-    while (!scheduler.queueEmpty()) {
-      scheduler.runOnce();
-    }
-    while (wakeupsQueued > 0) {
-      --wakeupsQueued;
-      testHelper.executeOnce();
-    }
-  });
-  block = testHelper.pipeline().get()[1].get();
-  asyncBlock = dynamic_cast<ExecutionBlockImpl<AsyncExecutor>*>(block);
-  asyncBlock->setFailureCallback([] {});
+  auto const somethingToDo = [&] {
+    return !scheduler.queueEmpty() or wakeupsQueued > 0;
+  };
 
-  while (wakeupsQueued > 0 || !scheduler.queueEmpty()) {
-    while (wakeupsQueued > 0) {
-      --wakeupsQueued;
-      testHelper.executeOnce();
-    }
-    if (!scheduler.queueEmpty()) {
-      scheduler.runOnce();
+  auto const doSomething = [&](bool everything) {
+    while (somethingToDo()) {
+      auto const queueSize = scheduler.queueSize();
+      auto max = queueSize;
+      if (wakeupsQueued > 0) {
+        ++max;
+      }
+      TRI_ASSERT(max > 0) << "error in test logic";
+      // [0, queueSize - 1] means run a scheduler task;
+      // if wakeupsQueued > 0, [queueSize] means wake up the "rest handler";
+      // [max] means stop doing anything (but can not be reached if
+      //       `everything` is true).
+      auto dist = std::uniform_int_distribution<std::size_t>(
+          0, everything ? max - 1 : max);
+      auto actionIdx = dist(gen);
+
+      if (actionIdx < queueSize) {
+        scheduler.runOne(actionIdx);
+      } else if (actionIdx == max) {
+        TRI_ASSERT(!everything);
+        return;
+      } else {
+        TRI_ASSERT(actionIdx == queueSize);
+        TRI_ASSERT(wakeupsQueued > 0);
+        --wakeupsQueued;
+        testHelper.executeOnce();
+      }
     }
   };
+
+  // get the "lower" of the two async blocks
+  asyncBlock0->setFailureCallback([&] { doSomething(false); });
+  // get the "upper" of the two async blocks
+  asyncBlock1->setFailureCallback([&] { doSomething(false); });
+
+  doSomething(true);
 
   EXPECT_EQ(0, wakeupsQueued);
   EXPECT_TRUE(scheduler.queueEmpty());

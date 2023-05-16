@@ -33,7 +33,7 @@ namespace tests {
 bool FakeScheduler::queueItem(RequestLane lane,
                               std::unique_ptr<WorkItemBase> item,
                               bool bounded) {
-  _queue.emplace(std::move(item));
+  _queue.emplace_back(std::move(item));
   return true;
 }
 
@@ -76,8 +76,15 @@ std::size_t FakeScheduler::queueSize() { return _queue.size(); }
 
 void FakeScheduler::runOnce() {
   TRI_ASSERT(!queueEmpty());
-  auto item = std::move(_queue.front());
-  _queue.pop();
+  runOne(0);
+}
+
+void FakeScheduler::runOne(std::size_t idx) {
+  TRI_ASSERT(idx < _queue.size());
+  auto it = _queue.begin();
+  std::advance(it, idx);
+  auto item = std::move(*it);
+  _queue.erase(it);
   item->invoke();
 }
 

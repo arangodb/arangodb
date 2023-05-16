@@ -43,8 +43,9 @@ struct FakeScheduler : Scheduler {
   bool queueEmpty();
   std::size_t queueSize();
   void runOnce();
+  void runOne(std::size_t idx);
 
-  std::queue<std::unique_ptr<WorkItemBase>> _queue;
+  std::vector<std::unique_ptr<WorkItemBase>> _queue;
 };
 
 }  // namespace arangodb::tests
