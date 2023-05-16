@@ -17,7 +17,7 @@ def check_file(fullpath, project_path, id_database, invalid_logid_database):
             match = g_log_topic_pattern.search(line)
 
             if match:
-                location_string = "{}:{}".format(project_path, cnt)
+                location_string = "{}:{}".format(project_path, cnt + 1)
                 macro = match.group('macro')
                 rest = match.group('rest')
                 param = match.group('param').strip()
