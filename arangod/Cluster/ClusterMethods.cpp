@@ -346,6 +346,9 @@ void mergeResultsAllShards(
   }
 }
 
+const ShardID LocalErrorsShard = "#ERRORS";
+struct InsertOperationCtx;
+
 /// @brief handle CRUD api shard responses, fast path
 template<typename F, typename CT>
 OperationResult handleCRUDShardResponsesFast(
@@ -399,8 +402,21 @@ OperationResult handleCRUDShardResponsesFast(
   resultBody.openArray();
   for (auto const& pair : opCtx.reverseMapping) {
     ShardID const& sId = pair.first;
-    auto const& it = resultMap.find(sId);
-    if (it == resultMap.end()) {  // no answer from this shard
+    if constexpr (std::is_same_v<CT, InsertOperationCtx>) {
+      if (sId == LocalErrorsShard) {
+        Result const& res = opCtx.localErrors[pair.second];
+        resultBody.openObject(
+            /*unindexed*/ true);
+        resultBody.add(StaticStrings::Error, VPackValue(true));
+        resultBody.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
+        resultBody.add(StaticStrings::ErrorMessage,
+                       VPackValue(res.errorMessage()));
+        resultBody.close();
+        continue;
+      }
+    }
+    if (auto const& it = resultMap.find(sId);
+        it == resultMap.end()) {  // no answer from this shard
       auto const& it2 = shardError.find(sId);
       TRI_ASSERT(it2 != shardError.end());
       resultBody.openObject(/*unindexed*/ true);
@@ -539,6 +555,7 @@ struct InsertOperationCtx {
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   std::map<ShardID, std::vector<std::pair<VPackSlice, std::string>>> shardMap;
   arangodb::OperationOptions options;
+  std::vector<Result> localErrors;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,6 +574,13 @@ struct InsertOperationCtx {
   bool isRestore = opCtx.options.isRestore;
   ShardID shardID;
   std::string key;
+
+  auto addLocalError = [&](Result err) {
+    TRI_ASSERT(err.fail());
+    auto idx = opCtx.localErrors.size();
+    opCtx.localErrors.emplace_back(std::move(err));
+    opCtx.reverseMapping.emplace_back(LocalErrorsShard, idx);
+  };
 
   if (!value.isObject()) {
     // We have invalid input at this point.
@@ -594,7 +618,8 @@ struct InsertOperationCtx {
           auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
                                                       value, isRestore);
           if (res != TRI_ERROR_NO_ERROR) {
-            return res;
+            addLocalError(res);
+            return TRI_ERROR_NO_ERROR;
           }
         }
       }
