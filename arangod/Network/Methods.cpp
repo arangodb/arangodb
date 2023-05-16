@@ -363,23 +363,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
   ~RequestsState() = default;
 
- private:
-  DestinationId _destination;
-  RequestOptions const _options;
-  ConnectionPool* _pool;
-
-  std::shared_ptr<arangodb::Scheduler::DelayedWorkItem> _workItem;
-  std::unique_ptr<fuerte::Request> _tmp_req;
-  std::unique_ptr<fuerte::Response> _tmp_res;  /// temporary response
-
-  futures::Promise<network::Response> _promise;  /// promise called
-
-  std::chrono::steady_clock::time_point const _startTime;
-  std::chrono::steady_clock::time_point const _endTime;
-
-  fuerte::Error _tmp_err;
-
- public:
   FutureRes future() { return _promise.getFuture(); }
 
   // scheduler requests that are due
@@ -614,6 +597,22 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
           }
         });
   }
+
+ private:
+  DestinationId _destination;
+  RequestOptions const _options;
+  ConnectionPool* _pool;
+
+  std::shared_ptr<arangodb::Scheduler::DelayedWorkItem> _workItem;
+  std::unique_ptr<fuerte::Request> _tmp_req;
+  std::unique_ptr<fuerte::Response> _tmp_res;  /// temporary response
+
+  futures::Promise<network::Response> _promise;  /// promise called
+
+  std::chrono::steady_clock::time_point const _startTime;
+  std::chrono::steady_clock::time_point const _endTime;
+
+  fuerte::Error _tmp_err;
 };
 
 /// @brief send a request to a given destination, retry until timeout is

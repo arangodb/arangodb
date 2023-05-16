@@ -154,7 +154,7 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
   _allowDirtyReads = _query->allowDirtyReads();  // is set by prepareQuery!
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
-    debugKillQuery();
+    QueryStreamCursor::debugKillQuery();
   }
 
   // In all the following ASSERTs it is valid (though unlikely) that the query
@@ -168,7 +168,7 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
 
   transaction::Methods trx(_ctx);
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterTrxSetup") {
-    debugKillQuery();
+    QueryStreamCursor::debugKillQuery();
   }
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
 

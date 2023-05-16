@@ -106,7 +106,9 @@ function makeDataWrapper (options) {
         if (this.options.forceJson) {
           args['server.force-json'] = true;
         }
-        if (!this.options.verbose) {
+        if (this.options.extremeVerbosity) {
+          args['log.level'] = ['warning', 'V8=debug'];
+        } else if (!this.options.verbose) {
           args['log.level'] = 'warning';
         }
         if (this.addArgs !== undefined) {

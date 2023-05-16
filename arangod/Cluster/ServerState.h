@@ -30,7 +30,7 @@
 #include <string_view>
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteSpinLock.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
 #include "Cluster/ClusterTypes.h"
 #include "RestServer/arangod.h"
@@ -134,12 +134,6 @@ class ServerState {
   static bool setReadOnly(ReadOnlyMode);
 
   static void reset();
-
-  /// @brief sets the initialized flag
-  void setInitialized() { _initialized = true; }
-
-  /// @brief whether or not the cluster was properly initialized
-  bool initialized() const { return _initialized; }
 
   bool isSingleServer() const noexcept { return isSingleServer(loadRole()); }
 
@@ -335,7 +329,7 @@ class ServerState {
   std::atomic<RoleEnum> _role;
 
   /// @brief r/w lock for state
-  mutable arangodb::basics::ReadWriteSpinLock _lock;
+  mutable basics::ReadWriteLock _lock;
 
   /// @brief the server's id, can be set just once, use getId and setId, do not
   /// access directly
@@ -376,17 +370,17 @@ class ServerState {
   /// @brief the current state
   StateEnum _state;
 
-  /// @brief whether or not the cluster was initialized
-  bool _initialized;
-
   /// @brief lock for all foxxmaster-related members
-  mutable arangodb::basics::ReadWriteSpinLock _foxxmasterLock;
+  mutable basics::ReadWriteLock _foxxmasterLock;
 
+  // protected by _foxxmasterLock
   std::string _foxxmaster;
 
-  // @brief point in time since which this server is the Foxxmaster
+  // @brief point in time since which this server is the Foxxmaster.
+  // protected by _foxxmasterLock
   TRI_voc_tick_t _foxxmasterSince;
 
+  // protected by _foxxmasterLock
   bool _foxxmasterQueueupdate;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

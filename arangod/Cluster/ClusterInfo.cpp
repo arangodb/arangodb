@@ -3334,6 +3334,14 @@ Result ClusterInfo::createCollectionsCoordinator(
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive
   // Mutex)
   for (auto& info : infos) {
+    TRI_IF_FAILURE("ClusterInfo::requiresWaitForReplication") {
+      if (info.waitForReplication) {
+        return TRI_ERROR_DEBUG;
+      } else {
+        TRI_ASSERT(false) << "We required to have waitForReplication, but it "
+                             "was set to false";
+      }
+    }
     TRI_ASSERT(!info.name.empty());
 
     if (info.state == ClusterCollectionCreationState::DONE) {
@@ -3986,11 +3994,6 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     double timeout  // request timeout
 ) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  if (dbName.empty() || (dbName[0] > '0' && dbName[0] < '9')) {
-    events::DropCollection(dbName, collectionID,
-                           TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-  }
 
   AgencyComm ac(_server);
   AgencyCommResult res;
@@ -6311,6 +6314,31 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
   return result;
 }
 
+ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(
+    ServerID const& server, ShardID const& shard) const {
+  if (!_currentProt.isValid) {
+    return ShardLeadership::kUnclear;
+  }
+  READ_LOCKER(readLocker, _currentProt.lock);
+  auto it = _shardsToCurrentServers.find(shard);
+  if (it == _shardsToCurrentServers.end()) {
+    return ShardLeadership::kUnclear;
+  }
+  auto const& serverList = it->second;
+  if (!serverList || serverList->empty()) {
+    return ShardLeadership::kUnclear;
+  }
+  auto const& front = serverList->front();
+  TRI_ASSERT(!front.empty());
+  if (front.starts_with('_')) {
+    // This is a temporary situation in which the leader has already resigned,
+    // so we don't know exactly right now.
+    return ShardLeadership::kUnclear;
+  }
+  return front == server ? ShardLeadership::kLeader
+                         : ShardLeadership::kFollower;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief atomically find all servers who are responsible for the given
 /// shards (only the leaders).
@@ -6491,6 +6519,18 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
   return std::make_shared<std::vector<ShardID>>();
 }
 
+std::shared_ptr<std::vector<ServerID> const>
+ClusterInfo::getCurrentServersForShard(std::string_view shardId) {
+  READ_LOCKER(readLocker, _currentProt.lock);
+
+  if (auto it = _shardsToCurrentServers.find(shardId);
+      it != _shardsToCurrentServers.end()) {
+    return it->second;
+  } else {
+    return nullptr;
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of coordinator server names
 ////////////////////////////////////////////////////////////////////////////////
@@ -6653,7 +6693,8 @@ void ClusterInfo::setShardGroups(
 }
 
 void ClusterInfo::setShardIds(
-    containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
+    containers::FlatHashMap<ShardID,
+                            std::shared_ptr<std::vector<ServerID> const>>
         shardIds) {
   WRITE_LOCKER(writeLocker, _currentProt.lock);
   _shardsToCurrentServers = std::move(shardIds);
@@ -7161,25 +7202,20 @@ void ClusterInfo::startSyncers() {
 }
 
 void ClusterInfo::drainSyncers() {
-  {
-    std::lock_guard g(_waitPlanLock);
-    auto pit = _waitPlan.begin();
-    while (pit != _waitPlan.end()) {
+  auto clearWaitForMaps = [&](auto& mutex, auto& map) {
+    std::lock_guard g(mutex);
+    auto pit = map.begin();
+    while (pit != map.end()) {
       pit->second.setValue(Result(_syncerShutdownCode));
       ++pit;
     }
-    _waitPlan.clear();
-  }
+    map.clear();
+  };
 
-  {
-    std::lock_guard g(_waitCurrentLock);
-    auto pit = _waitCurrent.begin();
-    while (pit != _waitCurrent.end()) {
-      pit->second.setValue(Result(_syncerShutdownCode));
-      ++pit;
-    }
-    _waitCurrent.clear();
-  }
+  clearWaitForMaps(_waitPlanLock, _waitPlan);
+  clearWaitForMaps(_waitPlanVersionLock, _waitPlanVersion);
+  clearWaitForMaps(_waitCurrentLock, _waitCurrent);
+  clearWaitForMaps(_waitCurrentVersionLock, _waitCurrentVersion);
 }
 
 void ClusterInfo::shutdownSyncers() {
@@ -7437,6 +7473,24 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
           return clusterInfo.waitForPlanVersion(planVersion);
         } else {
           return futures::Future<Result>{maybePlanVersion.result()};
+        }
+      });
+}
+
+futures::Future<Result> ClusterInfo::fetchAndWaitForCurrentVersion(
+    network::Timeout timeout) const {
+  // Save the applicationServer, not the ClusterInfo, in case of shutdown.
+  return cluster::fetchCurrentVersion(timeout).thenValue(
+      [&applicationServer = server()](auto maybeCurrentVersion) {
+        if (maybeCurrentVersion.ok()) {
+          auto currentVersion = maybeCurrentVersion.get();
+
+          auto& clusterInfo =
+              applicationServer.getFeature<ClusterFeature>().clusterInfo();
+
+          return clusterInfo.waitForCurrentVersion(currentVersion);
+        } else {
+          return futures::Future<Result>{maybeCurrentVersion.result()};
         }
       });
 }

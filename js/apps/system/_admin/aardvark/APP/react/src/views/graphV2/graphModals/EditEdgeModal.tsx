@@ -1,7 +1,8 @@
 import { Button, Flex, HStack, Spinner, Stack } from "@chakra-ui/react";
-import { JsonEditor } from "jsoneditor-react";
-import { omit } from "lodash";
+import { JsonEditor, ValidationError } from "jsoneditor-react";
+import { omit, pick } from "lodash";
 import React, { useState } from "react";
+import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
 import {
   Modal,
   ModalBody,
@@ -54,20 +55,17 @@ const useUpdateEdgeAction = ({
 
 export const EditEdgeModal = () => {
   const { graphName, selectedAction, onClearAction } = useGraph();
-  const {
-    edgeId,
-    edgeData,
-    immutableIds,
-    isLoading,
-    udpateEdge
-  } = useUpdateEdgeAction({
-    selectedAction,
-    graphName,
-    onSuccess: onClearAction,
-    onFailure: onClearAction
-  });
+  const { edgeId, edgeData, immutableIds, isLoading, udpateEdge } =
+    useUpdateEdgeAction({
+      selectedAction,
+      graphName,
+      onSuccess: onClearAction,
+      onFailure: onClearAction
+    });
   const mutableEdgeData = omit(edgeData, immutableIds);
+  const immutableEdgeData = pick(edgeData, immutableIds);
   const [json, setJson] = useState(mutableEdgeData);
+  const [errors, setErrors] = useState<ValidationError[]>();
 
   if (!edgeId) {
     return null;
@@ -85,21 +83,27 @@ export const EditEdgeModal = () => {
       <ModalHeader>Edit Edge: {edgeId}</ModalHeader>
       <ModalBody>
         <Stack spacing="4">
-          <AttributesInfo attributes={edgeData} />
+          <AttributesInfo attributes={immutableEdgeData} />
           <JsonEditor
             value={mutableEdgeData}
             onChange={value => {
               setJson(value);
             }}
+            allowedModes={['tree', 'code']}
             mode={"code"}
             history={true}
+            onValidationError={errors => {
+              setErrors(errors);
+            }}
           />
+          <JSONErrors errors={errors} />
         </Stack>
       </ModalBody>
       <ModalFooter>
         <HStack>
           <Button onClick={onClearAction}>Cancel</Button>
           <Button
+            isDisabled={!!(errors?.length && errors.length > 0)}
             colorScheme="green"
             onClick={() => {
               udpateEdge({ edgeId, updatedData: json });

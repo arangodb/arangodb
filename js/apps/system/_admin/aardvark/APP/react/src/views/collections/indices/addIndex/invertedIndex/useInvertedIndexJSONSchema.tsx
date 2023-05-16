@@ -1,6 +1,8 @@
 import { JSONSchemaType } from "ajv";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
+const extendedNames = window.frontendConfig.extendedNames;
+
 const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
   $id: "https://arangodb.com/schemas/views/invertedIndex.json",
   type: "object",
@@ -12,7 +14,9 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
     },
     name: {
       nullable: true,
-      type: "string"
+      type: "string",
+      // eslint-disable-next-line no-useless-escape
+      pattern: extendedNames ? "" : "^[a-zA-Z][a-zA-Z0-9\-_]*$"
     },
     analyzer: {
       nullable: true,
@@ -40,6 +44,10 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
     inBackground: {
       nullable: true,
       type: "boolean"
+    },
+    cache: {
+      type: "boolean",
+      nullable: true
     },
     fields: {
       $id: "https://arangodb.com/schemas/views/invertedIndexFields.json",
@@ -74,6 +82,10 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
             nullable: true
           },
           trackListPositions: {
+            type: "boolean",
+            nullable: true
+          },
+          cache: {
             type: "boolean",
             nullable: true
           },
@@ -119,6 +131,10 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
           type: "string",
           enum: ["lz4", "none"],
           default: "lz4"
+        },
+        cache: {
+          type: "boolean",
+          nullable: true
         }
       },
       required: ["compression", "fields"]
@@ -235,10 +251,14 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
       nullable: true,
       minimum: 0,
       default: 33554432
+    },
+    primaryKeyCache: {
+      type: "boolean",
+      nullable: true
     }
   },
   required: ["type"],
-  additionalProperties: false
+  additionalProperties: true
 };
 
 /**

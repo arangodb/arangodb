@@ -7,6 +7,7 @@ import useSWRImmutable from "swr/immutable";
 import { OptionType } from "../../../components/select/SelectBase";
 import SingleSelect from "../../../components/select/SingleSelect";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { encodeHelper } from "../../../utils/encodeHelper";
 import { SearchViewType } from "../viewsList/useViewsList";
 import { useSearchAliasContext } from "./SearchAliasContext";
 import { ViewPropertiesType } from "./useFetchViewProperties";
@@ -27,15 +28,15 @@ export const CopyPropertiesDropdown = () => {
 };
 
 const CopyPropertiesInner = ({ views }: { views: SearchViewType[] }) => {
-  const initialViewName = views?.find(view => view.type === "search-alias")
-    ?.name;
+  const initialViewName = views?.find(
+    view => view.type === "search-alias"
+  )?.name;
   const [options, setOptions] = useState<OptionType[]>([]);
   const [selectedViewName, setSelectedViewName] = useState(initialViewName);
-  const {
-    data: fullViewData,
-    isLoading
-  } = useSWRImmutable(`/view/${selectedViewName}/properties`, path =>
-    getApiRouteForCurrentDB().get(path)
+  const { encoded } = encodeHelper(selectedViewName || "");
+  const { data: fullViewData, isLoading } = useSWRImmutable(
+    `/view/${encoded}/properties`,
+    path => getApiRouteForCurrentDB().get(path)
   );
   const selectedView = omit(
     fullViewData?.body,

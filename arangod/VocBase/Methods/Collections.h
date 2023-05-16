@@ -58,9 +58,8 @@ struct Collections {
 
     ~Context();
 
-    transaction::Methods* trx(AccessMode::Type const& type, bool embeddable,
-                              bool forceLoadCollection);
-    // TRI_vocbase_t& vocbase() const;
+    transaction::Methods* trx(AccessMode::Type const& type, bool embeddable);
+
     std::shared_ptr<LogicalCollection> coll() const;
 
    private:

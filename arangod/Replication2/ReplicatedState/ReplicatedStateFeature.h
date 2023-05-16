@@ -56,8 +56,7 @@ struct ReplicatedStateFeature {
         std::in_place, std::forward<Args>(args)...);
     auto metrics = createMetricsObjectIndirect(name);
     auto [iter, wasInserted] = implementations.try_emplace(
-        std::move(name),
-        StateImplementation{std::move(factory), std::move(metrics)});
+        name, StateImplementation{std::move(factory), std::move(metrics)});
     assertWasInserted(name, wasInserted);
   }
 

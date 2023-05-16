@@ -71,7 +71,7 @@
             if (isCoordinator) {
               newname = this.model.get('name');
             } else {
-              newname = $('#change-collection-name').val();
+              newname = String($('#change-collection-name').val()).normalize();
             }
 
             var self = this;
@@ -82,7 +82,7 @@
                 arangoHelper.arangoError('Collection error: ' + data.responseJSON.errorMessage);
               } else {
                 arangoHelper.arangoNotification('Collection: ' + 'Successfully changed.');
-                window.App.navigate('#cSettings/' + newname, {trigger: true});
+                window.App.navigate('#cSettings/' + encodeURIComponent(newname), {trigger: true});
               }
             };
 
@@ -146,7 +146,8 @@
 
           var buttons = [];
           var tableContent = [];
-
+          var collectionNameValidations = 
+            window.arangoValidationHelper.getCollectionNameValidations();
           if (!isCoordinator) {
             if (this.model.get('name').substr(0, 1) === '_') {
               tableContent.push(
@@ -157,12 +158,7 @@
                   false,
                   '',
                   true,
-                  [
-                    {
-                      rule: Joi.string().required(),
-                      msg: 'No collection name given.'
-                    }
-                  ]
+                  collectionNameValidations
                 )
               );
             } else {
@@ -174,12 +170,7 @@
                   false,
                   '',
                   true,
-                  [
-                    {
-                      rule: Joi.string().required(),
-                      msg: 'No collection name given.'
-                    }
-                  ]
+                  collectionNameValidations
                 )
               );
             }

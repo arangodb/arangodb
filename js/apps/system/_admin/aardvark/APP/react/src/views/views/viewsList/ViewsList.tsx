@@ -51,7 +51,7 @@ const ViewsListInner = () => {
           />
           <SearchInput
             onChange={event => {
-              setSearchValue(event.target.value);
+              setSearchValue(event.target.value.normalize());
             }}
           />
         </Stack>

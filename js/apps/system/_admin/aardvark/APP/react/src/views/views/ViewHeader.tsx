@@ -1,9 +1,10 @@
 import { Box } from "@chakra-ui/react";
 import React from "react";
 import { FormProps } from "../../utils/constants";
-import { DeleteButtonWrap, SaveButtonWrap } from "./Actions";
+import { DeleteButtonWrap } from "./Actions";
 import { FormState } from "./constants";
 import CopyFromInput from "./forms/inputs/CopyFromInput";
+import { SaveArangoSearchViewButton } from "./arangoSearchView/SaveArangoSearchViewButton";
 import { EditableViewNameField } from "./searchAliasView/EditableViewNameField";
 import { ViewPropertiesType } from "./searchAliasView/useFetchViewProperties";
 
@@ -50,7 +51,7 @@ export const ViewHeader = ({
               formState={formState}
             />
             <Box display="flex" ml="auto" flexWrap="wrap">
-              <SaveButtonWrap
+              <SaveArangoSearchViewButton
                 view={formState}
                 oldName={name}
                 setChanged={setChanged}

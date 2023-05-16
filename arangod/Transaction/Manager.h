@@ -35,7 +35,7 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
-
+#include <absl/hash/hash.h>
 #include <atomic>
 #include <functional>
 #include <unordered_map>
@@ -61,7 +61,7 @@ struct IManager {
                                  std::string const& database) = 0;
 };
 
-/// @brief Tracks TransasctionState instances
+/// @brief Tracks TransactionState instances
 class Manager final : public IManager {
   static constexpr size_t numBuckets = 16;
   static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
@@ -177,7 +177,7 @@ class Manager final : public IManager {
                                                         bool isSideUser);
   void returnManagedTrx(TransactionId, bool isSideUser) noexcept;
 
-  /// @brief get the meta transasction state
+  /// @brief get the meta transaction state
   transaction::Status getManagedTrxStatus(TransactionId,
                                           std::string const& database) const;
 
@@ -259,7 +259,7 @@ class Manager final : public IManager {
 
   /// @brief hashes the transaction id into a bucket
   inline size_t getBucket(TransactionId tid) const noexcept {
-    return std::hash<TransactionId>()(tid) % numBuckets;
+    return absl::Hash<uint64_t>()(tid.id()) % numBuckets;
   }
 
   std::shared_ptr<ManagedContext> buildManagedContextUnderLock(

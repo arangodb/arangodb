@@ -1073,9 +1073,6 @@ bool GraphNode::isLocalGraphNode() const { return false; }
 
 bool GraphNode::isHybridDisjoint() const { return false; }
 
-void GraphNode::waitForSatelliteIfRequired(
-    ExecutionEngine const* engine) const {}
-
 void GraphNode::enableClusterOneShardRule(bool enable) { TRI_ASSERT(false); }
 
 bool GraphNode::isClusterOneShardRuleEnabled() const { return false; }

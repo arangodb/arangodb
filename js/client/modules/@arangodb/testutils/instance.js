@@ -396,7 +396,10 @@ class instance {
         'agency.size': this.agencyConfig.agencySize,
         'agency.wait-for-sync': this.agencyConfig.waitForSync,
         'agency.supervision': this.agencyConfig.supervision,
-        'agency.my-address': this.protocol + '://127.0.0.1:' + this.port
+        'agency.my-address': this.protocol + '://127.0.0.1:' + this.port,
+        // Sometimes for unknown reason the agency startup is too slow.
+        // With this log level we might have a chance to see what is going on.
+        'log.level': "agency=debug",
       });
       if (!this.args.hasOwnProperty("agency.supervision-grace-period")) {
         this.args['agency.supervision-grace-period'] = '10.0';
@@ -859,10 +862,13 @@ class instance {
     }
     throw new Error(`unable to connect in ${count}s`);
   }
-  getAgent(path, method) {
+  getAgent(path, method, body = null) {
     let opts = {
       method: method
     };
+    if (body === null) {
+      body = (method === 'POST') ? '[["/"]]' : '';
+    }
 
     if (this.args.hasOwnProperty('authOpts')) {
       opts['jwt'] = crypto.jwtEncode(this.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
@@ -871,7 +877,7 @@ class instance {
     } else if (this.jwtFiles) {
       opts['jwt'] = crypto.jwtEncode(fs.read(this.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
     }
-    return download(this.url + path, method === 'POST' ? '[["/"]]' : '', opts);
+    return download(this.url + path, body, opts);
   }
 
   dumpAgent(path, method, fn, dumpdir) {
@@ -885,14 +891,17 @@ class instance {
     }
   }
   killWithCoreDump (message) {
+    let pid = this.pid;
     if (this.options.enableAliveMonitor) {
       internal.removePidFromMonitor(this.pid);
     }
     this.getInstanceProcessStatus();
     this.serverCrashedLocal = true;
     if (this.pid === null) {
+      this.pid = pid;
       print(`${RED}${Date()} instance already gone? ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
       this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
+      this.pid = null;
     } else {
       print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
       crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);

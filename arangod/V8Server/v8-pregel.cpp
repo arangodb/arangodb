@@ -219,6 +219,7 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_ObjectToUInt64(isolate, args[0], true)};
   pregel::statuswriter::CollectionStatusWriter cWriter{vocbase, executionNum};
   handlePregelHistoryV8Result(cWriter.readResult(), true);
+  return;
 
   return;
   TRI_V8_TRY_CATCH_END
@@ -280,13 +281,23 @@ static void JS_PregelAQLResult(
   auto executionNum = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
+    VPackBuilder docs;
     auto c = pregel.conductor(executionNum);
     if (!c) {
+      // check for actor run
+      auto pregelResults = pregel.getResults(executionNum);
+      if (!pregelResults.ok()) {
+        TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
+        return;
+      }
+      {
+        VPackArrayBuilder ab(&docs);
+        docs.add(VPackArrayIterator(pregelResults.get().results.slice()));
+      }
       TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
+    } else {
+      c->collectAQLResults(docs, withId);
     }
-
-    VPackBuilder docs;
-    c->collectAQLResults(docs, withId);
     if (docs.isEmpty()) {
       TRI_V8_RETURN_NULL();
     }

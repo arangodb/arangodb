@@ -268,10 +268,6 @@ arangodb::Result Indexes::getAll(
           transaction::StandaloneContext::Create(collection.vocbase()),
           collection, AccessMode::Type::READ);
 
-      // we actually need this hint here, so that the collection is not
-      // loaded if it has status unloaded.
-      trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
-
       Result res = trx->begin();
       if (!res.ok()) {
         return res;

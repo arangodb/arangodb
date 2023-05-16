@@ -16,7 +16,7 @@ description: |
   by one for every shards for which no follower is in sync.
 troubleshoot: |
   Needless to say, such a situation is very bad for resilience, since it
-  indicates a single point of failure. So, if this number is larger than 0,
+  indicates a single point of failure. So, if this number is greater than 0,
   then some action is indicated. During an upgrade or when some DB-Server
   was restarted, it can happen that shard followers are out of sync.
   Normally, shards should get in sync on their own, so observation

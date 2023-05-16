@@ -61,6 +61,7 @@ export type LinkProperties = {
   trackListPositions?: boolean;
   storeValues?: 'none' | 'id';
   inBackground?: boolean;
+  cache?: boolean;
 };
 
 type BaseFormState = {
@@ -114,11 +115,16 @@ export const linksSchema = {
     inBackground: {
       type: 'boolean',
       nullable: false
-    }
+    },
+    cache: {
+      type: 'boolean',
+      nullable: true
+    },
   },
   additionalProperties: false
 };
 
+const extendedNames = window.frontendConfig.extendedNames;
 export const formSchema: JSONSchemaType<FormState> = {
   $id: 'https://arangodb.com/schemas/views/views.json',
   type: 'object',
@@ -134,7 +140,7 @@ export const formSchema: JSONSchemaType<FormState> = {
     name: {
       nullable: false,
       type: 'string',
-      pattern: '^[a-zA-Z][a-zA-Z0-9-_]*$'
+      pattern: extendedNames ? "" : "^[a-zA-Z][a-zA-Z0-9-_]*$"
     },
     type: {
       type: 'string',
@@ -320,14 +326,16 @@ export const formSchema: JSONSchemaType<FormState> = {
         segmentsBytesFloor: 2097152
       },
       required: ['type']
+    },
+    optimizeTopK: {
+      type: "array",
+      nullable: true
     }
   },
-  required: ['id', 'name', 'type'],
-  additionalProperties: false
-};
+  required: ['id', 'name', 'type']};
 
 export const ViewContext = createContext({
-  formState: {},
+  formState: {} as FormState,
   dispatch: noop,
   isAdminUser: false,
   changed: false,

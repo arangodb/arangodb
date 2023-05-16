@@ -668,13 +668,14 @@
       // This area checks whether a stored EdgeDefinition has been found and re-used here.
       // In case it is, we fill out from and to automatically and disable the inputs. As we
       // do not allow multiple EdgeDefinitions based on the same name.
-      let map = this.calculateEdgeDefinitionMap();
-
-      if (map[e.val]) {
+      let edgeDefinitionMap = this.calculateEdgeDefinitionMap();
+      const newValues = e.val && e.val.map && e.val.map(value => value && String(value).normalize());
+      const foundEdgeDefinition = edgeDefinitionMap[newValues];
+      if (foundEdgeDefinition) {
         id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
-        $('#s2id_fromCollections' + id).select2('val', map[e.val].from);
+        $('#s2id_fromCollections' + id).select2('val', foundEdgeDefinition.from);
         $('#fromCollections' + id).attr('disabled', true);
-        $('#s2id_toCollections' + id).select2('val', map[e.val].to);
+        $('#s2id_toCollections' + id).select2('val', foundEdgeDefinition.to);
         $('#toCollections' + id).attr('disabled', true);
       } else {
         id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
@@ -914,9 +915,9 @@
             if (from !== 1 && to !== 1) {
               edgeDefinitions.push(
                 {
-                  collection: collection,
-                  from: from,
-                  to: to
+                  collection: collection.normalize(),
+                  from: from.map(fromVal => fromVal.normalize()),
+                  to: to.map(toVal => toVal.normalize())
                 }
               );
             }
@@ -1252,7 +1253,8 @@
 
         // create graph section
         title = 'Create Graph';
-
+        var graphNameValidations = 
+          window.arangoValidationHelper.getGraphNameValidations();
         tableContent.push(
           window.modalView.createTextEntry(
             'createNewGraphName',
@@ -1260,7 +1262,8 @@
             '',
             rowDescription.graphName.description,
             rowDescription.graphName.placeholder,
-            true
+            true,
+            graphNameValidations
           )
         );
 

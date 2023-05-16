@@ -81,6 +81,7 @@ TransactionCollection* TransactionState::collection(
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
+  std::lock_guard lock(_collectionsLock);
   auto collectionOrPos = findCollectionOrPos(cid);
 
   return std::visit(
@@ -136,7 +137,7 @@ Result TransactionState::addCollection(DataSourceId cid,
                                        bool lockUsage) {
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && \
     defined(ARANGODB_ENABLE_FAILURE_TESTS)
-  TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
+  TRI_IF_FAILURE("WaitOnLock::" + cname) {
     auto& raceController = basics::DebugRaceController::sharedInstance();
     auto didTrigger = raceController.waitForOthers(2, _id, vocbase().server());
     if (didTrigger) {
@@ -201,6 +202,8 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
                                                AccessMode::Type accessType,
                                                bool lockUsage) {
   Result res;
+
+  std::lock_guard lock(_collectionsLock);
 
   // check if we already got this collection in the _collections vector
   auto colOrPos = findCollectionOrPos(cid);
