@@ -1,6 +1,9 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* Added metric "rocksdb_total_sst_files" to count the number of sst files,
+  aggregated over all levels of the LSM tree.
+
 * FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
   for GeoJSON.
 
