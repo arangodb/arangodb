@@ -72,6 +72,10 @@ arangodb::Result getHttpErrorMessage(
     }
   } catch (...) {
     // no need to recover, fallthrough for default error message
+    code = static_cast<ErrorCode>(result->getHttpReturnCode());
+    if (code == TRI_ERROR_NO_ERROR) {
+      code = TRI_ERROR_INTERNAL;
+    }
   }
   return {code, std::move(message)};
 }
@@ -196,7 +200,7 @@ std::pair<Result, std::string> ClientManager::getArangoIsCluster(
     httpclient::SimpleHttpClient& client) {
   using arangodb::basics::VelocyPackHelper;
 
-  Result result{TRI_ERROR_NO_ERROR};
+  Result result;
   std::unique_ptr<httpclient::SimpleHttpResult> response(
       client.request(rest::RequestType::GET, "/_admin/server/role", "", 0));
 
