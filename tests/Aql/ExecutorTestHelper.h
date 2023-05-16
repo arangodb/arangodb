@@ -310,6 +310,16 @@ struct ExecutorTestHelper {
     _pipeline.addDependency(std::move(inputBlock));
   }
 
+  void executeOnlyOnce() {
+    auto const [state, skipped, result] =
+        _pipeline.get().front()->execute(_callStack);
+    _finalState = state;
+    _skippedTotal.merge(skipped, false);
+    if (result != nullptr) {
+      _allResults.add(result);
+    }
+  }
+
   void executeOnce() {
     auto const [state, skipped, result] =
         _pipeline.get().front()->execute(_callStack);
@@ -361,7 +371,7 @@ struct ExecutorTestHelper {
     prepareInput();
 
     if (!loop) {
-      executeOnce();
+      executeOnlyOnce();
     } else {
       do {
         executeOnce();
