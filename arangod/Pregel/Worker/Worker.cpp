@@ -287,8 +287,6 @@ void Worker<V, E, M>::startGlobalStep(RunGlobalSuperStep const& data) {
 
     LOG_PREGEL("425c3", DEBUG)
         << "Starting processing on " << _magazine.size() << " shards";
-
-    //  _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
   }
   // release the lock because processing is using futures (and we do not need to
   // protect)
@@ -312,6 +310,7 @@ void Worker<V, E, M>::_startProcessing() {
   for (auto futureN = size_t{0}; futureN < _config->parallelism(); ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
         RequestLane::INTERNAL_LOW, [self, this, quiverIdx, futureN]() {
+          _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
           LOG_PREGEL("ee2ac", DEBUG) << fmt::format(
               "Starting vertex processor number {} with batch size", futureN,
               _messageBatchSize);
@@ -360,6 +359,7 @@ void Worker<V, E, M>::_startProcessing() {
           processor.outCache->flushMessages();
           _writeCache->mergeCache(processor.localMessageCache.get());
 
+          _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
           return processor.result();
         }));
   }
