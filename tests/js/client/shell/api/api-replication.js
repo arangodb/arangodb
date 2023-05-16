@@ -89,7 +89,7 @@ function RestureCollectionSuite() {
         "minReplicationFactor": 1,
         "writeConcern": 1,
         /* Is this a reasonable default?, We have a new collection */
-        "shardingStrategy": "community-compat",
+        "shardingStrategy": isEnterprise ? "enterprise-compat" : "community-compat",
         "cacheEnabled": false,
         "computedValues": null,
         "syncByRevision": true,
@@ -280,29 +280,26 @@ function RestureCollectionSuite() {
       }
     },
 
-    testRestoreReplicationFactor0: function () {
-      const res = tryRestore({name: collname, replicationFactor: 0});
-      try {
-        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        validateProperties({replicationFactor: "satellite"}, collname, 2);
-      } finally {
-        db._drop(collname);
-      }
-    },
-
-    testRestoreReplicationSatellite: function () {
-      const res = tryRestore({name: collname, replicationFactor: "satellite"});
-      try {
-        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        if (!isEnterprise) {
-          // Community does not support satellite Collections, it will default on replicationFactor
-          validateProperties({replicationFactor: 1}, collname, 2);
-        } else {
-          // writeConcern is enforced by satellite
-          validateProperties({replicationFactor: "satellite", writeConcern: 0}, collname, 2);
+    testRestoreReplicationFactorSatellite: function () {
+      // For this API "satellite" and 0 should be identical
+      for (const replicationFactor of ["satellite", 0]) {
+        const res = tryRestore({name: collname, replicationFactor: replicationFactor});
+        try {
+          if (!isEnterprise) {
+            if (!isCluster) {
+              // SingleServer just ignores satellite.
+              validateProperties({replicationFactor: "satellite", writeConcern: 1}, collname, 2);
+            } else {
+              assertFalse(res.result, `Created a collection with replicationFactor 0`);
+            }
+          } else {
+            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+            // MinReplicaitonFactor is forced to 0 on satellites
+            validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0}, collname, 2);
+          }
+        } finally {
+          db._drop(collname);
         }
-      } finally {
-        db._drop(collname);
       }
     },
 
@@ -311,7 +308,7 @@ function RestureCollectionSuite() {
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
         if (isCluster) {
-          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
+          validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
         } else {
           // WriteConcern on SingleServe has no meaning, it is returned but as default value.
           validateProperties({replicationFactor: 3, writeConcern: 1}, collname, 2);
@@ -326,7 +323,7 @@ function RestureCollectionSuite() {
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
         if (isCluster) {
-          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
+          validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
         } else {
           // WriteConcern on SingleServe has no meaning, it is returned but as default value.
           validateProperties({replicationFactor: 3, writeConcern: 1}, collname, 2);
@@ -341,7 +338,12 @@ function RestureCollectionSuite() {
       const res = tryRestore({name: collname, globallyUniqueId});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        validateProperties({globallyUniqueId}, collname, 2);
+        if (isCluster) {
+          validateProperties({}, collname, 2);
+          validatePropertiesAreNotEqual({globallyUniqueId}, collname);
+        } else {
+          validateProperties({globallyUniqueId}, collname, 2);
+        }
       } finally {
         db._drop(collname);
       }
@@ -351,7 +353,12 @@ function RestureCollectionSuite() {
       const res = tryRestore({name: collname, globallyUniqueId: "test"});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        validateProperties({globallyUniqueId: "test"}, collname, 2);
+        if (isCluster) {
+          validateProperties({}, collname, 2);
+          validatePropertiesAreNotEqual({globallyUniqueId: "test"}, collname);
+        } else {
+          validateProperties({globallyUniqueId: "test"}, collname, 2);
+        }
       } finally {
         db._drop(collname);
       }
@@ -374,10 +381,27 @@ function RestureCollectionSuite() {
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
         // Make sure first collection have this id
-        validateProperties({globallyUniqueId}, collname, 2);
+        if (isCluster) {
+          validateProperties({}, collname, 2);
+          validatePropertiesAreNotEqual({globallyUniqueId}, collname);
+        } else {
+          validateProperties({globallyUniqueId}, collname, 2);
+        }
         const otherCollName = `${collname}_2`;
         const res2 = tryRestore({name: otherCollName, globallyUniqueId});
-        assertFalse(res2.result, `Result: ${JSON.stringify(res2)}`);
+        if (isCluster) {
+          try {
+            // Cluster regenerates a new id.
+            assertTrue(res2.result, `Result: ${JSON.stringify(res2)}`);
+            validateProperties({}, otherCollName, 2);
+            validatePropertiesAreNotEqual({globallyUniqueId}, otherCollName);
+          } finally {
+            db._drop(otherCollName);
+          }
+        } else {
+          // SingleServer does not generate a new id.
+          assertFalse(res2.result, `Result: ${JSON.stringify(res2)}`);
+        }
       } finally {
         db._drop(collname);
       }
@@ -388,8 +412,12 @@ function RestureCollectionSuite() {
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
         if (!isEnterprise) {
+          // isSmart is just ignored, we keep default: false
           validateProperties({}, collname, 2);
-          validatePropertiesDoNotExist(collname, ["isSmart"]);
+          if (!isCluster) {
+            // SingleSever does not expose is Smart at all
+            validatePropertiesDoNotExist(collname, ["isSmart"]);
+          }
         } else {
           validateProperties({isSmart: true}, collname, 2);
         }
@@ -418,7 +446,11 @@ function RestureCollectionSuite() {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
         if (!isEnterprise) {
           validateProperties({}, collname, 2);
-          validatePropertiesDoNotExist(collname, ["isSmart", "smartGraphAttribute"]);
+          if (!isCluster) {
+            validatePropertiesDoNotExist(collname, ["isSmart", "smartGraphAttribute"]);
+          } else {
+            validatePropertiesDoNotExist(collname, ["smartGraphAttribute"]);
+          }
         } else {
           validateProperties({smartGraphAttribute: "test",  isSmart: true}, collname, 2);
         }
