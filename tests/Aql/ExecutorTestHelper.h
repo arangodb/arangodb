@@ -203,7 +203,7 @@ struct ExecutorTestHelper {
   template<typename... Ts>
   auto expectOutputValueList(Ts&&... ts) -> ExecutorTestHelper& {
     static_assert(outputColumns == 1);
-    _outputRegisters[0] = 0;
+    _outputRegisters[0] = 1;
     _output = MatrixBuilder<outputColumns>{{ts}...};
     return *this;
   }
