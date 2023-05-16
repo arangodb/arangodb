@@ -1,6 +1,8 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
+  for GeoJSON.
 
 * Improved error reporting for system calls on Windows and fixed a
   Windows-specific issue of the IOHeartbeatThread.
