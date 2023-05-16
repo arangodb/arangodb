@@ -40,7 +40,7 @@ jobs:
               ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
             fi
             echo "Using enterprise branch $ENTERPRISE_BRANCH"
-            git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "$ENTERPRISE_BRANCH" /root/project/enterprise
+            git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "$ENTERPRISE_BRANCH" /home/circleci/project/enterprise
       - persist_to_workspace:
           root: .
           paths:
