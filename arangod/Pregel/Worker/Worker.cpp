@@ -423,6 +423,8 @@ void Worker<V, E, M>::_finishedProcessing() {
                  VPackBuilder(serialized.get().slice()));
   LOG_PREGEL("2de5b", DEBUG) << fmt::format("Finished GSS: {}", gssFinished);
 
+  _feature.metrics()->pregelMessagesSent->count(_messageStats.sendCount);
+
   uint64_t tn = _config->parallelism();
   uint64_t s = _messageStats.sendCount / tn / 2UL;
   _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
