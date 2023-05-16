@@ -414,7 +414,7 @@ function BaseTestConfig () {
             password: "",
           });
 
-          // remove docs from leader
+          // insert more docs on leader
           connectToLeader();
           while (db[cn].count() <= 240000) {
             db._query(`FOR i IN 1..10000 INSERT { value1: i, value2: CONCAT('test', i) } IN ${cn}`);
