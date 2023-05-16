@@ -265,7 +265,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
     uint64_t tn = this->state->config->parallelism();
     uint64_t s = this->state->messageStats.sendCount / tn / 2UL;
-    this->state->messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
+    this->state->messageBatchSize = s > 1000 ? (size_t)s : 1000;
     this->state->messageStats.reset();
     LOG_TOPIC("a3dbf", TRACE, Logger::PREGEL)
         << fmt::format("Message batch size: {}", this->state->messageBatchSize);
