@@ -1,5 +1,5 @@
-v3.11.0 (XXXX-XX-XX)
---------------------
+v3.11.0-rc.1 (2023-05-13)
+-------------------------
 
 * Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 
