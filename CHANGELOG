@@ -1,6 +1,10 @@
 v3.11.0-rc.1 (2023-05-13)
 -------------------------
 
+* BTS-1331: Reduced the amount of required network calls when using
+  traversals combined with FILTER and/or PRUNE statements in a
+  GeneralGraph in combination with a clustered environment.
+
 * Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 
 * Improved error reporting for system calls on Windows and fixed a
