@@ -1,8 +1,11 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+
 * Improved error reporting for system calls on Windows and fixed a
   Windows-specific issue of the IOHeartbeatThread.
+
+* Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 
 * Fix MDS-1070 Update iresearch submodule.
 
@@ -34,12 +37,6 @@ v3.10.7 (XXXX-XX-XX)
 
 v3.10.6 (2023-04-27)
 --------------------
-
-* Fixed a race in the Maintenance, impacting leaders that have just been
-  resigned. During a MoveShard job, the old leader could sabotage the whole
-  operation by removing the newly added follower from Current. The solution
-  is to update Current using local collection information, instead of the
-  potentially outdated velocypack slice.
 
 * Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
 
