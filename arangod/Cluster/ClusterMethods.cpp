@@ -1267,7 +1267,7 @@ futures::Future<OperationResult> countOnCoordinator(
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
   if (NameValidator::isSystemName(cname) &&
-      !(collinfo->isSmart() && collinfo->type() == TRI_COL_TYPE_EDGE)) {
+      !(collinfo->isSmartChild() || collinfo->isSmartEdgeCollection())) {
     // system collection (e.g. _apps, _jobs, _graphs...) that is not
     // very likely this is an internal request that should not block other
     // processing in case we don't get a timely response
@@ -1433,7 +1433,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
   reqOpts.skipScheduler = true;
 
   if (NameValidator::isSystemName(collname) &&
-      !(collinfo->isSmart() && collinfo->type() == TRI_COL_TYPE_EDGE)) {
+      !(collinfo->isSmartChild() || collinfo->isSmartEdgeCollection())) {
     // system collection (e.g. _apps, _jobs, _graphs...) that is not
     // very likely this is an internal request that should not block other
     // processing in case we don't get a timely response
