@@ -1399,32 +1399,47 @@ void TraversalNode::checkConditionsDefined() const {
 void TraversalNode::validateCollections() const {
   auto* g = graph();
   if (g == nullptr) {
-    // no named graph
-    return;
-  }
-  {
-    auto colls = g->vertexCollections();
-    for (auto const& it : options()->vertexCollections) {
-      if (!colls.contains(it)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
-            absl::StrCat("vertex collection '", it,
-                         "' used in 'vertexCollections' option is not part of "
-                         "the specified graph"));
-      }
-    }
-  }
-
-  {
-    auto colls = g->edgeCollections();
+    // list of edge collections
     for (auto const& it : options()->edgeCollections) {
-      if (!colls.contains(it)) {
+      if (std::find_if(_edgeColls.begin(), _edgeColls.end(),
+                       [&it](aql::Collection const* c) {
+                         return c->name() == it;
+                       }) == _edgeColls.end()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,
             absl::StrCat(
                 "edge collection '", it,
                 "' used in 'edgeCollections' option is not part of the "
-                "specified graph"));
+                "specified edge collection list"));
+      }
+    }
+  } else {
+    // named graph
+    {
+      auto colls = g->vertexCollections();
+      for (auto const& it : options()->vertexCollections) {
+        if (!colls.contains(it)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
+              absl::StrCat(
+                  "vertex collection '", it,
+                  "' used in 'vertexCollections' option is not part of "
+                  "the specified graph"));
+        }
+      }
+    }
+
+    {
+      auto colls = g->edgeCollections();
+      for (auto const& it : options()->edgeCollections) {
+        if (!colls.contains(it)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,
+              absl::StrCat(
+                  "edge collection '", it,
+                  "' used in 'edgeCollections' option is not part of the "
+                  "specified graph"));
+        }
       }
     }
   }
