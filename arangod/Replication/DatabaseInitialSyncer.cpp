@@ -1950,7 +1950,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       // much in memory
       if (toRemove.size() >= options.intermediateCommitCount) {
         res = ::removeRevisions(*trx, *coll, toRemove, stats);
-        TRI_ASSERT(res.fail() || toRemove.empty());
+        TRI_ASSERT(toRemove.empty());
       }
       return res;
     };
@@ -2189,7 +2189,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       }
 
       res = ::removeRevisions(*trx, *coll, toRemove, stats);
-      TRI_ASSERT(res.fail() || toRemove.empty());
+      TRI_ASSERT(toRemove.empty());
       if (res.fail()) {
         return res;
       }
