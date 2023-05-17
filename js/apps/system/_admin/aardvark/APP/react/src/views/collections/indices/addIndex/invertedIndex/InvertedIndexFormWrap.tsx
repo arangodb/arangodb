@@ -2,7 +2,7 @@ import { Box } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { Split, SplitDivider } from "../../../../../components/split/Split";
-import { FormFieldProps } from "../FormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
 import { FormActions } from "../IndexFormFieldList";
 import { InvertedIndexProvider } from "./InvertedIndexContext";
 import { InvertedIndexFormJSONEditor } from "./InvertedIndexFormJSONEditor";

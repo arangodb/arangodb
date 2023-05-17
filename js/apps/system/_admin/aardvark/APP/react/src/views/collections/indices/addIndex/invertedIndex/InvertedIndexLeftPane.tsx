@@ -7,7 +7,7 @@ import {
   Box
 } from "@chakra-ui/react";
 import React from "react";
-import { FormFieldProps } from "../FormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
 import { IndexFormFieldsList } from "../IndexFormFieldList";
 import { InvertedIndexAnalyzerDropdown } from "./InvertedIndexAnalyzerDropdown";
 import { InvertedIndexConsolidationPolicy } from "./InvertedIndexConsolidationPolicy";

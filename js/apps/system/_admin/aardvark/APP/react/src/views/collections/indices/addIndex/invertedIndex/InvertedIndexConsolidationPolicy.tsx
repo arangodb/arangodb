@@ -1,7 +1,7 @@
 import { Box, FormLabel } from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
-import { FormField, FormFieldProps } from "../FormField";
+import { FormField, FormFieldProps } from "../../../../../components/form/FormField";
 import { IndexInfoTooltip } from "../IndexInfoTooltip";
 
 //

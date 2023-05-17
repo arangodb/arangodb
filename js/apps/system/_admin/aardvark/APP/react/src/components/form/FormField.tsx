@@ -1,10 +1,10 @@
 import { FormLabel, Spacer } from "@chakra-ui/react";
 import React from "react";
-import { InputControl } from "../../../../components/form/InputControl";
-import { MultiSelectControl } from "../../../../components/form/MultiSelectControl";
-import { SwitchControl } from "../../../../components/form/SwitchControl";
-import { OptionType } from "../../../../components/select/SelectBase";
-import { IndexInfoTooltip } from "./IndexInfoTooltip";
+import { InputControl } from "./InputControl";
+import { MultiSelectControl } from "./MultiSelectControl";
+import { SwitchControl } from "./SwitchControl";
+import { OptionType } from "../select/SelectBase";
+import { IndexInfoTooltip } from "../../views/collections/indices/addIndex/IndexInfoTooltip";
 
 export type FormFieldProps = {
   label: string;

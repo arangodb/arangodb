@@ -4,7 +4,7 @@ import React from "react";
 import { components, MultiValueGenericProps } from "react-select";
 import CreatableMultiSelect from "../../../../../components/select/CreatableMultiSelect";
 import { OptionType } from "../../../../../components/select/SelectBase";
-import { FormFieldProps } from "../FormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
 import { IndexInfoTooltip } from "../IndexInfoTooltip";
 import { useInvertedIndexContext } from "./InvertedIndexContext";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";

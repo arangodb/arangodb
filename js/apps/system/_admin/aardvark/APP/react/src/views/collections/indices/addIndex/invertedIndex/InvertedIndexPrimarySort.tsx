@@ -4,7 +4,7 @@ import { FieldArray, useField } from "formik";
 import React from "react";
 import { InputControl } from "../../../../../components/form/InputControl";
 import { SelectControl } from "../../../../../components/form/SelectControl";
-import { FormFieldProps } from "../FormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
 export const InvertedIndexPrimarySort = ({
