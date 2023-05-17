@@ -244,7 +244,7 @@ void JS_AnalyzerType(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    if (analyzer->type().null()) {
+    if (irs::IsNull(analyzer->type())) {
       TRI_V8_RETURN(v8::Null(isolate));
     }
 
@@ -309,9 +309,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
                            .getFeature<arangodb::DatabaseFeature>()
                            .extendedNamesForAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(
-          extendedNames,
-          std::string_view(splittedAnalyzerName.second.c_str(),
-                           splittedAnalyzerName.second.size()))) {
+          extendedNames, splittedAnalyzerName.second)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         std::string("invalid characters in analyzer name '")
@@ -607,9 +605,7 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
                            .getFeature<arangodb::DatabaseFeature>()
                            .extendedNamesForAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(
-          extendedNames,
-          std::string_view(splittedAnalyzerName.second.c_str(),
-                           splittedAnalyzerName.second.size()))) {
+          extendedNames, splittedAnalyzerName.second)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         std::string("Invalid characters in analyzer name '")

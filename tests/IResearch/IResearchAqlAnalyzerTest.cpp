@@ -37,7 +37,7 @@
 class IResearchAqlAnalyzerTest : public IResearchQueryTest {};
 
 namespace {
-constexpr irs::string_ref AQL_ANALYZER_NAME{"aql"};
+constexpr std::string_view AQL_ANALYZER_NAME{"aql"};
 
 struct analyzer_token {
   std::string value;
@@ -70,9 +70,10 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
     ASSERT_NE(expected_token, expected_tokens.end());
     SCOPED_TRACE(testing::Message("Expected Term:") << expected_token->value);
     if (value_type->value == arangodb::iresearch::AnalyzerValueType::String) {
-      auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(),
+      auto term_value = std::string(irs::ViewCast<char>(term->value).data(),
                                     term->value.size());
-      ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value),
+      ASSERT_EQ(irs::ViewCast<irs::byte_type>(
+                    std::string_view(expected_token->value)),
                 term->value);
     } else {
       ASSERT_EQ(0, arangodb::basics::VelocyPackHelper::compare(

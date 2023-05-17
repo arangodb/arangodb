@@ -84,12 +84,12 @@ class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
   virtual void Free(void* data, size_t) override { free(data); }
 };
 
-class EmptyAnalyzer : public irs::analysis::analyzer {
+class EmptyAnalyzer : public irs::analysis::TypedAnalyzer<EmptyAnalyzer> {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "v8-analyzer-empty";
   }
-  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {}
+  EmptyAnalyzer() = default;
   virtual irs::attribute* get_mutable(
       irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::frequency>::id()) {
@@ -98,11 +98,10 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 
     return nullptr;
   }
-  static ptr make(irs::string_ref) {
-    PTR_NAMED(EmptyAnalyzer, ptr);
-    return ptr;
+  static ptr make(std::string_view) {
+    return std::make_unique<EmptyAnalyzer>();
   }
-  static bool normalize(irs::string_ref args, std::string& out) {
+  static bool normalize(std::string_view args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return false;
@@ -124,7 +123,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return true;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref data) override { return true; }
+  virtual bool reset(std::string_view data) override { return true; }
 
  private:
   irs::frequency _attr;
@@ -228,7 +227,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
-  irs::finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
+  irs::Finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
   v8::Isolate::Scope isolateScope(isolate);
@@ -551,7 +550,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
-  irs::finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
+  irs::Finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
 
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
@@ -1054,7 +1053,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
-  irs::finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
+  irs::Finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
 
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
@@ -1512,7 +1511,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
-  irs::finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
+  irs::Finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
   v8::Isolate::Scope isolateScope(isolate);
@@ -1918,7 +1917,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
-  irs::finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
+  irs::Finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
   v8::Isolate::Scope isolateScope(isolate);
