@@ -1,7 +1,7 @@
 import { Box, Button, Stack } from "@chakra-ui/react";
 import { useFormikContext } from "formik";
 import React from "react";
-import { FormField, FormFieldProps } from "./FormField";
+import { FormField, FormFieldProps } from "../../../../components/form/FormField";
 
 export const IndexFormFieldsList = ({
   fields,

@@ -1,7 +1,7 @@
 import { Stack } from "@chakra-ui/react";
 import { Form, Formik, FormikValues } from "formik";
 import React from "react";
-import { FormFieldProps } from "./FormField";
+import { FormFieldProps } from "../../../../components/form/FormField";
 import { FormActions, IndexFormFieldsList } from "./IndexFormFieldList";
 
 interface IndexFormInnerProps<InitialValues, Fields, Schema> {

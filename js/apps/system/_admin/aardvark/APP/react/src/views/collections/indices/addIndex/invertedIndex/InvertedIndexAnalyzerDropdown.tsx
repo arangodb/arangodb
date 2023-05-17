@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { SelectControl } from "../../../../../components/form/SelectControl";
 import { OptionType } from "../../../../../components/select/SelectBase";
 import { getApiRouteForCurrentDB } from "../../../../../utils/arangoClient";
-import { FormFieldProps } from "../FormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
 export const InvertedIndexAnalyzerDropdown = ({
