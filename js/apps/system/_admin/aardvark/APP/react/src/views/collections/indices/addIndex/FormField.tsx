@@ -6,7 +6,7 @@ import { SwitchControl } from "../../../../components/form/SwitchControl";
 import { OptionType } from "../../../../components/select/SelectBase";
 import { IndexInfoTooltip } from "./IndexInfoTooltip";
 
-export type IndexFormFieldProps = {
+export type FormFieldProps = {
   label: string;
   name: string;
   type: string;
@@ -17,15 +17,15 @@ export type IndexFormFieldProps = {
   isDisabled?: boolean;
 };
 
-export const IndexFormField = ({
+export const FormField = ({
   field,
   render,
   index
 }: {
-  field: IndexFormFieldProps;
+  field: FormFieldProps;
   index?: number;
   render?: (props: {
-    field: IndexFormFieldProps;
+    field: FormFieldProps;
     index?: number;
     autoFocus: boolean;
   }) => JSX.Element;

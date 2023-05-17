@@ -7,7 +7,7 @@ import {
   Box
 } from "@chakra-ui/react";
 import React from "react";
-import { IndexFormFieldProps } from "../IndexFormField";
+import { FormFieldProps } from "../FormField";
 import { IndexFormFieldsList } from "../IndexFormFieldList";
 import { InvertedIndexAnalyzerDropdown } from "./InvertedIndexAnalyzerDropdown";
 import { InvertedIndexConsolidationPolicy } from "./InvertedIndexConsolidationPolicy";
@@ -20,7 +20,7 @@ export const InvertedIndexLeftPane = ({
   fields
 }: {
   isFormDisabled: boolean | undefined;
-  fields: IndexFormFieldProps[];
+  fields: FormFieldProps[];
 }) => {
   return (
     <Box
@@ -56,7 +56,7 @@ export const InvertedIndexLeftPane = ({
   );
 };
 type AccordionItemType = {
-  fields: IndexFormFieldProps[];
+  fields: FormFieldProps[];
   isFormDisabled?: boolean;
 };
 const GeneralAccordionItem = ({
