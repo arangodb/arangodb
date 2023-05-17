@@ -129,7 +129,7 @@ class ShardingInfo {
   // @brief the logical collection we are working for
   LogicalCollection* _collection;
 
-  // @brief number of shards
+  // @brief number of shards (0 for smart edge collections)
   size_t _numberOfShards;
 
   // _replicationFactor and _writeConcern are set in
@@ -139,7 +139,7 @@ class ShardingInfo {
   // different thread _replicationFactor and _writeConcern must both be atomic
   // to avoid data races.
 
-  // @brief replication factor (1 = no replication, 0 = smart edge collection)
+  // @brief replication factor (1 = no replication, 0 = satellite collection)
   std::atomic<size_t> _replicationFactor;
 
   // @brief write concern (_writeConcern <= _replicationFactor)

@@ -44,6 +44,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/ssl-helper.h"
 #include "Utils/ClientManager.h"
+#include "Utilities/NameValidator.h"
 
 #include <fuerte/jwt.h>
 
@@ -305,6 +306,12 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         });
   }
 
+  if (auto res = DatabaseNameValidator::validateName(true, true, _databaseName);
+      res.fail()) {
+    LOG_TOPIC("122a6", FATAL, arangodb::Logger::FIXME) << res.errorMessage();
+    FATAL_ERROR_EXIT();
+  }
+
   SimpleHttpClientParams::setDefaultMaxPacketSize(_maxPacketSize);
 }
 
@@ -353,7 +360,7 @@ void ClientFeature::loadJwtSecretFile() {
 }
 
 void ClientFeature::prepare() {
-  setDatabaseName(normalizeUtf8ToNFC(_databaseName));
+  setDatabaseName(_databaseName);
 
   if (!isEnabled()) {
     return;
@@ -464,8 +471,13 @@ std::string ClientFeature::databaseName() const {
 }
 
 void ClientFeature::setDatabaseName(std::string_view databaseName) {
+  if (auto res = DatabaseNameValidator::validateName(true, true, databaseName);
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
   WRITE_LOCKER(locker, _settingsLock);
-  _databaseName = normalizeUtf8ToNFC(databaseName);
+  _databaseName = databaseName;
 }
 
 bool ClientFeature::authentication() const noexcept {

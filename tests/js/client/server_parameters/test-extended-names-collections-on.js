@@ -47,6 +47,66 @@ const invalidNames = [
   "\u006e\u0303\u00f1", // non-normalized sequence;
 ];
 
+const runGraphTest = (graph) => {
+  const gn = "le-graph";
+
+  const edgeDef = graph._edgeDefinitions(
+    graph._relation(traditionalName, [extendedName], [extendedName]),
+  );
+
+  let g = graph._create(gn, edgeDef);
+  try {
+    let doc = db._graphs.document(gn);
+    assertEqual(1, doc.edgeDefinitions.length);
+    assertEqual(traditionalName, doc.edgeDefinitions[0].collection);
+    assertEqual(1, doc.edgeDefinitions[0].from.length);
+    assertEqual([extendedName], doc.edgeDefinitions[0].from);
+    assertEqual(1, doc.edgeDefinitions[0].to.length);
+    assertEqual([extendedName], doc.edgeDefinitions[0].to.sort());
+    assertEqual([], doc.orphanCollections);
+
+    let v1 = g[extendedName].save({_key: "1"});
+    assertEqual(extendedName + "/1", v1._id);
+    let v2 = g[extendedName].save({_key: "2"});
+    assertEqual(extendedName + "/2", v2._id);
+
+    assertEqual(2, g[extendedName].count());
+  } finally {
+    graph._drop(gn, true);
+  }
+};
+
+const runInvalidGraphTest = (graph) => {
+  const gn = "le-graph";
+
+  const cases = [
+    graph._edgeDefinitions(graph._relation(invalidNames[0], [extendedName], [extendedName])),
+    graph._edgeDefinitions(graph._relation(invalidNames[1], [extendedName], [extendedName])),
+    graph._edgeDefinitions(graph._relation(traditionalName, [invalidNames[0]], [extendedName])),
+    graph._edgeDefinitions(graph._relation(traditionalName, [invalidNames[1]], [extendedName])),
+    graph._edgeDefinitions(graph._relation(traditionalName, [extendedName], [invalidNames[0]])),
+    graph._edgeDefinitions(graph._relation(traditionalName, [extendedName], [invalidNames[1]])),
+    graph._edgeDefinitions(graph._relation(invalidNames[0], [invalidNames[1]], [invalidNames[2]])),
+  ];
+  
+  cases.forEach((edgeDef) => {
+    try {
+      graph._create(gn, edgeDef);
+      fail();
+    } catch (err) {
+      assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+    }
+  });
+    
+  try {
+    // try using an invalid collection name for an orpha collection
+    graph._create(gn, graph._edgeDefinitions(graph._relation(traditionalName, [extendedName], [extendedName])), [invalidNames[0]]);
+    fail();
+  } catch (err) {
+    assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+  }
+};
+
 function testSuite() {
   return {
     tearDown: function() {
@@ -1170,70 +1230,34 @@ function testSuite() {
       }
     },
     
-    testGraphWithExtendedCollectionNames: function() {
-      const gn = "le-graph";
+    testGraphExtendedCollectionNames: function() {
       const graph = require("@arangodb/general-graph");
-
-      const edgeDef = graph._edgeDefinitions(
-        graph._relation(traditionalName, [extendedName], [extendedName]),
-      );
-
-      let g = graph._create(gn, edgeDef);
-      try {
-        let doc = db._graphs.document(gn);
-        assertEqual(1, doc.edgeDefinitions.length);
-        assertEqual(traditionalName, doc.edgeDefinitions[0].collection);
-        assertEqual(1, doc.edgeDefinitions[0].from.length);
-        assertEqual([extendedName], doc.edgeDefinitions[0].from);
-        assertEqual(1, doc.edgeDefinitions[0].to.length);
-        assertEqual([extendedName], doc.edgeDefinitions[0].to.sort());
-        assertEqual([], doc.orphanCollections);
-      
-        let v1 = g[extendedName].save({_key: "1"});
-        assertEqual(extendedName + "/1", v1._id);
-        let v2 = g[extendedName].save({_key: "2"});
-        assertEqual(extendedName + "/2", v2._id);
-
-        assertEqual(2, g[extendedName].count());
-      } finally {
-        graph._drop(gn, true);
-      }
+      runGraphTest(graph);
     },
     
-    testSmartGraphWithExtendedCollectionNames: function() {
+    testSmartGraphExtendedCollectionNames: function() {
       if (!isEnterprise()) {
         return;
       }
 
-      const gn = "le-graph";
       const graph = require("@arangodb/smart-graph");
-
-      const edgeDef = graph._edgeDefinitions(
-        graph._relation(traditionalName, [extendedName], [extendedName]),
-      );
-
-      let g = graph._create(gn, edgeDef);
-      try {
-        let doc = db._graphs.document(gn);
-        assertEqual(1, doc.edgeDefinitions.length);
-        assertEqual(traditionalName, doc.edgeDefinitions[0].collection);
-        assertEqual(1, doc.edgeDefinitions[0].from.length);
-        assertEqual([extendedName], doc.edgeDefinitions[0].from);
-        assertEqual(1, doc.edgeDefinitions[0].to.length);
-        assertEqual([extendedName], doc.edgeDefinitions[0].to.sort());
-        assertEqual([], doc.orphanCollections);
-      
-        let v1 = g[extendedName].save({_key: "1"});
-        assertEqual(extendedName + "/1", v1._id);
-        let v2 = g[extendedName].save({_key: "2"});
-        assertEqual(extendedName + "/2", v2._id);
-
-        assertEqual(2, g[extendedName].count());
-      } finally {
-        graph._drop(gn, true);
-      }
+      runGraphTest(graph);
     },
+    
+    testGraphWithInvalidCollectionNames: function() {
+      const graph = require("@arangodb/general-graph");
+      runInvalidGraphTest(graph);
+    },
+    
+    testSmartGraphInvalidCollectionNames: function() {
+      if (!isEnterprise()) {
+        return;
+      }
 
+      const graph = require("@arangodb/smart-graph");
+      runInvalidGraphTest(graph);
+    },
+    
   };
 }
 

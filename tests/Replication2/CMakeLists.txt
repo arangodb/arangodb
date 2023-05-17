@@ -4,8 +4,6 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   #Mocks/AsyncFollower.h
   #Mocks/AsyncLeader.cpp
   #Mocks/FakeAbstractFollower.h
-  #Mocks/FakeFailureOracle.cpp
-  #Mocks/FakeFailureOracle.h
   Mocks/FakeFollower.cpp
   Mocks/FakeFollower.h
   #Mocks/FakeLeader.cpp
@@ -31,9 +29,14 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   ReplicatedLog/Integration/MaintenanceTests.cpp
-  ReplicatedState/DocumentStateMachineTest.cpp
   ReplicatedLog/Integration/StorageEngineMethodsTest.cpp
   ReplicatedState/StateManagerTest.cpp
+  ReplicatedState/StateMachines/DocumentState/CoreTest.cpp
+  ReplicatedState/StateMachines/DocumentState/FollowerTest.cpp
+  ReplicatedState/StateMachines/DocumentState/LeaderTest.cpp
+  ReplicatedState/StateMachines/DocumentState/ShardHandlerTest.cpp
+  ReplicatedState/StateMachines/DocumentState/SnapshotTest.cpp
+  ReplicatedState/StateMachines/DocumentState/TransactionHandlerTest.cpp
 
   CollectionGroups/CollectionGroupsSupervision.cpp)
 

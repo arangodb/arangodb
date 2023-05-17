@@ -35,6 +35,7 @@ const analyzers = require("@arangodb/analyzers");
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const userManager = require("@arangodb/users");
+const tasks = require("@arangodb/tasks");
 
 const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
@@ -44,13 +45,55 @@ const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 let didSplitBuckets = false;
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief checks no tasks were left on the SUT by tests
+// //////////////////////////////////////////////////////////////////////////////
+let tasksTests = {
+  name: 'tasks',
+  setUp: function (obj, te) {
+    try {
+      obj.taskCount = tasks.get().length;
+    } catch (x) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'failed to fetch the tasks on the system before the test: ' + x.message
+      };
+      obj.serverDead = true;
+      return false;
+    }
+    return true;
+  },
+  runCheck: function (obj, te) {
+    try {
+      if (tasks.get().length !== obj.taskCount) {
+        obj.results[obj.translateResult(te)] = {
+          status: false,
+          message: 'Cleanup of tasks missing - found tasks left over: [ ' +
+            JSON.stringify(tasks.get()) +
+            ' ] - Original test status: ' +
+            JSON.stringify(obj.results[obj.translateResult(te)])
+        };
+        return false;
+      }
+    } catch (x) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'failed to fetch the tasks on the system after the test: ' + x.message
+      };
+      obj.serverDead = true;
+      return false;
+    }
+    return true;
+  }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief checks no new users were left on the SUT by tests
 // //////////////////////////////////////////////////////////////////////////////
 let usersTests = {
   name: 'users',
   setUp: function (obj, te) {
     try {
-      this.usersCount = userManager.all().length;
+      obj.usersCount = userManager.all().length;
     } catch (x) {
       obj.results[obj.translateResult(te)] = {
         status: false,
@@ -63,7 +106,7 @@ let usersTests = {
   },
   runCheck: function (obj, te) {
     try {
-      if (userManager.all().length !== this.usersCount) {
+      if (userManager.all().length !== obj.usersCount) {
         obj.results[obj.translateResult(te)] = {
           status: false,
           message: 'Cleanup of users missing - found users left over: [ ' +
@@ -76,7 +119,7 @@ let usersTests = {
     } catch (x) {
       obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'failed to fetch the users on the system before the test: ' + x.message
+        message: 'failed to fetch the users on the system after the test: ' + x.message
       };
       obj.serverDead = true;
       return false;
@@ -352,7 +395,13 @@ class testRunner {
     this.results = {};
     this.continueTesting = true;
     this.usersCount = 0;
+    this.taskCount = 0;
     this.cleanupChecks = [ ];
+    this.cleanupChecks.push(failurePointsCheck);
+
+    if (checkCollections) {
+      this.cleanupChecks.push(tasksTests);
+    }
     if (checkUsers) {
       this.cleanupChecks.push(usersTests);
     }
@@ -380,9 +429,7 @@ class testRunner {
     if (checkCollections) {
       this.cleanupChecks.push(graphsTest);
     }
-    this.cleanupChecks.push();
-    this.instanceManager;
-    this.cleanupChecks.push(failurePointsCheck);
+    this.instanceManager = undefined;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -450,7 +497,6 @@ class testRunner {
         let buf = fs.readBuffer(this.instanceManager.clusterHealthMonitorFile);
         let lineStart = 0;
         let maxBuffer = buf.length;
-
         for (let j = 0; j < maxBuffer; j++) {
           if (buf[j] === 10) { // \n
             const line = buf.asciiSlice(lineStart, j);
@@ -603,7 +649,7 @@ class testRunner {
           this.preRun(te);
           this.instanceManager.getMemProfSnapshot(this.memProfCounter++);
           
-          print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
+          print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '... ' + count, RESET);
           let reply = this.runOneTest(te);
           if (reply.hasOwnProperty('forceTerminate') && reply.forceTerminate) {
             moreReason += "test told us that we should forceTerminate.";
@@ -615,9 +661,6 @@ class testRunner {
 
           if (reply.hasOwnProperty('status')) {
             this.results[this.translateResult(te)] = reply;
-            if (!this.options.disableClusterMonitor) {
-              this.results[this.translateResult(te)]['processStats'] = this.instanceManager.getDeltaProcessStats();
-            }
 
             if (this.results[this.translateResult(te)].status === false) {
               this.results.failed ++;
@@ -639,21 +682,30 @@ class testRunner {
           }
 
           if (this.healthCheck()) {
-            if (!this.results[this.translateResult(te)].hasOwnProperty('processStats')) {
+            if (!this.options.disableClusterMonitor) {
+              this.results[this.translateResult(te)]['processStats'] = this.instanceManager.getDeltaProcessStats();
+            } else {
               this.results[this.translateResult(te)]['processStats'] = {};
             }
             this.results[this.translateResult(te)]['processStats']['netstat'] = this.instanceManager.getNetstat();
             this.continueTesting = true;
-            for (let j = 0; j < this.cleanupChecks.length; j++) {
-              if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
-                print(RED + Date() + ' server posttest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
-                moreReason += `server posttest '${this.cleanupChecks[j].name}' failed!`;
-                this.continueTesting = false;
-                j = this.cleanupChecks.length;
-                continue;
+            let j = 0;
+            try {
+              for (; j < this.cleanupChecks.length; j++) {
+                if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
+                  print(RED + Date() + ' server posttest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
+                  moreReason += `server posttest '${this.cleanupChecks[j].name}' failed!`;
+                  this.continueTesting = false;
+                  j = this.cleanupChecks.length;
+                  continue;
+                }
               }
+            } catch(ex) {
+              this.continueTesting = false;
+              print(`${RED}${Date()} server posttest "${this.cleanupChecks[j].name}" failed by throwing: ${ex}\n${ex.stack}!${RESET}`);
+              moreReason += `server posttest "${this.cleanupChecks[j].name}" failed by throwing: ${ex}`;
+              continue;
             }
-            
           } else {
             this.results[this.translateResult(te)].message = "Instance not healthy! " + JSON.stringify(reply);
             continue;
@@ -675,6 +727,11 @@ class testRunner {
         if (this.options.extremeVerbosity) {
           print('Skipped ' + te + ' because of ' + filtered.filter);
         }
+        this.results[this.translateResult(te)] = {
+          status: true,
+          skipped: true,
+          message: filtered.filter
+        };
       }
     }
 

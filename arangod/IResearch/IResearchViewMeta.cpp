@@ -240,8 +240,6 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
     } else {
       _optimizeTopK = defaults._optimizeTopK;
     }
-    // Do not bother copy ctor for smart sort. Defaults anyway should be empty
-    TRI_ASSERT(mask->_optimizeTopK || defaults._optimizeTopK.empty());
   }
 #endif
   return true;

@@ -117,12 +117,6 @@ class Worker : public IWorker {
   InCache<M>* _readCache = nullptr;
   // for the current or next superstep
   InCache<M>* _writeCache = nullptr;
-  // intended for the next superstep phase
-  InCache<M>* _writeCacheNextGSS = nullptr;
-  // preallocated incoming caches
-  std::vector<InCache<M>*> _inCaches;
-  // preallocated ootgoing caches
-  std::vector<OutCache<M>*> _outCaches;
 
   GssObservables _currentGssObservables;
   Guarded<AllGssStatus> _allGssStatus;
@@ -135,12 +129,7 @@ class Worker : public IWorker {
   size_t _runningThreads = 0;
   Scheduler::WorkHandle _workHandle;
 
-  void _initializeMessageCaches();
-  void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
-  ResultT<ProcessVerticesResult> _processVertices(
-      InCache<M>* inCache, OutCache<M>* outCache,
-      std::shared_ptr<Quiver<V, E>> quiver);
   void _finishedProcessing();
   void _callConductor(std::string const& path,
                       VPackBuilder const& message) const;

@@ -280,8 +280,8 @@ void DatabaseFeature::collectOptions(
 
   options
       ->addOption("--database.extended-names",
-                  "Allow most UTF-8 characters in database names, collection "
-                  "names, views names and index names. Once in use, "
+                  "Allow most UTF-8 characters in the names of databases, "
+                  "collections, Views, and indexes. Once in use, "
                   "this option cannot be turned off again.",
                   new options::BooleanParameter(&_extendedNames),
                   options::makeDefaultFlags(options::Flags::Uncommon,
@@ -1137,6 +1137,8 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 
     if (res.fail()) {
       std::string errorMsg;
+      // note: TRI_ERROR_ARANGO_DATABASE_NAME_INVALID should not be
+      // used anymore in 3.11 and higher.
       if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID) ||
           res.is(TRI_ERROR_ARANGO_ILLEGAL_NAME)) {
         // special case: if we find an invalid database name during startup,

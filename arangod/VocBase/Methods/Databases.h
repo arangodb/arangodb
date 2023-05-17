@@ -23,12 +23,13 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/VocbaseInfo.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 struct TRI_vocbase_t;
 
@@ -39,16 +40,13 @@ class ApplicationServer;
 struct OperationOptions;
 namespace methods {
 
-/// Common code for the db._database(),
 struct Databases {
-  static std::string normalizeName(std::string_view name);
-
   static std::vector<std::string> list(ArangodServer& server,
                                        std::string const& user = "");
-  static Result info(TRI_vocbase_t* vocbase, VPackBuilder& result);
+  static Result info(TRI_vocbase_t* vocbase, velocypack::Builder& result);
   static Result create(ArangodServer& server, ExecContext const& context,
-                       std::string const& dbName, VPackSlice const& users,
-                       VPackSlice const& options);
+                       std::string const& dbName, velocypack::Slice users,
+                       velocypack::Slice options);
   static Result drop(ExecContext const& context, TRI_vocbase_t* systemVocbase,
                      std::string const& dbName);
 

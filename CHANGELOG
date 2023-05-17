@@ -1,6 +1,138 @@
 devel
 -----
 
+* FE-22: Don't display collection content by default when clicking on a
+  collection in the Web UI.
+
+* FE-251: bugfix - prohibit multiple expansions of the same node in the graph
+  viewer.
+
+* FE-162: Fix display of geodesic lines.
+
+* Fixed a race in the Maintenance, impacting leaders that have just been
+  resigned. During a MoveShard job, the old leader could sabotage the whole
+  operation by removing the newly added follower from Current. The solution is
+  to update Current using local collection information, instead of the
+  potentially outdated velocypack slice.
+
+* FE-254: bugfix - filter out empty storedValues for persistent index.
+
+* FE-253: bugfix - validate JSON, show errors & disable save when error.
+
+* FE-252: bugfix - canvas image screenshot breaks graph colors.
+
+* Fix incompatibility between 3.9 and 3.10 w.r.t. to serialization of AQL array
+  filters (i.e. `[* FILTER ...]`). The array filters were serialized in a
+  different way in 3.9 than they are serialized in 3.10. 3.10 also expected the
+  new serialization format when unserializing a plan.
+  The fix now enables support for both formats.
+
+* Fixed issue #18769: Input validation allows invalid UTF-8 code points.
+  
+  This change enforces the validation of UTF-8 surrogate pairs in incoming JSON
+  data. Previously, the following loopholes existed when validating UTF-8
+  surrogate pair data:
+  - a high surrogate, followed by something other than a low surrogate (or the
+    end of the string)
+  - a low surrogate, not preceeded by a high surrogate
+  These loopholes are now closed, which means that any JSON inputs with invalid
+  surrogate pair data will be rejected by the server.
+
+  Note that the extended validation for surrogates can be turned off along with
+  other UTF-8 string validation by setting the server startup option
+  `--server.validate-utf8-strings` to `false`. This is not recommended though,
+  but should only be used in situations when a database is known to contain
+  invalid data and must continue supporting it.
+
+* Updated rclone to v1.62.2 custom build with go1.20.3.
+
+* Changed return code of APIs that create databases from previously 1229
+  (`ERROR_ARANGO_DATABASE_NAME_INVALID`) to 1208 (`ERROR_ARANGO_ILLEGAL_NAME`)
+  in case an invalid database name is used.
+  This is a downwards-incompatible change, but unifies the behavior for
+  database creation with the behavior of collection and view creation,
+  which also return error 1208 in case the specified name is invalid.
+
+* FE-236: bugfix - remove unused files, use new tooltip in views UI.
+
+* FE-238: Added auto-login support in core web UI - disabled logout when
+  auto-login is enabled, set sessionStorage "jwtUser" value when login is
+  skipped.
+
+* FE-233: bugfix - fix query spotlight search not working.
+
+* FE-349: bugfix - filter out empty primarySort field in UI.
+
+* FE-247: bugfix - missing storedValues field in persistent index form.
+
+* FE 242, FE-244: bugfix - add support for cache fields, fix inverted index name
+  undefined.
+
+* FE-241: bugfix - filter predefined queries based on search term.
+
+* Adjusted timeouts for cluster internal commit and abort requests to withstand
+  network delays better. This fixes some problems when the networking
+  infrastructure delays requests.
+
+* Added sent time accounting and some metrics to fuerte and the NetworkFeature.
+  This can detect delays in the network infrastructure.
+
+* Added startup option `--server.ensure-whitespace-metrics-format`, which
+  controls whether additional whitespace is used in the metrics output 
+  format. If set to `true`, then whitespace is emitted between the exported
+  metric value and the preceeding token (metric name or labels).
+  Using whitespace may be required to make the metrics output compatible with
+  some processing tools, although Prometheus itself doesn't need it.
+
+  The option defaults to `true`, which adds additional whitespace by default.
+
+* Automatically repair revision trees after several failed shard
+  synchronization attempts. This can help to get permanently out-of-sync
+  shards back into sync.
+
+  The functionality can be turned off by setting the startup option
+  `--replication.auto-repair-revision-trees` to `false` on DB-Servers.
+
+* SEARCH-461: Added option "--arangosearch.columns-cache-only-leader". Used only
+  on EE DBServers. Default is false.
+  If set to true only leader shards have ArangoSearch caches enabled - this will
+  reduce RAM usage. In case of failover happens - in background caches are
+  populated for the new leader. Some queries that run at during a failover may
+  still run without caches.
+
+* FE-216: bugfix - make view patches async in the UI.
+
+* FE-212: bugfix: links not getting removed when copying from another view in
+  UI.
+
+* SEARCH-466 Fix leaking into individual link definition inherited properties
+  from view.
+
+* FE-222: Fix - Allow additional properties in arangosearch, allow no fields in
+  inverted index when 'includeAllFIelds' is true.
+
+* APM-183: Support UTF-8 on UI (collection/view/index names).
+
+* FE-199: Remove URL handling of fields on view screen.
+
+* MDS-1098: In 3.10 we have introduced an optimization on Traversals to pull
+  post-filter conditions into the traversal-statements, like the following:
+
+      FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
+        FILTER v.isRelevant == true
+        RETURN p
+
+  If the comparison side contains a variable and the same variable is used as
+  the start vertex e.g. like this:
+
+  FOR candidate IN ["vertices/1", "vertices/2"]
+    FOR v,e,p IN 1 OUTBOUND candidate GRAPH "myGraph"
+      FILTER e.MostLikedNeighbor == candidate
+      RETURN v
+
+  There is a chance that we prematurely discarded this variable (candidate in
+  the example) if it is not used later. This has lead to incorrect results.
+
 * Changed the behavior of the following JavaScript functions in arangosh and
   arangod (e.g. when used from a Foxx service):
 
@@ -81,10 +213,14 @@ devel
   - `LET docs = [...] FOR doc IN docs INSERT doc INTO ...` (where the documents
     set up by the LET are some static documents known at query compile time),
 
-  If a query has such pattern, and there are no following RETURN nodes
-  (including any RETURN OLD, RETURN NEW), the FOR loop is not contained in
-  another outer FOR loop, and there are no calculations between the FOR and
-  the INSERT, the optimization is triggered.
+  If a query has such pattern, and all the following restrictions are met, then
+  the optimization is triggered:
+
+  - there are no following RETURN nodes (including any RETURN OLD, RETURN NEW)
+  - the FOR loop is not contained in another outer FOR loop or subquery
+  - there are no other nodes (e.g. LET, FILTER) between the FOR and the INSERT
+  - the INSERT is not used on a SmartGraph edge collection
+  - the FOR loop is iterating over a constant, deterministic expression
 
   The optimization will then add a `MultipleRemoteExecutionNode` to the query
   execution plan, which will care about inserting all documents into the 

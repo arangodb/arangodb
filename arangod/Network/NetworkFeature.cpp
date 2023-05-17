@@ -77,6 +77,18 @@ struct NetworkFeatureScale {
   }
 };
 
+struct NetworkFeatureSendScaleSmall {
+  static metrics::FixScale<double> scale() {
+    return {0.0, 10.0, {0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0}};
+  }
+};
+
+struct NetworkFeatureSendScaleLarge {
+  static metrics::FixScale<double> scale() {
+    return {0.0, 10000.0, {0.01, 0.1, 1.0, 10.0, 100.0, 1000.0}};
+  }
+};
+
 DECLARE_COUNTER(arangodb_network_forwarded_requests_total,
                 "Number of requests forwarded to another coordinator");
 DECLARE_COUNTER(arangodb_network_request_timeouts_total,
@@ -85,6 +97,16 @@ DECLARE_HISTOGRAM(
     arangodb_network_request_duration_as_percentage_of_timeout,
     NetworkFeatureScale,
     "Internal request round-trip time as a percentage of timeout [%]");
+DECLARE_COUNTER(arangodb_network_unfinished_sends_total,
+                "Number of times the sending of a request remained unfinished");
+DECLARE_HISTOGRAM(
+    arangodb_network_dequeue_duration, NetworkFeatureSendScaleSmall,
+    "Time to dequeue a queued network request in fuerte in seconds");
+DECLARE_HISTOGRAM(arangodb_network_send_duration, NetworkFeatureSendScaleLarge,
+                  "Time to send out internal requests in seconds");
+DECLARE_HISTOGRAM(
+    arangodb_network_response_duration, NetworkFeatureSendScaleLarge,
+    "Time to wait for network response after it was sent out in seconds");
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
               "Number of outgoing internal requests in flight");
 
@@ -105,7 +127,15 @@ NetworkFeature::NetworkFeature(Server& server,
       _requestTimeouts(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_network_request_timeouts_total{})),
       _requestDurations(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_network_request_duration_as_percentage_of_timeout{})) {
+          arangodb_network_request_duration_as_percentage_of_timeout{})),
+      _unfinishedSends(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_unfinished_sends_total{})),
+      _dequeueDurations(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_dequeue_duration{})),
+      _sendDurations(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_send_duration{})),
+      _responseDurations(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_response_duration{})) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -293,29 +323,29 @@ void NetworkFeature::unprepare() {
   }
 }
 
-arangodb::network::ConnectionPool* NetworkFeature::pool() const {
+network::ConnectionPool* NetworkFeature::pool() const noexcept {
   return _poolPtr.load(std::memory_order_relaxed);
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-void NetworkFeature::setPoolTesting(arangodb::network::ConnectionPool* pool) {
+void NetworkFeature::setPoolTesting(network::ConnectionPool* pool) {
   _poolPtr.store(pool, std::memory_order_release);
 }
 #endif
 
-bool NetworkFeature::prepared() const { return _prepared; }
+bool NetworkFeature::prepared() const noexcept { return _prepared; }
 
-void NetworkFeature::trackForwardedRequest() { ++_forwardedRequests; }
+void NetworkFeature::trackForwardedRequest() noexcept { ++_forwardedRequests; }
 
-std::size_t NetworkFeature::requestsInFlight() const {
+std::size_t NetworkFeature::requestsInFlight() const noexcept {
   return _requestsInFlight.load();
 }
 
-bool NetworkFeature::isCongested() const {
+bool NetworkFeature::isCongested() const noexcept {
   return _requestsInFlight.load() >= (_maxInFlight * ::CongestionRatio);
 }
 
-bool NetworkFeature::isSaturated() const {
+bool NetworkFeature::isSaturated() const noexcept {
   return _requestsInFlight.load() >= _maxInFlight;
 }
 
@@ -327,15 +357,86 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   TRI_ASSERT(req != nullptr);
   prepareRequest(pool, req);
   bool isFromPool = false;
+  auto now = std::chrono::steady_clock::now();
   auto conn = pool.leaseConnection(endpoint, isFromPool);
-  conn->sendRequest(std::move(req),
-                    [this, &pool, isFromPool, cb = std::move(cb)](
-                        fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-                        std::unique_ptr<fuerte::Response> res) {
-                      TRI_ASSERT(req != nullptr);
-                      finishRequest(pool, err, req, res);
-                      cb(err, std::move(req), std::move(res), isFromPool);
-                    });
+  auto dur = std::chrono::steady_clock::now() - now;
+  if (dur > std::chrono::seconds(1)) {
+    LOG_TOPIC("52418", WARN, Logger::COMMUNICATION)
+        << "have leased connection to '" << endpoint
+        << "' came from pool: " << isFromPool << " leasing took "
+        << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
+               .count()
+        << " seconds, url: " << to_string(req->header.restVerb) << " "
+        << req->header.path << ", request ptr: " << (void*)req.get();
+  } else {
+    LOG_TOPIC("52417", TRACE, Logger::COMMUNICATION)
+        << "have leased connection to '" << endpoint
+        << "' came from pool: " << isFromPool
+        << ", url: " << to_string(req->header.restVerb) << " "
+        << req->header.path << ", request ptr: " << (void*)req.get();
+  }
+  conn->sendRequest(
+      std::move(req),
+      [this, &pool, isFromPool, cb = std::move(cb),
+       endpoint = std::move(endpoint)](fuerte::Error err,
+                                       std::unique_ptr<fuerte::Request> req,
+                                       std::unique_ptr<fuerte::Response> res) {
+        if (req->timeQueued().time_since_epoch().count() != 0 &&
+            req->timeAsyncWrite().time_since_epoch().count() != 0) {
+          // In the 0 cases fuerte did not even accept or start to send
+          // the request, so there is nothing to report.
+          auto dur = std::chrono::duration_cast<std::chrono::duration<double>>(
+              req->timeAsyncWrite() - req->timeQueued());
+          _dequeueDurations.count(dur.count());
+          if (req->timeSent().time_since_epoch().count() == 0) {
+            // The request sending was never finished. This could be a timeout
+            // during the sending phase.
+            LOG_TOPIC("effc3", DEBUG, Logger::COMMUNICATION)
+                << "Time to dequeue request to " << endpoint << ": "
+                << dur.count()
+                << " seconds, however, the sending has not yet finished so far"
+                << ", endpoint: " << endpoint
+                << ", request ptr: " << (void*)req.get()
+                << ", response ptr: " << (void*)res.get()
+                << ", error: " << uint16_t(err);
+            _unfinishedSends.count();
+          } else {
+            // The request was fully sent off, we have received the callback
+            // from asio.
+            dur = std::chrono::duration_cast<std::chrono::duration<double>>(
+                req->timeSent() - req->timeAsyncWrite());
+            _sendDurations.count(dur.count());
+            // If you suspect network delays in your infrastructure, you
+            // can use the following log message to track them down and
+            // to associate them with particular requests:
+            LOG_TOPIC_IF("effc4", DEBUG, Logger::COMMUNICATION,
+                         dur > std::chrono::seconds(3))
+                << "Time to send request to " << endpoint << ": " << dur.count()
+                << " seconds, endpoint: " << endpoint
+                << ", request ptr: " << (void*)req.get()
+                << ", response ptr: " << (void*)res.get()
+                << ", error: " << uint16_t(err);
+
+            dur = std::chrono::duration_cast<std::chrono::duration<double>>(
+                std::chrono::steady_clock::now() - req->timeSent());
+            // If you suspect network delays in your infrastructure, you
+            // can use the following log message to track them down and
+            // to associate them with particular requests:
+            LOG_TOPIC_IF("effc5", DEBUG, Logger::COMMUNICATION,
+                         dur > std::chrono::seconds(61))
+                << "Time since request was sent out to " << endpoint
+                << " until now was " << dur.count()
+                << " seconds, endpoint: " << endpoint
+                << ", request ptr: " << (void*)req.get()
+                << ", response ptr: " << (void*)res.get()
+                << ", error: " << uint16_t(err);
+            _responseDurations.count(dur.count() / 1e9);
+          }
+        }
+        TRI_ASSERT(req != nullptr);
+        finishRequest(pool, err, req, res);
+        cb(err, std::move(req), std::move(res), isFromPool);
+      });
 }
 
 void NetworkFeature::prepareRequest(network::ConnectionPool const& pool,
@@ -345,6 +446,7 @@ void NetworkFeature::prepareRequest(network::ConnectionPool const& pool,
     req->timestamp(std::chrono::steady_clock::now());
   }
 }
+
 void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
                                    fuerte::Error err,
                                    std::unique_ptr<fuerte::Request> const& req,

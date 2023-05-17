@@ -171,6 +171,12 @@ bool CreateCollection::first() {
       docket.add("planId", VPackValue(collection));
     }
 
+    TRI_IF_FAILURE("create_collection_delay_follower_creation") {
+      if (!leader.empty()) {
+        // Make a race that the shard on the follower is not created more likely
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      }
+    }
     std::shared_ptr<LogicalCollection> col;
     OperationOptions options(ExecContext::current());
     res.reset(Collections::create(vocbase, options, shard, type, docket.slice(),
@@ -186,6 +192,11 @@ bool CreateCollection::first() {
         std::vector<std::string> noFollowers;
         col->followers()->takeOverLeadership(noFollowers, nullptr);
       } else {
+        TRI_IF_FAILURE("create_collection_delay_follower_sync_start") {
+          // Make a race that the shard on the follower is not in sync more
+          // likely
+          std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        }
         col->followers()->setTheLeader(LEADER_NOT_YET_KNOWN);
       }
     }

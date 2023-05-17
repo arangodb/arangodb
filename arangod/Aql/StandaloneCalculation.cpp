@@ -149,14 +149,14 @@ struct CalculationTransactionContext final
       : SmartContext(vocbase,
                      arangodb::transaction::Context::makeTransactionId(),
                      nullptr),
-        _state(vocbase) {}
+        _calculationTransactionState(vocbase) {}
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<arangodb::TransactionState> acquireState(
       arangodb::transaction::Options const& options,
       bool& responsibleForCommit) override {
-    return std::shared_ptr<arangodb::TransactionState>(
-        std::shared_ptr<arangodb::TransactionState>(), &_state);
+    return {std::shared_ptr<arangodb::TransactionState>(),
+            &_calculationTransactionState};
   }
 
   /// @brief unregister the transaction
@@ -170,7 +170,7 @@ struct CalculationTransactionContext final
   }
 
  private:
-  CalculationTransactionState _state;
+  CalculationTransactionState _calculationTransactionState;
 };
 
 class CalculationQueryContext final : public arangodb::aql::QueryContext {

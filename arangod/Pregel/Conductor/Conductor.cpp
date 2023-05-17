@@ -75,10 +75,12 @@ const char* arangodb::pregel::ExecutionStateNames[9] = {
     "none", "loading", "running", "storing", "done", "canceled", "fatal error"};
 
 Conductor::Conductor(ExecutionSpecifications const& specifications,
-                     TRI_vocbase_t& vocbase, PregelFeature& feature)
+                     std::string user, TRI_vocbase_t& vocbase,
+                     PregelFeature& feature)
     : _feature(feature),
       _vocbaseGuard(vocbase),
       _specifications(specifications),
+      _user(std::move(user)),
       _algorithm(AlgoRegistry::createAlgorithm(
           specifications.algorithm, specifications.userParameters.slice())),
       _created(std::chrono::system_clock::now()) {
@@ -754,13 +756,16 @@ void Conductor::persistPregelState(ExecutionState state) {
       stateBuilder.add("algorithm", VPackValue(_algorithm->name()));
     }
     stateBuilder.add("created", VPackValue(timepointToString(_created)));
-    stateBuilder.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
-    stateBuilder.add("graphLoaded", VPackValue(_graphLoaded));
-    stateBuilder.add("gss", VPackValue(_globalSuperstep));
-    stateBuilder.add("ttl", VPackValue(_specifications.ttl.duration.count()));
     if (_expires != std::chrono::system_clock::time_point{}) {
       stateBuilder.add("expires", VPackValue(timepointToString(_expires)));
     }
+    stateBuilder.add("ttl", VPackValue(_specifications.ttl.duration.count()));
+    stateBuilder.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
+    stateBuilder.add("gss", VPackValue(_globalSuperstep));
+
+    // Additional attributes added during actor rework
+    stateBuilder.add("graphLoaded", VPackValue(_graphLoaded));
+    stateBuilder.add("user", VPackValue(_user));
   };
 
   auto addAdditionalOutputToBuilder = [&](VPackBuilder& builder) -> void {
@@ -788,7 +793,21 @@ void Conductor::persistPregelState(ExecutionState state) {
         builder.add(VPackValue(gssTime.elapsedSeconds().count()));
       }
     }
+    _masterContext->_aggregators->serializeValues(builder);
     _statistics.serializeValues(builder);
+    if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
+      builder.add("vertexCount", VPackValue(_totalVerticesCount));
+      builder.add("edgeCount", VPackValue(_totalEdgesCount));
+    }
+    builder.add("parallelism", VPackValue(_specifications.parallelism));
+    if (_masterContext) {
+      VPackObjectBuilder ob(&builder, "masterContext");
+      _masterContext->serializeValues(builder);
+    }
+
+    builder.add(VPackValue("detail"));
+    auto conductorStatus = _status.accumulate();
+    serialize(builder, conductorStatus);
   };
 
   if (_state == ExecutionState::DONE) {

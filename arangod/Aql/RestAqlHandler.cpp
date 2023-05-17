@@ -550,37 +550,50 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
     try {
       TRI_IF_FAILURE("RestAqlHandler::killBeforeOpen") {
         auto engine = _queryRegistry->openExecutionEngine(qId);
-        TRI_ASSERT(engine != nullptr);
-        auto queryId = engine->getQuery().id();
-        _queryRegistry->destroyQuery(queryId, TRI_ERROR_QUERY_KILLED);
-        _queryRegistry->closeEngine(qId);
-        // Here Engine could be gone
+        // engine may be null if the query was killed before we got here.
+        // This can happen if another db server has already processed this
+        // failure point, killed the query and reported back to the coordinator,
+        // which then sent the finish request. If this finish request is
+        // processed before the query is opened here, the query is already gone.
+        if (engine != nullptr) {
+          auto queryId = engine->getQuery().id();
+          _queryRegistry->destroyQuery(queryId, TRI_ERROR_QUERY_KILLED);
+          _queryRegistry->closeEngine(qId);
+          // Here Engine must be gone because we killed it and when closeEngine
+          // drops the last reference it will be destroyed
+          TRI_ASSERT(_queryRegistry->openExecutionEngine(qId) == nullptr);
+        }
       }
       TRI_IF_FAILURE("RestAqlHandler::completeFinishBeforeOpen") {
         auto errorCode = TRI_ERROR_QUERY_KILLED;
         auto engine = _queryRegistry->openExecutionEngine(qId);
-        TRI_ASSERT(engine != nullptr);
-        auto queryId = engine->getQuery().id();
-        // Unuse the engine, so we can abort properly
-        _queryRegistry->closeEngine(qId);
+        // engine may be null here due to the race described above
+        if (engine != nullptr) {
+          auto queryId = engine->getQuery().id();
+          // Unuse the engine, so we can abort properly
+          _queryRegistry->closeEngine(qId);
 
-        auto fut = _queryRegistry->finishQuery(queryId, errorCode);
-        TRI_ASSERT(fut.isReady());
-        auto query = fut.get();
-        TRI_ASSERT(query != nullptr)
-            << "QueryRegistry::finishQuery does not give us the query pointer";
-        auto f = query->finalizeClusterQuery(errorCode);
-        // Wait for query to be fully finalized, as a finish call would do.
-        f.wait();
-        // Here Engine could be gone
+          auto fut = _queryRegistry->finishQuery(queryId, errorCode);
+          TRI_ASSERT(fut.isReady());
+          auto query = fut.get();
+          if (query != nullptr) {
+            auto f = query->finalizeClusterQuery(errorCode);
+            // Wait for query to be fully finalized, as a finish call would do.
+            f.wait();
+            // Here Engine must be gone because we finalized it and since there
+            // should not be any other references this should also destroy it.
+            TRI_ASSERT(_queryRegistry->openExecutionEngine(qId) == nullptr);
+          }
+        }
       }
       TRI_IF_FAILURE("RestAqlHandler::prematureCommitBeforeOpen") {
         auto engine = _queryRegistry->openExecutionEngine(qId);
-        TRI_ASSERT(engine != nullptr);
-        auto queryId = engine->getQuery().id();
-        _queryRegistry->destroyQuery(queryId, TRI_ERROR_NO_ERROR);
-        _queryRegistry->closeEngine(qId);
-        // Here Engine could be gone
+        if (engine != nullptr) {
+          auto queryId = engine->getQuery().id();
+          _queryRegistry->destroyQuery(queryId, TRI_ERROR_NO_ERROR);
+          _queryRegistry->closeEngine(qId);
+          // Here Engine could be gone
+        }
       }
       q = _queryRegistry->openExecutionEngine(qId);
       // we got the query (or it was not found - at least no one else
@@ -811,7 +824,7 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
               // the query...
               generateError(rest::ResponseCode::NOT_FOUND,
                             TRI_ERROR_HTTP_NOT_FOUND);
-              return {};
+              return futures::Unit{};
             }
             return query->finalizeClusterQuery(errorCode).thenValue(
                 [self = std::move(self), this,

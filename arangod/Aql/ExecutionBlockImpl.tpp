@@ -42,7 +42,6 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/HashedCollectExecutor.h"
-#include "Aql/IResearchViewExecutor.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexExecutor.h"
 #include "Aql/InputAqlItemRow.h"
@@ -647,6 +646,34 @@ enum class SkipRowsRangeVariant {
   SUBQUERY_START,
   SUBQUERY_END
 };
+
+namespace arangodb::aql {
+
+template<typename ExecutionTraits>
+class IResearchViewExecutor;
+
+template<typename ExecutionTraits>
+class IResearchViewMergeExecutor;
+
+template<typename ExecutionTraits>
+class IResearchViewHeapSortExecutor;
+
+template<typename T>
+struct IsSearchExecutor : std::false_type {};
+
+template<typename ExecutionTraits>
+struct IsSearchExecutor<IResearchViewExecutor<ExecutionTraits>>
+    : std::true_type {};
+
+template<typename ExecutionTraits>
+struct IsSearchExecutor<IResearchViewMergeExecutor<ExecutionTraits>>
+    : std::true_type {};
+
+template<typename ExecutionTraits>
+struct IsSearchExecutor<IResearchViewHeapSortExecutor<ExecutionTraits>>
+    : std::true_type {};
+
+}  // namespace arangodb::aql
 
 // This function is just copy&pasted from above to decide which variant of
 // skip is used for which executor.
