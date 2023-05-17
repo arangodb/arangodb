@@ -1300,29 +1300,42 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
     var sizeCategory;
     var nodeObj;
     var notFoundString = "(attribute not found)";
+
+    const truncate = (str, n) => {
+      return (str.length > n) ? str.slice(0, n-1) + '...' : str;
+    };
     
     const generateNodeObject = (node) => {
       nodeNames[node._id] = true;
       var label = "";
+      var fullLabel = "";
 
       if (config.nodeLabel) {
           var nodeLabelArr = config.nodeLabel.split(" ");
-          _.each(nodeLabelArr, function (attr) {
+          print(nodeLabelArr.length);
+          if(nodeLabelArr.length > 1) {
+            _.each(nodeLabelArr, function (attr) {
 
-            var attrVal = getAttributeByKey(node, attr);
-            if(attrVal !== undefined) {
-              if (typeof attrVal === 'string') {
-                label += "<b>" + attr + ":</b> " + getAttributeByKey(node, attr).substring(0, 16) + "...; ";
+              var attrVal = getAttributeByKey(node, attr);
+              if(attrVal !== undefined) {
+                if (typeof attrVal === 'string') {
+                  label += "<b>" + attr + ":</b> " + truncate(getAttributeByKey(node, attr), 16) + "\n";
+                  fullLabel += attr + ": " + getAttributeByKey(node, attr) + "\n";
+                } else {
+                  // in case we do not have a string here, we need to stringify it
+                  // otherwise we might end up sending not displayable values.
+                  label += "<b>" + attr + ":</b> " + JSON.stringify(getAttributeByKey(node, attr)) + "\n";
+                  fullLabel += attr + ": " + JSON.stringify(getAttributeByKey(node, attr)) + "\n";
+                }
               } else {
-                // in case we do not have a string here, we need to stringify it
-                // otherwise we might end up sending not displayable values.
-                label += "<b>" + attr + ":</b> " + JSON.stringify(getAttributeByKey(node, attr)) + "; ";
+                label += "<b>" + attr + ":</b> " + notFoundString + "\n";
+                fullLabel += attr + ": " + notFoundString + "\n";
               }
-            } else {
-              label += "<b>" + attr + ":</b> " + notFoundString + "; ";
-            }
-            
-          });
+              
+            });
+          } else {
+            label = getAttributeByKey(node, config.nodeLabel);
+          }
       } else {
         label = node._key || node._id;
       }
@@ -1369,6 +1382,7 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
           strokeColor: '#ffffff',
           vadjust: -7
         },
+        title: fullLabel,
         sizeAttributeFound
       };
 
