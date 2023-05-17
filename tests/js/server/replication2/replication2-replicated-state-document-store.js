@@ -766,7 +766,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId - 1);
       if (result.json.error) {
         // This is OK. The snapshot has been removed before we could return the response.
-        assertEqual(result.json.error.errorNum, internal.errors.ERROR_INTERNAL.code);
+        assertEqual(result.json.errorNum, internal.errors.ERROR_INTERNAL.code, JSON.stringify(result.json));
       } else {
         // We need a waitFor here, because the snapshot cleanup is enqueued on the scheduler.
         snapshotId = result.json.result.snapshotId;

@@ -26,12 +26,38 @@
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/ExecutionStates/AQLResultsAvailableState.h"
 #include "Pregel/Conductor/State.h"
+#include "CanceledState.h"
 
 using namespace arangodb::pregel::actor;
 using namespace arangodb::pregel::conductor;
 
 ProduceAQLResults::ProduceAQLResults(ConductorState& conductor)
     : conductor{conductor} {}
+
+auto ProduceAQLResults::cancel(ActorPID sender,
+                               message::ConductorMessages message)
+    -> std::optional<StateChange> {
+  auto newState = std::make_unique<Canceled>(conductor);
+  auto stateName = newState->name();
+
+  return StateChange{
+      .statusMessage = pregel::message::Canceled{.state = stateName},
+      .metricsMessage =
+          pregel::metrics::message::ConductorFinished{
+              .previousState =
+                  pregel::metrics::message::PreviousState::STORING},
+      .newState = std::move(newState)};
+}
+
+auto ProduceAQLResults::messages()
+    -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
+  auto out =
+      std::unordered_map<actor::ActorPID, worker::message::WorkerMessages>();
+  for (auto const& worker : conductor.workers) {
+    out.emplace(worker, worker::message::ProduceResults{});
+  }
+  return out;
+}
 
 auto ProduceAQLResults::receive(actor::ActorPID sender,
                                 message::ConductorMessages message)
@@ -40,7 +66,16 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .errorMessage =
+                    fmt::format("In {}: Received unexpected message {} from {}",
+                                name(), inspection::json(message), sender)},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
+                .previousState =
+                    pregel::metrics::message::PreviousState::STORING},
         .newState = std::move(newState)};
   }
   responseCount++;
@@ -52,6 +87,10 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
     auto stateName = newState->name();
     return StateChange{
         .statusMessage = pregel::message::PregelFinished{.state = stateName},
+        .metricsMessage =
+            pregel::metrics::message::ConductorFinished{
+                .previousState =
+                    pregel::metrics::message::PreviousState::STORING},
         .newState = std::move(newState)};
   }
   return std::nullopt;

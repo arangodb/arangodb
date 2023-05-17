@@ -2968,10 +2968,15 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       auto const slice = builder.slice();
       TRI_ASSERT(slice.isArray());
 
+      LOG_TOPIC("48f11", TRACE, arangodb::Logger::ENGINES)
+          << "processing views metadata in database '" << vocbase->name()
+          << "': " << slice.toJson();
+
       for (VPackSlice it : VPackArrayIterator(slice)) {
         if (it.get(StaticStrings::DataSourceType).stringView() != type) {
           continue;
         }
+
         // we found a view that is still active
         LOG_TOPIC("4dfdd", TRACE, arangodb::Logger::ENGINES)
             << "processing view metadata in database '" << vocbase->name()
@@ -3037,6 +3042,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
+    LOG_TOPIC("f1275", TRACE, arangodb::Logger::ENGINES)
+        << "processing collections metadata in database '" << vocbase->name()
+        << "': " << slice.toJson();
+
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       LOG_TOPIC("b2ef2", TRACE, arangodb::Logger::ENGINES)
@@ -3044,6 +3053,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
           << "': " << it.toJson();
 
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
+      TRI_ASSERT(!it.get("deleted").isTrue());
 
       auto collection = vocbase->createCollectionObject(it, /*isAStub*/ false);
       TRI_ASSERT(collection != nullptr);
@@ -3060,7 +3070,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       StorageEngine::registerCollection(*vocbase, collection);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
-          << "added document collection '" << vocbase->name() << "/"
+          << "added collection '" << vocbase->name() << "/"
           << collection->name() << "'";
 
       if (collection->replicationVersion() ==

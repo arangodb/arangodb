@@ -269,12 +269,7 @@ function basicTestSuite() {
       });
 
       pregel.cancel(pid); // delete contents
-      internal.wait(5.0);
-
-      array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
-      assertEqual(array.length, 1);
-      results = array[0];
-      assertEqual(results.length, 0);
+      pregelTestHelpers.waitForResultsBeeingGarbageCollected(pid, 0);
     }
   };
 };

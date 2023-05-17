@@ -48,15 +48,14 @@ struct ReplicatedStateFeature {
    * i.e. ReplicatedStateTraits<S>::FactoryType.
    */
   template<typename S, typename... Args>
-  void registerStateType(std::string name, Args&&... args) {
+  void registerStateType(std::string const& name, Args&&... args) {
     using Factory = typename ReplicatedStateTraits<S>::FactoryType;
     static_assert(std::is_constructible_v<Factory, Args...>);
     auto factory = std::make_shared<InternalFactory<S, Factory>>(
         std::in_place, std::forward<Args>(args)...);
     auto metrics = createMetricsObjectIndirect(name);
     auto [iter, wasInserted] = implementations.try_emplace(
-        std::move(name),
-        StateImplementation{std::move(factory), std::move(metrics)});
+        name, StateImplementation{std::move(factory), std::move(metrics)});
     assertWasInserted(name, wasInserted);
   }
 

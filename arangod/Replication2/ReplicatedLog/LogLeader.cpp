@@ -668,24 +668,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     auto insert(LogPayload payload) -> LogIndex override {
       return _log.insert(std::move(payload));
     }
-    auto insertDeferred(LogPayload payload)
-        -> std::pair<LogIndex, DeferredAction> override {
-      auto index =
-          _log.insert(std::move(payload), false, doNotTriggerAsyncReplication);
-      auto action = DeferredAction([weak = _log.weak_from_this()]() noexcept {
-        if (auto self = weak.lock(); self != nullptr) {
-          try {
-            self->triggerAsyncReplication();
-          } catch (ParticipantResignedException const&) {
-            // The log resigned; this is fine, we can just ignore it.
-          } catch (std::exception const& ex) {
-            LOG_CTX("f96cd", INFO, self->_logContext)
-                << "Unhandled exception in insertDeferred: " << ex.what();
-          }
-        }
-      });
-      return std::make_pair(index, std::move(action));
-    }
     auto waitFor(LogIndex index) -> WaitForFuture override {
       return _log.waitFor(index);
     }

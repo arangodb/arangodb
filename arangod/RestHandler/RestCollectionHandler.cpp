@@ -771,7 +771,7 @@ RestCollectionHandler::collectionRepresentationAsync(
         }
 
         if (showCount != CountType::None) {
-          auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+          auto trx = ctxt.trx(AccessMode::Type::READ, true);
           TRI_ASSERT(trx != nullptr);
           return trx->countAsync(coll->name(),
                                  showCount == CountType::Detailed
@@ -784,7 +784,7 @@ RestCollectionHandler::collectionRepresentationAsync(
       .thenValue([=, this, &ctxt](OperationResult&& opRes) -> void {
         if (opRes.fail()) {
           if (showCount != CountType::None) {
-            auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+            auto trx = ctxt.trx(AccessMode::Type::READ, true);
             TRI_ASSERT(trx != nullptr);
             std::ignore = trx->finish(opRes.result);
           }

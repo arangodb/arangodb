@@ -53,7 +53,7 @@ struct DocumentFollowerState
  protected:
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
-  auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
+  auto acquireSnapshot(ParticipantId const& destination) noexcept
       -> futures::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
@@ -72,14 +72,13 @@ struct DocumentFollowerState
 
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
-      LogIndex waitForIndex, std::uint64_t snapshotVersion,
+      std::uint64_t snapshotVersion,
       futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
       -> futures::Future<SnapshotTransferResult>;
   auto handleSnapshotTransfer(
       SnapshotId shapshotId,
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
-      LogIndex waitForIndex, std::uint64_t snapshotVersion,
-      std::optional<ShardID> currentShard,
+      std::uint64_t snapshotVersion, std::optional<ShardID> currentShard,
       futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
       -> futures::Future<SnapshotTransferResult>;
 

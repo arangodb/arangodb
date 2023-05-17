@@ -30,12 +30,29 @@ if (getOptions === true) {
   };
 }
 const jsunity = require('jsunity');
-const db = require('internal').db;
+const internal = require("internal");
+const db = internal.db;
 const errors = require('@arangodb').errors;
-const isCluster = require("internal").isCluster;
+const isCluster = internal.isCluster;
+const isEnterprise = internal.isEnterprise;
 
 const traditionalName = "UnitTestsCollection";
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
+
+const runGraphTest = (graph) => {
+  const gn = "le-graph";
+
+  const edgeDef = graph._edgeDefinitions(
+    graph._relation(traditionalName, [extendedName], [extendedName]),
+  );
+
+  try {
+    graph._create(gn, edgeDef);
+    fail();
+  } catch (err) {
+    assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+  }
+};
 
 function testSuite() {
   return {
@@ -81,6 +98,20 @@ function testSuite() {
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
+    },
+    
+    testGraphWithExtendedCollectionNames: function() {
+      const graph = require("@arangodb/general-graph");
+      runGraphTest(graph);
+    },
+    
+    testSmartGraphWithExtendedCollectionNames: function() {
+      if (!isEnterprise()) {
+        return;
+      }
+
+      const graph = require("@arangodb/smart-graph");
+      runGraphTest(graph);
     },
     
   };

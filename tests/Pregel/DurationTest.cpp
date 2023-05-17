@@ -39,11 +39,18 @@ TEST(DurationTest, test_duration) {
   ASSERT_TRUE(d1.hasStarted());
   ASSERT_FALSE(d1.hasFinished());
 
+  // Note that we're using ASSERT_GE instead of ASSERT_GT, in order to validate
+  // the amount of time elapsed. That is because the steady_clock is not
+  // guaranteed to go forward, just guaranteed to not go backwards. There is no
+  // guaranteed precision as when it will tick, and therefore it might appear as
+  // if no time has elapsed at all between two measurements (we have seen this
+  // happen on macOS).
+
   auto elapsed = d1.elapsedSeconds();
-  ASSERT_GT(elapsed.count(), 0);
+  ASSERT_GE(elapsed.count(), 0);
 
   auto moreElapsed = d1.elapsedSeconds();
-  ASSERT_GT(moreElapsed, elapsed);
+  ASSERT_GE(moreElapsed, elapsed);
 
   d1.finish();
   ASSERT_TRUE(d1.hasStarted());
@@ -51,7 +58,7 @@ TEST(DurationTest, test_duration) {
 
   auto evenMoreElapsed = d1.elapsedSeconds();
 
-  ASSERT_GT(evenMoreElapsed, moreElapsed);
+  ASSERT_GE(evenMoreElapsed, moreElapsed);
 
   auto notMoreElapsed = d1.elapsedSeconds();
 

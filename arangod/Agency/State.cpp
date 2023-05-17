@@ -606,14 +606,10 @@ void State::logEraseNoLock(std::deque<log_t>::iterator rbegin,
   _log_size -= delSize;
 }
 
-/// Get log entries from indices "start" to "end"
-std::vector<log_t> State::get(index_t start, index_t end) const {
-  std::vector<log_t> entries;
-  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
-
-  if (_log.empty()) {
-    return entries;
-  }
+std::pair<index_t, index_t> State::determineLogBounds(
+    index_t start, index_t end) const noexcept {
+  // _logLock must be held when this method is called
+  TRI_ASSERT(!_log.empty());
 
   // start must be greater than or equal to the lowest index
   // and smaller than or equal to the largest index
@@ -636,11 +632,45 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
   start -= _cur;
   end -= (_cur - 1);
 
-  for (size_t i = start; i < end; ++i) {
+  TRI_ASSERT(start <= end);
+  return std::make_pair(start, end);
+}
+
+/// Get log entries from indices "start" to "end"
+std::vector<log_t> State::get(index_t start, index_t end) const {
+  std::vector<log_t> entries;
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
+
+  if (_log.empty()) {
+    return entries;
+  }
+
+  auto [s, e] = determineLogBounds(start, end);
+  for (size_t i = s; i < e; ++i) {
     entries.push_back(_log[i]);
   }
 
   return entries;
+}
+
+/// Get log entries from indices "start" to "end", into the builder as an array
+index_t State::toVelocyPack(velocypack::Builder& result, index_t start,
+                            index_t end) const {
+  VPackArrayBuilder guard(&result, /*allowUnindexed*/ true);
+
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
+
+  if (_log.empty()) {
+    return 0;
+  }
+
+  auto [s, e] = determineLogBounds(start, end);
+
+  for (size_t i = s; i < e; ++i) {
+    _log[i].toVelocyPackCompact(result);
+  }
+
+  return _log[s].index;
 }
 
 /// Get log entries from indices "start" to "end"

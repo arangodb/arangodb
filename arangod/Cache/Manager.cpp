@@ -738,6 +738,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   TRI_ASSERT(success);
   TRI_ASSERT(!metadata.isResizing());
   metadata.toggleResizing();
+  TRI_ASSERT(metadata.isResizing());
   metaGuard.release();
 
   bool dispatched = false;
@@ -753,7 +754,9 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
 
   if (!dispatched) {
     SpinLocker altMetaGuard(SpinLocker::Mode::Write, metadata.lock());
+    TRI_ASSERT(metadata.isResizing());
     metadata.toggleResizing();
+    TRI_ASSERT(!metadata.isResizing());
   }
 }
 

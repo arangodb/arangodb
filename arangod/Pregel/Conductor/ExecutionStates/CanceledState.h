@@ -32,7 +32,6 @@ struct Canceled : ExecutionState {
   Canceled(ConductorState& conductor);
   ~Canceled() {}
   auto name() const -> std::string override { return "canceled"; };
-  auto canBeCanceled() const -> bool override { return false; }
   auto messages()
       -> std::unordered_map<actor::ActorPID,
                             worker::message::WorkerMessages> override;

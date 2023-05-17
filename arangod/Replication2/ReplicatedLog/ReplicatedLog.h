@@ -41,9 +41,6 @@
 #include <utility>
 #include <vector>
 
-namespace arangodb::cluster {
-struct IFailureOracle;
-}
 namespace arangodb::replication2::replicated_log {
 class LogLeader;
 struct AbstractFollower;
@@ -77,9 +74,6 @@ struct IReplicatedLogMethodsBase {
 struct IReplicatedLogLeaderMethods : IReplicatedLogMethodsBase {
   // TODO waitForSync parameter is missing
   virtual auto insert(LogPayload) -> LogIndex = 0;
-  // TODO waitForSync parameter is missing
-  virtual auto insertDeferred(LogPayload)
-      -> std::pair<LogIndex, DeferredAction> = 0;
 };
 
 struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {

@@ -87,6 +87,7 @@ the results in the vertices as attribute `component`:
 @EXAMPLE_ARANGOSH_RUN{RestPregelStartConnectedComponents}
 
   var examples = require("@arangodb/graph-examples/example-graph.js");
+  print("1. Creating Pregel graph");
   var graph = examples.loadGraph("connectedComponentsGraph");
 
   var url = "/_api/control_pregel";
@@ -112,7 +113,7 @@ the results in the vertices as attribute `component`:
       assert(status.state == "done");
       break;
     } else {
-      print(`Waiting for Pregel job ${id} (${status.state})...`);
+      print(`1. Waiting for Pregel job ${id} (${status.state})...`);
       internal.sleep(0.5);
     }
   }

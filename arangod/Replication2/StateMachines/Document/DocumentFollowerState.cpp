@@ -82,9 +82,8 @@ auto DocumentFollowerState::getAssociatedShardList() const
   return shardIds;
 }
 
-auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
-                                            LogIndex waitForIndex) noexcept
-    -> futures::Future<Result> {
+auto DocumentFollowerState::acquireSnapshot(
+    ParticipantId const& destination) noexcept -> futures::Future<Result> {
   LOG_CTX("1f67d", DEBUG, loggerContext)
       << "Trying to acquire snapshot from destination " << destination;
 
@@ -117,8 +116,7 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
   // established. A retry will occur in that case.
   auto leader = _networkHandler->getLeaderInterface(destination);
   auto fut = leader->startSnapshot();
-  return handleSnapshotTransfer(leader, waitForIndex, snapshotVersion.get(),
-                                std::move(fut))
+  return handleSnapshotTransfer(leader, snapshotVersion.get(), std::move(fut))
       .thenValue([leader, self = shared_from_this()](
                      auto&& snapshotTransferResult) -> futures::Future<Result> {
         if (!snapshotTransferResult.snapshotId.has_value()) {
@@ -241,11 +239,11 @@ auto DocumentFollowerState::populateLocalShard(
 
 auto DocumentFollowerState::handleSnapshotTransfer(
     std::shared_ptr<IDocumentStateLeaderInterface> leader,
-    LogIndex waitForIndex, std::uint64_t snapshotVersion,
+    std::uint64_t snapshotVersion,
     futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
     -> futures::Future<SnapshotTransferResult> {
   return std::move(snapshotFuture)
-      .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex,
+      .then([weak = weak_from_this(), leader = std::move(leader),
              snapshotVersion](
                 futures::Try<ResultT<SnapshotConfig>>&& tryResult) mutable
             -> futures::Future<SnapshotTransferResult> {
@@ -328,23 +326,23 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         }
 
         LOG_CTX("d6666", DEBUG, self->loggerContext)
-            << "Trying to first batch of snapshot: " << snapshotRes->snapshotId;
+            << "Trying to get first batch of snapshot: "
+            << snapshotRes->snapshotId;
         auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
-        return self->handleSnapshotTransfer(
-            snapshotRes->snapshotId, std::move(leader), waitForIndex,
-            snapshotVersion, std::nullopt, std::move(fut));
+        return self->handleSnapshotTransfer(snapshotRes->snapshotId,
+                                            std::move(leader), snapshotVersion,
+                                            std::nullopt, std::move(fut));
       });
 }
 
 auto DocumentFollowerState::handleSnapshotTransfer(
     SnapshotId snapshotId,
     std::shared_ptr<IDocumentStateLeaderInterface> leader,
-    LogIndex waitForIndex, std::uint64_t snapshotVersion,
-    std::optional<ShardID> currentShard,
+    std::uint64_t snapshotVersion, std::optional<ShardID> currentShard,
     futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
     -> futures::Future<SnapshotTransferResult> {
   return std::move(snapshotFuture)
-      .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex,
+      .then([weak = weak_from_this(), leader = std::move(leader),
              snapshotVersion, snapshotId,
              currentShard = std::move(currentShard)](
                 futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
@@ -452,7 +450,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
               << snapshotRes->snapshotId;
           auto fut = leader->nextSnapshotBatch(snapshotId);
           return self->handleSnapshotTransfer(
-              snapshotId, std::move(leader), waitForIndex, snapshotVersion,
+              snapshotId, std::move(leader), snapshotVersion,
               std::move(currentShard), std::move(fut));
         }
 

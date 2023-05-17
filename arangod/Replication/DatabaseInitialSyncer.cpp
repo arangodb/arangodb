@@ -1838,7 +1838,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
   });
 
   // diff with local tree
-  // std::pair<std::size_t, std::size_t> fullRange = treeLeader->range();
   auto treeLocal = physical->revisionTree(*trx);
   if (!treeLocal) {
     // local collection does not support syncing by revision, fall back to
