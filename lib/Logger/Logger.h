@@ -198,6 +198,7 @@ class Logger {
   static LogTopic SUPERVISION;
   static LogTopic SYSCALL;
   static LogTopic THREADS;
+  static LogTopic TRACING;
   static LogTopic TRANSACTIONS;
   static LogTopic TTL;
   static LogTopic VALIDATION;

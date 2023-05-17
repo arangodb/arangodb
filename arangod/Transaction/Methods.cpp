@@ -3284,6 +3284,8 @@ Future<Result> Methods::replicateOperations(
   // Now prepare the requests:
   std::vector<Future<network::Response>> futures;
   futures.reserve(followerList->size());
+  std::vector<int64_t> client_ids;
+  client_ids.reserve(followerList->size());
 
   auto startTimeReplication = std::chrono::steady_clock::now();
 
@@ -3308,9 +3310,13 @@ Future<Result> Methods::replicateOperations(
     // change it in the loop!
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(*this, f, headers);
+    int64_t client_id = RandomGenerator::interval(
+        int64_t(1), std::numeric_limits<int64_t>::max());
+    headers.try_emplace("x-arango-tracing", std::to_string(client_id));
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + f, requestType, url, *(replicationData.buffer()),
         reqOpts, std::move(headers)));
+    client_ids.emplace_back(client_id);
 
     LOG_TOPIC("fecaf", TRACE, Logger::REPLICATION)
         << "replicating " << count << " " << opName << " operations for shard "
@@ -3342,6 +3348,16 @@ Future<Result> Methods::replicateOperations(
     replMetrics.synchronousOpsTotal() += 1;
     replMetrics.synchronousTimeTotal() +=
         std::chrono::nanoseconds(duration).count();
+    if (duration > std::chrono::seconds(15)) {
+      std::string buffer;
+      buffer.reserve(80);
+      for (auto const& clid : client_ids) {
+        buffer.push_back(' ');
+        buffer.append(std::to_string(clid));
+      }
+      LOG_TOPIC("12536", WARN, Logger::REPLICATION)
+          << "Replication request took longer than 15s, client_ids:" << buffer;
+    }
 
     bool didRefuse = false;
     // We drop all followers that were not successful:
@@ -3364,6 +3380,11 @@ Future<Result> Methods::replicateOperations(
 
         } else {
           auto r = resp.combinedResult();
+
+          LOG_TOPIC("abed2", WARN, Logger::REPLICATION)
+              << "Error report in replication request, client_id: "
+              << client_ids[i] << ", " << r.errorNumber()
+              << ", msg: " << r.errorMessage();
 
           // Special case if the follower has already aborted the transaction.
           // This can happen if a query fails and causes the leaders to abort

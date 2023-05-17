@@ -179,6 +179,12 @@ void RestBaseHandler::writeResult(Payload&& payload,
   try {
     if (_request != nullptr) {
       _response->setContentType(_request->contentTypeResponse());
+      if (Logger::isEnabled(LogLevel::TRACE, Logger::TRACING)) {
+        std::string const& id = _request->header("x-arango-tracing");
+        if (!id.empty()) {
+          LOG_TOPIC("16274", TRACE, Logger::TRACING) << "out " << id;
+        }
+      }
     }
     _response->setPayload(std::forward<Payload>(payload), options);
   } catch (basics::Exception const& ex) {

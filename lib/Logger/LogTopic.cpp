@@ -152,6 +152,7 @@ LogTopic Logger::STATISTICS("statistics", LogLevel::INFO);
 LogTopic Logger::SUPERVISION("supervision", LogLevel::INFO);
 LogTopic Logger::SYSCALL("syscall", LogLevel::INFO);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);
+LogTopic Logger::TRACING("tracing", LogLevel::INFO);
 LogTopic Logger::TRANSACTIONS("trx", LogLevel::WARN);
 LogTopic Logger::TTL("ttl", LogLevel::WARN);
 LogTopic Logger::VALIDATION("validation", LogLevel::INFO);

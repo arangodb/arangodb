@@ -530,6 +530,13 @@ void HttpCommTask<T>::doProcessRequest() {
     }
   }
 
+  if (Logger::isEnabled(LogLevel::TRACE, Logger::TRACING)) {
+    std::string const& id = _request->header("x-arango-tracing");
+    if (!id.empty()) {
+      LOG_TOPIC("16273", TRACE, Logger::TRACING) << "in " << id;
+    }
+  }
+
   // ensure there is a null byte termination. Some RestHandlers use
   // C functions like strchr that except a C string as input
   _request->body().push_back('\0');
@@ -592,6 +599,7 @@ void HttpCommTask<T>::doProcessRequest() {
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
                                              1, nullptr);
   resp->setContentType(_request->contentTypeResponse());
+
   this->executeRequest(std::move(_request), std::move(resp), mode);
 }
 
