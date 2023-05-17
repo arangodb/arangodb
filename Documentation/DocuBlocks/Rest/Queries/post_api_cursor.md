@@ -439,7 +439,7 @@ How the collection is used. Can be `"read"`, `"write"`, or `"exclusive"`.
 @RESTSTRUCT{variables,post_api_cursor_extra_plan,array,required,object}
 All of the query variables, including user-created and internal ones.
 
-@RESTSTRUCT{estimatedCost,post_api_cursor_extra_plan,number,required,double}
+@RESTSTRUCT{estimatedCost,post_api_cursor_extra_plan,integer,required,}
 The estimated cost of the query.
 
 @RESTSTRUCT{estimatedNrItems,post_api_cursor_extra_plan,integer,required,}
