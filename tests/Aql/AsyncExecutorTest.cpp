@@ -43,9 +43,76 @@ struct AsyncExecutorTest : AqlExecutorTestCase<false> {
 // Regression test for https://arangodb.atlassian.net/browse/BTS-1325.
 // See https://github.com/arangodb/arangodb/pull/18729 for details.
 TEST_F(AsyncExecutorTest, sleepingBeauty) {
+  auto registerInfos = RegisterInfos(RegIdSet{}, RegIdSet{}, 1, 1,
+                                     RegIdFlatSet{}, RegIdFlatSetStack{{0}});
+
+  TRI_AddFailurePointDebugging("AsyncExecutor::SleepWhenWaiting");
+
+  auto testHelper = makeExecutorTestHelper();
+  testHelper
+      .addDependency<AsyncExecutor>(registerInfos, {}, ExecutionNode::ASYNC)
+      .addDependency<AsyncExecutor>(registerInfos, {}, ExecutionNode::ASYNC)
+      .setInputFromRowNum(1)
+      .setWaitingBehaviour(WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS)
+      .setCall(AqlCall{0u, AqlCall::Infinity{}, AqlCall::Infinity{}, false});
+
+  auto* asyncBlock0 = dynamic_cast<ExecutionBlockImpl<AsyncExecutor>*>(
+      testHelper.pipeline().get().at(0).get());
+  // Having the nodes in a certain order (i.e. pipeline[0].id() == 0, and
+  // pipeline[1].id() == 1), makes reading profiles less confusing.
+  ASSERT_EQ(asyncBlock0->getPlanNode()->id().id(), 0);
+
+  // one initial "wakeup" to start execution
+  auto wakeupsQueued = 1;
+  auto wakeupHandler = [&wakeupsQueued]() noexcept {
+    ++wakeupsQueued;
+    return true;
+  };
+  testHelper.setWakeupHandler(wakeupHandler);
+  testHelper.setWakeupCallback(wakeupHandler);
+  testHelper.prepareInput();
+
+  asyncBlock0->setFailureCallback([&] {
+    while (!scheduler.queueEmpty()) {
+      scheduler.runOnce();
+    }
+    while (wakeupsQueued > 0) {
+      --wakeupsQueued;
+      testHelper.executeOnce();
+    }
+  });
+
+  while (wakeupsQueued > 0 || !scheduler.queueEmpty()) {
+    while (wakeupsQueued > 0) {
+      --wakeupsQueued;
+      testHelper.executeOnce();
+    }
+    if (!scheduler.queueEmpty()) {
+      scheduler.runOnce();
+    }
+  };
+
+  EXPECT_EQ(0, wakeupsQueued);
+  EXPECT_TRUE(scheduler.queueEmpty());
+
+  testHelper.expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {{0}})
+      .expectSkipped(0)
+      .checkExpectations();
+
+  ASSERT_TRUE(testHelper.sharedState()->noTasksRunning());
+}
+
+// Regression test for https://arangodb.atlassian.net/browse/BTS-1325.
+// See https://github.com/arangodb/arangodb/pull/18729 for details.
+// A randomized variant of the test above, that might be able to find other
+// kinds of errors, but only sometimes catches the original bug.
+TEST_F(AsyncExecutorTest, sleepingBeautyRandom) {
   auto seed = std::random_device{}();
   auto gen = std::mt19937();
   gen.seed(seed);
+  // Make the seed available when the test fails, so a failure can be reproduced
+  // deterministically.
   RecordProperty("seed", seed);
   SCOPED_TRACE(fmt::format("seed={}", seed));
 
@@ -62,9 +129,12 @@ TEST_F(AsyncExecutorTest, sleepingBeauty) {
 
   auto* asyncBlock0 = dynamic_cast<ExecutionBlockImpl<AsyncExecutor>*>(
       testHelper.pipeline().get().at(0).get());
-  ASSERT_EQ(asyncBlock0->getPlanNode()->id().id(), 0);
   auto* asyncBlock1 = dynamic_cast<ExecutionBlockImpl<AsyncExecutor>*>(
       testHelper.pipeline().get().at(1).get());
+
+  // Having the nodes in a certain order (i.e. pipeline[0].id() == 0, and
+  // pipeline[1].id() == 1), makes reading profiles less confusing.
+  ASSERT_EQ(asyncBlock0->getPlanNode()->id().id(), 0);
   ASSERT_EQ(asyncBlock1->getPlanNode()->id().id(), 1);
 
   // one initial "wakeup" to start execution
