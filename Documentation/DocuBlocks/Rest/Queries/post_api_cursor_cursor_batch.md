@@ -36,7 +36,7 @@ application, it should explicitly delete the cursor to inform the server that it
 successfully received and processed the batch so that the server can free up
 resources.
 
-The time-to-live for the cursor will be renewed by this API call.
+The time-to-live for the cursor is renewed by this API call.
 
 @RESTRETURNCODES
 
