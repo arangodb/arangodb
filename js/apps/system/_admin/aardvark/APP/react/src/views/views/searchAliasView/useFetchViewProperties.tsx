@@ -1,16 +1,18 @@
 import { omit } from "lodash";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 
 import useSWR from "swr";
-import { SearchViewType } from "../viewsList/useViewsList";
 import { encodeHelper } from "../../../utils/encodeHelper";
+import {
+  ArangoSearchViewPropertiesType,
+  SearchAliasViewPropertiesType
+} from "../searchView.types";
 
-export interface ViewPropertiesType extends SearchViewType {
-  indexes: Array<{ collection: string; index: string }>;
-}
 export function useFetchViewProperties(name: string) {
-  const [view, setView] = useState<ViewPropertiesType | undefined>();
+  const [view, setView] = useState<
+    SearchAliasViewPropertiesType | ArangoSearchViewPropertiesType | undefined
+  >();
   const { encoded: encodedName } = encodeHelper(name);
   const { data, error, isLoading } = useSWR(
     `/view/${encodedName}/properties`,
@@ -30,7 +32,11 @@ export function useFetchViewProperties(name: string) {
 
   useEffect(() => {
     if (data) {
-      const viewState = omit(data.body, "error", "code") as ViewPropertiesType;
+      const viewState = omit(
+        data.body,
+        "error",
+        "code"
+      ) as SearchAliasViewPropertiesType;
       setView(viewState);
     }
   }, [data, name]);

@@ -1,14 +1,14 @@
 import { Box } from "@chakra-ui/react";
 import React from "react";
+import { SearchAliasViewPropertiesType } from "../searchView.types";
 import { SearchAliasProvider } from "./SearchAliasContext";
 import { SearchAliasHeader } from "./SearchAliasHeader";
 import { SearchAliasJsonForm } from "./SearchAliasJsonForm";
-import { ViewPropertiesType } from "./useFetchViewProperties";
 
 export const SearchAliasViewSettings = ({
   view
 }: {
-  view: ViewPropertiesType;
+  view: SearchAliasViewPropertiesType;
 }) => {
   return (
     <SearchAliasProvider initialView={view}>
