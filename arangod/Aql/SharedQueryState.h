@@ -52,7 +52,7 @@ class SharedQueryState final
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
   SharedQueryState(ArangodServer& server,
-                   SharedQueryState::Scheduler* scheduler = nullptr);
+                   SharedQueryState::SchedulerT* scheduler = nullptr);
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
@@ -153,7 +153,7 @@ class SharedQueryState final
 
  private:
   ArangodServer& _server;
-  SharedQueryState::Scheduler* _scheduler;
+  SharedQueryState::SchedulerT* _scheduler;
   mutable std::mutex _mutex;
   std::condition_variable _cv;
 
