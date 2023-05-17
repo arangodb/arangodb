@@ -1,5 +1,5 @@
-v3.11.0 (XXXX-XX-XX)
---------------------
+v3.11.0-rc.1 (2023-05-13)
+-------------------------
 
 * In batched query results, when executing requests for 
   `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user 
