@@ -306,10 +306,8 @@ function saveToJunitXML(options, results) {
       state.seenTestCases = false;
       state.xml = buildXml();
       state.xmlName = prefix + state.testRunName + '__' + makePathGeneric(testSuiteName).join('_');
-      let msg = "";
       let errors = 0;
       if (!testSuite.status && testSuite.hasOwnProperty('message')) {
-        msg = testSuite.message;
         errors = 1;
       }
       let elm = {
@@ -349,7 +347,7 @@ function saveToJunitXML(options, results) {
         state.xml.elem('/testcase');
       } else if (!state.seenTestCases) {
         const elem = addOptionalDuration({ name: 'all_tests_in_' + state.xmlName }, testSuite);
-        if (testSuite.failed !== 0 || testSuite.failed !== undefined) {
+        if (testSuite.failed !== 0 && testSuite.failed !== undefined) {
           elem['failures'] = testSuite.failed;
         } 
         state.xml.elem('testcase', elem, true);
@@ -1114,7 +1112,7 @@ function getGTestResults(fileName, defaultResults) {
   }
   let gTestResults = JSON.parse(fs.read(fileName));
   results.failed = gTestResults.failures + gTestResults.errors;
-  results.status = (gTestResults.errors === 0) || (gTestResults.failures === 0);
+  results.status = (gTestResults.errors === 0) && (gTestResults.failures === 0);
   gTestResults.testsuites.forEach(function (testSuite) {
     results[testSuite.name] = {
       failed: testSuite.failures + testSuite.errors,
@@ -1122,14 +1120,13 @@ function getGTestResults(fileName, defaultResults) {
       duration: parseFloat(testSuite.time) * 1000 // gtest writes sec, internally we have ms
     };
     if (testSuite.failures !== 0) {
-      let message = "";
-      testSuite.testsuite.forEach(function (suite) {
-        if (suite.hasOwnProperty('failures')) {
-          suite.failures.forEach(function (fail) {
-            message += fail.failure;
-          });
-        }
-      });
+      const message = testSuite.testsuite.flatMap(
+        suite => {
+          if (suite.hasOwnProperty('failures')) {
+            return suite.failures.map(fail => fail.failure).join("\n");
+          }
+          return [];
+        }).join("\n");
       results[testSuite.name].message = message;
     }
   });
