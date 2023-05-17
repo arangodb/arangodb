@@ -98,7 +98,13 @@ jobs:
           command: |
             git status
             git -C enterprise status
-            git diff --exit-code > /tmp/clang_format_outcome.txt || git -C enterprise diff --exit-code > /tmp/clang_format_outcome_enterprise.txt
+            git diff --exit-code > /tmp/clang_format_outcome.txt
+            community=$?
+            git -C enterprise diff --exit-code > /tmp/clang_format_outcome_enterprise.txt
+            enterprise=$?
+            if [ "$community" -ne "0" ] || [ "$enterprise" -ne "0" ]; then
+              exit 1
+            fi
       - store_artifacts:
           path: /tmp/clang_format_outcome.txt
           path: /tmp/clang_format_outcome_enterprise.txt
