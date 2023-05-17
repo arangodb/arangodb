@@ -2,7 +2,7 @@ import { pick } from "lodash";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 import { FormState } from "../constants";
-import { useSyncSearchViewUpdates } from "../searchAliasView/useSyncSearchViewUpdates";
+import { useSyncSearchViewUpdates } from "../useSyncSearchViewUpdates";
 
 export function usePatchArangoSearchView(
   view: FormState,
