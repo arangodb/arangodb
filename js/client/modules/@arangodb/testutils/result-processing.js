@@ -350,7 +350,7 @@ function saveToJunitXML(options, results) {
       } else if (!state.seenTestCases) {
         const elem = addOptionalDuration({ name: 'all_tests_in_' + state.xmlName }, testSuite);
         if (testSuite.failed !== 0 || testSuite.failed !== undefined) {
-          elem['failures'] = testSuite.failures;
+          elem['failures'] = testSuite.failed;
         } 
         state.xml.elem('testcase', elem, true);
       }
@@ -1105,6 +1105,37 @@ function getFailedTestCases(options) {
   }
 }
 
+function getGTestResults(fileName, defaultResults) {
+  let results = defaultResults;
+  if (!fs.exists(fileName)) {
+    defaultResults.failed += 1;
+    print(RED + "No testresult file found at: " + fileName + RESET);
+    return defaultResults;
+  }
+  let gTestResults = JSON.parse(fs.read(fileName));
+  results.failed = gTestResults.failures + gTestResults.errors;
+  results.status = (gTestResults.errors === 0) || (gTestResults.failures === 0);
+  gTestResults.testsuites.forEach(function (testSuite) {
+    results[testSuite.name] = {
+      failed: testSuite.failures + testSuite.errors,
+      status: (testSuite.failures + testSuite.errors) === 0,
+      duration: parseFloat(testSuite.time)
+    };
+    if (testSuite.failures !== 0) {
+      let message = "";
+      testSuite.testsuite.forEach(function (suite) {
+        if (suite.hasOwnProperty('failures')) {
+          suite.failures.forEach(function (fail) {
+            message += fail.failure;
+          });
+        }
+      });
+      results[testSuite.name].message = message;
+    }
+  });
+  return results;
+}
+
 exports.gatherStatus = gatherStatus;
 exports.gatherFailed = gatherFailed;
 exports.yamlDumpResults = yamlDumpResults;
@@ -1113,6 +1144,7 @@ exports.dumpAllResults = dumpAllResults;
 exports.writeDefaultReports = writeDefaultReports;
 exports.writeReports = writeReports;
 exports.getFailedTestCases = getFailedTestCases;
+exports.getGTestResults = getGTestResults;
 
 exports.analyze = {
   unitTestPrettyPrintResults: unitTestPrettyPrintResults,
