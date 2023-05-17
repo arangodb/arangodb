@@ -54,6 +54,8 @@ class TelemetricsHandler {
 
   void beginShutdown();
 
+  void joinThread();
+
   void getTelemetricsInfo(velocypack::Builder& builder);
 
   velocypack::Builder sendTelemetricsToEndpoint(std::string const& reqUrl);
