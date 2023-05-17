@@ -1119,7 +1119,7 @@ function getGTestResults(fileName, defaultResults) {
     results[testSuite.name] = {
       failed: testSuite.failures + testSuite.errors,
       status: (testSuite.failures + testSuite.errors) === 0,
-      duration: parseFloat(testSuite.time)
+      duration: parseFloat(testSuite.time) * 1000 // gtest writes sec, internally we have ms
     };
     if (testSuite.failures !== 0) {
       let message = "";
