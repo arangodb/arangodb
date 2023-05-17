@@ -3,9 +3,13 @@ import React from "react";
 import { ChakraCustomProvider } from "../../theme/ChakraCustomProvider";
 import { useDisableNavBar } from "../../utils/useDisableNavBar";
 import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
-import { ViewSettings } from "./ViewSettings";
+import { ArangoSearchViewSettings } from "./arangoSearchView/ArangoSearchViewSettings";
 import { SearchAliasViewSettings } from "./searchAliasView/SearchAliasViewSettings";
 import { useFetchViewProperties } from "./searchAliasView/useFetchViewProperties";
+import {
+  ArangoSearchViewPropertiesType,
+  SearchAliasViewPropertiesType
+} from "./searchView.types";
 import { SearchViewsCustomStyleReset } from "./SearchViewsCustomStyleReset";
 
 export const ViewSettingsWrap = ({ name }: { name: string }) => {
@@ -19,16 +23,23 @@ export const ViewSettingsWrap = ({ name }: { name: string }) => {
     return (
       <ChakraCustomProvider overrideNonReact>
         <SearchViewsCustomStyleReset>
-          <SearchAliasViewSettings view={view} />
+          <SearchAliasViewSettings
+            view={view as SearchAliasViewPropertiesType}
+          />
         </SearchViewsCustomStyleReset>
       </ChakraCustomProvider>
     );
   }
-  return (
-    <ChakraCustomProvider overrideNonReact>
-      <SearchViewsCustomStyleReset>
-        <ViewSettings name={name} />
-      </SearchViewsCustomStyleReset>
-    </ChakraCustomProvider>
-  );
+  if (view?.type === "arangosearch") {
+    return (
+      <ChakraCustomProvider overrideNonReact>
+        <SearchViewsCustomStyleReset>
+          <ArangoSearchViewSettings
+            view={view as ArangoSearchViewPropertiesType}
+          />
+        </SearchViewsCustomStyleReset>
+      </ChakraCustomProvider>
+    );
+  }
+  return null;
 };
