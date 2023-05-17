@@ -98,7 +98,7 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   ExecutionState _returnState = ExecutionState::HASMORE;
   AsyncState _internalState = AsyncState::Empty;
   int _numWakeupsQueued = 0;
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   std::function<void()> _failureCallback;
 #endif
 };

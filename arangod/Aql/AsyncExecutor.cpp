@@ -114,9 +114,11 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
         try {
           auto [state, skip, block] = _dependencies[0]->execute(stack);
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
           if (_failureCallback) {
             _failureCallback();
           }
+#endif
 
           if (isAsync) {
             guard.lock();
