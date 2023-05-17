@@ -50,6 +50,9 @@ function UpdateConsistencyArangoSearchView() {
       c.save({_key: "279974", value: 0, flag: true});
       db._createView(view, "arangosearch", {links: {testUpdate: {includeAllFields: true}}});
 
+      // Run waitForSync query for view index initialization
+      db._query("FOR d IN " + view + " SEARCH d.value >= 0 OPTIONS { waitForSync: true } RETURN d");
+      
       for (let j = 1; j < 1000; j++) {
         // print("Iteration " + j);
         let oldLen = db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray().length;
@@ -67,6 +70,9 @@ function UpdateConsistencyArangoSearchView() {
       c.save({_key: "279974", value: 345, flag: true});
       db._createView(view, "arangosearch", {links: {testUpdate: {"fields": {"value": {"analyzers": ["identity"]}}}}});
 
+      // Run waitForSync query for view index initialization
+      db._query("FOR d IN " + view + " SEARCH d.value >= 0 OPTIONS { waitForSync: true } RETURN d");      
+
       for (let j = 0; j < 100; j++) {
         let oldLen = db._query("FOR d IN " + view + " SEARCH d.value == 345 RETURN d").toArray().length;
         assertEqual(oldLen, 1);
@@ -82,6 +88,9 @@ function UpdateConsistencyArangoSearchView() {
       c.save({_key: "279974", value: 345, unlinkedField: 456, flag: true});
       db._createView(view, "arangosearch", {links: {testUpdate: {"fields": {"value": {"analyzers": ["identity"]}}}}});
 
+      // Run waitForSync query for view index initialization
+      db._query("FOR d IN " + view + " SEARCH d.value >= 0 OPTIONS { waitForSync: true } RETURN d");      
+      
       for (let j = 0; j < 100; j++) {
         let oldLen = db._query("FOR d IN " + view + " SEARCH d.value == 345 RETURN d").toArray().length;
         assertEqual(oldLen, 1);
@@ -113,6 +122,9 @@ function UpdateConsistencyArangoSearchView() {
         insertedDocs.push(db[`testUpdate${i}`].insert(documents));
         v.properties({links: {[`testUpdate${i}`]: {includeAllFields: true}}});
       }
+
+      // Run waitForSync query for view index initialization
+      db._query("FOR d IN " + view + " SEARCH d.value >= 0 OPTIONS { waitForSync: true } RETURN d");
 
       for (let j = 1; j < 100; j++) {
         let oldLen = db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray().length;
@@ -163,6 +175,9 @@ function UpdateConsistencySearchAliasView() {
       v = db._view(view);
       v.properties({indexes: [{collection: "testUpdate", index: "inverted_index"}]});
 
+      // Run waitForSync query for view index initialization
+      db._query("FOR d IN " + view + " SEARCH d.value >= 0 OPTIONS { waitForSync: true } RETURN d");
+      
       for (let j = 0; j < 100; j++) {
         let oldLen = db._query("FOR d IN " + view + " SEARCH d.value == 345 RETURN d").toArray().length;
         assertEqual(oldLen, 1);
@@ -178,6 +193,9 @@ function UpdateConsistencySearchAliasView() {
       v = db._view(view);
       v.properties({indexes: [{collection: "testUpdate", index: "inverted_index"}]});
 
+      // Run waitForSync query for view index initialization
+      db._query("FOR d IN " + view + " SEARCH d.value >= 0 OPTIONS { waitForSync: true } RETURN d");
+            
       for (let j = 0; j < 100; j++) {
         let oldLen = db._query("FOR d IN " + view + " SEARCH d.value == 345 RETURN d").toArray().length;
         assertEqual(oldLen, 1);
@@ -211,8 +229,9 @@ function UpdateConsistencySearchAliasView() {
         v.properties({indexes: [{collection: `testUpdate${i}`, index: "inverted_index"}]});
       }
 
-      // wait for search-alias view index initialization
-      db._query("RETURN SLEEP(2)")
+      // Run waitForSync query for view index initialization
+      db._query("FOR d IN " + view + " SEARCH d.value >= 0 OPTIONS { waitForSync: true } RETURN d");
+
       for (let j = 1; j < 100; j++) {
         let oldLen = db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray().length;
         // print(db._query("FOR d IN " + view + " SEARCH d.value >= 0 RETURN d").toArray());
