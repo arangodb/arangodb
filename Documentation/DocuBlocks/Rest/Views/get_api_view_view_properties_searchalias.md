@@ -1,7 +1,7 @@
-@startDocuBlock get_api_view_view_properties
+@startDocuBlock get_api_view_view_properties_searchalias
 @brief reads the properties of the specified View
 
-@RESTHEADER{GET /_api/view/{view-name}/properties, Read properties of a View, getViewProperties}
+@RESTHEADER{GET /_api/view/{view-name}/properties#searchalias, Read properties of a View, getViewPropertiesSearchAlias}
 
 @RESTURLPARAMETERS
 
@@ -27,22 +27,23 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 
 Using an identifier:
 
-@EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesIdentifierArangoSearch}
+@EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesIdentifierSearchAlias}
     var coll = db._create("books");
-    var view = db._createView("products", "arangosearch", { links: { books: { fields: { title: { analyzers: ["text_en"] } } } } });
+    var idx = coll.ensureIndex({ type: "inverted", name: "inv-idx", fields: [ { field: "title", analyzer: "text_en" } ] });
+    var view = db._createView("products", "search-alias", { indexes: [ { collection: "books", index: "inv-idx" } ] });
 
     var url = "/_api/view/"+ view._id + "/properties";
     var response = logCurlRequest('GET', url);
     assert(response.code === 200);
     logJsonResponse(response);
 
-    addIgnoreCollection("books");
     addIgnoreView("products");
+    addIgnoreCollection("books");    
 @END_EXAMPLE_ARANGOSH_RUN
 
 Using a name:
 
-@EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesNameArangoSearch}
+@EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesNameSearchAlias}
     var url = "/_api/view/products/properties";
     var response = logCurlRequest('GET', url);
     assert(response.code === 200);
@@ -50,6 +51,6 @@ Using a name:
 
     removeIgnoreCollection("books");
     removeIgnoreView("products");
-    db._dropView("products", true);
+    db._dropView(viewName, true);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
