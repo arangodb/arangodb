@@ -27,7 +27,7 @@ done
 # and maybe should be moved otherplace
 find $PATHS \
   \( -name '*.cpp' -o -name '*.hpp' -o -name '*.tpp' \) \
-  \! -wholename lib/Basics/sdt.hpp \
+  \! -wholename "lib/Basics/${RANDOM_PREFIX}_sdt.hpp" \
   -type f \
   -exec clang-format -i {} \+
 
