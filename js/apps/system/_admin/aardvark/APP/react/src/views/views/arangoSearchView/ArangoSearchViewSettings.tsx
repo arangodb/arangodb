@@ -4,7 +4,7 @@ import React from "react";
 import { Split, SplitDivider } from "../../../components/split/Split";
 import { ArangoSearchViewPropertiesType } from "../searchView.types";
 import { ArangoSearchPropertiesProvider } from "./ArangoSearchContext";
-import { ArangoSearchForm } from "./ArangoSearchForm";
+import { ArangoSearchViewForm } from "./ArangoSearchForm";
 import { ArangoSearchJSONEditor } from "./ArangoSearchJSONEditor";
 
 export const ArangoSearchViewSettings = ({
@@ -43,7 +43,7 @@ export const ArangoSearchViewSettings = ({
                 const gutterProps = getGutterProps("column", 1);
                 return (
                   <Box display="grid" height="full" {...gridProps}>
-                    <ArangoSearchForm />
+                    <ArangoSearchViewForm />
                     <SplitDivider gutterProps={gutterProps} />
                     <ArangoSearchJSONEditor />
                   </Box>
