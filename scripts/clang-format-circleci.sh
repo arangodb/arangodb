@@ -4,7 +4,7 @@ PATHS="client-tools lib arangod tests enterprise/Enterprise enterprise/tests"
 
 echo "running clang-format -i for all files in $PATHS"
 
-set -xe
+set -e
 
 HEADERNAMES=$(mktemp)
 RANDOM_PREFIX=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-8} | head -n 1)
