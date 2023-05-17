@@ -42,6 +42,7 @@ respect to the `ttl`. The cursor will be removed on the server automatically
 after the specified amount of time. This is useful to ensure garbage collection
 of cursors that are not fully fetched by clients. If not set, a server-defined
 value will be used (default: 30 seconds).
+The time-to-live is renewed upon every access to the cursor.
 
 @RESTBODYPARAM{cache,boolean,optional,}
 flag to determine whether the AQL query results cache
