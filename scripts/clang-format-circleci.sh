@@ -4,10 +4,10 @@ PATHS="client-tools lib arangod tests enterprise/Enterprise enterprise/tests"
 
 echo "running clang-format -i for all files in $PATHS"
 
-set -e
+set -xe
 
-HEADERNAMES=`mktemp`
-RANDOM_PREFIX=`cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-8} | head -n 1`
+HEADERNAMES=$(mktemp)
+RANDOM_PREFIX=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-8} | head -n 1)
 
 clang-format --version
 
@@ -19,7 +19,7 @@ find $PATHS -iname \*.h > $HEADERNAMES
 
 for file in $(cat $HEADERNAMES) ;
 do
-  mv $file $(dirname $file)/$RANDOM_PREFIX_$(basename $file .h).hpp
+  mv $file $(dirname $file)/"$RANDOM_PREFIX"_"$(basename $file .h)".hpp
 done
 
 # excluding sdt.h fixes the clang-format job; sdt is
