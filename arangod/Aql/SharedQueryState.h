@@ -43,9 +43,9 @@ class SharedQueryState final
 // devirtualization. Use the Scheduler in google tests so it can be mocked or
 // faked.
 #ifndef ARANGODB_USE_GOOGLE_TESTS
-  using Scheduler = arangodb::SupervisedScheduler;
+  using SchedulerT = arangodb::SupervisedScheduler;
 #else
-  using Scheduler = arangodb::Scheduler;
+  using SchedulerT = arangodb::Scheduler;
 #endif
  public:
   SharedQueryState(SharedQueryState const&) = delete;

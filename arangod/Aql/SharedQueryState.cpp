@@ -37,7 +37,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 SharedQueryState::SharedQueryState(ArangodServer& server,
-                                   SharedQueryState::Scheduler* scheduler)
+                                   SharedQueryState::SchedulerT* scheduler)
     : _server(server),
       _scheduler(scheduler),
       _wakeupCb(nullptr),

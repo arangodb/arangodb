@@ -79,9 +79,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 // devirtualization. Use the Scheduler in google tests so it can be mocked or
 // faked.
 #ifndef ARANGODB_USE_GOOGLE_TESTS
-  using Scheduler = SupervisedScheduler;
+  using SchedulerT = SupervisedScheduler;
 #else
-  using Scheduler = Scheduler;
+  using SchedulerT = Scheduler;
 #endif
 
   /// @brief internal constructor, Used to construct a full query or a
@@ -97,7 +97,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
         QueryOptions options,
-        Query::Scheduler* scheduler = SchedulerFeature::SCHEDULER);
+        Query::SchedulerT* scheduler = SchedulerFeature::SCHEDULER);
 
   ~Query() override;
 
@@ -113,7 +113,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,
       QueryOptions options = {},
-      Query::Scheduler* scheduler = SchedulerFeature::SCHEDULER);
+      Query::SchedulerT* scheduler = SchedulerFeature::SCHEDULER);
 
   constexpr static uint64_t DontCache = 0;
 
