@@ -1041,6 +1041,16 @@ void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick,
   RocksDBIndex::afterTruncate(tick, trx);
 }
 
+Result RocksDBEdgeIndex::drop() {
+  Result res = RocksDBIndex::drop();
+
+  if (res.ok() && _estimator != nullptr) {
+    _estimator->freeMemory();
+  }
+
+  return res;
+}
+
 RocksDBCuckooIndexEstimatorType* RocksDBEdgeIndex::estimator() {
   return _estimator.get();
 }

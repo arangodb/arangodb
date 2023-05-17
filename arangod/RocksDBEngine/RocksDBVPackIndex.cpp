@@ -2717,6 +2717,16 @@ void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
   RocksDBIndex::afterTruncate(tick, trx);
 }
 
+Result RocksDBVPackIndex::drop() {
+  Result res = RocksDBIndex::drop();
+
+  if (res.ok() && _estimator != nullptr) {
+    _estimator->freeMemory();
+  }
+
+  return res;
+}
+
 std::shared_ptr<cache::Cache> RocksDBVPackIndex::makeCache() const {
   TRI_ASSERT(_cacheManager != nullptr);
   return _cacheManager->createCache<cache::VPackKeyHasher>(

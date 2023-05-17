@@ -122,7 +122,7 @@ class RocksDBCuckooIndexEstimator {
       return false;
     }
 
-    void increase() {
+    void increase() noexcept {
       if ((*counter()) < UINT32_MAX) {
         (*counter())++;
       }
@@ -139,7 +139,7 @@ class RocksDBCuckooIndexEstimator {
       std::swap(*counter(), cnt);
     }
 
-    void injectCounter(uint32_t* cnt) { _counter = cnt; }
+    void injectCounter(uint32_t* cnt) noexcept { _counter = cnt; }
   };
 
  public:
@@ -152,6 +152,10 @@ class RocksDBCuckooIndexEstimator {
   RocksDBCuckooIndexEstimator(RocksDBCuckooIndexEstimator const&) = delete;
   RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) =
       delete;
+
+  // free underlying memory. after that, the estimator will not carry out
+  // calls to insert/remove etc. anymore
+  void freeMemory();
 
   enum SerializeFormat : char {
     // Estimators are serialized in the following way:
@@ -316,7 +320,7 @@ class RocksDBCuckooIndexEstimator {
   }
 
   Slot findSlotNoCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp,
-                        bool& found) const {
+                        bool& found) const noexcept {
     found = false;
     Slot s = findSlotNoCuckoo(pos1, fp, found);
     if (found) {
@@ -335,7 +339,7 @@ class RocksDBCuckooIndexEstimator {
   // In order to create an empty slot this function tries to
   // cuckoo neighboring elements, if that does not succeed
   // it deletes a random element occupying a position.
-  Slot findSlotCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp) {
+  Slot findSlotCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp) noexcept {
     Slot firstEmpty(nullptr);
     bool foundEmpty = false;
 
@@ -465,7 +469,7 @@ class RocksDBCuckooIndexEstimator {
     return Slot{nullptr};
   }
 
-  Slot findSlot(uint64_t pos, uint64_t slot) const {
+  Slot findSlot(uint64_t pos, uint64_t slot) const noexcept {
     TRI_ASSERT(kSlotSize * (pos * kSlotsPerBucket + slot) <= _slotAllocSize);
     char* address = _base + kSlotSize * (pos * kSlotsPerBucket + slot);
     auto ret = reinterpret_cast<uint16_t*>(address);
@@ -484,7 +488,7 @@ class RocksDBCuckooIndexEstimator {
     return ((relevantBits < _size) ? relevantBits : (relevantBits - _size));
   }
 
-  uint16_t keyToFingerprint(Key const& k) const {
+  uint16_t keyToFingerprint(Key const& k) const noexcept {
     uint64_t hashfp = _fingerprint(k);
     uint16_t fingerprint =
         (uint16_t)((hashfp ^ (hashfp >> 16) ^ (hashfp >> 32) ^ (hashfp >> 48)) &
@@ -492,7 +496,8 @@ class RocksDBCuckooIndexEstimator {
     return (fingerprint ? fingerprint : 1);
   }
 
-  uint64_t _hasherPosFingerprint(uint64_t pos, uint16_t fingerprint) const {
+  uint64_t _hasherPosFingerprint(uint64_t pos,
+                                 uint16_t fingerprint) const noexcept {
     return ((pos << _sizeShift) ^ _hasherShort(fingerprint));
   }
 
@@ -508,6 +513,15 @@ class RocksDBCuckooIndexEstimator {
   void initializeDefault();
 
   void deriveSizesAndAlloc();
+
+  // used for calculating memory usage in _bfferedMemoryUsage
+  // approximate memory usage for top-level items
+  static constexpr uint64_t bufferedEntrySize() { return 40; }
+  // approximate memory usage for individual items in a top-level item
+  static constexpr uint64_t bufferedEntryItemSize() { return sizeof(uint64_t); }
+
+  void increaseMemoryUsage(uint64_t value) noexcept;
+  void decreaseMemoryUsage(uint64_t value) noexcept;
 
  private:               // member variables
   uint64_t _randState;  // pseudo random state for expunging
@@ -533,6 +547,7 @@ class RocksDBCuckooIndexEstimator {
   std::atomic<rocksdb::SequenceNumber> _appliedSeq;
   std::atomic<bool> _needToPersist;
 
+  uint64_t _memoryUsage;
   std::multimap<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
   std::multimap<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
   std::set<rocksdb::SequenceNumber> _truncateBuffer;
