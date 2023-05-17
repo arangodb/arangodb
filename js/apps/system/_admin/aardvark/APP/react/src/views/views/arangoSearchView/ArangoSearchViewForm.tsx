@@ -12,7 +12,7 @@ import { FormField } from "../../../components/form/FormField";
 
 import { useArangoSearchFieldsData } from "./useArangoSearchFieldsData";
 
-export const ArangoSearchForm = () => {
+export const ArangoSearchViewForm = () => {
   const { values } = useFormikContext();
   console.log("values", values);
   return (
