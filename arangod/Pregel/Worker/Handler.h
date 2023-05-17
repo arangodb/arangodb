@@ -111,6 +111,46 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         this->sender, this->self, message, dispatcher);
     changeState(std::move(newState));
 
+    this->state->responsibleActorPerShard = msg.responsibleActorPerShard;
+
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerLoadingStarted{});
+
+    auto graphLoaded = [this]() -> ResultT<conductor::message::GraphLoaded> {
+      try {
+        auto loader = std::make_shared<GraphLoader<V, E>>(
+            this->state->config, this->state->algorithm->inputFormat(), nullptr,
+            ActorLoadingUpdate{
+                .fn =
+                    [this](pregel::message::GraphLoadingUpdate update) -> void {
+                  this->template dispatch<pregel::message::StatusMessages>(
+                      this->state->statusActor, update);
+                }});
+        this->state->magazine = loader->load().get();
+
+        LOG_TOPIC("5206c", WARN, Logger::PREGEL)
+            << fmt::format("Worker {} has finished loading.", this->self);
+        return {conductor::message::GraphLoaded{
+            .executionNumber = this->state->config->executionNumber(),
+            .vertexCount = this->state->magazine.numberOfVertices(),
+            .edgeCount = this->state->magazine.numberOfEdges()}};
+      } catch (std::exception const& ex) {
+        return Result{
+            TRI_ERROR_INTERNAL,
+            fmt::format("caught exception when loading graph: {}", ex.what())};
+      } catch (...) {
+        return Result{TRI_ERROR_INTERNAL,
+                      "caught unknown exception when loading graph"};
+      }
+    };
+
+    this->template dispatch<conductor::message::ConductorMessages>(
+        this->state->conductor, graphLoaded());
+
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerLoadingFinished{});
     return std::move(this->state);
   }
 
@@ -135,20 +175,74 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   // ------ end computing ----
 
-  auto operator()([[maybe_unused]] message::Store message)
-      -> std::unique_ptr<WorkerState<V, E, M>> {
-    auto newState = this->state->executionState->receive(
-        this->sender, this->self, message, dispatcher);
-    changeState(std::move(newState));
+  auto operator()(message::Store msg) -> std::unique_ptr<WorkerState<V, E, M>> {
+    LOG_TOPIC("980d9", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} is storing", this->self);
+
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerStoringStarted{});
+
+    auto graphStored = [this]() -> ResultT<conductor::message::Stored> {
+      try {
+        auto storer = std::make_shared<GraphStorer<V, E>>(
+            this->state->config->executionNumber(),
+            *this->state->config->vocbase(), this->state->config->parallelism(),
+            this->state->algorithm->inputFormat(),
+            this->state->config->graphSerdeConfig(), nullptr,
+            ActorStoringUpdate{
+                .fn =
+                    [this](pregel::message::GraphStoringUpdate update) -> void {
+                  this->template dispatch<pregel::message::StatusMessages>(
+                      this->state->statusActor, update);
+                }});
+        storer->store(this->state->magazine).get();
+        return conductor::message::Stored{};
+      } catch (std::exception const& ex) {
+        return Result{
+            TRI_ERROR_INTERNAL,
+            fmt::format("caught exception when storing graph: {}", ex.what())};
+      } catch (...) {
+        return Result{TRI_ERROR_INTERNAL,
+                      "caught unknown exception when storing graph"};
+      }
+    };
+
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerStoringFinished{});
+
+    this->template dispatch<conductor::message::ConductorMessages>(
+        this->state->conductor, graphStored());
 
     return std::move(this->state);
   }
 
   auto operator()(message::ProduceResults message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    auto newState = this->state->executionState->receive(
-        this->sender, this->self, message, dispatcher);
-    changeState(std::move(newState));
+    auto getResults = [this, msg]() -> ResultT<PregelResults> {
+      try {
+        auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
+            msg.withID, this->state->config,
+            this->state->algorithm->inputFormat(), nullptr);
+        storer->store(this->state->magazine).get();
+        return PregelResults{*storer->stealResult()};
+      } catch (std::exception const& ex) {
+        return Result{TRI_ERROR_INTERNAL,
+                      fmt::format("caught exception when receiving results: {}",
+                                  ex.what())};
+      } catch (...) {
+        return Result{TRI_ERROR_INTERNAL,
+                      "caught unknown exception when receiving results"};
+      }
+    };
+    auto results = getResults();
+    this->template dispatch<pregel::message::ResultMessages>(
+        this->state->resultActor,
+        pregel::message::SaveResults{.results = {results}});
+    this->template dispatch<pregel::conductor::message::ConductorMessages>(
+        this->state->conductor,
+        pregel::conductor::message::ResultCreated{.results = {results}});
 
     return std::move(this->state);
   }

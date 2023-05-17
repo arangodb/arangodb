@@ -33,6 +33,7 @@
 #include "Pregel/GraphStore/GraphLoaderBase.h"
 #include "Pregel/GraphStore/LoadableVertexShard.h"
 #include "Pregel/IndexHelpers.h"
+#include "Pregel/PregelMetrics.h"
 #include "Pregel/StatusMessages.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
@@ -66,10 +67,12 @@ template<typename V, typename E>
 struct GraphLoader : GraphLoaderBase<V, E> {
   explicit GraphLoader(std::shared_ptr<WorkerConfig const> config,
                        std::shared_ptr<GraphFormat<V, E> const> graphFormat,
+                       std::shared_ptr<PregelMetrics> metrics,
                        LoadingUpdateCallback updateCallback)
       : graphFormat(graphFormat),
         resourceMonitor(GlobalResourceMonitor::instance()),
         config(config),
+        metrics(metrics),
         updateCallback(updateCallback) {}
   auto load() -> futures::Future<Magazine<V, E>> override;
 
@@ -83,6 +86,7 @@ struct GraphLoader : GraphLoaderBase<V, E> {
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   ResourceMonitor resourceMonitor;
   std::shared_ptr<WorkerConfig const> config;
+  std::shared_ptr<PregelMetrics> metrics;
   LoadingUpdateCallback updateCallback;
 
   std::atomic<uint64_t> currentIdBase;

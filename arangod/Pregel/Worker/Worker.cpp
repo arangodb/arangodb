@@ -150,7 +150,7 @@ void Worker<V, E, M>::setupWorker() {
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
 
   auto loader = std::make_shared<GraphLoader<V, E>>(
-      _config, _algorithm->inputFormat(),
+      _config, _algorithm->inputFormat(), _feature.metrics(),
       OldLoadingUpdate{.fn = _makeStatusCallback()});
 
   auto self = shared_from_this();
@@ -472,7 +472,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
       auto storer = std::make_shared<GraphStorer<V, E>>(
           _config->executionNumber(), *_config->vocbase(),
           _config->parallelism(), _algorithm->inputFormat(),
-          _config->graphSerdeConfig(),
+          _config->graphSerdeConfig(), _feature.metrics(),
           OldStoringUpdate{.fn = std::move(_makeStatusCallback())});
       _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
       storer->store(_magazine).thenFinal(
@@ -493,7 +493,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
-      withId, _config, _algorithm->inputFormat());
+      withId, _config, _algorithm->inputFormat(), _feature.metrics());
 
   storer->store(_magazine).get();
   return PregelResults{.results =

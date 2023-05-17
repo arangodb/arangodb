@@ -34,6 +34,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Futures/Future.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Gauge.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
 #include "Pregel/Algos/DMID/DMIDValue.h"
@@ -101,6 +102,7 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
         RequestLane::INTERNAL_LOW,
         [this, self, futureN, loadableShardIdx, myLoadableVertexShards,
          server]() -> Magazine<V, E> {
+          metrics->pregelNumberOfThreads->fetch_add(1);
           auto result = Magazine<V, E>{};
 
           LOG_PREGEL("8633a", WARN)
@@ -132,6 +134,7 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
               break;
             }
           }
+          metrics->pregelNumberOfThreads->fetch_sub(1);
           return result;
         }));
   }

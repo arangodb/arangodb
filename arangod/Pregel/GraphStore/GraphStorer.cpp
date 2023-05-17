@@ -41,6 +41,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/overload.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Gauge.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -186,6 +187,7 @@ auto GraphStorer<V, E>::store(Magazine<V, E> magazine)
   for (auto futureN = size_t{0}; futureN < parallelism; ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
         RequestLane::INTERNAL_LOW, [this, self, quiverIdx, magazine] {
+          metrics->pregelNumberOfThreads->fetch_add(1);
           while (true) {
             auto myCurrentQuiverIdx = quiverIdx->fetch_add(1);
             if (myCurrentQuiverIdx >= magazine.size()) {
@@ -195,6 +197,7 @@ auto GraphStorer<V, E>::store(Magazine<V, E> magazine)
             storeQuiver(magazine.quivers.at(myCurrentQuiverIdx));
           }
 
+          metrics->pregelNumberOfThreads->fetch_sub(1);
           return futures::Unit{};
         }));
   }

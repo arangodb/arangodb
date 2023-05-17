@@ -41,6 +41,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Pregel/GraphStore/GraphStorerBase.h"
 #include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/PregelMetrics.h"
 #include "Cluster/ClusterTypes.h"
 
 namespace arangodb::pregel {
@@ -54,11 +55,13 @@ template<typename V, typename E>
 struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
   explicit GraphVPackBuilderStorer(
       bool withId, std::shared_ptr<WorkerConfig> config,
-      std::shared_ptr<GraphFormat<V, E> const> graphFormat)
+      std::shared_ptr<GraphFormat<V, E> const> graphFormat,
+      std::shared_ptr<PregelMetrics> metrics)
       : result(std::make_unique<VPackBuilder>()),
         withId(withId),
         graphFormat(graphFormat),
-        config(config) {
+        config(config),
+        metrics(metrics) {
     result->openArray(/*unindexed*/ true);
   }
 
@@ -74,6 +77,7 @@ struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
 
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   std::shared_ptr<WorkerConfig const> config;
+  std::shared_ptr<PregelMetrics> metrics;
 };
 
 }  // namespace arangodb::pregel
