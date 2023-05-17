@@ -6,7 +6,7 @@ import { FormState } from "./constants";
 import CopyFromInput from "./forms/inputs/CopyFromInput";
 import { SaveArangoSearchViewButton } from "./arangoSearchView/SaveArangoSearchViewButton";
 import { EditableViewNameField } from "./searchAliasView/EditableViewNameField";
-import { ViewPropertiesType } from "./searchAliasView/useFetchViewProperties";
+import { SearchAliasViewPropertiesType } from "./searchView.types";
 
 export const ViewHeader = ({
   formState,
@@ -18,7 +18,7 @@ export const ViewHeader = ({
   name,
   setChanged
 }: {
-  formState: FormState;
+  formState: SearchAliasViewPropertiesType;
   updateName: (name: string) => void;
   isAdminUser: boolean;
   views: FormState[];
@@ -41,7 +41,7 @@ export const ViewHeader = ({
           isAdminUser={isAdminUser}
           isCluster={window.frontendConfig.isCluster}
           setCurrentName={updateName}
-          view={formState as ViewPropertiesType}
+          view={formState as SearchAliasViewPropertiesType}
         />
         {isAdminUser && views.length ? (
           <Box display="flex" alignItems="center">
