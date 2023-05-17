@@ -4,7 +4,7 @@ import React from "react";
 import { Split, SplitDivider } from "../../../components/split/Split";
 import { ArangoSearchViewPropertiesType } from "../searchView.types";
 import { ArangoSearchPropertiesProvider } from "./ArangoSearchContext";
-import { ArangoSearchViewForm } from "./ArangoSearchForm";
+import { ArangoSearchViewForm } from "./ArangoSearchViewForm";
 import { ArangoSearchJSONEditor } from "./ArangoSearchJSONEditor";
 
 export const ArangoSearchViewSettings = ({
