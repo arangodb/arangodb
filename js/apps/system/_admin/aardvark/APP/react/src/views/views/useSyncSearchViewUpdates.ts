@@ -1,6 +1,6 @@
 import { mutate } from "swr";
-import { useJobSync } from "../../../components/hooks/useJobSync";
-import { encodeHelper } from "../../../utils/encodeHelper";
+import { useJobSync } from "../../components/hooks/useJobSync";
+import { encodeHelper } from "../../utils/encodeHelper";
 
 export const useSyncSearchViewUpdates = ({
   viewName
