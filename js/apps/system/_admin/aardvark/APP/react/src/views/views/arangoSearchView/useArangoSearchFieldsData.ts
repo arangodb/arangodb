@@ -9,6 +9,7 @@ const arangoSearchFieldsMap = {
     group: "links"
   },
   writebufferIdle: {
+    isDisabled: true,
     label: "Writebuffer Idle",
     name: "writebufferIdle",
     type: "number",
@@ -17,6 +18,7 @@ const arangoSearchFieldsMap = {
       "Maximum number of writers (segments) cached in the pool (default: 64, use 0 to disable, immutable)."
   },
   writebufferActive: {
+    isDisabled: true,
     label: "Writebuffer Active",
     name: "writebufferActive",
     type: "number",
@@ -25,6 +27,7 @@ const arangoSearchFieldsMap = {
       "Maximum number of concurrent active writers (segments) that perform a transaction. Other writers (segments) wait till current active writers (segments) finish (default: 0, use 0 to disable, immutable)."
   },
   writebufferSizeMax: {
+    isDisabled: true,
     label: "Writebuffer Size Max",
     name: "writebufferSizeMax",
     type: "number",
@@ -98,6 +101,85 @@ const arangoSearchFields = [
   arangoSearchFieldsMap.consolidationPolicy
 ];
 
+// <FormField
+//           field={{
+//             name: "consolidationPolicy.segmentsMin",
+//             label: "Segments Min",
+//             type: "number",
+//             isDisabled: field.isDisabled,
+//             tooltip:
+//               "The minimum number of segments that will be evaluated as candidates for consolidation."
+//           }}
+//         />
+//         <FormField
+//           field={{
+//             name: "consolidationPolicy.segmentsMax",
+//             label: "Segments Max",
+//             type: "number",
+//             isDisabled: field.isDisabled,
+//             tooltip:
+//               "The maximum number of segments that will be evaluated as candidates for consolidation."
+//           }}
+//         />
+//         <FormField
+//           field={{
+//             name: "consolidationPolicy.segmentsBytesMax",
+//             label: "Segments Bytes Max",
+//             type: "number",
+//             isDisabled: field.isDisabled,
+//             tooltip:
+//               "Maximum allowed size of all consolidated segments in bytes."
+//           }}
+//         />
+//         <FormField
+//           field={{
+//             name: "consolidationPolicy.segmentsBytesFloor",
+//             label: "Segments Bytes Floor",
+//             type: "number",
+//             isDisabled: field.isDisabled,
+//             tooltip:
+//               "Defines the value (in bytes) to treat all smaller segments as equal for consolidation selection."
+//           }}
+//         />
+// ^ these should be stored in an array
+const tierConsolidationPolicyFields = [
+  {
+    name: "consolidationPolicy.segmentsMin",
+    label: "Segments Min",
+    type: "number",
+    tooltip:
+      "The minimum number of segments that will be evaluated as candidates for consolidation."
+  },
+  {
+    name: "consolidationPolicy.segmentsMax",
+    label: "Segments Max",
+    type: "number",
+    tooltip:
+      "The maximum number of segments that will be evaluated as candidates for consolidation."
+  },
+  {
+    name: "consolidationPolicy.segmentsBytesMax",
+    label: "Segments Bytes Max",
+    type: "number",
+    tooltip: "Maximum allowed size of all consolidated segments in bytes."
+  },
+  {
+    name: "consolidationPolicy.segmentsBytesFloor",
+    label: "Segments Bytes Floor",
+    type: "number",
+    tooltip:
+      "Defines the value (in bytes) to treat all smaller segments as equal for consolidation selection."
+  }
+];
+const bytesAccumConsolidationPolicyFields = [
+  {
+    name: "consolidationPolicy.threshold",
+    label: "Threshold",
+    type: "number",
+    tooltip:
+      "Consolidation is performed on segments which accumulated size in bytes is less than all segments’ byte size multiplied by the threshold."
+  }
+];
 const fieldSchema: any = Yup.object().shape({
   name: Yup.string().required(),
   inBackground: Yup.boolean(),
@@ -110,5 +192,9 @@ const fieldSchema: any = Yup.object().shape({
 });
 
 export const useArangoSearchFieldsData = () => {
-  return { fields: arangoSearchFields };
+  return {
+    fields: arangoSearchFields,
+    tierConsolidationPolicyFields,
+    bytesAccumConsolidationPolicyFields
+  };
 };
