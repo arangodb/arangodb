@@ -181,7 +181,7 @@
         extra: {name: name}
       };
 
-      if(!_.isEmpty(profileImg)) {
+      if (!_.isEmpty(profileImg)) {
         options.extra.img = profileImg;
       }
 
@@ -283,7 +283,7 @@
       tableContent.push(
         window.modalView.createTextEntry('newName', 'Name', '', false, 'Name', false)
       );
-      if(frontendConfig.db === '_system') {
+      if (frontendConfig.db === '_system') {
         tableContent.push(
           window.modalView.createTextEntry(
             'profileImg',
