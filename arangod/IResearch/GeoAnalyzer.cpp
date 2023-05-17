@@ -207,7 +207,7 @@ Result fromVelocyPack(velocypack::Slice object,
 }
 
 template<typename Analyzer>
-bool fromVelocyPackAnalyzer(irs::string_ref args,
+bool fromVelocyPackAnalyzer(std::string_view args,
                             typename Analyzer::Options& options) {
   auto const object = slice(args);
   Result r;
@@ -228,7 +228,7 @@ bool fromVelocyPackAnalyzer(irs::string_ref args,
 }
 
 template<typename Analyzer>
-bool normalizeImpl(irs::string_ref args, std::string& out) {
+bool normalizeImpl(std::string_view args, std::string& out) {
   typename Analyzer::Options options;
   if (!fromVelocyPackAnalyzer<Analyzer>(args, options)) {
     return false;
@@ -241,7 +241,7 @@ bool normalizeImpl(irs::string_ref args, std::string& out) {
 }
 
 template<typename Analyzer>
-irs::analysis::analyzer::ptr makeImpl(irs::string_ref args) {
+irs::analysis::analyzer::ptr makeImpl(std::string_view args) {
   typename Analyzer::Options options;
   if (!fromVelocyPackAnalyzer<Analyzer>(args, options)) {
     return {};
@@ -317,7 +317,7 @@ void toVelocyPack(velocypack::Builder& builder,
 
 GeoAnalyzer::GeoAnalyzer(irs::type_info const& type,
                          S2RegionTermIndexer::Options const& options)
-    : irs::analysis::analyzer{type}, _indexer{options}, _coverer{options} {}
+    : _indexer{options}, _coverer{options} {}
 
 bool GeoAnalyzer::next() noexcept {
   if (_begin >= _end) {
@@ -341,7 +341,7 @@ GeoJsonAnalyzerBase::GeoJsonAnalyzerBase(
                   S2Options(options.options, options.type != Type::SHAPE)},
       _type{options.type} {}
 
-bool GeoJsonAnalyzerBase::resetImpl(irs::string_ref value, bool legacy,
+bool GeoJsonAnalyzerBase::resetImpl(std::string_view value, bool legacy,
                                     geo::coding::Options options,
                                     Encoder* encoder) {
   auto const data = slice(value);
@@ -380,16 +380,16 @@ bool GeoJsonAnalyzerBase::resetImpl(irs::string_ref value, bool legacy,
   return true;
 }
 
-bool GeoVPackAnalyzer::normalize(irs::string_ref args, std::string& out) {
+bool GeoVPackAnalyzer::normalize(std::string_view args, std::string& out) {
   return normalizeImpl<GeoVPackAnalyzer>(args, out);
 }
 
-irs::analysis::analyzer::ptr GeoVPackAnalyzer::make(irs::string_ref args) {
+irs::analysis::analyzer::ptr GeoVPackAnalyzer::make(std::string_view args) {
   return makeImpl<GeoVPackAnalyzer>(args);
 }
 
-irs::bytes_ref GeoVPackAnalyzer::store(irs::token_stream* ctx,
-                                       velocypack::Slice slice) {
+irs::bytes_view GeoVPackAnalyzer::store(irs::token_stream* ctx,
+                                        velocypack::Slice slice) {
   TRI_ASSERT(ctx != nullptr);
   auto& impl = basics::downCast<GeoVPackAnalyzer>(*ctx);
   if (impl._type == Type::CENTROID) {
@@ -409,7 +409,7 @@ GeoVPackAnalyzer::GeoVPackAnalyzer(Options const& options)
     : GeoJsonAnalyzerBase{irs::type<GeoVPackAnalyzer>::get(), options},
       _legacy{options.legacy} {}
 
-bool GeoVPackAnalyzer::reset(irs::string_ref value) {
+bool GeoVPackAnalyzer::reset(std::string_view value) {
   return resetImpl(value, _legacy, geo::coding::Options::kInvalid, nullptr);
 }
 
@@ -418,11 +418,11 @@ void GeoVPackAnalyzer::prepare(GeoFilterOptionsBase& options) const {
   options.stored = _legacy ? StoredType::VPackLegacy : StoredType::VPack;
 }
 
-bool GeoPointAnalyzer::normalize(irs::string_ref args, std::string& out) {
+bool GeoPointAnalyzer::normalize(std::string_view args, std::string& out) {
   return normalizeImpl<GeoPointAnalyzer>(args, out);
 }
 
-irs::analysis::analyzer::ptr GeoPointAnalyzer::make(irs::string_ref args) {
+irs::analysis::analyzer::ptr GeoPointAnalyzer::make(std::string_view args) {
   return makeImpl<GeoPointAnalyzer>(args);
 }
 
@@ -467,7 +467,7 @@ bool GeoPointAnalyzer::parsePoint(velocypack::Slice json,
   return true;
 }
 
-bool GeoPointAnalyzer::reset(irs::string_ref value) {
+bool GeoPointAnalyzer::reset(std::string_view value) {
   if (!parsePoint(slice(value), _point)) {
     return false;
   }
@@ -476,8 +476,8 @@ bool GeoPointAnalyzer::reset(irs::string_ref value) {
   return true;
 }
 
-irs::bytes_ref GeoPointAnalyzer::store(irs::token_stream* ctx,
-                                       velocypack::Slice slice) {
+irs::bytes_view GeoPointAnalyzer::store(irs::token_stream* ctx,
+                                        velocypack::Slice slice) {
   TRI_ASSERT(ctx != nullptr);
   auto& impl = basics::downCast<GeoPointAnalyzer>(*ctx);
   // reuse already parsed point
@@ -494,11 +494,11 @@ irs::bytes_ref GeoPointAnalyzer::store(irs::token_stream* ctx,
 
 #ifdef USE_ENTERPRISE
 
-bool GeoS2Analyzer::normalize(irs::string_ref args, std::string& out) {
+bool GeoS2Analyzer::normalize(std::string_view args, std::string& out) {
   return normalizeImpl<GeoS2Analyzer>(args, out);
 }
 
-irs::analysis::analyzer::ptr GeoS2Analyzer::make(irs::string_ref args) {
+irs::analysis::analyzer::ptr GeoS2Analyzer::make(std::string_view args) {
   return makeImpl<GeoS2Analyzer>(args);
 }
 

@@ -54,7 +54,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "common.h"
-#include "utils/utf8_path.hpp"
 #include "velocypack/Parser.h"
 
 #include "IResearch/MakeViewSnapshot.h"
@@ -196,7 +195,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
                               *logicalCollection, *view)));
 
     auto before = PhysicalCollectionMock::before;
-    auto restore = irs::make_finally(
+    auto restore = irs::Finally(
         [&before]() noexcept { PhysicalCollectionMock::before = before; });
     PhysicalCollectionMock::before = []() -> void { throw std::exception(); };
 
@@ -260,12 +259,12 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
 
   size_t beforeCount = 0;
   auto before = PhysicalCollectionMock::before;
-  auto restore = irs::make_finally(
+  auto restore = irs::Finally(
       [&before]() noexcept { PhysicalCollectionMock::before = before; });
   PhysicalCollectionMock::before = [&beforeCount]() -> void { ++beforeCount; };
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+  createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
 
   auto logicalCollection = vocbase->createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
@@ -383,7 +382,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
         ci.uniqid() +
         1);  // +1 because LogicalView creation will generate a new ID
     std::string dataPath =
-        (((irs::utf8_path() /= server.testFilesystemPath()) /=
+        (((std::filesystem::path() /= server.testFilesystemPath()) /=
           std::string("databases")) /= std::string("arangosearch-123"))
             .string();
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -554,7 +553,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         "{ \"name\": \"testCollection\", \"id\":442 }");
 
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-    createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+    createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     std::vector<std::string> collections{logicalCollection->name()};
     EXPECT_TRUE(
@@ -668,7 +667,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         "{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } "
         "}");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-    createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+    createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_TRUE(
@@ -1164,7 +1163,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, "
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-    createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+    createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_NE(nullptr, logicalCollection);
     EXPECT_TRUE(
@@ -1304,7 +1303,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, "
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-    createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+    createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_NE(nullptr, logicalCollection);
@@ -1448,7 +1447,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, "
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-    createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+    createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_NE(nullptr, logicalCollection);
@@ -1598,7 +1597,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, "
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-    createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+    createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
     auto logicalCollection0 =
         vocbase->createCollection(collection0Json->slice());

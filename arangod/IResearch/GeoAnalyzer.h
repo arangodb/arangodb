@@ -95,16 +95,20 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
     std::vector<std::string> longitude;
   };
 
-  static constexpr irs::string_ref type_name() noexcept { return "geopoint"; }
-  static bool normalize(irs::string_ref args, std::string& out);
-  static irs::analysis::analyzer::ptr make(irs::string_ref args);
+  static constexpr std::string_view type_name() noexcept { return "geopoint"; }
+  static bool normalize(std::string_view args, std::string& out);
+  static irs::analysis::analyzer::ptr make(std::string_view args);
 
   // store point as [lng, lat] array to be GeoJSON compliant
-  static irs::bytes_ref store(irs::token_stream* ctx, velocypack::Slice slice);
+  static irs::bytes_view store(irs::token_stream* ctx, velocypack::Slice slice);
 
   explicit GeoPointAnalyzer(Options const& options);
 
-  bool reset(irs::string_ref value) final;
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<GeoPointAnalyzer>::id();
+  }
+
+  bool reset(std::string_view value) final;
 
   void prepare(GeoFilterOptionsBase& options) const final;
 
@@ -149,7 +153,7 @@ class GeoJsonAnalyzerBase : public GeoAnalyzer {
   explicit GeoJsonAnalyzerBase(irs::type_info const& type,
                                OptionsBase const& options);
 
-  bool resetImpl(irs::string_ref value, bool legacy,
+  bool resetImpl(std::string_view value, bool legacy,
                  geo::coding::Options options, Encoder* encoder);
 
   geo::ShapeContainer _shape;
@@ -166,15 +170,19 @@ class GeoVPackAnalyzer final : public GeoJsonAnalyzerBase {
     bool legacy{false};
   };
 
-  static constexpr irs::string_ref type_name() noexcept { return "geojson"; }
-  static bool normalize(irs::string_ref args, std::string& out);
-  static irs::analysis::analyzer::ptr make(irs::string_ref args);
+  static constexpr std::string_view type_name() noexcept { return "geojson"; }
+  static bool normalize(std::string_view args, std::string& out);
+  static irs::analysis::analyzer::ptr make(std::string_view args);
 
-  static irs::bytes_ref store(irs::token_stream* ctx, velocypack::Slice slice);
+  static irs::bytes_view store(irs::token_stream* ctx, velocypack::Slice slice);
 
   explicit GeoVPackAnalyzer(Options const& opts);
 
-  bool reset(irs::string_ref value) final;
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<GeoVPackAnalyzer>::id();
+  }
+
+  bool reset(std::string_view value) final;
 
   void prepare(GeoFilterOptionsBase& options) const final;
 
