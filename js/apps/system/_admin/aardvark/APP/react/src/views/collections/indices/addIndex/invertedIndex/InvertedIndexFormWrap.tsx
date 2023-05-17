@@ -1,8 +1,8 @@
 import { Box } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
-import { Split } from "../../../../../components/split/Split";
 import { IndexFormFieldProps } from "../IndexFormField";
+import { Split, SplitDivider } from "../../../../../components/split/Split";
 import { FormActions } from "../IndexFormFieldList";
 import { InvertedIndexProvider } from "./InvertedIndexContext";
 import { InvertedIndexFormJSONEditor } from "./InvertedIndexFormJSONEditor";
@@ -62,15 +62,7 @@ export const InvertedIndexForm = ({
                       isFormDisabled={isFormDisabled}
                       fields={fields}
                     />
-                    <Box
-                      gridRow="1/-1"
-                      backgroundColor="gray.300"
-                      cursor="col-resize"
-                      gridColumn="2"
-                      position="relative"
-                      {...gutterProps}
-                    ></Box>
-
+                    <SplitDivider gutterProps={gutterProps} />
                     <InvertedIndexFormJSONEditor
                       isFormDisabled={isFormDisabled}
                     />
