@@ -68,6 +68,7 @@ let optionsDocumentation = [
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
   '   - `skipGrey`: if set, grey tests are skipped.',
+  '   - `skipN`: skip the first N tests of the suite',
   '   - `onlyGrey`: if set, only grey tests are executed.',
   '   - `testBuckets`: split tests in to buckets and execute on, for example',
   '       10/2 will split into 10 buckets and execute the third bucket.',
@@ -223,6 +224,7 @@ const optionsDefaults = {
   'skipNightly': true,
   'skipNondeterministic': false,
   'skipGrey': false,
+  'skipN': false,
   'onlyGrey': false,
   'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
   'isSan': isSan,
@@ -501,6 +503,9 @@ function iterateTests(cases, options) {
   let results = {};
   let cleanup = true;
 
+  if (options.extremeVerbosity === true) {
+    internal.logLevel('V8=debug');
+  }
   if (options.failed) {
     // we are applying the failed filter -> only consider cases with failed tests
     cases = _.filter(cases, c => options.failed.hasOwnProperty(c));

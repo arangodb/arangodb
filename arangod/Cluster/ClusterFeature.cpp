@@ -791,8 +791,6 @@ void ClusterFeature::start() {
 
   auto const version = comm.version();
 
-  ServerState::instance()->setInitialized();
-
   std::string const endpoints =
       AsyncAgencyCommManager::INSTANCE->getCurrentEndpoint();
 

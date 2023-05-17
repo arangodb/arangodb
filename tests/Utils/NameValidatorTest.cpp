@@ -180,6 +180,17 @@ TEST(DatabaseNameValidatorTest, test_isAllowedName_traditionalNames) {
                    true, false, std::string_view("a\f"))
                    .ok());
 
+  // spaces
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::validateName(
+                   true, false, std::string_view(" a"))
+                   .ok());
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::validateName(
+                   true, false, std::string_view("a "))
+                   .ok());
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::validateName(
+                   true, false, std::string_view("a  b"))
+                   .ok());
+
   // unicode
   EXPECT_FALSE(arangodb::DatabaseNameValidator::validateName(
                    true, false, std::string_view("mötör"))
@@ -341,6 +352,17 @@ TEST(DatabaseNameValidatorTest, test_isAllowedName_extendedNames) {
                    true, true, std::string_view("a\f"))
                    .ok());
 
+  // spaces
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::validateName(
+                   true, true, std::string_view(" a"))
+                   .ok());
+  EXPECT_FALSE(arangodb::DatabaseNameValidator::validateName(
+                   true, true, std::string_view("a "))
+                   .ok());
+  EXPECT_TRUE(arangodb::DatabaseNameValidator::validateName(
+                  true, true, std::string_view("a  b"))
+                  .ok());
+
   // unicode
   EXPECT_TRUE(arangodb::DatabaseNameValidator::validateName(
                   true, true, std::string_view("mötör"))
@@ -465,6 +487,17 @@ TEST(CollectionNameValidatorTest, test_isAllowedName_traditionalNames) {
                    true, false, std::string_view("a\0b", 3))
                    .ok());
 
+  // spaces
+  EXPECT_FALSE(arangodb::CollectionNameValidator::validateName(
+                   true, false, std::string_view(" a"))
+                   .ok());
+  EXPECT_FALSE(arangodb::CollectionNameValidator::validateName(
+                   true, false, std::string_view("a "))
+                   .ok());
+  EXPECT_FALSE(arangodb::CollectionNameValidator::validateName(
+                   true, false, std::string_view("a  b"))
+                   .ok());
+
   // unicode
   EXPECT_FALSE(arangodb::CollectionNameValidator::validateName(
                    true, false, std::string_view("mötör"))
@@ -561,7 +594,7 @@ TEST(CollectionNameValidatorTest, test_isAllowedName_extendedNames) {
 
   // special characters
   EXPECT_TRUE(arangodb::CollectionNameValidator::validateName(
-                  true, true, std::string_view(" a + & ? = abc "))
+                  true, true, std::string_view("a + & ? = abc"))
                   .ok());
   EXPECT_TRUE(arangodb::CollectionNameValidator::validateName(
                   true, true, std::string_view("<script>alert(1);"))
@@ -596,6 +629,17 @@ TEST(CollectionNameValidatorTest, test_isAllowedName_extendedNames) {
                   .ok());
   EXPECT_TRUE(arangodb::CollectionNameValidator::validateName(
                   true, true, std::string_view("a.b.c"))
+                  .ok());
+
+  // spaces
+  EXPECT_FALSE(arangodb::CollectionNameValidator::validateName(
+                   true, true, std::string_view(" a"))
+                   .ok());
+  EXPECT_FALSE(arangodb::CollectionNameValidator::validateName(
+                   true, true, std::string_view("a "))
+                   .ok());
+  EXPECT_TRUE(arangodb::CollectionNameValidator::validateName(
+                  true, true, std::string_view("a  b"))
                   .ok());
 
   // unicode
@@ -705,6 +749,17 @@ TEST(IndexNameValidatorTest, test_isAllowedName_traditionalNames) {
       arangodb::IndexNameValidator::validateName(false, std::string_view("/\\"))
           .ok());
 
+  // spaces
+  EXPECT_FALSE(
+      arangodb::IndexNameValidator::validateName(false, std::string_view(" a"))
+          .ok());
+  EXPECT_FALSE(
+      arangodb::IndexNameValidator::validateName(false, std::string_view("a "))
+          .ok());
+  EXPECT_FALSE(arangodb::IndexNameValidator::validateName(
+                   false, std::string_view("a  b"))
+                   .ok());
+
   // unicode
   EXPECT_FALSE(arangodb::IndexNameValidator::validateName(
                    false, std::string_view("mötör"))
@@ -772,7 +827,7 @@ TEST(IndexNameValidatorTest, test_isAllowedName_extendedNames) {
 
   // special characters
   EXPECT_TRUE(arangodb::IndexNameValidator::validateName(
-                  true, std::string_view(" a + & ? = abc "))
+                  true, std::string_view("a + & ? = abc"))
                   .ok());
   EXPECT_TRUE(arangodb::IndexNameValidator::validateName(
                   true, std::string_view("<script>alert(1);"))
@@ -810,6 +865,17 @@ TEST(IndexNameValidatorTest, test_isAllowedName_extendedNames) {
   EXPECT_TRUE(arangodb::IndexNameValidator::validateName(
                   true, std::string_view("a.b.c"))
                   .ok());
+
+  // spaces
+  EXPECT_FALSE(
+      arangodb::IndexNameValidator::validateName(true, std::string_view(" a"))
+          .ok());
+  EXPECT_FALSE(
+      arangodb::IndexNameValidator::validateName(true, std::string_view("a "))
+          .ok());
+  EXPECT_TRUE(
+      arangodb::IndexNameValidator::validateName(true, std::string_view("a  b"))
+          .ok());
 
   // unicode
   EXPECT_TRUE(arangodb::IndexNameValidator::validateName(
@@ -1188,6 +1254,17 @@ TEST(ViewNameValidatorTest, test_isAllowedName_traditionalNames) {
                    true, false, std::string_view("a\0b", 3))
                    .ok());
 
+  // spaces
+  EXPECT_FALSE(arangodb::ViewNameValidator::validateName(true, false,
+                                                         std::string_view(" a"))
+                   .ok());
+  EXPECT_FALSE(arangodb::ViewNameValidator::validateName(true, false,
+                                                         std::string_view("a "))
+                   .ok());
+  EXPECT_FALSE(arangodb::ViewNameValidator::validateName(
+                   true, false, std::string_view("a  b"))
+                   .ok());
+
   // unicode
   EXPECT_FALSE(arangodb::ViewNameValidator::validateName(
                    true, false, std::string_view("mötör"))
@@ -1291,7 +1368,7 @@ TEST(ViewNameValidatorTest, test_isAllowedName_extendedNames) {
 
   // special characters
   EXPECT_TRUE(arangodb::ViewNameValidator::validateName(
-                  true, true, std::string_view(" a + & ? = abc "))
+                  true, true, std::string_view("a + & ? = abc"))
                   .ok());
   EXPECT_TRUE(arangodb::ViewNameValidator::validateName(
                   true, true, std::string_view("<script>alert(1);"))
@@ -1329,6 +1406,17 @@ TEST(ViewNameValidatorTest, test_isAllowedName_extendedNames) {
                   .ok());
   EXPECT_TRUE(arangodb::ViewNameValidator::validateName(
                   true, true, std::string_view("a.b.c"))
+                  .ok());
+
+  // spaces
+  EXPECT_FALSE(arangodb::ViewNameValidator::validateName(true, true,
+                                                         std::string_view(" a"))
+                   .ok());
+  EXPECT_FALSE(arangodb::ViewNameValidator::validateName(true, true,
+                                                         std::string_view("a "))
+                   .ok());
+  EXPECT_TRUE(arangodb::ViewNameValidator::validateName(
+                  true, true, std::string_view("a  b"))
                   .ok());
 
   // unicode

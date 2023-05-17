@@ -34,6 +34,7 @@ export type InvertedIndexFieldType = {
   searchField?: boolean;
   includeAllFields?: boolean;
   trackListPositions?: boolean;
+  cache?: boolean;
   nested?: Omit<
     InvertedIndexFieldType,
     "includeAllFields" | "trackListPositions"
@@ -52,6 +53,7 @@ export type InvertedIndexValuesType = {
   primarySort?: {
     fields: PrimarySortFieldType[];
     compression: "lz4" | "none";
+    cache?: boolean;
   };
   storedValues?: {
     fields: string[];
@@ -65,6 +67,8 @@ export type InvertedIndexValuesType = {
   writebufferSizeMax?: number;
   consolidationPolicy?: ConsolidationPolicy;
   fields?: InvertedIndexFieldType[];
+  primaryKeyCache?: boolean;
+  cache?: boolean;
 };
 
 const initialValues: InvertedIndexValuesType = {
@@ -285,7 +289,8 @@ export const useCreateInvertedIndex = () => {
       name: values.name || undefined,
       primarySort: {
         compression: values.primarySort?.compression || "lz4",
-        fields: primarySortFields
+        fields: primarySortFields,
+        cache: values.primarySort?.cache
       },
       storedValues: storedValues
     });

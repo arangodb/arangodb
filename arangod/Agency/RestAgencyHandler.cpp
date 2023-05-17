@@ -231,9 +231,6 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start,
                               TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
               }
             })
-            .thenError<VPackException>([this](VPackException const& e) {
-              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-            })
             .thenError<std::exception>([this](std::exception const& e) {
               generateError(rest::ResponseCode::SERVER_ERROR,
                             TRI_ERROR_HTTP_SERVER_ERROR, e.what());

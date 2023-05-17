@@ -40,7 +40,6 @@ struct MessageStats {
   double superstepRuntimeSecs = 0;
 
   MessageStats() = default;
-  MessageStats(size_t s, size_t r) : sendCount(s), receivedCount(r) {}
   MessageStats(size_t s, size_t r, size_t memoryBytesUsedForMessages)
       : sendCount(s),
         receivedCount(r),
@@ -62,8 +61,6 @@ struct MessageStats {
     receivedCount = 0;
     superstepRuntimeSecs = 0;
   }
-
-  bool allMessagesProcessed() { return sendCount == receivedCount; }
 };
 template<typename Inspector>
 auto inspect(Inspector& f, MessageStats& x) {

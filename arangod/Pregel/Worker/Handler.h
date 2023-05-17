@@ -38,6 +38,9 @@
 #include "Pregel/ResultMessages.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/StatusMessages.h"
+#include "Pregel/MetricsMessages.h"
+#include "Pregel/Worker/VertexProcessor.h"
+#include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb::pregel::worker {
 
@@ -56,6 +59,11 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     // _feature.metrics()->pregelWorkersNumber->fetch_add(1);
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor, ResultT<conductor::message::WorkerCreated>{});
+
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerStarted{});
+
     return std::move(this->state);
   }
 
@@ -64,15 +72,15 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is loading", this->self);
 
-    this->state->outCache->setResponsibleActorPerShard(
-        msg.responsibleActorPerShard);
+    this->state->responsibleActorPerShard = msg.responsibleActorPerShard;
 
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerLoadingStarted{});
 
     auto graphLoaded = [this]() -> ResultT<conductor::message::GraphLoaded> {
       try {
-        auto loader = GraphLoader(
+        auto loader = std::make_shared<GraphLoader<V, E>>(
             this->state->config, this->state->algorithm->inputFormat(),
             ActorLoadingUpdate{
                 .fn =
@@ -80,7 +88,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                   this->template dispatch<pregel::message::StatusMessages>(
                       this->state->statusActor, update);
                 }});
-        this->state->magazine = loader.load().get();
+        this->state->magazine = loader->load().get();
 
         LOG_TOPIC("5206c", WARN, Logger::PREGEL)
             << fmt::format("Worker {} has finished loading.", this->self);
@@ -97,36 +105,30 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                       "caught unknown exception when loading graph"};
       }
     };
+
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor, graphLoaded());
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
+
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerLoadingFinished{});
     return std::move(this->state);
   }
 
   // ----- computing -----
 
   auto prepareGlobalSuperStep(message::RunGlobalSuperStep message) -> void {
-    // write cache becomes the readable cache
-    this->state->outCache->setDispatch(
-        [this](actor::ActorPID actor,
-               worker::message::PregelMessage message) -> void {
-          this->template dispatch<worker::message::WorkerMessages>(actor,
-                                                                   message);
-        });
-    TRI_ASSERT(this->state->readCache->containedMessageCount() == 0);
-    std::swap(this->state->readCache, this->state->writeCache);
     this->state->config->_globalSuperstep = message.gss;
     this->state->config->_localSuperstep = message.gss;
-    if (message.gss == 0) {
-      // now config.gss is set explicitely to 0 and the computation started
-      this->state->computationStarted = true;
-    }
 
     this->state->workerContext->_vertexCount = message.vertexCount;
     this->state->workerContext->_edgeCount = message.edgeCount;
     if (message.gss == 0) {
       this->state->workerContext->preApplication();
+    } else {
+      TRI_ASSERT(this->state->readCache->containedMessageCount() == 0);
+      // write cache becomes the readable cache
+      std::swap(this->state->readCache, this->state->writeCache);
     }
     this->state->workerContext->_writeAggregators->resetValues();
     this->state->workerContext->_readAggregators->setAggregatedValues(
@@ -134,87 +136,88 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->state->workerContext->preGlobalSuperstep(message.gss);
   }
 
-  void initializeVertexContext(VertexContext<V, E, M>* ctx) {
-    ctx->_gss = this->state->config->globalSuperstep();
-    ctx->_lss = this->state->config->localSuperstep();
-    ctx->_context = this->state->workerContext.get();
-    ctx->_readAggregators = this->state->workerContext->_readAggregators.get();
-  }
-
   [[nodiscard]] auto processVertices() -> VerticesProcessed {
-    // _feature.metrics()->pregelWorkersRunningNumber->fetch_add(1);
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    auto futures = std::vector<futures::Future<ActorVertexProcessorResult>>();
+    auto quiverIdx = std::make_shared<std::atomic<size_t>>(0);
 
-    double start = TRI_microtime();
+    for (auto futureN = size_t{0}; futureN < this->state->config->parallelism();
+         ++futureN) {
+      futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+          RequestLane::INTERNAL_LOW, [this, quiverIdx, futureN]() {
+            auto processor = ActorVertexProcessor<V, E, M>(
+                this->state->config, this->state->algorithm,
+                this->state->workerContext, this->state->messageCombiner,
+                this->state->messageFormat,
+                [this](actor::ActorPID actor,
+                       worker::message::PregelMessage message) -> void {
+                  this->template dispatch<worker::message::WorkerMessages>(
+                      actor, message);
+                },
+                this->state->responsibleActorPerShard);
 
-    InCache<M>* inCache = this->state->inCache.get();
-    OutCache<M>* outCache = this->state->outCache.get();
-    outCache->setBatchSize(this->state->messageBatchSize);
-    outCache->setLocalCache(inCache);
+            while (true) {
+              auto myCurrentQuiver = quiverIdx->fetch_add(1);
+              if (myCurrentQuiver >= this->state->magazine.size()) {
+                LOG_TOPIC("eef15", DEBUG, Logger::PREGEL) << fmt::format(
+                    "No more work left in vertex processor number {}", futureN);
+                break;
+              }
+              for (auto& vertex :
+                   *this->state->magazine.quivers.at(myCurrentQuiver)) {
+                auto messages = this->state->readCache->getMessages(
+                    vertex.shard(), vertex.key());
+                auto status = processor.process(&vertex, messages);
 
-    AggregatorHandler workerAggregator(this->state->algorithm.get());
+                if (status.verticesProcessed %
+                        Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+                    0) {
+                  this->template dispatch<pregel::message::StatusMessages>(
+                      this->state->statusActor,
+                      pregel::message::GlobalSuperStepUpdate{
+                          .gss = this->state->config->globalSuperstep(),
+                          .verticesProcessed = status.verticesProcessed,
+                          .messagesSent = status.messageStats.sendCount,
+                          .messagesReceived = status.messageStats.receivedCount,
+                          .memoryBytesUsedForMessages =
+                              status.messageStats.memoryBytesUsedForMessages});
+                }
+              }
+            }
 
-    std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
-        this->state->algorithm->createComputation(this->state->config));
-    initializeVertexContext(vertexComputation.get());
-    vertexComputation->_writeAggregators = &workerAggregator;
-    vertexComputation->_cache = outCache;
+            processor.outCache->flushMessages();
+            this->state->writeCache->mergeCache(
+                processor.localMessageCache.get());
 
-    size_t verticesProcessed = 0;
-    size_t activeCount = 0;
-    for (auto& quiver : this->state->magazine) {
-      for (auto& vertexEntry : *quiver) {
-        MessageIterator<M> messages = this->state->readCache->getMessages(
-            vertexEntry.shard(), vertexEntry.key());
-        this->state->messageStats.receivedCount += messages.size();
-        // _feature.metrics()->pregelMessagesReceived->count(
-        //     _readCache->containedMessageCount());
-        this->state->messageStats.memoryBytesUsedForMessages +=
-            messages.size() * sizeof(M);
-
-        if (messages.size() > 0 || vertexEntry.active()) {
-          vertexComputation->_vertexEntry = &vertexEntry;
-          vertexComputation->compute(messages);
-          if (vertexEntry.active()) {
-            activeCount++;
-          }
-        }
-
-        this->state->messageStats.sendCount = outCache->sendCount();
-        verticesProcessed++;
-        if (verticesProcessed %
-                Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
-            0) {
-          this->template dispatch<pregel::message::StatusMessages>(
-              this->state->statusActor,
-              pregel::message::GlobalSuperStepUpdate{
-                  .gss = this->state->config->globalSuperstep(),
-                  .verticesProcessed = verticesProcessed,
-                  .messagesSent = this->state->messageStats.sendCount,
-                  .messagesReceived = this->state->messageStats.receivedCount,
-                  .memoryBytesUsedForMessages =
-                      this->state->messageStats.memoryBytesUsedForMessages});
-        }
-      }
+            return processor.result();
+          }));
     }
 
-    outCache->flushMessages();
+    return futures::collectAll(std::move(futures))
+        .then([this](auto&& tryResults) {
+          auto verticesProcessed = VerticesProcessed{};
+          // TODO: exception handling
+          auto&& results = tryResults.get();
+          for (auto&& tryRes : results) {
+            // TODO: exception handling
+            auto&& res = tryRes.get();
 
-    this->state->writeCache->mergeCache(inCache);
-    // _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
+            this->state->workerContext->_writeAggregators->aggregateValues(
+                *res.workerAggregator);
+            this->state->messageStats.accumulate(res.messageStats);
+            // TODO why does the VertexProcessor not count receivedCount
+            // correctly?
+            this->state->messageStats.receivedCount =
+                this->state->readCache->containedMessageCount();
 
-    this->state->messageStats.superstepRuntimeSecs = TRI_microtime() - start;
-
-    auto out =
-        VerticesProcessed{.sendCountPerActor = outCache->sendCountPerActor(),
-                          .activeCount = activeCount};
-
-    inCache->clear();
-    outCache->clear();
-
-    this->state->workerContext->_writeAggregators->aggregateValues(
-        workerAggregator);
-
-    return out;
+            verticesProcessed.activeCount += res.activeCount;
+            for (auto const& [actor, count] : res.sendCountPerActor) {
+              verticesProcessed.sendCountPerActor[actor] += count;
+            }
+          }
+          return verticesProcessed;
+        })
+        .get();
   }
 
   [[nodiscard]] auto finishProcessing(VerticesProcessed verticesProcessed)
@@ -250,7 +253,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
           .receiver = actor, .sendCount = count});
     }
     auto gssFinishedEvent = conductor::message::GlobalSuperStepFinished{
-        this->state->messageStats,
+        this->state->messageStats.sendCount,
+        this->state->messageStats.receivedCount,
         sendCountList,
         verticesProcessed.activeCount,
         this->state->magazine.numberOfVertices(),
@@ -261,7 +265,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
     uint64_t tn = this->state->config->parallelism();
     uint64_t s = this->state->messageStats.sendCount / tn / 2UL;
-    this->state->messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
+    this->state->messageBatchSize = s > 1000 ? (size_t)s : 1000;
     this->state->messageStats.reset();
     LOG_TOPIC("a3dbf", TRACE, Logger::PREGEL)
         << fmt::format("Message batch size: {}", this->state->messageBatchSize);
@@ -271,8 +275,13 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   auto operator()(message::RunGlobalSuperStep message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    LOG_TOPIC("0f658", INFO, Logger::PREGEL)
-        << fmt::format("Worker Actor {} is computing", this->self);
+    LOG_TOPIC("0f658", INFO, Logger::PREGEL) << fmt::format(
+        "Worker Actor {} starts computing gss {}", this->self, message.gss);
+
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerGssStarted{.threadsAdded =
+                                                                 1});
 
     // check if worker is in expected gss (previous gss of conductor)
     if (message.gss != 0 &&
@@ -288,9 +297,15 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     }
 
     // check if worker received all messages send to it from other workers
-    // if not: send message back to itself such that in between it can receive
-    // missing messages
-    if (message.sendCount != this->state->writeCache->containedMessageCount()) {
+    // if not: send RunGlobalsuperstep back to itself such that in between it
+    // can receive missing messages
+    if (message.gss != 0 &&
+        message.sendCount != this->state->writeCache->containedMessageCount()) {
+      LOG_TOPIC("097be", WARN, Logger::PREGEL) << fmt::format(
+          "Worker Actor {} in gss {} is waiting for messages: received count "
+          "{} != send count {}",
+          this->self, this->state->config->_globalSuperstep, message.sendCount,
+          this->state->writeCache->containedMessageCount());
       if (not this->state->isWaitingForAllMessagesSince.has_value()) {
         this->state->isWaitingForAllMessagesSince =
             std::chrono::steady_clock::now();
@@ -316,14 +331,6 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->state->isWaitingForAllMessagesSince = std::nullopt;
 
     prepareGlobalSuperStep(std::move(message));
-
-    // resend all queued messages that were dedicatd to this gss
-    for (auto const& message : this->state->messagesForNextGss) {
-      this->template dispatch<worker::message::PregelMessage>(this->self,
-                                                              message);
-    }
-    this->state->messagesForNextGss.clear();
-
     auto verticesProcessed = processVertices();
     auto out = finishProcessing(verticesProcessed);
     this->template dispatch<conductor::message::ConductorMessages>(
@@ -331,37 +338,39 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         ResultT<conductor::message::GlobalSuperStepFinished>::success(
             std::move(out)));
 
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerGssFinished{
+            .threadsRemoved = 1,
+            .messagesSent = this->state->messageStats.sendCount,
+            .messagesReceived = this->state->messageStats.receivedCount});
+
     return std::move(this->state);
   }
 
   auto operator()(message::PregelMessage message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    LOG_TOPIC("80709", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor {} with gss {} received message for gss {}", this->self,
-        this->state->config->globalSuperstep(), message.gss);
-    if (message.gss != this->state->config->globalSuperstep() &&
-        message.gss != this->state->config->globalSuperstep() + 1) {
-      LOG_TOPIC("da39a", ERR, Logger::PREGEL)
-          << "Expected: " << this->state->config->globalSuperstep()
-          << " Got: " << message.gss;
-      this->template dispatch<conductor::message::ConductorMessages>(
-          this->state->conductor,
-          ResultT<conductor::message::GlobalSuperStepFinished>::error(
-              TRI_ERROR_BAD_PARAMETER, "Superstep out of sync"));
-    }
-    // queue message if read and write cache are not swapped yet, otherwise
-    // you will loose this message
-    if (message.gss == this->state->config->globalSuperstep() + 1 ||
-        // if config->gss == 0 and _computationStarted == false: read and
-        // write cache are not swapped yet, config->gss is currently 0 only
-        // due to its initialization
-        (this->state->config->globalSuperstep() == 0 &&
-         !this->state->computationStarted)) {
-      this->state->messagesForNextGss.push_back(message);
-    } else {
+    if (message.gss == this->state->config->globalSuperstep()) {
       this->state->writeCache->parseMessages(message);
+      return std::move(this->state);
     }
 
+    // if message is for next superstep, resend it (because this worker is
+    // still waiting for missing messages in current superstep)
+    if (message.gss == this->state->config->globalSuperstep() + 1) {
+      this->template dispatch<worker::message::WorkerMessages>(this->self,
+                                                               message);
+      return std::move(this->state);
+    }
+
+    // otherwise something bad happened
+    LOG_TOPIC("da39a", ERR, Logger::PREGEL)
+        << "Expected: " << this->state->config->globalSuperstep()
+        << " Got: " << message.gss;
+    this->template dispatch<conductor::message::ConductorMessages>(
+        this->state->conductor,
+        ResultT<conductor::message::GlobalSuperStepFinished>::error(
+            TRI_ERROR_BAD_PARAMETER, "Superstep out of sync"));
     return std::move(this->state);
   }
 
@@ -371,8 +380,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("980d9", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is storing", this->self);
 
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerStoringStarted{});
 
     auto graphStored = [this]() -> ResultT<conductor::message::Stored> {
       try {
@@ -380,7 +390,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
             this->state->config->executionNumber(),
             *this->state->config->vocbase(), this->state->config->parallelism(),
             this->state->algorithm->inputFormat(),
-            this->state->config->globalShardIDs(),
+            this->state->config->graphSerdeConfig(),
             ActorStoringUpdate{
                 .fn =
                     [this](pregel::message::GraphStoringUpdate update) -> void {
@@ -399,10 +409,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       }
     };
 
-    // TODO GORDO-1510
-    // _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
-
-    this->finish();
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerStoringFinished{});
 
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor, graphStored());
@@ -413,19 +422,10 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
   auto operator()(message::ProduceResults msg)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     auto getResults = [this, msg]() -> ResultT<PregelResults> {
-      std::function<void()> statusUpdateCallback = [] {
-        // TODO GORDO-1584 send update to status actor
-        // this->template dispatch<conductor::message::ConductorMessages>(
-        //     this->state->conductor,
-        //     conductor::message::StatusUpdate{
-        //         .executionNumber = this->state->config->executionNumber(),
-        //         .status = this->state->observeStatus()});
-      };
       try {
         auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
             msg.withID, this->state->config,
-            this->state->algorithm->inputFormat(),
-            std::move(statusUpdateCallback));
+            this->state->algorithm->inputFormat());
         storer->store(this->state->magazine).get();
         return PregelResults{*storer->stealResult()};
       } catch (std::exception const& ex) {
@@ -459,6 +459,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         this->state->spawnActor, pregel::message::SpawnCleanup{});
     this->template dispatch<pregel::conductor::message::ConductorMessages>(
         this->state->conductor, pregel::conductor::message::CleanupFinished{});
+    this->template dispatch<metrics::message::MetricsMessages>(
+        this->state->metricsActor,
+        arangodb::pregel::metrics::message::WorkerFinished{});
 
     return std::move(this->state);
   }

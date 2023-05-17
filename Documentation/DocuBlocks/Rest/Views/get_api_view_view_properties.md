@@ -28,34 +28,28 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 Using an identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesIdentifierArangoSearch}
-    var viewName = "products";
-    var viewType = "arangosearch";
+    var coll = db._create("books");
+    var view = db._createView("products", "arangosearch", { links: { books: { fields: { title: { analyzers: ["text_en"] } } } } });
 
-    var view = db._createView(viewName, viewType);
     var url = "/_api/view/"+ view._id + "/properties";
-
     var response = logCurlRequest('GET', url);
-
     assert(response.code === 200);
-
     logJsonResponse(response);
-    db._dropView(viewName);
+
+    addIgnoreCollection("books");
+    addIgnoreView("products");
 @END_EXAMPLE_ARANGOSH_RUN
 
 Using a name:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesNameArangoSearch}
-    var viewName = "products";
-    var viewType = "arangosearch";
-
-    var view = db._createView(viewName, viewType);
     var url = "/_api/view/products/properties";
-
     var response = logCurlRequest('GET', url);
-
     assert(response.code === 200);
-
     logJsonResponse(response);
-    db._dropView(viewName);
+
+    removeIgnoreCollection("books");
+    removeIgnoreView("products");
+    db._dropView("products", true);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

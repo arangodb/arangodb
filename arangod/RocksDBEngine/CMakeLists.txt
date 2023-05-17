@@ -86,7 +86,7 @@ if (USE_ENTERPRISE)
     arango_rclone)
 endif()
 
-if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND NOT BUILDING_FOR_ARM64)
+if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND ARCH_AMD64)
   target_compile_options(arango_rocksdb PUBLIC "-maes")
 endif ()
 

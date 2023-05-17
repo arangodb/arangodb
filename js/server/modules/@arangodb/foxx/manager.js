@@ -1142,6 +1142,7 @@ exports._createServiceBundle = createServiceBundle;
 exports._resetCache = () => GLOBAL_SERVICE_MAP.clear();
 exports._mountPoints = getMountPoints;
 exports.validateInstallUrl = validateInstallUrl;
+exports._getMyCoordinatorId = getMyCoordinatorId;
 
 // -------------------------------------------------
 // Exports from Foxx utils module
@@ -1158,7 +1159,6 @@ exports.listDevelopmentJson = utils.listDevelopmentJson;
 
 exports.available = store.available;
 exports.availableJson = store.availableJson;
-exports.getFishbowlStorage = store.getFishbowlStorage;
 exports.search = store.search;
 exports.searchJson = store.searchJson;
 exports.update = store.update;

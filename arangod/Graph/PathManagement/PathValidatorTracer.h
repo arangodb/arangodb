@@ -54,7 +54,7 @@ class PathValidatorTracer {
                       PathValidatorOptions opts);
   ~PathValidatorTracer();
 
-  auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
+  auto validatePath(typename PathStore::Step& step) -> ValidationResult;
   auto validatePath(
       typename PathStore::Step const& step,
       PathValidatorTracer<PathValidatorImplementation> const& otherValidator)

@@ -104,11 +104,13 @@
               }
 
               self.$el = $('#userBar');
+              var autoLoginEnabled = arangoHelper.getAutoLoginEnabled(autoLoginEnabled);
               self.$el.html(self.template.render({
                 img: img,
                 name: name,
                 username: username,
-                active: active
+                active: active,
+                autoLoginEnabled: autoLoginEnabled === 'true'
               }));
 
               self.delegateEvents();

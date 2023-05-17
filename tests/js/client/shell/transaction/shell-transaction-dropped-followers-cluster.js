@@ -239,6 +239,58 @@ function transactionDroppedFollowersSuite() {
         assertTrue(intermediateCommitsBefore[s] + 5 < intermediateCommitsAfter[s]);
       });
     },
+
+    testFollowerPrematureTrxAbort: function () {
+      db._create(cn, { numberOfShards: 20, replicationFactor: 3 });
+      const servers = [...new Set(Object.values(db._collection(cn).shards(true)).flat())];
+      const droppedFollowersBefore = getDroppedFollowers(servers);
+
+      // We have a query that results in a failure after the first 9000
+      // documents because of a bad key. This will cause the leaders to abort
+      // the transaction on the followers. However, the followers have
+      // transactions that are shared with leaders of other shards. If one of
+      // those leaders has not yet seen the error, then it will happily
+      // continue to replicate to that follower. But if the follower has
+      // already aborted the transaction, then it will reject the replication
+      // request. Previously this would cause the follower to be dropped, but
+      // now this should be handled gracefully.
+      for (let i = 0; i < 10; ++i) {
+        try {
+          db._query(`FOR i IN 1..10000 INSERT { _key: i >= 9000 ? '' : CONCAT('test', i), value: i } INTO ${cn}`);
+          fail();
+        } catch (err) {
+          assertEqual(arangodb.ERROR_ARANGO_DOCUMENT_KEY_BAD, err.errorNum);
+        }
+        assertEqual(0, db[cn].count());
+        const droppedFollowersAfter = getDroppedFollowers(servers);
+        assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      }
+    },
+
+    testFollowerPrematureTrxAbortStreamingTransaction: function () {
+      db._create(cn, { numberOfShards: 20, replicationFactor: 3 });
+      const servers = [...new Set(Object.values(db._collection(cn).shards(true)).flat())];
+      const droppedFollowersBefore = getDroppedFollowers(servers);
+
+      // Same as the test above, but using a streaming transaction.
+      for (let i = 0; i < 10; ++i) {
+        const trx = db._createTransaction({ collections: { write: [cn] } });
+        const col = trx.collection(cn);
+        assertEqual(0, col.count());
+        col.insert({});
+        try {
+          trx.query(`FOR i IN 1..10000 INSERT { _key: i >= 9000 ? '' : CONCAT('test', i), value: i } INTO ${cn}`);
+          fail();
+        } catch (err) {
+          assertEqual(arangodb.ERROR_ARANGO_DOCUMENT_KEY_BAD, err.errorNum);
+        }
+        assertTrue(col.count() > 0);
+        trx.abort();
+        assertEqual(0, db[cn].count());
+        const droppedFollowersAfter = getDroppedFollowers(servers);
+        assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      }
+    },
   };
 }
 

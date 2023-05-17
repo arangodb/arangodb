@@ -30,6 +30,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Pregel/GraphStore/GraphStorerBase.h"
 #include "Pregel/GraphStore/Magazine.h"
+#include "Pregel/GraphStore/GraphSerdeConfig.h"
 #include "Cluster/ClusterTypes.h"
 #include "Pregel/StatusMessages.h"
 #include "Pregel/Worker/WorkerConfig.h"
@@ -54,13 +55,13 @@ struct GraphStorer : GraphStorerBase<V, E> {
   explicit GraphStorer(ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
                        size_t parallelism,
                        std::shared_ptr<GraphFormat<V, E> const> graphFormat,
-                       std::vector<ShardID> globalShards,
+                       GraphSerdeConfig graphSerdeConfig,
                        StoringUpdateCallback updateCallback)
       : executionNumber(executionNumber),
         vocbaseGuard(vocbase),
         parallelism(parallelism),
         graphFormat(graphFormat),
-        globalShards(globalShards),
+        graphSerdeConfig(graphSerdeConfig),
         updateCallback(updateCallback) {}
 
   auto storeQuiver(std::shared_ptr<Quiver<V, E>> quiver) -> void;
@@ -71,7 +72,7 @@ struct GraphStorer : GraphStorerBase<V, E> {
   DatabaseGuard vocbaseGuard;
   size_t const parallelism = 1;
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
-  std::vector<ShardID> globalShards;
+  GraphSerdeConfig graphSerdeConfig;
   StoringUpdateCallback updateCallback;
 };
 

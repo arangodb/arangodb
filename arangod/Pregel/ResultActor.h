@@ -33,19 +33,66 @@
 
 namespace arangodb::pregel {
 
+struct PregelResult {
+  ResultT<PregelResults> results = {PregelResults{}};
+  std::atomic<bool> complete{false};
+  auto add(ResultT<PregelResults> moreResults, bool lastResult) -> void {
+    if (complete.load()) {
+      return;
+    }
+    if (results.fail()) {
+      return;
+    }
+    if (moreResults.fail()) {
+      results = moreResults;
+      complete.store(true);
+      return;
+    }
+
+    VPackBuilder newResultsBuilder;
+    {
+      VPackArrayBuilder ab(&newResultsBuilder);
+      // Add existing results to new builder
+      if (!results.get().results.isEmpty()) {
+        newResultsBuilder.add(
+            VPackArrayIterator(results.get().results.slice()));
+      }
+      // add new results from message to builder
+      newResultsBuilder.add(
+          VPackArrayIterator(moreResults.get().results.slice()));
+    }
+    results = {PregelResults{.results = std::move(newResultsBuilder)}};
+
+    if (lastResult) {
+      complete.store(true);
+    }
+  }
+  auto set(ResultT<PregelResults> moreResults) -> void {
+    results = moreResults;
+    complete.store(true);
+  }
+  auto get() -> std::optional<ResultT<PregelResults>> {
+    if (not complete.load()) {
+      return std::nullopt;
+    }
+    return results;
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, PregelResult& x) {
+  return f.object(x).fields(f.field("results", x.results));
+}
 struct ResultState {
   ResultState() = default;
   ResultState(TTL ttl) : ttl{ttl} {};
-  ResultT<PregelResults> results = {PregelResults{}};
-  bool complete{false};
+  std::shared_ptr<PregelResult> data = std::make_shared<PregelResult>();
   std::vector<actor::ActorPID> otherResultActors;
   TTL ttl;
   std::chrono::system_clock::time_point expiration;
 };
-
 template<typename Inspector>
 auto inspect(Inspector& f, ResultState& x) {
-  return f.object(x).fields(f.field("results", x.results));
+  return f.object(x).fields(f.field("data", x.data));
 }
 
 template<typename Runtime>
@@ -70,49 +117,17 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
     return std::move(this->state);
   }
 
-  auto operator()(message::SaveResults start) -> std::unique_ptr<ResultState> {
-    this->state->results = {start.results};
-    this->state->complete = true;
+  auto operator()(message::SaveResults msg) -> std::unique_ptr<ResultState> {
+    this->state->data->set(msg.results);
     setExpiration();
     return std::move(this->state);
   }
 
   auto operator()(message::AddResults msg) -> std::unique_ptr<ResultState> {
-    if (this->state->complete) {
-      return std::move(this->state);
-    }
-
-    if (this->state->results.fail()) {
-      return std::move(this->state);
-    }
-
-    if (msg.results.fail()) {
-      this->state->results = msg.results;
-      this->state->complete = true;
-      setExpiration();
-      return std::move(this->state);
-    }
-
-    VPackBuilder newResultsBuilder;
-    {
-      VPackArrayBuilder ab(&newResultsBuilder);
-      // Add existing results to new builder
-      if (!msg.results.get().results.isEmpty()) {
-        newResultsBuilder.add(
-            VPackArrayIterator(msg.results.get().results.slice()));
-      }
-      // add new results from message to builder
-      newResultsBuilder.add(
-          VPackArrayIterator(msg.results.get().results.slice()));
-    }
-    this->state->results = {
-        PregelResults{.results = std::move(newResultsBuilder)}};
-
-    if (msg.receivedAllResults) {
-      this->state->complete = true;
+    this->state->data->add(msg.results, msg.receivedAllResults);
+    if (this->state->data->complete.load()) {
       setExpiration();
     }
-
     return std::move(this->state);
   }
 
