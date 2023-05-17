@@ -40,6 +40,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterTraverser.h"
+#include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Cluster/SmartGraphTraverser.h"
@@ -1093,10 +1094,20 @@ void TraversalNode::checkConditionsDefined() const {
 #endif
 
 void TraversalNode::validateCollections() const {
+  if (!ServerState::instance()->isSingleServerOrCoordinator()) {
+    // validation must happen on single/coordinator.
+    // DB servers only see shard names here
+    return;
+  }
   auto* g = graph();
   if (g == nullptr) {
     // list of edge collections
     for (auto const& it : options()->edgeCollections) {
+      if (_edgeAliases.find(it) != _edgeAliases.end()) {
+        // SmartGraph edge collection. its real name is contained
+        // in the aliases list
+        continue;
+      }
       if (std::find_if(_edgeColls.begin(), _edgeColls.end(),
                        [&it](aql::Collection const* c) {
                          return c->name() == it;
