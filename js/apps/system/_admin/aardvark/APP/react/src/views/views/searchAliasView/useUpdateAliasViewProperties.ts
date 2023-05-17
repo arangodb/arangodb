@@ -2,7 +2,7 @@ import { differenceWith, isEqual } from "lodash";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
-import { ViewPropertiesType } from "./useFetchViewProperties";
+import { SearchAliasViewPropertiesType } from "../searchView.types";
 
 export const useUpdateAliasViewProperties = ({
   setChanged
@@ -13,8 +13,8 @@ export const useUpdateAliasViewProperties = ({
     view,
     initialView
   }: {
-    view: ViewPropertiesType;
-    initialView: ViewPropertiesType;
+    view: SearchAliasViewPropertiesType;
+    initialView: SearchAliasViewPropertiesType;
   }) => {
     try {
       const isNameChanged =
@@ -77,9 +77,9 @@ async function patchViewProperties({
   initialView,
   setChanged
 }: {
-  view: ViewPropertiesType;
+  view: SearchAliasViewPropertiesType;
   isNameChanged: boolean;
-  initialView: ViewPropertiesType;
+  initialView: SearchAliasViewPropertiesType;
   setChanged: (changed: boolean) => void;
 }) {
   const encodedViewName = encodeHelper(view.name).encoded;
@@ -115,8 +115,8 @@ async function patchProperties({
   path,
   initialView
 }: {
-  view: ViewPropertiesType;
-  initialView: ViewPropertiesType;
+  view: SearchAliasViewPropertiesType;
+  initialView: SearchAliasViewPropertiesType;
   path: string;
 }) {
   const route = getApiRouteForCurrentDB();
@@ -159,8 +159,8 @@ export const getUpdatedIndexes = ({
   view,
   initialView
 }: {
-  view: ViewPropertiesType;
-  initialView: ViewPropertiesType;
+  view: SearchAliasViewPropertiesType;
+  initialView: SearchAliasViewPropertiesType;
 }) => {
   const addedChanges = differenceWith(
     view.indexes,

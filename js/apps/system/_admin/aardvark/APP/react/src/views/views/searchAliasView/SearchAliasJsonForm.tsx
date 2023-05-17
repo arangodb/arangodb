@@ -2,9 +2,9 @@ import { Box } from "@chakra-ui/react";
 import Ajv, { JSONSchemaType } from "ajv";
 import { JsonEditor } from "jsoneditor-react";
 import React, { useEffect, useRef } from "react";
+import { SearchAliasViewPropertiesType } from "../searchView.types";
 import { useSearchAliasContext } from "./SearchAliasContext";
 import { useAliasViewSchema } from "./SearchAliasJsonHelper";
-import { ViewPropertiesType } from "./useFetchViewProperties";
 
 const ajv = new Ajv({
   allErrors: true,
@@ -16,7 +16,9 @@ const ajv = new Ajv({
 /**
  * used to remove the schema on unmount, to avoid issues in next usage
  */
-const useResetSchema = (schema: JSONSchemaType<ViewPropertiesType>) => {
+const useResetSchema = (
+  schema: JSONSchemaType<SearchAliasViewPropertiesType>
+) => {
   useEffect(() => {
     return () => {
       ajv.removeSchema(schema.$id);

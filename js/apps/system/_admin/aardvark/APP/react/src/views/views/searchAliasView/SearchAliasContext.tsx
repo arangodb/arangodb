@@ -10,28 +10,32 @@ import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 import { useIsAdminUser } from "../../../utils/usePermissions";
-import { ViewPropertiesType } from "./useFetchViewProperties";
-import { useSyncSearchViewUpdates } from "./useSyncSearchViewUpdates";
+import { SearchAliasViewPropertiesType } from "../searchView.types";
+import { useSyncSearchViewUpdates } from "../useSyncSearchViewUpdates";
 import {
   getUpdatedIndexes,
   useUpdateAliasViewProperties
 } from "./useUpdateAliasViewProperties";
 
 type SearchAliasContextType = {
-  view: ViewPropertiesType;
-  initialView: ViewPropertiesType;
-  copiedView?: ViewPropertiesType;
+  view: SearchAliasViewPropertiesType;
+  initialView: SearchAliasViewPropertiesType;
+  copiedView?: SearchAliasViewPropertiesType;
   errors: ValidationError[];
   changed: boolean;
   isAdminUser: boolean;
   isCluster: boolean;
   currentName?: string;
   setErrors: (errors: ValidationError[]) => void;
-  setView: (view: ViewPropertiesType) => void;
+  setView: (view: SearchAliasViewPropertiesType) => void;
   setCurrentName: (name?: string) => void;
-  setCopiedView: (view: ViewPropertiesType | undefined) => void;
-  onChange: (view: ViewPropertiesType) => void;
-  onCopy: ({ selectedView }: { selectedView?: ViewPropertiesType }) => void;
+  setCopiedView: (view: SearchAliasViewPropertiesType | undefined) => void;
+  onChange: (view: SearchAliasViewPropertiesType) => void;
+  onCopy: ({
+    selectedView
+  }: {
+    selectedView?: SearchAliasViewPropertiesType;
+  }) => void;
   onSave: () => void;
   onDelete: () => void;
 };
@@ -43,7 +47,7 @@ export const SearchAliasProvider = ({
   initialView,
   children
 }: {
-  initialView: ViewPropertiesType;
+  initialView: SearchAliasViewPropertiesType;
   children: ReactNode;
 }) => {
   const isAdminUser = useIsAdminUser();
@@ -57,7 +61,7 @@ export const SearchAliasProvider = ({
     newInitalView.name
   );
   const [copiedView, setCopiedView] = useState<
-    ViewPropertiesType | undefined
+    SearchAliasViewPropertiesType | undefined
   >();
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [changed, setChanged] = useState(
@@ -66,14 +70,14 @@ export const SearchAliasProvider = ({
   const { onSave } = useUpdateAliasViewProperties({ setChanged });
   useSyncSearchViewUpdates({ viewName: view.name });
 
-  const onChange = (view: ViewPropertiesType) => {
+  const onChange = (view: SearchAliasViewPropertiesType) => {
     setView(view);
   };
 
   const handleCopy = ({
     selectedView
   }: {
-    selectedView?: ViewPropertiesType;
+    selectedView?: SearchAliasViewPropertiesType;
   }) => {
     selectedView?.indexes &&
       setCopiedView({ ...view, indexes: selectedView.indexes });

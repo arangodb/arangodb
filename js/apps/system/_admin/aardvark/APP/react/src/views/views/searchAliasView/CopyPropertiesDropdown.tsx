@@ -8,9 +8,9 @@ import { OptionType } from "../../../components/select/SelectBase";
 import SingleSelect from "../../../components/select/SingleSelect";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
+import { SearchAliasViewPropertiesType } from "../searchView.types";
 import { SearchViewType } from "../viewsList/useViewsList";
 import { useSearchAliasContext } from "./SearchAliasContext";
-import { ViewPropertiesType } from "./useFetchViewProperties";
 
 export const CopyPropertiesDropdown = () => {
   const { data, isLoading: isLoadingList } = useSWR("/view", path =>
@@ -42,7 +42,7 @@ const CopyPropertiesInner = ({ views }: { views: SearchViewType[] }) => {
     fullViewData?.body,
     "error",
     "code"
-  ) as ViewPropertiesType;
+  ) as SearchAliasViewPropertiesType;
   const { onCopy, isAdminUser } = useSearchAliasContext();
   useEffect(() => {
     if (views) {

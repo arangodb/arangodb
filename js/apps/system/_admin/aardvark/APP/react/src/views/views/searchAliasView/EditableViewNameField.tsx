@@ -7,7 +7,7 @@ import {
   useDisclosure
 } from "@chakra-ui/react";
 import React, { useState } from "react";
-import { ViewPropertiesType } from "./useFetchViewProperties";
+import { SearchAliasViewPropertiesType } from "../searchView.types";
 
 export const EditableViewNameField = ({
   view,
@@ -15,7 +15,7 @@ export const EditableViewNameField = ({
   isCluster,
   setCurrentName
 }: {
-  view: ViewPropertiesType;
+  view: SearchAliasViewPropertiesType;
   isAdminUser: boolean;
   isCluster: boolean;
   setCurrentName: (name: string) => void;
