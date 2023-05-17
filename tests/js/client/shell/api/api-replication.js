@@ -42,7 +42,6 @@ const {
 } = require("internal").errors;
 
 /* TODO List
- - Include objectIDs everywhere
  - queryParams:
     - overwrite
     - force
@@ -55,9 +54,7 @@ const {
    - Illegal replication/writeConcern combis
 - OneShard
 - Indexes (other suite)
-- parameters
-    - shadowCollections
-    - SmartCollections (EE)
+
     - writeConcern & minReplicationFactor
         - Database Config
     - replicationFactor
@@ -589,6 +586,17 @@ function RestoreCollectionsSuite() {
         validateProperties({schema}, collname, 2);
       } finally {
         db._drop(collname, true);
+      }
+    },
+
+    testObjectIDPollution: function () {
+      // ObjectId needs to be ignored
+      const res = tryRestore({name: collname, type: 2, objectId: "deleteMe"});
+      try {
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        validateProperties({}, collname, 2);
+      } finally {
+        db._drop(collname);
       }
     },
 
