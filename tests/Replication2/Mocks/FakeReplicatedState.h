@@ -194,7 +194,7 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
       -> std::unique_ptr<test::TestCoreType> override;
 
   AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> apply;
-  AsyncOperationMarker<std::pair<ParticipantId, LogIndex>, Result> acquire;
+  AsyncOperationMarker<ParticipantId, Result> acquire;
 
   using replicated_state::IReplicatedFollowerState<S>::getStream;
 
@@ -203,10 +203,9 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
       -> futures::Future<Result> override {
     return apply.trigger(std::move(ptr));
   }
-  auto acquireSnapshot(const ParticipantId& leader,
-                       LogIndex localCommitIndex) noexcept
+  auto acquireSnapshot(ParticipantId const& leader) noexcept
       -> futures::Future<Result> override {
-    return acquire.trigger(std::make_pair(leader, localCommitIndex));
+    return acquire.trigger(leader);
   }
 
   std::unique_ptr<test::TestCoreType> _core;
