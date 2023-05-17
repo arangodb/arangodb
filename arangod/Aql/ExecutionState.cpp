@@ -41,6 +41,7 @@ auto toStringView(ExecutionState state) -> std::string_view {
   ADB_PROD_ASSERT(false)
       << "Unhandled state "
       << static_cast<std::underlying_type_t<decltype(state)>>(state);
+  std::abort();
 }
 auto toStringView(ExecutorState state) -> std::string_view {
   switch (state) {
@@ -52,6 +53,7 @@ auto toStringView(ExecutorState state) -> std::string_view {
   ADB_PROD_ASSERT(false)
       << "Unhandled state "
       << static_cast<std::underlying_type_t<decltype(state)>>(state);
+  std::abort();
 }
 
 std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
