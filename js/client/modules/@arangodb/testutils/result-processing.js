@@ -285,7 +285,7 @@ function saveToJunitXML(options, results) {
           message: ((results.crashed)? "SUT crashed: \n": "SUT was aborted: \n") +results.crashreport
         }
       },
-      staus: false,
+      status: false,
       failed: 1,
     };
   }
