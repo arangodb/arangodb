@@ -362,7 +362,7 @@ OperationResult handleCRUDShardResponsesFast(
   // If none of the shards responded we return a SERVER_ERROR;
   if constexpr (std::is_same_v<CT, InsertOperationCtx>) {
     if (opCtx.reverseMapping.size() == opCtx.localErrors.size()) {
-      // all requests contain an error, return Accepted
+      // all batch operations failed because of key errors, return Accepted
       code = fuerte::StatusAccepted;
     }
   }
