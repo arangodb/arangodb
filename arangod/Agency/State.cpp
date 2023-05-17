@@ -649,7 +649,8 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
 
   for (size_t i = s; i < e; ++i) {
     // only for debugging purposes
-    TRI_ASSERT(i < _log.size()) << [this, sNow = s, eNow = e, start, end]() {
+    ADB_PROD_ASSERT(i < _log.size()) << [this, sNow = s, eNow = e, start,
+                                         end]() {
       std::stringstream s;
       s << "log size: " << _log.size() << ", start: " << sNow
         << ", end: " << eNow << ", cur: " << _cur << ", orig start: " << start
