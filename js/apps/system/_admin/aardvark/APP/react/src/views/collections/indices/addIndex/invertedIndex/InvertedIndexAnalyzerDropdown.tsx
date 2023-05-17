@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { SelectControl } from "../../../../../components/form/SelectControl";
 import { OptionType } from "../../../../../components/select/SelectBase";
 import { getApiRouteForCurrentDB } from "../../../../../utils/arangoClient";
-import { IndexFormFieldProps } from "../IndexFormField";
+import { FormFieldProps } from "../FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
 export const InvertedIndexAnalyzerDropdown = ({
@@ -13,7 +13,7 @@ export const InvertedIndexAnalyzerDropdown = ({
   autoFocus,
   dependentFieldName = "features"
 }: {
-  field: IndexFormFieldProps;
+  field: FormFieldProps;
   autoFocus: boolean;
   dependentFieldName?: string;
 }) => {

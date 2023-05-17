@@ -1,14 +1,14 @@
 import { Box, FormLabel } from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
-import { IndexFormField, IndexFormFieldProps } from "../IndexFormField";
+import { FormField, FormFieldProps } from "../FormField";
 import { IndexInfoTooltip } from "../IndexInfoTooltip";
 
 //
 export const InvertedIndexConsolidationPolicy = ({
   field
 }: {
-  field: IndexFormFieldProps;
+  field: FormFieldProps;
 }) => {
   return (
     <Box
@@ -27,7 +27,7 @@ export const InvertedIndexConsolidationPolicy = ({
 const ConsolidationPolicyFields = ({
   field
 }: {
-  field: IndexFormFieldProps;
+  field: FormFieldProps;
 }) => {
   const [formikField] = useField(field.name);
   return (
@@ -43,7 +43,7 @@ const ConsolidationPolicyFields = ({
         <FormLabel>Type</FormLabel>
         <Box>{formikField.value.type}</Box>
         <IndexInfoTooltip label="Represents the type of policy." />
-        <IndexFormField
+        <FormField
           field={{
             name: "consolidationPolicy.segmentsMin",
             label: "Segments Min",
@@ -53,7 +53,7 @@ const ConsolidationPolicyFields = ({
               "The minimum number of segments that will be evaluated as candidates for consolidation."
           }}
         />
-        <IndexFormField
+        <FormField
           field={{
             name: "consolidationPolicy.segmentsMax",
             label: "Segments Max",
@@ -63,7 +63,7 @@ const ConsolidationPolicyFields = ({
               "The maximum number of segments that will be evaluated as candidates for consolidation."
           }}
         />
-        <IndexFormField
+        <FormField
           field={{
             name: "consolidationPolicy.segmentsBytesMax",
             label: "Segments Bytes Max",
@@ -73,7 +73,7 @@ const ConsolidationPolicyFields = ({
               "Maximum allowed size of all consolidated segments in bytes."
           }}
         />
-        <IndexFormField
+        <FormField
           field={{
             name: "consolidationPolicy.segmentsBytesFloor",
             label: "Segments Bytes Floor",
