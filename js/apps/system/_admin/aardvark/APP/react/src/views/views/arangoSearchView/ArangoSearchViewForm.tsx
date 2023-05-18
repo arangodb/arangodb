@@ -14,6 +14,7 @@ import { useField, useFormikContext } from "formik";
 import React from "react";
 import { FormField } from "../../../components/form/FormField";
 import { IndexInfoTooltip } from "../../collections/indices/addIndex/IndexInfoTooltip";
+import { ArangoSearchLinksEditor } from "./ArangoSearchLinksEditor";
 
 import { useArangoSearchFieldsData } from "./useArangoSearchFieldsData";
 
@@ -31,6 +32,7 @@ export const ArangoSearchViewForm = () => {
       allowToggle
       padding="4"
     >
+      <LinksAccordionItem />
       <GeneralAccordionItem />
       <ConsolidationPolicyAccordionItem />
       <PrimarySortAccordionItem />
@@ -57,6 +59,21 @@ const FieldsGrid = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+const LinksAccordionItem = () => {
+  return (
+    <AccordionItem>
+      <AccordionButton>
+        <Box flex="1" textAlign="left">
+          Links
+        </Box>
+        <AccordionIcon />
+      </AccordionButton>
+      <AccordionPanel pb={4}>
+        <ArangoSearchLinksEditor />
+      </AccordionPanel>
+    </AccordionItem>
+  );
+};
 const GeneralAccordionItem = () => {
   const { fields } = useArangoSearchFieldsData();
   const generalFields = fields.filter(field => field.group === "general");
