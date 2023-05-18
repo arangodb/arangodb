@@ -62,6 +62,7 @@
 #include "Pregel/SpawnActor.h"
 #include "Pregel/MetricsActor.h"
 #include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "Pregel/StatusWriter/StatusEntry.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/Worker.h"
@@ -125,10 +126,17 @@ auto PregelRunUser::authorized(ExecContext const& userContext) const -> bool {
 Result PregelFeature::persistExecution(TRI_vocbase_t& vocbase,
                                        ExecutionNumber en) {
   statuswriter::CollectionStatusWriter cWriter{vocbase, en};
-  VPackBuilder stateBuilder;
+
   // TODO: Here we should also write the Coordinator's ServerID into the
   // collection
-  auto storeResult = cWriter.createResult(stateBuilder.slice());
+  auto serialized = inspection::serializeWithErrorT(PregelCollectionEntry{
+      .serverId = ServerState::instance()->getId(), .executionNumber = en});
+
+  if (!serialized.ok()) {
+    return Result{TRI_ERROR_INTERNAL, serialized.error().error()};
+  }
+
+  auto storeResult = cWriter.createResult(serialized.get().slice());
   if (storeResult.ok()) {
     LOG_TOPIC("a63f1", INFO, Logger::PREGEL) << fmt::format(
         "[ExecutionNumber {}] Created pregel execution entry in {}", en,
@@ -139,7 +147,7 @@ Result PregelFeature::persistExecution(TRI_vocbase_t& vocbase,
         "[ExecutionNumber {}] Failed to create pregel execution entry in {}, "
         "message {}",
         en, StaticStrings::PregelCollection, storeResult.errorMessage());
-    return TRI_ERROR_INTERNAL;
+    return Result{TRI_ERROR_INTERNAL, storeResult.errorMessage()};
   }
 }
 

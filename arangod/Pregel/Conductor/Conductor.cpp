@@ -39,6 +39,8 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
+#include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "Pregel/StatusWriter/StatusEntry.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
 
@@ -52,7 +54,6 @@
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
