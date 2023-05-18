@@ -52,6 +52,9 @@ auto Initial<V, E, M>::receive(actor::ActorPID const& sender,
                                Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::WorkerStart>(message)) {
+    LOG_TOPIC("cd696", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} started with state {}", self, worker);
+
     dispatcher.dispatchConductor(ResultT<conductor::message::WorkerCreated>{});
     dispatcher.dispatchMetrics(
         arangodb::pregel::metrics::message::WorkerStarted{});

@@ -72,6 +72,10 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
   if (std::holds_alternative<worker::message::PregelMessage>(message)) {
     auto msg = std::get<worker::message::PregelMessage>(message);
 
+    LOG_TOPIC("80709", INFO, Logger::PREGEL) << fmt::format(
+        "Worker Actor {} with gss {} received message for gss {}", self,
+        worker.config->globalSuperstep(), msg.gss);
+
     if (msg.gss == worker.config->globalSuperstep()) {
       writeCache->parseMessages(msg);
 
@@ -99,6 +103,9 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
 
   if (std::holds_alternative<worker::message::RunGlobalSuperStep>(message)) {
     auto msg = std::get<worker::message::RunGlobalSuperStep>(message);
+
+    LOG_TOPIC("0f658", INFO, Logger::PREGEL) << fmt::format(
+        "Worker Actor {} starts computing gss {}", self, msg.gss);
 
     dispatcher.dispatchMetrics(
         arangodb::pregel::metrics::message::WorkerGssStarted{.threadsAdded =

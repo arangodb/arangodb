@@ -52,6 +52,9 @@ auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
                                Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::LoadGraph>(message)) {
+    LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} is loading", self);
+
     auto msg = std::get<worker::message::LoadGraph>(message);
     worker.responsibleActorPerShard = msg.responsibleActorPerShard;
 

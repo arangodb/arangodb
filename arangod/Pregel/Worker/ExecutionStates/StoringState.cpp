@@ -52,6 +52,9 @@ auto Storing<V, E, M>::receive(actor::ActorPID const& sender,
                                Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::Store>(message)) {
+    LOG_TOPIC("980d9", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} is storing", self);
+
     dispatcher.dispatchMetrics(
         arangodb::pregel::metrics::message::WorkerStoringStarted{});
 
