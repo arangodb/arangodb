@@ -23,7 +23,6 @@
 
 #include "InitialState.h"
 
-#include <utility>
 #include "FatalErrorState.h"
 #include "Pregel/Worker/State.h"
 #include "LoadingState.h"
@@ -44,11 +43,11 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::worker;
 
 template<typename V, typename E, typename M>
-Initial<V, E, M>::Initial(actor::ActorPID self, WorkerState<V, E, M>& worker)
-    : self(std::move(self)), worker{worker} {}
+Initial<V, E, M>::Initial(WorkerState<V, E, M>& worker) : worker{worker} {}
 
 template<typename V, typename E, typename M>
 auto Initial<V, E, M>::receive(actor::ActorPID const& sender,
+                               actor::ActorPID const& self,
                                worker::message::WorkerMessages const& message,
                                Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
@@ -69,7 +68,7 @@ auto Initial<V, E, M>::receive(actor::ActorPID const& sender,
   if (std::holds_alternative<worker::message::LoadGraph>(message)) {
     dispatcher.dispatchSelf(message);
 
-    return std::make_unique<Loading<V, E, M>>(self, worker);
+    return std::make_unique<Loading<V, E, M>>(worker);
   }
 
   return std::make_unique<FatalError>();

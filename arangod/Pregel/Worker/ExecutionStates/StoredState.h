@@ -31,15 +31,14 @@ struct WorkerState;
 
 template<typename V, typename E, typename M>
 struct Stored : ExecutionState {
-  explicit Stored(actor::ActorPID self, WorkerState<V, E, M>& worker);
+  explicit Stored(WorkerState<V, E, M>& worker);
   ~Stored() override = default;
 
   [[nodiscard]] auto name() const -> std::string override { return "stored"; };
-  auto receive(actor::ActorPID const& sender,
+  auto receive(actor::ActorPID const& sender, actor::ActorPID const& self,
                message::WorkerMessages const& message, Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> override;
 
-  actor::ActorPID self;
   WorkerState<V, E, M>& worker;
 };
 }  // namespace arangodb::pregel::worker

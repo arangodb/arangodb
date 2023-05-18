@@ -42,11 +42,11 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::worker;
 
 template<typename V, typename E, typename M>
-Loaded<V, E, M>::Loaded(actor::ActorPID self, WorkerState<V, E, M>& worker)
-    : self(std::move(self)), worker{worker} {}
+Loaded<V, E, M>::Loaded(WorkerState<V, E, M>& worker) : worker{worker} {}
 
 template<typename V, typename E, typename M>
 auto Loaded<V, E, M>::receive(actor::ActorPID const& sender,
+                              actor::ActorPID const& self,
                               worker::message::WorkerMessages const& message,
                               Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
@@ -59,7 +59,7 @@ auto Loaded<V, E, M>::receive(actor::ActorPID const& sender,
   if (std::holds_alternative<worker::message::RunGlobalSuperStep>(message)) {
     dispatcher.dispatchSelf(message);
 
-    return std::make_unique<Computing<V, E, M>>(self, worker);
+    return std::make_unique<Computing<V, E, M>>(worker);
   }
 
   return std::make_unique<FatalError>();

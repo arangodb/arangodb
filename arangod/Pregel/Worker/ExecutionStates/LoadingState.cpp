@@ -43,11 +43,11 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::worker;
 
 template<typename V, typename E, typename M>
-Loading<V, E, M>::Loading(actor::ActorPID self, WorkerState<V, E, M>& worker)
-    : self(std::move(self)), worker{worker} {}
+Loading<V, E, M>::Loading(WorkerState<V, E, M>& worker) : worker{worker} {}
 
 template<typename V, typename E, typename M>
 auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
+                               actor::ActorPID const& self,
                                worker::message::WorkerMessages const& message,
                                Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
@@ -64,8 +64,8 @@ auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
     dispatcher.dispatchMetrics(
         arangodb::pregel::metrics::message::WorkerLoadingStarted{});
 
-    auto graphLoaded =
-        [this, dispatcher]() -> ResultT<conductor::message::GraphLoaded> {
+    auto graphLoaded = [this, dispatcher,
+                        self]() -> ResultT<conductor::message::GraphLoaded> {
       try {
         auto loader = std::make_shared<GraphLoader<V, E>>(
             worker.config, worker.algorithm->inputFormat(),
@@ -94,7 +94,7 @@ auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
     dispatcher.dispatchMetrics(
         arangodb::pregel::metrics::message::WorkerLoadingFinished{});
 
-    return std::make_unique<Loaded<V, E, M>>(self, worker);
+    return std::make_unique<Loaded<V, E, M>>(worker);
   }
 
   return std::make_unique<FatalError>();

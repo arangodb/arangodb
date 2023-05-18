@@ -31,15 +31,14 @@ struct WorkerState;
 
 template<typename V, typename E, typename M>
 struct Loading : ExecutionState {
-  explicit Loading(actor::ActorPID self, WorkerState<V, E, M>& worker);
+  explicit Loading(WorkerState<V, E, M>& worker);
   ~Loading() override = default;
 
   [[nodiscard]] auto name() const -> std::string override { return "loading"; };
-  auto receive(actor::ActorPID const& sender,
+  auto receive(actor::ActorPID const& sender, actor::ActorPID const& self,
                message::WorkerMessages const& message, Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> override;
 
-  actor::ActorPID self;
   WorkerState<V, E, M>& worker;
 };
 }  // namespace arangodb::pregel::worker

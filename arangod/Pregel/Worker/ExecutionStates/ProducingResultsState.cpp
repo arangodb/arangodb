@@ -43,13 +43,12 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::worker;
 
 template<typename V, typename E, typename M>
-ProducingResults<V, E, M>::ProducingResults(actor::ActorPID self,
-                                            WorkerState<V, E, M>& worker)
-    : self(std::move(self)), worker{worker} {}
+ProducingResults<V, E, M>::ProducingResults(WorkerState<V, E, M>& worker)
+    : worker{worker} {}
 
 template<typename V, typename E, typename M>
 auto ProducingResults<V, E, M>::receive(
-    actor::ActorPID const& sender,
+    actor::ActorPID const& sender, actor::ActorPID const& self,
     worker::message::WorkerMessages const& message, Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::ProduceResults>(message)) {
@@ -77,7 +76,7 @@ auto ProducingResults<V, E, M>::receive(
     dispatcher.dispatchConductor(
         pregel::conductor::message::ResultCreated{.results = {results}});
 
-    return std::make_unique<ResultsProduced<V, E, M>>(self, worker);
+    return std::make_unique<ResultsProduced<V, E, M>>(worker);
   }
 
   return std::make_unique<FatalError>();

@@ -59,6 +59,7 @@ struct ExecutionState {
 
   [[nodiscard]] virtual auto name() const -> std::string = 0;
   virtual auto receive(actor::ActorPID const& sender,
+                       actor::ActorPID const& self,
                        worker::message::WorkerMessages const& message,
                        Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> {

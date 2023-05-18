@@ -100,8 +100,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor {} started with state {}", this->self, *this->state);
 
-    auto newState =
-        this->state->executionState->receive(this->sender, start, dispatcher);
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, start, dispatcher);
     changeState(std::move(newState));
 
     return std::move(this->state);
@@ -112,8 +112,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is loading", this->self);
 
-    auto newState =
-        this->state->executionState->receive(this->sender, message, dispatcher);
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, message, dispatcher);
     changeState(std::move(newState));
 
     return std::move(this->state);
@@ -130,8 +130,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         arangodb::pregel::metrics::message::WorkerGssStarted{.threadsAdded =
                                                                  1});
 
-    auto newState =
-        this->state->executionState->receive(this->sender, message, dispatcher);
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, message, dispatcher);
     changeState(std::move(newState));
 
     this->template dispatch<metrics::message::MetricsMessages>(
@@ -150,8 +150,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         "Worker Actor {} with gss {} received message for gss {}", this->self,
         this->state->config->globalSuperstep(), message.gss);
 
-    auto newState =
-        this->state->executionState->receive(this->sender, message, dispatcher);
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, message, dispatcher);
     changeState(std::move(newState));
 
     return std::move(this->state);
@@ -164,8 +164,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("980d9", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is storing", this->self);
 
-    auto newState =
-        this->state->executionState->receive(this->sender, message, dispatcher);
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, message, dispatcher);
     changeState(std::move(newState));
 
     return std::move(this->state);
@@ -173,8 +173,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   auto operator()(message::ProduceResults message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    auto newState =
-        this->state->executionState->receive(this->sender, message, dispatcher);
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, message, dispatcher);
     changeState(std::move(newState));
 
     return std::move(this->state);
@@ -187,8 +187,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("664f5", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is cleaned", this->self);
 
-    auto newState =
-        this->state->executionState->receive(this->sender, message, dispatcher);
+    auto newState = this->state->executionState->receive(
+        this->sender, this->self, message, dispatcher);
     changeState(std::move(newState));
 
     return std::move(this->state);

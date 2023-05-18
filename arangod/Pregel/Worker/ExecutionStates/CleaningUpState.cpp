@@ -43,13 +43,12 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::worker;
 
 template<typename V, typename E, typename M>
-CleaningUp<V, E, M>::CleaningUp(actor::ActorPID self,
-                                WorkerState<V, E, M>& worker)
-    : self(std::move(self)), worker{worker} {}
+CleaningUp<V, E, M>::CleaningUp(WorkerState<V, E, M>& worker)
+    : worker{worker} {}
 
 template<typename V, typename E, typename M>
 auto CleaningUp<V, E, M>::receive(
-    actor::ActorPID const& sender,
+    actor::ActorPID const& sender, actor::ActorPID const& self,
     worker::message::WorkerMessages const& message, Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::Cleanup>(message)) {

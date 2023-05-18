@@ -43,11 +43,11 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::worker;
 
 template<typename V, typename E, typename M>
-Storing<V, E, M>::Storing(actor::ActorPID self, WorkerState<V, E, M>& worker)
-    : self(std::move(self)), worker{worker} {}
+Storing<V, E, M>::Storing(WorkerState<V, E, M>& worker) : worker{worker} {}
 
 template<typename V, typename E, typename M>
 auto Storing<V, E, M>::receive(actor::ActorPID const& sender,
+                               actor::ActorPID const& self,
                                worker::message::WorkerMessages const& message,
                                Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
@@ -79,7 +79,7 @@ auto Storing<V, E, M>::receive(actor::ActorPID const& sender,
         arangodb::pregel::metrics::message::WorkerStoringFinished{});
     dispatcher.dispatchConductor(graphStored());
 
-    return std::make_unique<Stored<V, E, M>>(self, worker);
+    return std::make_unique<Stored<V, E, M>>(worker);
   }
 
   return std::make_unique<FatalError>();

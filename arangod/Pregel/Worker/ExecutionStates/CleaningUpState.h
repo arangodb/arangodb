@@ -31,17 +31,16 @@ struct WorkerState;
 
 template<typename V, typename E, typename M>
 struct CleaningUp : ExecutionState {
-  explicit CleaningUp(actor::ActorPID self, WorkerState<V, E, M>& worker);
+  explicit CleaningUp(WorkerState<V, E, M>& worker);
   ~CleaningUp() override = default;
 
   [[nodiscard]] auto name() const -> std::string override {
     return "cleaning up";
   };
-  auto receive(actor::ActorPID const& sender,
+  auto receive(actor::ActorPID const& sender, actor::ActorPID const& self,
                message::WorkerMessages const& message, Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> override;
 
-  actor::ActorPID self;
   WorkerState<V, E, M>& worker;
 };
 }  // namespace arangodb::pregel::worker

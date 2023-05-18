@@ -47,12 +47,11 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::worker;
 
 template<typename V, typename E, typename M>
-Computing<V, E, M>::Computing(actor::ActorPID self,
-                              WorkerState<V, E, M>& worker)
-    : self(std::move(self)), worker{worker} {}
+Computing<V, E, M>::Computing(WorkerState<V, E, M>& worker) : worker{worker} {}
 
 template<typename V, typename E, typename M>
 auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
+                                 actor::ActorPID const& self,
                                  worker::message::WorkerMessages const& message,
                                  Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
@@ -110,7 +109,7 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
       LOG_TOPIC("097be", WARN, Logger::PREGEL) << fmt::format(
           "Worker Actor {} in gss {} is waiting for messages: received count "
           "{} != send count {}",
-          this->self, worker.config->_globalSuperstep, msg.sendCount,
+          self, worker.config->_globalSuperstep, msg.sendCount,
           worker.writeCache->containedMessageCount());
       if (not worker.isWaitingForAllMessagesSince.has_value()) {
         worker.isWaitingForAllMessagesSince = std::chrono::steady_clock::now();
@@ -123,9 +122,8 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
                 TRI_ERROR_INTERNAL,
                 fmt::format("Worker {} received {} messages in gss {} after "
                             "timeout, although {} were send to it.",
-                            this->self,
-                            worker.writeCache->containedMessageCount(), msg.gss,
-                            msg.sendCount)));
+                            self, worker.writeCache->containedMessageCount(),
+                            msg.gss, msg.sendCount)));
         return nullptr;
       }
       dispatcher.dispatchSelf(message);
@@ -155,13 +153,13 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
   if (std::holds_alternative<worker::message::Store>(message)) {
     dispatcher.dispatchSelf(message);
 
-    return std::make_unique<Storing<V, E, M>>(self, worker);
+    return std::make_unique<Storing<V, E, M>>(worker);
   }
 
   if (std::holds_alternative<worker::message::ProduceResults>(message)) {
     dispatcher.dispatchSelf(message);
 
-    return std::make_unique<ProducingResults<V, E, M>>(self, worker);
+    return std::make_unique<ProducingResults<V, E, M>>(worker);
   }
 
   return std::make_unique<FatalError>();

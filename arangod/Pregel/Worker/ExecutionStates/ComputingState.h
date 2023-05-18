@@ -37,13 +37,13 @@ struct WorkerState;
 
 template<typename V, typename E, typename M>
 struct Computing : ExecutionState {
-  explicit Computing(actor::ActorPID self, WorkerState<V, E, M>& worker);
+  explicit Computing(WorkerState<V, E, M>& worker);
   ~Computing() override = default;
 
   [[nodiscard]] auto name() const -> std::string override {
     return "computing";
   };
-  auto receive(actor::ActorPID const& sender,
+  auto receive(actor::ActorPID const& sender, actor::ActorPID const& self,
                message::WorkerMessages const& message, Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> override;
 
@@ -53,7 +53,6 @@ struct Computing : ExecutionState {
                         DispatchStatus const& dispatchStatus)
       -> conductor::message::GlobalSuperStepFinished;
 
-  actor::ActorPID self;
   WorkerState<V, E, M>& worker;
 };
 }  // namespace arangodb::pregel::worker
