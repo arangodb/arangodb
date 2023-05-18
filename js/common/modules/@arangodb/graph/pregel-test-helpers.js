@@ -73,7 +73,7 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
     try {
       status = pregel.status(pid);
     } catch(e) {
-      require('console').warn("ExecutionNumber ${pid} does not exist (yet).");
+      require('console').warn(`ExecutionNumber ${pid} does not exist (yet).`);
     }
     if (wakeupsLeft-- === 0) {
       assertTrue(false, "Pregel did not start after timeout");
