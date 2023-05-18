@@ -76,7 +76,7 @@ auto ProducingResults<V, E, M>::receive(
     dispatcher.dispatchConductor(
         pregel::conductor::message::ResultCreated{.results = {results}});
 
-    return std::make_unique<ResultsProduced<V, E, M>>(worker);
+    return std::make_unique<ResultsProduced>();
   }
 
   return std::make_unique<FatalError>();

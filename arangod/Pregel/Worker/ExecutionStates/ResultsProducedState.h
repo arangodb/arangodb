@@ -26,19 +26,10 @@
 #include "State.h"
 
 namespace arangodb::pregel::worker {
-template<typename V, typename E, typename M>
-struct WorkerState;
 
-template<typename V, typename E, typename M>
 struct ResultsProduced : ExecutionState {
-  explicit ResultsProduced(WorkerState<V, E, M>& worker);
-  ~ResultsProduced() override = default;
+  ResultsProduced() = default;
 
   [[nodiscard]] auto name() const -> std::string override { return "stored"; };
-  auto receive(actor::ActorPID const& sender, actor::ActorPID const& self,
-               message::WorkerMessages const& message, Dispatcher dispatcher)
-      -> std::unique_ptr<ExecutionState> override;
-
-  WorkerState<V, E, M>& worker;
 };
 }  // namespace arangodb::pregel::worker

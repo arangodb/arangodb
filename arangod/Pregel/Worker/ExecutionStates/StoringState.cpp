@@ -79,7 +79,7 @@ auto Storing<V, E, M>::receive(actor::ActorPID const& sender,
         arangodb::pregel::metrics::message::WorkerStoringFinished{});
     dispatcher.dispatchConductor(graphStored());
 
-    return std::make_unique<Stored<V, E, M>>(worker);
+    return std::make_unique<Stored>();
   }
 
   return std::make_unique<FatalError>();
