@@ -69,7 +69,7 @@ using namespace arangodb::basics;
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
-      << "[job " << _specifications.executionNumber.value << "] "
+      << "[ExecutionNumber " << _specifications.executionNumber.value << "] "
 
 const char* arangodb::pregel::ExecutionStateNames[9] = {
     "none", "loading", "running", "storing", "done", "canceled", "fatal error"};
@@ -752,15 +752,13 @@ void Conductor::persistPregelState(ExecutionState state) {
   TRI_ASSERT(state != ExecutionState::DEFAULT);
   auto updateResult = cWriter.updateResult(stateBuilder.slice());
   if (updateResult.ok()) {
-    LOG_PREGEL("07323", INFO)
-        << fmt::format("Updated state into: \"{}\" collection for PID: {}.",
-                       StaticStrings::PregelCollection, executionNumber());
+    LOG_PREGEL("07323", INFO) << fmt::format(
+        "Updated state in \"{}\" collection", StaticStrings::PregelCollection);
   } else {
     LOG_PREGEL("0ffa4", INFO) << fmt::format(
-        "Could not store result into: {} collection for PID {}, error message "
+        "Could not store state in \"{}\" collection, error message: "
         "{}",
-        StaticStrings::PregelCollection, executionNumber(),
-        updateResult.errorMessage());
+        StaticStrings::PregelCollection, updateResult.errorMessage());
   }
 }
 

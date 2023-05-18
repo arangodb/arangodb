@@ -131,12 +131,14 @@ Result PregelFeature::persistExecution(TRI_vocbase_t& vocbase,
   auto storeResult = cWriter.createResult(stateBuilder.slice());
   if (storeResult.ok()) {
     LOG_TOPIC("a63f1", INFO, Logger::PREGEL) << fmt::format(
-        "[job {}] Stored result into: {}", en, StaticStrings::PregelCollection);
+        "[ExecutionNumber {}] Created pregel execution entry in {}", en,
+        StaticStrings::PregelCollection);
     return {};
   } else {
     LOG_TOPIC("063f2", WARN, Logger::PREGEL) << fmt::format(
-        "[job {}] Could not store result into: {}, message {}", en,
-        StaticStrings::PregelCollection, storeResult.errorMessage());
+        "[ExecutionNumber {}] Failed to create pregel execution entry in {}, "
+        "message {}",
+        en, StaticStrings::PregelCollection, storeResult.errorMessage());
     return TRI_ERROR_INTERNAL;
   }
 }
