@@ -37,7 +37,7 @@ If a View called *name* already exists, then an *HTTP 409* error is returned.
 
 @EXAMPLE_ARANGOSH_RUN{RestViewPostViewSearchAlias}
     var coll = db._create("books");
-    var idx = coll.ensureIndex({ type: "inverted", name: "inv-idx", fields: [ { field: "title", analyzer: "text_en" } ] });
+    var idx = coll.ensureIndex({ type: "inverted", name: "inv-idx", fields: [ { name: "title", analyzer: "text_en" } ] });
 
     var url = "/_api/view";
     var body = {
@@ -51,6 +51,7 @@ If a View called *name* already exists, then an *HTTP 409* error is returned.
     assert(response.code === 201);
     logJsonResponse(response);
 
-    db._dropView("products", true);
+    db._dropView("products");
+    db._drop(coll.name());
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

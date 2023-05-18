@@ -1,4 +1,4 @@
-@startDocuBlock get_api_view_view_properties
+@startDocuBlock get_api_view_view_properties_arangosearch
 @brief reads the properties of the specified View
 
 @RESTHEADER{GET /_api/view/{view-name}/properties, Read properties of a View, getViewProperties}
@@ -36,20 +36,22 @@ Using an identifier:
     assert(response.code === 200);
     logJsonResponse(response);
 
-    addIgnoreCollection("books");
-    addIgnoreView("products");
+    db._dropView("products");
+    db._drop("books");
 @END_EXAMPLE_ARANGOSH_RUN
 
 Using a name:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesNameArangoSearch}
+    var coll = db._create("books");
+    var view = db._createView("products", "arangosearch", { links: { books: { fields: { title: { analyzers: ["text_en"] } } } } });
+
     var url = "/_api/view/products/properties";
     var response = logCurlRequest('GET', url);
     assert(response.code === 200);
     logJsonResponse(response);
 
-    removeIgnoreCollection("books");
-    removeIgnoreView("products");
-    db._dropView("products", true);
+    db._dropView("products");
+    db._drop("books");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

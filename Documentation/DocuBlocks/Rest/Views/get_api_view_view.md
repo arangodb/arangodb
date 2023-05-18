@@ -31,18 +31,19 @@ Using an identifier:
     assert(response.code === 200);
     logJsonResponse(response);
 
-    addIgnoreView("products");
+    db._dropView("products");
 @END_EXAMPLE_ARANGOSH_RUN
 
 Using a name:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewGetViewNameArangoSearch}
+    var view = db._createView("products", "arangosearch");
+
     var url = "/_api/view/products";
     var response = logCurlRequest('GET', url);
     assert(response.code === 200);
     logJsonResponse(response);
 
-    removeIgnoreView("products");
     db._dropView("products");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

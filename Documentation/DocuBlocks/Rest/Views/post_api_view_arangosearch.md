@@ -276,17 +276,13 @@ If a View called *name* already exists, then an *HTTP 409* error is returned.
 @EXAMPLE_ARANGOSH_RUN{RestViewPostViewArangoSearch}
     var url = "/_api/view";
     var body = {
-      name: "testViewBasics",
+      name: "products",
       type: "arangosearch"
     };
-
     var response = logCurlRequest('POST', url, body);
-
     assert(response.code === 201);
-
     logJsonResponse(response);
 
-    db._flushCache();
-    db._dropView("testViewBasics");
+    db._dropView("products");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
