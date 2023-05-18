@@ -187,9 +187,12 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("664f5", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is cleaned", this->self);
 
-    auto newState = this->state->executionState->receive(
-        this->sender, this->self, message, dispatcher);
-    changeState(std::move(newState));
+    dispatchSpawn(pregel::message::SpawnCleanup{});
+    dispatchConductor(pregel::conductor::message::CleanupFinished{});
+    dispatchMetrics(
+        arangodb::pregel::metrics::message::WorkerFinished{});
+
+    changeState(std::make_unique<CleanedUp>());
 
     return std::move(this->state);
   }

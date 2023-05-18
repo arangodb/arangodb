@@ -25,7 +25,6 @@
 #include "FatalErrorState.h"
 #include "Pregel/Worker/State.h"
 #include "ComputingState.h"
-#include "CleaningUpState.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
 #include "Pregel/SenderMessage.h"
 #include "Pregel/Algos/SCC/SCCValue.h"
@@ -54,7 +53,7 @@ auto Stored<V, E, M>::receive(actor::ActorPID const& sender,
   if (std::holds_alternative<worker::message::Cleanup>(message)) {
     dispatcher.dispatchSelf(message);
 
-    return std::make_unique<CleaningUp<V, E, M>>(worker);
+    return nullptr;
   }
 
   return std::make_unique<FatalError>();

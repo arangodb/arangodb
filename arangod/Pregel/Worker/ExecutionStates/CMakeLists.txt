@@ -6,5 +6,4 @@ target_sources(arango_pregel PRIVATE
         StoringState.cpp
         StoredState.cpp
         ProducingResultsState.cpp
-        ResultsProducedState.cpp
-        CleaningUpState.cpp)
+        ResultsProducedState.cpp)
