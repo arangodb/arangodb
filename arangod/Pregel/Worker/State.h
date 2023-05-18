@@ -70,20 +70,6 @@ struct WorkerState {
         metricsActor(std::move(metricsActor)) {
     executionState = std::make_unique<Initial<V, E, M>>(*this);
     config->updateConfig(specifications);
-
-    if (messageCombiner) {
-      readCache = std::make_unique<CombiningInCache<M>>(
-          config->localPregelShardIDs(), messageFormat.get(),
-          messageCombiner.get());
-      writeCache = std::make_unique<CombiningInCache<M>>(
-          config->localPregelShardIDs(), messageFormat.get(),
-          messageCombiner.get());
-    } else {
-      readCache = std::make_unique<ArrayInCache<M>>(
-          config->localPregelShardIDs(), messageFormat.get());
-      writeCache = std::make_unique<ArrayInCache<M>>(
-          config->localPregelShardIDs(), messageFormat.get());
-    }
   }
 
   std::shared_ptr<WorkerConfig> config;
@@ -91,13 +77,8 @@ struct WorkerState {
   // only needed in computing state
   std::unique_ptr<WorkerContext> workerContext;
   std::chrono::seconds messageTimeout;
-  std::optional<std::chrono::steady_clock::time_point>
-      isWaitingForAllMessagesSince;
   std::unique_ptr<MessageFormat<M>> messageFormat;
   std::unique_ptr<MessageCombiner<M>> messageCombiner;
-  std::unique_ptr<InCache<M>> readCache = nullptr;
-  std::unique_ptr<InCache<M>> writeCache = nullptr;
-  uint32_t messageBatchSize = 500;
   std::unordered_map<ShardID, actor::ActorPID> responsibleActorPerShard;
 
   std::unique_ptr<ExecutionState> executionState;

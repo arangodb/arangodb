@@ -54,5 +54,10 @@ struct Computing : ExecutionState {
       -> conductor::message::GlobalSuperStepFinished;
 
   WorkerState<V, E, M>& worker;
+  std::optional<std::chrono::steady_clock::time_point>
+      isWaitingForAllMessagesSince;
+  std::unique_ptr<InCache<M>> readCache = nullptr;
+  std::unique_ptr<InCache<M>> writeCache = nullptr;
+  uint32_t messageBatchSize = 500;
 };
 }  // namespace arangodb::pregel::worker

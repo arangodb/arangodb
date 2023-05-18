@@ -47,7 +47,21 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::worker;
 
 template<typename V, typename E, typename M>
-Computing<V, E, M>::Computing(WorkerState<V, E, M>& worker) : worker{worker} {}
+Computing<V, E, M>::Computing(WorkerState<V, E, M>& worker) : worker{worker} {
+  if (worker.messageCombiner) {
+    readCache = std::make_unique<CombiningInCache<M>>(
+        worker.config->localPregelShardIDs(), worker.messageFormat.get(),
+        worker.messageCombiner.get());
+    writeCache = std::make_unique<CombiningInCache<M>>(
+        worker.config->localPregelShardIDs(), worker.messageFormat.get(),
+        worker.messageCombiner.get());
+  } else {
+    readCache = std::make_unique<ArrayInCache<M>>(
+        worker.config->localPregelShardIDs(), worker.messageFormat.get());
+    writeCache = std::make_unique<ArrayInCache<M>>(
+        worker.config->localPregelShardIDs(), worker.messageFormat.get());
+  }
+}
 
 template<typename V, typename E, typename M>
 auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
@@ -59,7 +73,7 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
     auto msg = std::get<worker::message::PregelMessage>(message);
 
     if (msg.gss == worker.config->globalSuperstep()) {
-      worker.writeCache->parseMessages(msg);
+      writeCache->parseMessages(msg);
 
       return nullptr;
     }
@@ -104,26 +118,25 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
     // check if worker received all messages send to it from other workers
     // if not: send RunGlobalsuperstep back to itself such that in between it
     // can receive missing messages
-    if (msg.gss != 0 &&
-        msg.sendCount != worker.writeCache->containedMessageCount()) {
+    if (msg.gss != 0 && msg.sendCount != writeCache->containedMessageCount()) {
       LOG_TOPIC("097be", WARN, Logger::PREGEL) << fmt::format(
           "Worker Actor {} in gss {} is waiting for messages: received count "
           "{} != send count {}",
           self, worker.config->_globalSuperstep, msg.sendCount,
-          worker.writeCache->containedMessageCount());
-      if (not worker.isWaitingForAllMessagesSince.has_value()) {
-        worker.isWaitingForAllMessagesSince = std::chrono::steady_clock::now();
+          writeCache->containedMessageCount());
+      if (not isWaitingForAllMessagesSince.has_value()) {
+        isWaitingForAllMessagesSince = std::chrono::steady_clock::now();
       }
       if (std::chrono::steady_clock::now() -
-              worker.isWaitingForAllMessagesSince.value() >
+              isWaitingForAllMessagesSince.value() >
           worker.messageTimeout) {
         dispatcher.dispatchConductor(
             ResultT<conductor::message::GlobalSuperStepFinished>::error(
                 TRI_ERROR_INTERNAL,
                 fmt::format("Worker {} received {} messages in gss {} after "
                             "timeout, although {} were send to it.",
-                            self, worker.writeCache->containedMessageCount(),
-                            msg.gss, msg.sendCount)));
+                            self, writeCache->containedMessageCount(), msg.gss,
+                            msg.sendCount)));
         return nullptr;
       }
       dispatcher.dispatchSelf(message);
@@ -131,7 +144,7 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
       return nullptr;
     }
 
-    worker.isWaitingForAllMessagesSince = std::nullopt;
+    isWaitingForAllMessagesSince = std::nullopt;
 
     prepareGlobalSuperStep(std::move(msg));
     auto verticesProcessed = processVertices(dispatcher);
@@ -176,9 +189,9 @@ auto Computing<V, E, M>::prepareGlobalSuperStep(
   if (message.gss == 0) {
     worker.workerContext->preApplication();
   } else {
-    TRI_ASSERT(worker.readCache->containedMessageCount() == 0);
+    TRI_ASSERT(readCache->containedMessageCount() == 0);
     // write cache becomes the readable cache
-    std::swap(worker.readCache, worker.writeCache);
+    std::swap(readCache, writeCache);
   }
   worker.workerContext->_writeAggregators->resetValues();
   worker.workerContext->_readAggregators->setAggregatedValues(
@@ -215,7 +228,7 @@ auto Computing<V, E, M>::processVertices(Dispatcher const& dispatcher)
             }
             for (auto& vertex : *worker.magazine.quivers.at(myCurrentQuiver)) {
               auto messages =
-                  worker.readCache->getMessages(vertex.shard(), vertex.key());
+                  readCache->getMessages(vertex.shard(), vertex.key());
               auto status = processor.process(&vertex, messages);
 
               if (status.verticesProcessed %
@@ -234,7 +247,7 @@ auto Computing<V, E, M>::processVertices(Dispatcher const& dispatcher)
           }
 
           processor.outCache->flushMessages();
-          worker.writeCache->mergeCache(processor.localMessageCache.get());
+          writeCache->mergeCache(processor.localMessageCache.get());
 
           return processor.result();
         }));
@@ -255,7 +268,7 @@ auto Computing<V, E, M>::processVertices(Dispatcher const& dispatcher)
           // TODO why does the VertexProcessor not count receivedCount
           // correctly?
           worker.messageStats.receivedCount =
-              worker.readCache->containedMessageCount();
+              readCache->containedMessageCount();
 
           verticesProcessed.activeCount += res.activeCount;
           for (auto const& [actor, count] : res.sendCountPerActor) {
@@ -284,7 +297,7 @@ auto Computing<V, E, M>::finishProcessing(VerticesProcessed verticesProcessed,
       .memoryBytesUsedForMessages =
           worker.messageStats.memoryBytesUsedForMessages});
 
-  worker.readCache->clear();
+  readCache->clear();
   worker.config->_localSuperstep++;
 
   VPackBuilder aggregators;
@@ -311,10 +324,10 @@ auto Computing<V, E, M>::finishProcessing(VerticesProcessed verticesProcessed,
 
   uint64_t tn = worker.config->parallelism();
   uint64_t s = worker.messageStats.sendCount / tn / 2UL;
-  worker.messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
+  messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
   worker.messageStats.reset();
   LOG_TOPIC("a3dbf", TRACE, Logger::PREGEL)
-      << fmt::format("Message batch size: {}", worker.messageBatchSize);
+      << fmt::format("Message batch size: {}", messageBatchSize);
 
   return gssFinishedEvent;
 }
