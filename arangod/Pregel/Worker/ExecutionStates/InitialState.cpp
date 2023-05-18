@@ -51,12 +51,6 @@ auto Initial<V, E, M>::receive(actor::ActorPID const& sender,
                                worker::message::WorkerMessages const& message,
                                Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
-  if (std::holds_alternative<worker::message::PregelMessage>(message)) {
-    dispatcher.dispatchSelf(message);
-
-    return nullptr;
-  }
-
   if (std::holds_alternative<worker::message::WorkerStart>(message)) {
     dispatcher.dispatchConductor(ResultT<conductor::message::WorkerCreated>{});
     dispatcher.dispatchMetrics(
