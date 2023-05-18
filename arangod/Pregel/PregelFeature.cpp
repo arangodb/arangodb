@@ -134,9 +134,9 @@ Result PregelFeature::persistExecution(TRI_vocbase_t& vocbase,
         "[job {}] Stored result into: {}", en, StaticStrings::PregelCollection);
     return {};
   } else {
-    LOG_TOPIC("063f2", WARN, Logger::PREGEL)
-        << fmt::format("[job {}] Could not store result into: {}", en,
-                       StaticStrings::PregelCollection);
+    LOG_TOPIC("063f2", WARN, Logger::PREGEL) << fmt::format(
+        "[job {}] Could not store result into: {}, message {}", en,
+        StaticStrings::PregelCollection, storeResult.errorMessage());
     return TRI_ERROR_INTERNAL;
   }
 }

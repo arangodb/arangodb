@@ -753,12 +753,14 @@ void Conductor::persistPregelState(ExecutionState state) {
   auto updateResult = cWriter.updateResult(stateBuilder.slice());
   if (updateResult.ok()) {
     LOG_PREGEL("07323", INFO)
-        << "Updated state into: \"" << StaticStrings::PregelCollection
-        << "\" collection for PID: " << executionNumber();
+        << fmt::format("Updated state into: \"{}\" collection for PID: {}.",
+                       StaticStrings::PregelCollection, executionNumber());
   } else {
-    LOG_PREGEL("0ffa4", INFO)
-        << "Could not store result into: \"" << StaticStrings::PregelCollection
-        << "\" collection for PID: " << executionNumber();
+    LOG_PREGEL("0ffa4", INFO) << fmt::format(
+        "Could not store result into: {} collection for PID {}, error message "
+        "{}",
+        StaticStrings::PregelCollection, executionNumber(),
+        updateResult.errorMessage());
   }
 }
 
