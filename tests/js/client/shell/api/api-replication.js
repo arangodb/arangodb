@@ -754,7 +754,7 @@ function RestoreCollectionsSuite() {
                   tmp.shardKeys = [":_key"];
                 }
                 return tmp;
-              }
+              };
               validateProperties({...edge, numberOfShards: 0}, edgeName, 3, shouldKeepClusterSpecificAttributes);
               validateProperties(makeSmartEdgeAttributes(false), `_local_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
               if (!isDisjoint) {
@@ -860,7 +860,7 @@ function RestoreCollectionsSuite() {
                   tmp.shardKeys = [":_key"];
                 }
                 return tmp;
-              }
+              };
               validateProperties({...edge, numberOfShards: 0}, edgeName, 3, shouldKeepClusterSpecificAttributes);
               validateProperties(makeSmartEdgeAttributes(false), `_local_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
               if (!isDisjoint) {
@@ -1288,7 +1288,7 @@ function RestoreInOneShardSuite() {
         db._drop(collname);
       }
     }
-  }
+  };
 }
 
 jsunity.run(RestoreCollectionsSuite);
