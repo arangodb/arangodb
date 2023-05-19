@@ -41,7 +41,8 @@ const {
   ERROR_CLUSTER_INSUFFICIENT_DBSERVERS,
   ERROR_HTTP_CONFLICT,
   ERROR_ARANGO_DUPLICATE_NAME,
-  ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE
+  ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+  ERROR_INTERNAL
 } = require("internal").errors;
 
 /* Note: This test does not cover the indexes entry yet. */
@@ -813,73 +814,79 @@ function RestoreCollectionsSuite() {
 
         const res = tryRestore({...vertex, type: 2, name: vertexName});
         try {
-          // Should work, is a simple combination of other tests
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          if (!isCluster) {
-            // The following are not available in single server
-            // NOTE: If at one point they are exposed we will have the validate clash on
-            // non set properties.
-            if (!isEnterprise) {
-              // Well unless we are in enterprise.
-              delete vertex.isSmart;
-              delete vertex.smartGraphAttribute;
-              delete vertex.isDisjoint;
-            }
-            delete vertex.shardingStrategy;
+          if (!isCluster && !isEnterprise) {
+            // Community single server rejects this
+            isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, vertex);
+
           } else {
-            if (!isEnterprise) {
-              // smart features cannot be set
-              vertex.isSmart = false;
-              delete vertex.smartGraphAttribute;
-              vertex.isDisjoint = false;
-              // Enterprise ShardingStrategy is forbidden
-              vertex.shardingStrategy = "hash";
-            }
-          }
-          validateProperties(vertex, vertexName, 2, shouldKeepClusterSpecificAttributes);
-          const resEdge = tryRestore({...edge, type: 3, name: edgeName});
-          try {
-            // Should work, everything required for smartGraphs is there.
-            assertTrue(resEdge.result, `Result: ${JSON.stringify(resEdge)}`);
+            // Should work, is a simple combination of other tests
+            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
             if (!isCluster) {
               // The following are not available in single server
+              // NOTE: If at one point they are exposed we will have the validate clash on
+              // non set properties.
               if (!isEnterprise) {
                 // Well unless we are in enterprise.
-                delete edge.isSmart;
-                delete edge.isDisjoint;
-                delete edge.distributeShardsLike;
+                delete vertex.isSmart;
+                delete vertex.smartGraphAttribute;
+                delete vertex.isDisjoint;
               }
-              delete edge.shardingStrategy;
+              delete vertex.shardingStrategy;
             } else {
               if (!isEnterprise) {
-                // smartFeatures cannot be set
-                edge.isSmart = false;
-                edge.isDisjoint = false;
-                edge.shardingStrategy = "hash";
+                // smart features cannot be set
+                vertex.isSmart = false;
+                delete vertex.smartGraphAttribute;
+                vertex.isDisjoint = false;
+                // Enterprise ShardingStrategy is forbidden
+                vertex.shardingStrategy = "hash";
               }
             }
-            if (isEnterprise && isCluster) {
-              // Check special creation path
-              const makeSmartEdgeAttributes = (isTo) => {
-                const tmp = {...edge, isSystem: true, isSmart: false, shardingStrategy: "hash"};
-                if (isTo) {
-                  tmp.shardKeys = [":_key"];
+            validateProperties(vertex, vertexName, 2, shouldKeepClusterSpecificAttributes);
+            const resEdge = tryRestore({...edge, type: 3, name: edgeName});
+            try {
+              // Should work, everything required for smartGraphs is there.
+              assertTrue(resEdge.result, `Result: ${JSON.stringify(resEdge)}`);
+              if (!isCluster) {
+                // The following are not available in single server
+                if (!isEnterprise) {
+                  // Well unless we are in enterprise.
+                  delete edge.isSmart;
+                  delete edge.isDisjoint;
+                  delete edge.distributeShardsLike;
                 }
-                return tmp;
-              };
-              validateProperties({...edge, numberOfShards: 0}, edgeName, 3, shouldKeepClusterSpecificAttributes);
-              validateProperties(makeSmartEdgeAttributes(false), `_local_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
-              if (!isDisjoint) {
-                validateProperties(makeSmartEdgeAttributes(false), `_from_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
-                validateProperties(makeSmartEdgeAttributes(true), `_to_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                delete edge.shardingStrategy;
               } else {
-                assertEqual(db._collections().filter(c => c.name() === `_from_${edgeName}` || c.name() === `_to_${edgeName}`).length, 0, "Created incorrect hidden collections");
+                if (!isEnterprise) {
+                  // smartFeatures cannot be set
+                  edge.isSmart = false;
+                  edge.isDisjoint = false;
+                  edge.shardingStrategy = "hash";
+                }
               }
-            } else {
-              validateProperties(edge, edgeName, 3, shouldKeepClusterSpecificAttributes);
+              if (isEnterprise && isCluster) {
+                // Check special creation path
+                const makeSmartEdgeAttributes = (isTo) => {
+                  const tmp = {...edge, isSystem: true, isSmart: false, shardingStrategy: "hash"};
+                  if (isTo) {
+                    tmp.shardKeys = [":_key"];
+                  }
+                  return tmp;
+                };
+                validateProperties({...edge, numberOfShards: 0}, edgeName, 3, shouldKeepClusterSpecificAttributes);
+                validateProperties(makeSmartEdgeAttributes(false), `_local_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                if (!isDisjoint) {
+                  validateProperties(makeSmartEdgeAttributes(false), `_from_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                  validateProperties(makeSmartEdgeAttributes(true), `_to_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                } else {
+                  assertEqual(db._collections().filter(c => c.name() === `_from_${edgeName}` || c.name() === `_to_${edgeName}`).length, 0, "Created incorrect hidden collections");
+                }
+              } else {
+                validateProperties(edge, edgeName, 3, shouldKeepClusterSpecificAttributes);
+              }
+            } finally {
+              db._drop(edgeName, true);
             }
-          } finally {
-            db._drop(edgeName, true);
           }
         } finally {
           db._drop(vertexName, true);
@@ -996,7 +1003,14 @@ function RestoreCollectionsSuite() {
       ];
       const res = tryRestore({name: collname, computedValues});
       try {
-        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {computedValues});
+        if (isCluster) {
+          // Cluster ignores invalid computedValues
+          isAllowed(res, collname, {computedValues});
+          // Assert that computedValues is still default value
+          validateProperties({}, collname, 2);
+        } else {
+          isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {computedValues});
+        }
       } finally {
         // Should be noop
         db._drop(collname);
@@ -1136,17 +1150,41 @@ function IgnoreIllegalTypesSuite() {
             }
             case "computedValues": {
               if (isCluster) {
-                // In cluster this is allowed, local it is not.
-                // TODO: This may actually be broken!
+                // In cluster this is allowed, local it is not, cluster just ignores it.
                 isAllowed(res, collname, testParam);
+                // Assert that computedValues is still default value
+                validateProperties({}, collname, 2);
               } else {
                 isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
               }
               break;
             }
-            case "shardKeys":
-            case "numberOfShards": {
+            case "shardKeys": {
               isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+              break;
+            }
+            case "numberOfShards": {
+              if (isCluster) {
+                if (typeof ignoredValue === "number" && ignoredValue < 0) {
+                  // This is actually a VPack Error.
+                  // We should consider to make this a non-internal Error.
+                  isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_INTERNAL.code, res, testParam);
+                } else {
+                  isAllowed(res, collname, testParam);
+                }
+              } else {
+                if (typeof ignoredValue === "number") {
+                  if (ignoredValue < 0) {
+                    // This is actually a VPack Error.
+                    // We should consider to make this a non-internal Error.
+                    isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_INTERNAL.code, res, testParam);
+                  } else {
+                    isAllowed(res, collname, testParam);
+                  }
+                } else {
+                  isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+                }
+              }
               break;
             }
             case "schema": {
