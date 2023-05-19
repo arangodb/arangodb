@@ -43,6 +43,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Pregel/Worker/ExecutionStates/State.h"
 #include "Pregel/Worker/ExecutionStates/CleanedUpState.h"
+#include "Pregel/Worker/ExecutionStates/FatalErrorState.h"
 
 namespace arangodb::pregel::worker {
 
@@ -201,6 +202,12 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       LOG_TOPIC("b11f4", INFO, Logger::PREGEL)
           << fmt::format("Worker Actor: Execution state changed to {}",
                          this->state->executionState->name());
+
+      if (dynamic_cast<FatalError*>(newState.get()) != nullptr) {
+        dispatchConductor(ResultT<conductor::message::WorkerFailed>{
+            TRI_ERROR_INTERNAL,
+            fmt::format("Worker {} has entered fatal state.", this->self)});
+      }
     }
   }
 };

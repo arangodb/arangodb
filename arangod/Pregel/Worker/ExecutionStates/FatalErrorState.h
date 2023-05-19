@@ -30,7 +30,6 @@ template<typename V, typename E, typename M>
 struct WorkerState;
 
 struct FatalError : ExecutionState {
-  // TODO: Tell the conductor that this worker has entered an error state.
   FatalError() = default;
 
   [[nodiscard]] auto name() const -> std::string override {
