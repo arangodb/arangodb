@@ -38,30 +38,25 @@ const {
   ERROR_VALIDATION_BAD_PARAMETER,
   ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
   ERROR_ARANGO_COLLECTION_TYPE_INVALID,
-  ERROR_CLUSTER_INSUFFICIENT_DBSERVERS
+  ERROR_CLUSTER_INSUFFICIENT_DBSERVERS,
+  ERROR_HTTP_CONFLICT,
+  ERROR_ARANGO_DUPLICATE_NAME,
+  ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE
 } = require("internal").errors;
 
-/* TODO List
- - queryParams:
-    - overwrite
-    - force
-    - ignoreDistributeShardsLikeErrors
- - ErrorCases:
-   - Duplicate Name
-     - On System (truncate)
-       - Change Parameters
-     - On User (drop)
-   - Illegal replication/writeConcern combis
-- OneShard
-- Indexes (other suite)
+/* Note: This test does not cover the indexes entry yet. */
 
-    - writeConcern & minReplicationFactor
-        - Database Config
-    - replicationFactor
-        - Database Config
-    - shardingStrategy
-    - computedValues
-
+/**
+ * !!!!!!!!DISCLAIMER!!!!
+ * This test is for our most backwards-compatible API.
+ * This API is used within arangodump -> arangorestore cycle on
+ * the restore side.
+ * If a customer needs to do bigger version jumps and cannot do
+ * a rolling upgrade this API is our recomendation to upgarade from
+ * early versions to newer ones, therefor we need to keep it backwards compatible.
+ * Therefore: Please reconsider this when you ever need to adapt this test file, if
+ * there is a possible path to make your change in a backwards compatible way so that
+ * none of the existing tests here needs to be changed.
  */
 
 const filterClusterOnlyAttributes = (attributes) => {
@@ -119,8 +114,17 @@ const getDefaultProps = () => {
     };
   }
 };
-const tryRestore = (parameters) => {
-  return arango.PUT('/_api/replication/restore-collection', {
+const tryRestore = (parameters, queryParameter = {}) => {
+  assertTrue(Object.keys(queryParameter).length <= 1, `This test suite does not support more than one query parameter at a time, this is doable but not implemented.`);
+  let url = '/_api/replication/restore-collection';
+  if (Object.keys(queryParameter).length === 1) {
+    for (const [param, value] of Object.entries(queryParameter)) {
+      if (param === "force" || param === "overwrite" || param === "ignoreDistributeShardsLikeErrors") {
+        url += `?${param}=${value}`;
+      }
+    }
+  }
+  return arango.PUT(url, {
     parameters, indexes: []
   });
 };
@@ -164,9 +168,19 @@ const validatePropertiesAreNotEqual = (forbidden, collname) => {
   }
 };
 
+const isDisallowed = (code, errorNum, res, input) => {
+  assertTrue(res.error, `Created disallowed Collection on input ${JSON.stringify(input)}`);
+  assertEqual(res.code, code, `Different error on input ${JSON.stringify(input)}, ${JSON.stringify(res)}`);
+  assertEqual(res.errorNum, errorNum, `Different error on input ${JSON.stringify(input)}, ${JSON.stringify(res)}`);
+};
+
+const isAllowed = (res, collname, input) => {
+  assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(input)}`);
+  validateProperties({}, collname, 2);
+  validatePropertiesAreNotEqual(input, collname);
+};
+
 function RestoreCollectionsSuite() {
-
-
 
   const validatePropertiesDoNotExist = (colName, illegalProperties) => {
     const col = db._collection(collname);
@@ -272,7 +286,7 @@ function RestoreCollectionsSuite() {
     },
 
     testRestoreNumberOfShards: function () {
-      const res = tryRestore({name: collname,  type: 2,  numberOfShards: 3});
+      const res = tryRestore({name: collname, type: 2, numberOfShards: 3});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
         validateProperties({numberOfShards: 3}, collname, 2);
@@ -557,6 +571,41 @@ function RestoreCollectionsSuite() {
       }
     },
 
+    testHiddenSmartGraphCollectionsForce: function () {
+      const names = [`_local_${collname}`, `_from_${collname}`, `_to_${collname}`];
+      for (const name of names) {
+        const res = tryRestore({name: name, isSystem: true}, {force: true});
+        try {
+          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+          // Difference to above: The Enterprise version actually does restore the collection with force
+          assertEqual(db._collections().filter(c => c.name() === name).length, 1, `Collection ${name} should exist`);
+        } finally {
+          db._drop(name, {isSystem: true});
+        }
+      }
+    },
+
+    testIgnoreDistributeShardsLikeErrors: function () {
+      const nonExistentCollection = "UnittestIDoNotExist";
+      const input = {distributeShardsLike: nonExistentCollection};
+      const res = tryRestore({name: collname, ...input});
+      try {
+        if (isCluster) {
+          // First attempt should fail, leader does not exist
+          isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE.code, res, input);
+          assertEqual(db._collections().filter(c => c.name() === collname).length, 0, `Collection ${collname} should not exist`);
+          // If we vie the old option to ignoreDistributeShardsLikeErrors we still cannot create the collection
+          const retryRes = tryRestore({name: collname, ...input}, {ignoreDistributeShardsLikeErrors: true});
+          isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE.code, retryRes, input);
+          assertEqual(db._collections().filter(c => c.name() === collname).length, 0, `Collection ${collname} should not exist`);
+        }
+        isAllowed(res,collname, input);
+      } finally {
+        // Should be noop.
+        db._drop(collname);
+      }
+    },
+
     testShardKeys: function () {
       const res = tryRestore({name: collname, shardKeys: ["test"]});
       try {
@@ -630,11 +679,11 @@ function RestoreCollectionsSuite() {
           numberOfShards: 3,
           replicationFactor: 2,
           isSmart: true,
-          shardingStrategy : "hash",
-          shardKeys : [
+          shardingStrategy: "hash",
+          shardKeys: [
             "_key:"
           ],
-          smartGraphAttribute : "test",
+          smartGraphAttribute: "test",
           isDisjoint: isDisjoint
         };
 
@@ -734,11 +783,11 @@ function RestoreCollectionsSuite() {
           numberOfShards: 3,
           replicationFactor: 2,
           isSmart: true,
-          shardingStrategy : "enterprise-hex-smart-vertex",
-          shardKeys : [
+          shardingStrategy: "enterprise-hex-smart-vertex",
+          shardKeys: [
             "_key:"
           ],
-          smartGraphAttribute : "test",
+          smartGraphAttribute: "test",
           isDisjoint: isDisjoint
         };
 
@@ -832,6 +881,67 @@ function RestoreCollectionsSuite() {
       }
     },
 
+    testDuplicateName: function () {
+      const res = tryRestore({name: collname});
+      try {
+        // First run should work
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        validateProperties({}, collname, 2);
+
+        const resAgain = tryRestore({name: collname});
+        isDisallowed(ERROR_HTTP_CONFLICT.code, ERROR_ARANGO_DUPLICATE_NAME.code, resAgain, {name: collname});
+      } finally {
+        db._drop(collname);
+      }
+    },
+
+    testDuplicateNameOverwrite: function () {
+      const res = tryRestore({name: collname});
+      try {
+        // First run should work
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        validateProperties({}, collname, 2);
+        db._collection(collname).save([{}, {}, {}]);
+        assertEqual(db._collection(collname).count(), 3, `Test_setup assert, we are not able to create data!`);
+        const idBeforeRestore = db._collection(collname)._id;
+
+        // With overwrite we can recreate the collection
+        const resAgain = tryRestore({name: collname}, {overwrite: true});
+        assertTrue(resAgain.result, `Result: ${JSON.stringify(resAgain)}`);
+        validateProperties({}, collname, 2);
+        const idAfterRestore = db._collection(collname)._id;
+        assertEqual(db._collection(collname).count(), 0, `Data not removed!`);
+        assertNotEqual(idBeforeRestore, idAfterRestore, `Collection not dropped, just truncated!`);
+      } finally {
+        db._drop(collname);
+      }
+    },
+
+    testDuplicateNameOverwriteNotDropable: function () {
+      const res = tryRestore({name: collname});
+      const followerName = "UnitTestFollower";
+      try {
+        // First run should work
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        validateProperties({}, collname, 2);
+        db._collection(collname).save([{}, {}, {}]);
+        // Create a follower: (NOTE: we enforce the side-effect here, that a leader cannot be dropped)
+        const resFollower = tryRestore({name: followerName, distributeShardsLike: collname});
+        assertTrue(resFollower.result, `Result: ${JSON.stringify(res)}`);
+        const idBeforeRestore = db._collection(collname)._id;
+        // With overwrite we can recreate the collection
+        const resAgain = tryRestore({name: collname}, {overwrite: true});
+        assertTrue(resAgain.result, `Result: ${JSON.stringify(resAgain)}`);
+        validateProperties({}, collname, 2);
+        const idAfterRestore = db._collection(collname)._id;
+        assertEqual(db._collection(collname).count(), 0, `Data not removed!`);
+        assertEqual(idBeforeRestore, idAfterRestore, `Collection dropped, it was just truncated!`);
+      } finally {
+        db._drop(followerName);
+        db._drop(collname);
+      }
+    },
+
     testUnknownParameters: function () {
       const unknownParameters = ["test", "foo", "", "doCompact", "isVolatile"];
 
@@ -844,6 +954,109 @@ function RestoreCollectionsSuite() {
         } finally {
           db._drop(collname, true);
         }
+      }
+    },
+
+    testComputedValues: function () {
+      const computedValues = [
+        {
+          name: "newValue",
+          expression: "RETURN @doc.foxx",
+          overwrite: true,
+          keepNull: true,
+        }
+      ];
+      const res = tryRestore({name: collname, computedValues});
+      try {
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        // Overrides are taken from DatabaseConfiguration, they differ from original
+        validateProperties({computedValues}, collname, 2);
+      } finally {
+        db._drop(collname);
+      }
+    },
+
+    testComputedValuesIllegal: function () {
+      // Taken from failure test for computedValues
+      const computedValues = [
+        {
+          name: "newValue",
+          expression: "CONCAT(@doc.value1, '+')",
+          overwrite: false
+        }
+      ];
+      const res = tryRestore({name: collname, computedValues});
+      try {
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {computedValues});
+      } finally {
+        // Should be noop
+        db._drop(collname);
+      }
+    },
+
+    testIllegalReplicationWriteConcern: function () {
+      const res = tryRestore({name: collname, writeConcern: 3, replicationFactor: 2});
+      try {
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {
+          writeConcern: 3,
+          replicationFactor: 2
+        });
+      } finally {
+        // Should be noop
+        db._drop(collname);
+      }
+    },
+
+    testRestoreSystemCollection: function () {
+      const systemName = "_pregel_queries";
+      const idBeforeRestore = db._collection(systemName)._id;
+      const propsBeforeRestore = db._collection(systemName).properties();
+      const res = tryRestore({name: systemName, isSystem: true});
+      const idAfterRestore = db._collection(systemName)._id;
+      assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+      // We do not want to change any properties
+      validateProperties(propsBeforeRestore, systemName, 2);
+      assertEqual(idBeforeRestore, idAfterRestore, `Did drop the collection, not just truncated`);
+    },
+
+    testRestoreLeadingSystemCollection: function () {
+      // We cannot restore a leading system collection.
+      db._createDatabase("UnitTestDB");
+      try {
+        db._useDatabase("UnitTestDB");
+        // Graph is leading, cannot be dropped, will be truncated
+        const systemName = "_graphs";
+        const idBeforeRestore = db._collection(systemName)._id;
+        const propsBeforeRestore = db._collection(systemName).properties();
+        const res = tryRestore({name: systemName, isSystem: true});
+        const idAfterRestore = db._collection(systemName)._id;
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        // We do not want to change any properties
+        validateProperties(propsBeforeRestore, systemName, 2);
+        assertEqual(idBeforeRestore, idAfterRestore, `Did drop the collection, not just truncated`);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase("UnitTestDB");
+      }
+    },
+
+    testDatabaseConfiguration: function () {
+      db._createDatabase("UnitTestConfiguredDB", {replicationFactor: 3, writeConcern: 2});
+      try {
+        db._useDatabase("UnitTestConfiguredDB");
+
+        const res = tryRestore({name: collname});
+        try {
+          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+          // Overrides are taken from DatabaseConfiguration, they differ from original
+          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
+        } finally {
+          db._drop(collname);
+        }
+
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase("UnitTestConfiguredDB");
       }
     }
 
@@ -889,27 +1102,15 @@ function IgnoreIllegalTypesSuite() {
   // Every test in the suite is self-contained
   const suite = {};
 
-  const isDisallowed = (code, errorNum, res, input) => {
-    assertTrue(res.error, `Created disallowed Collection on input ${JSON.stringify(input)}`);
-    assertEqual(res.code, code, `Different error on input ${JSON.stringify(input)}, ${JSON.stringify(res)}`);
-    assertEqual(res.errorNum, errorNum, `Different error on input ${JSON.stringify(input)}, ${JSON.stringify(res)}`);
-  };
-
-  const isAllowed = (res, collname, input) => {
-    assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(input)}`);
-    validateProperties({}, collname, 2);
-    validatePropertiesAreNotEqual(input, collname);
-  };
-
   for (const [prop, type] of Object.entries(propertiesToTest)) {
-    suite[`testIllegalEntries${prop}`] = function() {
+    suite[`testIllegalEntries${prop}`] = function () {
       for (const ignoredValue of testValues[type]) {
         const testParam = {[prop]: ignoredValue};
         const res = tryRestore({name: collname, [prop]: ignoredValue});
         try {
           switch (prop) {
             case "type": {
-              if (typeof ignoredValue === "number" ) {
+              if (typeof ignoredValue === "number") {
                 // We cannot create collections that are of number type, which is not 2 or 3
                 isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, 1218, res, testParam);
               } else {
@@ -1015,7 +1216,83 @@ function IgnoreIllegalTypesSuite() {
   return suite;
 }
 
+function RestoreInOneShardSuite() {
+  const collname = "UnitTestCollection";
+  const oneShardLeader = "_graphs";
+  const fixedOneShardValues = ["numberOfShards", "replicationFactor", "minReplicationFactor", "writeConcern"];
+  const getOneShardShardingValues = () => {
+    const props = _.pick(db[oneShardLeader].properties(), fixedOneShardValues);
+    // NOTE: For some reason one-shard uses HASH sharding strategy.
+    // Original restore uses compat.
+    return {...props, distributeShardsLike: oneShardLeader, shardingStrategy: "hash"};
+  };
+  return {
+    setUpAll: function () {
+      db._createDatabase("UnitTestOneShard", {sharding: "single"});
+      db._useDatabase("UnitTestOneShard");
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase("UnitTestOneShard");
+    },
+
+    testRestoreMinimalOneShard: function () {
+      const res = tryRestore({name: collname});
+      try {
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        validateProperties(getOneShardShardingValues(), collname, 2);
+      } finally {
+        db._drop(collname);
+      }
+    },
+
+    testRestoreWithOtherShardValues: function () {
+      for (const v of fixedOneShardValues) {
+        // all are numeric values. None of them can be modified in one shard.
+        const res = tryRestore({name: collname, [v]: 2});
+        try {
+          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+          validateProperties(getOneShardShardingValues(), collname, 2);
+        } finally {
+          db._drop(collname);
+        }
+      }
+    },
+
+    testRestoreWithDistributeShardsLike: function () {
+      const otherLeaderName = "UnitTestLeader";
+      const leaderRes = tryRestore({name: otherLeaderName});
+      try {
+        // Should be allowed
+        assertTrue(leaderRes.result, `Result: ${JSON.stringify(leaderRes)}`);
+        const res = tryRestore({name: collname, distributeShardsLike: otherLeaderName});
+        try {
+          // Well we just ignore that something is off here...
+          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+          validateProperties(getOneShardShardingValues(), collname, 2);
+        } finally {
+          db._drop(collname);
+        }
+      } finally {
+        db._drop(otherLeaderName);
+      }
+    },
+
+    testRestoreMultipleShardKeysOneShard: function () {
+      const res = tryRestore({name: collname, shardKeys: ["foo", "bar"]});
+      try {
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {shardKeys: ["foo", "bar"]});
+      } finally {
+        // Should be a noop.
+        db._drop(collname);
+      }
+    }
+  }
+}
+
 jsunity.run(RestoreCollectionsSuite);
 jsunity.run(IgnoreIllegalTypesSuite);
+jsunity.run(RestoreInOneShardSuite);
 
 return jsunity.done();
