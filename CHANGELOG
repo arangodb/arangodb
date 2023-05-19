@@ -1,6 +1,11 @@
 v3.11.0-rc.1 (2023-05-13)
 -------------------------
 
+* add a startup parameter `--rclone.argument` which can be utilised to enable
+  debugging with logfiles in hot backup RClone upload operacions:
+  `--rclone.argument=--log-level=DEBUG`
+  `--rclone.argument=-log-file=/tmp/rclone.log`
+
 * Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 
 * Improved error reporting for system calls on Windows and fixed a
