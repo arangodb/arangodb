@@ -414,6 +414,7 @@ The duration of the different query execution phases in seconds.
 @RESTSTRUCT{loading collections,post_api_cursor_extra_profile,number,required,}
 @RESTSTRUCT{instantiating plan,post_api_cursor_extra_profile,number,required,}
 @RESTSTRUCT{optimizing plan,post_api_cursor_extra_profile,number,required,}
+@RESTSTRUCT{instantiating executors,post_api_cursor_extra_profile,number,required,}
 @RESTSTRUCT{executing,post_api_cursor_extra_profile,number,required,}
 @RESTSTRUCT{finalizing,post_api_cursor_extra_profile,number,required,}
 
