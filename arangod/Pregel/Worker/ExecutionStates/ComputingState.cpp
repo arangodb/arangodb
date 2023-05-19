@@ -51,19 +51,21 @@ Computing<V, E, M>::Computing(WorkerState<V, E, M>& worker) : worker{worker} {
   if (worker.messageCombiner) {
     readCache = std::make_unique<CombiningInCache<M>>(
         worker.config->graphSerdeConfig().localPregelShardIDs(
-              ServerState::instance()->getId()), worker.messageFormat.get(),
-        worker.messageCombiner.get());
+            ServerState::instance()->getId()),
+        worker.messageFormat.get(), worker.messageCombiner.get());
     writeCache = std::make_unique<CombiningInCache<M>>(
         worker.config->graphSerdeConfig().localPregelShardIDs(
-              ServerState::instance()->getId()), worker.messageFormat.get(),
-        worker.messageCombiner.get());
+            ServerState::instance()->getId()),
+        worker.messageFormat.get(), worker.messageCombiner.get());
   } else {
     readCache = std::make_unique<ArrayInCache<M>>(
         worker.config->graphSerdeConfig().localPregelShardIDs(
-              ServerState::instance()->getId()), worker.messageFormat.get());
+            ServerState::instance()->getId()),
+        worker.messageFormat.get());
     writeCache = std::make_unique<ArrayInCache<M>>(
         worker.config->graphSerdeConfig().localPregelShardIDs(
-              ServerState::instance()->getId()), worker.messageFormat.get());
+            ServerState::instance()->getId()),
+        worker.messageFormat.get());
   }
 }
 
