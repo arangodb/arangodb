@@ -193,7 +193,7 @@ auto Computing<V, E, M>::receive(actor::ActorPID const& sender,
 
 template<typename V, typename E, typename M>
 auto Computing<V, E, M>::prepareGlobalSuperStep(
-    message::RunGlobalSuperStep message) -> void {
+    worker::message::RunGlobalSuperStep message) -> void {
   worker.config->_globalSuperstep = message.gss;
   worker.config->_localSuperstep = message.gss;
 
