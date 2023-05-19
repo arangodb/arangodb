@@ -45,17 +45,24 @@ VertexProcessor<V, E, M>::VertexProcessor(
     std::unique_ptr<Algorithm<V, E, M>>& algorithm,
     std::unique_ptr<WorkerContext>& workerContext,
     std::unique_ptr<MessageCombiner<M>>& messageCombiner,
-    std::unique_ptr<MessageFormat<M>>& messageFormat) {
+    std::unique_ptr<MessageFormat<M>>& messageFormat, size_t messageBatchSize) {
   if (messageCombiner != nullptr) {
     localMessageCache = std::make_shared<CombiningInCache<M>>(
-        std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
+        containers::FlatHashSet<PregelShard>{}, messageFormat.get(),
+        messageCombiner.get());
     outCache = std::make_shared<CombiningOutCache<M>>(
-        workerConfig, messageFormat.get(), messageCombiner.get());
+        workerConfig,
+        workerConfig->graphSerdeConfig().localPregelShardIDs(
+            ServerState::instance()->getId()),
+        messageFormat.get(), messageCombiner.get());
   } else {
     localMessageCache = std::make_shared<ArrayInCache<M>>(
-        std::set<PregelShard>{}, messageFormat.get());
-    outCache =
-        std::make_shared<ArrayOutCache<M>>(workerConfig, messageFormat.get());
+        containers::FlatHashSet<PregelShard>{}, messageFormat.get());
+    outCache = std::make_shared<ArrayOutCache<M>>(
+        workerConfig,
+        workerConfig->graphSerdeConfig().localPregelShardIDs(
+            ServerState::instance()->getId()),
+        messageFormat.get());
   }
 
   outCache->setBatchSize(messageBatchSize);
@@ -116,14 +123,22 @@ ActorVertexProcessor<V, E, M>::ActorVertexProcessor(
         responsibleActorPerShard) {
   if (messageCombiner != nullptr) {
     localMessageCache = std::make_shared<CombiningInCache<M>>(
-        std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
+        containers::FlatHashSet<PregelShard>{}, messageFormat.get(),
+        messageCombiner.get());
     outCache = std::make_shared<CombiningOutActorCache<M>>(
-        workerConfig, messageFormat.get(), messageCombiner.get());
+        workerConfig,
+        workerConfig->graphSerdeConfig().localPregelShardIDs(
+            ServerState::instance()->getId()),
+        messageFormat.get(), messageCombiner.get());
   } else {
     localMessageCache = std::make_shared<ArrayInCache<M>>(
-        std::set<PregelShard>{}, messageFormat.get());
-    outCache = std::make_shared<ArrayOutActorCache<M>>(workerConfig,
-                                                       messageFormat.get());
+        containers::FlatHashSet<PregelShard>{}, messageFormat.get());
+    outCache = std::make_shared<ArrayOutActorCache<M>>(
+        workerConfig,
+        workerConfig->graphSerdeConfig().localPregelShardIDs(
+            ServerState::instance()->getId()),
+
+        messageFormat.get());
   }
 
   outCache->setBatchSize(messageBatchSize);

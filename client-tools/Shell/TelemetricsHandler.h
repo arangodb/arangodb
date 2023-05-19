@@ -54,6 +54,8 @@ class TelemetricsHandler {
 
   void beginShutdown();
 
+  void joinThread();
+
   void getTelemetricsInfo(velocypack::Builder& builder);
 
   velocypack::Builder sendTelemetricsToEndpoint(std::string const& reqUrl);
@@ -81,9 +83,7 @@ class TelemetricsHandler {
   velocypack::Builder _telemetricsFetchedInfo;
 
   std::thread _telemetricsThread;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool const _sendToEndpoint;
-#endif
+  bool _sendToEndpoint;
 };
 
 }  // namespace arangodb

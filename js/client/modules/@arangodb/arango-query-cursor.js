@@ -36,7 +36,7 @@ var arangosh = require('@arangodb/arangosh');
 // / @brief constructor
 // //////////////////////////////////////////////////////////////////////////////
 
-function ArangoQueryCursor(database, data, stream) {
+function ArangoQueryCursor(database, data, stream, retriable) {
   this._database = database;
   this._dbName = database._name();
   this.data = data;
@@ -47,11 +47,7 @@ function ArangoQueryCursor(database, data, stream) {
   this._total = 0;
   this._stream = stream || false;
   this._cached = false;
-  this._retriable = false;
-
-  if (data.hasOwnProperty('nextBatchId')) {
-    this._retriable = true;
-  }
+  this._retriable = retriable || false;
 
   if (data.result !== undefined) {
     this._count = data.result.length;
