@@ -181,7 +181,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
 
   auto operator()(ResultT<message::WorkerFailed> msg)
       -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("012d3", INFO, Logger::PREGEL) << fmt::format(
+    LOG_TOPIC("b7bff", INFO, Logger::PREGEL) << fmt::format(
         "Conductor Actor: Run {} is canceled. {}",
         this->state->specifications.executionNumber, msg.errorMessage());
     auto stateChange = this->state->executionState->cancel(this->sender, msg);
