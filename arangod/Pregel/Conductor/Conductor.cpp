@@ -757,9 +757,10 @@ void Conductor::persistPregelState(ExecutionState state) {
         "Updated state in \"{}\" collection", StaticStrings::PregelCollection);
   } else {
     LOG_PREGEL("0ffa4", INFO) << fmt::format(
-        "Could not store state in \"{}\" collection, error message: "
+        "Could not store state {} in \"{}\" collection, error message: "
         "{}",
-        StaticStrings::PregelCollection, updateResult.errorMessage());
+        stateBuilder.slice().toJson(), StaticStrings::PregelCollection,
+        updateResult.errorMessage());
   }
 }
 
