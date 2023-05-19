@@ -58,6 +58,6 @@ struct Computing : ExecutionState {
       isWaitingForAllMessagesSince;
   std::unique_ptr<InCache<M>> readCache = nullptr;
   std::unique_ptr<InCache<M>> writeCache = nullptr;
-  uint32_t messageBatchSize = 500;
+  size_t messageBatchSize = 500;
 };
 }  // namespace arangodb::pregel::worker

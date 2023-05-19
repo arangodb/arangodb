@@ -50,16 +50,20 @@ template<typename V, typename E, typename M>
 Computing<V, E, M>::Computing(WorkerState<V, E, M>& worker) : worker{worker} {
   if (worker.messageCombiner) {
     readCache = std::make_unique<CombiningInCache<M>>(
-        worker.config->localPregelShardIDs(), worker.messageFormat.get(),
+        worker.config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()), worker.messageFormat.get(),
         worker.messageCombiner.get());
     writeCache = std::make_unique<CombiningInCache<M>>(
-        worker.config->localPregelShardIDs(), worker.messageFormat.get(),
+        worker.config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()), worker.messageFormat.get(),
         worker.messageCombiner.get());
   } else {
     readCache = std::make_unique<ArrayInCache<M>>(
-        worker.config->localPregelShardIDs(), worker.messageFormat.get());
+        worker.config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()), worker.messageFormat.get());
     writeCache = std::make_unique<ArrayInCache<M>>(
-        worker.config->localPregelShardIDs(), worker.messageFormat.get());
+        worker.config->graphSerdeConfig().localPregelShardIDs(
+              ServerState::instance()->getId()), worker.messageFormat.get());
   }
 }
 
@@ -331,7 +335,7 @@ auto Computing<V, E, M>::finishProcessing(VerticesProcessed verticesProcessed,
 
   uint64_t tn = worker.config->parallelism();
   uint64_t s = worker.messageStats.sendCount / tn / 2UL;
-  messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
+  messageBatchSize = s > 1000 ? (size_t)s : 1000;
   worker.messageStats.reset();
   LOG_TOPIC("a3dbf", TRACE, Logger::PREGEL)
       << fmt::format("Message batch size: {}", messageBatchSize);

@@ -64,7 +64,7 @@ auto Storing<V, E, M>::receive(actor::ActorPID const& sender,
         auto storer = std::make_shared<GraphStorer<V, E>>(
             worker.config->executionNumber(), *worker.config->vocbase(),
             worker.config->parallelism(), worker.algorithm->inputFormat(),
-            worker.config->globalShardIDs(),
+            worker.config->graphSerdeConfig(),
             ActorStoringUpdate{.fn = dispatcher.dispatchStatus});
         storer->store(worker.magazine).get();
 
