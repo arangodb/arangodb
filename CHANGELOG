@@ -1,6 +1,11 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* add a startup parameter `--rclone.argument` which can be utilised to enable
+  debugging with logfiles in hot backup RClone upload operacions:
+  `--rclone.argument=--log-level=DEBUG`
+  `--rclone.argument=-log-file=/tmp/rclone.log`
+
 * FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
   for GeoJSON.
 
