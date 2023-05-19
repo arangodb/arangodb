@@ -180,15 +180,16 @@ const isAllowed = (res, collname, input) => {
   validatePropertiesAreNotEqual(input, collname);
 };
 
+const validatePropertiesDoNotExist = (colName, illegalProperties) => {
+  const col = db._collection(colName);
+  const props = col.properties(true);
+  for (const key of illegalProperties) {
+    assertFalse(props.hasOwnProperty(key), `Property ${key} should not exist`);
+  }
+};
+
 function RestoreCollectionsSuite() {
 
-  const validatePropertiesDoNotExist = (colName, illegalProperties) => {
-    const col = db._collection(collname);
-    const props = col.properties(true);
-    for (const key of illegalProperties) {
-      assertFalse(props.hasOwnProperty(key), `Property ${key} should not exist`);
-    }
-  };
   const collname = "UnitTestRestore";
   const leaderName = "UnitTestLeader";
 
@@ -572,6 +573,9 @@ function RestoreCollectionsSuite() {
     },
 
     testHiddenSmartGraphCollectionsForce: function () {
+      if (isCluster && isEnterprise) {
+        return;
+      }
       const names = [`_local_${collname}`, `_from_${collname}`, `_to_${collname}`];
       for (const name of names) {
         const res = tryRestore({name: name, isSystem: true}, {force: true});
@@ -598,8 +602,10 @@ function RestoreCollectionsSuite() {
           const retryRes = tryRestore({name: collname, ...input}, {ignoreDistributeShardsLikeErrors: true});
           isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE.code, retryRes, input);
           assertEqual(db._collections().filter(c => c.name() === collname).length, 0, `Collection ${collname} should not exist`);
+        } else {
+          // Distribute Shards Like is ignored on single servers.
+          isAllowed(res, collname, input);
         }
-        isAllowed(res,collname, input);
       } finally {
         // Should be noop.
         db._drop(collname);
@@ -911,7 +917,8 @@ function RestoreCollectionsSuite() {
         validateProperties({}, collname, 2);
         const idAfterRestore = db._collection(collname)._id;
         assertEqual(db._collection(collname).count(), 0, `Data not removed!`);
-        assertNotEqual(idBeforeRestore, idAfterRestore, `Collection not dropped, just truncated!`);
+        // We keep the collection, and just truncate it.
+        assertEqual(idBeforeRestore, idAfterRestore, `Collection dropped, not just truncated!`);
       } finally {
         db._drop(collname);
       }
@@ -935,7 +942,7 @@ function RestoreCollectionsSuite() {
         validateProperties({}, collname, 2);
         const idAfterRestore = db._collection(collname)._id;
         assertEqual(db._collection(collname).count(), 0, `Data not removed!`);
-        assertEqual(idBeforeRestore, idAfterRestore, `Collection dropped, it was just truncated!`);
+        assertEqual(idBeforeRestore, idAfterRestore, `Collection dropped, it was not just truncated!`);
       } finally {
         db._drop(followerName);
         db._drop(collname);
@@ -969,7 +976,9 @@ function RestoreCollectionsSuite() {
       const res = tryRestore({name: collname, computedValues});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        // Overrides are taken from DatabaseConfiguration, they differ from original
+        // In the response computed values are enriched with more information
+        computedValues[0].computeOn = ["insert", "update", "replace"];
+        computedValues[0].failOnWarning = false;
         validateProperties({computedValues}, collname, 2);
       } finally {
         db._drop(collname);
@@ -997,10 +1006,15 @@ function RestoreCollectionsSuite() {
     testIllegalReplicationWriteConcern: function () {
       const res = tryRestore({name: collname, writeConcern: 3, replicationFactor: 2});
       try {
-        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {
-          writeConcern: 3,
-          replicationFactor: 2
-        });
+        if (isCluster) {
+          isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {
+            writeConcern: 3,
+            replicationFactor: 2
+          });
+        } else {
+          // On single servers those values are just ignored
+          validateProperties({}, collname, 2);
+        }
       } finally {
         // Should be noop
         db._drop(collname);
@@ -1048,8 +1062,9 @@ function RestoreCollectionsSuite() {
         const res = tryRestore({name: collname});
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          // Overrides are taken from DatabaseConfiguration, they differ from original
-          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
+          // It seems that those configurations on the database are just ignored...
+          // So assert that we do not have replicationFactor: 3 and writeConcern: 2.
+          validateProperties({}, collname, 2);
         } finally {
           db._drop(collname);
         }
@@ -1241,7 +1256,12 @@ function RestoreInOneShardSuite() {
       const res = tryRestore({name: collname});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        validateProperties(getOneShardShardingValues(), collname, 2);
+        if (isCluster) {
+          validateProperties(getOneShardShardingValues(), collname, 2);
+        } else {
+          // OneShard has no meaning in single server, just assert values are taken
+          validateProperties({}, collname, 2);
+        }
       } finally {
         db._drop(collname);
       }
@@ -1253,7 +1273,12 @@ function RestoreInOneShardSuite() {
         const res = tryRestore({name: collname, [v]: 2});
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          validateProperties(getOneShardShardingValues(), collname, 2);
+          if (isCluster) {
+            validateProperties(getOneShardShardingValues(), collname, 2);
+          } else {
+            // OneShard has no meaning in single server, just assert values are taken
+            validateProperties({}, collname, 2);
+          }
         } finally {
           db._drop(collname);
         }
@@ -1270,7 +1295,13 @@ function RestoreInOneShardSuite() {
         try {
           // Well we just ignore that something is off here...
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          validateProperties(getOneShardShardingValues(), collname, 2);
+          if (isCluster) {
+            validateProperties(getOneShardShardingValues(), collname, 2);
+          } else {
+            // OneShard has no meaning in single server, just assert default values are hold
+            validateProperties({}, collname, 2);
+            validatePropertiesDoNotExist(collname, ["distributeShardsLike"]);
+          }
         } finally {
           db._drop(collname);
         }
@@ -1282,7 +1313,13 @@ function RestoreInOneShardSuite() {
     testRestoreMultipleShardKeysOneShard: function () {
       const res = tryRestore({name: collname, shardKeys: ["foo", "bar"]});
       try {
-        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {shardKeys: ["foo", "bar"]});
+        if (isCluster) {
+          isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {shardKeys: ["foo", "bar"]});
+        } else {
+          // In single servers shardKeys have no effect. They are ignored, hence the restore works here
+          isAllowed(res, collname, {shardKeys: ["foo", "bar"]});
+          validatePropertiesDoNotExist(collname, ["shardKeys"]);
+        }
       } finally {
         // Should be a noop.
         db._drop(collname);
