@@ -554,13 +554,14 @@ void GraphNode::determineEnterpriseFlags(AstNode const*) {
 void GraphNode::setGraphInfoAndCopyColls(
     std::vector<Collection*> const& edgeColls,
     std::vector<Collection*> const& vertexColls) {
-  _graphInfo.openArray();
+  _graphInfo.add(VPackValue(_graphObj->name()));
+  // _graphInfo.openArray();
   for (auto& it : edgeColls) {
     TRI_ASSERT(it != nullptr);
     _edgeColls.emplace_back(it);
-    _graphInfo.add(VPackValue(it->name()));
+    //    _graphInfo.add(VPackValue(it->name()));
   }
-  _graphInfo.close();
+  // _graphInfo.close();
 
   for (auto& it : vertexColls) {
     TRI_ASSERT(it != nullptr);
