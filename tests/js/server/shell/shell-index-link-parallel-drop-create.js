@@ -29,6 +29,7 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const errors = internal.errors;
 const db = internal.db;
+const isEnterprise = require("internal").isEnterprise();
 
 function ParallelIndexLinkCreateDropSuite() {
   'use strict';
@@ -62,6 +63,7 @@ function ParallelIndexLinkCreateDropSuite() {
       let docs = [];
       for (let i = 0; i < 100 * 1000; ++i) {
         docs.push({ value1: i, value2: "test" + i });
+        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         if (docs.length === 5000) {
           c.insert(docs);
           docs = [];
@@ -87,6 +89,26 @@ function ParallelIndexLinkCreateDropSuite() {
       const iterations = 15;
 
       let c = require("internal").db._collection(cn);
+      
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isEnterprise) {
+        viewMeta = `{ links : { cn : { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } }`;
+        indexMeta = `{ type: 'inverted', name: 'inverted', fields: [
+          {name: 'value1', analyzer: 'identity'},
+          {name: 'value2', analyzer: 'identity'},
+          {name: 'value3', analyzer: 'identity'},
+          {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+        ]}`;
+      } else {
+        viewMeta = `{ links : { cn : { includeAllFields: true} } }`;
+        indexMeta = `{ type: 'inverted', name: 'inverted', fields: [
+          {name: 'value1', analyzer: 'identity'},
+          {name: 'value2', analyzer: 'identity'},
+          {name: 'value3', analyzer: 'identity'},
+          {"name": "value_nested[*]"}
+        ]}`;
+      }
 
       for (let i = 0; i < threads; ++i) {
         let command = `
@@ -97,7 +119,9 @@ let c = db._collection("${cn}");
         if (i === 0) {
           command += `
 let idx = db["${cn}"].ensureIndex({ type: "persistent", fields: ["value2"] });   
+let ii = db["${cn}"].ensureIndex(${indexMeta}); 
 db["${cn}"].dropIndex(idx); 
+db["${cn}"].dropIndex(ii); 
 `;
         } else {
           command += `
@@ -105,7 +129,7 @@ for (let iteration = 0; iteration < ${iterations}; ++iteration) {
   require("console").log("thread ${i}, iteration " + iteration);
 
   try {
-    db._view("${vn}").properties({ links : { ${cn} : { includeAllFields: true} } }, true);
+    db._view("${vn}").properties(${viewMeta}, true);
     db._view("${vn}").properties({ links : { ${cn} : null }}, true);   
   } catch (err) {
     // concurrent modification of links can fail in the cluster
@@ -120,7 +144,6 @@ for (let iteration = 0; iteration < ${iterations}; ++iteration) {
         command += `
 c.insert({ _key: "done${i}", value: true });
 `;
-
         tasks.register({ name: "UnitTestsIndexCreateDrop" + i, command });
       }
 

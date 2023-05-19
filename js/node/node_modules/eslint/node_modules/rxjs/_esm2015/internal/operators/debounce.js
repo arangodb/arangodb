@@ -1,5 +1,4 @@
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, innerSubscribe, SimpleInnerSubscriber } from '../innerSubscribe';
 export function debounce(durationSelector) {
     return (source) => source.lift(new DebounceOperator(durationSelector));
 }
@@ -11,12 +10,11 @@ class DebounceOperator {
         return source.subscribe(new DebounceSubscriber(subscriber, this.durationSelector));
     }
 }
-class DebounceSubscriber extends OuterSubscriber {
+class DebounceSubscriber extends SimpleOuterSubscriber {
     constructor(destination, durationSelector) {
         super(destination);
         this.durationSelector = durationSelector;
         this.hasValue = false;
-        this.durationSubscription = null;
     }
     _next(value) {
         try {
@@ -41,12 +39,12 @@ class DebounceSubscriber extends OuterSubscriber {
             subscription.unsubscribe();
             this.remove(subscription);
         }
-        subscription = subscribeToResult(this, duration);
+        subscription = innerSubscribe(duration, new SimpleInnerSubscriber(this));
         if (subscription && !subscription.closed) {
             this.add(this.durationSubscription = subscription);
         }
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext() {
         this.emitValue();
     }
     notifyComplete() {
@@ -57,11 +55,11 @@ class DebounceSubscriber extends OuterSubscriber {
             const value = this.value;
             const subscription = this.durationSubscription;
             if (subscription) {
-                this.durationSubscription = null;
+                this.durationSubscription = undefined;
                 subscription.unsubscribe();
                 this.remove(subscription);
             }
-            this.value = null;
+            this.value = undefined;
             this.hasValue = false;
             super._next(value);
         }

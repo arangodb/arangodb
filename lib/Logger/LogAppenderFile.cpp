@@ -229,6 +229,8 @@ std::string LogAppenderFile::details() const {
 }
 
 void LogAppenderFile::reopenAll() {
+  // We must not log anything in this function or in anything it calls! This
+  // is because this is called under the `_appendersLock`.
   std::unique_lock<std::mutex> guard(_openAppendersMutex);
 
   for (auto& it : _openAppenders) {

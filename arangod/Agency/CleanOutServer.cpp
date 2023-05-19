@@ -343,7 +343,8 @@ bool CleanOutServer::start(bool& aborts) {
     {
       VPackObjectBuilder objectForPrecondition(pending.get());
       addPreconditionServerNotBlocked(*pending, _server);
-      addPreconditionServerHealth(*pending, _server, "GOOD");
+      addPreconditionServerHealth(*pending, _server,
+                                  Supervision::HEALTH_STATUS_GOOD);
       addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(*pending, cleanedPrefix, cleanedServers);
       addPreconditionUnchanged(

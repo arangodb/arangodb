@@ -48,7 +48,7 @@ Query support information from a single server
     var url = "/_admin/support-info";
     var response = logCurlRequest("GET", url);
     assert(response.code === 200);
-    assert(JSON.parse(response.body).host !== undefined);
+    assert(response.parsedBody.host !== undefined);
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
@@ -58,7 +58,7 @@ Query support information from a cluster
     var url = "/_admin/support-info";
     var response = logCurlRequest("GET", url);
     assert(response.code === 200);
-    assert(JSON.parse(response.body).deployment.servers !== undefined);
+    assert(response.parsedBody.deployment.servers !== undefined);
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 

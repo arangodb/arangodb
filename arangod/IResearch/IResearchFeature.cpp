@@ -88,6 +88,7 @@
 #include "VocBase/LogicalView.h"
 
 #include <absl/strings/str_cat.h>
+#include <utils/file_utils.hpp>
 
 using namespace std::chrono_literals;
 
@@ -114,50 +115,42 @@ class IResearchLogTopic final : public LogTopic {
     setIResearchLogLevel(kDefaultLevel);
   }
 
-  virtual void setLogLevel(LogLevel level) override {
+  void setLogLevel(LogLevel level) final {
     LogTopic::setLogLevel(level);
     setIResearchLogLevel(level);
   }
 
  private:
-  static LogLevel const kDefaultLevel = LogLevel::INFO;
+  static constexpr LogLevel kDefaultLevel = LogLevel::INFO;
 
-  typedef std::underlying_type<irs::logger::level_t>::type irsLogLevelType;
-  typedef std::underlying_type<LogLevel>::type arangoLogLevelType;
-
-  static_assert(static_cast<irsLogLevelType>(irs::logger::IRL_FATAL) ==
-                        static_cast<arangoLogLevelType>(LogLevel::FATAL) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_ERROR) ==
-                        static_cast<arangoLogLevelType>(LogLevel::ERR) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_WARN) ==
-                        static_cast<arangoLogLevelType>(LogLevel::WARN) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_INFO) ==
-                        static_cast<arangoLogLevelType>(LogLevel::INFO) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_DEBUG) ==
-                        static_cast<arangoLogLevelType>(LogLevel::DEBUG) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_TRACE) ==
-                        static_cast<arangoLogLevelType>(LogLevel::TRACE) - 1,
-                "inconsistent log level mapping");
-
-  static void log_appender(void* context, const char* function,
-                           const char* file, int line,
-                           irs::logger::level_t level, const char* message,
-                           size_t message_len);
-  static void setIResearchLogLevel(LogLevel level) {
-    if (level == LogLevel::DEFAULT) {
-      level = kDefaultLevel;
-    }
-
-    auto irsLevel = static_cast<irs::logger::level_t>(
-        static_cast<arangoLogLevelType>(level) - 1);  // -1 for DEFAULT
-
-    irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
-    irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
-    irs::logger::output_le(irsLevel, log_appender, nullptr);
-  }
+  static void setIResearchLogLevel(LogLevel level);
 };
 
 IResearchLogTopic LIBIRESEARCH("libiresearch");
+
+template<LogLevel Level>
+static void log(irs::SourceLocation&& source, std::string_view message) {
+  Logger::log("9afd3", source.func.data(), source.file.data(),
+              static_cast<int>(source.line), Level, LIBIRESEARCH.id(), message);
+}
+
+static constexpr std::array<irs::log::Callback, 6> kLogs = {
+    &log<LogLevel::FATAL>, &log<LogLevel::ERR>,   &log<LogLevel::WARN>,
+    &log<LogLevel::INFO>,  &log<LogLevel::DEBUG>, &log<LogLevel::TRACE>,
+};
+
+void IResearchLogTopic::setIResearchLogLevel(LogLevel level) {
+  if (level == LogLevel::DEFAULT) {
+    level = kDefaultLevel;
+  }
+  for (size_t i = 0; i != kLogs.size(); ++i) {
+    if (i < static_cast<size_t>(level)) {
+      irs::log::SetCallback(static_cast<irs::log::Level>(i), kLogs[i]);
+    } else {
+      irs::log::SetCallback(static_cast<irs::log::Level>(i), nullptr);
+    }
+  }
+}
 
 std::string const THREADS_PARAM("--arangosearch.threads");
 std::string const THREADS_LIMIT_PARAM("--arangosearch.threads-limit");
@@ -172,6 +165,7 @@ std::string const FAIL_ON_OUT_OF_SYNC(
     "--arangosearch.fail-queries-on-out-of-sync");
 std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
 std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
+std::string const CACHE_ONLY_LEADER("--arangosearch.columns-cache-only-leader");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
@@ -478,7 +472,7 @@ bool upgradeSingleServerArangoSearchView0_1(
       return false;  // definition generation failure
     }
 
-    irs::utf8_path dataPath;
+    std::filesystem::path dataPath;
 
     auto& server = vocbase.server();
     if (!server.hasFeature<DatabasePathFeature>()) {
@@ -491,7 +485,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
 
     // original algorithm for computing data-store path
-    dataPath = irs::utf8_path(dbPathFeature.directory());
+    dataPath = std::filesystem::path(dbPathFeature.directory());
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(vocbase.id());
@@ -654,10 +648,10 @@ void registerIndexFactory(
 
 void registerScorers(aql::AqlFunctionFeature& functions) {
   // positional arguments (attribute [<scorer-specific properties>...]);
-  irs::string_ref constexpr args(".|+");
+  std::string_view constexpr args(".|+");
 
   irs::scorers::visit(
-      [&functions, &args](irs::string_ref name,
+      [&functions, &args](std::string_view name,
                           irs::type_info const& args_format) -> bool {
         // ArangoDB, for API consistency, only supports scorers configurable via
         // jSON
@@ -673,7 +667,7 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
 
         // scorers are not usable in analyzers
         arangodb::iresearch::addFunction(
-            functions, {std::move(upperName), args.c_str(),
+            functions, {std::move(upperName), args.data(),
                         aql::Function::makeFlags(
                             aql::Function::Flags::Deterministic,
                             aql::Function::Flags::Cacheable,
@@ -804,18 +798,21 @@ void registerTransactionDataSourceRegistrationCallback() {
         &transactionDataSourceRegistrationCallback);
   }
 }
-
-void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
-                                     const char* file, int line,
-                                     irs::logger::level_t level,
-                                     const char* message, size_t message_len) {
-  auto const arangoLevel = static_cast<LogLevel>(level + 1);
-  std::string msg(message, message_len);
-  Logger::log("9afd3", function, file, line, arangoLevel, LIBIRESEARCH.id(),
-              msg);
-}
-
 }  // namespace
+
+void cleanupDatabase(TRI_vocbase_t& database) {
+  auto const& feature = database.server().getFeature<DatabasePathFeature>();
+  std::filesystem::path dataPath(feature.directory());
+  dataPath /= "databases";
+  dataPath /= "database-" + std::to_string(database.id());
+  bool exists = false;
+  if (!irs::file_utils::exists_directory(exists, dataPath.c_str()) ||
+      (exists && !irs::file_utils::remove(dataPath.c_str()))) {
+    LOG_TOPIC("bad02", ERR, TOPIC)
+        << "Failed to remove arangosearch path for database (id '"
+        << database.id() << "' name: '" << database.name() << "')";
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchAsync
@@ -933,7 +930,7 @@ then the commit and consolidation thread counts are calculated as follows:
 
 - Maximum: The smaller value out of `--arangosearch.threads` and
   `arangosearch.threads-limit` divided by 2, but at least 1.
-- Minimum: the maximum divided by 2, but at least 1.\n)");
+- Minimum: the maximum divided by 2, but at least 1.)");
 
   options
       ->addOption(
@@ -1043,6 +1040,15 @@ but the returned data may be incomplete.)");
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30905);
+  options
+      ->addOption(CACHE_ONLY_LEADER,
+                  "Cache ArangoSearch columns only for leader shards.",
+                  new options::BooleanParameter(&_columnsCacheOnlyLeader),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::Enterprise))
+      .setIntroducedIn(31006);
 #endif
 }
 
@@ -1370,6 +1376,11 @@ bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
     }
   } while (!done);
   return true;
+}
+
+bool IResearchFeature::columnsCacheOnlyLeaders() const noexcept {
+  TRI_ASSERT(ServerState::instance()->isDBServer() || !_columnsCacheOnlyLeader);
+  return _columnsCacheOnlyLeader;
 }
 #endif
 

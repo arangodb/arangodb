@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_revisions_tree
 @brief retrieves the Merkle tree associated with the collection
 
-@RESTHEADER{GET /_api/replication/revisions/tree, Return Merkle tree for a collection,handleCommandRevisionTree}
+@RESTHEADER{GET /_api/replication/revisions/tree, Return Merkle tree for a collection,getReplicationRevisionTree}
 
 @HINTS
 {% hint 'warning' %}

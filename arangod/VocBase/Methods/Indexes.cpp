@@ -480,14 +480,22 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
         collection->flushClusterIndexEstimates();
 
         // the cluster won't set a proper id value
-        std::string iid = tmp.slice().get(StaticStrings::IndexId).copyString();
-        VPackBuilder b;
-        b.openObject();
-        b.add(StaticStrings::IndexId,
-              VPackValue(collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR +
-                         iid));
-        b.close();
-        output = VPackCollection::merge(tmp.slice(), b.slice(), false);
+        // we don't need analyzer revision here
+        TRI_ASSERT(output.isEmpty());
+        output.openObject();
+        for (auto value : velocypack::ObjectIterator{tmp.slice()}) {
+          TRI_ASSERT(value.key.isString());
+          auto key = value.key.stringView();
+          if (key == StaticStrings::IndexId) {
+            output.add(key,
+                       velocypack::Value{absl::StrCat(
+                           collection->name(), TRI_INDEX_HANDLE_SEPARATOR_STR,
+                           value.value.stringView())});
+          } else if (key != "analyzerDefinitions") {
+            output.add(key, value.value);
+          }
+        }
+        output.close();
       }
     }
   } else {

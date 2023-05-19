@@ -30,7 +30,6 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
-#include "utils/utf8_path.hpp"
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
@@ -274,7 +273,7 @@ class QueryTest : public IResearchQueryTest {
       auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_TRUE(collection);
 
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view{testResourceDir};
       resource /= std::string_view{"simple_sequential.json"};
       auto builder =

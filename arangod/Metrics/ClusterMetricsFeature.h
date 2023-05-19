@@ -127,7 +127,7 @@ class ClusterMetricsFeature final : public ArangodFeature {
                                 std::string_view /*global labels*/,
                                 std::string_view /*metric name*/,
                                 std::string_view /*metric labels*/,
-                                MetricValue const&);
+                                MetricValue const&, bool /*ensure whitespace*/);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Registration of some metric. We need to pass it name, and callbacks.
@@ -144,7 +144,8 @@ class ClusterMetricsFeature final : public ArangodFeature {
   //////////////////////////////////////////////////////////////////////////////
   void add(std::string_view metric, MapReduce mapReduce);
 
-  void toPrometheus(std::string& result, std::string_view globals) const;
+  void toPrometheus(std::string& result, std::string_view globals,
+                    bool ensureWhitespace) const;
 
   std::shared_ptr<Data> getData() const;
 
@@ -164,6 +165,8 @@ class ClusterMetricsFeature final : public ArangodFeature {
 
   bool wasStop() const noexcept;
 
+  // We don't want to update constantly empty data
+  bool _prevEmpty{true};
   std::shared_ptr<Data> _data;
   Scheduler::WorkHandle _update;
   Scheduler::WorkHandle _timer;

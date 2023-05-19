@@ -138,12 +138,20 @@ void cleanUpTempFiles(std::string_view path) {
 
 namespace arangodb {
 
+DECLARE_GAUGE(rocksdb_wal_released_tick_flush, uint64_t,
+              "Released tick for RocksDB WAL deletion (flush-induced)");
 DECLARE_GAUGE(rocksdb_wal_sequence, uint64_t, "Current RocksDB WAL sequence");
 DECLARE_GAUGE(
     rocksdb_wal_sequence_lower_bound, uint64_t,
     "RocksDB WAL sequence number until which background thread has caught up");
+DECLARE_GAUGE(rocksdb_live_wal_files, uint64_t,
+              "Number of live RocksDB WAL files");
+DECLARE_GAUGE(rocksdb_live_wal_files_size, uint64_t,
+              "Cumulated size of live RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_archived_wal_files, uint64_t,
               "Number of archived RocksDB WAL files");
+DECLARE_GAUGE(rocksdb_archived_wal_files_size, uint64_t,
+              "Cumulated size of archived RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_prunable_wal_files, uint64_t,
               "Number of prunable RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_wal_pruning_active, uint64_t,
@@ -229,7 +237,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
           transaction::Options::defaultIntermediateCommitCount),
       _maxParallelCompactions(2),
       _pruneWaitTime(10.0),
-      _pruneWaitTimeInitial(180.0),
+      _pruneWaitTimeInitial(60.0),
       _maxWalArchiveSizeLimit(0),
       _releasedTick(0),
       _syncInterval(100),
@@ -250,11 +258,23 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _dbExisted(false),
       _runningRebuilds(0),
       _runningCompactions(0),
+      _autoFlushCheckInterval(60.0 * 30.0),
+      _autoFlushMinWalFiles(20),
+      _metricsWalReleasedTickFlush(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_wal_released_tick_flush{})),
       _metricsWalSequenceLowerBound(
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_wal_sequence_lower_bound{})),
+      _metricsLiveWalFiles(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_live_wal_files{})),
       _metricsArchivedWalFiles(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_archived_wal_files{})),
+      _metricsLiveWalFilesSize(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_live_wal_files_size{})),
+      _metricsArchivedWalFilesSize(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_archived_wal_files_size{})),
       _metricsPrunableWalFiles(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_prunable_wal_files{})),
       _metricsWalPruningActive(server.getFeature<metrics::MetricsFeature>().add(
@@ -338,6 +358,30 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
 
   delete _db;
   _db = nullptr;
+}
+
+void RocksDBEngine::flushOpenFilesIfRequired() {
+  if (_metricsLiveWalFiles.load() < _autoFlushMinWalFiles) {
+    return;
+  }
+
+  auto now = std::chrono::steady_clock::now();
+  if (_autoFlushLastExecuted.time_since_epoch().count() == 0 ||
+      (now - _autoFlushLastExecuted) >=
+          std::chrono::duration<double>(_autoFlushCheckInterval)) {
+    LOG_TOPIC("9bf16", INFO, Logger::ENGINES)
+        << "auto flushing RocksDB wal and column families because number of "
+           "live WAL files is "
+        << _metricsLiveWalFiles.load();
+    Result res = flushWal(/*waitForSync*/ true, /*flushColumnFamilies*/ true);
+    if (res.fail()) {
+      LOG_TOPIC("e936c", WARN, Logger::ENGINES)
+          << "unable to flush RocksDB wal: " << res.errorMessage();
+    }
+    // set _autoFlushLastExecuted regardless of whether flushing has worked or
+    // not. we don't want to put too much stress onto the db
+    _autoFlushLastExecuted = now;
+  }
 }
 
 // inherited from ApplicationFeature
@@ -668,6 +712,30 @@ there are followers attached that may want to read the archive. In case the
 option is set and a leader deletes files from the archive that followers want to
 read, this aborts the replication on the followers. Followers can restart the
 replication doing a resync, however.)");
+
+  options
+      ->addOption("--rocksdb.auto-flush-min-live-wal-files",
+                  "The minimum number of live WAL files that triggers an "
+                  "auto-flush of WAL "
+                  "and column family data.",
+                  new UInt64Parameter(&_autoFlushMinWalFiles),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31005);
+
+  options
+      ->addOption(
+          "--rocksdb.auto-flush-check-interval",
+          "The interval (in seconds) in which auto-flushes of WAL and column "
+          "family data is executed.",
+          new DoubleParameter(&_autoFlushCheckInterval),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31005);
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -1038,6 +1106,11 @@ void RocksDBEngine::start() {
   if (hd.res.fail()) {
     LOG_TOPIC("4cf5b", ERR, Logger::ENGINES) << hd.res.errorMessage();
   }
+
+  // make an initial inventory of WAL files, so that all WAL files
+  // metrics are correctly populated once the HTTP interface comes
+  // up
+  determineWalFilesInitial();
 }
 
 void RocksDBEngine::beginShutdown() {
@@ -2270,20 +2343,28 @@ void RocksDBEngine::determineWalFilesInitial() {
     return;
   }
 
+  size_t liveFiles = 0;
   size_t archivedFiles = 0;
+  uint64_t liveFilesSize = 0;
+  uint64_t archivedFilesSize = 0;
   for (size_t current = 0; current < files.size(); current++) {
     auto const& f = files[current].get();
 
-    if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
-      // we are only interested in files of the archive
-      continue;
+    if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
+      ++archivedFiles;
+      archivedFilesSize += f->SizeFileBytes();
+    } else if (f->Type() == rocksdb::WalFileType::kAliveLogFile) {
+      ++liveFiles;
+      liveFilesSize += f->SizeFileBytes();
     }
-
-    ++archivedFiles;
   }
-  _metricsWalSequenceLowerBound.operator=(
-      _settingsManager->earliestSeqNeeded());
-  _metricsArchivedWalFiles.operator=(archivedFiles);
+  _metricsWalSequenceLowerBound.store(_settingsManager->earliestSeqNeeded(),
+                                      std::memory_order_relaxed);
+  _metricsLiveWalFiles.store(liveFiles, std::memory_order_relaxed);
+  _metricsArchivedWalFiles.store(archivedFiles, std::memory_order_relaxed);
+  _metricsLiveWalFilesSize.store(liveFilesSize, std::memory_order_relaxed);
+  _metricsArchivedWalFilesSize.store(archivedFilesSize,
+                                     std::memory_order_relaxed);
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
@@ -2293,9 +2374,17 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
                                 : std::numeric_limits<TRI_voc_tick_t>::max(),
                minTickExternal);
 
-  LOG_TOPIC("4673c", TRACE, Logger::ENGINES)
+  uint64_t minLogNumberToKeep = 0;
+  std::string v;
+  if (_db->GetProperty(rocksdb::DB::Properties::kMinLogNumberToKeep, &v)) {
+    minLogNumberToKeep = static_cast<uint64_t>(basics::StringUtils::int64(v));
+  }
+
+  LOG_TOPIC("4673c", DEBUG, Logger::ENGINES)
       << "determining prunable WAL files, minTickToKeep: " << minTickToKeep
-      << ", minTickExternal: " << minTickExternal;
+      << ", minTickExternal: " << minTickExternal
+      << ", releasedTick: " << _releasedTick
+      << ", minLogNumberToKeep: " << minLogNumberToKeep;
 
   // Retrieve the sorted list of all wal files with earliest file first
   rocksdb::VectorLogPtr files;
@@ -2306,23 +2395,35 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     return;
   }
 
+  // number of live WAL files
+  size_t liveFiles = 0;
+  // number of archived WAL files
   size_t archivedFiles = 0;
-  uint64_t totalArchiveSize = 0;
+  // cumulated size of live WAL files
+  uint64_t liveFilesSize = 0;
+  // cumulated size of archived WAL files
+  uint64_t archivedFilesSize = 0;
+
   for (size_t current = 0; current < files.size(); current++) {
     auto const& f = files[current].get();
 
+    if (f->Type() == rocksdb::WalFileType::kAliveLogFile) {
+      ++liveFiles;
+      liveFilesSize += f->SizeFileBytes();
+      LOG_TOPIC("dc472", TRACE, Logger::ENGINES)
+          << "live WAL file #" << current << "/" << files.size()
+          << ", filename: '" << f->PathName()
+          << "', start sequence: " << f->StartSequence();
+      continue;
+    }
+
     if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
-      // we are only interested in files of the archive
+      // we are mostly interested in files of the archive
       continue;
     }
 
     ++archivedFiles;
-
-    // determine the size of the archive only if it there is a cap on the
-    // archive size otherwise we can save the underlying file access
-    if (_maxWalArchiveSizeLimit > 0) {
-      totalArchiveSize += f->SizeFileBytes();
-    }
+    archivedFilesSize += f->SizeFileBytes();
 
     // check if there is another WAL file coming after the currently-looked-at
     // There should be at least one live WAL file after it, however, let's be
@@ -2330,36 +2431,62 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     // following, we need to take its start tick into account as well, because
     // the following file's start tick can be assumed to be the end tick of the
     // current file!
+    bool eligibleStep1 = false;
+    bool eligibleStep2 = false;
     if (f->StartSequence() < minTickToKeep && current < files.size() - 1) {
+      eligibleStep1 = true;
       auto const& n = files[current + 1].get();
       if (n->StartSequence() < minTickToKeep) {
         // this file will be removed because it does not contain any data we
         // still need
-        auto const [it, emplaced] = _prunableWalFiles.try_emplace(
-            f->PathName(), TRI_microtime() + _pruneWaitTime);
+        eligibleStep2 = true;
+
+        double stamp = TRI_microtime() + _pruneWaitTime;
+        auto const [it, emplaced] =
+            _prunableWalFiles.try_emplace(f->PathName(), stamp);
+
         if (emplaced) {
           LOG_TOPIC("9f7a4", DEBUG, Logger::ENGINES)
               << "RocksDB WAL file '" << f->PathName()
               << "' with start sequence " << f->StartSequence()
+              << ", expire stamp " << stamp
               << " added to prunable list because it is not needed anymore";
           TRI_ASSERT(it != _prunableWalFiles.end());
+        } else {
+          LOG_TOPIC("d2c9e", TRACE, Logger::ENGINES)
+              << "unable to add WAL file #" << current << "/" << files.size()
+              << ", filename: '" << f->PathName()
+              << "', start sequence: " << f->StartSequence()
+              << " to list of prunable WAL files. file already present in list "
+                 "with expire stamp "
+              << it->second;
         }
       }
     }
+
+    LOG_TOPIC("ec350", TRACE, Logger::ENGINES)
+        << "inspected WAL file #" << current << "/" << files.size()
+        << ", filename: '" << f->PathName()
+        << "', start sequence: " << f->StartSequence()
+        << ", eligible step1: " << eligibleStep1
+        << ", step2: " << eligibleStep2;
   }
 
-  LOG_TOPIC("01e20", TRACE, Logger::ENGINES)
-      << "found " << files.size() << " WAL file(s), with " << archivedFiles
-      << " files in the archive, "
-      << "number of prunable files: " << _prunableWalFiles.size();
+  LOG_TOPIC("01e20", DEBUG, Logger::ENGINES)
+      << "found " << files.size() << " WAL file(s), with " << liveFiles
+      << " live file(s) and " << archivedFiles << " file(s) in the archive, "
+      << "number of prunable files: " << _prunableWalFiles.size()
+      << ", live file size: " << liveFilesSize
+      << ", archived file size: " << archivedFilesSize;
 
   if (_maxWalArchiveSizeLimit > 0 &&
-      totalArchiveSize > _maxWalArchiveSizeLimit) {
+      archivedFilesSize > _maxWalArchiveSizeLimit) {
     // size of the archive is restricted, and we overflowed the limit.
 
     // print current archive size
     LOG_TOPIC("8d71b", TRACE, Logger::ENGINES)
-        << "total size of the RocksDB WAL file archive: " << totalArchiveSize;
+        << "total size of the RocksDB WAL file archive: " << archivedFilesSize
+        << ", limit: " << _maxWalArchiveSizeLimit;
 
     // we got more archived files than configured. time for purging some files!
     for (size_t current = 0; current < files.size(); current++) {
@@ -2387,7 +2514,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       }
 
       if (doPrint) {
-        TRI_ASSERT(totalArchiveSize > _maxWalArchiveSizeLimit);
+        TRI_ASSERT(archivedFilesSize > _maxWalArchiveSizeLimit);
 
         // never change this id without adjusting wal-archive-size-limit tests
         // in tests/js/client/server-parameters
@@ -2397,26 +2524,31 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
             << " because of overflowing archive. configured maximum archive "
                "size is "
             << _maxWalArchiveSizeLimit
-            << ", actual archive size is: " << totalArchiveSize
+            << ", actual archive size is: " << archivedFilesSize
             << ". if these warnings persist, try to increase the value of "
             << "the startup option `--rocksdb.wal-archive-size-limit`";
       }
 
-      TRI_ASSERT(totalArchiveSize >= f->SizeFileBytes());
-      totalArchiveSize -= f->SizeFileBytes();
+      TRI_ASSERT(archivedFilesSize >= f->SizeFileBytes());
+      archivedFilesSize -= f->SizeFileBytes();
 
-      if (totalArchiveSize <= _maxWalArchiveSizeLimit) {
+      if (archivedFilesSize <= _maxWalArchiveSizeLimit) {
         // got enough files to remove
         break;
       }
     }
   }
 
-  _metricsWalSequenceLowerBound.operator=(
-      _settingsManager->earliestSeqNeeded());
-  _metricsArchivedWalFiles.operator=(archivedFiles);
-  _metricsPrunableWalFiles.operator=(_prunableWalFiles.size());
-  _metricsWalPruningActive.operator=(1);
+  _metricsWalSequenceLowerBound.store(_settingsManager->earliestSeqNeeded(),
+                                      std::memory_order_relaxed);
+  _metricsLiveWalFiles.store(liveFiles, std::memory_order_relaxed);
+  _metricsArchivedWalFiles.store(archivedFiles, std::memory_order_relaxed);
+  _metricsLiveWalFilesSize.store(liveFilesSize, std::memory_order_relaxed);
+  _metricsArchivedWalFilesSize.store(archivedFilesSize,
+                                     std::memory_order_relaxed);
+  _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
+                                 std::memory_order_relaxed);
+  _metricsWalPruningActive.store(1, std::memory_order_relaxed);
 }
 
 RocksDBFilePurgePreventer RocksDBEngine::disallowPurging() noexcept {
@@ -2451,9 +2583,15 @@ void RocksDBEngine::pruneWalFiles() {
       // but only if there are no other threads currently inside the WAL tailing
       // section
       deleteFile = purgeEnabler.canPurge();
+      LOG_TOPIC("817bc", TRACE, Logger::ENGINES)
+          << "pruneWalFiles checking overflowed file '" << (*it).first
+          << "', canPurge: " << deleteFile;
     } else if ((*it).second < TRI_microtime()) {
       // file has expired, and it is always safe to delete it
       deleteFile = true;
+      LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
+          << "pruneWalFiles checking expired file '" << (*it).first
+          << "', canPurge: " << deleteFile;
     }
 
     if (deleteFile) {
@@ -2466,6 +2604,9 @@ void RocksDBEngine::pruneWalFiles() {
         // otherwise RocksDB may complain about non-existing files and log a big
         // error message
         s = _db->DeleteFile((*it).first);
+        LOG_TOPIC("5b1ae", DEBUG, Logger::ENGINES)
+            << "calling RocksDB DeleteFile for WAL file '" << (*it).first
+            << "'. status: " << rocksutils::convertStatus(s).errorMessage();
       } else {
         LOG_TOPIC("c2cc9", DEBUG, Logger::ENGINES)
             << "to-be-deleted RocksDB WAL file '" << (*it).first
@@ -2490,7 +2631,8 @@ void RocksDBEngine::pruneWalFiles() {
     ++it;
   }
 
-  _metricsPrunableWalFiles.operator=(_prunableWalFiles.size());
+  _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
+                                 std::memory_order_relaxed);
 
   LOG_TOPIC("82a4c", TRACE, Logger::ENGINES)
       << "prune WAL files started with " << initialSize
@@ -2675,6 +2817,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   auto vocbase =
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, std::move(info));
 
+  LOG_TOPIC("26c21", TRACE, arangodb::Logger::ENGINES)
+      << "opening views and collections metadata in database '"
+      << vocbase->name() << "'";
+
   VPackBuilder builder;
   auto scanViews = [&](std::string_view type) {
     try {
@@ -2693,6 +2839,9 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
           continue;
         }
         // we found a view that is still active
+        LOG_TOPIC("4dfdd", TRACE, arangodb::Logger::ENGINES)
+            << "processing view metadata in database '" << vocbase->name()
+            << "': " << it.toJson();
 
         TRI_ASSERT(!it.get("id").isNone());
 
@@ -2706,7 +2855,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
         if (!view) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INTERNAL,
-              std::string("failed to instantiate view in vocbase'") +
+              std::string("failed to instantiate view in database '") +
                   vocbase->name() + "' from definition: " + it.toString());
         }
 
@@ -2716,11 +2865,13 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("584b1", ERR, arangodb::Logger::ENGINES)
-          << "error while opening database: " << ex.what();
+          << "error while opening database '" << vocbase->name()
+          << "': " << ex.what();
       throw;
     } catch (...) {
       LOG_TOPIC("593fd", ERR, arangodb::Logger::ENGINES)
-          << "error while opening database: unknown exception";
+          << "error while opening database '" << vocbase->name()
+          << "': unknown exception";
       throw;
     }
   };
@@ -2743,6 +2894,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
+      LOG_TOPIC("b2ef2", TRACE, arangodb::Logger::ENGINES)
+          << "processing collection metadata in database '" << vocbase->name()
+          << "': " << it.toJson();
+
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
 
       auto collection = vocbase->createCollectionObject(it, /*isAStub*/ false);
@@ -2754,21 +2909,24 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       if (r.fail()) {
         LOG_TOPIC("4a404", ERR, arangodb::Logger::ENGINES)
             << "error while "
-            << "loading metadata of collection '" << collection->name()
-            << "': " << r.errorMessage();
+            << "loading metadata of collection '" << vocbase->name() << "/"
+            << collection->name() << "': " << r.errorMessage();
       }
 
       StorageEngine::registerCollection(*vocbase, collection);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
-          << "added document collection '" << collection->name() << "'";
+          << "added document collection '" << vocbase->name() << "/"
+          << collection->name() << "'";
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
+        << "error while opening database '" << vocbase->name()
+        << "': " << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC("0268e", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
+        << "error while opening database '" << vocbase->name()
+        << "': unknown exception";
     throw;
   }
 
@@ -2787,6 +2945,18 @@ void RocksDBEngine::scheduleFullIndexRefill(std::string const& database,
   RocksDBIndexCacheRefillFeature& f =
       server().getFeature<RocksDBIndexCacheRefillFeature>();
   f.scheduleFullIndexRefill(database, collection, iid);
+}
+
+bool RocksDBEngine::autoRefillIndexCaches() const {
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  return f.autoRefill();
+}
+
+bool RocksDBEngine::autoRefillIndexCachesOnFollowers() const {
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  return f.autoRefillOnFollowers();
 }
 
 void RocksDBEngine::syncIndexCaches() {
@@ -3286,8 +3456,13 @@ TRI_voc_tick_t RocksDBEngine::releasedTick() const {
 
 void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   WRITE_LOCKER(lock, _walFileLock);
+
   if (tick > _releasedTick) {
     _releasedTick = tick;
+    lock.unlock();
+
+    // update metric for released tick
+    _metricsWalReleasedTickFlush.store(tick, std::memory_order_relaxed);
   }
 }
 

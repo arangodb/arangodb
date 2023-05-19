@@ -24,6 +24,7 @@
 #include "RocksDBRestWalHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -101,8 +102,9 @@ void RocksDBRestWalHandler::flush() {
     return;
   }
 
-  bool waitForSync = false;
-  bool waitForCollector = false;
+  bool waitForSync =
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  bool flushColumnFamilies = _request->parsedValue("waitForCollector", false);
 
   if (slice.isObject()) {
     // got a request body
@@ -115,25 +117,19 @@ void RocksDBRestWalHandler::flush() {
 
     value = slice.get("waitForCollector");
     if (value.isString()) {
-      waitForCollector = basics::StringUtils::boolean(value.copyString());
+      flushColumnFamilies = basics::StringUtils::boolean(value.copyString());
     } else if (value.isBoolean()) {
-      waitForCollector = value.getBoolean();
+      flushColumnFamilies = value.getBoolean();
     }
-  } else {
-    // no request body
-    waitForSync = _request->parsedValue("waitForSync", waitForSync);
-    waitForCollector =
-        _request->parsedValue("waitForCollector", waitForCollector);
   }
 
   auto res = TRI_ERROR_NO_ERROR;
   if (ServerState::instance()->isCoordinator()) {
     auto& feature = server().getFeature<ClusterFeature>();
-    res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
+    res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
   } else {
-    if (waitForSync) {
-      server().getFeature<EngineSelectorFeature>().engine().flushWal();
-    }
+    server().getFeature<EngineSelectorFeature>().engine().flushWal(
+        waitForSync, flushColumnFamilies);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {

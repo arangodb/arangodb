@@ -12,6 +12,6 @@ exposedBy:
   - single
 description: |
   This metric exhibits the RocksDB metric
-  "rocksdb-num-entries-active-mem-table".
+  `rocksdb-num-entries-active-mem-table`.
   It shows the total number of entries in the active memtable,
   summed over all column families.

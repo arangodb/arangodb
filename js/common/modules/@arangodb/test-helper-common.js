@@ -30,11 +30,27 @@
 
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-let internal = require('internal'); // OK: processCsvFile
+const internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
 const fs = require('fs');
 
 let instanceInfo = null;
+
+exports.versionHas = function (attribute) {
+  if (global.hasOwnProperty('ARANGODB_CLIENT_VERSION')) {
+    return global.ARANGODB_CLIENT_VERSION(true)[attribute] === 'true';
+  } else {
+    return db._version(true)[attribute] === 'true';
+  }
+};
+
+exports.isEnterprise = function () {
+  if (global.hasOwnProperty('ARANGODB_CLIENT_VERSION')) {
+    return global.ARANGODB_CLIENT_VERSION(true).hasOwnProperty('enterprise-version');
+  } else {
+    return db._version(true).hasOwnProperty('enterprise-version');
+  }
+};
 
 exports.transactionFailure = function (trx, errorCode, errorMessage, crashOnSuccess, abortArangoshOnly) {
   try {
@@ -67,7 +83,7 @@ exports.truncateFailure = function (collection) {
   internal.debugTerminate('crashing server');
 };
 
-function getInstanceInfo () {
+function getInstanceInfo() {
   if (instanceInfo === null) {
     instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
     if (instanceInfo.arangods.length > 2) {
@@ -77,7 +93,7 @@ function getInstanceInfo () {
     }
   }
   return instanceInfo;
-};
+}
 
 exports.getServerById = function (id) {
   const instanceInfo = getInstanceInfo();
@@ -95,6 +111,13 @@ exports.getEndpointById = function (id) {
   const instanceInfo = getInstanceInfo();
   return instanceInfo.arangods.filter((d) => (d.id === id))
     .map(toEndpoint)[0];
+};
+
+exports.getUrlById = function (id) {
+  const toUrl = (d) => (d.url);
+  const instanceInfo = getInstanceInfo();
+  return instanceInfo.arangods.filter((d) => (d.id === id))
+    .map(toUrl)[0];
 };
 
 exports.getEndpointsByType = function (type) {
@@ -117,7 +140,7 @@ exports.getEndpointsByType = function (type) {
     .map(endpointToURL);
 };
 
-exports.Helper = {
+exports.helper = {
   process: function (file, processor) {
     internal.processCsvFile(file, function (raw_row, index) {
       if (index !== 0) {
@@ -357,22 +380,20 @@ exports.endpointToURL = (endpoint) => {
 };
 
 exports.checkIndexMetrics = (checkFunction) => {
-  var isMetricsArrived = false;
+  var isMetricArrived = false;
   var timeToWait = 100;
-  while (!isMetricsArrived) {
+  while (!isMetricArrived) {
     try {
       checkFunction();
-      isMetricsArrived = true;
+      isMetricArrived = true;
     } catch (err) {
-      isMetricsArrived = false;
+      isMetricArrived = false;
       if (timeToWait > 0) {
-        require("internal").sleep(2);
-        timeToWait = timeToWait - 2;
+        require("internal").sleep(1);
+        timeToWait = timeToWait - 1;
       } else {
         throw err;
       }
     }
   }
 };
-
-exports.getInstanceInfo = getInstanceInfo;

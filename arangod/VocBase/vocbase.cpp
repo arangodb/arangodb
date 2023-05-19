@@ -70,6 +70,7 @@
 #include "Replication/ReplicationClients.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -1583,8 +1584,16 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
     _queries = std::make_unique<arangodb::aql::QueryList>(feature);
   }
   _cursorRepository = std::make_unique<arangodb::CursorRepository>(*this);
-  _replicationClients =
-      std::make_unique<arangodb::ReplicationClientsProgressTracker>();
+
+  if (_info.server().hasFeature<ReplicationFeature>()) {
+    auto& rf = _info.server().getFeature<ReplicationFeature>();
+    _replicationClients =
+        std::make_unique<arangodb::ReplicationClientsProgressTracker>(&rf);
+  } else {
+    // during unit testing, there is no ReplicationFeature available
+    _replicationClients =
+        std::make_unique<arangodb::ReplicationClientsProgressTracker>(nullptr);
+  }
 
   // init collections
   _collections.reserve(32);
@@ -1771,30 +1780,6 @@ TRI_vocbase_t::collections(bool includeDeleted) {
   }
 
   return collections;
-}
-
-bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor) {
-  TRI_ASSERT(visitor);
-
-  std::vector<std::shared_ptr<arangodb::LogicalDataSource>> dataSources;
-
-  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
-
-  dataSources.reserve(_dataSourceById.size());
-
-  // create a copy of all the datasource in case 'visitor' modifies
-  // '_dataSourceById'
-  for (auto& entry : _dataSourceById) {
-    dataSources.emplace_back(entry.second);
-  }
-
-  for (auto& dataSource : dataSources) {
-    if (dataSource && !visitor(*dataSource)) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 /// @brief sanitize an object, given as slice, builder must contain an

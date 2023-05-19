@@ -1,0 +1,21 @@
+name: rocksdb_wal_released_tick_flush
+introducedIn: "3.10.5"
+help: |
+  Lower bound sequence number from which WAL files need to be kept because
+  of external flushing needs.
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exposes the RocksDB WAL sequence number from which onwards 
+  WAL files have to be kept because the WAL data could be used by external
+  flushing needs. WAL files with sequence numbers higher than this value
+  are not garbage-collected.
+  The candidates that can keep WAL files from being garbage-collected are
+  `arangosearch` View links or inverted indexes that are still syncing data,
+  and background index creation.

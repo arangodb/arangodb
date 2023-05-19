@@ -44,11 +44,11 @@ var setupData = function () {
   const c1 = internal.db._createDocumentCollection(collectionName1);
   const c2 = internal.db._createDocumentCollection(collectionName2);
 
-  c1.save([{ _key: 1 }, { _key: 2 }, { _key: 3 }]);
+  c1.save([{_key: "1"}, {_key: "2"}, {_key: "3"}]);
   c2.save([
-    { _key: 1, value: "testValue1" },
-    { _key: 2, value: "testValue2" },
-    { _key: 3, value: "testValue3" },
+    {_key: "1", value: "testValue1"},
+    {_key: "2", value: "testValue2"},
+    {_key: "3", value: "testValue3"},
   ]);
 };
 

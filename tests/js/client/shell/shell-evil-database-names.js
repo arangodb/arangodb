@@ -27,6 +27,7 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
+const isEnterprise = require("internal").isEnterprise();
 const dbs = ["testDatabase", "abc123", "maçã", "mötör", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "かわいい犬", "let%2Fus%26test%3Fthis"];
 
 function EvilDatabaseNamesSuite () {
@@ -37,6 +38,9 @@ function EvilDatabaseNamesSuite () {
     setUp : function () {
       dbs.forEach((database) => {
         db._createDatabase(database);
+        db._useDatabase(database);
+        db._create("collection123");
+        db._useDatabase("_system");
       });
     },
 
@@ -50,20 +54,19 @@ function EvilDatabaseNamesSuite () {
     testCollectionCreationDeletion: function () {
       dbs.forEach((database) => {
         db._useDatabase(database);
-        db._create("collection123");
-        assertNotNull(db._collection("collection123"));
-        assertNotEqual(db._collections().map((collection) => collection.name()).indexOf("collection123"), -1);
-        db._drop("collection123");
-        assertEqual(db._collections().map((collection) => collection.name()).indexOf("collection123"), -1);
+        db._create("collection456");
+        assertNotNull(db._collection("collection456"));
+        assertNotEqual(db._collections().map((collection) => collection.name()).indexOf("collection456"), -1);
+        db._drop("collection456");
+        assertEqual(db._collections().map((collection) => collection.name()).indexOf("collection456"), -1);
       });
     },
 
     testDocumentCreationDeletion: function () {
       dbs.forEach((database) => {
         db._useDatabase(database);
-        db._create("collection123");
         assertNotNull(db._collection("collection123"));
-        const obj = db["collection123"].insert({"name": "abc123"});
+        const obj = db["collection123"].insert({"name": "abc123", "value": [{"nested_1": [{"nested_2": "foo123"}]}]});
         assertEqual(db["collection123"].count(), 1);
         db["collection123"].update(obj._id, {"test": "123"});
         const documentObj = db["collection123"].document(obj._id);
@@ -83,12 +86,19 @@ function EvilDatabaseNamesSuite () {
     testViewCreationDeletion: function () {
       dbs.forEach((database) => {
         db._useDatabase(database);
-        const view = db._createView("view123", "arangosearch", {});
+        db._create("tmpColl");
+        let view;
+        if (isEnterprise) {
+          view = db._createView("view123", "arangosearch", {"links": {"tmpColl": {"fields": {"a": {"nested": {"b": {}}}}}, "collection123": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}});
+        } else {
+          view = db._createView("view123", "arangosearch", {});
+        }
         const views = db._views().map((view) => view.name());
         assertNotEqual(views.indexOf("view123"), -1);
         view.properties({cleanupIntervalStep: 12});
         assertEqual(view.properties().cleanupIntervalStep, 12);
         db._dropView("view123");
+        db._drop("tmpColl");
         assertEqual(db._views(), []);
       });
     },
@@ -109,29 +119,36 @@ function EvilDatabaseNamesSuite () {
     testIndexCreationDeletion: function () {
       dbs.forEach((database) => {
         db._useDatabase(database);
-        db._create("collection123");
         assertNotNull(db._collection("collection123"));
         db["collection123"].ensureIndex({type: 'persistent', name: 'test123', fields: ['value']});
-        assertEqual(db["collection123"].indexes().length, 2);
+        if (isEnterprise) {
+          db["collection123"].ensureIndex({type: 'inverted', name: 'inverted', fields: [{"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]});
+        } else {
+          db["collection123"].ensureIndex({type: 'inverted', name: 'inverted', fields: ['value']});
+        }
+
+        assertEqual(db["collection123"].indexes().length, 3);
         assertEqual(db["collection123"].index("test123").name, "test123");
+        assertEqual(db["collection123"].index("inverted").name, "inverted");
+
         db["collection123"].dropIndex("test123");
+        db["collection123"].dropIndex("inverted");
         assertEqual(db["collection123"].indexes().length, 1);
         try{
           assertEqual(db["collection123"].index("test123"));
+          assertEqual(db["collection123"].index("inverted"));
           fail();
         } catch(err) {
           assertEqual(err.errorNum, arangodb.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code);
         }
-
       });
     },
 
     testAqlQueries: function () {
       dbs.forEach((database) => {
         db._useDatabase(database);
-        db._create("collection123");
         assertNotNull(db._collection("collection123"));
-        let result = db._query('INSERT {"name": "abc", "id": 123, "_key": "abc123"} INTO collection123 RETURN NEW').toArray();
+        let result = db._query('INSERT {"name": "abc", "id": 123, "_key": "abc123", "value": [{"nested_1": [{"nested_2": "foo321"}]}]} INTO collection123 RETURN NEW').toArray();
         assertEqual(db["collection123"].count(), 1);
         assertEqual(result[0]._key, "abc123");
         assertEqual(result[0].id, 123);
@@ -144,7 +161,7 @@ function EvilDatabaseNamesSuite () {
         assertEqual(db["collection123"].count(), 0);
 
         //testing for larger result sets
-        result = db._query('FOR n IN 1 .. 2000 INSERT {"name": CONCAT("abc", n), "id": n, "_key": CONCAT("abc", n)} INTO collection123 RETURN NEW').toArray();
+        result = db._query('FOR n IN 1 .. 2000 INSERT {"name": CONCAT("abc", n), "id": n, "_key": CONCAT("abc", n), "value": [{"nested_1": [{"nested_2": n}]}]} INTO collection123 RETURN NEW').toArray();
         assertEqual(db["collection123"].count(), 2000);
         assertEqual(result.length, 2000);
         result.forEach((documentObj, index) => {

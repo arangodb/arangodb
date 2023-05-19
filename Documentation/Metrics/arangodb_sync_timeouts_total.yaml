@@ -16,6 +16,6 @@ description: |
   individual shard synchronization attempts to a certain maximum runtime.
   When it happens, the shard synchronization attempt is aborted by the
   follower, but immediately retried afterwards. This abort-and-retry
-  operation allows the leader DB servers to purge their archived WAL files
+  operation allows the leader DB-Servers to purge their archived WAL files
   for the aborted snapshots timely, so that long-running shard synchronization
   aborts do not lead to overly long WAL file retention periods on leaders.

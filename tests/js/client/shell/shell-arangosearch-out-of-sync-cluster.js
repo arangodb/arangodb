@@ -30,6 +30,7 @@ const request = require("@arangodb/request");
 const getMetric = require('@arangodb/test-helper').getMetric;
 const internal = require("internal");
 const errors = internal.errors;
+const isEnterprise = require("internal").isEnterprise();
   
 const {
   getCoordinators,
@@ -56,14 +57,31 @@ function ArangoSearchOutOfSyncSuite () {
     },
 
     testMarkLinksAsOutOfSync : function () {
-      let c = db._create('UnitTestsRecovery1', { numberOfShards: 5, replicationFactor: 1 });
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
+      let indexFields = [];
+      if (isEnterprise) {
+        indexFields = [
+          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+        ];
+      } else {
+        indexFields = [
+          {"name": "value[*]"}
+        ];
+      }
+
+      let c1 = db._create('UnitTestsRecovery1', { numberOfShards: 5, replicationFactor: 1 });
+      c1.ensureIndex({ type: 'inverted', name: 'inverted', fields: indexFields });
       
       let v = db._createView('UnitTestsRecoveryView1', 'arangosearch', {});
-      v.properties({ links: { UnitTestsRecovery1: { includeAllFields: true } } });
+      let viewMeta = {};
+      if (isEnterprise) {
+        viewMeta = { links: { UnitTestsRecovery1: { includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } } };
+      } else {
+        viewMeta = { links: { UnitTestsRecovery1: { includeAllFields: true } } };
+      }
+      v.properties(viewMeta);
       
       let servers = getDBServers();
-      let shardInfo = c.shards(true);
+      let shardInfo = c1.shards(true);
       let shards = Object.keys(shardInfo);
 
       let leaderUrls = new Set();
@@ -81,22 +99,27 @@ function ArangoSearchOutOfSyncSuite () {
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        docs.push({});
+        docs.push({ "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       
-      c.insert(docs);
+      c1.insert(docs);
       
       db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc");
       db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == '1' RETURN doc");
       
       clearFailurePoints();
       
-      c = db._create('UnitTestsRecovery2', { numberOfShards: 5, replicationFactor: 1 });
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
-      c.insert(docs);
+      let c2 = db._create('UnitTestsRecovery2', { numberOfShards: 5, replicationFactor: 1 });
+      c2.ensureIndex({ type: 'inverted', name: 'inverted', fields: indexFields });
+      c2.insert(docs);
       
       v = db._createView('UnitTestsRecoveryView2', 'arangosearch', {});
-      v.properties({ links: { UnitTestsRecovery2: { includeAllFields: true } } });
+      if (isEnterprise) {
+        viewMeta = { links: { UnitTestsRecovery2: { includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } } };
+      } else {
+        viewMeta = { links: { UnitTestsRecovery2: { includeAllFields: true } } };
+      }
+      v.properties(viewMeta);
      
       db._query("FOR doc IN UnitTestsRecoveryView2 OPTIONS {waitForSync: true} RETURN doc");
 

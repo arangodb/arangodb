@@ -822,7 +822,7 @@ VPackBuilder StatisticsFeature::fillDistribution(
 void StatisticsFeature::appendHistogram(
     std::string& result, statistics::Distribution const& dist,
     std::string const& label, std::initializer_list<std::string> const& les,
-    bool isInteger) {
+    bool isInteger, bool ensureWhitespace) {
   VPackBuilder tmp = fillDistribution(dist);
   VPackSlice slc = tmp.slice();
   VPackSlice counts = slc.get("counts");
@@ -840,31 +840,52 @@ void StatisticsFeature::appendHistogram(
   for (auto const& le : les) {
     sum += counts.at(i++).getNumber<uint64_t>();
     result.append(name).append("_bucket{le=\"").append(le).append("\"}");
+    if (ensureWhitespace) {
+      result.push_back(' ');
+    }
     result.append(std::to_string(sum)) += '\n';
   }
-  result.append(name).append("_count{}").append(std::to_string(sum)) += '\n';
+  result.append(name).append("_count{}");
+  if (ensureWhitespace) {
+    result.push_back(' ');
+  }
+  result.append(std::to_string(sum)) += '\n';
   if (isInteger) {
     uint64_t v = slc.get("sum").getNumber<uint64_t>();
-    result.append(name).append("_sum{}").append(std::to_string(v)) += '\n';
+    result.append(name).append("_sum{}");
+    if (ensureWhitespace) {
+      result.push_back(' ');
+    }
+    result.append(std::to_string(v)) += '\n';
   } else {
     double v = slc.get("sum").getNumber<double>();
-    result.append(name).append("_sum{}").append(std::to_string(v)) += '\n';
+    result.append(name).append("_sum{}");
+    if (ensureWhitespace) {
+      result.push_back(' ');
+    }
+    result.append(std::to_string(v)) += '\n';
   }
 }
 
 void StatisticsFeature::appendMetric(std::string& result,
                                      std::string const& val,
-                                     std::string const& label) {
+                                     std::string const& label,
+                                     bool ensureWhitespace) {
   auto const& stat = statStrings.at(label);
   auto const name = stat[0];
   auto const type = stat[1];
   auto const help = stat[2];
   (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
   (result.append("# TYPE ").append(name) += ' ').append(type) += '\n';
-  result.append(name).append("{}").append(val) += '\n';
+  result.append(name).append("{}");
+  if (ensureWhitespace) {
+    result.push_back(' ');
+  }
+  result.append(val) += '\n';
 }
 
-void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
+void StatisticsFeature::toPrometheus(std::string& result, double now,
+                                     bool ensureWhitespace) {
   ProcessInfo info = TRI_ProcessInfoSelf();
   uint64_t rss = static_cast<uint64_t>(info._residentSize);
   double rssp = 0;
@@ -878,38 +899,45 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
       server().getFeature<metrics::MetricsFeature>().serverStatistics();
 
   // processStatistics()
-  appendMetric(result, std::to_string(info._minorPageFaults),
-               "minorPageFaults");
-  appendMetric(result, std::to_string(info._majorPageFaults),
-               "majorPageFaults");
+  appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults",
+               ensureWhitespace);
+  appendMetric(result, std::to_string(info._majorPageFaults), "majorPageFaults",
+               ensureWhitespace);
   if (info._scClkTck != 0) {  // prevent division by zero
     appendMetric(result,
                  std::to_string(static_cast<double>(info._userTime) /
                                 static_cast<double>(info._scClkTck)),
-                 "userTime");
+                 "userTime", ensureWhitespace);
     appendMetric(result,
                  std::to_string(static_cast<double>(info._systemTime) /
                                 static_cast<double>(info._scClkTck)),
-                 "systemTime");
+                 "systemTime", ensureWhitespace);
   }
-  appendMetric(result, std::to_string(info._numberThreads), "numberOfThreads");
-  appendMetric(result, std::to_string(rss), "residentSize");
-  appendMetric(result, std::to_string(rssp), "residentSizePercent");
-  appendMetric(result, std::to_string(info._virtualSize), "virtualSize");
+  appendMetric(result, std::to_string(info._numberThreads), "numberOfThreads",
+               ensureWhitespace);
+  appendMetric(result, std::to_string(rss), "residentSize", ensureWhitespace);
+  appendMetric(result, std::to_string(rssp), "residentSizePercent",
+               ensureWhitespace);
+  appendMetric(result, std::to_string(info._virtualSize), "virtualSize",
+               ensureWhitespace);
   appendMetric(result, std::to_string(PhysicalMemory::getValue()),
-               "physicalSize");
-  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
-  appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores");
+               "physicalSize", ensureWhitespace);
+  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime",
+               ensureWhitespace);
+  appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
+               ensureWhitespace);
 
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {
     auto snapshot = cpuUsage.snapshot();
-    appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent");
+    appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent",
+                 ensureWhitespace);
     appendMetric(result, std::to_string(snapshot.systemPercent()),
-                 "systemPercent");
-    appendMetric(result, std::to_string(snapshot.idlePercent()), "idlePercent");
+                 "systemPercent", ensureWhitespace);
+    appendMetric(result, std::to_string(snapshot.idlePercent()), "idlePercent",
+                 ensureWhitespace);
     appendMetric(result, std::to_string(snapshot.iowaitPercent()),
-                 "iowaitPercent");
+                 "iowaitPercent", ensureWhitespace);
   }
 
   if (isEnabled()) {
@@ -922,90 +950,94 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
 
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()),
-                 "clientHttpConnections");
+                 "clientHttpConnections", ensureWhitespace);
     appendHistogram(result, connectionStats.connectionTime, "connectionTime",
-                    {"0.01", "1.0", "60.0", "+Inf"}, false);
+                    {"0.01", "1.0", "60.0", "+Inf"}, false, ensureWhitespace);
     appendHistogram(result, requestStats.totalTime, "totalTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},
-                    false);
+                    false, ensureWhitespace);
     appendHistogram(result, requestStats.requestTime, "requestTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},
-                    false);
+                    false, ensureWhitespace);
     appendHistogram(result, requestStats.queueTime, "queueTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},
-                    false);
+                    false, ensureWhitespace);
     appendHistogram(result, requestStats.ioTime, "ioTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},
-                    false);
+                    false, ensureWhitespace);
     appendHistogram(result, requestStats.bytesSent, "bytesSent",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
+                    ensureWhitespace);
     appendHistogram(result, requestStats.bytesReceived, "bytesReceived",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
+                    ensureWhitespace);
 
     RequestStatistics::Snapshot requestStatsUser;
     RequestStatistics::getSnapshot(requestStatsUser,
                                    stats::RequestStatisticsSource::USER);
     appendHistogram(result, requestStatsUser.bytesSent, "bytesSentUser",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
+                    ensureWhitespace);
     appendHistogram(result, requestStatsUser.bytesReceived, "bytesReceivedUser",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true,
+                    ensureWhitespace);
 
     // _httpStatistics()
     using rest::RequestType;
     appendMetric(result, std::to_string(connectionStats.asyncRequests.get()),
-                 "httpReqsAsync");
+                 "httpReqsAsync", ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()),
-        "httpReqsDelete");
+        "httpReqsDelete", ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::GET].get()),
-        "httpReqsGet");
+        "httpReqsGet", ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::HEAD].get()),
-        "httpReqsHead");
+        "httpReqsHead", ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::OPTIONS].get()),
-        "httpReqsOptions");
+        "httpReqsOptions", ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::PATCH].get()),
-        "httpReqsPatch");
+        "httpReqsPatch", ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::POST].get()),
-        "httpReqsPost");
+        "httpReqsPost", ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::PUT].get()),
-        "httpReqsPut");
+        "httpReqsPut", ensureWhitespace);
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()),
-        "httpReqsOther");
+        "httpReqsOther", ensureWhitespace);
     appendMetric(result, std::to_string(connectionStats.totalRequests.get()),
-                 "httpReqsTotal");
+                 "httpReqsTotal", ensureWhitespace);
     appendMetric(result,
                  std::to_string(connectionStats.totalRequestsSuperuser.get()),
-                 "httpReqsSuperuser");
+                 "httpReqsSuperuser", ensureWhitespace);
     appendMetric(result,
                  std::to_string(connectionStats.totalRequestsUser.get()),
-                 "httpReqsUser");
+                 "httpReqsUser", ensureWhitespace);
   }
 
   V8DealerFeature::Statistics v8Counters{};
@@ -1016,12 +1048,17 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
     }
   }
   appendMetric(result, std::to_string(v8Counters.available),
-               "v8ContextAvailable");
-  appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy");
-  appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty");
-  appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree");
-  appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin");
-  appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax");
+               "v8ContextAvailable", ensureWhitespace);
+  appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy",
+               ensureWhitespace);
+  appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty",
+               ensureWhitespace);
+  appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree",
+               ensureWhitespace);
+  appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin",
+               ensureWhitespace);
+  appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax",
+               ensureWhitespace);
 }
 
 Result StatisticsFeature::getClusterSystemStatistics(

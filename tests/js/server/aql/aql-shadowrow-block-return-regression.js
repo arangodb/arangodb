@@ -30,6 +30,7 @@
 
 const jsunity = require("jsunity");
 const internal = require("internal");
+const isEnterprise = require("internal").isEnterprise();
 const errors = internal.errors;
 const db = require("@arangodb").db;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
@@ -288,12 +289,24 @@ function nonMaterializingViewRegressionSuite(isSearchAlias) {
       cleanup();
       db._create(cname);
       // create a view on the collection, specifics here do not matter
+      let meta = {};
       if (isSearchAlias) {
         let c = db._collection(cname);
-        let i = c.ensureIndex({type: "inverted", includeAllFields: true});
+        if (isEnterprise) {
+          meta = {type: "inverted", includeAllFields: true, 
+          fields: [{"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]};
+        } else {
+          meta = {type: "inverted", includeAllFields: true};
+        }
+        let i = c.ensureIndex(meta);
         db._createView(vname, "search-alias", {indexes: [{collection: cname, index: i.name}]});
       } else {
-        db._createView(vname, "arangosearch", {links:{[cname]:{includeAllFields:true}}});
+        if (isEnterprise) {
+          meta = {links:{[cname]:{includeAllFields:true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          meta = {links:{[cname]:{includeAllFields:true}}};
+        }
+        db._createView(vname, "arangosearch", meta);
       }
       // We need more docs then batchSize, to have enough rows available in the view
       const docs = [];

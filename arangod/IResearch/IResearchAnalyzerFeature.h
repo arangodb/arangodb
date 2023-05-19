@@ -103,7 +103,7 @@ class Features {
   /// @param featureName feature name
   /// @return true if feature found, false otherwise
   //////////////////////////////////////////////////////////////////////////////
-  bool add(irs::string_ref featureName);
+  bool add(std::string_view featureName);
 
   Result fromVelocyPack(VPackSlice slice);
   void toVelocyPack(VPackBuilder& vpack) const;
@@ -173,8 +173,8 @@ class AnalyzerPool : private irs::util::noncopyable {
  public:
   using ptr = std::shared_ptr<AnalyzerPool>;
 
-  using StoreFunc = VPackSlice (*)(irs::token_stream const* ctx,
-                                   VPackSlice slice, VPackBuffer<uint8_t>& buf);
+  using StoreFunc = irs::bytes_view (*)(irs::token_stream* ctx,
+                                        velocypack::Slice slice);
 
   // type tags for primitive token streams
   struct NullStreamTag {};
@@ -185,7 +185,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   // 'make(...)' method wrapper for irs::analysis::analyzer types
   struct Builder {
     using ptr = irs::analysis::analyzer::ptr;
-    static ptr make(irs::string_ref type, VPackSlice properties);
+    static ptr make(std::string_view type, VPackSlice properties);
 
     static ptr make(NullStreamTag) {
       return std::make_unique<irs::null_token_stream>();
@@ -206,7 +206,7 @@ class AnalyzerPool : private irs::util::noncopyable {
 
   using CacheType = irs::unbounded_object_pool<Builder>;
 
-  explicit AnalyzerPool(irs::string_ref const& name);
+  explicit AnalyzerPool(std::string_view const& name);
 
   // nullptr == error creating analyzer
   CacheType::ptr get() const noexcept;
@@ -220,7 +220,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   }
   std::string const& name() const noexcept { return _name; }
   VPackSlice properties() const noexcept { return _properties; }
-  irs::string_ref const& type() const noexcept { return _type; }
+  std::string_view const& type() const noexcept { return _type; }
   AnalyzersRevision::Revision revision() const noexcept { return _revision; }
   AnalyzerValueType inputType() const noexcept { return _inputType; }
   AnalyzerValueType returnType() const noexcept { return _returnType; }
@@ -249,12 +249,12 @@ class AnalyzerPool : private irs::util::noncopyable {
   // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)
   friend class IResearchAnalyzerFeature;
 
-  void toVelocyPack(velocypack::Builder& builder, irs::string_ref const& name);
+  void toVelocyPack(velocypack::Builder& builder, std::string_view const& name);
 
-  bool init(irs::string_ref const& type, VPackSlice const properties,
+  bool init(std::string_view const& type, VPackSlice const properties,
             AnalyzersRevision::Revision revision, Features features,
             LinkVersion version);
-  void setKey(irs::string_ref const& type);
+  void setKey(std::string_view const& type);
 
   mutable CacheType _cache;  // cache of irs::analysis::analyzer
   // cached iresearch field features
@@ -263,13 +263,13 @@ class AnalyzerPool : private irs::util::noncopyable {
   std::string _config;
   // the key of the persisted configuration for this
   // pool, null == static analyzer
-  irs::string_ref _key;
+  std::string_view _key;
   // ArangoDB alias for an IResearch analyzer configuration.
   // Should be normalized name or static analyzer name see
   // assertion in ctor
   std::string _name;
   VPackSlice _properties;
-  irs::string_ref _type;
+  std::string_view _type;
   Features _features;
   StoreFunc _storeFunc{};
   AnalyzerValueType _inputType{AnalyzerValueType::Undefined};
@@ -291,7 +291,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// first == vocbase name, second == analyzer name
   /// EMPTY == system vocbase
   /// NIL == unprefixed analyzer name, i.e. active vocbase
-  using AnalyzerName = std::pair<irs::string_ref, irs::string_ref>;
+  using AnalyzerName = std::pair<std::string_view, std::string_view>;
 
   static constexpr std::string_view name() noexcept {
     return "ArangoSearchAnalyzer";
@@ -313,7 +313,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @param level access level
   /// @return analyzers in the specified vocbase are granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
-  static bool canUseVocbase(irs::string_ref vocbaseName,
+  static bool canUseVocbase(std::string_view vocbaseName,
                             auth::Level const& level);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -323,7 +323,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @return analyzer with the given prefixed name (or unprefixed and resides
   ///         in defaultVocbase) is granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
-  static bool canUse(irs::string_ref name, auth::Level const& level);
+  static bool canUse(std::string_view name, auth::Level const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create new analyzer pool
@@ -338,7 +338,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
   static Result createAnalyzerPool(AnalyzerPool::ptr& analyzer,
-                                   irs::string_ref name, irs::string_ref type,
+                                   std::string_view name, std::string_view type,
                                    VPackSlice const properties,
                                    AnalyzersRevision::Revision revision,
                                    Features features, LinkVersion version,
@@ -357,8 +357,8 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   ///                            active/system v.s. EMPTY/'::'
   /// @return normalized analyzer name, i.e. with vocbase prefix
   //////////////////////////////////////////////////////////////////////////////
-  static std::string normalize(irs::string_ref name,
-                               irs::string_ref activeVocbase,
+  static std::string normalize(std::string_view name,
+                               std::string_view activeVocbase,
                                bool expandVocbasePrefix = true);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -368,7 +368,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   ///         NIL == analyzer name have had no db name prefix
   /// @see analyzerReachableFromDb
   //////////////////////////////////////////////////////////////////////////////
-  static irs::string_ref extractVocbaseName(irs::string_ref name) noexcept {
+  static std::string_view extractVocbaseName(std::string_view name) noexcept {
     return splitAnalyzerName(name).first;
   }
 
@@ -378,7 +378,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @param dbName database name
   /// @return overall load result
   //////////////////////////////////////////////////////////////////////////////
-  Result loadAvailableAnalyzers(irs::string_ref dbName);
+  Result loadAvailableAnalyzers(std::string_view dbName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Checks if analyzer db (identified by db name prefix extracted from
@@ -389,8 +389,8 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @param forGetters check special case for getting analyzer (not
   /// creating/removing)
   /// @return true if analyzer is reachable
-  static bool analyzerReachableFromDb(irs::string_ref dbNameFromAnalyzer,
-                                      irs::string_ref currentDbName,
+  static bool analyzerReachableFromDb(std::string_view dbNameFromAnalyzer,
+                                      std::string_view currentDbName,
                                       bool forGetters = false) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -401,7 +401,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   ///         NIL == unprefixed analyzer name, i.e. active vocbase
   ////////////////////////////////////////////////////////////////////////////////
   static AnalyzerName splitAnalyzerName(
-      irs::string_ref const& analyzer) noexcept;
+      std::string_view const& analyzer) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief emplace an analyzer as per the specified parameters
@@ -420,8 +420,8 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   ///       allowed during recovery
   //////////////////////////////////////////////////////////////////////////////
   typedef std::pair<AnalyzerPool::ptr, bool> EmplaceResult;
-  Result emplace(EmplaceResult& result, irs::string_ref name,
-                 irs::string_ref type, VPackSlice const properties,
+  Result emplace(EmplaceResult& result, std::string_view name,
+                 std::string_view type, VPackSlice const properties,
                  Features features = {});
 
   //////////////////////////////////////////////////////////////////////////////
@@ -450,13 +450,13 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @param onlyCached check only locally cached analyzers
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
-  AnalyzerPool::ptr get(irs::string_ref name,
+  AnalyzerPool::ptr get(std::string_view name,
                         QueryAnalyzerRevisions const& revision,
                         bool onlyCached = false) const noexcept {
     auto splittedName = splitAnalyzerName(name);
-    TRI_ASSERT(splittedName.first.null() || !splittedName.first.empty());
+    TRI_ASSERT(irs::IsNull(splittedName.first) || !splittedName.first.empty());
     return get(name, splittedName,
-               splittedName.first.null()
+               irs::IsNull(splittedName.first)
                    ? AnalyzersRevision::MIN  // built-in analyzers always has
                                              // MIN revision
                    : revision.getVocbaseRevision(splittedName.first),
@@ -470,7 +470,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @param onlyCached check only locally cached analyzers
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
-  AnalyzerPool::ptr get(irs::string_ref name,
+  AnalyzerPool::ptr get(std::string_view name,
                         TRI_vocbase_t const& activeVocbase,
                         QueryAnalyzerRevisions const& revision,
                         bool onlyCached = false) const;
@@ -480,7 +480,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @param name analyzer name (already normalized)
   /// @param force remove even if the analyzer is actively referenced
   //////////////////////////////////////////////////////////////////////////////
-  Result remove(irs::string_ref const& name, bool force = false);
+  Result remove(std::string_view const& name, bool force = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief visit all analyzers for the specified vocbase
@@ -515,7 +515,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @return revision number. always 0 for single server and before plan is
   /// loaded
   ///////////////////////////////////////////////////////////////////////////////
-  AnalyzersRevision::Ptr getAnalyzersRevision(irs::string_ref vocbaseName,
+  AnalyzersRevision::Ptr getAnalyzersRevision(std::string_view vocbaseName,
                                               bool forceLoadPlan = false) const;
 
   virtual void prepare() override;
@@ -527,7 +527,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   // map of caches of irs::analysis::analyzer pools indexed by analyzer name and
   // their associated metas
   using Analyzers =
-      std::unordered_map<irs::hashed_string_ref, AnalyzerPool::ptr>;
+      containers::FlatHashMap<irs::hashed_string_view, AnalyzerPool::ptr>;
   using EmplaceAnalyzerResult = std::pair<Analyzers::iterator, bool>;
 
   // all analyzers known to this feature (including static)
@@ -540,11 +540,11 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
 
   static Analyzers const& getStaticAnalyzers();
 
-  Result removeFromCollection(irs::string_ref name, irs::string_ref vocbase);
+  Result removeFromCollection(std::string_view name, std::string_view vocbase);
   Result cleanupAnalyzersCollection(
-      irs::string_ref const& database,
+      std::string_view const& database,
       AnalyzersRevision::Revision buildingRevision);
-  Result finalizeRemove(irs::string_ref name, irs::string_ref vocbase);
+  Result finalizeRemove(std::string_view name, std::string_view vocbase);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate analyzer parameters and emplace into map
@@ -552,11 +552,11 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   Result emplaceAnalyzer(
       EmplaceAnalyzerResult& result,
       iresearch::IResearchAnalyzerFeature::Analyzers& analyzers,
-      irs::string_ref const name, irs::string_ref const type,
+      std::string_view const name, std::string_view const type,
       VPackSlice const properties, Features const& features,
       AnalyzersRevision::Revision revision);
 
-  AnalyzerPool::ptr get(irs::string_ref normalizedName,
+  AnalyzerPool::ptr get(std::string_view normalizedName,
                         AnalyzerName const& name,
                         AnalyzersRevision::Revision const revision,
                         bool onlyCached) const noexcept;
@@ -568,13 +568,13 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @note on coordinator and db-server reload is also done if the database has
   ///       changed analyzers revision in agency
   //////////////////////////////////////////////////////////////////////////////
-  Result loadAnalyzers(irs::string_ref database = irs::string_ref::NIL);
+  Result loadAnalyzers(std::string_view database = std::string_view{});
 
   ////////////////////////////////////////////////////////////////////////////////
   /// removes analyzers for database from feature cache
   /// Write lock must be acquired by caller
   /// @param database the database to cleanup analyzers for
-  void cleanupAnalyzers(irs::string_ref database);
+  void cleanupAnalyzers(std::string_view database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief store the definition for the speicifed pool in the corresponding

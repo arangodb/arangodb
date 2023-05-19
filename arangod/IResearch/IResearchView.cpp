@@ -463,6 +463,7 @@ arangodb::ViewFactory const& IResearchView::factory() {
 }
 
 Result IResearchView::link(AsyncLinkPtr const& link) {
+  TRI_IF_FAILURE("IResearchLink::alwaysDangling") { return {}; }
   if (!link) {
     return {TRI_ERROR_BAD_PARAMETER,
             "invalid link parameter while emplacing collection into "
@@ -552,7 +553,7 @@ Result IResearchView::unlink(DataSourceId cid) noexcept {
             << "failed to persist logical view while unlinking collection '"
             << cid << "' from arangosearch view '" << name()
             << "': " << r.errorMessage();  // noexcept
-        _links.insert(move(link));         // noexcept
+        _links.insert(std::move(link));    // noexcept
         return r;
       }
     }

@@ -230,7 +230,8 @@ void Logger::setLogStructuredParams(
     std::unordered_map<std::string, bool> const& paramsAndValues) {
   WRITE_LOCKER(guard, Logger::_structuredParamsLock);
   for (const auto& [paramName, value] : paramsAndValues) {
-    if (auto it = allowList.find({paramName.data(), paramName.size()});
+    if (auto it = allowList.find(
+            std::string_view{paramName.data(), paramName.size()});
         it == allowList.end()) {
       continue;
     }
@@ -482,7 +483,7 @@ std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
 
 void Logger::log(char const* logid, char const* function, char const* file,
                  int line, LogLevel level, size_t topicId,
-                 std::string const& message) try {
+                 std::string_view message) try {
   TRI_ASSERT(logid != nullptr);
   LogContext& logContext = LogContext::current();
 
@@ -651,7 +652,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
       if (maxMessageLength > message.size()) {
         maxMessageLength = message.size();
       }
-      dumper.appendString(message.c_str(), maxMessageLength);
+      dumper.appendString(message.data(), maxMessageLength);
 
       // this tells the logger to not shrink our (potentially already
       // shrunk) message once more - if it would shrink the message again,

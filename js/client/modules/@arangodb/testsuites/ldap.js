@@ -45,6 +45,7 @@ const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
 const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -493,17 +494,8 @@ exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc, allTestP
   testFns['ldapfirstldap'] = authenticationLdapFirstLdap;
   testFns['ldapsecondldap'] = authenticationLdapSecondLdap;
 
-  // turn off ldap tests by default.
-  opts['skipLdap'] = true;
-
   // only enable them in Enterprise Edition
-  let version = {};
-  if (global.ARANGODB_CLIENT_VERSION) {
-    version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version['enterprise-version']) {
-      opts['skipLdap'] = false;
-    }
-  }
+  opts['skipLdap'] = !isEnterprise();
 
   for (var attrname in functionsDocumentation) {
     fnDocs[attrname] = functionsDocumentation[attrname];

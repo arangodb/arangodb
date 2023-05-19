@@ -317,14 +317,14 @@ def LIT(txt, wordboundary=['<b>', '</b>']):
 ################################################################################
 ### @brief LIT
 ###
-### \ -> needs to become \\ so \n's in the text can be differciated.
+### \ -> needs to become \\ so \n's in the text can be differentiated.
 ################################################################################
 
 def BACKSLASH(txt):
     return txt.replace('\\', '\\\\\\')
 
 ################################################################################
-### @brief Typegraphy
+### @brief Typography
 ################################################################################
 
 def Typography(txt):
@@ -764,7 +764,7 @@ def restbodyparam(cargo, r=Regexen()):
         # once this is solved we can skip this:
         operation['description'] += "\n**A JSON object with these properties is required:**\n"
         restBodyParam = {
-            'name': 'Json Request Body',
+            'name': 'JSON Request Body',
             'x-description-offset': len(swagger['paths'][httpPath][method]['description']),
             'in': 'body',
             'required': True,
@@ -855,7 +855,7 @@ def restallbodyparam(cargo, r=Regexen()):
         raise Exception("May only have one 'ALLBODY'")
 
     restBodyParam = {
-        'name': 'Json Request Body',
+        'name': 'JSON Request Body',
         'description': '',
         'in': 'body',
         'x-description-offset': len(swagger['paths'][httpPath][method]['description']),
@@ -868,7 +868,7 @@ def restallbodyparam(cargo, r=Regexen()):
 
     if _ptype != "json" and _ptype != "object":
         if _ptype == "string":
-            restBodyParam['name'] = "plain text body"
+            restBodyParam['name'] = "Plain-text body"
             restBodyParam['schema'] = {
                 'type': 'string',
                 'additionalProperties': {}

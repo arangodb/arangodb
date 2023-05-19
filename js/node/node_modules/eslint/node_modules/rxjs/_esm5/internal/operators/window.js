@@ -1,8 +1,7 @@
-/** PURE_IMPORTS_START tslib,_Subject,_OuterSubscriber,_util_subscribeToResult PURE_IMPORTS_END */
+/** PURE_IMPORTS_START tslib,_Subject,_innerSubscribe PURE_IMPORTS_END */
 import * as tslib_1 from "tslib";
 import { Subject } from '../Subject';
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, innerSubscribe, SimpleInnerSubscriber } from '../innerSubscribe';
 export function window(windowBoundaries) {
     return function windowOperatorFunction(source) {
         return source.lift(new WindowOperator(windowBoundaries));
@@ -16,7 +15,7 @@ var WindowOperator = /*@__PURE__*/ (function () {
         var windowSubscriber = new WindowSubscriber(subscriber);
         var sourceSubscription = source.subscribe(windowSubscriber);
         if (!sourceSubscription.closed) {
-            windowSubscriber.add(subscribeToResult(windowSubscriber, this.windowBoundaries));
+            windowSubscriber.add(innerSubscribe(this.windowBoundaries, new SimpleInnerSubscriber(windowSubscriber)));
         }
         return sourceSubscription;
     };
@@ -30,13 +29,13 @@ var WindowSubscriber = /*@__PURE__*/ (function (_super) {
         destination.next(_this.window);
         return _this;
     }
-    WindowSubscriber.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    WindowSubscriber.prototype.notifyNext = function () {
         this.openWindow();
     };
-    WindowSubscriber.prototype.notifyError = function (error, innerSub) {
+    WindowSubscriber.prototype.notifyError = function (error) {
         this._error(error);
     };
-    WindowSubscriber.prototype.notifyComplete = function (innerSub) {
+    WindowSubscriber.prototype.notifyComplete = function () {
         this._complete();
     };
     WindowSubscriber.prototype._next = function (value) {
@@ -63,5 +62,5 @@ var WindowSubscriber = /*@__PURE__*/ (function (_super) {
         destination.next(newWindow);
     };
     return WindowSubscriber;
-}(OuterSubscriber));
+}(SimpleOuterSubscriber));
 //# sourceMappingURL=window.js.map

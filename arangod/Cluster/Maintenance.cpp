@@ -1026,6 +1026,36 @@ static VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
   return arangodb::velocypack::Collection::remove(index, selectivityEstimates);
 }
 
+static ResultT<std::vector<ServerID>> getLocalFollowers(
+    DatabaseFeature& df, std::string const& database,
+    std::string const& shard) {
+  try {
+    DatabaseGuard guard(df, database);
+    auto vocbase = &guard.database();
+    auto collection = vocbase->lookupCollection(shard);
+    if (collection == nullptr) {
+      auto res = Result{
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format(
+              "Maintenance::getLocalFollowers: Failed to lookup collection {}",
+              shard)};
+      LOG_TOPIC("ce393", DEBUG, Logger::MAINTENANCE) << res;
+      return res;
+    }
+    return collection->followers()->getCopy();
+  } catch (std::exception const& e) {
+    auto res = Result{
+        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+        fmt::format(
+            "Maintenance::getLocalFollowers: Failed to lookup database {}, "
+            "exception: {} (this is expected if the database was recently "
+            "deleted).",
+            database, e.what())};
+    LOG_TOPIC("a4e35", WARN, Logger::MAINTENANCE) << res;
+    return res;
+  }
+}
+
 static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
     DatabaseFeature& df, VPackSlice const& info, VPackSlice const& planServers,
     std::string const& database, std::string const& shard,
@@ -1408,17 +1438,27 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                         << dbName << ", shard: " << shName;
                     continue;
                   }
+
+                  // The representation of Current that we have retrieved from
+                  // the agency is not guaranteed to be up-to-date, hence the
+                  // server might not be aware of its own previous writes. We
+                  // have to be careful not to override Current with outdated
+                  // information. The most up-to-date list of followers can be
+                  // obtained from the the local collection information. In this
+                  // case, it is safe to rely on it, because we are the leader
+                  // and we have just resigned. No other server has been able to
+                  // take over yet.
+                  auto followers = getLocalFollowers(df, dbName, shName);
+                  if (followers.fail()) {
+                    continue;
+                  }
+
                   VPackBuilder ns;
                   {
                     VPackArrayBuilder a(&ns);
-                    if (s.isArray()) {
-                      bool front = true;
-                      for (auto const& i : VPackArrayIterator(s)) {
-                        ns.add(VPackValue((!front)
-                                              ? i.copyString()
-                                              : UNDERSCORE + i.copyString()));
-                        front = false;
-                      }
+                    ns.add(VPackValue(UNDERSCORE + serverId));
+                    for (auto&& f : *followers) {
+                      ns.add(VPackValue(f));
                     }
                   }
                   report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" +
@@ -1500,7 +1540,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       }
 
       // UpdateCurrentForCollections (Current/Collections/Collection)
-      if (curcolls.isObject()) {
+      if (curcolls.isObject() && ldb.isObject()) {
         for (auto const& collection : VPackObjectIterator(curcolls)) {
           auto const colName = collection.key.copyString();
 
@@ -1515,8 +1555,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             // Shard in current and has servers
             auto servers = shard.value.get(SERVERS);
             auto const shName = shard.key.copyString();
-
-            TRI_ASSERT(ldb.isObject());
 
             if (servers.isArray() && servers.length() > 0  // servers in current
                 && servers[0].stringView() == serverId     // we are leading

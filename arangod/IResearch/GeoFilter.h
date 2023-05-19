@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,120 +31,115 @@
 #include "IResearch/Geo.h"
 #include "Geo/ShapeContainer.h"
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
+
+enum class StoredType : uint8_t {
+  // VPack but with legacy parsing to S2LatLngRect and Polygon Normalization
+  VPackLegacy = 0,
+  // Valid GeoJson as VPack or coordinates array of two S2LatLng
+  VPack,
+  // Valid ShapeContainer serialized as S2Region
+  S2Region,
+  // Same as S2Region, but contains only S2Point
+  S2Point,
+  // Store centroid
+  S2Centroid,
+};
+
+struct GeoFilterOptionsBase {
+  std::string prefix;
+  S2RegionTermIndexer::Options options;
+  StoredType stored{StoredType::VPack};
+  // Default value should be S2Point for bad written test
+  geo::coding::Options coding{geo::coding::Options::kInvalid};
+};
+
+enum class GeoFilterType : uint8_t {
+  // Check if a given shape intersects indexed data
+  INTERSECTS = 0,
+  // Check if a given shape fully contains indexed data
+  CONTAINS,
+  // Check if a given shape is fully contained within indexed data
+  IS_CONTAINED,
+};
 
 class GeoFilter;
-class GeoDistanceFilter;
 
-enum class GeoFilterType : uint32_t {
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief check if a given shape intersects indexed data
-  ////////////////////////////////////////////////////////////////////////////////
-  INTERSECTS = 0,
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief check if a given shape fully contains indexed data
-  ////////////////////////////////////////////////////////////////////////////////
-  CONTAINS,
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief check if a given shape is fully contained within indexed data
-  ////////////////////////////////////////////////////////////////////////////////
-  IS_CONTAINED
-};  // GeoFilterType
-
-////////////////////////////////////////////////////////////////////////////////
-/// @struct GeoFilterOptions
-/// @brief options for geo filter
-////////////////////////////////////////////////////////////////////////////////
-struct GeoFilterOptions {
- public:
+struct GeoFilterOptions : GeoFilterOptionsBase {
   using filter_type = GeoFilter;
 
   bool operator==(const GeoFilterOptions& rhs) const noexcept {
-    return type == rhs.type && shape.equals(&rhs.shape);
+    return type == rhs.type && shape.equals(rhs.shape);
   }
 
-  size_t hash() const noexcept {
-    using GeoFilterUnderlyingType = std::underlying_type_t<GeoFilterType>;
-    size_t hash = std::hash<GeoFilterUnderlyingType>()(
-        static_cast<GeoFilterUnderlyingType>(type));
-
-    auto* region = shape.region();
-    TRI_ASSERT(region);
-
+  template<typename H>
+  friend H AbslHashValue(H h, GeoFilterOptions const& self) noexcept {
+    auto* region = self.shape.region();
+    TRI_ASSERT(region != nullptr);
     std::vector<S2CellId> cells;
     region->GetCellUnionBound(&cells);
-
     for (auto cell : cells) {
-      hash = irs::hash_combine(hash, S2CellIdHash()(cell));
+      h = H::combine(std::move(h), cell);
     }
-    return hash;
+    return H::combine(std::move(h), cells.size(), self.type);
   }
 
-  geo::ShapeContainer shape;
-  std::string prefix;
-  S2RegionTermIndexer::Options options;
-  GeoFilterType type{GeoFilterType::INTERSECTS};
-};  // GeoFilterOptions
+  // TODO(MBkkt) remove it
+  size_t hash() const noexcept { return absl::Hash<GeoFilterOptions>{}(*this); }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class GeoFilter
-/// @brief user-side geo filter
-//////////////////////////////////////////////////////////////////////////////
+  GeoFilterType type{GeoFilterType::INTERSECTS};
+  geo::ShapeContainer shape;
+};
+
 class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::GeoFilter";
   }
 
   using filter::prepare;
 
-  prepared::ptr prepare(irs::index_reader const& rdr, irs::Order const& ord,
+  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Scorers const& ord,
                         irs::score_t boost,
                         irs::attribute_provider const* /*ctx*/) const override;
-};  // GeoFilter
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct GeoFilterOptions
-/// @brief options for term filter
-////////////////////////////////////////////////////////////////////////////////
-class GeoDistanceFilterOptions {
- public:
+class GeoDistanceFilter;
+
+struct GeoDistanceFilterOptions : GeoFilterOptionsBase {
   using filter_type = GeoDistanceFilter;
 
-  bool operator==(const GeoDistanceFilterOptions& rhs) const noexcept {
+  bool operator==(GeoDistanceFilterOptions const& rhs) const noexcept {
     return origin == rhs.origin && range == rhs.range;
   }
 
+  template<typename H>
+  friend H AbslHashValue(H h, GeoDistanceFilterOptions const& self) noexcept {
+    // TODO(MBkkt) remove ".hash()"
+    return H::combine(std::move(h), self.range.hash(), self.origin);
+  }
+
+  // TODO(MBkkt) remove it
   size_t hash() const noexcept {
-    return irs::hash_combine(range.hash(), S2PointHash()(origin));
+    return absl::Hash<GeoDistanceFilterOptions>{}(*this);
   }
 
   S2Point origin;
-  irs::search_range<double_t> range;
-  std::string prefix;
-  S2RegionTermIndexer::Options options;
-};  // GeoFilterOptions
+  irs::search_range<double> range;
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class GeoDistanceFilter
-/// @brief user-side geo distance filter
-//////////////////////////////////////////////////////////////////////////////
 class GeoDistanceFilter final
     : public irs::filter_base<GeoDistanceFilterOptions> {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
-    return "arangodb::iresearch::GeoFilter";
+  static constexpr std::string_view type_name() noexcept {
+    return "arangodb::iresearch::GeoDistanceFilter";
   }
 
   using filter::prepare;
 
-  virtual prepared::ptr prepare(
-      const irs::index_reader& rdr, const irs::Order& ord, irs::score_t boost,
-      const irs::attribute_provider* /*ctx*/) const override;
-};  // GeoDistanceFilter
+  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Scorers const& ord,
+                        irs::score_t boost,
+                        irs::attribute_provider const* /*ctx*/) const final;
+};
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

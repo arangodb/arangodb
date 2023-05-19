@@ -44,6 +44,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Indexes/Index.h"
+#include "Metrics/Counter.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Replication/DatabaseInitialSyncer.h"
@@ -55,6 +56,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -444,6 +446,10 @@ RestStatus RestReplicationHandler::execute() {
           handleCommandRevisionTree();
         } else if (type == rest::RequestType::POST && subCommand == Tree) {
           handleCommandRebuildRevisionTree();
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        } else if (type == rest::RequestType::PUT && subCommand == Tree) {
+          handleCommandCorruptRevisionTree();
+#endif
         } else if (type == rest::RequestType::PUT && subCommand == Ranges) {
           handleCommandRevisionRanges();
         } else if (type == rest::RequestType::PUT && subCommand == Documents) {
@@ -1594,11 +1600,14 @@ Result RestReplicationHandler::parseBatch(
             // prevent checking for _rev twice in the same document
             checkRev = false;
 
-            char ridBuffer[arangodb::basics::maxUInt64StringSize];
-            RevisionId newRid = collection->newRevisionId();
-
-            documentsToInsert.add(it.key);
-            documentsToInsert.add(newRid.toValuePair(ridBuffer));
+            // We simply get rid of the `_rev` attribute here on the
+            // coordinator. We need to create a new value but it has to be
+            // unique in the shard, therefore the shard leader must create the
+            // value. If multiple coordinators would create a timestamp based
+            // _rev value concurrently, we could get a duplicate, which would
+            // lead to a clash on the actual shard leader and can lead to
+            // RocksDB conflicts or even data corruption between primary index
+            // and data in the documents column family.
           } else {
             // copy key/value verbatim
             documentsToInsert.add(it.key);
@@ -2584,6 +2593,41 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // compare hash and count values of the local revision tree in case the
+  // caller posted the revision tree data as well.
+  // this check is only performed during failure-testing.
+  // it is not safe to activate it in general, because revision trees on the
+  // leader can advance when there are further writes into the shard.
+  if (body.get("treeHash").isString() && body.get("treeCount").isString()) {
+    auto context = transaction::StandaloneContext::Create(_vocbase);
+    SingleCollectionTransaction trx(context, *col, AccessMode::Type::READ, {});
+
+    auto res = trx.begin();
+    if (res.ok()) {
+      auto tree = col->getPhysical()->revisionTree(trx);
+      if (std::to_string(tree->rootValue()) !=
+          body.get("treeHash").stringView()) {
+        generateError(
+            rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+            "revision tree hashes are different. Expected (leader): " +
+                std::to_string(tree->rootValue()) +
+                ". actual (follower): " + body.get("treeHash").copyString());
+        return;
+      }
+
+      if (std::to_string(tree->count()) != body.get("treeCount").stringView()) {
+        generateError(
+            rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+            "revision tree counts are different. Expected (leader): " +
+                std::to_string(tree->count()) +
+                ". actual (follower): " + body.get("treeCount").copyString());
+        return;
+      }
+    }
+  }
+#endif
+
   Result res = col->followers()->add(followerId);
 
   if (res.fail()) {
@@ -3037,17 +3081,15 @@ bool RestReplicationHandler::prepareRevisionOperation(
   LOG_TOPIC("253e2", TRACE, arangodb::Logger::REPLICATION)
       << "enter prepareRevisionOperation";
 
-  bool found = false;
-
-  // get collection Name
-  ctx.cname = _request->value("collection");
-  if (ctx.cname.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid collection parameter");
+  // get collection name
+  if (!prepareCollectionForRevisionOperation(ctx)) {
     return false;
   }
+  TRI_ASSERT(!ctx.cname.empty());
+  TRI_ASSERT(ctx.collection != nullptr);
 
   // get batchId
+  bool found = false;
   std::string const& batchIdString = _request->value("batchId", found);
   if (found) {
     ctx.batchId = StringUtils::uint64(batchIdString);
@@ -3081,6 +3123,32 @@ bool RestReplicationHandler::prepareRevisionOperation(
       << "requested revision tree for collection '" << ctx.cname
       << "' using contextId '" << ctx.batchId << "'";
 
+  ctx.iter = ctx.collection->getPhysical()->getReplicationIterator(
+      ReplicationIterator::Ordering::Revision, ctx.batchId);
+  if (!ctx.iter) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "could not get replication iterator for collection '" +
+                      ctx.cname + "'");
+    return false;
+  }
+
+  return true;
+}
+
+bool RestReplicationHandler::prepareCollectionForRevisionOperation(
+    RevisionOperationContext& ctx) {
+  // get collection Name
+  ctx.cname = _request->value("collection");
+  if (ctx.cname.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return false;
+  }
+
+  // print request
+  LOG_TOPIC("6e075", TRACE, arangodb::Logger::REPLICATION)
+      << "requested revision tree for collection '" << ctx.cname << "'";
+
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   if (!ExecContext::current().canUseCollection(_vocbase.name(), ctx.cname,
@@ -3102,23 +3170,21 @@ bool RestReplicationHandler::prepareRevisionOperation(
     return false;
   }
 
-  ctx.iter = ctx.collection->getPhysical()->getReplicationIterator(
-      ReplicationIterator::Ordering::Revision, ctx.batchId);
-  if (!ctx.iter) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "could not get replication iterator for collection '" +
-                      ctx.cname + "'");
-    return false;
-  }
-
   return true;
 }
 
 void RestReplicationHandler::handleCommandRebuildRevisionTree() {
   RevisionOperationContext ctx;
-  if (!prepareRevisionOperation(ctx)) {
+  // get collection Name
+  if (!prepareCollectionForRevisionOperation(ctx)) {
+    // error was already generator by called function
     return;
   }
+  TRI_ASSERT(!ctx.cname.empty());
+  TRI_ASSERT(ctx.collection != nullptr);
+
+  // increase metric
+  ++server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
 
   Result res = ctx.collection->getPhysical()->rebuildRevisionTree();
   if (res.fail()) {
@@ -3128,6 +3194,26 @@ void RestReplicationHandler::handleCommandRebuildRevisionTree() {
 
   generateResult(rest::ResponseCode::NO_CONTENT, VPackSlice::nullSlice());
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+void RestReplicationHandler::handleCommandCorruptRevisionTree() {
+  RevisionOperationContext ctx;
+  // get collection name
+  if (!prepareCollectionForRevisionOperation(ctx)) {
+    // error was already generated by called function
+    return;
+  }
+  TRI_ASSERT(!ctx.cname.empty());
+  TRI_ASSERT(ctx.collection != nullptr);
+
+  auto count = _request->parsedValue("count", uint64_t(0));
+  auto hash = _request->parsedValue("hash", uint64_t(0xbadbadbadbadULL));
+  static_cast<RocksDBCollection*>(ctx.collection->getPhysical())
+      ->corruptRevisionTree(count, hash);
+
+  generateResult(rest::ResponseCode::OK, VPackSlice::nullSlice());
+}
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return the requested revision ranges for a given collection, if

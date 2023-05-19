@@ -1528,22 +1528,30 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
       quantifierAndFilterNode->type == NODE_TYPE_NOP) {
     filterNode = nullptr;
   } else {
-    TRI_ASSERT(quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER);
-    TRI_ASSERT(quantifierAndFilterNode->numMembers() == 2);
+    if (quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER) {
+      // 3.10 format: we get an ARRAY_FILTER node, which contains
+      // both a quantifier and the filter condition
+      TRI_ASSERT(quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER);
+      TRI_ASSERT(quantifierAndFilterNode->numMembers() == 2);
 
-    quantifierNode = quantifierAndFilterNode->getMember(0);
-    TRI_ASSERT(quantifierNode != nullptr);
+      quantifierNode = quantifierAndFilterNode->getMember(0);
+      TRI_ASSERT(quantifierNode != nullptr);
 
-    filterNode = quantifierAndFilterNode->getMember(1);
+      filterNode = quantifierAndFilterNode->getMember(1);
 
-    if (!isBoolean && filterNode->isConstant()) {
-      if (filterNode->isTrue()) {
-        // filter expression is always true
-        filterNode = nullptr;
-      } else {
-        // filter expression is always false
-        return AqlValue(AqlValueHintEmptyArray());
+      if (!isBoolean && filterNode->isConstant()) {
+        if (filterNode->isTrue()) {
+          // filter expression is always true
+          filterNode = nullptr;
+        } else {
+          // filter expression is always false
+          return AqlValue(AqlValueHintEmptyArray());
+        }
       }
+    } else {
+      // pre-3.10 format: we get the filter condition as the only value
+      TRI_ASSERT(quantifierNode == nullptr);
+      filterNode = quantifierAndFilterNode;
     }
   }
 
@@ -1918,6 +1926,13 @@ bool Expression::canBeUsedInPrune(bool isOneShard, std::string& errorReason) {
   }
 
   TRI_ASSERT(errorReason.empty());
+  return true;
+}
+
+bool Expression::canBeUsedInPrune(bool isOneShard) {
+  if (willUseV8() || !canRunOnDBServer(isOneShard)) {
+    return false;
+  }
   return true;
 }
 

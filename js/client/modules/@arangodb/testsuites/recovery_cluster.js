@@ -39,6 +39,7 @@ const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const _ = require('lodash');
+const { isEnterprise, versionHas } = require("@arangodb/test-helper");
 
 const toArgv = require('internal').toArgv;
 
@@ -154,6 +155,7 @@ function runArangodRecovery (params, useEncryption) {
                                                             params.count.toString()));
     params.instanceManager.prepareInstance();
     params.instanceManager.launchTcpDump("");
+    params.instanceManager.nonfatalAssertSearch();
     if (!params.instanceManager.launchInstance()) {
       params.instanceManager.destructor(false);
       return {
@@ -238,10 +240,7 @@ function runArangodRecovery (params, useEncryption) {
 }
 
 function recovery (options) {
-  if ((!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
-       global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') ||
-      (!global.ARANGODB_CLIENT_VERSION(true)['maintainer-mode'] ||
-       global.ARANGODB_CLIENT_VERSION(true)['maintainer-mode'] === 'false')) {
+  if (!versionHas('failure-tests') || !versionHas('maintainer-mode')) {
     return {
       recovery: {
         status: false,
@@ -263,15 +262,12 @@ function recovery (options) {
   let results = {
     status: true
   };
-  let useEncryption = false;
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      useEncryption = true;
-    }
-  }
+  let useEncryption = isEnterprise();
 
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options);
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options,
+                                       // At the moment only view-tests supported by cluster recovery tests:
+                                       function(testname) { return testname.search('search') >= 0; }
+                                      );
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
 

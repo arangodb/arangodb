@@ -289,10 +289,11 @@ function GeoIndexErrorHandlingSuite() {
       var d1 = collection.save({ a : 1 });
       var d2 = collection.save({ loc : null });
       var d3 = collection.save({ loc : [0] });
+      // Normalized to -90, 160
       var d4 = collection.save({ loc : [ -100, -200 ] });
       collection.save({ loc : [ -10, -20 ]});
 
-      assertEqual(1, collection.near(0,0).toArray().length);
+      assertEqual(2, collection.near(0,0).toArray().length);
 
       d1 = collection.replace(d1, { loc : [ 0, 0 ] });
       d2 = collection.replace(d2, { loc : [ 0, 0 ] });
@@ -306,7 +307,7 @@ function GeoIndexErrorHandlingSuite() {
       collection.replace(d3, { loc : [ 0 ] });
       collection.replace(d4, { loc : [ -100, -200 ] });
 
-      assertEqual(1, collection.near(0,0).toArray().length);
+      assertEqual(2, collection.near(0,0).toArray().length);
     }
 
   };

@@ -356,7 +356,9 @@ class TestGraph {
     ec.save(edges.map(([v, w, weight]) => {
       const edge = {
         _from: verticesByName[v],
-        _to: verticesByName[w]
+        _to: verticesByName[w],
+        // Will be used in filters of tests.
+        secondFrom: verticesByName[v]
       };
       // check if our edge also has a weight defined and is a number
       if (weight && typeof weight === 'number') {

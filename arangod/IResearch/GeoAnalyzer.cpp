@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,266 +21,311 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeoAnalyzer.h"
+#include "IResearch/GeoAnalyzer.h"
 
 #include <string>
 
-#include "s2/s2point_region.h"
-#include "s2/s2latlng.h"
+#include <s2/s2point_region.h>
+#include <s2/s2latlng.h>
+
+#include <velocypack/Builder.h>
 
 #include "analysis/analyzers.hpp"
-#include "velocypack/Builder.h"
-#include "Geo/GeoJson.h"
-#include "Geo/GeoParams.h"
-#include "IResearch/Geo.h"
 
+#include "Geo/GeoParams.h"
+#include "Geo/GeoJson.h"
+#include "IResearch/Geo.h"
+#include "IResearch/GeoFilter.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "VPackDeserializer/deserializer.h"
 #include "Basics/DownCast.h"
+#include "Basics/Exceptions.h"
+#include "Inspection/VPack.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/GeoAnalyzerEE.h"
+#endif
 
+#include <absl/strings/str_cat.h>
+#include <frozen/map.h>
+
+namespace arangodb::iresearch {
 namespace {
 
-using namespace std::literals::string_literals;
+constexpr auto kType2Str =
+    frozen::make_map<GeoJsonAnalyzerBase::Type, std::string_view>({
+        {GeoJsonAnalyzerBase::Type::SHAPE, "shape"},
+        {GeoJsonAnalyzerBase::Type::CENTROID, "centroid"},
+        {GeoJsonAnalyzerBase::Type::POINT, "point"},
+    });
+constexpr auto kStr2Type =
+    frozen::make_map<std::string_view, GeoJsonAnalyzerBase::Type>({
+        {"shape", GeoJsonAnalyzerBase::Type::SHAPE},
+        {"centroid", GeoJsonAnalyzerBase::Type::CENTROID},
+        {"point", GeoJsonAnalyzerBase::Type::POINT},
+    });
 
-using namespace arangodb;
-using namespace arangodb::iresearch;
-using namespace arangodb::velocypack::deserializer;
+constexpr std::string_view kTypeParam = "type";
+constexpr std::string_view kOptionsParam = "options";
+constexpr std::string_view kMaxCellsParam = "maxCells";
+constexpr std::string_view kMinLevelParam = "minLevel";
+constexpr std::string_view kMaxLevelParam = "maxLevel";
+constexpr std::string_view kLevelModParam = "modLevel";
+constexpr std::string_view kOptimizeForSpaceParam = "optimizeForSpace";
+constexpr std::string_view kLatitudeParam = "latitude";
+constexpr std::string_view kLongitudeParam = "longitude";
+constexpr std::string_view kLegacyParam = "legacy";
 
-constexpr const char GEOJSON_POINT_TYPE[] = "point";
-constexpr const char GEOJSON_CENTROID_TYPE[] = "centroid";
-constexpr const char GEOJSON_SHAPE_TYPE[] = "shape";
-constexpr const char TYPE_PARAM[] = "type";
-constexpr const char OPTIONS_PARAM[] = "options";
-constexpr const char MAX_CELLS_PARAM[] = "maxCells";
-constexpr const char MIN_LEVEL_PARAM[] = "minLevel";
-constexpr const char MAX_LEVEL_PARAM[] = "maxLevel";
-constexpr const char LATITUDE_PARAM[] = "latitude";
-constexpr const char LONGITUDE_PARAM[] = "longitude";
-
-using GeoJSONTypeEnumDeserializer =
-    enum_deserializer<GeoJSONAnalyzer::Type,
-                      enum_member<GeoJSONAnalyzer::Type::SHAPE,
-                                  values::string_value<GEOJSON_SHAPE_TYPE>>,
-                      enum_member<GeoJSONAnalyzer::Type::CENTROID,
-                                  values::string_value<GEOJSON_CENTROID_TYPE>>,
-                      enum_member<GeoJSONAnalyzer::Type::POINT,
-                                  values::string_value<GEOJSON_POINT_TYPE>>>;
-
-struct GeoOptionsValidator {
-  std::optional<deserialize_error> operator()(GeoOptions const& opts) const {
-    if (opts.minLevel < 0 || opts.maxLevel < 0 || opts.maxCells < 0) {
-      return deserialize_error{
-          "'minLevel', 'maxLevel', 'maxCells' must be a positive integer"};
-    }
-
-    if (opts.maxLevel > GeoOptions::MAX_LEVEL ||
-        opts.minLevel > GeoOptions::MAX_LEVEL) {
-      return deserialize_error{
-          "'minLevel', 'maxLevel' must not exceed '"s
-              .append(std::to_string(GeoOptions::MAX_LEVEL))
-              .append("'")};
-    }
-
-    if (opts.minLevel > opts.maxLevel) {
-      return deserialize_error{
-          "'minLevel' must be less or equal than 'maxLevel'"};
-    }
-
+Result getBool(velocypack::Slice object, std::string_view name, bool& output) {
+  auto const value = object.get(name);
+  if (value.isNone()) {
     return {};
   }
-};
+  if (!value.isBool()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("'", name, "' should be bool.")};
+  }
+  output = value.getBool();
+  return {};
+}
 
-using GeoOptionsDeserializer = utilities::constructing_deserializer<
-    GeoOptions,
-    parameter_list<
-        factory_simple_parameter<
-            MAX_CELLS_PARAM, int32_t, false,
-            values::numeric_value<int32_t, GeoOptions::DEFAULT_MAX_CELLS>>,
-        factory_simple_parameter<
-            MIN_LEVEL_PARAM, int32_t, false,
-            values::numeric_value<int32_t, GeoOptions::DEFAULT_MIN_LEVEL>>,
-        factory_simple_parameter<
-            MAX_LEVEL_PARAM, int32_t, false,
-            values::numeric_value<int32_t, GeoOptions::DEFAULT_MAX_LEVEL>>>>;
-
-using ValidatingGeoOptionsDeserializer =
-    validate<GeoOptionsDeserializer, GeoOptionsValidator>;
-
-using GeoJSONOptionsDeserializer = utilities::constructing_deserializer<
-    GeoJSONAnalyzer::Options,
-    parameter_list<
-        factory_deserialized_default<OPTIONS_PARAM,
-                                     ValidatingGeoOptionsDeserializer>,
-        factory_deserialized_default<
-            TYPE_PARAM, GeoJSONTypeEnumDeserializer,
-            values::numeric_value<
-                GeoJSONAnalyzer::Type,
-                static_cast<std::underlying_type_t<GeoJSONAnalyzer::Type>>(
-                    GeoJSONAnalyzer::Type::SHAPE)>>>>;
-
-struct GeoPointAnalyzerOptionsValidator {
-  std::optional<deserialize_error> operator()(
-      GeoPointAnalyzer::Options const& opts) const {
-    bool const latitudeEmpty = opts.latitude.empty();
-    bool const longitudeEmpty = opts.longitude.empty();
-
-    if (latitudeEmpty && longitudeEmpty) {
+Result fromVelocyPack(velocypack::Slice object, GeoOptions& options) {
+  if (!object.isObject()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("Failed to parse '", kOptionsParam,
+                         "', expected Object.")};
+  }
+  auto get = [&]<typename T>(auto name, auto min, auto max,
+                             T& output) -> Result {
+    auto const value = object.get(name);
+    if (value.isNone()) {
       return {};
     }
-
-    if (latitudeEmpty) {
-      return deserialize_error{"'latitude' path is not set"};
+    auto error = [&] {
+      return Result{
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("'", name, "' out of bounds: [", min, "..", max, "].")};
+    };
+    if (!value.template isNumber<T>()) {
+      return error();
     }
-
-    if (longitudeEmpty) {
-      return deserialize_error{"'longitude' path is not set"};
+    auto const v = value.template getNumber<T>();
+    if (v < min || max < v) {
+      return error();
     }
-
+    output = v;
     return {};
-  }
-};
-
-template<typename T>
-using vector = std::vector<T>;
-
-using StringVectorDeserializer =
-    array_deserializer<values::value_deserializer<std::string>, vector>;
-
-using GeoPointsOptionsDeserializer = utilities::constructing_deserializer<
-    GeoPointAnalyzer::Options,
-    parameter_list<
-        factory_deserialized_default<OPTIONS_PARAM,
-                                     ValidatingGeoOptionsDeserializer>,
-        factory_deserialized_default<LATITUDE_PARAM, StringVectorDeserializer,
-                                     values::default_constructed_value<
-                                         std::initializer_list<std::string>>>,
-        factory_deserialized_default<LONGITUDE_PARAM, StringVectorDeserializer,
-                                     values::default_constructed_value<
-                                         std::initializer_list<std::string>>>>>;
-
-using ValidatingGeoPointsOptionsDeserializer =
-    validate<GeoPointsOptionsDeserializer, GeoPointAnalyzerOptionsValidator>;
-
-template<typename Analyzer>
-struct Deserializer;
-
-template<>
-struct Deserializer<GeoJSONAnalyzer> {
-  using type = GeoJSONOptionsDeserializer;
-};
-
-template<>
-struct Deserializer<GeoPointAnalyzer> {
-  using type = ValidatingGeoPointsOptionsDeserializer;
-};
-
-void toVelocyPack(VPackBuilder& builder, GeoOptions const& opts) {
-  VPackObjectBuilder root(&builder);
-  builder.add(MAX_CELLS_PARAM, VPackValue(opts.maxCells));
-  builder.add(MIN_LEVEL_PARAM, VPackValue(opts.minLevel));
-  builder.add(MAX_LEVEL_PARAM, VPackValue(opts.maxLevel));
-}
-
-void toVelocyPack(VPackBuilder& builder, GeoJSONAnalyzer::Options const& opts) {
-  VPackObjectBuilder root(&builder);
-  switch (opts.type) {
-    case GeoJSONAnalyzer::Type::SHAPE:
-      builder.add(TYPE_PARAM, VPackValue(GEOJSON_SHAPE_TYPE));
-      break;
-    case GeoJSONAnalyzer::Type::CENTROID:
-      builder.add(TYPE_PARAM, VPackValue(GEOJSON_CENTROID_TYPE));
-      break;
-    case GeoJSONAnalyzer::Type::POINT:
-      builder.add(TYPE_PARAM, VPackValue(GEOJSON_POINT_TYPE));
-      break;
-  }
-  builder.add(VPackValue(OPTIONS_PARAM));
-  toVelocyPack(builder, opts.options);
-}
-
-void toVelocyPack(VPackBuilder& builder,
-                  GeoPointAnalyzer::Options const& opts) {
-  auto addArray = [&builder](const char* name,
-                             std::vector<std::string> const& values) {
-    VPackArrayBuilder arrayScope(&builder, name);
-    for (auto& value : values) {
-      builder.add(VPackValue(value));
-    }
   };
+  auto r = get(kMaxCellsParam, GeoOptions::kMinCells, GeoOptions::kMaxCells,
+               options.maxCells);
+  if (!r.ok()) {
+    return r;
+  }
+  r = get(kMinLevelParam, GeoOptions::kMinLevel, GeoOptions::kMaxLevel,
+          options.minLevel);
+  if (!r.ok()) {
+    return r;
+  }
+  r = get(kMaxLevelParam, GeoOptions::kMinLevel, GeoOptions::kMaxLevel,
+          options.maxLevel);
+  if (!r.ok()) {
+    return r;
+  }
+  r = get(kLevelModParam, GeoOptions::kMinLevelMod, GeoOptions::kMaxLevelMod,
+          options.levelMod);
+  if (!r.ok()) {
+    return r;
+  }
+  if (options.minLevel > options.maxLevel) {
+    return {
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("'", kMinLevelParam, "' should be less than or equal to '",
+                     kMaxLevelParam, "'.")};
+  }
+  return getBool(object, kOptimizeForSpaceParam, options.optimizeForSpace);
+}
 
-  VPackObjectBuilder root(&builder);
-  addArray(LATITUDE_PARAM, opts.latitude);
-  addArray(LONGITUDE_PARAM, opts.longitude);
-  builder.add(VPackValue(OPTIONS_PARAM));
-  toVelocyPack(builder, opts.options);
+Result fromVelocyPack(velocypack::Slice object,
+                      GeoPointAnalyzer::Options& options) {
+  TRI_ASSERT(object.isObject());
+  if (auto value = object.get(kOptionsParam); !value.isNone()) {
+    auto r = fromVelocyPack(value, options.options);
+    if (!r.ok()) {
+      return r;
+    }
+  }
+  auto get = [&](auto name, auto& output) -> Result {
+    TRI_ASSERT(output.empty());
+    auto const value = object.get(name);
+    if (value.isNone()) {
+      return {};
+    }
+    auto error = [&] {
+      return Result{TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("'", name, "' should be array of strings")};
+    };
+    if (!value.isArray()) {
+      return error();
+    }
+    velocypack::ArrayIterator it{value};
+    output.reserve(it.size());
+    for (; it.valid(); it.next()) {
+      auto sub = *it;
+      if (!sub.isString()) {
+        output = {};
+        return error();
+      }
+      output.emplace_back(sub.stringView());
+    }
+    return {};
+  };
+  auto r = get(kLatitudeParam, options.latitude);
+  if (!r.ok()) {
+    return r;
+  }
+  r = get(kLongitudeParam, options.longitude);
+  if (!r.ok()) {
+    return r;
+  }
+  if (options.latitude.empty() != options.longitude.empty()) {
+    options.latitude = {};
+    options.longitude = {};
+    return {TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("'", kLatitudeParam, "' and '", kLongitudeParam,
+                         "' should be both empty or non-empty.")};
+  }
+  return {};
+}
+
+Result fromVelocyPack(velocypack::Slice object,
+                      GeoVPackAnalyzer::Options& options) {
+  if (auto r = fromVelocyPackBase(object, options); !r.ok()) {
+    return r;
+  }
+  return getBool(object, kLegacyParam, options.legacy);
 }
 
 template<typename Analyzer>
-bool fromVelocyPack(irs::string_ref args, typename Analyzer::Options& out) {
-  auto const slice = arangodb::iresearch::slice(args);
-
-  auto const res = deserialize<typename Deserializer<Analyzer>::type,
-                               hints::hint_list<hints::ignore_unknown>>(slice);
-
-  if (!res.ok()) {
-    LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC)
+bool fromVelocyPackAnalyzer(std::string_view args,
+                            typename Analyzer::Options& options) {
+  auto const object = slice(args);
+  Result r;
+  if (!object.isObject()) {
+    r = {TRI_ERROR_BAD_PARAMETER,
+         "Cannot parse geo analyzer definition not from Object."};
+  } else {
+    r = fromVelocyPack(object, options);
+  }
+  if (!r.ok()) {
+    LOG_TOPIC("4349c", WARN, TOPIC)
         << "Failed to deserialize options from JSON while constructing '"
         << irs::type<Analyzer>::name() << "' analyzer, error: '"
-        << res.error().message << "'";
+        << r.errorMessage() << "'";
     return false;
   }
-
-  out = res.get();
   return true;
 }
 
 template<typename Analyzer>
-bool normalize(irs::string_ref args, std::string& out) {
-  typename Analyzer::Options opts;
-
-  if (!fromVelocyPack<Analyzer>(args, opts)) {
+bool normalizeImpl(std::string_view args, std::string& out) {
+  typename Analyzer::Options options;
+  if (!fromVelocyPackAnalyzer<Analyzer>(args, options)) {
     return false;
   }
-
-  VPackBuilder root;
-  toVelocyPack(root, opts);
-
+  velocypack::Builder root;
+  toVelocyPack(root, options);
   out.resize(root.slice().byteSize());
   std::memcpy(&out[0], root.slice().begin(), out.size());
   return true;
 }
 
 template<typename Analyzer>
-irs::analysis::analyzer::ptr make(irs::string_ref args) {
-  typename Analyzer::Options opts;
-
-  if (!fromVelocyPack<Analyzer>(args, opts)) {
-    return nullptr;
+irs::analysis::analyzer::ptr makeImpl(std::string_view args) {
+  typename Analyzer::Options options;
+  if (!fromVelocyPackAnalyzer<Analyzer>(args, options)) {
+    return {};
   }
+  return std::make_unique<Analyzer>(options);
+}
 
-  return std::make_unique<Analyzer>(opts);
+void toVelocyPack(velocypack::Builder& builder, GeoOptions const& options) {
+  velocypack::ObjectBuilder scope{&builder, kOptionsParam};
+  builder.add(kMaxCellsParam, velocypack::Value{options.maxCells});
+  builder.add(kMinLevelParam, velocypack::Value{options.minLevel});
+  builder.add(kMaxLevelParam, velocypack::Value{options.maxLevel});
 }
 
 }  // namespace
 
-namespace arangodb {
-namespace iresearch {
+Result fromVelocyPackBase(velocypack::Slice object,
+                          GeoJsonAnalyzerBase::OptionsBase& options) {
+  TRI_ASSERT(object.isObject());
+  auto value = object.get(kOptionsParam);
+  if (!value.isNone()) {
+    auto r = fromVelocyPack(value, options.options);
+    if (!r.ok()) {
+      return r;
+    }
+  }
+  value = object.get(kTypeParam);
+  if (!value.isNone()) {
+    auto error = [&] {
+      return Result{TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("'", kTypeParam,
+                                 "' can be 'shape', 'centroid', 'point'.")};
+    };
+    if (!value.isString()) {
+      return error();
+    }
+    auto it = kStr2Type.find(value.stringView());
+    if (it == kStr2Type.end()) {
+      return error();
+    }
+    options.type = it->second;
+  }
+  return {};
+}
 
-GeoAnalyzer::GeoAnalyzer(const irs::type_info& type)
-    : irs::analysis::analyzer{type} {}
+void toVelocyPackBase(velocypack::Builder& builder,
+                      GeoJsonAnalyzerBase::OptionsBase const& options) {
+  TRI_ASSERT(builder.isOpenObject());
+  toVelocyPack(builder, options.options);
+  builder.add(kTypeParam, velocypack::Value{kType2Str.at(options.type)});
+}
+
+void toVelocyPack(velocypack::Builder& builder,
+                  GeoPointAnalyzer::Options const& options) {
+  auto addArray = [&](auto name, auto const& values) {
+    velocypack::ArrayBuilder scope{&builder, name};
+    for (auto const& value : values) {
+      builder.add(velocypack::Value{value});
+    }
+  };
+  velocypack::ObjectBuilder scope{&builder};
+  toVelocyPack(builder, options.options);
+  addArray(kLatitudeParam, options.latitude);
+  addArray(kLongitudeParam, options.longitude);
+}
+
+void toVelocyPack(velocypack::Builder& builder,
+                  GeoVPackAnalyzer::Options const& options) {
+  velocypack::ObjectBuilder scope{&builder};
+  toVelocyPackBase(builder, options);
+  builder.add(kLegacyParam, velocypack::Value{options.legacy});
+}
+
+GeoAnalyzer::GeoAnalyzer(irs::type_info const& type,
+                         S2RegionTermIndexer::Options const& options)
+    : _indexer{options}, _coverer{options} {}
 
 bool GeoAnalyzer::next() noexcept {
   if (_begin >= _end) {
     return false;
   }
-
   auto& value = *_begin++;
-
   std::get<irs::term_attribute>(_attrs).value = {
-      reinterpret_cast<const irs::byte_type*>(value.c_str()), value.size()};
-
+      reinterpret_cast<irs::byte_type const*>(value.data()), value.size()};
   return true;
 }
 
@@ -290,111 +335,140 @@ void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
   _end = _begin + _terms.size();
 }
 
-/*static*/ bool GeoJSONAnalyzer::normalize(irs::string_ref args,
-                                           std::string& out) {
-  return ::normalize<GeoJSONAnalyzer>(args, out);
-}
+GeoJsonAnalyzerBase::GeoJsonAnalyzerBase(
+    irs::type_info const& type, GeoJsonAnalyzerBase::OptionsBase const& options)
+    : GeoAnalyzer{type,
+                  S2Options(options.options, options.type != Type::SHAPE)},
+      _type{options.type} {}
 
-/*static*/ irs::analysis::analyzer::ptr GeoJSONAnalyzer::make(
-    irs::string_ref args) {
-  return ::make<GeoJSONAnalyzer>(args);
-}
-
-/*static*/ VPackSlice GeoJSONAnalyzer::store(
-    irs::token_stream const* ctx, VPackSlice slice,
-    velocypack::Buffer<uint8_t>& buf) noexcept {
-  TRI_ASSERT(ctx);
-  auto const* impl = basics::downCast<GeoJSONAnalyzer>(ctx);
-  if (Type::CENTROID == impl->shapeType()) {
-    TRI_ASSERT(!impl->_shape.empty());
-    S2LatLng const centroid(impl->_shape.centroid());
-
-    VPackBuilder array(buf);
-    toVelocyPack(array, centroid);
-
-    return array.slice();
-  }
-
-  return slice;
-}
-
-GeoJSONAnalyzer::GeoJSONAnalyzer(Options const& opts)
-    : GeoAnalyzer(irs::type<GeoJSONAnalyzer>::get()),
-      _indexer(S2Options(opts.options)),
-      _type(opts.type) {}
-
-void GeoJSONAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
-  opts = _indexer.options();
-  opts.set_index_contains_points_only(_type != Type::SHAPE);
-}
-
-bool GeoJSONAnalyzer::reset(irs::string_ref value) {
-  auto const slice = iresearch::slice(value);
-
-  if (!parseShape(slice, _shape, _type == Type::POINT)) {
+bool GeoJsonAnalyzerBase::resetImpl(std::string_view value, bool legacy,
+                                    geo::coding::Options options,
+                                    Encoder* encoder) {
+  auto const data = slice(value);
+  if (_type != Type::POINT) {
+    const auto type = geo::json::type(data);
+    const bool withoutSerialization =
+        _type == Type::CENTROID && type != geo::json::Type::POINT &&
+        type != geo::json::Type::UNKNOWN;  // UNKNOWN same as isArray for us
+    if (!parseShape<Parsing::GeoJson>(
+            data, _shape, _cache, legacy,
+            withoutSerialization ? geo::coding::Options::kInvalid : options,
+            withoutSerialization ? nullptr : encoder)) {
+      return false;
+    }
+  } else if (!parseShape<Parsing::OnlyPoint>(data, _shape, _cache, legacy,
+                                             options, encoder)) {
     return false;
   }
 
-  TRI_ASSERT(!_shape.empty());
-
-  if (_type == Type::CENTROID) {
-    GeoAnalyzer::reset(_indexer.GetIndexTerms(_shape.centroid(), {}));
+  // TODO(MBkkt) use normal without allocation append interface
+  _centroid = _shape.centroid();
+  std::vector<std::string> geoTerms;
+  auto const type = _shape.type();
+  if (_type == Type::CENTROID || type == geo::ShapeContainer::Type::S2_POINT) {
+    geoTerms = _indexer.GetIndexTerms(_centroid, {});
   } else {
-    auto const* region = _shape.region();
-    TRI_ASSERT(region);
-
-    if (arangodb::geo::ShapeContainer::Type::S2_POINT == _shape.type()) {
-      GeoAnalyzer::reset(_indexer.GetIndexTerms(
-          static_cast<S2PointRegion const*>(region)->point(), {}));
-    } else {
-      GeoAnalyzer::reset(_indexer.GetIndexTerms(*region, {}));
+    geoTerms = _indexer.GetIndexTerms(*_shape.region(), {});
+    if (!_shape.contains(_centroid)) {
+      auto terms = _indexer.GetIndexTerms(_centroid, {});
+      geoTerms.insert(geoTerms.end(), std::make_move_iterator(terms.begin()),
+                      std::make_move_iterator(terms.end()));
+      // TODO(MBkkt) Is it ok to not deduplicate this terms?
     }
   }
-
+  GeoAnalyzer::reset(std::move(geoTerms));
   return true;
 }
 
-/*static*/ bool GeoPointAnalyzer::normalize(irs::string_ref args,
-                                            std::string& out) {
-  return ::normalize<GeoPointAnalyzer>(args, out);
+bool GeoVPackAnalyzer::normalize(std::string_view args, std::string& out) {
+  return normalizeImpl<GeoVPackAnalyzer>(args, out);
 }
 
-/*static*/ irs::analysis::analyzer::ptr GeoPointAnalyzer::make(
-    irs::string_ref args) {
-  return ::make<GeoPointAnalyzer>(args);
+irs::analysis::analyzer::ptr GeoVPackAnalyzer::make(std::string_view args) {
+  return makeImpl<GeoVPackAnalyzer>(args);
 }
 
-GeoPointAnalyzer::GeoPointAnalyzer(Options const& opts)
-    : GeoAnalyzer(irs::type<GeoPointAnalyzer>::get()),
-      _indexer(S2Options(opts.options)),
-      _fromArray{opts.latitude.empty() || opts.longitude.empty()},
-      _latitude(!_fromArray ? opts.latitude : std::vector<std::string>{}),
-      _longitude(!_fromArray ? opts.longitude : std::vector<std::string>{}) {}
-
-void GeoPointAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
-  opts = _indexer.options();
-  opts.set_index_contains_points_only(true);
+irs::bytes_view GeoVPackAnalyzer::store(irs::token_stream* ctx,
+                                        velocypack::Slice slice) {
+  TRI_ASSERT(ctx != nullptr);
+  auto& impl = basics::downCast<GeoVPackAnalyzer>(*ctx);
+  if (impl._type == Type::CENTROID) {
+    TRI_ASSERT(!impl._shape.empty());
+    S2LatLng const centroid{impl._shape.centroid()};
+    impl._builder.clear();
+    toVelocyPack(impl._builder, centroid);
+    slice = impl._builder.slice();
+  }
+  auto data = ref<irs::byte_type>(slice);
+  LOG_TOPIC("e8d27", TRACE, TOPIC)
+      << "VPackAnalyzer writes " << data.size() << " bytes to column";
+  return data;
 }
 
-bool GeoPointAnalyzer::parsePoint(VPackSlice json, S2LatLng& point) const {
-  VPackSlice latitude, longitude;
+GeoVPackAnalyzer::GeoVPackAnalyzer(Options const& options)
+    : GeoJsonAnalyzerBase{irs::type<GeoVPackAnalyzer>::get(), options},
+      _legacy{options.legacy} {}
+
+bool GeoVPackAnalyzer::reset(std::string_view value) {
+  return resetImpl(value, _legacy, geo::coding::Options::kInvalid, nullptr);
+}
+
+void GeoVPackAnalyzer::prepare(GeoFilterOptionsBase& options) const {
+  options.options = _indexer.options();
+  options.stored = _legacy ? StoredType::VPackLegacy : StoredType::VPack;
+}
+
+bool GeoPointAnalyzer::normalize(std::string_view args, std::string& out) {
+  return normalizeImpl<GeoPointAnalyzer>(args, out);
+}
+
+irs::analysis::analyzer::ptr GeoPointAnalyzer::make(std::string_view args) {
+  return makeImpl<GeoPointAnalyzer>(args);
+}
+
+GeoPointAnalyzer::GeoPointAnalyzer(Options const& options)
+    : GeoAnalyzer{irs::type<GeoPointAnalyzer>::get(),
+                  S2Options(options.options, true)},
+      _fromArray{options.latitude.empty()},
+      _latitude{options.latitude},
+      _longitude{options.longitude} {
+  TRI_ASSERT(_latitude.empty() == _longitude.empty());
+}
+
+void GeoPointAnalyzer::prepare(GeoFilterOptionsBase& options) const {
+  options.options = _indexer.options();
+  options.stored = StoredType::VPack;
+}
+
+bool GeoPointAnalyzer::parsePoint(velocypack::Slice json,
+                                  S2LatLng& point) const {
+  velocypack::Slice lat, lng;
   if (_fromArray) {
-    if (!json.isArray() || json.length() < 2) {
+    if (!json.isArray()) {
       return false;
     }
-
-    latitude = json.at(0);
-    longitude = json.at(1);
+    velocypack::ArrayIterator it{json};
+    if (it.size() != 2) {
+      return false;
+    }
+    lat = *it;
+    it.next();
+    lng = *it;
   } else {
-    latitude = json.get(_latitude);
-    longitude = json.get(_longitude);
+    lat = json.get(_latitude);
+    lng = json.get(_longitude);
   }
-
-  return iresearch::parsePoint(latitude, longitude, point);
+  if (ADB_UNLIKELY(!lat.isNumber<double>() || !lng.isNumber<double>())) {
+    return false;
+  }
+  point =
+      S2LatLng::FromDegrees(lat.getNumber<double>(), lng.getNumber<double>())
+          .Normalized();
+  return true;
 }
 
-bool GeoPointAnalyzer::reset(irs::string_ref value) {
-  if (!parsePoint(iresearch::slice(value), _point)) {
+bool GeoPointAnalyzer::reset(std::string_view value) {
+  if (!parsePoint(slice(value), _point)) {
     return false;
   }
 
@@ -402,33 +476,32 @@ bool GeoPointAnalyzer::reset(irs::string_ref value) {
   return true;
 }
 
-/*static*/ VPackSlice GeoPointAnalyzer::store(irs::token_stream const* ctx,
-                                              [[maybe_unused]] VPackSlice slice,
-                                              VPackBuffer<uint8_t>& buf) {
-  TRI_ASSERT(ctx);
-  auto const* impl = basics::downCast<GeoPointAnalyzer>(ctx);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
-    S2LatLng point;
-    if (!impl->parsePoint(slice, point)) {
-      return VPackSlice::noneSlice();
-    }
-    TRI_ASSERT(point == impl->_point);
-  }
-#endif
-
+irs::bytes_view GeoPointAnalyzer::store(irs::token_stream* ctx,
+                                        velocypack::Slice slice) {
+  TRI_ASSERT(ctx != nullptr);
+  auto& impl = basics::downCast<GeoPointAnalyzer>(*ctx);
   // reuse already parsed point
-  auto& point = impl->_point;
-
-  if (!point.is_valid()) {
-    return VPackSlice::noneSlice();
-  }
-
-  VPackBuilder array(buf);
-  toVelocyPack(array, point);
-
-  return array.slice();
+  auto& point = impl._point;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  S2LatLng slicePoint;
+  TRI_ASSERT(impl.parsePoint(slice, slicePoint));
+  TRI_ASSERT(slicePoint == point);
+#endif
+  impl._builder.clear();
+  toVelocyPack(impl._builder, point);
+  return ref<irs::byte_type>(impl._builder.slice());
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+#ifdef USE_ENTERPRISE
+
+bool GeoS2Analyzer::normalize(std::string_view args, std::string& out) {
+  return normalizeImpl<GeoS2Analyzer>(args, out);
+}
+
+irs::analysis::analyzer::ptr GeoS2Analyzer::make(std::string_view args) {
+  return makeImpl<GeoS2Analyzer>(args);
+}
+
+#endif
+
+}  // namespace arangodb::iresearch

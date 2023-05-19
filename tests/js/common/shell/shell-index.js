@@ -29,7 +29,7 @@
 const jsunity = require("jsunity");
 const internal = require("internal");
 const errors = internal.errors;
-const testHelper = require("@arangodb/test-helper").Helper;
+const { helper, versionHas } = require("@arangodb/test-helper");
 const platform = require('internal').platform;
 
 const cn = "UnitTestsCollection";
@@ -235,7 +235,7 @@ function IndexSuite() {
     testGetIndexUnloaded : function () {
       var idx = collection.ensureIndex({ type: "persistent", fields: ["test"] });
 
-      testHelper.waitUnload(collection);
+      helper.waitUnload(collection);
 
       assertEqual(idx.id, collection.index(idx.id).id);
       assertEqual(idx.id, collection.getIndexes()[1].id);
@@ -250,7 +250,7 @@ function IndexSuite() {
 
       collection.drop();
 
-      if (internal.coverage || internal.valgrind) {
+      if (versionHas('coverage')) {
         internal.wait(2, false);
       }
       try {
@@ -1565,41 +1565,43 @@ function ParallelIndexSuite() {
     },
 
     testCreateInParallel: function () {
-      let noIndices = 80;
-      if (platform.substr(0, 3) === 'win') {
-        // Relax condition for windows - TODO: fix this.
-        noIndices = 40;
-      }
-      for (let i = 0; i < noIndices; ++i) {
-        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + i + '"] });';
-        tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
-      }
+      // maximum concurrency for index creation. we need to limit the number
+      // here because otherwise the server may be overwhelmed by too many
+      // concurrent index creations being in progress.
+      const maxThreads = 7;
+      // Relax condition for windows and macOS - TODO: fix this.
+      const noIndexes = (platform.substr(0, 3) === 'win' || platform === 'darwin') ? 40 : 80;
 
       let time = require("internal").time;
       let start = time();
       while (true) {
         let indexes = require("internal").db._collection(cn).getIndexes();
-        if (indexes.length === noIndices + 1) {
+        assertTrue(indexes.length >= 1, indexes);
+        if (indexes.length === noIndexes + 1) {
           // primary index + user-defined indexes
           break;
         }
+        for (let i = indexes.length - 1; i < Math.min(noIndexes, indexes.length - 1 + maxThreads); ++i) {
+          let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + i + '"] });';
+          tasks.register({name: "UnitTestsIndexCreate" + i, command: command});
+        }
         if (time() - start > 180) {
           // wait for 3 minutes maximum
-          fail("Timeout creating " + noIndices + " indices after 3 minutes: " + JSON.stringify(indexes));
+          fail("Timeout creating " + noIndexes + " indices after 3 minutes: " + JSON.stringify(indexes));
         }
         require("internal").wait(0.5, false);
       }
         
       let indexes = require("internal").db._collection(cn).getIndexes();
-      assertEqual(noIndices + 1, indexes.length);
+      assertEqual(noIndexes + 1, indexes.length);
     },
 
     testCreateInParallelDuplicate: function () {
-      let n = 100;
-      for (let i = 0; i < n; ++i) {
-        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + (i % 4) + '"] });';
-        tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
-      }
+      // maximum concurrency for index creation. we need to limit the number
+      // here because otherwise the server may be overwhelmed by too many
+      // concurrent index creations being in progress.
+      const maxThreads = 7;
+      const noIndexes = 100;
 
       let time = require("internal").time;
       let start = time();
@@ -1608,6 +1610,10 @@ function ParallelIndexSuite() {
         if (indexes.length === 4 + 1) {
           // primary index + user-defined indexes
           break;
+        }
+        for (let i = indexes.length - 1; i < Math.min(noIndexes, indexes.length - 1 + maxThreads); ++i) {
+          let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + (i % 4) + '"] });';
+          tasks.register({name: "UnitTestsIndexCreate" + i, command: command});
         }
         if (time() - start > 180) {
           // wait for 3 minutes maximum

@@ -1,10 +1,8 @@
-/** PURE_IMPORTS_START tslib,_util_subscribeToResult,_OuterSubscriber,_InnerSubscriber,_map,_observable_from PURE_IMPORTS_END */
+/** PURE_IMPORTS_START tslib,_map,_observable_from,_innerSubscribe PURE_IMPORTS_END */
 import * as tslib_1 from "tslib";
-import { subscribeToResult } from '../util/subscribeToResult';
-import { OuterSubscriber } from '../OuterSubscriber';
-import { InnerSubscriber } from '../InnerSubscriber';
 import { map } from './map';
 import { from } from '../observable/from';
+import { SimpleOuterSubscriber, SimpleInnerSubscriber, innerSubscribe } from '../innerSubscribe';
 export function mergeMap(project, resultSelector, concurrent) {
     if (concurrent === void 0) {
         concurrent = Number.POSITIVE_INFINITY;
@@ -65,13 +63,16 @@ var MergeMapSubscriber = /*@__PURE__*/ (function (_super) {
             return;
         }
         this.active++;
-        this._innerSub(result, value, index);
+        this._innerSub(result);
     };
-    MergeMapSubscriber.prototype._innerSub = function (ish, value, index) {
-        var innerSubscriber = new InnerSubscriber(this, undefined, undefined);
+    MergeMapSubscriber.prototype._innerSub = function (ish) {
+        var innerSubscriber = new SimpleInnerSubscriber(this);
         var destination = this.destination;
         destination.add(innerSubscriber);
-        subscribeToResult(this, ish, value, index, innerSubscriber);
+        var innerSubscription = innerSubscribe(ish, innerSubscriber);
+        if (innerSubscription !== innerSubscriber) {
+            destination.add(innerSubscription);
+        }
     };
     MergeMapSubscriber.prototype._complete = function () {
         this.hasCompleted = true;
@@ -80,12 +81,11 @@ var MergeMapSubscriber = /*@__PURE__*/ (function (_super) {
         }
         this.unsubscribe();
     };
-    MergeMapSubscriber.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    MergeMapSubscriber.prototype.notifyNext = function (innerValue) {
         this.destination.next(innerValue);
     };
-    MergeMapSubscriber.prototype.notifyComplete = function (innerSub) {
+    MergeMapSubscriber.prototype.notifyComplete = function () {
         var buffer = this.buffer;
-        this.remove(innerSub);
         this.active--;
         if (buffer.length > 0) {
             this._next(buffer.shift());
@@ -95,6 +95,7 @@ var MergeMapSubscriber = /*@__PURE__*/ (function (_super) {
         }
     };
     return MergeMapSubscriber;
-}(OuterSubscriber));
+}(SimpleOuterSubscriber));
 export { MergeMapSubscriber };
+export var flatMap = mergeMap;
 //# sourceMappingURL=mergeMap.js.map

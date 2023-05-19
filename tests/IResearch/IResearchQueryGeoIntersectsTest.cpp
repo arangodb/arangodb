@@ -22,6 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include "IResearch/MakeViewSnapshot.h"
 #include "IResearchQueryCommon.h"
 
@@ -30,15 +32,16 @@ namespace {
 
 class QueryGeoIntersects : public QueryTest {
  protected:
-  void createAnalyzers() {
+  void createAnalyzers(std::string_view analyzer,
+                       std::string_view params = {}) {
     auto& analyzers = server.getFeature<iresearch::IResearchAnalyzerFeature>();
     iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-    auto json = VPackParser::fromJson(R"({})");
-    ASSERT_TRUE(analyzers
-                    .emplace(result, _vocbase.name() + "::mygeojson", "geojson",
-                             json->slice(), {})
-                    .ok());
+    auto json = VPackParser::fromJson(
+        absl::Substitute(R"({$0 "type": "shape"})", params));
+    auto r = analyzers.emplace(result, _vocbase.name() + "::mygeojson",
+                               analyzer, json->slice(), {});
+    ASSERT_TRUE(r.ok()) << r.errorMessage();
   }
 
   void createCollections() {
@@ -47,7 +50,7 @@ class QueryGeoIntersects : public QueryTest {
     ASSERT_TRUE(collection);
   }
 
-  void queryTests() {
+  void queryTests(bool isVPack) {
     static std::vector<velocypack::Slice> const empty;
     auto collection = _vocbase.lookupCollection("testCollection0");
     ASSERT_TRUE(collection);
@@ -138,20 +141,22 @@ class QueryGeoIntersects : public QueryTest {
       ASSERT_EQ(_insertedDocs.size(), snapshot->docs_count());
       ASSERT_EQ(_insertedDocs.size(), snapshot->live_docs_count());
 
-      auto& segment = (*snapshot)[0];
+      if (isVPack) {
+        auto& segment = (*snapshot)[0];
 
-      auto const columnName = mangleString("geometry", "mygeojson");
-      auto* columnReader = segment.column(columnName);
-      ASSERT_NE(nullptr, columnReader);
-      auto it = columnReader->iterator(irs::ColumnHint::kNormal);
-      ASSERT_NE(nullptr, it);
-      auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_NE(nullptr, payload);
+        auto const columnName = mangleString("geometry", "mygeojson");
+        auto* columnReader = segment.column(columnName);
+        ASSERT_NE(nullptr, columnReader);
+        auto it = columnReader->iterator(irs::ColumnHint::kNormal);
+        ASSERT_NE(nullptr, it);
+        auto* payload = irs::get<irs::payload>(*it);
+        ASSERT_NE(nullptr, payload);
 
-      auto doc = _insertedDocs.begin();
-      for (; it->next(); ++doc) {
-        EXPECT_EQUAL_SLICES(doc->slice().get("geometry"),
-                            iresearch::slice(payload->value));
+        auto doc = _insertedDocs.begin();
+        for (; it->next(); ++doc) {
+          EXPECT_EQUAL_SLICES(doc->slice().get("geometry"),
+                              iresearch::slice(payload->value));
+        }
       }
 
       ASSERT_TRUE(trx.commit().ok());
@@ -204,12 +209,7 @@ class QueryGeoIntersects : public QueryTest {
     }
     // test missing analyzer
     {
-      std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
-                    _insertedDocs[28].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+      static constexpr std::string_view kQueryStr = R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -218,17 +218,20 @@ class QueryGeoIntersects : public QueryTest {
         ])
         FOR d IN testView
         SEARCH GEO_INTERSECTS(d.geometry, box)
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice(),
+                        _insertedDocs[28].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     // test missing analyzer
     {
-      std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
-                    _insertedDocs[28].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+      static constexpr std::string_view kQueryStr = R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -237,8 +240,16 @@ class QueryGeoIntersects : public QueryTest {
         ])
         FOR d IN testView
         SEARCH GEO_INTERSECTS(box, d.geometry)
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice(),
+                        _insertedDocs[28].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     //
     {
@@ -364,19 +375,68 @@ class QueryGeoIntersectsSearch : public QueryGeoIntersects {
 };
 
 TEST_P(QueryGeoIntersectsView, Test) {
-  createAnalyzers();
+  createAnalyzers("geojson");
   createCollections();
   createView();
-  queryTests();
+  queryTests(true);
 }
 
 TEST_P(QueryGeoIntersectsSearch, Test) {
-  createAnalyzers();
+  createAnalyzers("geojson");
   createCollections();
   createIndexes();
   createSearch();
-  queryTests();
+  queryTests(true);
 }
+
+#ifdef USE_ENTERPRISE
+
+TEST_P(QueryGeoIntersectsView, TestS2LatLng) {
+  createAnalyzers("geo_s2", R"("format":"latLngDouble",)");
+  createCollections();
+  createView();
+  queryTests(false);
+}
+
+TEST_P(QueryGeoIntersectsSearch, TestS2LatLng) {
+  createAnalyzers("geo_s2", R"("format":"latLngDouble",)");
+  createCollections();
+  createIndexes();
+  createSearch();
+  queryTests(false);
+}
+
+TEST_P(QueryGeoIntersectsView, TestS2LatLngInt) {
+  createAnalyzers("geo_s2", R"("format":"latLngInt",)");
+  createCollections();
+  createView();
+  queryTests(false);
+}
+
+TEST_P(QueryGeoIntersectsSearch, TestS2LatLngInt) {
+  createAnalyzers("geo_s2", R"("format":"latLngInt",)");
+  createCollections();
+  createIndexes();
+  createSearch();
+  queryTests(false);
+}
+
+TEST_P(QueryGeoIntersectsView, TestS2Point) {
+  createAnalyzers("geo_s2", R"("format":"s2Point",)");
+  createCollections();
+  createView();
+  queryTests(false);
+}
+
+TEST_P(QueryGeoIntersectsSearch, TestS2Point) {
+  createAnalyzers("geo_s2", R"("format":"s2Point",)");
+  createCollections();
+  createIndexes();
+  createSearch();
+  queryTests(false);
+}
+
+#endif
 
 INSTANTIATE_TEST_CASE_P(IResearch, QueryGeoIntersectsView, GetLinkVersions());
 

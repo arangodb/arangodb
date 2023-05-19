@@ -32,10 +32,10 @@ class WithLatestFromSubscriber extends OuterSubscriber {
         }
         for (let i = 0; i < len; i++) {
             let observable = observables[i];
-            this.add(subscribeToResult(this, observable, observable, i));
+            this.add(subscribeToResult(this, observable, undefined, i));
         }
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext(_outerValue, innerValue, outerIndex) {
         this.values[outerIndex] = innerValue;
         const toRespond = this.toRespond;
         if (toRespond.length > 0) {

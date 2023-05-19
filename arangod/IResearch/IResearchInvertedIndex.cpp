@@ -45,7 +45,6 @@
 #include "index/index_writer.hpp"
 #include <index/heap_iterator.hpp>
 #include "store/directory.hpp"
-#include "utils/utf8_path.hpp"
 
 #include <absl/strings/str_cat.h>
 
@@ -91,7 +90,7 @@ AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
   };
 }
 
-irs::bytes_ref refFromSlice(VPackSlice slice) {
+irs::bytes_view refFromSlice(VPackSlice slice) {
   return {slice.startAs<irs::byte_type>(), slice.byteSize()};
 }
 
@@ -134,7 +133,7 @@ bool supportsFilterNode(
 
 const irs::payload NoPayload;
 
-inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
+inline irs::doc_iterator::ptr pkColumn(irs::SubReader const& segment) {
   auto const* reader = segment.column(DocumentPrimaryKey::PK());
 
   return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
@@ -144,10 +143,10 @@ inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
 ///         After the document id has beend found "get" method
 ///         could be used to get Slice for the Projections
 struct CoveringValue {
-  explicit CoveringValue(irs::string_ref col) : column(col) {}
+  explicit CoveringValue(std::string_view col) : column(col) {}
   CoveringValue(CoveringValue&& other) noexcept : column(other.column) {}
 
-  void reset(irs::sub_reader const& rdr) {
+  void reset(irs::SubReader const& rdr) {
     itr.reset();
     value = &NoPayload;
     // FIXME: this is cheap. Keep it here?
@@ -176,7 +175,7 @@ struct CoveringValue {
       }
       TRI_ASSERT(totalSize > 0);
       size_t size = 0;
-      VPackSlice slice(value->value.c_str());
+      VPackSlice slice(value->value.data());
       TRI_ASSERT(slice.byteSize() <= totalSize);
       while (i < index) {
         if (ADB_LIKELY(size < totalSize)) {
@@ -199,7 +198,7 @@ struct CoveringValue {
   }
 
   irs::doc_iterator::ptr itr;
-  irs::string_ref column;
+  std::string_view column;
   const irs::payload* value{};
 };
 
@@ -210,7 +209,8 @@ class CoveringVector final : public IndexIteratorCoveringData {
     size_t fields{meta._sort.fields().size()};
     _coverage.reserve(meta._sort.size() + meta._storedValues.columns().size());
     if (!meta._sort.empty()) {
-      _coverage.emplace_back(fields, CoveringValue(irs::string_ref::EMPTY));
+      _coverage.emplace_back(fields,
+                             CoveringValue(irs::kEmptyStringView<char>));
     }
     for (auto const& column : meta._storedValues.columns()) {
       fields += column.fields.size();
@@ -232,7 +232,7 @@ class CoveringVector final : public IndexIteratorCoveringData {
     return res;
   }
 
-  void reset(irs::sub_reader const& rdr) {
+  void reset(irs::SubReader const& rdr) {
     std::for_each(
         _coverage.begin(), _coverage.end(),
         [&rdr](decltype(_coverage)::value_type& v) { v.second.reset(rdr); });
@@ -437,7 +437,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       // sorting case
       append<irs::all>(root, filterCtx);
     }
-    _filter = root.prepare(*_reader, irs::Order::kUnordered, irs::kNoBoost,
+    _filter = root.prepare(*_reader, irs::Scorers::kUnordered, irs::kNoBoost,
                            &kEmptyAttributeProvider);
     TRI_ASSERT(_filter);
     if (ADB_UNLIKELY(!_filter)) {
@@ -454,7 +454,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   }
 
   irs::filter::prepared::ptr _filter;
-  irs::index_reader const* _reader;
+  irs::IndexReader const* _reader;
   IResearchSnapshotState::ImmutablePartCache* _immutablePartCache;
   IResearchInvertedIndexMeta const* _indexMeta;
   aql::Variable const* _variable;
@@ -529,8 +529,9 @@ class IResearchInvertedIndexIterator final
 
         _itr = segmentReader.mask(_filter->execute(
             irs::ExecutionContext{.segment = segmentReader,
-                                  .scorers = irs::Order::kUnordered,
-                                  .ctx = &kEmptyAttributeProvider}));
+                                  .scorers = irs::Scorers::kUnordered,
+                                  .ctx = &kEmptyAttributeProvider,
+                                  .wand = {}}));
         _doc = irs::get<irs::document>(*_itr);
       } else {
         if constexpr (produce) {
@@ -668,7 +669,7 @@ class IResearchInvertedIndexMergeIterator final
 
  private:
   struct Segment {
-    Segment(irs::doc_iterator::ptr&& docs, irs::sub_reader const& segment,
+    Segment(irs::doc_iterator::ptr&& docs, irs::SubReader const& segment,
             CoveringVector const& prototype)
         : itr(std::move(docs)), projections(prototype.clone()) {
       projections.reset(segment);
@@ -722,8 +723,8 @@ class IResearchInvertedIndexMergeIterator final
     bool operator()(size_t lhs, size_t rhs) const {
       assert(lhs < _segments->size());
       assert(rhs < _segments->size());
-      return _less(refFromSlice((*_segments)[rhs].sortValue),
-                   refFromSlice((*_segments)[lhs].sortValue));
+      return _less.Compare(refFromSlice((*_segments)[rhs].sortValue),
+                           refFromSlice((*_segments)[lhs].sortValue)) < 0;
     }
 
     VPackComparer<IResearchInvertedIndexSort> _less;
@@ -811,10 +812,10 @@ Result IResearchInvertedIndex::init(
   if (ServerState::instance()->isSingleServer() ||
       ServerState::instance()->isDBServer()) {
     TRI_ASSERT(_meta._sort.sortCompression());
-    irs::index_reader_options readerOptions;
+    irs::IndexReaderOptions readerOptions;
 #ifdef USE_ENTERPRISE
     setupReaderEntepriseOptions(readerOptions, _collection.vocbase().server(),
-                                _meta);
+                                _meta, _useSearchCache);
 #endif
     auto r = initDataStore(pathExists, initCallback,
                            static_cast<uint32_t>(_meta._version), isSorted(),
@@ -847,7 +848,7 @@ Result IResearchInvertedIndex::init(
 AnalyzerPool::ptr IResearchInvertedIndex::findAnalyzer(
     AnalyzerPool const& analyzer) const {
   auto const it =
-      _meta._analyzerDefinitions.find(irs::string_ref(analyzer.name()));
+      _meta._analyzerDefinitions.find(std::string_view(analyzer.name()));
 
   if (it == _meta._analyzerDefinitions.end()) {
     return nullptr;
@@ -942,7 +943,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     void const* key = reinterpret_cast<uint8_t const*>(this) + 1;
     auto* ctx = basics::downCast<IResearchSnapshotState>(state.cookie(key));
     if (!ctx) {
-      auto ptr = irs::memory::make_unique<IResearchSnapshotState>();
+      auto ptr = std::make_unique<IResearchSnapshotState>();
       ctx = ptr.get();
       state.cookie(key, std::move(ptr));
 

@@ -27,19 +27,50 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const {getEndpointsByType, getRawMetric, getAllMetric} = require("@arangodb/test-helper");
+const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 const parsePrometheusTextFormat = require("parse-prometheus-text-format");
 const _ = require("lodash");
+const isEnterprise = require("internal").isEnterprise();
 
 const db = arangodb.db;
 
 function checkMetrics(metrics) {
-  assertEqual(metrics["arangodb_search_num_docs"]["foo1"], 1000);
-  assertEqual(metrics["arangodb_search_num_docs"]["foo2"], 1001);
-  assertEqual(metrics["arangodb_search_num_docs"]["foo3"], 1002);
 
-  assertEqual(metrics["arangodb_search_num_live_docs"]["foo1"], 1000);
-  assertEqual(metrics["arangodb_search_num_live_docs"]["foo2"], 1001);
-  assertEqual(metrics["arangodb_search_num_live_docs"]["foo3"], 1002);
+  assertNotEqual(null, metrics);
+  assertNotEqual(undefined, metrics);
+
+  assertNotEqual(undefined, metrics["arangodb_search_num_docs"]);
+  assertNotEqual(undefined, metrics["arangodb_search_num_live_docs"]);
+
+  assertNotEqual(undefined, metrics["arangodb_search_num_segments"]);
+  assertNotEqual(undefined, metrics["arangodb_search_num_files"]);
+  assertNotEqual(undefined, metrics["arangodb_search_index_size"]);
+  if (isEnterprise) {
+    // 'arangodb_search_num_primary_docs' is available only in enterprise.
+    // So make sure that it is exists before checking other metrics.
+    assertNotEqual(undefined, metrics["arangodb_search_num_primary_docs"]);
+    
+    // nested documents are treated like a real documents
+    assertEqual(metrics["arangodb_search_num_docs"]["foo1"], 2000);
+    assertEqual(metrics["arangodb_search_num_docs"]["foo2"], 4001);
+    assertEqual(metrics["arangodb_search_num_docs"]["foo3"], 7002);
+  
+    assertEqual(metrics["arangodb_search_num_live_docs"]["foo1"], 2000);
+    assertEqual(metrics["arangodb_search_num_live_docs"]["foo2"], 4001);
+    assertEqual(metrics["arangodb_search_num_live_docs"]["foo3"], 7002);
+
+    assertEqual(metrics["arangodb_search_num_primary_docs"]["foo1"], 1000);
+    assertEqual(metrics["arangodb_search_num_primary_docs"]["foo2"], 1001);
+    assertEqual(metrics["arangodb_search_num_primary_docs"]["foo3"], 1002);
+  } else {
+    assertEqual(metrics["arangodb_search_num_docs"]["foo1"], 1000);
+    assertEqual(metrics["arangodb_search_num_docs"]["foo2"], 1001);
+    assertEqual(metrics["arangodb_search_num_docs"]["foo3"], 1002);
+  
+    assertEqual(metrics["arangodb_search_num_live_docs"]["foo1"], 1000);
+    assertEqual(metrics["arangodb_search_num_live_docs"]["foo2"], 1001);
+    assertEqual(metrics["arangodb_search_num_live_docs"]["foo3"], 1002);
+  }
 
   assertEqual(metrics["arangodb_search_num_segments"]["foo1"], 9);
   assertEqual(metrics["arangodb_search_num_segments"]["foo2"], 12);
@@ -71,7 +102,7 @@ function checkRawMetrics(txt, empty) {
   if (empty) {
     assertEqual(metrics, {});
   } else {
-    checkMetrics(metrics);
+    checkIndexMetrics(function() { return checkMetrics(metrics); });
   }
 }
 
@@ -92,22 +123,97 @@ function createClusterWideMetrics() {
   let foo2_values = [{"name": "i"}];
   let foo3_values = [{"name": "hate"}, {"name": "js"}];
   for (let i = 0; i !== 1000; ++i) {
-    foo1_values.push({"name": i});
-    foo2_values.push({"name": i + 100000});
-    foo3_values.push({"name": i - 100000});
+    foo1_values.push({"name": i, "nested_1_1": [{"a": -i}]});
+    foo2_values.push({"name": i + 100000, "nested_2_1": [{"c": -i}], "nested_2_2": [{"nested_2_1": [{"d": -i + 1}]}]});
+    foo3_values.push({"name": i - 100000, 
+                        "nested_3_1": [{"e": String(i)}], 
+                        "nested_3_2": [{"nested_3_1": [{"f": String(i + 1)}]}], 
+                        "nested_3_3": [{"nested_3_2": [{"nested_3_1":[{"h": String(i + 1)}]}]}]
+                      });
   }
   db.foo1.save(foo1_values);
   db.foo2.save(foo2_values);
   db.foo3.save(foo3_values);
-  db._createView("foov", "arangosearch", {
-    "consolidationIntervalMsec": 0,
-    "cleanupIntervalStep": 0,
-    "links": {
-      "foo1": {"includeAllFields": true},
-      "foo2": {"includeAllFields": true},
-      "foo3": {"includeAllFields": true}
-    }
-  });
+  if (isEnterprise) {
+    db._createView("foov", "arangosearch", {
+      "consolidationIntervalMsec": 0,
+      "cleanupIntervalStep": 0,
+      "links": {
+        "foo1": {
+          "includeAllFields": true,
+          "fields": {
+            "nested_1_1": {
+              "nested": {
+                "a": {}
+              }
+            }
+          }
+        },
+        "foo2": {
+          "includeAllFields": true,
+          "fields": {
+            "nested_2_1": {
+              "nested": {
+                "c": {}
+              }
+            },
+            "nested_2_2": {
+              "nested": {
+                "nested_2_1": {
+                  "nested": {
+                    "d": {}
+                  }
+                }
+              } 
+            }
+          }
+        },
+        "foo3": {
+          "includeAllFields": true,
+          "fields": {
+            "nested_3_1": {
+              "nested": {
+                "e": {}
+              }
+            },
+            "nested_3_2": {
+              "nested": {
+                "nested_3_1": {
+                  "nested": {
+                    "f": {}
+                  }
+                }
+              } 
+            },
+            "nested_3_3": {
+              "nested": {
+                "nested_3_2": {
+                  "nested": {
+                    "nested_3_1": {
+                      "nested":{
+                        "h": {}
+                      }
+                    }
+                  }
+                }
+              } 
+            }
+          }
+        }
+      }
+    });
+  } else {
+    db._createView("foov", "arangosearch", {
+      "consolidationIntervalMsec": 0,
+      "cleanupIntervalStep": 0,
+      "links": {
+        "foo1": {"includeAllFields": true},
+        "foo2": {"includeAllFields": true},
+        "foo3": {"includeAllFields": true}
+      }
+    });
+  }
+
   db._query("FOR d IN foov OPTIONS { waitForSync: true } LIMIT 1 RETURN 1");
 }
 

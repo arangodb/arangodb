@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
 
@@ -33,21 +34,6 @@ class RocksDBEngine;
 
 class RocksDBBackgroundThread final : public Thread {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief engine pointer
-  //////////////////////////////////////////////////////////////////////////////
-  RocksDBEngine& _engine;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief interval in which we will run
-  //////////////////////////////////////////////////////////////////////////////
-  double const _interval;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief condition variable for heartbeat
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::basics::ConditionVariable _condition;
-
   RocksDBBackgroundThread(RocksDBEngine& eng, double interval);
   ~RocksDBBackgroundThread();
 
@@ -55,5 +41,17 @@ class RocksDBBackgroundThread final : public Thread {
 
  protected:
   void run() override;
+
+ private:
+  /// @brief engine pointer
+  RocksDBEngine& _engine;
+
+  /// @brief interval in which we will run
+  double const _interval;
+
+  /// @brief condition variable for heartbeat
+  arangodb::basics::ConditionVariable _condition;
+
+  metrics::Gauge<uint64_t>& _metricsWalReleasedTickReplication;
 };
 }  // namespace arangodb

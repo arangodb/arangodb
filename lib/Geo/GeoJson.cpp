@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,11 +22,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeoJson.h"
+#include "Geo/GeoJson.h"
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <vector>
+#include <span>
 
 #include <velocypack/Iterator.h>
 
@@ -34,621 +36,917 @@
 #include <s2/s2point_region.h>
 #include <s2/s2polygon.h>
 #include <s2/s2polyline.h>
+#include <s2/util/coding/coder.h>
 
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Geo/GeoParams.h"
-#include "Geo/S2/S2MultiPointRegion.h"
-#include "Geo/S2/S2MultiPolyline.h"
 #include "Geo/ShapeContainer.h"
+#include "Geo/S2/S2MultiPointRegion.h"
+#include "Geo/S2/S2MultiPolylineRegion.h"
 #include "Logger/Logger.h"
 
+namespace arangodb::geo::json {
 namespace {
-// Have one of these values:
-std::string const kTypeStringPoint = "Point";
-std::string const kTypeStringLineString = "LineString";
-std::string const kTypeStringPolygon = "Polygon";
-std::string const kTypeStringMultiPoint = "MultiPoint";
-std::string const kTypeStringMultiLineString = "MultiLineString";
-std::string const kTypeStringMultiPolygon = "MultiPolygon";
-std::string const kTypeStringGeometryCollection = "GeometryCollection";
-}  // namespace
 
-namespace {
-inline bool sameCharIgnoringCase(char a, char b) noexcept {
-  return arangodb::basics::StringUtils::toupper(a) ==
-         arangodb::basics::StringUtils::toupper(b);
-}
-}  // namespace
-
-namespace {
-bool sameIgnoringCase(std::string_view s1, std::string const& s2) {
-  return s1.size() == s2.size() &&
-         std::equal(s1.begin(), s1.end(), s2.begin(), ::sameCharIgnoringCase);
-}
-
-arangodb::Result verifyClosedLoop(std::vector<S2Point> const& vertices) {
-  using arangodb::Result;
-
-  if (vertices.empty()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Loop with no vertices");
-  } else if (vertices.front() != vertices.back()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Loop not closed");
+template<bool Validation>
+S2Point encodePointImpl(S2LatLng latLng, coding::Options options,
+                        Encoder* encoder) noexcept {
+  if constexpr (Validation) {
+    if (encoder != nullptr) {
+      TRI_ASSERT(options != coding::Options::kInvalid);
+      TRI_ASSERT(encoder->avail() >= sizeof(uint8_t));
+      encoder->put8(coding::toTag(coding::Type::kPoint, options));
+      if (coding::isOptionsS2(options)) {
+        auto point = latLng.ToPoint();
+        encodePoint(*encoder, point);
+        return point;
+      }
+      encodeLatLng(*encoder, latLng, options);
+    } else if (options == coding::Options::kS2LatLngInt) {
+      toLatLngInt(latLng);
+    }
+  } else {
+    TRI_ASSERT(encoder == nullptr);
+    TRI_ASSERT(options == coding::Options::kInvalid);
   }
-  return TRI_ERROR_NO_ERROR;
+  return latLng.ToPoint();
 }
 
-void removeAdjacentDuplicates(std::vector<S2Point>& vertices) {
-  if (vertices.size() < 2) {
-    return;
+void encodeImpl(std::span<S2LatLng> cache, coding::Type type,
+                coding::Options options, Encoder* encoder) {
+  if (encoder != nullptr) {
+    TRI_ASSERT(options != coding::Options::kInvalid);
+    TRI_ASSERT(!coding::isOptionsS2(options));
+    TRI_ASSERT(encoder->avail() >= sizeof(uint8_t) + Varint::kMax64);
+    encoder->put8(coding::toTag(type, options));
+    encoder->put_varint64(cache.size());
+    encodeVertices(*encoder, cache, options);
+  } else if (options == coding::Options::kS2LatLngInt) {
+    toLatLngInt(cache);
   }
-  TRI_ASSERT(!vertices.empty());
-  for (size_t i = 0; i < vertices.size() - 1; i++) {
-    if (vertices[i] == vertices[i + 1]) {
-      vertices.erase(vertices.begin() + i + 1);
-      i--;
+}
+
+void fillPoints(std::vector<S2Point>& points, std::span<S2LatLng const> cache) {
+  points.clear();
+  points.reserve(cache.size());
+  for (auto const& point : cache) {
+    points.emplace_back(point.ToPoint());
+  }
+}
+
+template<bool Validation>
+size_t encodeCount(size_t count, coding::Type type, coding::Options options,
+                   Encoder* encoder) {
+  TRI_ASSERT(count != 0);
+  if (Validation && encoder != nullptr) {
+    TRI_ASSERT(options != coding::Options::kInvalid);
+    TRI_ASSERT(!coding::isOptionsS2(options));
+    encoder->Ensure(sizeof(uint8_t) + (1 + count) * Varint::kMax64 +
+                    (2 + static_cast<size_t>(type == coding::Type::kPolygon)) *
+                        coding::toSize(options));
+    encoder->put8(coding::toTag(type, options));
+    if (count != 1) {
+      encoder->put_varint64(count * 2 + 1);
+    } else {
+      return 2;
     }
   }
-  TRI_ASSERT(!vertices.empty());
+  return 1;
 }
 
-// parse geojson coordinates into s2 points
-arangodb::Result parsePoints(VPackSlice const& vpack, bool geoJson,
-                             std::vector<S2Point>& vertices) {
+// The main idea is check in our CI 3 compile time branches:
+// 1. Validation true
+// 2. Validation false kIsMaintainer true
+// 3. Validation false kIsMaintainer false
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(__linux__) && \
+    !defined(__aarch64__)
+constexpr bool kIsMaintainer = true;
+#else
+constexpr bool kIsMaintainer = false;
+#endif
+
+constexpr std::string_view kTypeStringPoint = "point";
+constexpr std::string_view kTypeStringPolygon = "polygon";
+constexpr std::string_view kTypeStringLineString = "linestring";
+constexpr std::string_view kTypeStringMultiPoint = "multipoint";
+constexpr std::string_view kTypeStringMultiPolygon = "multipolygon";
+constexpr std::string_view kTypeStringMultiLineString = "multilinestring";
+constexpr std::string_view kTypeStringGeometryCollection = "geometrycollection";
+
+// TODO(MBkkt) t as parameter looks better, but compiler produce strange error
+//  t isn't compile time for line toString(t) where t from template
+template<Type t>
+consteval std::string_view toString() noexcept {
+  switch (t) {
+    case Type::UNKNOWN:
+      return {};
+    case Type::POINT:
+      return kTypeStringPoint;
+    case Type::LINESTRING:
+      return kTypeStringLineString;
+    case Type::POLYGON:
+      return kTypeStringPolygon;
+    case Type::MULTI_POINT:
+      return kTypeStringMultiPoint;
+    case Type::MULTI_LINESTRING:
+      return kTypeStringMultiLineString;
+    case Type::MULTI_POLYGON:
+      return kTypeStringMultiPolygon;
+    case Type::GEOMETRY_COLLECTION:
+      return kTypeStringGeometryCollection;
+  }
+}
+
+consteval ShapeContainer::Type toShapeType(Type t) noexcept {
+  switch (t) {
+    case Type::UNKNOWN:
+    case Type::GEOMETRY_COLLECTION:
+      return ShapeContainer::Type::EMPTY;
+    case Type::POINT:
+      return ShapeContainer::Type::S2_POINT;
+    case Type::LINESTRING:
+      return ShapeContainer::Type::S2_POLYLINE;
+    case Type::POLYGON:
+    case Type::MULTI_POLYGON:
+      return ShapeContainer::Type::S2_POLYGON;
+    case Type::MULTI_POINT:
+      return ShapeContainer::Type::S2_MULTIPOINT;
+    case Type::MULTI_LINESTRING:
+      return ShapeContainer::Type::S2_MULTIPOLYLINE;
+  }
+  return ShapeContainer::Type::EMPTY;
+}
+
+bool sameIgnoringCase(std::string_view s1, std::string_view s2) noexcept {
+  return std::equal(s1.begin(), s1.end(), s2.begin(),
+                    [](char a, char b) { return a == std::tolower(b); });
+}
+
+template<typename Vertices>
+void removeAdjacentDuplicates(Vertices& vertices) noexcept {
+  // TODO We don't remove antipodal vertices
+  auto it = std::unique(vertices.begin(), vertices.end());
+  vertices.erase(it, vertices.end());
+}
+
+bool getCoordinates(velocypack::Slice& vpack) {
+  TRI_ASSERT(vpack.isObject());
+  vpack = vpack.get(fields::kCoordinates);
+  return vpack.isArray();
+}
+
+template<bool Validation, bool GeoJson>
+bool parseImpl(velocypack::Slice vpack, S2LatLng& vertex) {
+  TRI_ASSERT(vpack.isArray());
+  velocypack::ArrayIterator jt{vpack};
+  if (Validation && ADB_UNLIKELY(jt.size() != 2)) {
+    return false;
+  }
+  auto const first = *jt;
+  if (Validation && ADB_UNLIKELY(!first.isNumber<double>())) {
+    return false;
+  }
+  jt.next();
+  auto const second = *jt;
+  if (Validation && ADB_UNLIKELY(!second.isNumber<double>())) {
+    return false;
+  }
+  double lat, lon;
+  if constexpr (GeoJson) {
+    lon = first.getNumber<double>();
+    lat = second.getNumber<double>();
+  } else {
+    lat = first.getNumber<double>();
+    lon = second.getNumber<double>();
+  }
+  // We should Normalize all S2LatLng
+  // because otherwise their converting to S2Point is invalid!
+  vertex = S2LatLng::FromDegrees(lat, lon).Normalized();
+  return true;
+}
+
+template<bool Validation, bool GeoJson>
+Result parseImpl(velocypack::Slice vpack, std::vector<S2LatLng>& vertices) {
+  TRI_ASSERT(vpack.isArray());
+  velocypack::ArrayIterator it{vpack};
   vertices.clear();
-  VPackSlice coordinates = vpack;
-  if (vpack.isObject()) {
-    coordinates = vpack.get(arangodb::geo::geojson::Fields::kCoordinates);
-  }
-
-  if (!coordinates.isArray()) {
-    return {TRI_ERROR_BAD_PARAMETER, "Coordinates missing"};
-  }
-
-  VPackArrayIterator it(coordinates);
   vertices.reserve(it.size());
 
-  for (VPackSlice pt : it) {
-    if (!pt.isArray() || pt.length() != 2) {
-      return {TRI_ERROR_BAD_PARAMETER, "Bad coordinate " + pt.toJson()};
+  S2LatLng vertex;
+  for (; it.valid(); it.next()) {
+    auto slice = *it;
+    if (Validation && ADB_UNLIKELY(!slice.isArray())) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Bad coordinates, should be array " + slice.toJson()};
     }
-
-    VPackSlice lat = pt.at(geoJson ? 1 : 0);
-    VPackSlice lon = pt.at(geoJson ? 0 : 1);
-    if (!lat.isNumber() || !lon.isNumber()) {
-      return {TRI_ERROR_BAD_PARAMETER, "Bad coordinate " + pt.toJson()};
+    auto ok = parseImpl<Validation, GeoJson>(slice, vertex);
+    if (Validation && ADB_UNLIKELY(!ok)) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Bad coordinates values " + slice.toJson()};
     }
-    vertices.emplace_back(
-        S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>())
-            .ToPoint());
+    vertices.emplace_back(vertex);
   }
-  return {TRI_ERROR_NO_ERROR};
-}
-}  // namespace
-
-namespace arangodb {
-namespace geo {
-namespace geojson {
-
-/// @brief parse GeoJSON Type
-Type type(VPackSlice const& vpack) {
-  if (!vpack.isObject()) {
-    return Type::UNKNOWN;
-  }
-
-  VPackSlice type = vpack.get(Fields::kType);
-  if (!type.isString()) {
-    return Type::UNKNOWN;
-  }
-
-  std::string_view typeStr = type.stringView();
-  if (::sameIgnoringCase(typeStr, ::kTypeStringPoint)) {
-    return Type::POINT;
-  } else if (::sameIgnoringCase(typeStr, ::kTypeStringLineString)) {
-    return Type::LINESTRING;
-  } else if (::sameIgnoringCase(typeStr, ::kTypeStringPolygon)) {
-    return Type::POLYGON;
-  } else if (::sameIgnoringCase(typeStr, ::kTypeStringMultiPoint)) {
-    return Type::MULTI_POINT;
-  } else if (::sameIgnoringCase(typeStr, ::kTypeStringMultiLineString)) {
-    return Type::MULTI_LINESTRING;
-  } else if (::sameIgnoringCase(typeStr, ::kTypeStringMultiPolygon)) {
-    return Type::MULTI_POLYGON;
-  } else if (::sameIgnoringCase(typeStr, ::kTypeStringGeometryCollection)) {
-    return Type::GEOMETRY_COLLECTION;
-  }
-  return Type::UNKNOWN;
-};
-
-Result parseRegion(VPackSlice const& vpack, ShapeContainer& region,
-                   bool legacy) {
-  if (vpack.isObject()) {
-    Type t = type(vpack);
-    switch (t) {
-      case Type::POINT: {
-        S2LatLng ll;
-        Result res = parsePoint(vpack, ll);
-        if (res.ok()) {
-          region.resetCoordinates(ll);
-        }
-        return res;
-      }
-      case Type::MULTI_POINT: {
-        return parseMultiPoint(vpack, region);
-      }
-      case Type::LINESTRING: {
-        auto line = std::make_unique<S2Polyline>();
-        Result res = parseLinestring(vpack, *line.get());
-        if (res.ok()) {
-          region.reset(std::move(line), ShapeContainer::Type::S2_POLYLINE);
-        }
-        return res;
-      }
-      case Type::MULTI_LINESTRING: {
-        std::vector<S2Polyline> polylines;
-        Result res = parseMultiLinestring(vpack, polylines);
-        if (res.ok()) {
-          region.reset(new S2MultiPolyline(std::move(polylines)),
-                       ShapeContainer::Type::S2_MULTIPOLYLINE);
-        }
-        return res;
-      }
-      case Type::POLYGON: {
-        return parsePolygon(vpack, region, legacy);
-      }
-      case Type::MULTI_POLYGON: {
-        return parseMultiPolygon(vpack, region, legacy);
-      }
-      case Type::GEOMETRY_COLLECTION: {
-        return Result(TRI_ERROR_NOT_IMPLEMENTED,
-                      "GeoJSON type is not supported");
-      }
-      case Type::UNKNOWN: {
-        // will return TRI_ERROR_BAD_PARAMETER
-        break;
-      }
-    }
-  }
-
-  return Result(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJSON Geometry Object.");
+  return {};
 }
 
-/// @brief create s2 latlng
-Result parsePoint(VPackSlice const& vpack, S2LatLng& latLng) {
-  if (Type::POINT != type(vpack)) {
-    return {TRI_ERROR_BAD_PARAMETER, "require type: 'Point'"};
+template<Type t>
+Result validate(velocypack::Slice& vpack) {
+  if (ADB_UNLIKELY(type(vpack) != t)) {
+    // TODO(MBkkt) Unnecessary memcpy,
+    //  this string can be constructed at compile time with compile time new
+    return {TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("Require type: '", toString<t>(), "'.")};
   }
-  TRI_ASSERT(Type::POINT == type(vpack));
-
-  VPackSlice coordinates = vpack.get(Fields::kCoordinates);
-  if (coordinates.isArray() && coordinates.length() == 2 &&
-      coordinates.at(0).isNumber() && coordinates.at(1).isNumber()) {
-    latLng = S2LatLng::FromDegrees(coordinates.at(1).getNumber<double>(),
-                                   coordinates.at(0).getNumber<double>())
-                 .Normalized();
-    return TRI_ERROR_NO_ERROR;
+  if (ADB_UNLIKELY(!getCoordinates(vpack))) {
+    return {TRI_ERROR_BAD_PARAMETER, "Coordinates missing."};
   }
-  return TRI_ERROR_BAD_PARAMETER;
+  return {};
 }
 
-/// https://tools.ietf.org/html/rfc7946#section-3.1.3
-Result parseMultiPoint(VPackSlice const& vpack, ShapeContainer& region) {
-  if (!vpack.isObject()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJSON Geometry Object.");
+template<bool Validation, bool GeoJson>
+Result parsePointImpl(velocypack::Slice vpack, S2LatLng& region) {
+  auto ok = parseImpl<Validation, GeoJson>(vpack, region);
+  if (Validation && ADB_UNLIKELY(!ok)) {
+    return {TRI_ERROR_BAD_PARAMETER, "Bad coordinates " + vpack.toJson()};
   }
+  return {};
+}
 
-  if (Type::MULTI_POINT != type(vpack)) {
-    return TRI_ERROR_BAD_PARAMETER;
+template<bool Validation>
+Result parsePointsImpl(velocypack::Slice vpack,
+                       std::vector<S2LatLng>& vertices) {
+  auto r = parseImpl<Validation, true>(vpack, vertices);
+  if (Validation && ADB_UNLIKELY(!r.ok())) {
+    return r;
   }
+  if (Validation && ADB_UNLIKELY(vertices.empty())) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "Invalid MultiPoint, it must contains at least one point."};
+  }
+  return {};
+}
 
-  std::vector<S2Point> vertices;
-  Result res = ::parsePoints(vpack, true, vertices);
-  if (res.ok()) {
-    if (vertices.empty()) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "Invalid MultiPoint, must contain at least one point.");
+template<bool Validation>
+Result parseLineImpl(velocypack::Slice vpack, std::vector<S2LatLng>& vertices) {
+  auto r = parseImpl<Validation, true>(vpack, vertices);
+  if (Validation && ADB_UNLIKELY(!r.ok())) {
+    return r;
+  }
+  removeAdjacentDuplicates(vertices);
+  if (Validation && ADB_UNLIKELY(vertices.size() < 2)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "Invalid LineString,"
+            " adjacent vertices must not be identical or antipodal."};
+  }
+  return {};
+}
+
+template<bool Validation>
+Result parseLinesImpl(velocypack::Slice vpack, std::vector<S2Polyline>& lines,
+                      std::vector<S2LatLng>& vertices, coding::Options options,
+                      Encoder* encoder) {
+  TRI_ASSERT(vpack.isArray());
+  velocypack::ArrayIterator it{vpack};
+  auto const n = it.size();
+  if (Validation && ADB_UNLIKELY(n == 0)) {
+    return {
+        TRI_ERROR_BAD_PARAMETER,
+        "Invalid MultiLinestring, it must contains at least one Linestring."};
+  }
+  auto multiplier = encodeCount<Validation>(n, coding::Type::kMultiPolyline,
+                                            options, encoder);
+  lines.clear();
+  lines.reserve(n);
+  for (; it.valid(); it.next()) {
+    auto slice = *it;
+    if (Validation && ADB_UNLIKELY(!slice.isArray())) {
+      return {TRI_ERROR_BAD_PARAMETER, "Missing coordinates."};
     }
-    region.reset(new S2MultiPointRegion(&vertices),
-                 ShapeContainer::Type::S2_MULTIPOINT);
+    [[maybe_unused]] auto r = parseLineImpl<Validation>(slice, vertices);
+    if constexpr (Validation) {
+      if (ADB_UNLIKELY(!r.ok())) {
+        return r;
+      }
+      if (encoder != nullptr) {
+        encoder->put_varint64(n * multiplier);
+        multiplier = 1;
+        encodeVertices(*encoder, vertices, options);
+      } else if (options == coding::Options::kS2LatLngInt) {
+        toLatLngInt(vertices);
+      }
+      auto& back = lines.emplace_back(vertices, S2Debug::DISABLE);
+      if (S2Error error; ADB_UNLIKELY(back.FindValidationError(&error))) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                absl::StrCat("Invalid Polyline: ", error.text())};
+      }
+    } else {
+      lines.emplace_back(vertices, S2Debug::DISABLE);
+    }
   }
-  return res;
+  return {};
 }
 
-/// https://tools.ietf.org/html/rfc7946#section-3.1.6
-/// First Loop represent the outer bound, subsequent loops must be holes
-/// { "type": "Polygon",
-///   "coordinates": [
-///    [ [100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0] ],
-///    [ [100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2] ]
-///   ]
-/// }
-Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region,
-                    bool legacy) {
-  if (Type::POLYGON != type(vpack)) {
-    return {TRI_ERROR_BAD_PARAMETER, "requires type: 'Polygon'"};
+template<bool Validation>
+Result makeLoopValid(std::vector<S2LatLng>& vertices) noexcept(!Validation) {
+  if (Validation && ADB_UNLIKELY(vertices.size() < 4)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "Invalid GeoJson Loop, must have at least 4 vertices"};
   }
-  TRI_ASSERT(Type::POLYGON == type(vpack));
+  // S2Loop doesn't like duplicates
+  removeAdjacentDuplicates(vertices);
+  if (Validation && ADB_UNLIKELY(vertices.front() != vertices.back())) {
+    return {TRI_ERROR_BAD_PARAMETER, "Loop not closed"};
+  }
+  // S2Loop automatically add last edge
+  if (ADB_LIKELY(vertices.size() > 1)) {
+    TRI_ASSERT(vertices.size() >= 3);
+    // 3 is incorrect but it will be handled by S2Loop::FindValidationError
+    vertices.pop_back();
+  }
+  return {};
+}
 
-  VPackSlice coordinates = vpack;
-  if (vpack.isObject()) {
-    coordinates = vpack.get(Fields::kCoordinates);
+template<bool Validation>
+Result parseRectImpl(velocypack::Slice vpack, ShapeContainer& region,
+                     std::vector<S2LatLng>& vertices) {
+  if (Validation && ADB_UNLIKELY(!vpack.isArray())) {
+    return {TRI_ERROR_BAD_PARAMETER, "Missing coordinates."};
   }
-  if (!coordinates.isArray()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
+  auto r = parsePointsImpl<Validation>(vpack, vertices);
+  if (Validation && ADB_UNLIKELY(!r.ok())) {
+    return r;
   }
 
+  r = makeLoopValid<Validation>(vertices);
+  if (Validation && ADB_UNLIKELY(!r.ok())) {
+    return r;
+  }
+
+  if (vertices.size() == 4) {
+    S2LatLng const v0{vertices[0]}, v1{vertices[1]}, v2{vertices[2]},
+        v3{vertices[3]};
+    auto const eps = S1Angle::Radians(1e-6);
+    if ((v0.lat() - v1.lat()).abs() < eps &&
+        (v1.lng() - v2.lng()).abs() < eps &&
+        (v2.lat() - v3.lat()).abs() < eps &&
+        (v3.lng() - v0.lng()).abs() < eps) {
+      auto const r1 =
+          R1Interval::FromPointPair(v0.lat().radians(), v2.lat().radians());
+      auto const s1 =
+          S1Interval::FromPointPair(v0.lng().radians(), v2.lng().radians());
+      region.reset(std::make_unique<S2LatLngRect>(r1.Expanded(geo::kRadEps),
+                                                  s1.Expanded(geo::kRadEps)),
+                   ShapeContainer::Type::S2_LATLNGRECT);
+    }
+  } else if (vertices.size() == 1) {
+    S2LatLng v0{vertices[0]};
+    region.reset(std::make_unique<S2LatLngRect>(v0, v0),
+                 ShapeContainer::Type::S2_LATLNGRECT);
+  }
+  return {};
+}
+
+template<bool Validation, bool Legacy>
+Result parseLoopImpl(velocypack::Slice vpack,
+                     std::vector<std::unique_ptr<S2Loop>>& loops,
+                     std::vector<S2LatLng>& vertices, S2Loop*& first,
+                     coding::Options options, Encoder* encoder,
+                     size_t multiplier) {
+  if (Validation && ADB_UNLIKELY(!vpack.isArray())) {
+    return {TRI_ERROR_BAD_PARAMETER, "Missing coordinates."};
+  }
   // Coordinates of a Polygon are an array of LinearRing coordinate arrays.
-  // The first element in the array represents the exterior ring. Any subsequent
-  // elements
-  // represent interior rings (or holes).
+  // The first element in the array represents the exterior ring.
+  // Any subsequent elements represent interior rings (or holes).
   // - A linear ring is a closed LineString with four or more positions.
-  // -  The first and last positions are equivalent, and they MUST contain
-  //    identical values; their representation SHOULD also be identical.
+  // - The first and last positions are equivalent, and they MUST contain
+  //   identical values; their representation SHOULD also be identical.
   // - A linear ring is the boundary of a surface or the boundary of a
   //   hole in a surface.
   // - A linear ring MUST follow the right-hand rule with respect to the
   //   area it bounds, i.e., exterior rings are counterclockwise (CCW), and
   //   holes are clockwise (CW).
-  VPackArrayIterator it(coordinates);
-  size_t const n = it.size();
+  auto r = parsePointsImpl<Validation>(vpack, vertices);
+  if (Validation && ADB_UNLIKELY(!r.ok())) {
+    return r;
+  }
+  r = makeLoopValid<Validation>(vertices);
+  if (Validation && ADB_UNLIKELY(!r.ok())) {
+    return r;
+  }
+  if (Validation && options == coding::Options::kS2LatLngInt) {
+    // TODO(MBkkt) remove unnecessary allocation
+    auto copy = vertices;
+    toLatLngInt(copy);
+    loops.push_back(std::make_unique<S2Loop>(copy, S2Debug::DISABLE));
+  } else {
+    loops.push_back(std::make_unique<S2Loop>(vertices, S2Debug::DISABLE));
+  }
+  auto& last = *loops.back();
+  if constexpr (Validation) {
+    if (S2Error error; ADB_UNLIKELY(last.FindValidationError(&error))) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("Invalid Loop in Polygon: ", error.text())};
+    }
+  }
+  // Note that we are using InitNested for S2Polygon below.
+  // Therefore, we are supposed to deliver all our loops in CCW
+  // convention (aka right hand rule, interior is to the left of
+  // the polyline).
+  // Since we want to allow for loops, whose interior covers
+  // more than half of the earth, we must not blindly "Normalize"
+  // the loops, as we did in earlier versions, although RFC7946
+  // says "parsers SHOULD NOT reject Polygons that do not follow
+  // the right-hand rule". Since we cannot detect if the outer loop
+  // respects the rule, we cannot reject it. However, for the other
+  // loops, we can be a bit more tolerant: If a subsequent loop is
+  // not contained in the first one (following the right hand rule),
+  // then we can invert it silently and if it is then contained
+  // in the first, we have proper nesting and leave the rest to
+  // InitNested. This is, why we proceed like this:
+  // TODO(MBkkt) encoding can be above if we remove last.Invert
+  //  last.Invert() needed only for silent ignore CCW rule:
+  //  in general holes of polygon should be in outer loop
+  //  but if it's not true we silently invert it.
+  //  I think it's not good idea, because for outer loop we respect CCW rule
+  //  But change it needs break 3.10 behavior :(
+  if constexpr (Legacy) {
+    last.Normalize();
+  }
+  if (first == nullptr) {
+    first = &last;
+  } else if constexpr (!Legacy) {
+    if (ADB_LIKELY(first->Contains(last))) {
+      return {};
+    }
+    last.Invert();
+    if (Validation && encoder != nullptr) {
+      std::reverse(vertices.begin(), vertices.end());
+    }
+  }
+  if constexpr (Validation) {
+    if (ADB_UNLIKELY(first != &last && !first->Contains(last))) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Subsequent loop is not a hole in a polygon."};
+    }
+    if (encoder != nullptr) {
+      TRI_ASSERT(encoder->avail() >= Varint::kMax64);
+      encoder->put_varint64(vertices.size() * multiplier);
+      encodeVertices(*encoder, vertices, options);
+    }
+  }
+  return {};
+}
 
+void createPolygon(std::vector<std::unique_ptr<S2Loop>>&& loops,
+                   coding::Options options, Encoder* encoder,
+                   S2Polygon& polygon) {
+  polygon.set_s2debug_override(S2Debug::DISABLE);
+  if (loops.size() != 1 || !loops[0]->is_empty()) {
+    polygon.InitNested(std::move(loops));
+  } else {
+    // Handle creation of empty polygon otherwise will be error in validation
+    polygon.Init(std::move(loops[0]));
+  }
+}
+
+template<bool Validation, bool Legacy>
+Result parsePolygonImpl(velocypack::ArrayIterator it, S2Polygon& region,
+                        std::vector<S2LatLng>& vertices,
+                        coding::Options options, Encoder* encoder) {
+  auto const n = it.size();
+  TRI_ASSERT(n >= 1);
   std::vector<std::unique_ptr<S2Loop>> loops;
   loops.reserve(n);
-
-  for (VPackSlice loopVertices : it) {
-    std::vector<S2Point> vtx;
-    Result res = ::parsePoints(loopVertices, /*geoJson*/ true, vtx);
-    if (res.fail()) {
-      return res;
+  auto multiplier =
+      encodeCount<Validation>(n, coding::Type::kPolygon, options, encoder);
+  for (S2Loop* first = nullptr; it.valid(); it.next()) {
+    auto r = parseLoopImpl<Validation, Legacy>(*it, loops, vertices, first,
+                                               options, encoder, multiplier);
+    if (Validation && ADB_UNLIKELY(!r.ok())) {
+      return r;
     }
-
-    // A linear ring is a closed LineString with four or more positions.
-    if (vtx.size() < 4) {  // last vertex must be same as first
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "Invalid loop in polygon, must have at least 4 vertices");
-    }
-
-    res = ::verifyClosedLoop(vtx);  // check last vertices are same
-    if (res.fail()) {
-      return res;
-    }
-    ::removeAdjacentDuplicates(vtx);  // s2loop doesn't like duplicates
-    if (vtx.size() >= 2 && vtx.front() == vtx.back()) {
-      vtx.resize(vtx.size() - 1);  // remove redundant last vertex
-    } else if (vtx.empty()) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "Loop with no vertices");
-    }
-
-    if (legacy && n == 1) {   // cheap rectangle detection
-      if (vtx.size() == 1) {  // empty rectangle
-        S2LatLng v0(vtx[0]);
-        region.reset(std::make_unique<S2LatLngRect>(v0, v0),
-                     ShapeContainer::Type::S2_LATLNGRECT);
-        return TRI_ERROR_NO_ERROR;
-      } else if (vtx.size() == 4) {
-        S2LatLng v0(vtx[0]), v1(vtx[1]), v2(vtx[2]), v3(vtx[3]);
-        S1Angle eps = S1Angle::Radians(1e-6);
-        if ((v0.lat() - v1.lat()).abs() < eps &&
-            (v1.lng() - v2.lng()).abs() < eps &&
-            (v2.lat() - v3.lat()).abs() < eps &&
-            (v3.lng() - v0.lng()).abs() < eps) {
-          R1Interval r1 =
-              R1Interval::FromPointPair(v0.lat().radians(), v2.lat().radians());
-          S1Interval s1 =
-              S1Interval::FromPointPair(v0.lng().radians(), v2.lng().radians());
-          region.reset(
-              std::make_unique<S2LatLngRect>(r1.Expanded(geo::kRadEps),
-                                             s1.Expanded(geo::kRadEps)),
-              ShapeContainer::Type::S2_LATLNGRECT);
-          return TRI_ERROR_NO_ERROR;
-        }
-      }
-    }
-    loops.push_back(std::make_unique<S2Loop>(std::move(vtx), S2Debug::DISABLE));
-
+    multiplier = 1;
+  }
+  createPolygon(std::move(loops), options, encoder, region);
+  if constexpr (Validation) {
     S2Error error;
-    if (loops.back()->FindValidationError(&error)) {
-      return Result(
-          TRI_ERROR_BAD_PARAMETER,
-          std::string("Invalid loop in polygon: ").append(error.text()));
-    }
-
-    // Note that we are using InitNested for S2Polygon below.
-    // Therefore, we are supposed to deliver all our loops in CCW
-    // convention (aka right hand rule, interiour is to the left of
-    // the polyline).
-    // Since we want to allow for loops, whose interiour covers
-    // more than half of the earth, we must not blindly "Normalize"
-    // the loops, as we did in earlier versions, although RFC7946
-    // says "parsers SHOULD NOT reject Polygons that do not follow
-    // the right-hand rule". Since we cannot detect if the outer loop
-    // respects the rule, we cannot reject it. However, for the other
-    // loops, we can be a bit more tolerant: If a subsequent loop is
-    // not contained in the first one (following the right hand rule),
-    // then we can invert it silently and if it is then contained
-    // in the first, we have proper nesting and leave the rest to
-    // InitNested. This is, why we proceed like this:
-    S2Loop* loop = loops.back().get();
-    if (legacy) {
-      loop->Normalize();
-    }
-
-    // subsequent loops must be holes within first loop:
-    if (loops.size() > 1 && !loops.front()->Contains(loop)) {
-      bool bad = true;
-      if (!legacy) {
-        loop->Invert();
-        if (loops.front()->Contains(loop)) {
-          bad = false;
-        }
-      }
-      if (bad) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "Subsequent loop not a hole in polygon");
-      }
+    if (ADB_UNLIKELY(region.FindValidationError(&error))) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("Invalid Polygon: ", error.text())};
     }
   }
-
-  std::unique_ptr<S2Polygon> poly;
-  if (loops.size() == 1) {
-    poly = std::make_unique<S2Polygon>(std::move(loops[0]));
-  } else if (loops.size() > 1) {
-    poly = std::make_unique<S2Polygon>();
-    poly->InitNested(std::move(loops));
-  } else {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Empty polygons are not allowed");
-  }
-  S2Error err;
-  poly->FindValidationError(&err);
-  if (!err.ok()) {
-    return Result(TRI_ERROR_BAD_PARAMETER,
-                  "S2 polygon verification error: " + err.text());
-  }
-  region.reset(std::move(poly), ShapeContainer::Type::S2_POLYGON);
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
-/// @brief parse GeoJson polygon or array of loops. Each loop consists of
-/// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...].
-/// The multipolygon contains an array of looops
-Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region,
-                         bool legacy) {
-  if (Type::MULTI_POLYGON != type(vpack)) {
-    return {TRI_ERROR_BAD_PARAMETER, "requires type: 'MultiPolygon'"};
+template<bool Validation, bool Legacy>
+Result parsePolygonImpl(velocypack::Slice vpack, ShapeContainer& region,
+                        std::vector<S2LatLng>& vertices,
+                        coding::Options options, Encoder* encoder) {
+  TRI_ASSERT(vpack.isArray());
+  velocypack::ArrayIterator it{vpack};
+  auto const n = it.size();
+  if (Validation && ADB_UNLIKELY(n == 0)) {
+    return {TRI_ERROR_BAD_PARAMETER, "Invalid GeoJSON Geometry Object."};
   }
-  TRI_ASSERT(Type::MULTI_POLYGON == type(vpack));
-
-  VPackSlice coordinates = vpack;
-  if (vpack.isObject()) {
-    coordinates = vpack.get(Fields::kCoordinates);
-  }
-  if (!coordinates.isArray()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
-  }
-
-  // Coordinates of a Polygon are an array of LinearRing coordinate arrays.
-  // The first element in the array represents the exterior ring. Any subsequent
-  // elements
-  // represent interior rings (or holes).
-  // - A linear ring is a closed LineString with four or more positions.
-  // -  The first and last positions are equivalent, and they MUST contain
-  //    identical values; their representation SHOULD also be identical.
-  // - A linear ring is the boundary of a surface or the boundary of a
-  //   hole in a surface.
-  // - A linear ring MUST follow the right-hand rule with respect to the
-  //   area it bounds, i.e., exterior rings are counterclockwise (CCW), and
-  //   holes are clockwise (CW).
-  std::vector<std::unique_ptr<S2Loop>> loops;
-  for (VPackSlice polygons : VPackArrayIterator(coordinates)) {
-    if (!polygons.isArray()) {
-      return Result(
-          TRI_ERROR_BAD_PARAMETER,
-          "Multi-Polygon must consist of an array of Polygons coordinates");
+  std::unique_ptr<S2Polygon> d;
+  if (Legacy && n == 1) {
+    auto* old = region.region();
+    auto r = parseRectImpl<Validation>(*it, region, vertices);
+    if (Validation && ADB_UNLIKELY(!r.ok())) {
+      return r;
     }
-
-    // the loop of the
-    size_t outerLoop = loops.size();
-    for (VPackSlice loopVertices : VPackArrayIterator(polygons)) {
-      std::vector<S2Point> vtx;
-      Result res = ::parsePoints(loopVertices, /*geoJson*/ true, vtx);
-      if (res.fail()) {
-        return res;
-      }
-      // A linear ring is a closed LineString with four or more positions.
-      if (vtx.size() < 4) {  // last vertex must be same as first
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "Invalid loop in polygon, must have at least 4 vertices");
-      }
-
-      res = ::verifyClosedLoop(vtx);  // check last vertices are same
-      if (res.fail()) {
-        return res;
-      }
-      ::removeAdjacentDuplicates(vtx);  // s2loop doesn't like duplicates
-      if (vtx.size() >= 2 && vtx.front() == vtx.back()) {
-        vtx.resize(vtx.size() - 1);  // remove redundant last vertex
-      } else if (vtx.empty()) {
-        return Result(TRI_ERROR_BAD_PARAMETER, "Loop with no vertices");
-      }
-
-      loops.push_back(std::make_unique<S2Loop>(vtx, S2Debug::DISABLE));
-      S2Error error;
-      if (loops.back()->FindValidationError(&error)) {
-        return Result(
-            TRI_ERROR_BAD_PARAMETER,
-            std::string("Invalid loop in polygon: ").append(error.text()));
-      }
-      // Note that we are using InitNested for S2Polygon below.
-      // Therefore, we are supposed to deliver all our loops in CCW
-      // convention (aka right hand rule, interiour is to the left of
-      // the polyline).
-      // Since we want to allow for loops, whose interiour covers
-      // more than half of the earth, we must not blindly "Normalize"
-      // the loops, as we did in earlier versions, although RFC7946
-      // says "parsers SHOULD NOT reject Polygons that do not follow
-      // the right-hand rule". Since we cannot detect if the outer loop
-      // respects the rule, we cannot reject it. However, for the other
-      // loops, we can be a bit more tolerant: If a subsequent loop is
-      // not contained in the first one (following the right hand rule),
-      // then we can invert it silently and if it is then contained
-      // in the first, we have proper nesting and leave the rest to
-      // InitNested. This is, why we proceed like this:
-      S2Loop* loop = loops.back().get();
-      if (legacy) {
-        loop->Normalize();
-      }
-
-      // Any subsequent loop must be a hole within first loop
-      if (outerLoop + 1 < loops.size() &&
-          !loops[outerLoop]->Contains(loops.back().get())) {
-        bool bad = true;
-        if (!legacy) {
-          loop->Invert();
-          if (loops[outerLoop]->Contains(loop)) {
-            bad = false;
-          }
-        }
-        if (bad) {
-          return Result(TRI_ERROR_BAD_PARAMETER,
-                        "Subsequent loop not a hole in polygon");
-        }
-      }
+    if (old != region.region()) {
+      return {};
     }
-  }
-
-  std::unique_ptr<S2Polygon> poly;
-  if (loops.size() == 1) {
-    poly = std::make_unique<S2Polygon>(std::move(loops[0]));
-  } else if (loops.size() > 1) {
-    poly = std::make_unique<S2Polygon>();
-    poly->InitNested(std::move(loops));
+    // vertices already parsed, so we use it
+    auto loop = std::make_unique<S2Loop>(vertices, S2Debug::DISABLE);
+    S2Error error;
+    if (Validation && ADB_UNLIKELY(loop->FindValidationError(&error))) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("Invalid Loop in Polygon: ", error.text())};
+    }
+    loop->Normalize();
+    d = std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
+    if (Validation && ADB_UNLIKELY(d->FindValidationError(&error))) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("Invalid Polygon: ", error.text())};
+    }
   } else {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Empty polygons are not allowed");
+    d = std::make_unique<S2Polygon>();
+    auto r = parsePolygonImpl<Validation, Legacy>(it, *d, vertices, options,
+                                                  encoder);
+    if (Validation && ADB_UNLIKELY(!r.ok())) {
+      return r;
+    }
   }
-  S2Error err;
-  poly->FindValidationError(&err);
-  if (!err.ok()) {
-    return Result(TRI_ERROR_BAD_PARAMETER,
-                  "S2 multipolygon verification error: " + err.text());
-  }
-  region.reset(std::move(poly), ShapeContainer::Type::S2_POLYGON);
-  return TRI_ERROR_NO_ERROR;
+  region.reset(std::move(d), toShapeType(Type::POLYGON), options);
+  return {};
 }
 
-/// https://tools.ietf.org/html/rfc7946#section-3.1.4
-/// from the rfc {"type":"LineString","coordinates":[[100.0, 0.0],[101.0,1.0]]}
-Result parseLinestring(VPackSlice const& vpack, S2Polyline& linestring) {
-  if (Type::LINESTRING != type(vpack)) {
-    return {TRI_ERROR_BAD_PARAMETER, "require type: 'Linestring'"};
-  }
-  TRI_ASSERT(Type::LINESTRING == type(vpack));
-
-  VPackSlice coordinates = vpack;
-  if (vpack.isObject()) {
-    coordinates = vpack.get(Fields::kCoordinates);
-  }
-  if (!coordinates.isArray()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Coordinates missing");
-  }
-
-  std::vector<S2Point> vertices;
-  Result res = ::parsePoints(vpack, /*geoJson*/ true, vertices);
-  if (res.ok()) {
-    ::removeAdjacentDuplicates(vertices);  // no need for duplicates
-    if (vertices.size() < 2) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "Invalid LineString, adjacent "
-                    "vertices must not be identical or antipodal.");
-    }
-    linestring.Init(vertices);
-    TRI_ASSERT(linestring.IsValid());
-  }
-  return res;
-};
-
-/// MultiLineString contain an array of LineString coordinate arrays:
-///  {"type": "MultiLineString",
-///   "coordinates": [[[170.0, 45.0], [180.0, 45.0]],
-///                   [[-180.0, 45.0], [-170.0, 45.0]]] }
-Result parseMultiLinestring(VPackSlice const& vpack,
-                            std::vector<S2Polyline>& ll) {
-  if (Type::MULTI_LINESTRING != type(vpack)) {
-    return {TRI_ERROR_BAD_PARAMETER, "require type: 'MultiLinestring'"};
-  }
-  TRI_ASSERT(Type::MULTI_LINESTRING == type(vpack));
-
-  if (!vpack.isObject()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid MultiLinestring");
-  }
-  VPackSlice coordinates = vpack.get(Fields::kCoordinates);
-  if (!coordinates.isArray()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Coordinates missing");
-  }
-
-  for (VPackSlice linestring : VPackArrayIterator(coordinates)) {
-    if (!linestring.isArray()) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid MultiLinestring");
-    }
-    ll.emplace_back(S2Polyline());
-    // can handle linestring array
-    std::vector<S2Point> vertices;
-    Result res = ::parsePoints(linestring, /*geoJson*/ true, vertices);
-    if (res.ok()) {
-      ::removeAdjacentDuplicates(vertices);  // no need for duplicates
-      if (vertices.size() < 2) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "Invalid embedded LineString, adjacent "
-                      "vertices must not be identical or antipodal.");
-      }
-      ll.back().Init(vertices);
-      TRI_ASSERT(ll.back().IsValid());
-    } else {
-      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid MultiLinestring");
-    }
-  }
-  if (ll.empty()) {
+template<bool Validation, bool Legacy>
+Result parseMultiPolygonImpl(velocypack::Slice vpack, S2Polygon& region,
+                             std::vector<S2LatLng>& vertices,
+                             coding::Options options, Encoder* encoder) {
+  TRI_ASSERT(vpack.isArray());
+  velocypack::ArrayIterator it{vpack};
+  auto const n = it.size();
+  if (Validation && ADB_UNLIKELY(n == 0)) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "Invalid MultiLinestring, must contain at least one Linestring."};
+            "MultiPolygon should contains at least one Polygon."};
   }
-  return TRI_ERROR_NO_ERROR;
+  std::vector<std::unique_ptr<S2Loop>> loops;
+  loops.reserve(n);
+  auto multiplier =
+      encodeCount<Validation>(n, coding::Type::kPolygon, options, encoder);
+  for (S2Loop* first = nullptr; it.valid(); it.next()) {
+    if (Validation && ADB_UNLIKELY(!(*it).isArray())) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Polygon should contains at least one coordinates array."};
+    }
+    velocypack::ArrayIterator jt{*it};
+    if (Validation && ADB_UNLIKELY(jt.size() == 0)) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Polygon should contains at least one Loop."};
+    }
+    if (encoder != nullptr) {
+      encoder->Ensure(jt.size() * Varint::kMax64);
+    }
+    for (; jt.valid(); jt.next()) {
+      auto r = parseLoopImpl<Validation, Legacy>(*jt, loops, vertices, first,
+                                                 options, encoder, multiplier);
+      if (Validation && ADB_UNLIKELY(!r.ok())) {
+        return r;
+      }
+      multiplier = 1;
+    }
+    first = nullptr;
+  }
+  createPolygon(std::move(loops), options, encoder, region);
+  if constexpr (Validation) {
+    S2Error error;
+    if (ADB_UNLIKELY(region.FindValidationError(&error))) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("Invalid Loop in MultiPolygon: ", error.text())};
+    }
+  }
+  return {};
 }
 
-Result parseLoop(velocypack::Slice const& coords, bool geoJson, S2Loop& loop) {
-  if (!coords.isArray()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Coordinates missing");
+template<bool Validation>
+Result parseRegionImpl(velocypack::Slice vpack, ShapeContainer& region,
+                       std::vector<S2LatLng>& cache, bool legacy,
+                       coding::Options options, Encoder* encoder) {
+  auto const t = type(vpack);
+  if constexpr (Validation) {
+    if (ADB_UNLIKELY(t == Type::UNKNOWN)) {
+      return {TRI_ERROR_BAD_PARAMETER, "Invalid GeoJSON Geometry Object."};
+    }
+    if (ADB_UNLIKELY(!getCoordinates(vpack))) {
+      return {TRI_ERROR_BAD_PARAMETER, "Coordinates missing."};
+    }
+  } else {
+    vpack = vpack.get(fields::kCoordinates);
   }
+  bool const isS2 = coding::isOptionsS2(options);
+  switch (t) {
+    case Type::POINT: {
+      S2LatLng latLng;
+      auto r = parsePointImpl<Validation, true>(vpack, latLng);
+      if (Validation && ADB_UNLIKELY(!r.ok())) {
+        return r;
+      }
+      region.reset(encodePointImpl<Validation>(latLng, options, encoder),
+                   options);
+      return {};
+    }
+    case Type::LINESTRING: {
+      auto r = parseLineImpl<Validation>(vpack, cache);
+      if (Validation && ADB_UNLIKELY(!r.ok())) {
+        return r;
+      }
+      if (Validation && !isS2) {
+        encodeImpl(cache, coding::Type::kPolyline, options, encoder);
+      }
+      auto d = std::make_unique<S2Polyline>(cache, S2Debug::DISABLE);
+      if (S2Error error; Validation && d->FindValidationError(&error)) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                absl::StrCat("Invalid Polyline: ", error.text())};
+      }
+      region.reset(std::move(d), toShapeType(Type::LINESTRING), options);
+    } break;
+    case Type::POLYGON: {
+      auto r =
+          ADB_UNLIKELY(legacy)
+              ? parsePolygonImpl<Validation, true>(
+                    vpack, region, cache, coding::Options::kInvalid, nullptr)
+              : parsePolygonImpl<Validation, false>(
+                    vpack, region, cache, options, isS2 ? nullptr : encoder);
+      if (Validation && ADB_UNLIKELY(!r.ok())) {
+        return r;
+      }
+    } break;
+    case Type::MULTI_POINT: {
+      auto r = parsePointsImpl<Validation>(vpack, cache);
+      if (Validation && ADB_UNLIKELY(!r.ok())) {
+        return r;
+      }
+      if (Validation && !isS2) {
+        encodeImpl(cache, coding::Type::kMultiPoint, options, encoder);
+      }
+      auto d = std::make_unique<S2MultiPointRegion>();
+      fillPoints(d->Impl(), cache);
+      region.reset(std::move(d), toShapeType(Type::MULTI_POINT), options);
+    } break;
+    case Type::MULTI_LINESTRING: {
+      std::vector<S2Polyline> lines;
+      auto r = parseLinesImpl<Validation>(vpack, lines, cache, options,
+                                          isS2 ? nullptr : encoder);
+      if (Validation && ADB_UNLIKELY(!r.ok())) {
+        return r;
+      }
+      auto d = std::make_unique<S2MultiPolylineRegion>();
+      d->Impl() = std::move(lines);
+      region.reset(std::move(d), toShapeType(Type::MULTI_LINESTRING), options);
+    } break;
+    case Type::MULTI_POLYGON: {
+      auto d = std::make_unique<S2Polygon>();
+      auto r = ADB_UNLIKELY(legacy)
+                   ? parseMultiPolygonImpl<Validation, true>(
+                         vpack, *d, cache, coding::Options::kInvalid, nullptr)
+                   : parseMultiPolygonImpl<Validation, false>(
+                         vpack, *d, cache, options, isS2 ? nullptr : encoder);
+      if (Validation && ADB_UNLIKELY(!r.ok())) {
+        return r;
+      }
+      region.reset(std::move(d), toShapeType(Type::MULTI_POLYGON), options);
+    } break;
+    default:
+      return {TRI_ERROR_NOT_IMPLEMENTED,
+              "GeoJSON type GeometryCollection is not supported"};
+  }
+  if (Validation && encoder != nullptr && isS2) {
+    TRI_ASSERT(encoder->length() == 0);
+    encoder->clear();
+    region.Encode(*encoder, options);
+  }
+  return {};
+}
 
-  std::vector<S2Point> vertices;
-  Result res = ::parsePoints(coords, geoJson, vertices);
-  if (res.fail()) {
-    return res;
-  }
+}  // namespace
 
-  /* TODO enable this check after removing deprecated IS_IN_POLYGON fn
-      res = ::verifyClosedLoop(vertices);  // check last vertices are same
-      if (res.fail()) {
-        return res;
-      }*/
+#define CASE(value)                                  \
+  case toString<value>().size():                     \
+    if (sameIgnoringCase(toString<value>(), type)) { \
+      return value;                                  \
+    }                                                \
+    break
 
-  ::removeAdjacentDuplicates(vertices);  // s2loop doesn't like duplicates
-  if (vertices.empty()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "No adjacent duplicates allowed");
+/// @brief parse GeoJSON Type
+Type type(velocypack::Slice vpack) noexcept {
+  if (ADB_UNLIKELY(!vpack.isObject())) {
+    return Type::UNKNOWN;
   }
-  if (vertices.front() == vertices.back()) {
-    vertices.resize(vertices.size() - 1);  // remove redundant last vertex
+  auto const field = vpack.get(fields::kType);
+  if (ADB_UNLIKELY(!field.isString())) {
+    return Type::UNKNOWN;
   }
+  auto const type = field.stringView();
+  switch (type.size()) {
+    CASE(Type::POINT);
+    CASE(Type::POLYGON);
+    case toString<Type::LINESTRING>().size():
+      static_assert(toString<Type::LINESTRING>().size() ==
+                    toString<Type::MULTI_POINT>().size());
+      if (sameIgnoringCase(toString<Type::LINESTRING>(), type)) {
+        return Type::LINESTRING;
+      }
+      if (sameIgnoringCase(toString<Type::MULTI_POINT>(), type)) {
+        return Type::MULTI_POINT;
+      }
+      break;
+      CASE(Type::MULTI_POLYGON);
+      CASE(Type::MULTI_LINESTRING);
+      CASE(Type::GEOMETRY_COLLECTION);
+    default:
+      break;
+  }
+  return Type::UNKNOWN;
+}
+
+#undef CASE
+
+Result parsePoint(velocypack::Slice vpack, S2LatLng& region) {
+  auto r = validate<Type::POINT>(vpack);
+  if (!r.ok()) {
+    return r;
+  }
+  return parsePointImpl<true, true>(vpack, region);
+}
+
+Result parseMultiPoint(velocypack::Slice vpack, S2MultiPointRegion& region) {
+  auto r = validate<Type::MULTI_POINT>(vpack);
+  if (ADB_UNLIKELY(!r.ok())) {
+    return r;
+  }
+  std::vector<S2LatLng> vertices;
+  r = parsePointsImpl<true>(vpack, vertices);
+  if (ADB_UNLIKELY(!r.ok())) {
+    return r;
+  }
+  fillPoints(region.Impl(), vertices);
+  return {};
+}
+
+Result parseLinestring(velocypack::Slice vpack, S2Polyline& region) {
+  auto r = validate<Type::LINESTRING>(vpack);
+  if (ADB_UNLIKELY(!r.ok())) {
+    return r;
+  }
+  std::vector<S2LatLng> vertices;
+  r = parseLineImpl<true>(vpack, vertices);
+  if (ADB_UNLIKELY(!r.ok())) {
+    return r;
+  }
+  region = S2Polyline{vertices, S2Debug::DISABLE};
+  if (S2Error error; region.FindValidationError(&error)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("Invalid Polyline: ", error.text())};
+  }
+  return {};
+}
+
+Result parseMultiLinestring(velocypack::Slice vpack,
+                            S2MultiPolylineRegion& region) {
+  auto r = validate<Type::MULTI_LINESTRING>(vpack);
+  if (ADB_UNLIKELY(!r.ok())) {
+    return r;
+  }
+  auto& lines = region.Impl();
+  std::vector<S2LatLng> vertices;
+  return parseLinesImpl<true>(vpack, lines, vertices, coding::Options::kInvalid,
+                              nullptr);
+}
+
+Result parsePolygon(velocypack::Slice vpack, S2Polygon& region) {
+  auto r = validate<Type::POLYGON>(vpack);
+  if (ADB_UNLIKELY(!r.ok())) {
+    return r;
+  }
+  velocypack::ArrayIterator it{vpack};
+  if (ADB_UNLIKELY(it.size() == 0)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "Polygon should contains at least one loop."};
+  }
+  std::vector<S2LatLng> vertices;
+  return parsePolygonImpl<true, false>(it, region, vertices,
+                                       coding::Options::kInvalid, nullptr);
+}
+
+Result parseMultiPolygon(velocypack::Slice vpack, S2Polygon& region) {
+  auto r = validate<Type::MULTI_POLYGON>(vpack);
+  if (ADB_UNLIKELY(!r.ok())) {
+    return r;
+  }
+  std::vector<S2LatLng> vertices;
+  return parseMultiPolygonImpl<true, false>(vpack, region, vertices,
+                                            coding::Options::kInvalid, nullptr);
+}
+
+Result parseRegion(velocypack::Slice vpack, ShapeContainer& region,
+                   bool legacy) {
+  std::vector<S2LatLng> cache;
+  return parseRegionImpl<true>(vpack, region, cache, legacy,
+                               coding::Options::kInvalid, nullptr);
+}
+
+template<bool Valid>
+Result parseRegion(velocypack::Slice vpack, ShapeContainer& region,
+                   std::vector<S2LatLng>& cache, bool legacy,
+                   coding::Options options, Encoder* encoder) {
+  auto r = parseRegionImpl<(Valid || kIsMaintainer)>(vpack, region, cache,
+                                                     legacy, options, encoder);
+  TRI_ASSERT(Valid || r.ok()) << r.errorMessage();
+  return r;
+}
+
+template Result parseRegion<true>(velocypack::Slice vpack,
+                                  ShapeContainer& region,
+                                  std::vector<S2LatLng>& cache, bool legacy,
+                                  coding::Options options, Encoder* encoder);
+template Result parseRegion<false>(velocypack::Slice vpack,
+                                   ShapeContainer& region,
+                                   std::vector<S2LatLng>& cache, bool legacy,
+                                   coding::Options options, Encoder* encoder);
+
+template<bool Valid>
+Result parseCoordinates(velocypack::Slice vpack, ShapeContainer& region,
+                        bool geoJson, coding::Options options,
+                        Encoder* encoder) {
+  auto r = [&]() -> Result {
+    static constexpr bool Validation = Valid || kIsMaintainer;
+    if (Validation && ADB_UNLIKELY(!vpack.isArray())) {
+      return {TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair."};
+    }
+    S2LatLng latLng;
+    auto res = geoJson ? parsePointImpl<Validation, true>(vpack, latLng)
+                       : parsePointImpl<Validation, false>(vpack, latLng);
+    if (Validation && ADB_UNLIKELY(!res.ok())) {
+      return res;
+    }
+    region.reset(encodePointImpl<Validation>(latLng, options, encoder),
+                 options);
+    return {};
+  }();
+  TRI_ASSERT(Valid || r.ok()) << r.errorMessage();
+  return r;
+}
+
+template Result parseCoordinates<true>(velocypack::Slice vpack,
+                                       ShapeContainer& region, bool geoJson,
+                                       coding::Options options,
+                                       Encoder* encoder);
+template Result parseCoordinates<false>(velocypack::Slice vpack,
+                                        ShapeContainer& region, bool geoJson,
+                                        coding::Options options,
+                                        Encoder* encoder);
+
+Result parseLoop(velocypack::Slice vpack, S2Loop& loop, bool geoJson) {
+  static constexpr bool Validation = true;
+  if (ADB_UNLIKELY(!vpack.isArray())) {
+    return {TRI_ERROR_BAD_PARAMETER, "Coordinates missing."};
+  }
+  std::vector<S2LatLng> vertices;
+  auto r = geoJson ? parseImpl<Validation, true>(vpack, vertices)
+                   : parseImpl<Validation, false>(vpack, vertices);
+  if (ADB_UNLIKELY(!r.ok())) {
+    return r;
+  }
+  removeAdjacentDuplicates(vertices);
+  switch (vertices.size()) {
+    case 0:
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Loop should be 3 different vertices or be empty or full."};
+    case 1:
+      break;
+    default:
+      if (vertices.front() == vertices.back()) {
+        vertices.pop_back();
+      }
+      break;
+  }
+  // size() 2 here is incorrect but it will be handled by FindValidationError
+  loop.set_s2debug_override(S2Debug::DISABLE);
   loop.Init(vertices);
   S2Error error;
-  if (loop.FindValidationError(&error)) {
-    return Result(TRI_ERROR_BAD_PARAMETER,
-                  std::string("Invalid loop: ").append(error.text()));
+  if (ADB_UNLIKELY(loop.FindValidationError(&error))) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("Invalid loop: ", error.text())};
   }
   loop.Normalize();
-
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
-}  // namespace geojson
-}  // namespace geo
-}  // namespace arangodb
+}  // namespace arangodb::geo::json

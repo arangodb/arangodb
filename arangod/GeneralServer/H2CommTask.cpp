@@ -570,27 +570,14 @@ void H2CommTask<T>::processRequest(Stream& stream,
 
     std::string_view body = req->rawPayload();
     this->_generalServerFeature.countHttp2Request(body.size());
-    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+    if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
-      std::string bodyForLogging;
-      try {
-        velocypack::Slice s = req->payload(false);
-        if (!s.isNone()) {
-          // "none" can happen if the content-type is neither JSON nor vpack
-          bodyForLogging = StringUtils::escapeUnicode(s.toJson());
-        }
-      } catch (...) {
-        // cannot stringify request body
-      }
+      // Log HTTP headers:
+      this->logRequestHeaders("h2", req->headers());
 
-      if (bodyForLogging.empty() && !body.empty()) {
-        bodyForLogging = "potential binary data";
+      if (!body.empty()) {
+        this->logRequestBody("h2", req->contentType(), body);
       }
-
-      LOG_TOPIC("b6dc3", TRACE, Logger::REQUESTS)
-          << "\"h2-request-body\",\"" << (void*)this << "\",\""
-          << rest::contentTypeToString(req->contentType()) << "\",\""
-          << req->contentLength() << "\",\"" << bodyForLogging << "\"";
     }
   }
 
@@ -667,6 +654,18 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
     return;
   }
 
+  auto* tmp = static_cast<H2Response*>(res.get());
+
+  if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+      Logger::logRequestParameters()) {
+    auto& bodyBuf = tmp->body();
+    std::string_view body{bodyBuf.data(), bodyBuf.size()};
+    if (!body.empty()) {
+      this->logRequestBody("h2", res->contentType(), body,
+                           true /* isResponse */);
+    }
+  }
+
   // and give some request information
   LOG_TOPIC("924cc", DEBUG, Logger::REQUESTS)
       << "\"h2-request-end\",\"" << (void*)this << "\",\""
@@ -678,7 +677,6 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
       << "\"," << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << ","
       << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
 
-  auto* tmp = static_cast<H2Response*>(res.get());
   tmp->statistics = std::move(stat);
 
   // this uses a fixed capacity queue, push might fail (unlikely, we limit max
@@ -738,6 +736,11 @@ void H2CommTask<T>::queueHttp2Responses() {
 
     // will add CORS headers if necessary
     this->finishExecution(res, strm->origin);
+
+    if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+        Logger::logRequestParameters()) {
+      this->logResponseHeaders("h2", res.headers());
+    }
 
     // we need a continuous block of memory for headers
     std::vector<nghttp2_nv> nva;

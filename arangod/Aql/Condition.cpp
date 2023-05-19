@@ -933,6 +933,24 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
                                          Index const* index) {
   TRI_ASSERT(index != nullptr);
 
+  return removeCondition(plan, variable, condition, index, false);
+}
+
+/// @brief remove filter conditions already covered by the traversal
+AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
+                                             Variable const* variable,
+                                             AstNode* other,
+                                             bool isPathCondition) {
+  return removeCondition(plan, variable, other, nullptr,
+                         /*isFromTraverser*/ isPathCondition);
+}
+
+AstNode* Condition::removeCondition(ExecutionPlan const* plan,
+                                    Variable const* variable,
+                                    AstNode const* condition,
+                                    Index const* index, bool isFromTraverser) {
+  TRI_ASSERT(!isFromTraverser || index == nullptr);
+
   if (_root == nullptr || condition == nullptr) {
     return _root;
   }
@@ -956,7 +974,7 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
 
   ::arangodb::containers::HashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove,
-                            index, false);
+                            index, isFromTraverser);
 
   if (toRemove.empty()) {
     return _root;
@@ -965,56 +983,6 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
   // build a new AST condition
   AstNode* newNode = nullptr;
 
-  for (size_t i = 0; i < n; ++i) {
-    if (toRemove.find(i) == toRemove.end()) {
-      auto what = andNode->getMemberUnchecked(i);
-
-      if (newNode == nullptr) {
-        // the only node so far
-        newNode = what;
-      } else {
-        // AND-combine with existing node
-        newNode = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
-                                                 newNode, what);
-      }
-    }
-  }
-
-  return newNode;
-}
-
-/// @brief remove filter conditions already covered by the traversal
-AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
-                                             Variable const* variable,
-                                             AstNode* other) {
-  if (_root == nullptr || other == nullptr) {
-    return _root;
-  }
-  TRI_ASSERT(_root != nullptr);
-  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
-
-  TRI_ASSERT(other != nullptr);
-  TRI_ASSERT(other->type == NODE_TYPE_OPERATOR_NARY_OR);
-  if (other->numMembers() != 1 && _root->numMembers() != 1) {
-    return _root;
-  }
-
-  auto andNode = _root->getMemberUnchecked(0);
-  TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-  auto otherAndNode = other->getMemberUnchecked(0);
-  TRI_ASSERT(otherAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-  size_t const n = andNode->numMembers();
-
-  ::arangodb::containers::HashSet<size_t> toRemove;
-  collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove,
-                            nullptr, true);
-
-  if (toRemove.empty()) {
-    return _root;
-  }
-
-  // build a new AST condition
-  AstNode* newNode = nullptr;
   for (size_t i = 0; i < n; ++i) {
     if (toRemove.find(i) == toRemove.end()) {
       auto what = andNode->getMemberUnchecked(i);
@@ -1688,8 +1656,13 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
         }
       }
     }
-  } catch (...) {
-    // simply ignore any errors and return false
+  } catch (std::exception const& ex) {
+    // simply ignore any errors (except trace-logging) and return false.
+    // this is not an error, but just means we cannot compare the two
+    // conditions for equality because there is no implemented way for
+    // comparing some of their components.
+    LOG_TOPIC("9f37b", TRACE, Logger::QUERIES)
+        << "caught exception in Condition::canRemove(): " << ex.what();
   }
 
   return false;

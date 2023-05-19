@@ -39,6 +39,7 @@ const _ = require('lodash');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 
 const toArgv = require('internal').toArgv;
+const versionHas = require("@arangodb/test-helper").versionHas;
 
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
@@ -108,8 +109,7 @@ function runArangodRecovery (params, agencyConfig) {
 }
 
 function agencyRestart (options) {
-  if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
-      global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') {
+  if (!versionHas('failure-tests')) {
     return {
       agencyRestart: {
         status: false,

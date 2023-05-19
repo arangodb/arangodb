@@ -11,6 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric exhibits the RocksDB metric "rocksdb-block-cache-capacity".
+  This metric exhibits the RocksDB metric `rocksdb-block-cache-capacity`.
   It shows the block cache capacity in bytes. This can be configured with
   the `--rocksdb.block-cache-size` startup option.

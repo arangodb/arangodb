@@ -125,10 +125,13 @@ class FlushFeatureTest
 // -----------------------------------------------------------------------------
 
 TEST_F(FlushFeatureTest, test_subscription_retention) {
-  struct TestFlushSubscripion : arangodb::FlushSubscription {
+  struct TestFlushSubscription : arangodb::FlushSubscription {
+    TestFlushSubscription() : _name("test") {}
     TRI_voc_tick_t tick() const noexcept override { return _tick; }
+    std::string const& name() const override { return _name; }
 
     TRI_voc_tick_t _tick{};
+    std::string const _name;
   };
 
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
@@ -140,13 +143,14 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
   feature.prepare();
 
   {
-    auto subscription = std::make_shared<TestFlushSubscripion>();
+    auto subscription = std::make_shared<TestFlushSubscription>();
+    ASSERT_EQ("test", subscription->name());
     feature.registerFlushSubscription(subscription);
 
     auto const subscriptionTick = engine.currentTick();
-    auto const currentTick = TRI_NewTickServer();
-    ASSERT_EQ(currentTick, engine.currentTick());
-    ASSERT_LT(subscriptionTick, engine.currentTick());
+    engine.incrementTick(1);
+    auto const currentTick = engine.currentTick();
+    ASSERT_LT(subscriptionTick, currentTick);
     subscription->_tick = subscriptionTick;
 
     {
@@ -157,9 +161,9 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
     }
 
     auto const newSubscriptionTick = currentTick;
-    auto const newCurrentTick = TRI_NewTickServer();
-    ASSERT_EQ(newCurrentTick, engine.currentTick());
-    ASSERT_LT(subscriptionTick, engine.currentTick());
+    engine.incrementTick(1);
+    auto const newCurrentTick = engine.currentTick();
+    ASSERT_LT(subscriptionTick, newCurrentTick);
     subscription->_tick = newSubscriptionTick;
 
     {

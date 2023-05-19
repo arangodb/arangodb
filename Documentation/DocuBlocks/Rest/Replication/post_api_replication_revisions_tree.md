@@ -2,7 +2,7 @@
 @startDocuBlock post_api_replication_revisions_tree
 @brief rebuilds the Merkle tree associated with the collection
 
-@RESTHEADER{POST /_api/replication/revisions/tree, Rebuild Merkle tree for a collection,handleCommandRebuildRevisionTree}
+@RESTHEADER{POST /_api/replication/revisions/tree, Rebuild Merkle tree for a collection,rebuildReplicationRevisionTree}
 
 @HINTS
 {% hint 'warning' %}

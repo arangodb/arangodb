@@ -185,11 +185,6 @@ function ReplicationSuite() {
       connectToLeader();
       db._useDatabase("_system");
       db._dropDatabase(cn);
-      connectToFollower();
-      db._useDatabase("_system");
-      replication.applier.stop();
-      replication.applier.forget();
-      db._dropDatabase(cn);
     },
     
     testRandomTransactions: function() {

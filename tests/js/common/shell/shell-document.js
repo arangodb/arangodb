@@ -34,7 +34,7 @@ var ERRORS = arangodb.errors;
 var db = arangodb.db;
 var internal = require("internal");
 var wait = internal.wait;
-var testHelper = require("@arangodb/test-helper").Helper;
+var testHelper = require("@arangodb/test-helper").helper;
 
 
 ////////////////////////////////////////////////////////////////////////////////

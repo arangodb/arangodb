@@ -11,5 +11,5 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric exhibits the RocksDB metric "rocksdb-num-running-flushes".
+  This metric exhibits the RocksDB metric `rocksdb-num-running-flushes`.
   It shows the number of currently running flushes.

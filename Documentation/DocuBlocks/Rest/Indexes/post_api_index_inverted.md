@@ -2,7 +2,7 @@
 @startDocuBlock post_api_index_inverted
 @brief Creates an inverted index
 
-@RESTHEADER{POST /_api/index#inverted, Create an inverted index, createIndex:inverted}
+@RESTHEADER{POST /_api/index#inverted, Create an inverted index, createIndexInverted}
 
 @RESTQUERYPARAMETERS
 
@@ -87,13 +87,25 @@ Default: the value defined by the top-level `trackListPositions` option.
 @RESTSTRUCT{cache,post_api_index_inverted_fields,boolean,optional,}
 Enable this option to always cache the field normalization values in memory
 for this specific field. This can improve the performance of scoring and
-ranking queries.
+ranking queries. Otherwise, these values are memory-mapped and it is up to the
+operating system to load them from disk into memory and to evict them from memory.
 
 Normalization values are computed for fields which are processed with Analyzers
 that have the `"norm"` feature enabled. These values are used to score fairer if
 the same tokens occur repeatedly, to emphasize these documents less.
 
+You can also enable this option to always cache auxiliary data used for querying
+fields that are indexed with Geo Analyzers in memory for this specific field.
+This can improve the performance of geo-spatial queries.
+
 Default: the value defined by the top-level `cache` option.
+
+This property is available in the Enterprise Edition only.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTSTRUCT{nested,post_api_index_inverted_fields,array,optional,post_api_index_inverted_nested}
 Index the specified sub-objects that are stored in an array. Other than with the
@@ -140,9 +152,25 @@ Default: the value defined by the top-level `searchField` option.
 @RESTSTRUCT{cache,post_api_index_inverted_nested,boolean,optional,}
 Enable this option to always cache the field normalization values in memory
 for this specific nested field. This can improve the performance of scoring and
-ranking queries.
+ranking queries. Otherwise, these values are memory-mapped and it is up to the
+operating system to load them from disk into memory and to evict them from memory.
+
+Normalization values are computed for fields which are processed with Analyzers
+that have the `"norm"` feature enabled. These values are used to score fairer if
+the same tokens occur repeatedly, to emphasize these documents less.
+
+You can also enable this option to always cache auxiliary data used for querying
+fields that are indexed with Geo Analyzers in memory for this specific nested field.
+This can improve the performance of geo-spatial queries.
 
 Default: the value defined by the top-level `cache` option.
+
+This property is available in the Enterprise Edition only.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTSTRUCT{nested,post_api_index_inverted_nested,array,optional,object}
 You can recursively index sub-objects. See the above description of the
@@ -166,13 +194,25 @@ Default: `false`
 @RESTBODYPARAM{cache,boolean,optional,}
 Enable this option to always cache the field normalization values in memory
 for all fields by default. This can improve the performance of scoring and
-ranking queries.
+ranking queries. Otherwise, these values are memory-mapped and it is up to the
+operating system to load them from disk into memory and to evict them from memory.
 
 Normalization values are computed for fields which are processed with Analyzers
 that have the `"norm"` feature enabled. These values are used to score fairer if
 the same tokens occur repeatedly, to emphasize these documents less.
 
+You can also enable this option to always cache auxiliary data used for querying
+fields that are indexed with Geo Analyzers in memory for all fields by default.
+This can improve the performance of geo-spatial queries.
+
 Default: `false`
+
+This property is available in the Enterprise Edition only.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTBODYPARAM{storedValues,array,optional,post_api_index_inverted_storedvalues}
 The optional `storedValues` attribute can contain an array of objects with paths
@@ -211,9 +251,18 @@ Defines how to compress the attribute values. Possible values:
 
 @RESTSTRUCT{cache,post_api_index_inverted_storedvalues,boolean,optional,}
 Enable this option to always cache stored values in memory. This can improve the
-query performance if stored values are involved.
+query performance if stored values are involved. Otherwise, these values are
+memory-mapped and it is up to the operating system to load them from disk into
+memory and to evict them from memory.
 
 Default: `false`
+
+This property is available in the Enterprise Edition only.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTBODYPARAM{primarySort,object,optional,post_api_index_inverted_primarysort}
 You can define a primary sort order to enable an AQL optimization. If a query
@@ -240,14 +289,30 @@ Defines how to compress the primary sort data. Possible values:
 @RESTSTRUCT{cache,post_api_index_inverted_primarysort,boolean,optional,}
 Enable this option to always cache the primary sort columns in memory. This can
 improve the performance of queries that utilize the primary sort order.
+Otherwise, these values are memory-mapped and it is up to the operating system
+to load them from disk into memory and to evict them from memory.
 
 Default: `false`
+
+This property is available in the Enterprise Edition only.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTBODYPARAM{primaryKeyCache,boolean,optional,}
 Enable this option to always cache the primary key column in memory. This can
-improve the performance of queries that return many documents.
+improve the performance of queries that return many documents. Otherwise, these
+values are memory-mapped and it is up to the operating system to load them from
+disk into memory and to evict them from memory.
 
 Default: `false`
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTBODYPARAM{analyzer,string,optional,string}
 The name of an Analyzer to use by default. This Analyzer is applied to the
@@ -307,15 +372,15 @@ inserts/deletes), a higher value will impact performance without any added
 benefits.
 
 _Background:_
-  With every "commit" or "consolidate" operation a new state of the View
-  internal data-structures is created on disk.
+  With every "commit" or "consolidate" operation, a new state of the
+  inverted index' internal data structures is created on disk.
   Old states/snapshots are released once there are no longer any users
   remaining.
   However, the files for the released states/snapshots are left on disk, and
   only removed by "cleanup" operation.
 
 @RESTBODYPARAM{commitIntervalMsec,integer,optional,int64}
-Wait at least this many milliseconds between committing View data store
+Wait at least this many milliseconds between committing inverted index data store
 changes and making documents visible to queries (default: 1000, to disable
 use: 0).
 For the case where there are a lot of inserts/updates, a lower value, until
@@ -326,20 +391,20 @@ performance and waste disk space for each commit call without any added
 benefits.
 
 _Background:_
-  For data retrieval ArangoSearch Views follow the concept of
+  For data retrieval, ArangoSearch follows the concept of
   "eventually-consistent", i.e. eventually all the data in ArangoDB will be
   matched by corresponding query expressions.
-  The concept of ArangoSearch View "commit" operation is introduced to
+  The concept of ArangoSearch "commit" operations is introduced to
   control the upper-bound on the time until document addition/removals are
   actually reflected by corresponding query expressions.
-  Once a "commit" operation is complete all documents added/removed prior to
+  Once a "commit" operation is complete, all documents added/removed prior to
   the start of the "commit" operation will be reflected by queries invoked in
   subsequent ArangoDB transactions, in-progress ArangoDB transactions will
   still continue to return a repeatable-read state.
 
 @RESTBODYPARAM{consolidationIntervalMsec,integer,optional,int64}
-Wait at least this many milliseconds between applying 'consolidationPolicy' to
-consolidate View data store and possibly release space on the filesystem
+Wait at least this many milliseconds between applying `consolidationPolicy` to
+consolidate the inverted index data store and possibly release space on the filesystem
 (default: 1000, to disable use: 0).
 For the case where there are a lot of data modification operations, a higher
 value could potentially have the data store consume more space and file handles.
@@ -348,22 +413,22 @@ will impact performance due to no segment candidates available for
 consolidation.
 
 _Background:_
-  For data modification ArangoSearch Views follow the concept of a
+  For data modification, ArangoSearch follows the concept of a
   "versioned data store". Thus old versions of data may be removed once there
   are no longer any users of the old data. The frequency of the cleanup and
-  compaction operations are governed by 'consolidationIntervalMsec' and the
-  candidates for compaction are selected via 'consolidationPolicy'.
+  compaction operations are governed by `consolidationIntervalMsec` and the
+  candidates for compaction are selected via `consolidationPolicy`.
 
 @RESTBODYPARAM{consolidationPolicy,object,optional,post_api_index_inverted_policy}
 The consolidation policy to apply for selecting which segments should be merged
 (default: {}).
 
 _Background:_
-  With each ArangoDB transaction that inserts documents one or more
-  ArangoSearch internal segments gets created.
-  Similarly for removed documents the segments that contain such documents
+  With each ArangoDB transaction that inserts documents, one or more
+  ArangoSearch-internal segments get created.
+  Similarly, for removed documents the segments that contain such documents
   will have these documents marked as 'deleted'.
-  Over time this approach causes a lot of small and sparse segments to be
+  Over time, this approach causes a lot of small and sparse segments to be
   created.
   A "consolidation" operation selects one or more segments and copies all of
   their valid documents into a single new segment, thereby allowing the

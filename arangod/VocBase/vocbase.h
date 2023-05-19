@@ -337,13 +337,6 @@ struct TRI_vocbase_t {
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection) noexcept;
 
-  /// @brief visit all DataSources registered with this vocbase
-  /// @param visitor returns if visitation should continue
-  /// @return visitation completed successfully
-  typedef std::function<bool(arangodb::LogicalDataSource& dataSource)>
-      dataSourceVisitor;
-  bool visitDataSources(dataSourceVisitor const& visitor);
-
   /// @brief creates a collection object (of type LogicalCollection or one of
   /// the SmartGraph-specific subtypes). the object only exists on the heap and
   /// is not yet persisted anywhere. note: this should only be called for

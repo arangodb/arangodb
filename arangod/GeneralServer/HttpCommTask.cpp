@@ -520,27 +520,15 @@ void HttpCommTask<T>::doProcessRequest() {
 
     std::string_view body = _request->rawPayload();
     this->_generalServerFeature.countHttp1Request(body.size());
-    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+
+    if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
-      std::string bodyForLogging;
-      try {
-        velocypack::Slice s = _request->payload(false);
-        if (!s.isNone()) {
-          // "none" can happen if the content-type is neither JSON nor vpack
-          bodyForLogging = StringUtils::escapeUnicode(s.toJson());
-        }
-      } catch (...) {
-        // cannot stringify request body
-      }
+      // Log HTTP headers:
+      this->logRequestHeaders("http", _request->headers());
 
-      if (bodyForLogging.empty() && !body.empty()) {
-        bodyForLogging = "potential binary data";
+      if (!body.empty()) {
+        this->logRequestBody("http", _request->contentType(), body);
       }
-
-      LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
-          << "\"http-request-body\",\"" << (void*)this << "\",\""
-          << rest::contentTypeToString(_request->contentType()) << "\",\""
-          << _request->contentLength() << "\",\"" << bodyForLogging << "\"";
     }
   }
 
@@ -719,6 +707,18 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   TRI_ASSERT(_response == nullptr);
   _response = response.stealBody();
   // append write buffer and statistics
+
+  if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+      Logger::logRequestParameters()) {
+    // Log HTTP headers:
+    this->logResponseHeaders("http", response.headers());
+
+    if (!_response->empty()) {
+      std::string_view body(_response->data(), _response->size());
+      this->logRequestBody("http", response.contentType(), body,
+                           true /* isResponse */);
+    }
+  }
 
   // and give some request information
   LOG_TOPIC("8f555", DEBUG, Logger::REQUESTS)

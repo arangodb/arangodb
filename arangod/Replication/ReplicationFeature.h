@@ -24,7 +24,7 @@
 #pragma once
 
 #include "Cluster/ServerState.h"
-#include "Metrics/Counter.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 #include "SimpleHttpClient/ConnectionCache.h"
 
@@ -89,7 +89,14 @@ class ReplicationFeature final : public ArangodFeature {
   /// @brief automatic failover of replication using the agency
   bool isActiveFailoverEnabled() const;
 
-  bool syncByRevision() const;
+  bool syncByRevision() const noexcept;
+
+  bool autoRepairRevisionTrees() const noexcept;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // only used during testing
+  void autoRepairRevisionTrees(bool value) noexcept;
+#endif
 
   /// @brief track the number of (parallel) tailing operations
   /// will throw an exception if the number of concurrently running operations
@@ -100,7 +107,7 @@ class ReplicationFeature final : public ArangodFeature {
   /// must only be called after a successful call to trackTailingstart
   void trackTailingEnd() noexcept;
 
-  void trackInventoryRequest() { ++_inventoryRequests; }
+  void trackInventoryRequest() noexcept;
 
   /// @brief set the x-arango-endpoint header
   void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
@@ -111,6 +118,9 @@ class ReplicationFeature final : public ArangodFeature {
   /// @brief get max document num for quick call to _api/replication/keys to get
   /// actual keys or only doc count
   uint64_t quickKeysLimit() const { return _quickKeysLimit; }
+
+  /// @brief return a reference to the "number of clients" metric
+  metrics::Gauge<uint64_t>& clientsMetric() { return _clients; }
 
  private:
   /// @brief connection timeout for replication requests
@@ -135,6 +145,10 @@ class ReplicationFeature final : public ArangodFeature {
   /// Use the revision-based replication protocol
   bool _syncByRevision;
 
+  /// automatically repair revision trees of shards after too many failed
+  /// shard synchronization attempts
+  bool _autoRepairRevisionTrees;
+
   /// @brief cache for reusable connections
   httpclient::ConnectionCache _connectionCache;
 
@@ -150,6 +164,9 @@ class ReplicationFeature final : public ArangodFeature {
   uint64_t _quickKeysLimit;
 
   metrics::Counter& _inventoryRequests;
+
+  /// @brief number of currently active clients
+  metrics::Gauge<uint64_t>& _clients;
 };
 
 }  // namespace arangodb

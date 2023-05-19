@@ -31,14 +31,17 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/Counter.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Rest/GeneralResponse.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -77,6 +80,8 @@ void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
 DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total,
                 "(DC-2-DC only) Number of times the database and collection "
                 "overviews have been requested.");
+DECLARE_GAUGE(arangodb_replication_clients, uint64_t,
+              "Number of replication clients connected");
 
 namespace arangodb {
 
@@ -89,6 +94,7 @@ ReplicationFeature::ReplicationFeature(Server& server)
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false),
       _syncByRevision(true),
+      _autoRepairRevisionTrees(true),
       _connectionCache{
           server.getFeature<application_features::CommunicationFeaturePhase>(),
           httpclient::ConnectionCache::Options{5}},
@@ -96,7 +102,9 @@ ReplicationFeature::ReplicationFeature(Server& server)
       _maxParallelTailingInvocations(0),
       _quickKeysLimit(1000000),
       _inventoryRequests(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_replication_cluster_inventory_requests_total{})) {
+          arangodb_replication_cluster_inventory_requests_total{})),
+      _clients(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_replication_clients{})) {
   static_assert(
       Server::isCreatedAfter<ReplicationFeature,
                              application_features::CommunicationFeaturePhase,
@@ -176,6 +184,16 @@ void ReplicationFeature::collectOptions(
           "Whether to use the newer revision-based replication protocol.",
           new BooleanParameter(&_syncByRevision))
       .setIntroducedIn(30700);
+
+  options
+      ->addOption("--replication.auto-repair-revision-trees",
+                  "Whether to automatically repair revision trees of shards "
+                  "after too many shard synchronization failures.",
+                  new BooleanParameter(&_autoRepairRevisionTrees),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer))
+      .setIntroducedIn(31006);
 }
 
 void ReplicationFeature::validateOptions(
@@ -284,6 +302,10 @@ void ReplicationFeature::trackTailingEnd() noexcept {
   --_parallelTailingInvocations;
 }
 
+void ReplicationFeature::trackInventoryRequest() noexcept {
+  ++_inventoryRequests;
+}
+
 double ReplicationFeature::checkConnectTimeout(double value) const {
   if (_forceConnectTimeout) {
     return _connectTimeout;
@@ -302,7 +324,20 @@ bool ReplicationFeature::isActiveFailoverEnabled() const {
   return _enableActiveFailover;
 }
 
-bool ReplicationFeature::syncByRevision() const { return _syncByRevision; }
+bool ReplicationFeature::syncByRevision() const noexcept {
+  return _syncByRevision;
+}
+
+bool ReplicationFeature::autoRepairRevisionTrees() const noexcept {
+  return _autoRepairRevisionTrees;
+}
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// only used during testing
+void ReplicationFeature::autoRepairRevisionTrees(bool value) noexcept {
+  _autoRepairRevisionTrees = value;
+}
+#endif
 
 // start the replication applier for a single database
 void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {

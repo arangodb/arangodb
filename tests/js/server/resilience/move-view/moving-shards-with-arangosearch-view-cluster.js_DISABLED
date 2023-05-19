@@ -35,6 +35,7 @@ const internal = require("internal");
 const wait = internal.wait;
 const request = require("@arangodb/request");
 const cluster = require("@arangodb/cluster");
+const isEnterprise = require("internal").isEnterprise();
 const supervisionState = require("@arangodb/testutils/cluster-test-helper").supervisionState;
 const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
@@ -608,19 +609,31 @@ function MovingShardsWithViewSuite (options) {
           var view = db._createView(vname, "arangosearch", {});
           assertTrue(view !== undefined, "_createView failed");
           assertTrue(view instanceof internal.ArangoView, "_createView didn't return an ArangoView object");
-          view.properties(
-            {links:
+          let viewMeta = {};
+          if (isEnterprise) {
+            viewMeta = {links:
               {[name]:
                 {fields:
-                  {'a': { analyzers: ['identity']}, 'b': { analyzers: ['text_en']}}
+                  {'a': { analyzers: ['identity']}, 'b': { analyzers: ['text_en']}, "name_1": {}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}
                 }
               }
-            });
+            };
+          } else {
+            viewMeta = {links:
+              {[name]:
+                {fields:
+                  {'a': { analyzers: ['identity']}, 'b': { analyzers: ['text_en']}, "name_1": {}, "value": {}}
+                }
+              }
+            };
+          }
+          view.properties(viewMeta);
           assertAllLeadersHaveTheirViews();
           v.push(view);
           if (withData) {
             for (let i = 0; i < 1000; ++i) {
               coll.save({a: i, b: "text" + i});
+              coll.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "123foo"}]}]});
             }
           }
           break;

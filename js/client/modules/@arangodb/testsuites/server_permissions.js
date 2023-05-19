@@ -38,7 +38,9 @@ const im = require('@arangodb/testutils/instance-manager');
 const toArgv = internal.toArgv;
 const executeScript = internal.executeScript;
 const executeExternalAndWait = internal.executeExternalAndWait;
+const testHelper = require("@arangodb/test-helper");
 const ArangoError = require('@arangodb').ArangoError;
+const isEnterprise = testHelper.isEnterprise;
 
 const platform = internal.platform;
 
@@ -65,18 +67,21 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
     this.info = "runInDriverTest";
   }
   run(testList) {
+    let tmpDir = fs.getTempPath();
     let beforeStart = time();
     this.continueTesting = true;
     this.testList = testList;
     let testrunStart = time();
     this.results = {
       shutdown: true,
+      status: true,
       startupTime: testrunStart - beforeStart
     };
     let serverDead = false;
     let count = 0;
     let forceTerminate = false;
     for (let i = 0; i < this.testList.length; i++) {
+      testHelper.flushInstanceInfo();
       let te = this.testList[i];
       let filtered = {};
       if (tu.filterTestcaseByOptions(te, this.options, filtered)) {
@@ -145,6 +150,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               shutdown: shutdownStatus
             };
             this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
+            this.results.status = false;
             return this.results;
           }
           if (this.instanceManager.shutdownInstance(forceTerminate)) {                                            // stop
@@ -251,6 +257,16 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         }
       }
     }
+    if (this.results.status && this.options.cleanup) {
+      fs.list(tmpDir).forEach(file => {
+        let fullfile = fs.join(tmpDir, file);
+        if (fs.isDirectory(fullfile)) {
+          fs.removeDirectoryRecursive(fullfile, true);
+        } else {
+          fs.remove(fullfile);
+        }
+      });
+    }
     return this.results;
   }
 }
@@ -300,8 +316,7 @@ function server_secrets(options) {
     'cluster.create-waits-for-sync-replication': false,
     'ssl.keyfile': keyfileName
   };
-  let version = global.ARANGODB_CLIENT_VERSION(true);
-  if (version.hasOwnProperty('enterprise-version')) {
+  if (isEnterprise()) {
     additionalArguments['ssl.server-name-indication']
       = "hans.arangodb.com=./UnitTests/tls.keyfile";
   }

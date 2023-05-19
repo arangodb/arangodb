@@ -366,7 +366,16 @@ class instance {
     // instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
     }
 
-    this.args = Object.assign(this.args, this.options.extraArgs);
+    for (const [key, value] of Object.entries(this.options.extraArgs)) {
+      let splitkey = key.split('.');
+      if (splitkey.length !== 2) {
+        if (splitkey[0] === this.instanceRole) {
+          this.args[splitkey.slice(1).join('.')] = value;
+        }
+      } else {
+        this.args[key] = value;
+      }
+    }
 
     if (this.options.verbose) {
       this.args['log.level'] = 'debug';
@@ -385,7 +394,6 @@ class instance {
       this.args = Object.assign(this.args, {
         'agency.activate': 'true',
         'agency.size': this.agencyConfig.agencySize,
-        'agency.pool-size': this.agencyConfig.agencySize,
         'agency.wait-for-sync': this.agencyConfig.waitForSync,
         'agency.supervision': this.agencyConfig.supervision,
         'agency.my-address': this.protocol + '://127.0.0.1:' + this.port
@@ -512,14 +520,22 @@ class instance {
     if (this.options.extremeVerbosity) {
       print(CYAN + "cleaning up " + this.name + " 's Directory: " + this.rootDir + RESET);
     }
-    fs.removeDirectoryRecursive(this.rootDir, true);
+    if (fs.exists(this.rootDir)) {
+      fs.removeDirectoryRecursive(this.rootDir, true);
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
 
-  readAssertLogLines () {
+  readAssertLogLines (expectAsserts) {
+    if (!fs.exists(this.logFile)) {
+      if (fs.exists(this.rootDir)) {
+        print(`readAssertLogLines: Logfile ${this.logFile} already gone.`);
+      }
+      return;
+    }
     let size = fs.size(this.logFile);
     if (this.options.maxLogFileSize !== 0 && size > this.options.maxLogFileSize) {
       // File bigger 500k? this needs to be a bug in the tests.
@@ -545,6 +561,9 @@ class instance {
               print("ERROR: " + line);
             }
             this.assertLines.push(line);
+            if (!expectAsserts) {
+              crashUtils.GDB_OUTPUT += line + '\n';
+            }
           }
         }
       }
@@ -628,7 +647,7 @@ class instance {
       argv = toArgv(valgrindOpts, true).concat([cmd]).concat(toArgv(args));
       cmd = this.options.valgrind;
     } else if (this.options.rr) {
-      argv = [cmd].concat(args);
+      argv = [cmd].concat(toArgv(args));
       cmd = 'rr';
     } else {
       argv = toArgv(args);
@@ -707,12 +726,15 @@ class instance {
     try {
       let ret = statusExternal(this.pid, false);
       // OK, something has gone wrong, process still alive. anounce and force kill:
-      print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
-      killExternal(this.pid, abortSignal);
-      print(statusExternal(this.pid, true));
+      if (ret.status !== "ABORTED") {
+        print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
+        killExternal(this.pid, abortSignal);
+        print(statusExternal(this.pid, true));
+      }
     } catch(ex) {
       print(ex);
     }
+    this.pid = null;
     print('done');
   }
   waitForExit() {
@@ -768,7 +790,13 @@ class instance {
       return false;
     }
     const res = statusExternal(this.pid, false);
-    const ret = res.status === 'RUNNING' && crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, res);
+    const running = res.status === 'RUNNING';
+    if (!this.options.coreCheck && this.options.setInterruptable && !running) {
+      print(`fatal exit of {self.pid} arangod => {JSON.stringify(res)}! Bye!`);
+      pu.killRemainingProcesses({status: false});
+      process.exit();
+    }
+    const ret = running && crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, res);
 
     if (!ret) {
       if (!this.hasOwnProperty('message')) {
@@ -836,12 +864,12 @@ class instance {
     return download(this.url + path, method === 'POST' ? '[["/"]]' : '', opts);
   }
 
-  dumpAgent(path, method, fn) {
+  dumpAgent(path, method, fn, dumpdir) {
     print('--------------------------------- '+ fn + ' -----------------------------------------------');
     let agencyReply = this.getAgent(path, method);
     if (agencyReply.code === 200) {
       let agencyValue = JSON.parse(agencyReply.body);
-      fs.write(fs.join(this.options.testOutputDirectory, fn + '_' + this.pid + ".json"), JSON.stringify(agencyValue, null, 2));
+      fs.write(fs.join(dumpdir, fn + '_' + this.pid + ".json"), JSON.stringify(agencyValue, null, 2));
     } else {
       print(agencyReply);
     }

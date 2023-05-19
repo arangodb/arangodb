@@ -563,7 +563,8 @@ bool MoveShard::start(bool&) {
       addPreconditionShardNotBlocked(pending, _shard);
       addMoveShardToServerCanLock(pending);
       addMoveShardFromServerCanLock(pending);
-      addPreconditionServerHealth(pending, _to, "GOOD");
+      addPreconditionServerHealth(pending, _to,
+                                  Supervision::HEALTH_STATUS_GOOD);
       addPreconditionUnchanged(pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(pending, cleanedPrefix, cleanedServers);
     }  // precondition done

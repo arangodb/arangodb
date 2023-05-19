@@ -11,8 +11,8 @@ export function combineLatest() {
     for (var _i = 0; _i < arguments.length; _i++) {
         observables[_i] = arguments[_i];
     }
-    var resultSelector = null;
-    var scheduler = null;
+    var resultSelector = undefined;
+    var scheduler = undefined;
     if (isScheduler(observables[observables.length - 1])) {
         scheduler = observables.pop();
     }
@@ -59,7 +59,7 @@ var CombineLatestSubscriber = /*@__PURE__*/ (function (_super) {
             this.toRespond = len;
             for (var i = 0; i < len; i++) {
                 var observable = observables[i];
-                this.add(subscribeToResult(this, observable, observable, i));
+                this.add(subscribeToResult(this, observable, undefined, i));
             }
         }
     };
@@ -68,7 +68,7 @@ var CombineLatestSubscriber = /*@__PURE__*/ (function (_super) {
             this.destination.complete();
         }
     };
-    CombineLatestSubscriber.prototype.notifyNext = function (outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    CombineLatestSubscriber.prototype.notifyNext = function (_outerValue, innerValue, outerIndex) {
         var values = this.values;
         var oldVal = values[outerIndex];
         var toRespond = !this.toRespond

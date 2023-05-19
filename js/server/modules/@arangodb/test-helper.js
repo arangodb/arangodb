@@ -35,20 +35,25 @@ let {
   getServersByType,
   getEndpointById,
   getEndpointsByType,
-  Helper,
+  helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
   typeName,
   isEqual,
   compareStringIds,
-    } = require('@arangodb/test-helper-common');
+  endpointToURL,
+  versionHas,
+  isEnterprise,
+} = require('@arangodb/test-helper-common');
 const clusterInfo = global.ArangoClusterInfo;
 
+exports.isEnterprise = isEnterprise;
+exports.versionHas = versionHas;
 exports.getServerById = getServerById;
 exports.getServersByType = getServersByType;
 exports.getEndpointById = getEndpointById;
 exports.getEndpointsByType = getEndpointsByType;
-exports.Helper = Helper;
+exports.helper = helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;
@@ -117,7 +122,7 @@ function getMetricName(text, name) {
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.*{.*}([0-9.]+)$/, "$1"));
+  return Number(matches[0].replace(/^.*{.*}\s*([0-9.]+)$/, "$1"));
 }
 
 exports.getMetric = function (endpoint, name) {
@@ -180,7 +185,6 @@ exports.waitForShardsInSync = function(cn, timeout) {
     internal.wait(1);
   }
   assertTrue(false, "Shards were not getting in sync in time, giving up!");
-  return;
 };
 
 exports.getCoordinators = function () {

@@ -433,8 +433,8 @@ function ahuacatlSubqueryTestSuite () {
           const cursor = db._query(query);
           const actual = cursor.toArray();
           const {scannedFull, scannedIndex, filtered, httpRequests} = cursor.getExtra().stats;
-          assertEqual(scannedFull, 2000);
-          assertEqual(scannedIndex, 40000);
+          assertEqual(scannedFull, 0);
+          assertEqual(scannedIndex, 42000);
           assertEqual(filtered, 0);
           if (isCoordinator) {
             assertTrue(httpRequests <= 4003 * dbServers + 1, httpRequests);

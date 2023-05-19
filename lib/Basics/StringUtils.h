@@ -32,6 +32,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <unordered_map>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -566,6 +567,11 @@ auto joinT(std::string_view delim, Args&&... args) -> std::string {
       "it to an int instead.");
   return detail::joinImplStr(delim, detail::toStringOrView(args)...);
 }
+
+/// @brief Translates a set of HTTP headers into a string, which is
+/// properly escaped to put it into a log file.
+std::string headersToString(
+    std::unordered_map<std::string, std::string> const& headers);
 
 }  // namespace StringUtils
 }  // namespace basics

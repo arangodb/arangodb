@@ -11,6 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric exhibits the RocksDB metric "rocksdb-oldest-snapshot-time".
+  This metric exhibits the RocksDB metric `rocksdb-oldest-snapshot-time`.
   It shows a number representing the Unix timestamp of the oldest
   unreleased snapshot.

@@ -33,6 +33,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const cu = require('@arangodb/testutils/crash-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const versionHas = require("@arangodb/test-helper").versionHas;
 const internal = require('internal');
 const platform = internal.platform;
 
@@ -56,7 +57,8 @@ let optionsDocumentation = [
 
   ' The following properties of `options` are defined:',
   '',
-  '   - `testOutput`: set the output directory for testresults, defaults to `out`',
+  '   - `testOutputDirectory`: set the output directory for testresults, defaults to `out`',
+  '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `out`',
   '   - `force`: if set to true the tests are continued even if one fails',
   '',
   '   - `maxLogFileSize`: how big logs should be at max - 500k by default',
@@ -67,6 +69,7 @@ let optionsDocumentation = [
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
   '   - `skipGrey`: if set, grey tests are skipped.',
+  '   - `skipN`: skip the first N tests of the suite',
   '   - `onlyGrey`: if set, only grey tests are executed.',
   '   - `testBuckets`: split tests in to buckets and execute on, for example',
   '       10/2 will split into 10 buckets and execute the third bucket.',
@@ -163,10 +166,8 @@ let optionsDocumentation = [
   ''
 ];
 
-const isSan = (
-  global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
-    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true');
 
+const isSan = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const optionsDefaults = {
   'dumpAgencyOnError': true,
   'agencySize': 3,
@@ -219,6 +220,7 @@ const optionsDefaults = {
   'skipNightly': true,
   'skipNondeterministic': false,
   'skipGrey': false,
+  'skipN': false,
   'onlyGrey': false,
   'oneTestTimeout': (isSan? 25 : 15) * 60,
   'isSan': isSan,
@@ -226,6 +228,7 @@ const optionsDefaults = {
   'test': undefined,
   'testBuckets': undefined,
   'testOutputDirectory': 'out',
+  'testXmlOutputDirectory': 'outXml',
   'useReconnect': true,
   'username': 'root',
   'valgrind': false,

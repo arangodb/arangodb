@@ -26,6 +26,7 @@ build
 *.swp
 *.diff
 *.patch
+!js/node/patches/*.patch
 *.lnk
 Thumbs.db
 
@@ -107,6 +108,20 @@ js/apps/system/_admin/aardvark/APP/react/node_modules/*
 !js/apps/system/_admin/aardvark/APP/react/build/static/**
 js/node/**/node_modules/.bin/
 js/node/node_modules/**/*.md
+!js/node/node_modules/**/LICENSE.md
+js/node/node_modules/**/*.ts
+js/node/node_modules/**/*.yml
+js/node/node_modules/**/.babelrc
+js/node/node_modules/**/.editorconfig
+js/node/node_modules/**/.eslintrc
+js/node/node_modules/**/.eslintrc.json
+js/node/node_modules/**/.eslintignore
+js/node/node_modules/**/.github
+js/node/node_modules/**/.jscs.json
+js/node/node_modules/**/.jslintrc
+js/node/node_modules/**/.npmignore
+js/node/node_modules/**/.nycrc
+js/node/node_modules/**/.nyc_output
 
 .gdb-history
 npm-debug.log
@@ -114,6 +129,7 @@ npm-debug.log
 /log-*
 data-*
 databases
+!/Documentation/DocuBlocks/Rest/Databases
 cluster-init
 
 datafile-*.db

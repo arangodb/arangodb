@@ -51,6 +51,7 @@ const internalMembers = [
   'code',
   'error',
   'status',
+  'skipped',
   'duration',
   'failed',
   'total',
@@ -231,7 +232,9 @@ function saveToJunitXML(options, results) {
       }[c] + ';';
     });
   }
-
+  function stripAnsiColors(s) {
+    return s.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+  }
   function buildXml () {
     let xml = ['<?xml version="1.0" encoding="UTF-8"?>\n'];
 
@@ -262,51 +265,91 @@ function saveToJunitXML(options, results) {
 
     return xml;
   }
+
   let xmlState = {
     xml: undefined,
     xmlName: '',
     testRunName: '',
     seenTestCases: false,
   };
-  let prefix = (options.cluster ? 'CL_' : '') + 'RX_';
+
+  if (results.hasOwnProperty('crashreport')) {
+    results['crash'] = {
+      crash_report: {
+        status: false,
+        failed: 1,
+        all: {
+          status: false,
+          failed: 1,
+          message: ((results.crashed)? "SUT crashed: \n": "SUT was aborted: \n") +results.crashreport
+        }
+      },
+      staus: false,
+      failed: 1,
+    };
+  }
+
+  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient)? 'EE_' : 'CE_';
   iterateTestResults(options, results, xmlState, {
     testRun: function(options, state, testRun, testRunName) {state.testRunName = testRunName;},
     testSuite: function(options, state, testSuite, testSuiteName) {
       let total = 0;
       state.seenTestCases = false;
       state.xml = buildXml();
-      state.xmlName = prefix + state.testRunName + '_' + makePathGeneric(testSuiteName).join('_');
+      state.xmlName = prefix + state.testRunName + '__' + makePathGeneric(testSuiteName).join('_');
       if (testSuite.hasOwnProperty('total')) {
         total = testSuite.total;
       }
-
-      state.xml.elem('testsuite', {
-        errors: 0,
-        failures: testSuite.failed,
+      let msg = "";
+      let errors = 0;
+      if (!testSuite.status && testSuite.hasOwnProperty('message')) {
+        msg = testSuite.message;
+        errors = 1;
+      }
+      let elm = {
+        errors: errors,
+        failures: msg,
         tests: total,
         name: state.xmlName,
-        time: 0 + testSuite.duration
-      });
-      
+      };
+      if (testSuite.hasOwnProperty('duration')) {
+        // time is in seconds
+        elm['time'] =  testSuite.duration / 1000;
+      }
+      state.xml.elem('testsuite', elm);
     },
     testCase: function(options, state, testCase, testCaseName) {
       const success = (testCase.status === true);
 
       state.xml.elem('testcase', {
         name: prefix + testCaseName,
-        time: 0 + testCase.duration
+        // time is in seconds
+        time: testCase.duration / 1000
       }, success);      
 
       state.seenTestCases = true;
       if (!success) {
         state.xml.elem('failure');
-        state.xml.text('<![CDATA[' + testCase.message + ']]>\n');
+        let msg;
+        if (testCase.hasOwnProperty('message')) {
+          msg = stripAnsiColors(testCase.message);
+        } else {
+          msg = stripAnsiColors(`testcase ${testCaseName} doesn't have a message! ${JSON.stringify(testCase)}`);
+        }
+        state.xml.text('<![CDATA[' + msg  + ']]>\n');
         state.xml.elem('/failure');
         state.xml.elem('/testcase');
       }
     },
     endTestSuite: function(options, state, testSuite, testSuiteName) {
-      if (!state.seenTestCases) {
+      if (testSuite.hasOwnProperty('skipped') && testSuite.skipped) {
+        state.xml.elem('testcase', {
+          name:  state.xmlName,
+            time: 0.0
+        }, false);
+        state.xml.elem('skipped/', true);
+        state.xml.elem('/testcase');
+      } else if (!state.seenTestCases) {
         if (testSuite.failed === 0) {
           state.xml.elem('testcase', {
             name: 'all_tests_in_' + state.xmlName,
@@ -321,15 +364,16 @@ function saveToJunitXML(options, results) {
         }
       }
       state.xml.elem('/testsuite');
+      let fn;
       try {
-        fs.write(fs.join(options.testOutputDirectory,
-                         'UNITTEST_RESULT_' + state.xmlName + '.xml'),
-                 state.xml.join(''));
+        fn = fs.join(options.testXmlOutputDirectory,
+                         'UNITTEST_RESULT_' + state.xmlName + '.xml');
+        if ((fn.length > 250) && (internal.platform.substr(0, 3) === 'win')) {
+          fn = '\\\\?\\' + fn;
+        }
+        fs.write(fn, state.xml.join(''));
       } catch (x) {
-        print("Failed to write ` " +
-              fs.join(options.testOutputDirectory,
-                      'UNITTEST_RESULT_' + state.xmlName + '.xml') +
-              '`! - ' + x.message);
+        print(`Failed to write '${fn}'! - ${x.message}`);
         throw(x);
       }
 
@@ -346,6 +390,7 @@ function unitTestPrettyPrintResults (options, results) {
   let onlyFailedMessages = '';
   let failedMessages = '';
   let SuccessMessages = '';
+  let SkipMessages = '';
   let failedSuiteCount = 0;
   let failedTestsCount = 0;
   let successCases = {};
@@ -355,6 +400,7 @@ function unitTestPrettyPrintResults (options, results) {
   let bucketName = "";
   let testRunStatistics = "";
   let isSuccess = true;
+  let isSkipped = false;
   let suiteSuccess = true;
 
   if (options.testBuckets) {
@@ -422,7 +468,8 @@ function unitTestPrettyPrintResults (options, results) {
 
           let details = successCases[name];
           if (details.skipped) {
-            SuccessMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
+            let msg = ': ' + successCases[name].message;
+            SkipMessages += YELLOW + '    [SKIPPED] ' + name + msg + RESET + '\n';
           } else {
             SuccessMessages += GREEN + '    [SUCCESS] ' + name + RESET + '\n';
           }
@@ -516,11 +563,15 @@ function unitTestPrettyPrintResults (options, results) {
     // write more verbose failures to the testFailureText file
     onlyFailedMessages += '\n\n' + cu.GDB_OUTPUT;
   }
+  if (!options.extremeVerbosity) {
+    SkipMessages = '';
+  }
   print(`
 ${YELLOW}================================================================================'
 TEST RESULTS
 ================================================================================${RESET}
 ${SuccessMessages}
+${SkipMessages}
 ${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}${failText}`);
 
   onlyFailedMessages;
@@ -992,7 +1043,7 @@ function writeDefaultReports(options, testSuites) {
   }
   fs.write(fs.join(options.testOutputDirectory, testFailureText),
            "Incomplete testrun with these testsuites: '" + testSuites +
-           "'\nand these options: " + JSON.stringify(options) + "\n");
+           "'\nand these options: " + JSON.stringify(options, null, 2) + "\n");
 
 }
 

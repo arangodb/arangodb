@@ -1,0 +1,48 @@
+{
+  "type": "object",
+  "properties": {
+    "aFormattedString": {
+      "type": "string",
+      "pattern": "^[ABC]_\\w+$"
+    },
+    "aFloat": {
+      "default": 0.8,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "anInt": {
+      "type": "number",
+      "exclusiveMinimum": true,
+      "minimum": 0,
+      "multipleOf": 1 
+    },
+    "anArrayOfFloats": {
+      "type": "array",
+      "items": {
+        "default": 0.8,
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "anArrayOfNumbersOrStrings": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "patterns": [],
+  "required": [
+    "anInt"
+  ]
+}

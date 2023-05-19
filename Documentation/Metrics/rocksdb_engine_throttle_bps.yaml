@@ -16,7 +16,7 @@ description: |
   RocksDB throttle. The throttle limits the write rate to allow
   RocksDB's background threads to catch up with compactions and not
   fall behind too much, since this would in the end lead to nasty
-  write stops in RocksDB and incur considerable delays. If 0 is
+  write stops in RocksDB and incur considerable delays. If `0` is
   shown, no throttling happens, otherwise, you see the current
   write rate limit in bytes per second. Also see the `--rocksdb.*`
   startup options.

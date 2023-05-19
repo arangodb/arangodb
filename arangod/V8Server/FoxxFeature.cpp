@@ -25,10 +25,9 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
-
-#include <shared_mutex>
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -39,9 +38,10 @@ FoxxFeature::FoxxFeature(Server& server)
     : ArangodFeature{server, *this},
       _queueVersion(0),
       _localQueueInserts(0),
-      _pollInterval(1.0),
-      _enabled(true),
-      _startupWaitForSelfHeal(false) {
+      _queuesPollInterval(1.0),
+      _queuesEnabled(true),
+      _startupWaitForSelfHeal(false),
+      _foxxEnabled(true) {
   setOptional(true);
   startsAfter<application_features::ServerFeaturePhase>();
 }
@@ -55,7 +55,7 @@ void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--foxx.queues", "Enable or disable Foxx queues.",
-                  new BooleanParameter(&_enabled),
+                  new BooleanParameter(&_queuesEnabled),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
@@ -69,7 +69,7 @@ being processed, which may reduce CPU load a bit.)");
   options
       ->addOption("--foxx.queues-poll-interval",
                   "The poll interval for the Foxx queue manager (in seconds)",
-                  new DoubleParameter(&_pollInterval),
+                  new DoubleParameter(&_queuesPollInterval),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
@@ -116,18 +116,56 @@ Active Failover mode, all Foxx apps are available from the very beginning.
 
 **Note**: ArangoDB 3.8 changes the default value to `false` for this option.
 In previous versions, this option had a default value of `true`.)");
+
+  options
+      ->addOption("--foxx.enable", "Enable Foxx.",
+                  new BooleanParameter(&_foxxEnabled),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31005)
+      .setLongDescription(R"(If set to `false`, access to any custom Foxx 
+services in the deployment will be forbidden. Access to ArangoDB's built-in
+web interface will still be possible though.
+
+**Note**: when setting this option to `false`, the management API for Foxx
+services will automatically be disabled as well. This is the same as manually
+setting the startup option `--foxx.api false`.)");
 }
 
 void FoxxFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // use a minimum for the interval
-  if (_pollInterval < 0.1) {
-    _pollInterval = 0.1;
+  if (_queuesPollInterval < 0.1) {
+    _queuesPollInterval = 0.1;
   }
 }
 
-bool FoxxFeature::startupWaitForSelfHeal() const {
+void FoxxFeature::prepare() {
+  if (!_foxxEnabled) {
+    auto& ssf = server().getFeature<ServerSecurityFeature>();
+    if (!ssf.isFoxxApiDisabled()) {
+      ssf.disableFoxxApi();
+      LOG_TOPIC("a19bd", WARN, Logger::FIXME)
+          << "automatically disabling management APIs for Foxx, as access to "
+             "Foxx apps is "
+             "also turned off";
+    }
+  }
+}
+
+double FoxxFeature::pollInterval() const noexcept {
+  if (!_queuesEnabled) {
+    return -1.0;
+  }
+  return _queuesPollInterval;
+}
+
+bool FoxxFeature::startupWaitForSelfHeal() const noexcept {
   return _startupWaitForSelfHeal;
 }
+
+bool FoxxFeature::foxxEnabled() const noexcept { return _foxxEnabled; }
 
 uint64_t FoxxFeature::queueVersion() const noexcept {
   std::shared_lock lock(_queueLock);

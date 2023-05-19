@@ -129,9 +129,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
     WRITE_LOCKER(guard, _basicLock);
     _basicCache.clear();
     _basicCacheVersion.store(version, std::memory_order_release);
-  }
-
-  {
+  } else {
     READ_LOCKER(guard, _basicLock);
     auto const& it = _basicCache.find(secret);
     if (it != _basicCache.end() && !it->second.expired()) {

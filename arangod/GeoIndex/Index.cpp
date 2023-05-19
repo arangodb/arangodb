@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,19 +85,19 @@ Index::Index(VPackSlice const& info,
 }
 
 /// @brief Parse document and return cells for indexing
-Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
+Result Index::indexCells(velocypack::Slice doc, std::vector<S2CellId>& cells,
                          S2Point& centroid) const {
   if (_variant == Variant::GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray()) {
-      return geo::utils::indexCellsLatLng(loc, /*geojson*/ true, cells,
+      return geo::utils::indexCellsLatLng(loc, /*geoJson=*/true, cells,
                                           centroid);
     }
     geo::ShapeContainer shape;
-    Result r = geo::geojson::parseRegion(loc, shape, _legacyPolygons);
+    Result r = geo::json::parseRegion(loc, shape, _legacyPolygons);
     if (r.ok()) {
       S2RegionCoverer coverer(_coverParams.regionCovererOpts());
-      cells = shape.covering(&coverer);
+      cells = shape.covering(coverer);
       centroid = shape.centroid();
       if (!S2LatLng(centroid).is_valid()) {
         return TRI_ERROR_BAD_PARAMETER;
@@ -115,22 +115,18 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
     }
     return r;
   } else if (_variant == Variant::COMBINED_LAT_LON) {
-    VPackSlice loc = doc.get(_location);
-    return geo::utils::indexCellsLatLng(loc, /*geojson*/ false, cells,
+    auto loc = doc.get(_location);
+    return geo::utils::indexCellsLatLng(loc, /*geoJson=*/false, cells,
                                         centroid);
   } else if (_variant == Variant::INDIVIDUAL_LAT_LON) {
-    VPackSlice lat = doc.get(_latitude);
-    VPackSlice lon = doc.get(_longitude);
+    auto lat = doc.get(_latitude);
+    auto lon = doc.get(_longitude);
     if (!lat.isNumber() || !lon.isNumber()) {
       return TRI_ERROR_BAD_PARAMETER;
     }
-    S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
-                                        lon.getNumericValue<double>());
-    if (!ll.is_valid()) {
-      LOG_TOPIC("8173c", DEBUG, arangodb::Logger::FIXME)
-          << "illegal geo-coordinates, ignoring entry";
-      return TRI_ERROR_BAD_PARAMETER;
-    }
+    S2LatLng ll =
+        S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>())
+            .Normalized();
     centroid = ll.ToPoint();
     cells.emplace_back(centroid);
     return TRI_ERROR_NO_ERROR;
@@ -138,27 +134,26 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
   return TRI_ERROR_INTERNAL;
 }
 
-Result Index::shape(velocypack::Slice const& doc,
-                    geo::ShapeContainer& shape) const {
+Result Index::shape(velocypack::Slice doc, geo::ShapeContainer& shape) const {
   if (_variant == Variant::GEOJSON) {
-    VPackSlice loc = doc.get(_location);
-    if (loc.isArray() && loc.length() >= 2) {
-      return shape.parseCoordinates(loc, /*geoJson*/ true);
-    } else if (loc.isObject()) {
-      return geo::geojson::parseRegion(loc, shape, _legacyPolygons);
+    auto loc = doc.get(_location);
+    if (loc.isArray()) {
+      return geo::json::parseCoordinates<true>(loc, shape, /*geoJson=*/true);
     }
-    return TRI_ERROR_BAD_PARAMETER;
+    return geo::json::parseRegion(loc, shape, _legacyPolygons);
   } else if (_variant == Variant::COMBINED_LAT_LON) {
-    VPackSlice loc = doc.get(_location);
-    return shape.parseCoordinates(loc, /*geoJson*/ false);
+    auto loc = doc.get(_location);
+    return geo::json::parseCoordinates<true>(loc, shape, /*geoJson=*/false);
   } else if (_variant == Variant::INDIVIDUAL_LAT_LON) {
-    VPackSlice lon = doc.get(_longitude);
-    VPackSlice lat = doc.get(_latitude);
-    if (!lon.isNumber() || !lat.isNumber()) {
+    auto lon = doc.get(_longitude);
+    auto lat = doc.get(_latitude);
+    if (!lon.isNumber<double>() || !lat.isNumber<double>()) {
       return TRI_ERROR_BAD_PARAMETER;
     }
-    shape.resetCoordinates(lat.getNumericValue<double>(),
-                           lon.getNumericValue<double>());
+    shape.reset(
+        S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>())
+            .Normalized()
+            .ToPoint());
     return TRI_ERROR_NO_ERROR;
   }
   return TRI_ERROR_INTERNAL;
@@ -186,18 +181,20 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
 
   if (cc->type == aql::NODE_TYPE_ARRAY) {  // [lng, lat] is valid input
     TRI_ASSERT(cc->numMembers() == 2);
-    return S2LatLng::FromDegrees(/*lat*/ cc->getMember(1)->getDoubleValue(),
-                                 /*lon*/ cc->getMember(0)->getDoubleValue());
+    return S2LatLng::FromDegrees(
+               /*lat_degrees=*/cc->getMember(1)->getDoubleValue(),
+               /*lng_degrees=*/cc->getMember(0)->getDoubleValue())
+        .Normalized();
   } else {
     VPackBuilder jsonB;
     cc->toVelocyPackValue(jsonB);
     VPackSlice json = jsonB.slice();
     geo::ShapeContainer shape;
     Result res;
-    if (json.isArray() && json.length() >= 2) {
-      res = shape.parseCoordinates(json, /*GeoJson*/ true);
+    if (json.isArray()) {
+      res = geo::json::parseCoordinates<true>(json, shape, /*geoJson=*/true);
     } else {
-      res = geo::geojson::parseRegion(json, shape, legacy);
+      res = geo::json::parseRegion(json, shape, legacy);
     }
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -252,8 +249,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       // arrays can't occur only handle real GeoJSON
       VPackBuilder bb;
       geoJson->toVelocyPackValue(bb);
-      Result res =
-          geo::geojson::parseRegion(bb.slice(), qp.filterShape, legacy);
+      auto res = geo::json::parseRegion(bb.slice(), qp.filterShape, legacy);
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }

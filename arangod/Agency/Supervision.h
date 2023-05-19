@@ -102,9 +102,12 @@ class Supervision : public arangodb::Thread {
   /// @brief remove hotbackup lock in agency, if expired
   void unlockHotBackup();
 
-  static constexpr char const* HEALTH_STATUS_GOOD = "GOOD";
-  static constexpr char const* HEALTH_STATUS_BAD = "BAD";
-  static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
+  static constexpr std::string_view HEALTH_STATUS_GOOD = "GOOD";
+  static constexpr std::string_view HEALTH_STATUS_BAD = "BAD";
+  static constexpr std::string_view HEALTH_STATUS_FAILED = "FAILED";
+  // should never be stored in the agency. only used internally to return an
+  // unclear health status
+  static constexpr std::string_view HEALTH_STATUS_UNCLEAR = "UNCLEAR";
 
   static std::string agencyPrefix() { return _agencyPrefix; }
 

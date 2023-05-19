@@ -1,0 +1,16 @@
+name: rocksdb_live_wal_files
+introducedIn: "3.10.5"
+help: |
+  Number of live RocksDB WAL files.
+unit: number
+type: gauge
+category: RocksDB
+complexity: medium
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exhibits the total number of live RocksDB WAL files. These are
+  WAL files that cannot be garbage-collected until they are moved over to the
+  archive.

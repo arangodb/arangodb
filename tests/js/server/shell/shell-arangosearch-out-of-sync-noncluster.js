@@ -28,7 +28,8 @@ const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const internal = require("internal");
 const errors = internal.errors;
-  
+const isEnterprise = require("internal").isEnterprise();
+
 function ArangoSearchOutOfSyncSuite () {
   'use strict';
   
@@ -41,32 +42,61 @@ function ArangoSearchOutOfSyncSuite () {
     },
 
     testMarkLinksAsOutOfSync : function () {
-      let c = db._create('UnitTestsCollection1');
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
+      let c1 = db._create('UnitTestsCollection1');
       
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
-      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true } } });
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isEnterprise) {
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {name: 'value', analyzer: 'identity'},
+          {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+        ]};
+      } else {
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true }}};
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {name: 'value', analyzer: 'identity'},
+          {"name": "value_nested[*]"}
+        ]};
+      }
+      c1.ensureIndex(indexMeta);
+      v.properties(viewMeta);
       
       internal.debugSetFailAt("ArangoSearch::FailOnCommit");
 
       let docs = [];
-      for (let i = 0; i < 1000; ++i) {
+      for (let i = 0; i < 10; ++i) {
         docs.push({});
+        docs.push({"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       
-      c.insert(docs);
+      c1.insert(docs);
       
       db._query("FOR doc IN UnitTestsView1 OPTIONS {waitForSync: true} RETURN doc");
       db._query("FOR doc IN UnitTestsCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == 1 RETURN doc");
      
       internal.debugClearFailAt();
       
-      c = db._create('UnitTestsCollection2');
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
-      c.insert(docs);
+      let c2 = db._create('UnitTestsCollection2');
+      c2.insert(docs);
       
       v = db._createView('UnitTestsView2', 'arangosearch', {});
-      v.properties({ links: { UnitTestsCollection2: { includeAllFields: true } } });
+      if (isEnterprise) {
+        viewMeta = { links: { UnitTestsCollection2: { includeAllFields: true, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {name: 'value', analyzer: 'identity'},
+          {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+        ]};
+      } else {
+        viewMeta = { links: { UnitTestsCollection2: { includeAllFields: true }}};
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {name: 'value', analyzer: 'identity'},
+          {"name": "value_nested[*]"}
+        ]};
+      }
+      v.properties(viewMeta);
+      c2.ensureIndex(indexMeta);
      
       db._query("FOR doc IN UnitTestsView2 OPTIONS {waitForSync: true} RETURN doc");
 
@@ -129,16 +159,32 @@ function ArangoSearchOutOfSyncSuite () {
 
     testInsertIntoOutOfSync : function () {
       let c = db._create('UnitTestsCollection1');
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
-      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true } } });
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isEnterprise) {
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {name: 'value', analyzer: 'identity'},
+          {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+        ]};
+      } else {
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true} } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {name: 'value', analyzer: 'identity'},
+          {"name": "value_nested[*]"}
+        ]};
+      }
+      v.properties(viewMeta);
+      c.ensureIndex(indexMeta);
       
       internal.debugSetFailAt("ArangoSearch::FailOnCommit");
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
+        docs.push({ name_1: (i + 2).toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo"}]}]});
       }
       
       c.insert(docs);
@@ -170,16 +216,32 @@ function ArangoSearchOutOfSyncSuite () {
     
     testInsertIntoOutOfSyncIgnored : function () {
       let c = db._create('UnitTestsCollection1');
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
-      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true } } });
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isEnterprise) {
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {name: 'value', analyzer: 'identity'},
+          {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+        ]};
+      } else {
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true} } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {name: 'value', analyzer: 'identity'},
+          {"name": "value_nested[*]"}
+        ]};
+      }
+      c.ensureIndex(indexMeta);
+      v.properties(viewMeta);
       
       internal.debugSetFailAt("ArangoSearch::FailOnCommit");
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
+        docs.push({ name_1: (i + 1).toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo123456"}]}]});
       }
       
       c.insert(docs);
@@ -215,14 +277,30 @@ function ArangoSearchOutOfSyncSuite () {
     
     testRemoveFromOutOfSync : function () {
       let c = db._create('UnitTestsCollection1');
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
-      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true } } });
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isEnterprise) {
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {name: 'value', analyzer: 'identity'},
+          {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+        ]};
+      } else {
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true} } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {name: 'value', analyzer: 'identity'},
+          {"name": "value_nested[*]"}
+        ]};
+      }
+      c.ensureIndex(indexMeta);
+      v.properties(viewMeta);
       
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
+        docs.push({ name_1: i.toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo123456"}]}]});
       }
       
       c.insert(docs);
@@ -265,14 +343,30 @@ function ArangoSearchOutOfSyncSuite () {
     
     testRemoveFromOutOfSyncIgnored : function () {
       let c = db._create('UnitTestsCollection1');
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
-      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true } } });
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isEnterprise) {
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {name: 'value', analyzer: 'identity'},
+          {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+        ]};
+      } else {
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true} } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {name: 'value', analyzer: 'identity'},
+          {"name": "value_nested[*]"}
+        ]};
+      }
+      v.properties(viewMeta);
+      c.ensureIndex(indexMeta);
       
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
+        docs.push({ name_1: i.toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo123456"}]}]});
       }
       
       c.insert(docs);

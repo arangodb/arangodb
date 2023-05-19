@@ -125,13 +125,14 @@ V8DealerFeature::V8DealerFeature(Server& server)
       _gcFrequency(60.0),
       _gcInterval(2000),
       _maxContextAge(60.0),
-      _copyInstallation(false),
       _nrMaxContexts(0),
       _nrMinContexts(0),
       _nrInflightContexts(0),
       _maxContextInvocations(0),
+      _copyInstallation(false),
       _allowAdminExecute(false),
       _allowJavaScriptTransactions(true),
+      _allowJavaScriptUdfs(true),
       _allowJavaScriptTasks(true),
       _enableJS(true),
       _nextId(0),
@@ -237,6 +238,7 @@ container solution, like Docker or Kubernetes.)");
                   "executing JavaScript actions.",
                   new UInt64Parameter(&_nrMaxContexts),
                   arangodb::options::makeFlags(
+                      arangodb::options::Flags::Dynamic,
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
@@ -325,6 +327,17 @@ or teardown commands for execution on the server.)");
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800);
+
+  options
+      ->addOption(
+          "--javascript.user-defined-functions",
+          "Enable JavaScript user-defined functions (UDFs) in AQL queries.",
+          new BooleanParameter(&_allowJavaScriptUdfs),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31004);
 
   options
       ->addOption("--javascript.tasks", "Enable JavaScript tasks.",
@@ -533,12 +546,15 @@ void V8DealerFeature::start() {
 
   // try to guess a suitable number of contexts
   if (0 == _nrMaxContexts) {
-    // automatic maximum number of contexts should not be below 16
+    // use 7/8 of the available scheduler threads as the default number
+    // of available V8 contexts. only 7/8 are used to leave some headroom
+    // for important maintenance tasks.
+    // automatic maximum number of contexts should not be below 8
     // this is because the number of cores may be too few for the cluster
     // startup to properly run through with all its parallel requests
-    // and the potential need for multiple V8 contexts
-    _nrMaxContexts =
-        (std::max)(uint64_t(0 /*scheduler->concurrency()*/), uint64_t(16));
+    // and the potential need for multiple V8 contexts.
+    auto& sf = server().getFeature<SchedulerFeature>();
+    _nrMaxContexts = std::max(sf.maximalThreads() * 7 / 8, uint64_t(8));
   }
 
   if (_nrMinContexts > _nrMaxContexts) {

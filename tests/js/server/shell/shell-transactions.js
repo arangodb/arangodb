@@ -31,7 +31,7 @@ const internal = require('internal');
 const arangodb = require('@arangodb');
 const helper = require('@arangodb/aql-helper');
 const db = arangodb.db;
-const testHelper = require('@arangodb/test-helper').Helper;
+const testHelper = require('@arangodb/test-helper').helper;
 const isCluster = require('@arangodb/cluster').isCluster();
 
 let compareStringIds = function (l, r) {

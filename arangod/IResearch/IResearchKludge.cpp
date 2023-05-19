@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,14 +22,22 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "GeoAnalyzer.h"
 #include "IResearchKludge.h"
 #include "IResearchDocument.h"
 #include "IResearchRocksDBLink.h"
 #include "IResearchRocksDBInvertedIndex.h"
 #include "Basics/DownCast.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/GeoAnalyzerEE.h"
+#endif
+
+#include <frozen/set.h>
 
 #include <string>
 #include <string_view>
+
+namespace arangodb {
 
 namespace {
 
@@ -46,24 +54,25 @@ std::string_view constexpr kBoolSuffix{"\0_b", 3};
 std::string_view constexpr kNumericSuffix{"\0_d", 3};
 std::string_view constexpr kStringSuffix{"\0_s", 3};
 
-}  // namespace
+template<typename T>
+T& syncImpl(Index& index) {
+  auto& store = basics::downCast<T>(index);
+  store.finishCreation();
+  store.commit();
+  return store;
+};
 
-namespace arangodb {
+}  // namespace
 
 void syncIndexOnCreate(Index& index) {
   switch (index.type()) {
     case Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK: {
-      auto& store = basics::downCast<iresearch::IResearchRocksDBLink>(index);
-      store.commit();
-      TRI_IF_FAILURE("search::AlwaysIsBuildingSingle") {}
-      else {
-        store.setBuilding(false);
-      }
+      auto& store = syncImpl<iresearch::IResearchRocksDBLink>(index);
+      TRI_IF_FAILURE("search::AlwaysIsBuildingSingle");
+      else store.setBuilding(false);
     } break;
     case Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX: {
-      auto& store =
-          basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(index);
-      store.commit();
+      syncImpl<iresearch::IResearchRocksDBInvertedIndex>(index);
     } break;
     default:
       break;
@@ -107,12 +116,12 @@ void mangleNested(std::string& name) {
 }
 
 #ifdef USE_ENTERPRISE
-bool isNestedField(irs::string_ref name) noexcept {
+bool isNestedField(std::string_view name) noexcept {
   return !name.empty() && name.back() == kNestedDelimiter;
 }
 #endif
 
-bool needTrackPrevDoc(irs::string_ref name, bool nested) noexcept {
+bool needTrackPrevDoc(std::string_view name, bool nested) noexcept {
 #ifdef USE_ENTERPRISE
   return (isNestedField(name)) || (nested && name == DocumentPrimaryKey::PK());
 #else
@@ -181,5 +190,21 @@ std::string_view extractAnalyzerName(std::string_view fieldName) {
   return {};
 }
 #endif
+
+static constexpr auto kGeoAnalyzers = frozen::make_set<std::string_view>({
+    GeoVPackAnalyzer::type_name(),
+#ifdef USE_ENTERPRISE
+    GeoS2Analyzer::type_name(),
+#endif
+    GeoPointAnalyzer::type_name(),
+});
+
+bool isGeoAnalyzer(std::string_view type) noexcept {
+  return kGeoAnalyzers.count(type) != 0;
+}
+
+bool isPrimitiveAnalyzer(std::string_view type) noexcept {
+  return !isGeoAnalyzer(type);
+}
 
 }  // namespace arangodb::iresearch::kludge

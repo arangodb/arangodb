@@ -185,14 +185,14 @@ class ExecutionNode {
   ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id);
 
   /// @brief constructor using a VPackSlice
-  ExecutionNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& slice);
+  ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice);
 
   /// @brief destructor, free dependencies
   virtual ~ExecutionNode() = default;
 
   /// @brief factory from JSON
-  static ExecutionNode* fromVPackFactory(
-      ExecutionPlan* plan, arangodb::velocypack::Slice const& slice);
+  static ExecutionNode* fromVPackFactory(ExecutionPlan* plan,
+                                         velocypack::Slice slice);
 
   /// @brief remove registers right of (greater than) the specified register
   /// from the internal maps

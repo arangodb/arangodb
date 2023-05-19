@@ -41,11 +41,12 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const inst = require('@arangodb/testutils/instance');
 const im = require('@arangodb/testutils/instance-manager');
+const crashUtils = require('@arangodb/testutils/crash-utils');
 const sleep = internal.sleep;
 
 const platform = require('internal').platform;
 
-// const BLUE = require('internal').COLORS.COLOR_BLUE;
+const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
 // const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
@@ -60,13 +61,20 @@ class endpointRunner extends tu.runInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     
-    this.info = "runImport";
+    this.info = "EndpointsTest";
     // we append one cleanup directory for the invoking logic...
     this.dummyDir = fs.join(fs.getTempPath(), 'endpointsdummy');
     fs.makeDirectory(this.dummyDir);
+    // For now we always want the noise here!
+    this.options = _.clone(this.options);
+    this.options.extremeVerbosity = true;
     this.instance = new inst.instance(this.options,
                                       inst.instanceRole.single,
-                                      {'log.level': 'startup=trace'},
+                                      {
+                                        'log.level': ['startup=trace', 'rocksdb=trace'],
+                                        'log.force-direct': 'true',
+                                        'rocksdb.debug-logging': 'true',
+                                      },
                                       {}, 'tcp', this.dummyDir, '',
                                       new inst.agencyConfig(this.options, null));
     this.endpoint = this.instance.args['server.endpoint'];
@@ -243,10 +251,10 @@ class endpointRunner extends tu.runInArangoshRunner {
       },
     };
     obj.orgArgs = _.clone(obj.instance.args);
+    let fatalError = false;
     return Object.keys(endpoints).reduce((results, endpointName) => {
       let testName = 'endpoint-' + endpointName;
       let testCase = endpoints[endpointName];
-
       if (obj.options.cluster || obj.options.skipEndpoints) {
         return {
           failed: 0,
@@ -254,18 +262,19 @@ class endpointRunner extends tu.runInArangoshRunner {
           skipped: true
         };
       }
-      if (testCase.skip()) {
+      if (testCase.skip() || fatalError) {
         results[endpointName + '-' + 'all'] = {
           failed: 0,
           skipped: true,
           status: true,
-          message: 'test skipped'
+          message: fatalError? 'test skipped because of fatal error': 'test skipped'
         };
         return results;
       }
       let serverArgs = testCase.serverArgs();
       obj.instance.args = _.defaults(serverArgs, obj.orgArgs);
       obj.instance.protocol = testCase.protocol;
+      print(`${BLUE}${Date()} Launching instance for ${testName}${RESET}`);
       obj.instance.launchInstance({});
       if (!obj.instance.checkArangoAlive()) {
         results.failed += 1;
@@ -279,10 +288,14 @@ class endpointRunner extends tu.runInArangoshRunner {
       }
       sleep(2);
       try {
-        obj.instance.checkArangoConnection(20);
+        obj.instance.checkArangoConnection(15, true);
       } catch (ex) {
+        fatalError = true;
         print(RED + Date() + ' Server did not become available on time' + RESET);
         obj.instance.shutdownArangod(true);
+        crashUtils.aggregateDebugger(obj.instance, obj.options);
+        obj.instance.waitForExitAfterDebugKill();
+
         results[endpointName + '-' + 'all'] = {
           failed: 1,
           status: false,
@@ -333,8 +346,10 @@ class endpointRunner extends tu.runInArangoshRunner {
       let message = "";
       try {
         obj.instance.shutDownOneInstance({nonAgenciesCount: 1}, false, 30);
-        obj.instance.waitForInstanceShutdown(10);
+        obj.instance.waitForInstanceShutdown(30);
       } catch (ex) {
+        print(`${RED}${Date()} Server did not shut down on time: ${ex.message}${RESET}`);
+        obj.instance.shutdownArangod(true);
         shutdown = false;
         message = ex.message;
       }

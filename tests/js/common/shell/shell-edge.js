@@ -36,7 +36,7 @@ var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 var wait = require("internal").wait;
-var testHelper = require("@arangodb/test-helper").Helper;
+var testHelper = require("@arangodb/test-helper").helper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: error handling
