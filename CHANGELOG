@@ -1,6 +1,11 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* add a startup parameter `--rclone.argument` which can be utilised to enable
+  debugging with logfiles in hot backup RClone upload operacions:
+  `--rclone.argument=--log-level=DEBUG`
+  `--rclone.argument=-log-file=/tmp/rclone.log`
+
 * BTS-1181: fix a data race on the collection list in TransactionState.
   This race could happen in the cluster when a collection is sharded by a
   different attribute than `_key` and a document lookup by _key is performed.
