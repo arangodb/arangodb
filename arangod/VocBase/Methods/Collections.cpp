@@ -959,8 +959,7 @@ void Collections::applySystemCollectionProperties(
   if (col.name == designatedLeaderName) {
     // The leading collection needs to define sharding
     col.replicationFactor = vocbase.replicationFactor();
-    if (!ServerState::instance()->isSingleServer() &&
-        vocbase.server().hasFeature<ClusterFeature>()) {
+    if (vocbase.server().hasFeature<ClusterFeature>()) {
       col.replicationFactor =
           (std::max)(col.replicationFactor.value(),
                      static_cast<uint64_t>(vocbase.server()
