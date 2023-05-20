@@ -1,5 +1,7 @@
 v3.11.0-rc.1 (2023-05-13)
 -------------------------
+* When trying to read multiple documents, the coordinator will now handle
+  empty lists gracefully and return an empty result set instead of an error.
 
 * Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 
