@@ -1,6 +1,9 @@
 devel
 -----
 
+* When trying to read multiple documents, the coordinator will now handle
+  empty lists gracefully and return an empty result set instead of an error.
+
 * In batched query results, when executing requests for 
   `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user 
   would only be able to fetch the next batch using the next batch id in 
