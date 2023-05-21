@@ -149,6 +149,16 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
       throw;
     }
   }
+  LOG_DEVEL << _telemetricsFetchedInfo.slice().toJson();
+  auto persistedIdSlice =
+      _telemetricsFetchedInfo.slice().get("deployment").get("persisted_id");
+  if (!persistedIdSlice.isNone()) {
+    std::string_view const persistedId = persistedIdSlice.stringView();
+    if (persistedId.starts_with("sngl")) {
+      // no active failover allowed for now
+      _sendToEndpoint = false;
+    }
+  }
 }
 
 // Sends telemetrics to the endpoint and tests the redirection when telemetrics
