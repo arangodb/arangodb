@@ -1,6 +1,10 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* BTS-1315: Fixed spurious occurring failures during Foxx Application
+  installation in case a Load Balancer is being used in front of the
+  coordinators.
+
 * Added startup option `--query.max-collections-per-query` to adjust the limit
   for the maximum number of collections/shards per query. The option defaults to
   `2048`, which is equivalent to the previous hardcoded value.
