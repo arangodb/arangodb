@@ -1,6 +1,23 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* Reduce memory usage for incremental sync replication.
+
+  The incremental sync protocol that was used for collections created with 3.8
+  or higher had memory usage issues in case the follower already had some local
+  data and its dataset was much larger than the leader's. For example, this can
+  happen if a follower gets disconnected, then a lot of document removals happen
+  on the leader and afterwards the follower tries to get back into sync.
+
+  In this case, the follower buffered the ids of documents it had to remove
+  locally in a vector, which could grow arbitrarily large. The removal of the
+  documents contained in this vector would only happen at the end, potentially
+  even without performing intermediate commits.
+
+  The change in this PR is to trigger the document removal earlier, once the
+  vector has reached some size threshold, and also to use intermediate commits
+  during the removals.
+
 * BTS-1181: fix a data race on the collection list in TransactionState.
   This race could happen in the cluster when a collection is sharded by a
   different attribute than `_key` and a document lookup by _key is performed.
