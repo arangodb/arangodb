@@ -148,6 +148,8 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
         leased->add(VPackValuePair(vertexId.data(), vertexId.size(),
                                    VPackValueType::String));
         mustSend = true;
+        LOG_TOPIC("9e0f4", TRACE, Logger::GRAPHS)
+            << "<ClusterProvider> Fetching vertex " << vertexId;
       }
     }
     leased->close();  // 'keys' Array
@@ -299,7 +301,8 @@ void ClusterProvider<StepImpl>::destroyEngines() {
 template<class StepImpl>
 Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   TRI_ASSERT(step != nullptr);
-
+  LOG_TOPIC("fa7dc", TRACE, Logger::GRAPHS)
+      << "<ClusterProvider> Expanding " << step->getVertex().getID();
   auto const* engines = _opts.engines();
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
@@ -391,6 +394,9 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
             << "got invalid edge id type: " << id.typeName();
         continue;
       }
+      LOG_TOPIC("f4b3b", TRACE, Logger::GRAPHS)
+          << "<ClusterProvider> Neighbor of " << step->getVertex().getID()
+          << " -> " << id.toJson();
 
       auto [edge, needToCache] = _opts.getCache()->persistEdgeData(e);
       if (needToCache) {

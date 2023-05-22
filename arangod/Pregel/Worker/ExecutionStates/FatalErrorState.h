@@ -18,36 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Aditya Mukhopadhyay
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <iosfwd>
+#include "State.h"
 
-namespace arangodb {
-namespace graph {
+namespace arangodb::pregel::worker {
+template<typename V, typename E, typename M>
+struct WorkerState;
 
-class ValidationResult {
- public:
-  friend std::ostream& operator<<(std::ostream& stream,
-                                  ValidationResult const& res);
+struct FatalError : ExecutionState {
+  FatalError() = default;
 
-  enum class Type { UNKNOWN, TAKE, PRUNE, FILTER, FILTER_AND_PRUNE };
-
-  explicit ValidationResult(Type type) : _type(type) {}
-
-  bool isPruned() const noexcept;
-  bool isFiltered() const noexcept;
-  bool isUnknown() const noexcept;
-
-  void combine(Type t) noexcept;
-
- private:
-  Type _type = Type::UNKNOWN;
+  [[nodiscard]] auto name() const -> std::string override {
+    return "fatal error";
+  };
 };
-
-std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);
-
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::pregel::worker

@@ -18,36 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Aditya Mukhopadhyay
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <iosfwd>
+#include "State.h"
 
-namespace arangodb {
-namespace graph {
+namespace arangodb::pregel::worker {
+template<typename V, typename E, typename M>
+struct WorkerState;
 
-class ValidationResult {
- public:
-  friend std::ostream& operator<<(std::ostream& stream,
-                                  ValidationResult const& res);
+template<typename V, typename E, typename M>
+struct Initial : ExecutionState {
+  explicit Initial(WorkerState<V, E, M>& worker);
+  ~Initial() override = default;
 
-  enum class Type { UNKNOWN, TAKE, PRUNE, FILTER, FILTER_AND_PRUNE };
+  [[nodiscard]] auto name() const -> std::string override { return "initial"; };
+  auto receive(actor::ActorPID const& sender, actor::ActorPID const& self,
+               message::WorkerMessages const& message, Dispatcher dispatcher)
+      -> std::unique_ptr<ExecutionState> override;
 
-  explicit ValidationResult(Type type) : _type(type) {}
-
-  bool isPruned() const noexcept;
-  bool isFiltered() const noexcept;
-  bool isUnknown() const noexcept;
-
-  void combine(Type t) noexcept;
-
- private:
-  Type _type = Type::UNKNOWN;
+  WorkerState<V, E, M>& worker;
 };
-
-std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);
-
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::pregel::worker
