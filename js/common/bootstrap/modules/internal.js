@@ -814,7 +814,7 @@ global.DEFINE_MODULE('internal', (function () {
         if ((thisString.length > 2) &&
           (thisString.slice(0, 2) === '--')) {
           let option = thisString.slice(2, thisString.length);
-          if ((argv.length > i + 1) &&
+          if ((argv.length > i) &&
             (argv[i + 1].slice(0, 1) !== '-')) {
             setOption(ret, option, argv[i + 1]);
             i++;
