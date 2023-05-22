@@ -1,58 +1,46 @@
 import { Box } from "@chakra-ui/react";
-import { Formik } from "formik";
 import React from "react";
 import { Split, SplitDivider } from "../../../components/split/Split";
+import { EditViewProvider } from "../editView/EditViewContext";
+import { EditViewHeader } from "../editView/EditViewHeader";
 import { ArangoSearchViewPropertiesType } from "../searchView.types";
-import { ArangoSearchPropertiesProvider } from "./ArangoSearchContext";
-import { ArangoSearchViewForm } from "./ArangoSearchViewForm";
 import { ArangoSearchJSONEditor } from "./ArangoSearchJSONEditor";
+import { ArangoSearchViewForm } from "./ArangoSearchViewForm";
 
 export const ArangoSearchViewSettings = ({
   view
 }: {
   view: ArangoSearchViewPropertiesType;
 }) => {
-  const onCreate = async ({ values }: { values: any }) => {
-    console.log("onCreate", values);
+  const onSave = async (data: any) => {
+    console.log("onSave", data);
     return;
   };
-  const initialValues = view;
   return (
-    <ArangoSearchPropertiesProvider initialView={view}>
-      <Formik
-        onSubmit={async values => {
-          await onCreate?.({ values });
-        }}
-        initialValues={initialValues}
-        isInitialValid={false}
+    <EditViewProvider initialView={view} onSave={onSave as any}>
+      <Box
+        backgroundColor="white"
+        width="full"
+        height="calc(100vh - 60px)"
+        display={"grid"}
+        gridTemplateRows="120px 1fr"
       >
-        <Box
-          backgroundColor="white"
-          width="full"
-          height="calc(100vh - 60px)"
-          display={"grid"}
-          gridTemplateRows="120px 1fr"
-          rowGap="5"
-        >
-          <Box>Header</Box>
-          <Box as="section" width="full" height="calc(100vh - 200px)">
-            <Split
-              storageKey={"viewJSONSplitTemplate"}
-              render={({ getGridProps, getGutterProps }) => {
-                const gridProps = getGridProps();
-                const gutterProps = getGutterProps("column", 1);
-                return (
-                  <Box display="grid" height="full" {...gridProps}>
-                    <ArangoSearchViewForm />
-                    <SplitDivider gutterProps={gutterProps} />
-                    <ArangoSearchJSONEditor />
-                  </Box>
-                );
-              }}
-            />
-          </Box>
-        </Box>
-      </Formik>
-    </ArangoSearchPropertiesProvider>
+        <EditViewHeader />
+        <Split
+          storageKey={"viewJSONSplitTemplate"}
+          render={({ getGridProps, getGutterProps }) => {
+            const gridProps = getGridProps();
+            const gutterProps = getGutterProps("column", 1);
+            return (
+              <Box display="grid" height="full" {...gridProps}>
+                <ArangoSearchViewForm />
+                <SplitDivider gutterProps={gutterProps} />
+                <ArangoSearchJSONEditor />
+              </Box>
+            );
+          }}
+        />
+      </Box>
+    </EditViewProvider>
   );
 };
