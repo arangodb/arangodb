@@ -29,7 +29,6 @@ var ERRORS = arangodb.errors;
 var db = arangodb.db;
 var internal = require("internal");
 var wait = internal.wait;
-const cluster = require("internal").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: babies for documents
@@ -341,24 +340,13 @@ function CollectionDocumentSuiteBabies() {
         _key: "invalid whitespace inbetween"
       }];
 
-      if (cluster) {
-        try {
-          collection.insert(batch);
-          fail();
-        } catch (err) {
-          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code,
-            err.errorNum);
-        }
-        assertEqual(collection.count(), 0);
-      } else {
-        const docs = collection.insert(batch);
-        assertEqual(docs.length, 2);
-        assertEqual(docs[0]._key, "validKey");
-        assertTrue(docs[1].error);
-        assertEqual(docs[1].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code);
-        collection.remove("validKey");
-        assertEqual(collection.count(), 0);
-      }
+      const docs = collection.insert(batch);
+      assertEqual(docs.length, 2);
+      assertEqual(docs[0]._key, "validKey");
+      assertTrue(docs[1].error);
+      assertEqual(docs[1].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code);
+      collection.remove("validKey");
+      assertEqual(collection.count(), 0);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
