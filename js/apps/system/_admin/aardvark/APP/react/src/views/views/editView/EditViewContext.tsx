@@ -18,6 +18,10 @@ type EditViewContextType = {
   changed: boolean;
   isAdminUser: boolean;
   isCluster: boolean;
+  currentField: string[];
+  setCurrentField: (field: string[]) => void;
+  currentLink?: string;
+  setCurrentLink: (link?: string) => void;
   setErrors: (errors: ValidationError[]) => void;
   onCopy: ({ selectedView }: { selectedView?: ViewPropertiesType }) => void;
   onDelete: () => void;
@@ -109,9 +113,15 @@ const EditViewProviderInner = ({
       window.sessionStorage.removeItem(`${initialView.name}`);
     }
   }, [values, touched, initialView.name, initialView, setChanged]);
+  const [currentLink, setCurrentLink] = useState<string>();
+  const [currentField, setCurrentField] = useState<string[]>([]);
   return (
     <EditViewContext.Provider
       value={{
+        currentField,
+        setCurrentField,
+        currentLink,
+        setCurrentLink,
         errors,
         setErrors,
         changed,
