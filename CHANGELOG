@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added startup option `--query.max-collections-per-query` to adjust the
+  limit for the maximum number of collections/shards per query. The option
+  defaults to `2048`, which is equivalent to the previous hardcoded value.
+
 * Updated bundled version of libunwind to 1.7-rc2.
 
 * In batched query results, when executing requests for 
