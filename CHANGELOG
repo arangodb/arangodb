@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added startup option `--query.max-collections-per-query` to adjust the
+  limit for the maximum number of collections/shards per query. The option
+  defaults to `2048`, which is equivalent to the previous hardcoded value.
+
 * Invalid keys are now reported as individual error for batch operations
   and no longer abort the whole batch.
 

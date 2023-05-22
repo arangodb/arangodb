@@ -949,13 +949,6 @@ void RocksDBEngine::start() {
     TRI_ASSERT(false);
   }
 
-  if (!createdEngineDir) {
-    // database directory already existed before.
-    // now check if we have journal files of size 0 in the archive.
-    // these are useless, so we can as well delete them from the archive.
-    removeEmptyJournalFilesFromArchive();
-  }
-
   if (_createShaFiles) {
     _checksumEnv =
         std::make_unique<checksum::ChecksumEnv>(rocksdb::Env::Default(), _path);
@@ -3871,44 +3864,6 @@ std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
     return std::make_shared<RocksDBSnapshot>(*_db);
   } else {
     return nullptr;
-  }
-}
-
-void RocksDBEngine::removeEmptyJournalFilesFromArchive() {
-  LOG_TOPIC("50812", DEBUG, Logger::ENGINES)
-      << "scanning WAL archive directory for empty files...";
-
-  std::string archiveDirectory =
-      basics::FileUtils::buildFilename(_dbOptions.wal_dir, "archive");
-
-  try {
-    for (auto const& f : basics::FileUtils::listFiles(archiveDirectory)) {
-      if (!f.ends_with(".log")) {
-        // we only care about .log files in there
-        continue;
-      }
-
-      std::string fn = basics::FileUtils::buildFilename(archiveDirectory, f);
-      int64_t size = TRI_SizeFile(fn.c_str());
-      if (size == 0) {
-        // file size is exactly 0 bytes
-        LOG_TOPIC("e79dd", DEBUG, Logger::ENGINES)
-            << "found empty WAL file in archive at startup: '" << f
-            << "', scheduling this file for later deletion";
-
-        WRITE_LOCKER(lock, _walFileLock);
-        _prunableWalFiles.emplace(
-            basics::FileUtils::buildFilename("archive", f),
-            TRI_microtime() + _pruneWaitTime);
-      }
-    }
-
-    _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
-                                   std::memory_order_relaxed);
-  } catch (...) {
-    // we can continue even if an exception occurs here.
-    // it is possible that during hot backup restore the archive directory
-    // does not exist.
   }
 }
 
