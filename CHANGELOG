@@ -1,6 +1,9 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* Added metric "rocksdb_total_sst_files" to count the number of sst files,
+  aggregated over all levels of the LSM tree.
+
 * Add metric `arangodb_file_descriptors_current` to expose the number of file
   descriptors currently opened by the arangod process. This metric is available
   on Linux only.
