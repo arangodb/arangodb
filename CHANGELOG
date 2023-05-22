@@ -1,7 +1,7 @@
 devel
 -----
 
-* Upgraded bundled version of RocksDB to 8.2.
+* Upgraded bundled version of RocksDB to 8.3.
 
 * In batched query results, when executing requests for 
   `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user 
