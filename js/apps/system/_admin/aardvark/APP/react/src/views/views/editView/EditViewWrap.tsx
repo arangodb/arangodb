@@ -1,18 +1,18 @@
 import { Spinner } from "@chakra-ui/react";
 import React from "react";
-import { ChakraCustomProvider } from "../../theme/ChakraCustomProvider";
-import { useDisableNavBar } from "../../utils/useDisableNavBar";
-import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
-import { ArangoSearchViewSettings } from "./arangoSearchView/ArangoSearchViewSettings";
-import { SearchAliasViewSettings } from "./searchAliasView/SearchAliasViewSettings";
-import { useFetchViewProperties } from "./searchAliasView/useFetchViewProperties";
+import { ChakraCustomProvider } from "../../../theme/ChakraCustomProvider";
+import { useDisableNavBar } from "../../../utils/useDisableNavBar";
+import { useGlobalStyleReset } from "../../../utils/useGlobalStyleReset";
+import { ArangoSearchViewSettings } from "../arangoSearchView/ArangoSearchViewSettings";
+import { SearchAliasViewSettings } from "../searchAliasView/SearchAliasViewSettings";
+import { useFetchViewProperties } from "./useFetchViewProperties";
 import {
   ArangoSearchViewPropertiesType,
   SearchAliasViewPropertiesType
-} from "./searchView.types";
-import { SearchViewsCustomStyleReset } from "./SearchViewsCustomStyleReset";
+} from "../searchView.types";
+import { SearchViewsCustomStyleReset } from "../SearchViewsCustomStyleReset";
 
-export const ViewSettingsWrap = ({ name }: { name: string }) => {
+export const EditViewWrap = ({ name }: { name: string }) => {
   const { view, isLoading } = useFetchViewProperties(name);
   useDisableNavBar();
   useGlobalStyleReset();
