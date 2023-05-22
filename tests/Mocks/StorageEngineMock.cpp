@@ -1243,7 +1243,9 @@ arangodb::Result PhysicalCollectionMock::insert(
     }
     TRI_ASSERT(false);
   }
-
+  auto* state = arangodb::basics::downCast<TransactionStateMock>(trx.state());
+  TRI_ASSERT(state != nullptr);
+  state->incrementInsert();
   return {};
 }
 
@@ -1425,6 +1427,9 @@ arangodb::Result PhysicalCollectionMock::remove(
     // does not remove it from any mock indexes
 
     // assume document was removed
+    auto* state = arangodb::basics::downCast<TransactionStateMock>(trx.state());
+    TRI_ASSERT(state != nullptr);
+    state->incrementRemove();
     return {};
   }
   return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
@@ -1717,7 +1722,7 @@ std::shared_ptr<arangodb::TransactionState>
 StorageEngineMock::createTransactionState(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
     arangodb::transaction::Options const& options) {
-  return std::make_shared<TransactionStateMock>(vocbase, tid, options);
+  return std::make_shared<TransactionStateMock>(vocbase, tid, options, *this);
 }
 
 arangodb::Result StorageEngineMock::createView(
@@ -1747,7 +1752,7 @@ arangodb::Result StorageEngineMock::compactAll(bool changeLevels,
 }
 
 TRI_voc_tick_t StorageEngineMock::currentTick() const {
-  return TRI_CurrentTickServer();
+  return _engineTick.load();
 }
 
 std::string StorageEngineMock::dataPath() const {
@@ -2043,8 +2048,8 @@ std::atomic_size_t TransactionStateMock::commitTransactionCount{0};
 // ensure each transaction state has a unique ID
 TransactionStateMock::TransactionStateMock(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
-    arangodb::transaction::Options const& options)
-    : TransactionState(vocbase, tid, options) {}
+    arangodb::transaction::Options const& options, StorageEngineMock& engine)
+    : TransactionState(vocbase, tid, options), _engine(engine) {}
 
 arangodb::Result TransactionStateMock::abortTransaction(
     arangodb::transaction::Methods* trx) {
@@ -2078,6 +2083,7 @@ arangodb::Result TransactionStateMock::beginTransaction(
 arangodb::futures::Future<arangodb::Result>
 TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   applyBeforeCommitCallbacks();
+  _engine.incrementTick(numPrimitiveOperations() + 1);
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   resetTransactionId();
@@ -2100,7 +2106,7 @@ bool TransactionStateMock::hasFailedOperations() const {
 }
 
 TRI_voc_tick_t TransactionStateMock::lastOperationTick() const noexcept {
-  return 0;
+  return _engine.currentTick();
 }
 
 std::unique_ptr<arangodb::TransactionCollection>

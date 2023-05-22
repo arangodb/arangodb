@@ -49,9 +49,9 @@ IResearchDataStoreMeta::ConsolidationPolicy createConsolidationPolicy(
 
 template<>
 IResearchDataStoreMeta::ConsolidationPolicy
-createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
+createConsolidationPolicy<irs::index_utils::ConsolidateBytesAccum>(
     VPackSlice slice, std::string& errorField) {
-  irs::index_utils::consolidate_bytes_accum options;
+  irs::index_utils::ConsolidateBytesAccum options;
   velocypack::Builder properties;
 
   {
@@ -82,15 +82,14 @@ createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
   properties.add("threshold", velocypack::Value(options.threshold));
   properties.close();
 
-  return {irs::index_utils::consolidation_policy(options),
-          std::move(properties)};
+  return {irs::index_utils::MakePolicy(options), std::move(properties)};
 }
 
 template<>
 IResearchDataStoreMeta::ConsolidationPolicy
-createConsolidationPolicy<irs::index_utils::consolidate_tier>(
+createConsolidationPolicy<irs::index_utils::ConsolidateTier>(
     VPackSlice slice, std::string& errorField) {
-  irs::index_utils::consolidate_tier options;
+  irs::index_utils::ConsolidateTier options;
   VPackBuilder properties;
 
   {
@@ -187,8 +186,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
   properties.add("minScore", VPackValue(options.min_score));
   properties.close();
 
-  return {irs::index_utils::consolidation_policy(options),
-          std::move(properties)};
+  return {irs::index_utils::MakePolicy(options), std::move(properties)};
 }
 
 }  // namespace
@@ -216,7 +214,7 @@ IResearchDataStoreMeta::IResearchDataStoreMeta()
 
   // cppcheck-suppress useInitializationList
   _consolidationPolicy =
-      createConsolidationPolicy<irs::index_utils::consolidate_tier>(
+      createConsolidationPolicy<irs::index_utils::ConsolidateTier>(
           velocypack::Parser::fromJson("{ \"type\": \"tier\" }")->slice(),
           errorField);
   assert(_consolidationPolicy.policy());  // ensure above syntax is correct
@@ -459,11 +457,12 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
       auto const type = typeField.stringView();
 
       if (kPolicyBytesAccum == type) {
-        _consolidationPolicy = createConsolidationPolicy<
-            irs::index_utils::consolidate_bytes_accum>(field, errorSubField);
+        _consolidationPolicy =
+            createConsolidationPolicy<irs::index_utils::ConsolidateBytesAccum>(
+                field, errorSubField);
       } else if (kPolicyTier == type) {
         _consolidationPolicy =
-            createConsolidationPolicy<irs::index_utils::consolidate_tier>(
+            createConsolidationPolicy<irs::index_utils::ConsolidateTier>(
                 field, errorSubField);
       } else {
         errorField =
