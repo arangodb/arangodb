@@ -24,13 +24,13 @@ export const ArangoSearchViewForm = () => {
   return (
     <Accordion
       borderColor={"gray.200"}
-      defaultIndex={[0, 1]}
+      defaultIndex={[0]}
       borderRightWidth="1px solid"
       borderLeftWidth="1px solid"
-      marginTop="4"
       allowMultiple
       allowToggle
-      padding="4"
+      paddingX="4"
+      paddingTop="4"
     >
       <LinksAccordionItem />
       <GeneralAccordionItem />
@@ -110,7 +110,7 @@ const ConsolidationPolicyAccordionItem = () => {
       </AccordionButton>
       <AccordionPanel pb={4}>
         <FieldsGrid>
-          <FormLabel>Type</FormLabel>
+          <FormLabel>Policy Type</FormLabel>
           <Box>{policyTypeField.value}</Box>
           <IndexInfoTooltip label="Represents the type of policy." />
           {policyTypeField.value === "tier"
