@@ -77,3 +77,7 @@ export type ArangoSearchViewPropertiesType = SearchViewType &
 export interface SearchAliasViewPropertiesType extends SearchViewType {
   indexes: Array<{ collection: string; index: string }>;
 }
+
+export type ViewPropertiesType =
+  | ArangoSearchViewPropertiesType
+  | SearchAliasViewPropertiesType;
