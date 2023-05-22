@@ -1,11 +1,11 @@
 import { pick } from "lodash";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
-import { FormState } from "../constants";
+import { ArangoSearchViewPropertiesType } from "../searchView.types";
 import { useSyncSearchViewUpdates } from "../useSyncSearchViewUpdates";
 
 export function usePatchArangoSearchView(
-  view: FormState,
+  view: ArangoSearchViewPropertiesType,
   oldName: string | undefined,
   setChanged: (changed: boolean) => void
 ) {
@@ -36,7 +36,7 @@ async function putRenameView({
   view
 }: {
   oldName: string;
-  view: FormState;
+  view: ArangoSearchViewPropertiesType;
 }) {
   const route = getApiRouteForCurrentDB();
   let error = false;
@@ -60,7 +60,7 @@ async function patchViewProperties({
   oldName,
   setChanged
 }: {
-  view: FormState;
+  view: ArangoSearchViewPropertiesType;
   oldName: string | undefined;
   setChanged: (changed: boolean) => void;
 }) {
