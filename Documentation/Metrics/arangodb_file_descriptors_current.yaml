@@ -1,0 +1,25 @@
+name: arangodb_file_descriptors_current
+introducedIn: "3.10.7"
+help: |
+  Number of file descriptors currently opened by the arangod process.
+unit: number
+type: gauge
+category: Statistics
+complexity: medium
+exposedBy:
+  - agent
+  - coordinator
+  - dbserver
+  - single
+description: |
+  Number of file descriptors currently opened by the arangod process. 
+  This will include regular files as well as sockets.
+  The metric is only available on platforms that support it.
+  As counting the number of file descriptors can be expensive and can have
+  an impact on performance, the metric will only be updated in a controllable
+  interval. The interval can be adjusted via the startup option 
+  `--server.count-descriptors-interval`. Shorter intervals mean more up-to-date
+  count values, at the potential expense of more IO operations that are
+  required for counting.
+  It is possible to turn off counting of file descriptors by setting the
+  interval to 0. In this case, the metric will report a value of 0.
