@@ -55,9 +55,9 @@ Collection* Collections::add(std::string const& name,
   auto it = _collections.find(name);
 
   if (it == _collections.end()) {
-    if (_collections.size() > _vocbase->server()
-                                  .getFeature<QueryRegistryFeature>()
-                                  .maxCollectionsPerQuery()) {
+    if (_collections.size() >= _vocbase->server()
+                                   .getFeature<QueryRegistryFeature>()
+                                   .maxCollectionsPerQuery()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS);
     }
 
