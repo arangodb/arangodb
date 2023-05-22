@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated bundled version of libunwind to 1.7-rc2.
+
 * In batched query results, when executing requests for 
   `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user 
   would only be able to fetch the next batch using the next batch id in 
