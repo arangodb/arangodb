@@ -22,17 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Collections.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Collection.h"
 #include "Basics/Exceptions.h"
-#include "VocBase/AccessMode.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-Collections::Collections(TRI_vocbase_t* vocbase)
-    : _vocbase(vocbase), _collections() {}
+Collections::Collections(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {}
 
 Collections::~Collections() = default;
 
@@ -54,7 +55,9 @@ Collection* Collections::add(std::string const& name,
   auto it = _collections.find(name);
 
   if (it == _collections.end()) {
-    if (_collections.size() >= MaxCollections) {
+    if (_collections.size() >= _vocbase->server()
+                                   .getFeature<QueryRegistryFeature>()
+                                   .maxCollectionsPerQuery()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS);
     }
 
