@@ -265,7 +265,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _runningCompactions(0),
       _autoFlushCheckInterval(60.0 * 30.0),
       _autoFlushMinWalFiles(20),
-      _metricsIndexSelectivityEstimatesMemoryUsage(
+      _metricsIndexEstimatorMemoryUsage(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_index_selectivity_estimates_memory_usage{})),
       _metricsWalReleasedTickFlush(
@@ -1282,22 +1282,6 @@ void RocksDBEngine::trackRevisionTreeMemoryDecrease(
     std::uint64_t value) noexcept {
   if (ADB_LIKELY(value != 0)) {
     [[maybe_unused]] auto old = _metricsTreeMemoryUsage.fetch_sub(value);
-    TRI_ASSERT(old >= value);
-  }
-}
-
-void RocksDBEngine::trackIndexSelectivityMemoryIncrease(
-    std::uint64_t value) noexcept {
-  if (ADB_LIKELY(value != 0)) {
-    _metricsIndexSelectivityEstimatesMemoryUsage += value;
-  }
-}
-
-void RocksDBEngine::trackIndexSelectivityMemoryDecrease(
-    std::uint64_t value) noexcept {
-  if (ADB_LIKELY(value != 0)) {
-    [[maybe_unused]] auto old =
-        _metricsIndexSelectivityEstimatesMemoryUsage.fetch_sub(value);
     TRI_ASSERT(old >= value);
   }
 }

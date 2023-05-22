@@ -28,7 +28,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
-#include "RocksDBEngine/RocksDBEngine.h"
+#include "Metrics/Gauge.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
 #include <snappy.h>
@@ -37,8 +37,8 @@ namespace arangodb {
 
 template<class Key>
 RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(
-    RocksDBEngine& engine, uint64_t size)
-    : _engine(engine),
+    metrics::Gauge<uint64_t>* memoryUsageMetric, uint64_t size)
+    : _memoryUsageMetric(memoryUsageMetric),
       _randState(0x2636283625154737ULL),
       _logSize(0),
       _size(0),
@@ -69,8 +69,8 @@ RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(
 
 template<class Key>
 RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(
-    RocksDBEngine& engine, std::string_view serialized)
-    : _engine(engine),
+    metrics::Gauge<uint64_t>* memoryUsageMetric, std::string_view serialized)
+    : _memoryUsageMetric(memoryUsageMetric),
       _randState(0x2636283625154737ULL),
       _logSize(0),
       _size(0),
@@ -117,6 +117,8 @@ void RocksDBCuckooIndexEstimator<Key>::freeMemory() {
     memoryUsage +=
         bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
   }
+
+  memoryUsage += bufferedEntrySize() * _truncateBuffer.size();
 
   _insertBuffers.clear();
   _removalBuffers.clear();
@@ -314,6 +316,7 @@ Result RocksDBCuckooIndexEstimator<Key>::bufferTruncate(
     }
     _truncateBuffer.emplace(seq);
     _needToPersist.store(true, std::memory_order_release);
+    increaseMemoryUsage(bufferedEntrySize());
   });
   return res;
 }
@@ -575,6 +578,7 @@ rocksdb::SequenceNumber RocksDBCuckooIndexEstimator<Key>::applyUpdates(
       {
         WRITE_LOCKER(locker, _lock);
 
+        uint64_t memoryUsage = 0;
         {
           // check for a truncate marker
           auto it = _truncateBuffer.begin();  // sorted ASC
@@ -583,13 +587,13 @@ rocksdb::SequenceNumber RocksDBCuckooIndexEstimator<Key>::applyUpdates(
             TRI_ASSERT(ignoreSeq != 0);
             foundTruncate = true;
             appliedSeq = std::max(appliedSeq, ignoreSeq);
+            memoryUsage += bufferedEntrySize();
             it = _truncateBuffer.erase(it);
           }
         }
         TRI_ASSERT(ignoreSeq <= commitSeq);
 
         // check for inserts
-        uint64_t memoryUsage = 0;
         auto it = _insertBuffers.begin();  // sorted ASC
         while (it != _insertBuffers.end() && it->first <= commitSeq) {
           if (it->first <= ignoreSeq) {
@@ -805,7 +809,9 @@ template<class Key>
 void RocksDBCuckooIndexEstimator<Key>::increaseMemoryUsage(
     uint64_t value) noexcept {
   _memoryUsage += value;
-  _engine.trackIndexSelectivityMemoryIncrease(value);
+  if (ADB_LIKELY(_memoryUsageMetric != nullptr)) {
+    _memoryUsageMetric->fetch_add(value);
+  }
 }
 
 template<class Key>
@@ -813,7 +819,9 @@ void RocksDBCuckooIndexEstimator<Key>::decreaseMemoryUsage(
     uint64_t value) noexcept {
   TRI_ASSERT(_memoryUsage >= value);
   _memoryUsage -= value;
-  _engine.trackIndexSelectivityMemoryDecrease(value);
+  if (ADB_LIKELY(_memoryUsageMetric != nullptr)) {
+    _memoryUsageMetric->fetch_sub(value);
+  }
 }
 
 template<class Key>

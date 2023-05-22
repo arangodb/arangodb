@@ -35,6 +35,7 @@
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Basics/fasthash.h"
+#include "Metrics/Fwd.h"
 
 #include <rocksdb/types.h>
 
@@ -51,7 +52,6 @@
 // This class is not thread-safe!
 
 namespace arangodb {
-class RocksDBEngine;
 
 // C++ wrapper for the hash function:
 template<class T, uint64_t Seed>
@@ -144,10 +144,11 @@ class RocksDBCuckooIndexEstimator {
   };
 
  public:
-  explicit RocksDBCuckooIndexEstimator(RocksDBEngine& engine, uint64_t size);
+  explicit RocksDBCuckooIndexEstimator(
+      metrics::Gauge<uint64_t>* memoryUsageMetric, uint64_t size);
 
-  explicit RocksDBCuckooIndexEstimator(RocksDBEngine& engine,
-                                       std::string_view serialized);
+  explicit RocksDBCuckooIndexEstimator(
+      metrics::Gauge<uint64_t>* memoryUsageMetric, std::string_view serialized);
 
   ~RocksDBCuckooIndexEstimator();
 
@@ -526,7 +527,10 @@ class RocksDBCuckooIndexEstimator {
   void decreaseMemoryUsage(uint64_t value) noexcept;
 
  private:
-  RocksDBEngine& _engine;
+  // metric for tracking global memory usage (combined memory usage of all
+  // cuckoo index estimators)
+  // note: may be a nullptr
+  metrics::Gauge<uint64_t>* _memoryUsageMetric;
 
   uint64_t _randState;  // pseudo random state for expunging
 

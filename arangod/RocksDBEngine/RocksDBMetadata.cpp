@@ -673,7 +673,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
                  db->GetLatestSequenceNumber());
 
       auto est = std::make_unique<RocksDBCuckooIndexEstimatorType>(
-          engine, estimateInput);
+          &engine.indexEstimatorMemoryUsageMetric(), estimateInput);
       LOG_TOPIC("63f3b", DEBUG, Logger::ENGINES)
           << context << ": found index estimator for objectId '"
           << idx->objectId() << "' committed seqNr '" << est->appliedSeq()
