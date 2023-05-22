@@ -1,0 +1,18 @@
+name: arangodb_index_selectivity_estimates_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Total memory usage of all index selectivity estimates.
+unit: bytes
+type: gauge
+category: Statistics
+complexity: medium
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Total memory usage of all index selectivity estimates.
+  Index selectivity estimates are used for edge indexes and
+  persistent indexes.
+  Persistent indexes can be created with selectivity
+  estimates turned off to save a bit of memory.
