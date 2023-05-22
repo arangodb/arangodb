@@ -194,6 +194,8 @@ DECLARE_COUNTER(arangodb_scheduler_threads_started_total,
                 "Number of scheduler threads started");
 DECLARE_COUNTER(arangodb_scheduler_threads_stopped_total,
                 "Number of scheduler threads stopped");
+DECLARE_GAUGE(arangodb_scheduler_queue_memory, std::int64_t,
+              "Number of bytes allocated for tasks in the scheduler queue.");
 
 SupervisedScheduler::SupervisedScheduler(
     ArangodServer& server, uint64_t minThreads, uint64_t maxThreads,
@@ -233,6 +235,8 @@ SupervisedScheduler::SupervisedScheduler(
               arangodb_scheduler_num_working_threads{})),
       _metricsNumWorkerThreads(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_scheduler_num_worker_threads{})),
+      _schedulerQueueMemory(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_scheduler_queue_memory{})),
       _metricsHandlerTasksCreated(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_scheduler_handler_tasks_created_total{})),
@@ -268,6 +272,10 @@ SupervisedScheduler::SupervisedScheduler(
 }
 
 SupervisedScheduler::~SupervisedScheduler() = default;
+
+void SupervisedScheduler::trackQueueItemSize(std::int64_t x) noexcept {
+  _schedulerQueueMemory += x;
+}
 
 bool SupervisedScheduler::queueItem(RequestLane lane,
                                     std::unique_ptr<WorkItemBase> work,

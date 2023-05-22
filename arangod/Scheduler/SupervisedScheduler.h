@@ -61,6 +61,7 @@ class SupervisedScheduler final : public Scheduler {
   void trackEndOngoingLowPriorityTask() noexcept;
 
   void trackQueueTimeViolation() noexcept;
+  void trackQueueItemSize(std::int64_t) noexcept;
 
   /// @brief returns the last stored dequeue time [ms]
   uint64_t getLastLowPriorityDequeueTime() const noexcept override;
@@ -136,16 +137,6 @@ class SupervisedScheduler final : public Scheduler {
 
     // cppcheck-suppress missingOverride
     bool start();
-  };
-
-  struct WorkItem final {
-    fu2::unique_function<void()> _handler;
-
-    explicit WorkItem(fu2::unique_function<void()>&& handler)
-        : _handler(std::move(handler)) {}
-    ~WorkItem() = default;
-
-    void operator()() { _handler(); }
   };
 
   std::unique_ptr<WorkItemBase> getWork(std::shared_ptr<WorkerState>& state);
@@ -224,6 +215,7 @@ class SupervisedScheduler final : public Scheduler {
   metrics::Gauge<uint64_t>& _metricsNumAwakeThreads;
   metrics::Gauge<uint64_t>& _metricsNumWorkingThreads;
   metrics::Gauge<uint64_t>& _metricsNumWorkerThreads;
+  metrics::Gauge<int64_t>& _schedulerQueueMemory;
 
   metrics::Counter& _metricsHandlerTasksCreated;
   metrics::Counter& _metricsThreadsStarted;
