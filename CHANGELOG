@@ -1,6 +1,10 @@
 v3.11.0-rc.2 (2023-05-17)
 -------------------------
 
+* Added startup option `--query.max-collections-per-query` to adjust the
+  limit for the maximum number of collections/shards per query. The option
+  defaults to `2048`, which is equivalent to the previous hardcoded value.
+
 * Internal bug-fixes and stabilization improvements.
 
 
