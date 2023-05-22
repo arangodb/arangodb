@@ -14,7 +14,7 @@ import { useField, useFormikContext } from "formik";
 import React from "react";
 import { FormField } from "../../../components/form/FormField";
 import { IndexInfoTooltip } from "../../collections/indices/addIndex/IndexInfoTooltip";
-import { ArangoSearchLinksEditor } from "./ArangoSearchLinksEditor";
+import { LinksEditor } from "./linksEditor/LinksEditor";
 
 import { useArangoSearchFieldsData } from "./useArangoSearchFieldsData";
 
@@ -69,7 +69,7 @@ const LinksAccordionItem = () => {
         <AccordionIcon />
       </AccordionButton>
       <AccordionPanel pb={4}>
-        <ArangoSearchLinksEditor />
+        <LinksEditor />
       </AccordionPanel>
     </AccordionItem>
   );
