@@ -73,11 +73,11 @@ class QueryRegistryFeature final : public ArangodFeature {
   bool requireWith() const noexcept { return _requireWith; }
 #ifdef USE_ENTERPRISE
   bool smartJoins() const noexcept { return _smartJoins; }
+  bool parallelizeTraversals() const noexcept { return _parallelizeTraversals; }
+#endif
   size_t maxCollectionsPerQuery() const noexcept {
     return _maxCollectionsPerQuery;
   }
-  bool parallelizeTraversals() const noexcept { return _parallelizeTraversals; }
-#endif
   bool allowCollectionsInExpressions() const noexcept {
     return _allowCollectionsInExpressions;
   }
