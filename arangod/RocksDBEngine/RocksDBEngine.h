@@ -387,6 +387,9 @@ class RocksDBEngine final : public StorageEngine {
   void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
   void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
 
+  void trackIndexSelectivityMemoryIncrease(std::uint64_t value) noexcept;
+  void trackIndexSelectivityMemoryDecrease(std::uint64_t value) noexcept;
+
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
@@ -707,6 +710,7 @@ class RocksDBEngine final : public StorageEngine {
   // an auto-flush
   uint64_t _autoFlushMinWalFiles;
 
+  metrics::Gauge<uint64_t>& _metricsIndexSelectivityEstimatesMemoryUsage;
   metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   metrics::Gauge<uint64_t>& _metricsLiveWalFiles;

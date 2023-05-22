@@ -51,6 +51,7 @@
 // This class is not thread-safe!
 
 namespace arangodb {
+class RocksDBEngine;
 
 // C++ wrapper for the hash function:
 template<class T, uint64_t Seed>
@@ -143,9 +144,10 @@ class RocksDBCuckooIndexEstimator {
   };
 
  public:
-  explicit RocksDBCuckooIndexEstimator(uint64_t size);
+  explicit RocksDBCuckooIndexEstimator(RocksDBEngine& engine, uint64_t size);
 
-  explicit RocksDBCuckooIndexEstimator(std::string_view serialized);
+  explicit RocksDBCuckooIndexEstimator(RocksDBEngine& engine,
+                                       std::string_view serialized);
 
   ~RocksDBCuckooIndexEstimator();
 
@@ -523,7 +525,9 @@ class RocksDBCuckooIndexEstimator {
   void increaseMemoryUsage(uint64_t value) noexcept;
   void decreaseMemoryUsage(uint64_t value) noexcept;
 
- private:               // member variables
+ private:
+  RocksDBEngine& _engine;
+
   uint64_t _randState;  // pseudo random state for expunging
 
   uint64_t _logSize;    // logarithm (base 2) of number of buckets

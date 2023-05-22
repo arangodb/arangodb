@@ -160,6 +160,8 @@ DECLARE_GAUGE(rocksdb_wal_pruning_active, uint64_t,
               "Whether or not RocksDB WAL file pruning is active");
 DECLARE_GAUGE(arangodb_revision_tree_memory_usage, uint64_t,
               "Total memory consumed by all revision trees");
+DECLARE_GAUGE(arangodb_index_selectivity_estimates_memory_usage, uint64_t,
+              "Total memory consumed by all index selectivity estimates");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total,
                 "Number of successful revision tree rebuilds");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_failure_total,
@@ -263,6 +265,9 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _runningCompactions(0),
       _autoFlushCheckInterval(60.0 * 30.0),
       _autoFlushMinWalFiles(20),
+      _metricsIndexSelectivityEstimatesMemoryUsage(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_index_selectivity_estimates_memory_usage{})),
       _metricsWalReleasedTickFlush(
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_wal_released_tick_flush{})),
@@ -1268,15 +1273,31 @@ void RocksDBEngine::trackRevisionTreeResurrection() noexcept {
 
 void RocksDBEngine::trackRevisionTreeMemoryIncrease(
     std::uint64_t value) noexcept {
-  if (value != 0) {
+  if (ADB_LIKELY(value != 0)) {
     _metricsTreeMemoryUsage += value;
   }
 }
 
 void RocksDBEngine::trackRevisionTreeMemoryDecrease(
     std::uint64_t value) noexcept {
-  if (value != 0) {
+  if (ADB_LIKELY(value != 0)) {
     [[maybe_unused]] auto old = _metricsTreeMemoryUsage.fetch_sub(value);
+    TRI_ASSERT(old >= value);
+  }
+}
+
+void RocksDBEngine::trackIndexSelectivityMemoryIncrease(
+    std::uint64_t value) noexcept {
+  if (ADB_LIKELY(value != 0)) {
+    _metricsIndexSelectivityEstimatesMemoryUsage += value;
+  }
+}
+
+void RocksDBEngine::trackIndexSelectivityMemoryDecrease(
+    std::uint64_t value) noexcept {
+  if (ADB_LIKELY(value != 0)) {
+    [[maybe_unused]] auto old =
+        _metricsIndexSelectivityEstimatesMemoryUsage.fetch_sub(value);
     TRI_ASSERT(old >= value);
   }
 }

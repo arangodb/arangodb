@@ -22,11 +22,13 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
-#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
 #include <snappy.h>
@@ -34,8 +36,10 @@
 namespace arangodb {
 
 template<class Key>
-RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(uint64_t size)
-    : _randState(0x2636283625154737ULL),
+RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(
+    RocksDBEngine& engine, uint64_t size)
+    : _engine(engine),
+      _randState(0x2636283625154737ULL),
       _logSize(0),
       _size(0),
       _niceSize(0),
@@ -65,8 +69,9 @@ RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(uint64_t size)
 
 template<class Key>
 RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(
-    std::string_view serialized)
-    : _randState(0x2636283625154737ULL),
+    RocksDBEngine& engine, std::string_view serialized)
+    : _engine(engine),
+      _randState(0x2636283625154737ULL),
       _logSize(0),
       _size(0),
       _niceSize(0),
@@ -800,6 +805,7 @@ template<class Key>
 void RocksDBCuckooIndexEstimator<Key>::increaseMemoryUsage(
     uint64_t value) noexcept {
   _memoryUsage += value;
+  _engine.trackIndexSelectivityMemoryIncrease(value);
 }
 
 template<class Key>
@@ -807,6 +813,7 @@ void RocksDBCuckooIndexEstimator<Key>::decreaseMemoryUsage(
     uint64_t value) noexcept {
   TRI_ASSERT(_memoryUsage >= value);
   _memoryUsage -= value;
+  _engine.trackIndexSelectivityMemoryDecrease(value);
 }
 
 template<class Key>

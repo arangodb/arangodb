@@ -1213,6 +1213,10 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
     // We activate the estimator for all non unique-indexes.
     // And only on single servers and DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
+        collection.vocbase()
+            .server()
+            .getFeature<EngineSelectorFeature>()
+            .engine<RocksDBEngine>(),
         RocksDBIndex::ESTIMATOR_SIZE);
   }
 
