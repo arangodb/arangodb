@@ -4,17 +4,15 @@ import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 import { SearchAliasViewPropertiesType } from "../searchView.types";
 
-export const useUpdateAliasViewProperties = ({
-  setChanged
-}: {
-  setChanged: (changed: boolean) => void;
-}) => {
+export const useUpdateAliasViewProperties = () => {
   const onSave = async ({
     view,
-    initialView
+    initialView,
+    setChanged
   }: {
     view: SearchAliasViewPropertiesType;
     initialView: SearchAliasViewPropertiesType;
+    setChanged: (changed: boolean) => void;
   }) => {
     try {
       const isNameChanged =

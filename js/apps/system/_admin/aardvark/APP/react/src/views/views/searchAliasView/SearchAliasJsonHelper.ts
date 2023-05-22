@@ -1,6 +1,6 @@
 import { JSONSchemaType } from "ajv";
 import { useEffect, useState } from "react";
-import { useSearchAliasContext } from "./SearchAliasContext";
+import { useEditViewContext } from "../editView/EditViewContext";
 import { SearchAliasViewPropertiesType } from "../searchView.types";
 
 const searchAliasJsonSchema: JSONSchemaType<SearchAliasViewPropertiesType> = {
@@ -58,7 +58,7 @@ export const useAliasViewSchema = ({
   view: SearchAliasViewPropertiesType;
 }) => {
   const [schema, setSchema] = useState(searchAliasJsonSchema);
-  const { isCluster } = useSearchAliasContext();
+  const { isCluster } = useEditViewContext();
   useEffect(() => {
     const nameProperty =
       isCluster && schema.properties
