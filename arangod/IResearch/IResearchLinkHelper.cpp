@@ -774,7 +774,7 @@ Result IResearchLinkHelper::normalize(
     // normalize stored values if specified
     meta._storedValues = *storedValues;
   }
-
+#ifdef USE_ENTERPRISE
   if (pkCache) {
     meta._pkCache = *pkCache;
   }
