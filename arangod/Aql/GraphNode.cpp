@@ -579,7 +579,7 @@ void GraphNode::setGraphInfoAndCopyColls(
     _graphInfo.close();
   } else {
     _graphInfo.add(VPackValue(_graphObj->name()));
-    for (auto& it : edgeColls) {
+    for (auto const& it : edgeColls) {
       TRI_ASSERT(it != nullptr);
       _edgeColls.emplace_back(it);
     }
