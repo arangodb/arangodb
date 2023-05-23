@@ -1,6 +1,11 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* ECONNABORTED is treated as a ConnectionClosed error in fuerte.
+
+* Database drop operation no longer fails if we cannot remove
+  the corresponding permissions from the _users collection.
+
 * Reduce memory usage for incremental sync replication.
 
   The incremental sync protocol that was used for collections created with 3.8
