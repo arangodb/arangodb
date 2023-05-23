@@ -1,6 +1,10 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* Support parsing HTTP GET requests with velocypack Content-Type without
+  a request body. Previously parsing such requests led to an error on the
+  server side.
+
 * Reduce memory usage for incremental sync replication.
 
   The incremental sync protocol that was used for collections created with 3.8
