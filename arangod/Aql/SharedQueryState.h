@@ -51,8 +51,9 @@ class SharedQueryState final
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
+  SharedQueryState(ArangodServer& server);
   SharedQueryState(ArangodServer& server,
-                   SharedQueryState::SchedulerT* scheduler = nullptr);
+                   SharedQueryState::SchedulerT* scheduler);
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
 

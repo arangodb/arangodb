@@ -36,6 +36,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+SharedQueryState::SharedQueryState(ArangodServer& server)
+    : SharedQueryState(server, SchedulerFeature::SCHEDULER) {}
+
 SharedQueryState::SharedQueryState(ArangodServer& server,
                                    SharedQueryState::SchedulerT* scheduler)
     : _server(server),
