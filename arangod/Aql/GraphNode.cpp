@@ -571,7 +571,7 @@ void GraphNode::setGraphInfoAndCopyColls(
     std::vector<Collection*> const& vertexColls) {
   if (_graphObj == nullptr) {
     _graphInfo.openArray();
-    for (auto& it : edgeColls) {
+    for (auto const& it : edgeColls) {
       TRI_ASSERT(it != nullptr);
       _edgeColls.emplace_back(it);
       _graphInfo.add(VPackValue(it->name()));
