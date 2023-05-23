@@ -62,9 +62,50 @@ function recreateEmptyDatabase () {
   }
 }
 
-function createOrderedKeysArray (arrayName, collName) {
-  arrayName = db[collName].toArray().map(doc => doc._key);
-  arrayName.sort();
+function createOrderedKeysArray (collName) {
+  let keys = db[collName].toArray().map(doc => doc._key);
+  keys.sort();
+  return keys;
+}
+
+function testGeneralWithSmartGraphNamed (amountExamples) {
+  const graphBefore = db._graphs.document(graphName);
+  delete graphBefore._rev;
+  const query = `FOR v,e, p IN 0..10 ANY 'customer/customer-abc' GRAPH '${graphName}'  RETURN {key: e._key}`;
+  explainer.debugDump(fileName, query, {}, {examples: amountExamples});
+  explainer.inspectDump(fileName, outFileName);
+  recreateEmptyDatabase();
+  internal.load(outFileName);
+  assertNull(db[vn1].any());
+  assertNull(db[vn2].any());
+  assertNull(db[relationName].any());
+  const graphAfter = db._graphs.document(graphName);
+  delete graphAfter._rev;
+  assertEqual(graphBefore, graphAfter, "graph recreated after debugDump is not the same as the original");
+}
+
+function testGeneralWithGraphNamed (amountExamples) {
+  const graphBefore = db._graphs.document(graphName);
+  delete graphBefore._rev;
+  const query = `FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' GRAPH '${graphName}'  RETURN {vertex: p}`;
+  explainer.debugDump(fileName, query, {}, {examples: amountExamples});
+  explainer.inspectDump(fileName, outFileName);
+  recreateEmptyDatabase();
+  internal.load(outFileName);
+  const graphAfter = db._graphs.document(graphName);
+  delete graphAfter._rev;
+  assertEqual(graphBefore, graphAfter, "graph recreated after debugDump is not the same as the original");
+}
+
+function testGeneralWithGraphNoNameInQuery (amountExamples) {
+  const collNameBefore = db[cn1].name();
+  const query = `WITH ${vn1} FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' ${cn1} RETURN {from: e._from, to: e._to}`;
+  explainer.debugDump(fileName, query, {}, {examples: amountExamples});
+  explainer.inspectDump(fileName, outFileName);
+  recreateEmptyDatabase();
+  internal.load(outFileName);
+  const collNameAfter = db[cn1].name();
+  assertEqual(collNameBefore, collNameAfter);
 }
 
 function debugDumpSmartGraphTestsuite() {
@@ -114,50 +155,25 @@ function debugDumpSmartGraphTestsuite() {
     },
 
     testDebugDumpWithSmartGraphNamed: function () {
-      const graphBefore = db._graphs.document(graphName);
-      delete graphBefore._rev;
-      const query = `FOR v,e, p IN 0..10 ANY 'customer/customer-abc' GRAPH '${graphName}'  RETURN {key: e._key}`;
-      explainer.debugDump(fileName, query, {}, {});
-      explainer.inspectDump(fileName, outFileName);
-      recreateEmptyDatabase();
-      internal.load(outFileName);
-      assertNull(db[vn1].any());
-      assertNull(db[vn2].any());
-      assertNull(db[relationName].any());
-      const graphAfter = db._graphs.document(graphName);
-      delete graphAfter._rev;
-      assertEqual(graphBefore, graphAfter, "graph recreated after debugDump is not the same as the original");
+      testGeneralWithGraphNamed(0);
     },
 
     testDebugDumpWithSmartGraphNamedWithExamples: function () {
-      let vn1Before = [];
-      createOrderedKeysArray(vn1Before, vn1);
-      let vn2Before = [];
-      createOrderedKeysArray(vn2Before, vn2);
-      let relationBefore = [];
-      createOrderedKeysArray(relationBefore, relationName);
-      const graphBefore = db._graphs.document(graphName);
-      delete graphBefore._rev;
-      const query = `FOR v,e, p IN 0..10 ANY 'customer/customer-abc' GRAPH '${graphName}'  RETURN {key: e._key}`;
-      explainer.debugDump(fileName, query, {}, {examples: 10});
-      explainer.inspectDump(fileName, outFileName);
-      recreateEmptyDatabase();
-      internal.load(outFileName);
-      const graphAfter = db._graphs.document(graphName);
-      delete graphAfter._rev;
-      assertEqual(graphBefore, graphAfter, "graph recreated after debugDump is not the same as the original");
-      let vn1After = [];
-      createOrderedKeysArray(vn1After, vn1);
-      let vn2After = [];
-      createOrderedKeysArray(vn2After, vn2);
-      let relationAfter = [];
-      createOrderedKeysArray(relationAfter, relationName);
+      let vn1Before = createOrderedKeysArray(vn1);
+      let vn2Before = createOrderedKeysArray(vn2);
+      let relationBefore = createOrderedKeysArray(relationName);
+      testGeneralWithGraphNamed(10);
+      let vn1After = createOrderedKeysArray(vn1);
+      let vn2After = createOrderedKeysArray(vn2);
+      let relationAfter = createOrderedKeysArray(relationName);
       assertEqual(vn1Before, vn1After);
       assertEqual(vn2Before, vn2After);
       assertEqual(relationBefore, relationAfter);
     },
   };
 }
+
+
 
 function debugDumpGraphTestsuite() {
   return {
@@ -197,16 +213,7 @@ function debugDumpGraphTestsuite() {
     },
 
     testDebugDumpWithGraphNamed: function () {
-      const graphBefore = db._graphs.document(graphName);
-      delete graphBefore._rev;
-      const query = `FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' GRAPH '${graphName}'  RETURN {vertex: p}`;
-      explainer.debugDump(fileName, query, {}, {});
-      explainer.inspectDump(fileName, outFileName);
-      recreateEmptyDatabase();
-      internal.load(outFileName);
-      const graphAfter = db._graphs.document(graphName);
-      delete graphAfter._rev;
-      assertEqual(graphBefore, graphAfter, "graph recreated after debugDump is not the same as the original");
+      testGeneralWithGraphNamed(0);
       assertNull(db[vn1].any());
       assertNull(db[vn2].any());
       assertNull(db[cn1].any());
@@ -214,32 +221,15 @@ function debugDumpGraphTestsuite() {
     },
 
     testDebugDumpWithGraphNamedWithExamples: function () {
-      let vn1Before = [];
-      createOrderedKeysArray(vn1Before, vn1);
-      let vn2Before = [];
-      createOrderedKeysArray(vn2Before, vn2);
-      let cn1Before = [];
-      createOrderedKeysArray(cn1Before, cn1);
-      let cn2Before = [];
-      createOrderedKeysArray(cn2Before, cn2);
-      const graphBefore = db._graphs.document(graphName);
-      delete graphBefore._rev;
-      const query = `FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' GRAPH '${graphName}'  RETURN {vertex: p}`;
-      explainer.debugDump(fileName, query, {}, {examples: 10});
-      explainer.inspectDump(fileName, outFileName);
-      recreateEmptyDatabase();
-      internal.load(outFileName);
-      const graphAfter = db._graphs.document(graphName);
-      delete graphAfter._rev;
-      assertEqual(graphBefore, graphAfter, "graph recreated after debugDump is not the same as the original");
-      let vn1After = [];
-      createOrderedKeysArray(vn1After, vn1);
-      let vn2After = [];
-      createOrderedKeysArray(vn2After, vn2);
-      let cn1After = [];
-      createOrderedKeysArray(cn1After, cn1);
-      let cn2After = [];
-      createOrderedKeysArray(cn2After, cn2);
+      let vn1Before = createOrderedKeysArray(vn1);
+      let vn2Before = createOrderedKeysArray(vn2);
+      let cn1Before = createOrderedKeysArray(cn1);
+      let cn2Before = createOrderedKeysArray(cn2);
+      testGeneralWithGraphNamed(10);
+      let vn1After = createOrderedKeysArray(vn1);
+      let vn2After = createOrderedKeysArray(vn2);
+      let cn1After = createOrderedKeysArray(cn1);
+      let cn2After = createOrderedKeysArray(cn2);
       assertEqual(vn1Before, vn1After);
       assertEqual(vn2Before, vn2After);
       assertEqual(cn1Before, cn1After);
@@ -247,29 +237,14 @@ function debugDumpGraphTestsuite() {
     },
 
     testDebugDumpWithGraphNoNameInQuery: function () {
-      const collNameBefore = db[cn1].name();
-      const query = `WITH ${vn1} FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' ${cn1} RETURN {from: e._from, to: e._to}`;
-      explainer.debugDump(fileName, query, {}, {});
-      explainer.inspectDump(fileName, outFileName);
-      recreateEmptyDatabase();
-      internal.load(outFileName);
-      const collNameAfter = db[cn1].name();
-      assertEqual(collNameBefore, collNameAfter);
+      testGeneralWithGraphNoNameInQuery(0);
+      assertNull(db[cn1].any());
     },
 
     testDebugDumpWithGraphNoNameInQueryWithExamples: function () {
-      let cn1Before = [];
-      createOrderedKeysArray(cn1Before, cn1);
-      const collNameBefore = db[cn1].name();
-      const query = `WITH ${vn1} FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' ${cn1} RETURN {from: e._from, to: e._to}`;
-      explainer.debugDump(fileName, query, {}, {examples: 10});
-      explainer.inspectDump(fileName, outFileName);
-      recreateEmptyDatabase();
-      internal.load(outFileName);
-      const collNameAfter = db[cn1].name();
-      assertEqual(collNameBefore, collNameAfter);
-      let cn1After = [];
-      createOrderedKeysArray(cn1After, cn1);
+      let cn1Before = createOrderedKeysArray(cn1);
+      testGeneralWithGraphNoNameInQuery(10);
+      let cn1After = createOrderedKeysArray(cn1);
       assertEqual(cn1Before, cn1After);
     },
   };
