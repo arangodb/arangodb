@@ -3,6 +3,281 @@ devel
 * Fixed issue #17673: Adds timezone conversion as an optional parameter in
   all relevant date functions.
 
+* Added metric "rocksdb_total_sst_files" to count the number of sst files,
+  aggregated over all levels of the LSM tree.
+
+* Added startup option `--query.max-collections-per-query` to adjust the
+  limit for the maximum number of collections/shards per query. The option
+  defaults to `2048`, which is equivalent to the previous hardcoded value.
+
+* Invalid keys are now reported as individual error for batch operations
+  and no longer abort the whole batch.
+
+* Updated bundled version of libunwind to 1.7-rc2.
+
+* In batched query results, when executing requests for 
+  `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user 
+  would only be able to fetch the next batch using the next batch id in 
+  <batchId> if the query option `allowRetry` was set to true, but maintained
+  the restriction that the user can only retrieve the latest batch if the
+  query option `allowRetry` is set to true.
+
+* Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
+
+* Improved error reporting for system calls on Windows and fixed a
+  Windows-specific issue of the IOHeartbeatThread.
+
+* FE-263: Improve forceAtlas layout in the Graph Viewer.
+
+* BTS-1331: Reduced the amount of required network calls when using
+  traversals combined with FILTER and/or PRUNE statements in a
+  GeneralGraph in combination with a clustered environment.
+
+* FE-256: Minor Graph Viewer improvements:
+  - re-order right click menu
+  - Make Right click menu and toolbar work in full screen
+  - Remove editable attributes in edit and delete (nodes and edges) modals
+  - Add "tree"-mode to editor in edit (nodes and edges) modals
+
+* FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
+  for GeoJSON.
+
+* Fixed issue #18942: arangorestore ignores the HTTP status code.
+
+* FE-267: fix custom analyzer & features not showing up in inverted index
+  view, and support for basic fields definition.
+
+* FE-265: Fix user permissions radio button shadow.
+
+* FE-268: remove 'switch to new graph' when no defined graph is present.
+
+* FE-258: allow specifying optimizeTopK during arangosearch view creation.
+
+* FE-257: allow additional properties in inverted index creation.
+
+* UI Fix - allow empty keys in document key validation.
+
+* BTS-1181: fix a data race on the collection list in TransactionState
+  This race could happen in the cluster when a collection is sharded by a
+  different attribute than `_key` and a document lookup by _key is performed.
+  This requires the lookup to be sent to each shard, since we cannot deduce
+  the shard based on the `_key` value. If this lookup is done as part of a
+  stream transaction, and if the collection has not been declared in the
+  transaction's `read` list, then the collection is added lazily. Previously
+  this would result in a race if multiple shards are located on the same
+  server.
+  For transactions with `allowDirtyReads` set to true read collections are
+  always added lazily, which made this race more likely.
+
+* BTS-1340: Fixed telemetrics API making shell hang when logging into it and
+  leaving it too quickly so the telemetrics API doesn't have time to send the
+  data to the warehouse. The thread could be hanging on SSL_connect() until
+  the connection timeout if the socket is blocking, so the socket was made
+  non-blocking for the thread to leave SSL_connect() after the connection is
+  interrupted when leaving the shell. Also created startup parameter
+  `--client.failure-points` for arangosh which enables failure points whose
+  names are provided in an array of strings, just like in
+  `--server.failure-point` for arangod.
+
+* BTS-1350: Fixed imprecision in index info in telemetrics object for cluster.
+  When the collection also had an arangosearch view, telemetrics showed
+  imprecise index values because the view was being considered as an index
+  of type arangosearch, and its object wouldn't contain expected fields that
+  would be found in other indexes' objects.
+
+* Add metric `arangodb_file_descriptors_current` to expose the number of
+  file descriptors currently opened by the arangod process. This metric is
+  available on Linux only.
+  As counting the number of open file descriptors can be expensive, this
+  metric is only updated in a configurable interval. The new startup option
+  `--server.descriptors-count-interval` can be used to specify the update
+  interval (in milliseconds). It defaults to 60,000 (i.e. once per minute).
+  The startup option can be set to a value of `0` to disable the counting
+  of open file descriptors for performance reasons.
+  If counting is turned off, the metric will report a value of `0`.
+
+* ES-1566: fix an issue when trying to restrict traversals to non-existing
+  collections with the `edgeCollections` traversal option.
+  
+  If a non-existing collection is specified in the `edgeCollections` or
+  `vertexCollections` options of an AQL traversal, the query will now fail 
+  with a `collection or view not found` error. Also, if wrong collection
+  types are used (e.g. a document collection or a view for `edgeCollections`),
+  then an error is raised about an invalid collection type being used.
+
+  This is a behavior change compared to previous versions, which ignored
+  specifying non-existing vertex collections and had undefined behavior when
+  specifying non-existing edge collections or using a vertex collection
+  instead of an edge collection.
+
+* Updated arangosync to v2.17.0.
+
+* FE-255: add validation for collection, document, graph, view and database
+  names.
+
+* Added metric `rocksdb_cache_peak_allocated` to store the peak memory
+  allocation value for in-memory caches.
+
+* Remove leftover in-memory cache tables after dropping collections that
+  had their `cacheEnabled` flag set to `true`. Previously some memory 
+  could remain allocated in the in-memory cache even after such collections
+  were dropped.
+
+* Remove function `getFishbowlStorage()` from bundled JavaScript module 
+  `@arangodb/foxx/manager`. This function was publicly exposed in previous
+  versions, and returned a handle to the `_fishbowl` system collection.
+  Applications should not have depended on it, because that collection was
+  only used to temporarily store the list of Foxx applications stored in
+  a central Github repository maintained by ArangoDB.
+
+* BTS-486: fishbowl collection creation interferes with hot backup.
+
+  Do not dynamically create the `_fishbowl` system collections anymore to
+  store the list of Foxx applications stored from a central Github repository 
+  maintained by ArangoDB. Instead, store the list in memory.
+  This has the advantage that the `_fishbowl` system collection does not need
+  to be created on the fly, which could have interfered with backups running
+  at the very same time. 
+  Additionally the previous `_fishbowl` collection was database-specific, so
+  one instance of the collection could be created per database in a deployment.
+  Now, the list of applications stored in memory is shared between all 
+  databases in a deployment.
+
+* Add metric `arangodb_file_descriptors_limit` to expose the system limit for
+  the number of open files for the arangod process.
+
+* Fix an issue that causes followers to be dropped due to premature transaction
+  abortions as a result of query failures.
+  When we have a query that results in a failure this will cause the leaders to
+  abort the transaction on the followers. However, if the followers have
+  transactions that are shared with leaders of other shards, and if one of those
+  leaders has not yet seen the error, then it will happily continue to replicate
+  to that follower. But if the follower has already aborted the transaction,
+  then it will reject the replication request. Previously this would cause the
+  follower to be dropped, but now this should be handled gracefully.
+
+* BTS-1343: Removed an error message of endpoint being invalid when attempting 
+  fetch telemetrics from the servers by having the invalid endpoint as a 
+  starting point. As telemetrics is transparent to the end user, the error 
+  message interferes with the user experience if keeps appearing. 
+
+* Updated arangosync to v2.17.0-preview-1.
+
+* FE-243: add support for geo_s2 analyzer.
+
+* FE-22: Don't display collection content by default when clicking on a
+  collection in the Web UI.
+
+* FE-251: bugfix - prohibit multiple expansions of the same node in the graph
+  viewer.
+
+* FE-162: Fix display of geodesic lines.
+
+* Fixed a race in the Maintenance, impacting leaders that have just been
+  resigned. During a MoveShard job, the old leader could sabotage the whole
+  operation by removing the newly added follower from Current. The solution is
+  to update Current using local collection information, instead of the
+  potentially outdated velocypack slice.
+
+* FE-254: bugfix - filter out empty storedValues for persistent index.
+
+* FE-253: bugfix - validate JSON, show errors & disable save when error.
+
+* FE-252: bugfix - canvas image screenshot breaks graph colors.
+
+* Fix incompatibility between 3.9 and 3.10 w.r.t. to serialization of AQL array
+  filters (i.e. `[* FILTER ...]`). The array filters were serialized in a
+  different way in 3.9 than they are serialized in 3.10. 3.10 also expected the
+  new serialization format when unserializing a plan.
+  The fix now enables support for both formats.
+
+* Fixed issue #18769: Input validation allows invalid UTF-8 code points.
+
+  This change enforces the validation of UTF-8 surrogate pairs in incoming JSON
+  data. Previously, the following loopholes existed when validating UTF-8
+  surrogate pair data:
+  - a high surrogate, followed by something other than a low surrogate (or the
+    end of the string)
+  - a low surrogate, not preceeded by a high surrogate
+  These loopholes are now closed, which means that any JSON inputs with invalid
+  surrogate pair data will be rejected by the server.
+
+  Note that the extended validation for surrogates can be turned off along with
+  other UTF-8 string validation by setting the server startup option
+  `--server.validate-utf8-strings` to `false`. This is not recommended though,
+  but should only be used in situations when a database is known to contain
+  invalid data and must continue supporting it.
+
+* Updated rclone to v1.62.2 custom build with go1.20.3.
+
+* Changed return code of APIs that create databases from previously 1229
+  (`ERROR_ARANGO_DATABASE_NAME_INVALID`) to 1208 (`ERROR_ARANGO_ILLEGAL_NAME`)
+  in case an invalid database name is used.
+  This is a downwards-incompatible change, but unifies the behavior for
+  database creation with the behavior of collection and view creation,
+  which also return error 1208 in case the specified name is invalid.
+
+* FE-236: bugfix - remove unused files, use new tooltip in views UI.
+
+* FE-238: Added auto-login support in core web UI - disabled logout when
+  auto-login is enabled, set sessionStorage "jwtUser" value when login is
+  skipped.
+
+* BTS-1315: Fixed spurious occurring failures during Foxx Application installation
+  in case a Load Balancer is being used in front of the coordinators.
+
+* FE-233: bugfix - fix query spotlight search not working.
+
+* FE-349: bugfix - filter out empty primarySort field in UI.
+
+* FE-247: bugfix - missing storedValues field in persistent index form.
+
+* FE 242, FE-244: bugfix - add support for cache fields, fix inverted index name
+  undefined.
+
+* FE-241: bugfix - filter predefined queries based on search term.
+
+* Adjusted timeouts for cluster internal commit and abort requests to withstand
+  network delays better. This fixes some problems when the networking
+  infrastructure delays requests.
+
+* Added sent time accounting and some metrics to fuerte and the NetworkFeature.
+  This can detect delays in the network infrastructure.
+
+* Added startup option `--server.ensure-whitespace-metrics-format`, which
+  controls whether additional whitespace is used in the metrics output 
+  format. If set to `true`, then whitespace is emitted between the exported
+  metric value and the preceeding token (metric name or labels).
+  Using whitespace may be required to make the metrics output compatible with
+  some processing tools, although Prometheus itself doesn't need it.
+
+  The option defaults to `true`, which adds additional whitespace by default.
+
+* Automatically repair revision trees after several failed shard
+  synchronization attempts. This can help to get permanently out-of-sync
+  shards back into sync.
+
+  The functionality can be turned off by setting the startup option
+  `--replication.auto-repair-revision-trees` to `false` on DB-Servers.
+
+* SEARCH-461: Added option "--arangosearch.columns-cache-only-leader". Used only
+  on EE DBServers. Default is false.
+  If set to true only leader shards have ArangoSearch caches enabled - this will
+  reduce RAM usage. In case of failover happens - in background caches are
+  populated for the new leader. Some queries that run at during a failover may
+  still run without caches.
+
+* FE-216: bugfix - make view patches async in the UI.
+
+* FE-212: bugfix: links not getting removed when copying from another view in
+  UI.
+
+* SEARCH-466 Fix leaking into individual link definition inherited properties
+  from view.
+
+* FE-222: Fix - Allow additional properties in arangosearch, allow no fields in
+  inverted index when 'includeAllFIelds' is true.
+
 * APM-183: Support UTF-8 on UI (collection/view/index names).
 
 * FE-199: Remove URL handling of fields on view screen.

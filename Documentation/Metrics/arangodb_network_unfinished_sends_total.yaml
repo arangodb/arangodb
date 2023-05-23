@@ -1,0 +1,19 @@
+name: arangodb_network_unfinished_sends_total
+introducedIn: "3.10.6"
+help: |
+  Number of internal requests for which sending has not finished.
+unit: number
+type: counter
+category: Network
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of internal requests for which sending has not finished. This is
+  usually due to some connection problem or to a timeout in case the
+  receiving side did not receive the data fast enough.
+troubleshoot: |
+  If this counter moves, it is a sign that either there are delays in the
+  networking infrastructure or on the receiving side.

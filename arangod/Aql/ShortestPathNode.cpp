@@ -405,10 +405,6 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     return false;
   };
 
-#ifdef USE_ENTERPRISE
-  waitForSatelliteIfRequired(&engine);
-#endif
-
   arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
       0, std::numeric_limits<size_t>::max(),
       arangodb::graph::PathType::Type::ShortestPath};

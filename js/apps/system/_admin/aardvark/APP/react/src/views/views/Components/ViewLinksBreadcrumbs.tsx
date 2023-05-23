@@ -2,9 +2,6 @@ import { Box, HStack, Text } from "@chakra-ui/react";
 import React from "react";
 import { useLinksContext } from "../LinksContext";
 
-const sanitize = (value: string) => {
-  return value.slice(0, value.lastIndexOf("]"));
-};
 /**
  * input: links[a].fields[b].fields[c]
  * output: [['links', 'a'], ['fields', 'b], ['fields', 'c']]
@@ -17,15 +14,27 @@ const getFragments = (currentPath?: string) => {
   // const pathParts = currentPath.split(".");
   // the above line doesn't work because field can contain dot
   // so we need to split by .fields[ and .links[
-  const linkPathValue = currentPath
+  const linksFieldPath = currentPath
+    // split on links
     .split("links[")[1]
-    .slice(0, currentPath.lastIndexOf("]"));
-  const fieldPathParts = currentPath.split(".fields[").slice(1);
+    // split on fields to extract just the links[] part
+    .split(".fields[")[0];
+  const linkPathValue = linksFieldPath.slice(
+    0,
+    linksFieldPath.lastIndexOf("]")
+  );
+  const fieldPathParts = currentPath
+    .split(".fields[")
+    // remove the first item because it'll be the links[] part
+    .slice(1);
   // we need to append both the parts
   const linkPathParts = ["links", linkPathValue];
   let fragments = [linkPathParts]; // should be [['links', 'a'], ['fields', 'b], ['fields', 'c']]
   fieldPathParts.forEach(pathPart => {
-    fragments = [...fragments, ["fields", sanitize(pathPart)]];
+    fragments = [
+      ...fragments,
+      ["fields", pathPart.slice(0, pathPart.lastIndexOf("]"))]
+    ];
   });
   return fragments;
 };

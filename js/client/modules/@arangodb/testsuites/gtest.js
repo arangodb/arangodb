@@ -33,6 +33,7 @@ const optionsDocumentation = [
   '   - `skipGeo`: obsolete and only here for downwards-compatibility'
 ];
 
+const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
@@ -41,7 +42,6 @@ const testPaths = {
   'gtest': [],
   'catch': [],
 };
-
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 
@@ -112,14 +112,21 @@ function getGTestResults(fileName, defaultResults) {
   return results;
 }
 
-function gtestRunner (testname, options) {
+function gtestRunner (testfilename, name, opts, testoptions) {
+  let options = _.clone(opts);
+  if (testoptions !== undefined) {
+    if (!options.commandSwitches) {
+      options.commandSwitches = [];
+    }
+    options.commandSwitches = options.commandSwitches.concat(testoptions);
+  }
   let results = { failed: 0 };
-  let rootDir = fs.join(fs.getTempPath(), 'gtest', testname);
+  let rootDir = fs.join(fs.getTempPath(), name);
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
 
-  const run = locateGTest(testname);
+  const binary = locateGTest(testfilename);
   if (!options.skipGTest) {
-    if (run !== '') {
+    if (binary !== '') {
       let tmpMgr = new tmpDirMmgr('gtest', options);
       let argv = [
         '--gtest_output=json:' + testResultJsonFile,
@@ -139,19 +146,19 @@ function gtestRunner (testname, options) {
       // all non gtest args have to come last
       argv.push('--log.line-number');
       argv.push(options.extremeVerbosity ? "true" : "false");
-      results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, options.coreCheck);
-      results.basics.failed = results.basics.status ? 0 : 1;
-      if (!results.basics.status) {
+      results[name] = pu.executeAndWait(binary, argv, options, 'all-gtest', rootDir, options.coreCheck);
+      results[name].failed = results[name].status ? 0 : 1;
+      if (!results[name].status) {
         results.failed += 1;
       }
       results = getGTestResults(testResultJsonFile, results);
       tmpMgr.destructor((results.failed === 0) && options.cleanup);
     } else {
       results.failed += 1;
-      results.basics = {
+      results[name] = {
         failed: 1,
         status: false,
-        message: `binary ${testname} not found when trying to run suite "all-gtest"`
+        message: `binary ${testfilename} not found when trying to run suite "all-gtest"`
       };
     }
   }
@@ -159,17 +166,23 @@ function gtestRunner (testname, options) {
 }
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  opts['skipGtest'] = false;
+
   Object.assign(allTestPaths, testPaths);
 
   const tests = [ 'arangodbtests_zkd' ];
 
   for(const test of tests) {
-    testFns[test] = x => gtestRunner(test, x);
+    testFns[test] = x => gtestRunner(test, test, x);
   }
-  testFns['gtest'] = x => gtestRunner('arangodbtests', x);
+  testFns['gtest'] = x => gtestRunner('arangodbtests', 'arangodbtests', x);
 
-  opts['skipGtest'] = false;
-  testFns['gtest_replication2'] = x => gtestRunner('arangodbtests_replication2', x);
+  testFns['gtest_replication2'] = x => gtestRunner('arangodbtests_replication2', 'gtest-replication2', x);
+  
+  let iresearch_filter = ['gtest_filter=IResearch*'];
+  testFns['gtest_iresearch'] = x => gtestRunner('arangodbtests', 'gtest-iresearch', x, iresearch_filter);
+  let no_iresearch_filter = ['gtest_filter=-IResearch*:LongRunning*'];
+  testFns['gtest_arangodb'] = x => gtestRunner('arangodbtests', 'gtest-arangodb', x, no_iresearch_filter);
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

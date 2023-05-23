@@ -878,9 +878,6 @@ ErrorCode TRI_RenameFile(char const* old, char const* filename,
     if (systemErrorStr != nullptr) {
       *systemErrorStr = windowsErrorBuf;
     }
-    LOG_TOPIC("1f6ac", TRACE, arangodb::Logger::FIXME)
-        << "cannot rename file from '" << old << "' to '" << filename
-        << "': " << errno << " - " << windowsErrorBuf;
     res = -1;
   } else {
     res = 0;
@@ -896,9 +893,6 @@ ErrorCode TRI_RenameFile(char const* old, char const* filename,
     if (systemErrorStr != nullptr) {
       *systemErrorStr = TRI_LAST_ERROR_STR;
     }
-    LOG_TOPIC("d8b28", TRACE, arangodb::Logger::FIXME)
-        << "cannot rename file from '" << old << "' to '" << filename
-        << "': " << TRI_LAST_ERROR_STR;
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 

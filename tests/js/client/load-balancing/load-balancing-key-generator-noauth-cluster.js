@@ -39,7 +39,7 @@ const ERRORS = require("@arangodb").errors;
 
 function KeyGeneratorSuite() {
   'use strict';
-  const cn = 'UnitTestsCollection';
+  let cn = 'UnitTestsCollection';
   let coordinators = [];
 
   function sendRequest(method, db, endpoint, body, headers, usePrimary) {
@@ -99,7 +99,7 @@ function KeyGeneratorSuite() {
 
     for (let i = 0; i < 10000; ++i) {
       let result = sendRequest('POST_RAW', cn, url, /*payload*/ {}, {}, i % 2 === 0);
-      assertEqual(result.code, 202);
+      assertEqual(result.code, 202, JSON.stringify(result));
       let key = result.parsedBody._key;
       assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key, lastKey});
       lastKey = key;
@@ -112,6 +112,11 @@ function KeyGeneratorSuite() {
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
+    },
+
+    setUp: function (name) {
+      // make database name for each test unique
+      cn = 'UnitTestsCollection_' + name;
     },
 
     testPadded: function() {

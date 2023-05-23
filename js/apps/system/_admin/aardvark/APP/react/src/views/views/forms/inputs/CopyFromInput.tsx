@@ -32,12 +32,12 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
   const initalViewOptions = filterAndSortViews(views);
   const [viewOptions, setViewOptions] = useState(initalViewOptions);
   const [selectedView, setSelectedView] = useState(viewOptions[0]);
-  const { encoded: encodedSelectedView } = encodeHelper(selectedView.value);
+  const { encoded: encodedSelectedViewName } = encodeHelper(selectedView.value);
   const { data } = useSWRImmutable(
-    `/view/${encodedSelectedView}/properties`,
+    `/view/${encodedSelectedViewName}/properties`,
     path => getApiRouteForCurrentDB().get(path)
   );
-  const fullView = data ? data.body : selectedView;
+  const viewToCopy = data ? data.body : selectedView;
   const { setCurrentField } = useLinksContext();
 
   useEffect(() => {
@@ -45,25 +45,35 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
   }, [views]);
 
   const copyFormState = () => {
-    validateAndFix(fullView);
-    Object.assign(
-      fullView,
-      pick(
-        formState,
-        "id",
-        "name",
-        "primarySort",
-        "primarySortCompression",
-        "storedValues",
-        "writebufferIdle",
-        "writebufferActive",
-        "writebufferSizeMax"
-      )
+    validateAndFix(viewToCopy);
+    const nullifiedLinks = {} as any;
+    if (formState.links) {
+      Object.keys(formState.links).forEach(linkKey => {
+        if (!viewToCopy.links[linkKey]) {
+          // mark all the links to be deleted as null
+          nullifiedLinks[linkKey] = null;
+        }
+      });
+    }
+    let newViewToCopy = {
+      ...viewToCopy,
+      links: { ...viewToCopy.links, ...nullifiedLinks }
+    };
+    const immutableProperties = pick(
+      formState,
+      "id",
+      "name",
+      "primarySort",
+      "primarySortCompression",
+      "storedValues",
+      "writebufferIdle",
+      "writebufferActive",
+      "writebufferSizeMax"
     );
-
+    newViewToCopy = { ...newViewToCopy, ...immutableProperties };
     dispatch({
       type: "setFormState",
-      formState: fullView as FormState
+      formState: newViewToCopy as FormState
     });
     dispatch({ type: "regenRenderKey" });
     setCurrentField(undefined);

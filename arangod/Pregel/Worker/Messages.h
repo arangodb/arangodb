@@ -43,12 +43,7 @@ struct CreateWorker {
   VPackBuilder userParameters;
   std::string coordinatorId;
   size_t parallelism;
-  std::unordered_map<CollectionID, std::vector<ShardID>>
-      edgeCollectionRestrictions;
-  std::map<CollectionID, std::vector<ShardID>> vertexShards;
-  std::map<CollectionID, std::vector<ShardID>> edgeShards;
-  std::unordered_map<CollectionID, std::string> collectionPlanIds;
-  std::vector<ShardID> allShards;
+  GraphSerdeConfig graphSerdeConfig;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, CreateWorker& x) {
@@ -58,11 +53,7 @@ auto inspect(Inspector& f, CreateWorker& x) {
       f.field("userParameters", x.userParameters),
       f.field("coordinatorId", x.coordinatorId),
       f.field("parallelism", x.parallelism),
-      f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
-      f.field("vertexShards", x.vertexShards),
-      f.field("edgeShards", x.edgeShards),
-      f.field("collectionPlanIds", x.collectionPlanIds),
-      f.field("allShards", x.allShards));
+      f.field("graphSerdeConfig", x.graphSerdeConfig));
 }
 
 struct WorkerStart {};
@@ -116,7 +107,7 @@ auto inspect(Inspector& f, Store& x) {
 }
 
 struct ProduceResults {
-  bool withID;
+  bool withID = true;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ProduceResults& x) {

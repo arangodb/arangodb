@@ -11,6 +11,7 @@ import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 import { useIsAdminUser } from "../../../utils/usePermissions";
 import { ViewPropertiesType } from "./useFetchViewProperties";
+import { useSyncSearchViewUpdates } from "./useSyncSearchViewUpdates";
 import {
   getUpdatedIndexes,
   useUpdateAliasViewProperties
@@ -63,6 +64,8 @@ export const SearchAliasProvider = ({
     !!window.sessionStorage.getItem(`${initialView.name}-changed`)
   );
   const { onSave } = useUpdateAliasViewProperties({ setChanged });
+  useSyncSearchViewUpdates({ viewName: view.name });
+
   const onChange = (view: ViewPropertiesType) => {
     setView(view);
   };

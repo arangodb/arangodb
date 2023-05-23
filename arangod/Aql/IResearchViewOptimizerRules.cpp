@@ -263,11 +263,6 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
 }
 
 bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
-  if (!plan->contains(ExecutionNode::LIMIT) ||
-      !plan->contains(ExecutionNode::SORT)) {
-    return false;
-  }
-
   auto current = static_cast<ExecutionNode*>(&viewNode);
   auto viewVariable = viewNode.outVariable();
   auto const& scorers = viewNode.scorers();

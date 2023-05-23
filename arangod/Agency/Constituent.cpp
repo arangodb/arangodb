@@ -255,9 +255,8 @@ void Constituent::lead(term_t term) {
 }
 
 /// Become candidate
-void Constituent::candidate() {
-  std::lock_guard guard{_termVoteLock};
-
+void Constituent::candidateNoLock() {
+  // Only call this when you have the _termVoteLock
   if (_leaderID != NO_LEADER) {
     _leaderID = NO_LEADER;
     LOG_TOPIC("43711", DEBUG, Logger::AGENCY)
@@ -696,26 +695,28 @@ void Constituent::run() {
           _cv.cv.wait_for(guardv, std::chrono::microseconds{randWait});
         }
 
-        bool isTimeout = false;
+        {
+          std::lock_guard guard{_termVoteLock};
+          bool isTimeout = false;
 
-        if (_lastHeartbeatSeen <= 0.0) {
-          LOG_TOPIC("456d2", TRACE, Logger::AGENCY) << "no heartbeat seen";
-          isTimeout = true;
-        } else {
-          double diff = TRI_microtime() - _lastHeartbeatSeen;
-          LOG_TOPIC("f475b", TRACE, Logger::AGENCY)
-              << "last heartbeat: " << diff << "sec ago";
+          if (_lastHeartbeatSeen <= 0.0) {
+            LOG_TOPIC("456d2", TRACE, Logger::AGENCY) << "no heartbeat seen";
+            isTimeout = true;
+          } else {
+            double diff = TRI_microtime() - _lastHeartbeatSeen;
+            LOG_TOPIC("f475b", TRACE, Logger::AGENCY)
+                << "last heartbeat: " << diff << "sec ago";
 
-          isTimeout = (static_cast<int64_t>(M * diff) > randTimeout);
+            isTimeout = (static_cast<int64_t>(M * diff) > randTimeout);
+          }
+
+          if (isTimeout) {
+            LOG_TOPIC("18b71", TRACE, Logger::AGENCY)
+                << "timeout, calling an election";
+            candidateNoLock();
+            _agent->endPrepareLeadership();
+          }
         }
-
-        if (isTimeout) {
-          LOG_TOPIC("18b71", TRACE, Logger::AGENCY)
-              << "timeout, calling an election";
-          candidate();
-          _agent->endPrepareLeadership();
-        }
-
       } else if (role == CANDIDATE) {
         callElection();  // Run for office
         // Now we take this point of time as the next base point for a

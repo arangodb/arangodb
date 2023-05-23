@@ -62,7 +62,6 @@ const putRenameView = async ({
   const result = await route.put(`/view/${encodedInitialViewName}/rename`, {
     name: normalizedViewName
   });
-
   if (result.body.error) {
     window.arangoHelper.arangoError(
       "Failure",
@@ -108,11 +107,6 @@ async function patchViewProperties({
         replace: true
       });
     }
-
-    window.arangoHelper.arangoNotification(
-      "Success",
-      `Updated View: ${view.name}`
-    );
   }
 }
 
@@ -142,7 +136,23 @@ async function patchProperties({
     });
     properties = [...addedChanges, ...deletedIndexes];
   }
-  return await route.patch(path, { indexes: properties });
+  const result = await route.patch(
+    path,
+    { indexes: properties },
+    {},
+    {
+      "x-arango-async": "store"
+    }
+  );
+  const asyncId = result.headers["x-arango-async-id"];
+  window.arangoHelper.addAardvarkJob({
+    id: asyncId,
+    type: "view",
+    desc: "Patching View",
+    collection: view.name
+  });
+
+  return result;
 }
 
 export const getUpdatedIndexes = ({
