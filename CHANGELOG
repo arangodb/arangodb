@@ -1,6 +1,11 @@
 devel
 -----
 
+* ECONNABORTED is treated as a ConnectionClosed error in fuerte.
+
+* Database drop operation no longer fails if we cannot remove
+  the corresponding permissions from the _users collection.
+
 * Added metric "rocksdb_total_sst_files" to count the number of sst files,
   aggregated over all levels of the LSM tree.
 
