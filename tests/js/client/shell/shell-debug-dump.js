@@ -1,11 +1,7 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertEqual, assertNull, assertNotNull, fail */
+/* global assertEqual, assertTrue, assertNull, assertNotNull, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief recovery tests for views
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2023 triagens GmbH, Cologne, Germany
@@ -53,12 +49,9 @@ const fileName = fs.getTempFile() + "-debugDump";
 const outFileName = fs.getTempFile() + "-inspectDump";
 
 
-function recreateEmptyDatabase() {
+function recreateEmptyDatabase () {
   db._useDatabase("_system");
-  try {
-    db._dropDatabase(dbName);
-  } catch (err) {
-  }
+  db._dropDatabase(dbName);
   db._createDatabase(dbName);
   db._useDatabase(dbName);
   try {
@@ -69,16 +62,17 @@ function recreateEmptyDatabase() {
   }
 }
 
+function createOrderedKeysArray (arrayName, collName) {
+  arrayName = db[collName].toArray().map(doc => doc._key);
+  arrayName.sort();
+}
+
 function debugDumpSmartGraphTestsuite() {
   return {
     setUp: function () {
       db._createDatabase(dbName);
       db._useDatabase(dbName);
       assertNotNull(smartGraph);
-      try {
-        smartGraph._drop(graphName, true);
-      } catch (err) {
-      }
       const rel = smartGraph._relation(relationName, [vn1], [vn2]);
       const namedGraph = smartGraph._create(graphName, [rel], [], {
         smartGraphAttribute: "value",
@@ -97,7 +91,10 @@ function debugDumpSmartGraphTestsuite() {
           value: "value" + i
         });
       }
-      smartGraph._graph(graphName);
+      const newGraph = smartGraph._graph(graphName);
+      assertTrue(newGraph.hasOwnProperty(vn1));
+      assertTrue(newGraph.hasOwnProperty(vn2));
+      assertTrue(newGraph.hasOwnProperty(relationName));
       namedGraph._addVertexCollection(vn3);
       db._createEdgeCollection(cn1);
       db[cn1].save(`${vn1}/pet-dog`, `${vn2}/customer-abc`, {type: "belongs-to"});
@@ -119,7 +116,7 @@ function debugDumpSmartGraphTestsuite() {
     testDebugDumpWithSmartGraphNamed: function () {
       const graphBefore = db._graphs.document(graphName);
       delete graphBefore._rev;
-      const query = "FOR v,e, p IN 0..10 ANY 'customer/customer-abc' GRAPH 'myGraph'  RETURN {key: e._key}";
+      const query = `FOR v,e, p IN 0..10 ANY 'customer/customer-abc' GRAPH '${graphName}'  RETURN {key: e._key}`;
       explainer.debugDump(fileName, query, {}, {});
       explainer.inspectDump(fileName, outFileName);
       recreateEmptyDatabase();
@@ -134,23 +131,14 @@ function debugDumpSmartGraphTestsuite() {
 
     testDebugDumpWithSmartGraphNamedWithExamples: function () {
       let vn1Before = [];
-      db[vn1].all().toArray().forEach(vertex => {
-        vn1Before.push(vertex._key);
-      });
-      vn1Before.sort();
+      createOrderedKeysArray(vn1Before, vn1);
       let vn2Before = [];
-      db[vn2].all().toArray().forEach(vertex => {
-        vn2Before.push(vertex._key);
-      });
-      vn2Before.sort();
+      createOrderedKeysArray(vn2Before, vn2);
       let relationBefore = [];
-      db[relationName].all().toArray().forEach(edge => {
-        relationBefore.push(edge._key);
-      });
-      relationBefore.sort();
+      createOrderedKeysArray(relationBefore, relationName);
       const graphBefore = db._graphs.document(graphName);
       delete graphBefore._rev;
-      const query = "FOR v,e, p IN 0..10 ANY 'customer/customer-abc' GRAPH 'myGraph'  RETURN {key: e._key}";
+      const query = `FOR v,e, p IN 0..10 ANY 'customer/customer-abc' GRAPH '${graphName}'  RETURN {key: e._key}`;
       explainer.debugDump(fileName, query, {}, {examples: 10});
       explainer.inspectDump(fileName, outFileName);
       recreateEmptyDatabase();
@@ -159,20 +147,11 @@ function debugDumpSmartGraphTestsuite() {
       delete graphAfter._rev;
       assertEqual(graphBefore, graphAfter, "graph recreated after debugDump is not the same as the original");
       let vn1After = [];
-      db[vn1].all().toArray().forEach(vertex => {
-        vn1After.push(vertex._key);
-      });
-      vn1After.sort();
+      createOrderedKeysArray(vn1After, vn1);
       let vn2After = [];
-      db[vn2].all().toArray().forEach(vertex => {
-        vn2After.push(vertex._key);
-      });
-      vn2After.sort();
+      createOrderedKeysArray(vn2After, vn2);
       let relationAfter = [];
-      db[relationName].all().toArray().forEach(edge => {
-        relationAfter.push(edge._key);
-      });
-      relationAfter.sort();
+      createOrderedKeysArray(relationAfter, relationName);
       assertEqual(vn1Before, vn1After);
       assertEqual(vn2Before, vn2After);
       assertEqual(relationBefore, relationAfter);
@@ -220,10 +199,8 @@ function debugDumpGraphTestsuite() {
     testDebugDumpWithGraphNamed: function () {
       const graphBefore = db._graphs.document(graphName);
       delete graphBefore._rev;
-      const fileName = fs.getTempFile() + "-debugDump";
-      const query = `FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' GRAPH 'myGraph'  RETURN {vertex: p}`;
+      const query = `FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' GRAPH '${graphName}'  RETURN {vertex: p}`;
       explainer.debugDump(fileName, query, {}, {});
-      const outFileName = fs.getTempFile() + "-inspectDump";
       explainer.inspectDump(fileName, outFileName);
       recreateEmptyDatabase();
       internal.load(outFileName);
@@ -238,31 +215,17 @@ function debugDumpGraphTestsuite() {
 
     testDebugDumpWithGraphNamedWithExamples: function () {
       let vn1Before = [];
-      db[vn1].all().toArray().forEach(vertex => {
-        vn1Before.push(vertex._key);
-      });
-      vn1Before.sort();
+      createOrderedKeysArray(vn1Before, vn1);
       let vn2Before = [];
-      db[vn2].all().toArray().forEach(vertex => {
-        vn2Before.push(vertex._key);
-      });
-      vn2Before.sort();
+      createOrderedKeysArray(vn2Before, vn2);
       let cn1Before = [];
-      db[cn1].all().toArray().forEach(vertex => {
-        cn1Before.push(vertex._key);
-      });
-      cn1Before.sort();
+      createOrderedKeysArray(cn1Before, cn1);
       let cn2Before = [];
-      db[cn2].all().toArray().forEach(vertex => {
-        cn2Before.push(vertex._key);
-      });
-      cn2Before.sort();
+      createOrderedKeysArray(cn2Before, cn2);
       const graphBefore = db._graphs.document(graphName);
       delete graphBefore._rev;
-      const fileName = fs.getTempFile() + "-debugDump";
-      const query = `FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' GRAPH 'myGraph'  RETURN {vertex: p}`;
+      const query = `FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' GRAPH '${graphName}'  RETURN {vertex: p}`;
       explainer.debugDump(fileName, query, {}, {examples: 10});
-      const outFileName = fs.getTempFile() + "-inspectDump";
       explainer.inspectDump(fileName, outFileName);
       recreateEmptyDatabase();
       internal.load(outFileName);
@@ -270,25 +233,13 @@ function debugDumpGraphTestsuite() {
       delete graphAfter._rev;
       assertEqual(graphBefore, graphAfter, "graph recreated after debugDump is not the same as the original");
       let vn1After = [];
-      db[vn1].all().toArray().forEach(vertex => {
-        vn1After.push(vertex._key);
-      });
-      vn1After.sort();
+      createOrderedKeysArray(vn1After, vn1);
       let vn2After = [];
-      db[vn2].all().toArray().forEach(vertex => {
-        vn2After.push(vertex._key);
-      });
-      vn2After.sort();
+      createOrderedKeysArray(vn2After, vn2);
       let cn1After = [];
-      db[cn1].all().toArray().forEach(vertex => {
-        cn1After.push(vertex._key);
-      });
-      cn1After.sort();
+      createOrderedKeysArray(cn1After, cn1);
       let cn2After = [];
-      db[cn2].all().toArray().forEach(vertex => {
-        cn2After.push(vertex._key);
-      });
-      cn2After.sort();
+      createOrderedKeysArray(cn2After, cn2);
       assertEqual(vn1Before, vn1After);
       assertEqual(vn2Before, vn2After);
       assertEqual(cn1Before, cn1After);
@@ -297,10 +248,8 @@ function debugDumpGraphTestsuite() {
 
     testDebugDumpWithGraphNoNameInQuery: function () {
       const collNameBefore = db[cn1].name();
-      const fileName = fs.getTempFile() + "-debugDump";
-      const query = `FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' ${cn1} RETURN {from: e._from, to: e._to}`;
+      const query = `WITH ${vn1} FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' ${cn1} RETURN {from: e._from, to: e._to}`;
       explainer.debugDump(fileName, query, {}, {});
-      const outFileName = fs.getTempFile() + "-inspectDump";
       explainer.inspectDump(fileName, outFileName);
       recreateEmptyDatabase();
       internal.load(outFileName);
@@ -310,25 +259,17 @@ function debugDumpGraphTestsuite() {
 
     testDebugDumpWithGraphNoNameInQueryWithExamples: function () {
       let cn1Before = [];
-      db[cn1].all().toArray().forEach(vertex => {
-        cn1Before.push(vertex._key);
-      });
-      cn1Before.sort();
+      createOrderedKeysArray(cn1Before, cn1);
       const collNameBefore = db[cn1].name();
-      const fileName = fs.getTempFile() + "-debugDump";
-      const query = `FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' ${cn1} RETURN {from: e._from, to: e._to}`;
+      const query = `WITH ${vn1} FOR v,e, p IN 0..10 ANY  '${vn1}/value-1' ${cn1} RETURN {from: e._from, to: e._to}`;
       explainer.debugDump(fileName, query, {}, {examples: 10});
-      const outFileName = fs.getTempFile() + "-inspectDump";
       explainer.inspectDump(fileName, outFileName);
       recreateEmptyDatabase();
       internal.load(outFileName);
       const collNameAfter = db[cn1].name();
       assertEqual(collNameBefore, collNameAfter);
       let cn1After = [];
-      db[cn1].all().toArray().forEach(vertex => {
-        cn1After.push(vertex._key);
-      });
-      cn1After.sort();
+      createOrderedKeysArray(cn1After, cn1);
       assertEqual(cn1Before, cn1After);
     },
   };
@@ -341,5 +282,3 @@ if (isEnterprise) {
 jsunity.run(debugDumpGraphTestsuite);
 
 return jsunity.done();
-
-
