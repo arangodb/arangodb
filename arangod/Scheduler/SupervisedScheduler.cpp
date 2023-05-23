@@ -195,7 +195,7 @@ DECLARE_COUNTER(arangodb_scheduler_threads_started_total,
 DECLARE_COUNTER(arangodb_scheduler_threads_stopped_total,
                 "Number of scheduler threads stopped");
 DECLARE_GAUGE(arangodb_scheduler_queue_memory, std::int64_t,
-              "Number of bytes allocated for tasks in the scheduler queue.");
+              "Number of bytes allocated for tasks in the scheduler queue");
 
 SupervisedScheduler::SupervisedScheduler(
     ArangodServer& server, uint64_t minThreads, uint64_t maxThreads,

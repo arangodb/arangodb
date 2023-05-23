@@ -1,4 +1,4 @@
-name: arangodb_scheduler_jobs_done_total
+name: arangodb_scheduler_queue_memory
 introducedIn: "3.12.0"
 help: |
   Number of bytes allocated for tasks in the scheduler queue.
