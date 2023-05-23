@@ -10,7 +10,7 @@ import {
   Stack,
   Tag
 } from "@chakra-ui/react";
-import { useField, useFormikContext } from "formik";
+import { useField } from "formik";
 import React from "react";
 import { FormField } from "../../../components/form/FormField";
 import { IndexInfoTooltip } from "../../collections/indices/addIndex/IndexInfoTooltip";
@@ -19,8 +19,6 @@ import { LinksEditor } from "./linksEditor/LinksEditor";
 import { useArangoSearchFieldsData } from "./useArangoSearchFieldsData";
 
 export const ArangoSearchViewForm = () => {
-  const { values } = useFormikContext();
-  console.log("values", values);
   return (
     <Accordion
       borderColor={"gray.200"}

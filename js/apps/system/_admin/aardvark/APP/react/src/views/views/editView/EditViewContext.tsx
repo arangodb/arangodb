@@ -43,6 +43,7 @@ export const EditViewProvider = ({
     setChanged: (changed: boolean) => void;
   }) => Promise<void>;
 }) => {
+  console.log({ initialView });
   const [changed, setChanged] = useState(
     !!window.sessionStorage.getItem(`${initialView.name}-changed`)
   );
@@ -100,6 +101,11 @@ const EditViewProviderInner = ({
   const { onDelete } = useDeleteView({ name: initialView.name });
 
   useEffect(() => {
+    console.log({
+      values,
+      initialView,
+      eq: JSON.stringify(values) === JSON.stringify(initialView)
+    });
     if (JSON.stringify(values) !== JSON.stringify(initialView)) {
       setChanged(true);
       window.sessionStorage.setItem(`${initialView.name}-changed`, "true");
