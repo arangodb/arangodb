@@ -215,6 +215,7 @@ class SupervisedScheduler final : public Scheduler {
   metrics::Gauge<uint64_t>& _metricsNumAwakeThreads;
   metrics::Gauge<uint64_t>& _metricsNumWorkingThreads;
   metrics::Gauge<uint64_t>& _metricsNumWorkerThreads;
+  metrics::Gauge<uint64_t>& _metricsStackMemoryWorkerThreads;
   metrics::Gauge<int64_t>& _schedulerQueueMemory;
 
   metrics::Counter& _metricsHandlerTasksCreated;

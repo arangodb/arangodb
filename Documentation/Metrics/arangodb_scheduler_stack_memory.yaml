@@ -1,0 +1,15 @@
+name: arangodb_scheduler_stack_memory
+introducedIn: "3.12.0"
+help: |
+  Approximate stack memory usage of worker threads.
+unit: byte
+type: gauge
+category: Scheduler
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Approximate stack memory usage of worker threads.
