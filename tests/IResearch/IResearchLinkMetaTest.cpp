@@ -1402,11 +1402,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
 
     auto slice = builder.slice();
 
-#ifdef USE_ENTERPRISE
-    EXPECT_EQ(11, slice.length());
-#else
     EXPECT_EQ(10, slice.length());
-#endif
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -1463,11 +1459,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
 
     auto slice = builder.slice();
 
-#ifdef USE_ENTERPRISE
-    EXPECT_EQ(12, slice.length());
-#else
     EXPECT_EQ(11, slice.length());
-#endif
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));

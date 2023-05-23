@@ -96,11 +96,7 @@
 
 namespace {
 
-#ifdef USE_ENTERPRISE
-static constexpr size_t kEnterpriseFields = 1;
-#else
 static constexpr size_t kEnterpriseFields = 0;
-#endif
 
 struct DocIdScorer final : public irs::ScorerBase<void> {
   static constexpr std::string_view type_name() noexcept {

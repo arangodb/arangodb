@@ -105,11 +105,7 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
   ~IResearchViewCoordinatorTest() = default;
 };
 
-#ifdef USE_ENTERPRISE
-static constexpr size_t kEnterpriseFields = 1;
-#else
 static constexpr size_t kEnterpriseFields = 0;
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
