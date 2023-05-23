@@ -139,7 +139,7 @@ class IResearchLinkTest
 // -----------------------------------------------------------------------------
 
 static_assert("1_3simd" == getFormat(arangodb::iresearch::LinkVersion::MIN));
-static_assert("1_5simd" == getFormat(arangodb::iresearch::LinkVersion::MAX));
+static_assert("1_4simd" == getFormat(arangodb::iresearch::LinkVersion::MAX));
 
 TEST_F(IResearchLinkTest, test_defaults) {
   // no view specified

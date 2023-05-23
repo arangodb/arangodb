@@ -24,9 +24,6 @@
 #pragma once
 
 #include "IResearch/IResearchDataStoreMeta.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
-#endif
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewStoredValues.h"
 #include "IResearch/IResearchViewSort.h"
@@ -258,9 +255,6 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   IResearchInvertedIndexSort _sort;
   // stored values associated with the link
   IResearchViewStoredValues _storedValues;
-#ifdef USE_ENTERPRISE
-  IResearchOptimizeTopK _optimizeTopK;
-#endif
   mutable std::string _collectionName;
   Consistency _consistency{Consistency::kEventual};
   bool _hasNested{false};
