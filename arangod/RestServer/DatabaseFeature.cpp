@@ -248,12 +248,12 @@ void DatabaseFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("database", "database options");
 
-  auto static const allowedReplicationVersions = []{
-      auto result = std::unordered_set<std::string>();
-      for (auto const& version : replication::allowedVersions) {
-        result.emplace(replication::versionToString(version));
-      }
-      return result;
+  auto static const allowedReplicationVersions = [] {
+    auto result = std::unordered_set<std::string>();
+    for (auto const& version : replication::allowedVersions) {
+      result.emplace(replication::versionToString(version));
+    }
+    return result;
   }();
 
   options
@@ -261,8 +261,7 @@ void DatabaseFeature::collectOptions(
                   "default replication version, can be overwritten "
                   "when creating a new database, possible values: 1, 2",
                   new DiscreteValuesParameter<StringParameter>(
-                      &_defaultReplicationVersion,
-                      allowedReplicationVersions),
+                      &_defaultReplicationVersion, allowedReplicationVersions),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
       .setIntroducedIn(31200);

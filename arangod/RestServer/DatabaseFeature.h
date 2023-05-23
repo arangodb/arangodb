@@ -201,7 +201,8 @@ class DatabaseFeature final : public ArangodFeature {
   bool _performIOHeartbeat{true};
   std::atomic_bool _started{false};
 
-  std::string _defaultReplicationVersion{replication::versionToString(replication::Version::ONE)};
+  std::string _defaultReplicationVersion{
+      replication::versionToString(replication::Version::ONE)};
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
