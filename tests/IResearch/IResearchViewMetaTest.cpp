@@ -765,7 +765,11 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
 
   auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+  EXPECT_EQ(13, slice.length());
+#else
   EXPECT_EQ(12, slice.length());
+#endif
   tmpSlice = slice.get("collections");
   EXPECT_TRUE((true == tmpSlice.isArray() && 3 == tmpSlice.length()));
 
