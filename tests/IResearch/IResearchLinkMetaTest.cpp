@@ -602,13 +602,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
     builder.close();
 
     auto slice = builder.slice();
-#ifdef USE_ENTERPRISE
-    EXPECT_EQ(11, slice.length());
-    tmpSlice = slice.get("optimizeTopK");
-    EXPECT_TRUE(tmpSlice.isEmptyArray());
-#else
     EXPECT_EQ(10, slice.length());
-#endif
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 0 == tmpSlice.length());
     tmpSlice = slice.get("includeAllFields");
@@ -674,13 +668,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
     auto slice = builder.slice();
 
-#ifdef USE_ENTERPRISE
-    EXPECT_EQ(11, slice.length());
-    tmpSlice = slice.get("optimizeTopK");
-    EXPECT_TRUE(tmpSlice.isEmptyArray());
-#else
     EXPECT_EQ(10, slice.length());
-#endif
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 0 == tmpSlice.length());
     tmpSlice = slice.get("includeAllFields");
@@ -916,13 +904,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
     auto slice = builder.slice();
 
-#ifdef USE_ENTERPRISE
-    EXPECT_EQ(11, slice.length());
-    tmpSlice = slice.get("optimizeTopK");
-    EXPECT_TRUE(tmpSlice.isEmptyArray());
-#else
     EXPECT_EQ(10, slice.length());
-#endif
 
     tmpSlice = slice.get("version");
     EXPECT_TRUE(tmpSlice.isNumber());
@@ -1198,13 +1180,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
     auto slice = builder.slice();
 
-#ifdef USE_ENTERPRISE
-    EXPECT_EQ(11, slice.length());
-    tmpSlice = slice.get("optimizeTopK");
-    EXPECT_TRUE(tmpSlice.isEmptyArray());
-#else
     EXPECT_EQ(10, slice.length());
-#endif
 
     tmpSlice = slice.get("version");
     EXPECT_TRUE(tmpSlice.isNumber());
@@ -1518,12 +1494,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
 
     auto slice = builder.slice();
 
-#ifdef USE_ENTERPRISE
-    EXPECT_EQ(11, slice.length());
-    EXPECT_TRUE(slice.hasKey("optimizeTopK"));
-#else
     EXPECT_EQ(10, slice.length());
-#endif
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -4143,8 +4114,8 @@ class mock_term_reader : public irs::term_reader {
     return nullptr;
   }
 
-  irs::doc_iterator::ptr wanderator(const irs::seek_cookie&, irs::IndexFeatures,
-                                    const irs::WanderatorOptions&,
+  irs::doc_iterator::ptr wanderator(irs::seek_cookie const&, irs::IndexFeatures,
+                                    irs::WanderatorOptions const&,
                                     irs::WandContext) const override {
     return nullptr;
   }
@@ -4157,7 +4128,7 @@ class mock_term_reader : public irs::term_reader {
     return nullptr;
   }
 
-  size_t bit_union(const cookie_provider& provider,
+  size_t bit_union(cookie_provider const& provider,
                    size_t* bitset) const override {
     return 0;
   }
@@ -4169,12 +4140,12 @@ class mock_term_reader : public irs::term_reader {
     return 0;
   }
 
-  irs::doc_iterator::ptr postings(const irs::seek_cookie& cookie,
+  irs::doc_iterator::ptr postings(irs::seek_cookie const& cookie,
                                   irs::IndexFeatures features) const override {
     return nullptr;
   }
 
-  const irs::field_meta& meta() const override { return *field_meta_; }
+  irs::field_meta const& meta() const override { return *field_meta_; }
 
   size_t size() const override { return 0; }
   uint64_t docs_count() const override { return 0; }
@@ -4578,42 +4549,4 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
   ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
 }
 
-TEST_F(IResearchLinkMetaTest, test_withSmartSort) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
-
-  auto json = VPackParser::fromJson(
-      R"({
-      "analyzerDefinitions": [ 
-         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
-      ],
-      "cache":false,
-      "includeAllFields":true,
-      "fields" : {},
-      "optimizeTopK": ["bm25(@doc) desc"]
-    })");
-  arangodb::iresearch::IResearchLinkMeta meta;
-  std::string errorField;
-  EXPECT_TRUE(
-      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
-  EXPECT_FALSE(meta._optimizeTopK.empty());
-  EXPECT_EQ(1, meta._optimizeTopK.buckets().size());
-  {
-    VPackBuilder builder;
-    builder.openObject();
-    EXPECT_TRUE(meta.json(server.server(), builder, true));
-    builder.close();
-    auto sort = builder.slice().get("optimizeTopK");
-    EXPECT_TRUE(sort.isArray());
-    EXPECT_EQ(1, sort.length());
-  }
-  {
-    VPackBuilder builder;
-    builder.openObject();
-    EXPECT_TRUE(meta.json(server.server(), builder, false));
-    builder.close();
-    auto sort = builder.slice().get("optimizeTopK");
-    EXPECT_TRUE(sort.isNone());
-  }
-}
 #endif

@@ -29,9 +29,6 @@
 #include "IResearchDataStoreMeta.h"
 #include "IResearchViewSort.h"
 #include "IResearchViewStoredValues.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
-#endif
 
 #include <velocypack/Builder.h>
 
@@ -66,7 +63,6 @@ struct IResearchViewMeta : public IResearchDataStoreMeta {
 #ifdef USE_ENTERPRISE
     bool _sortCache;
     bool _pkCache;
-    bool _optimizeTopK;
 #endif
     bool _primarySortCompression;
     explicit Mask(bool mask = false) noexcept;
@@ -74,9 +70,6 @@ struct IResearchViewMeta : public IResearchDataStoreMeta {
 
   IResearchViewSort _primarySort;
   IResearchViewStoredValues _storedValues;
-#ifdef USE_ENTERPRISE
-  IResearchOptimizeTopK _optimizeTopK;
-#endif
   irs::type_info::type_id _primarySortCompression{};
 #ifdef USE_ENTERPRISE
   bool _sortCache{false};
