@@ -2898,6 +2898,12 @@ ClusterMethods::persistCollectionsInAgency(
     std::vector<std::string> dbServers = ci.getCurrentDBServers();
     infos.reserve(collections.size());
 
+    TRI_IF_FAILURE("allShardsOnSameServer") {
+      while (dbServers.size() > 1) {
+        dbServers.pop_back();
+      }
+    }
+
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackData;
     vpackData.reserve(collections.size());
 

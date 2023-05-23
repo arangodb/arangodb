@@ -1,31 +1,78 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
-* Increase too short timeouts for requests made from coordinators to
-  DB-servers when retrieving the number of documents or the index selectivity
-  estimates for SmartGraph edge collection parts. These parts were treated
-  like system collections because of their naming convention, and the
-  requests were run with a timeout of only 5s.
+* Increase too short timeouts for requests made from coordinators to DB-servers
+  when retrieving the number of documents or the index selectivity estimates for
+  SmartGraph edge collection parts. These parts were treated like system
+  collections because of their naming convention, and the requests were run with
+  a timeout of only 5s.
 
-* FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
-  for GeoJSON.
+* BTS-1315: Fixed spurious occurring failures during Foxx Application
+  installation in case a Load Balancer is being used in front of the
+  coordinators.
+
+* Added startup option `--query.max-collections-per-query` to adjust the limit
+  for the maximum number of collections/shards per query. The option defaults to
+  `2048`, which is equivalent to the previous hardcoded value.
+
+* Added metric "rocksdb_total_sst_files" to count the number of sst files,
+  aggregated over all levels of the LSM tree.
+
+* Add metric `arangodb_file_descriptors_current` to expose the number of file
+  descriptors currently opened by the arangod process. This metric is available
+  on Linux only.
+  As counting the number of open file descriptors can be expensive, this metric
+  is only updated in a configurable interval. The new startup option
+  `--server.descriptors-count-interval` can be used to specify the update
+  interval (in milliseconds). It defaults to 60,000 (i.e. once per minute).
+  The startup option can be set to a value of `0` to disable the counting of
+  open file descriptors for performance reasons.
+  If counting is turned off, the metric will report a value of `0`.
+
+* Add metric `arangodb_file_descriptors_limit` to expose the system limit for
+  the number of open files for the arangod process.
+
+* Added metric `rocksdb_cache_peak_allocated` to store the peak memory
+  allocation value for in-memory caches.
+
+* Remove leftover in-memory cache tables after dropping collections that had
+  their `cacheEnabled` flag set to `true`. Previously some memory could remain
+  allocated in the in-memory cache even after such collections were dropped.
+
+* Reduce memory usage for incremental sync replication.
+
+  The incremental sync protocol that was used for collections created with 3.8
+  or higher had memory usage issues in case the follower already had some local
+  data and its dataset was much larger than the leader's. For example, this can
+  happen if a follower gets disconnected, then a lot of document removals happen
+  on the leader and afterwards the follower tries to get back into sync.
+
+  In this case, the follower buffered the ids of documents it had to remove
+  locally in a vector, which could grow arbitrarily large. The removal of the
+  documents contained in this vector would only happen at the end, potentially
+  even without performing intermediate commits.
+
+  The change in this PR is to trigger the document removal earlier, once the
+  vector has reached some size threshold, and also to use intermediate commits
+  during the removals.
+
+* FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates' for
+  GeoJSON.
 
 * Improved error reporting for system calls on Windows and fixed a
   Windows-specific issue of the IOHeartbeatThread.
 
-* BTS-1181: fix a data race on the collection list in TransactionState
+* BTS-1181: fix a data race on the collection list in TransactionState.
   This race could happen in the cluster when a collection is sharded by a
   different attribute than `_key` and a document lookup by _key is performed.
-  This requires the lookup to be sent to each shard, since we cannot deduce
-  the shard based on the `_key` value. If this lookup is done as part of a
-  stream transaction, and if the collection has not been declared in the
-  transaction's `read` list, then the collection is added lazily. Previously
-  this would result in a race if multiple shards are located on the same
+  This requires the lookup to be sent to each shard, since we cannot deduce the
+  shard based on the `_key` value. If this lookup is done as part of a stream
+  transaction, and if the collection has not been declared in the transaction's
+  `read` list, then the collection is added lazily. Previously this would result
+  in a race if multiple shards are located on the same
   server.
   For transactions with `allowDirtyReads` set to true read collections are
   always added lazily, which made this race more likely.
-
-* Updated arangosync to v2.17.9.
 
 * Fixed issue #18942: arangorestore ignores the HTTP status code.
 
