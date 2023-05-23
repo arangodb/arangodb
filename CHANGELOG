@@ -1,6 +1,11 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* ECONNABORTED is treated as a ConnectionClosed error in fuerte.
+
+* Database drop operation no longer fails if we cannot remove
+  the corresponding permissions from the _users collection.
+
 * BTS-1315: Fixed spurious occurring failures during Foxx Application
   installation in case a Load Balancer is being used in front of the
   coordinators.
