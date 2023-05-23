@@ -158,10 +158,50 @@ std::pair<uint64_t, uint64_t> getMinMaxDepths(AstNode const* steps) {
   return {minDepth, maxDepth};
 }
 
-void parseGraphCollectionRestriction(std::vector<std::string>& collections,
+void parseGraphCollectionRestriction(Ast* ast, std::string_view typeName,
+                                     std::vector<std::string>& collections,
                                      AstNode const* src) {
+  auto addCollection = [&collections, typeName, ast](std::string&& name) {
+    // throws if data source cannot be found
+    ast->createNodeDataSource(ast->query().resolver(), name,
+                              AccessMode::Type::READ, true, true);
+
+    // now get the collection and inspect its type
+    Collection const* collection = ast->query().collections().get(name);
+    TRI_ASSERT(collection != nullptr);
+    if (collection == nullptr) {
+      // should not happen
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          absl::StrCat("data source for '", typeName,
+                       "' option must be a collection"));
+    }
+
+    TRI_col_type_e type = TRI_COL_TYPE_DOCUMENT;
+    try {
+      // throws when called on a view
+      type = collection->type();
+    } catch (...) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+          absl::StrCat("data source type for '", typeName,
+                       "' option must be a collection"));
+    }
+
+    if (typeName == "edgeCollections") {
+      if (type != TRI_COL_TYPE_EDGE) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+            absl::StrCat("data source type for '", typeName,
+                         "' option must be an edge collection"));
+      }
+    }
+
+    collections.emplace_back(std::move(name));
+  };
+
   if (src->isStringValue()) {
-    collections.emplace_back(src->getString());
+    addCollection(src->getString());
   } else if (src->type == NODE_TYPE_ARRAY) {
     size_t const n = src->numMembers();
     collections.reserve(n);
@@ -170,10 +210,11 @@ void parseGraphCollectionRestriction(std::vector<std::string>& collections,
       if (!c->isStringValue()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "collection restrictions option must be either a string or an "
-            "array of collection names");
+            absl::StrCat(
+                "collection restrictions option for '", typeName,
+                "' must be either a string or an array of collection names"));
       }
-      collections.emplace_back(c->getStringValue(), c->getStringLength());
+      addCollection(c->getString());
     }
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -259,9 +300,11 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
                 "or 'none' instead");
           }
         } else if (name == "edgeCollections") {
-          parseGraphCollectionRestriction(options->edgeCollections, value);
+          parseGraphCollectionRestriction(ast, name, options->edgeCollections,
+                                          value);
         } else if (name == "vertexCollections") {
-          parseGraphCollectionRestriction(options->vertexCollections, value);
+          parseGraphCollectionRestriction(ast, name, options->vertexCollections,
+                                          value);
         } else if (name == StaticStrings::GraphQueryOrder && !hasBFS) {
           // dfs is the default
           if (value->stringEqualsCaseInsensitive(
@@ -1379,7 +1422,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   TRI_ASSERT(direction->isIntValue());
 
   // First create the node
-  auto travNode = new TraversalNode(
+  auto travNode = createNode<TraversalNode>(
       this, nextId(), &(_ast->query().vocbase()), direction, start, graph,
       std::move(pruneExpression), std::move(options));
 
@@ -1406,9 +1449,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     }
   }
 
-  ExecutionNode* en = registerNode(travNode);
-  TRI_ASSERT(en != nullptr);
-  return addDependency(previous, en);
+  return addDependency(previous, travNode);
 }
 
 AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode*& previous,
@@ -2266,7 +2307,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
-  ExecutionNode* en = registerNode(new SingletonNode(this, nextId()));
+  ExecutionNode* en = createNode<SingletonNode>(this, nextId());
 
   size_t const n = node->numMembers();
 
@@ -2373,6 +2414,8 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
     }
+
+    TRI_ASSERT(en != nullptr);
 
     if (en == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "type not handled");
