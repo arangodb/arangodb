@@ -1,19 +1,36 @@
-v3.9.11 (XXXX-XX-XX)
+v3.9.11 (XXXX-X-XX)
 --------------------
 
 * ES-1566: fix an issue when trying to restrict traversals to non-existing
   collections with the `edgeCollections` traversal option.
   
   If a non-existing collection is specified in the `edgeCollections` or
-  `vertexCollections` options of an AQL traversal, the query will now fail 
-  with a `collection or view not found` error. Also, if wrong collection
-  types are used (e.g. a document collection or a view for `edgeCollections`), 
-  then an error is raised about an invalid collection type being used.
+  `vertexCollections` options of an AQL traversal, the query will now fail with
+  a `collection or view not found` error. Also, if wrong collection types are
+  used (e.g. a document collection or a view for `edgeCollections`), then an
+  error is raised about an invalid collection type being used.
 
-  This is a behavior change compared to previous versions, which ignored 
-  specifying non-existing vertex collections and had undefined behavior when 
-  specifying non-existing edge collections or using a vertex collection
-  instead of an edge collection.
+  This is a behavior change compared to previous versions, which ignored
+  specifying non-existing vertex collections and had undefined behavior when
+  specifying non-existing edge collections or using a vertex collection instead
+  of an edge collection.
+
+* Reduce memory usage for incremental sync replication.
+
+  The incremental sync protocol that was used for collections created with 3.8
+  or higher had memory usage issues in case the follower already had some local
+  data and its dataset was much larger than the leader's. For example, this can
+  happen if a follower gets disconnected, then a lot of document removals happen
+  on the leader and afterwards the follower tries to get back into sync.
+
+  In this case, the follower buffered the ids of documents it had to remove
+  locally in a vector, which could grow arbitrarily large. The removal of the
+  documents contained in this vector would only happen at the end, potentially
+  even without performing intermediate commits.
+
+  The change in this PR is to trigger the document removal earlier, once the
+  vector has reached some size threshold, and also to use intermediate commits
+  during the removals.
 
 * BTS-1181: fix a data race on the collection list in TransactionState.
   This race could happen in the cluster when a collection is sharded by a
@@ -33,8 +50,8 @@ v3.9.11 (XXXX-XX-XX)
 
 * Updated arangosync to v2.17.0.
 
-* Got rid of hard timeout of 10s in sub-arangoshs of tests to make chaos
-  tests more stable.
+* Got rid of hard timeout of 10s in sub-arangoshs of tests to make chaos tests
+  more stable.
 
 * BTS-1148: Fix a race when aborting/finishing a currently active query on a
   DB-Server. This race could cause the query to remain in the server's query
@@ -55,8 +72,8 @@ v3.9.11 (XXXX-XX-XX)
 
 * Fixed a race in the Maintenance, impacting leaders that have just been
   resigned. During a MoveShard job, the old leader could sabotage the whole
-  operation by removing the newly added follower from Current. The solution
-  is to update Current using local collection information, instead of the
+  operation by removing the newly added follower from Current. The solution is
+  to update Current using local collection information, instead of the
   potentially outdated velocypack slice.
 
 * Automatically repair revision trees after several failed shard synchronization
@@ -65,9 +82,9 @@ v3.9.11 (XXXX-XX-XX)
   The functionality can be turned off by setting the startup option
   `--replication.auto-repair-revision-trees` to `false` on DB-Servers.
 
-* Adjusted timeouts for cluster internal commit and abort requests to
-  withstand network delays better. This fixes some problems when the
-  networking infrastructure delays requests.
+* Adjusted timeouts for cluster internal commit and abort requests to withstand
+  network delays better. This fixes some problems when the networking
+  infrastructure delays requests.
 
 * Added sent time accounting and some metrics to fuerte and the NetworkFeature.
   This can detect delays in the network infrastructure.
@@ -76,8 +93,6 @@ v3.9.11 (XXXX-XX-XX)
   phase of replication in case the follower already had documents.
   This fixes issues with large replication transactions consuming a lot of
   memory on followers during getting shards in sync.
-
-* Updated arangosync to v2.16.1.
 
 * SEARCH-300: Fixed a rare case when arangosearch data folders might be left on
   disk after database is dropped.

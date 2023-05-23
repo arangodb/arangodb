@@ -68,11 +68,9 @@ const compare = function (leaderFunc, followerInitFunc, followerCompareFunc, inc
   db._flushCache();
   leaderFunc(state);
 
-  db._flushCache();
   connectToFollower();
 
   followerInitFunc(state);
-  internal.wait(0.1, false);
 
   replication.syncCollection(system ? sysCn : cn, {
     endpoint: leaderEndpoint,
@@ -385,6 +383,139 @@ function BaseTestConfig () {
           assertEqual(state.indexDef.type, i.type);
         },
         true, true
+      );
+    },
+    
+    testLeaderHasMoreData : function () {
+      connectToLeader();
+
+      let st = {};
+      compare(
+        function (state) {
+          let c = db._create(cn);
+          let docs = [];
+
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value1: i, value2: 'test' + i });
+          }
+
+          while (c.count() < 100 * 1000) {
+            c.insert(docs);
+          }
+
+          // sync the initial part to follower
+          connectToFollower();
+          replication.syncCollection(cn, {
+            endpoint: leaderEndpoint,
+            verbose: true,
+            includeSystem: true,
+            incremental: true,
+            username: "root",
+            password: "",
+          });
+
+          // insert more docs on leader
+          connectToLeader();
+          while (db[cn].count() <= 240000) {
+            db._query(`FOR i IN 1..10000 INSERT { value1: i, value2: CONCAT('test', i) } IN ${cn}`);
+          }
+          st = _.clone({ count: collectionCount(cn), checksum: collectionChecksum(cn) });
+        },
+        function (state) {
+        },
+        function (state) {
+          assertEqual(st.count, collectionCount(cn));
+          assertEqual(st.checksum, collectionChecksum(cn));
+        },
+        true
+      );
+    },
+    
+    testFollowerHasMoreData : function () {
+      connectToLeader();
+
+      let st = {};
+      compare(
+        function (state) {
+          let c = db._create(cn);
+          let docs = [];
+
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value1: i, value2: 'test' + i });
+          }
+
+          while (c.count() < 500 * 1000) {
+            c.insert(docs);
+          }
+
+          // sync the initial part to follower
+          connectToFollower();
+          replication.syncCollection(cn, {
+            endpoint: leaderEndpoint,
+            verbose: true,
+            includeSystem: true,
+            incremental: true,
+            username: "root",
+            password: "",
+          });
+
+          // remove docs from leader
+          connectToLeader();
+          while (db[cn].count() > 50000) {
+            db._query(`FOR doc IN ${cn} LIMIT 20000 REMOVE doc IN ${cn}`);
+          }
+          st = _.clone({ count: collectionCount(cn), checksum: collectionChecksum(cn) });
+        },
+        function (state) {
+        },
+        function (state) {
+          assertEqual(st.count, collectionCount(cn));
+          assertEqual(st.checksum, collectionChecksum(cn));
+        },
+        true
+      );
+    },
+    
+    testLeaderHasDifferentData : function () {
+      connectToLeader();
+
+      let st = {};
+      compare(
+        function (state) {
+          let c = db._create(cn);
+      
+          // create empty collection on follower already
+          connectToFollower();
+          replication.syncCollection(cn, {
+            endpoint: leaderEndpoint,
+            verbose: true,
+            incremental: true,
+            username: "root",
+            password: "",
+          });
+
+          connectToLeader();
+          let docs = [];
+
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value1: i, value2: 'test' + i });
+          }
+
+          while (c.count() < 200 * 1000) {
+            c.insert(docs);
+          }
+          st = _.clone({ count: collectionCount(cn), checksum: collectionChecksum(cn) });
+        },
+        function (state) {
+          while (db[cn].count() <= 150000) {
+            db._query(`FOR i IN 1..10000 INSERT { value1: i, value2: CONCAT('test', i) } IN ${cn}`);
+          }
+        },
+        function (state) {
+          assertEqual(st.count, collectionCount(cn));
+          assertEqual(st.checksum, collectionChecksum(cn));
+        },
+        true
       );
     },
 
@@ -981,9 +1112,7 @@ function BaseTestConfig () {
       db._create(cn);
       db._createView(cn + 'View', 'arangosearch', {consolidationIntervalMsec:0});
 
-      db._flushCache();
       connectToFollower();
-      internal.wait(0.1, false);
       //  sync on follower
       replication.sync({ endpoint: leaderEndpoint, username: "root", password: "" });
 
@@ -1013,7 +1142,6 @@ function BaseTestConfig () {
         view.properties({ links });
       }
 
-      db._flushCache();
       connectToFollower();
 
       replication.sync({ endpoint: leaderEndpoint, username: "root", password: "" });
@@ -1061,9 +1189,7 @@ function BaseTestConfig () {
         links: { _analyzers: { analyzers: [ analyzer.name ], includeAllFields:true } }
       });
 
-      db._flushCache();
       connectToFollower();
-      internal.wait(0.1, false);
       //  sync on follower
       replication.sync({ endpoint: leaderEndpoint, username: "root", password: "" });
 
@@ -2082,18 +2208,10 @@ function ReplicationIncrementalKeyConflict () {
 
   return {
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
       connectToLeader();
       db._drop(cn);
     },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       connectToLeader();
@@ -2143,7 +2261,6 @@ function ReplicationIncrementalKeyConflict () {
       assertEqual(3, c.document('z').value);
 
       connectToLeader();
-      db._flushCache();
       c = db._collection(cn);
       c.remove('z');
       c.insert({
@@ -2178,7 +2295,6 @@ function ReplicationIncrementalKeyConflict () {
 
       
       connectToLeader();
-      db._flushCache();
       c = db._collection(cn);
 
       c.remove('w');
@@ -2238,7 +2354,6 @@ function ReplicationIncrementalKeyConflict () {
       });
 
       connectToLeader();
-      db._flushCache();
       c = db._collection(cn);
      
       function shuffle(array) {
@@ -2298,7 +2413,6 @@ function ReplicationIncrementalKeyConflict () {
       }
 
       connectToLeader();
-      db._flushCache();
       c = db._collection(cn);
       
       for (let i = 0; i < 1000; ++i) {
@@ -2359,7 +2473,6 @@ function ReplicationIncrementalKeyConflict () {
       assertTrue(c.getIndexes()[1].unique);
 
       connectToLeader();
-      db._flushCache();
       c = db._collection(cn);
 
       c.remove('test0');
@@ -2468,7 +2581,6 @@ function ReplicationNonIncrementalKeyConflict () {
       assertTrue(c.getIndexes()[1].unique);
 
       connectToLeader();
-      db._flushCache();
       c = db._collection(cn);
       c.remove('z');
       c.insert({
@@ -2535,7 +2647,6 @@ function ReplicationNonIncrementalKeyConflict () {
       assertTrue(c.getIndexes()[1].unique);
 
       connectToLeader();
-      db._flushCache();
       c = db._collection(cn);
 
       c.remove('test0');
