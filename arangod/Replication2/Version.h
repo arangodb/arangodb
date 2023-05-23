@@ -41,7 +41,7 @@ namespace arangodb::replication {
 
 enum class Version { ONE = 1, TWO = 2 };
 
-constexpr static auto allowedVersions = {Version::ONE, Version::TWO};
+constexpr inline auto allowedVersions = {Version::ONE, Version::TWO};
 
 auto parseVersion(std::string_view version) -> ResultT<replication::Version>;
 auto parseVersion(velocypack::Slice version) -> ResultT<replication::Version>;
