@@ -207,6 +207,14 @@ function debugDumpGraphTestsuite() {
     tearDown: function () {
       db._useDatabase("_system");
       db._dropDatabase(dbName);
+      try {
+        fs.unlink(fileName);
+      } catch (err) {
+      }
+      try {
+        fs.unlink(outFileName);
+      } catch (err) {
+      }
     },
 
     testDebugDumpWithGraphNamed: function () {
