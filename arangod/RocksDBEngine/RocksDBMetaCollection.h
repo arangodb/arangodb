@@ -33,7 +33,11 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <chrono>
 #include <functional>
+#include <map>
+#include <memory>
+#include <mutex>
 
 namespace arangodb {
 class RevisionReplicationIterator;
@@ -219,6 +223,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
     void checkConsistency() const;
     void serializeBinary(std::string& output) const;
+    void delayCompression();
 
     // turn the full-blown revision tree into a potentially smaller
     // compressed representation
@@ -254,6 +259,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
     /// @brief whether or not we should attempt to compress the tree
     bool _compressible;
+
+    /// @brief when we last tried to compress the revision tree
+    std::chrono::time_point<
+        std::chrono::steady_clock> mutable _lastCompressAttempt;
   };
 
   // The following rules/definitions apply:

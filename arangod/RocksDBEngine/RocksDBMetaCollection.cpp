@@ -1141,7 +1141,7 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder,
 
   uint64_t count = 0;
   uint64_t hash = 0;
-  uint64_t byteSize = 0;
+  uint64_t memoryUsage = 0;
 
   if (fromCollection) {
     // rebuild a temporary tree from the collection
@@ -1157,7 +1157,7 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder,
 
     count = tree->count();
     hash = tree->rootValue();
-    byteSize = tree->byteSize();
+    memoryUsage = tree->memoryUsage();
   } else {
     // use existing revision tree
     std::unique_lock<std::mutex> guard(_revisionTreeLock);
@@ -1165,14 +1165,14 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder,
     if (_revisionTree != nullptr) {
       count = _revisionTree->count();
       hash = _revisionTree->rootValue();
-      byteSize = _revisionTree->compressedSize();
+      memoryUsage = _revisionTree->compressedSize();
     }
   }
 
   VPackObjectBuilder obj(&builder);
   obj->add(StaticStrings::RevisionTreeCount, VPackValue(count));
   obj->add(StaticStrings::RevisionTreeHash, VPackValue(hash));
-  obj->add("byteSize", VPackValue(byteSize));
+  obj->add("byteSize", VPackValue(memoryUsage));
 }
 
 void RocksDBMetaCollection::revisionTreePendingUpdates(VPackBuilder& builder) {
@@ -1425,6 +1425,7 @@ void RocksDBMetaCollection::applyUpdates(
     }
 
     // still holding the mutex here
+    bool worked = false;
 
     while (true) {
       checkIterators();
@@ -1447,8 +1448,16 @@ void RocksDBMetaCollection::applyUpdates(
               RandomGenerator::interval(uint32_t(5))));
         }
         bumpSequence(commitSeq);
+
+        if (worked) {
+          // delay next compression attempt so that we don't have data
+          // changes followed by an immediate compression
+          _revisionTree->delayCompression();
+        }
         return;
       }
+
+      worked = true;
 
       // another concurrent thread may insert new elements into
       // _revisionInsertBuffers or _revisionRemovalBuffers while we are here. it
@@ -1844,9 +1853,10 @@ void RocksDBMetaCollection::RevisionTreeAccessor::clear() {
 
   // do not track memory usage here. the caller has to do this
   _tree->clear();
-  TRI_ASSERT(_tree->memoryUsage() == 0);
+  TRI_ASSERT(_tree->memoryUsage() == containers::MerkleTreeBase::MetaSize);
   _compressed.clear();
   _compressible = true;
+  _lastCompressAttempt = {};
 
   TRI_ASSERT(_tree != nullptr && _compressed.empty());
 }
@@ -1939,18 +1949,28 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
       return;
     }
 
-    if (oldMemoryUsage == 0) {
-      // tree is empty -> we do not want to compress it!
+    if (oldMemoryUsage <= 512) {
+      // tree is empty or at least small -> we do not want to compress it!
       return;
     }
 
-    if (++_hibernationRequests < 10) {
+    auto now = std::chrono::steady_clock::now();
+
+    if (_lastCompressAttempt.time_since_epoch().count() > 0 &&
+        now - _lastCompressAttempt < std::chrono::minutes(1)) {
+      // wait at least one minute before retrying the compression
+      return;
+    }
+
+    if (++_hibernationRequests < 12) {
       // sit out the first few hibernation requests before we
       // actually work (10 is just an arbitrary value here to avoid
       // some pathologic hibernation/resurrection cycles, e.g. by
       // the statistics collections)
       return;
     }
+
+    _lastCompressAttempt = now;
   }
 
   double start = TRI_microtime();
@@ -1964,12 +1984,12 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   LOG_TOPIC("45eae", DEBUG, Logger::REPLICATION)
       << "hibernating revision tree for " << _logicalCollection.vocbase().name()
       << "/" << _logicalCollection.name() << " with " << count
-      << " entries and size " << _tree->byteSize()
+      << " entries and size " << _tree->memoryUsage()
       << ", hibernated size: " << _compressed.size()
       << ", hibernation took: " << (TRI_microtime() - start);
 
   // we would like to see at least 50% compressibility
-  if (_compressed.size() * 2 < _tree->byteSize()) {
+  if (_compressed.size() * 2 < _tree->memoryUsage()) {
     // compression ratio ok.
     // remove tree from memory. now we only have _compressed
     RocksDBEngine& engine = _logicalCollection.vocbase()
@@ -2003,6 +2023,10 @@ void RocksDBMetaCollection::RevisionTreeAccessor::serializeBinary(
   }
 }
 
+void RocksDBMetaCollection::RevisionTreeAccessor::delayCompression() {
+  _lastCompressAttempt = std::chrono::steady_clock::now();
+}
+
 // unfortunately we need to declare this method const although it can
 // modify internal (mutable) state
 void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
@@ -2032,6 +2056,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
 
     // reset hibernation counter
     _hibernationRequests = 0;
+    _lastCompressAttempt = {};
 
     TRI_ASSERT(_tree->depth() == _depth);
 
