@@ -1,6 +1,10 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* Support parsing HTTP GET requests with velocypack Content-Type without
+  a request body. Previously parsing such requests led to an error on the
+  server side.
+
 * BTS-1315: Fixed spurious occurring failures during Foxx Application
   installation in case a Load Balancer is being used in front of the
   coordinators.
