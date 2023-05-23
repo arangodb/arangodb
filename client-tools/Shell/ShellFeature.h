@@ -51,6 +51,8 @@ class ShellFeature final : public ArangoshFeature {
       std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
   void beginShutdown() override;
+  void stop() override;
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void getTelemetricsInfo(velocypack::Builder& builder);
   velocypack::Builder sendTelemetricsToEndpoint(std::string const& url);
