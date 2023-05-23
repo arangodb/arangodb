@@ -96,8 +96,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// method
   Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
-        QueryOptions options,
-        Query::SchedulerT* scheduler = SchedulerFeature::SCHEDULER);
+        QueryOptions options, Query::SchedulerT* scheduler);
 
   ~Query() override;
 
