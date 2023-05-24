@@ -131,14 +131,15 @@ class TransactionalCache final : public Cache {
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
-  virtual uint64_t freeMemoryFrom(std::uint32_t hash) override;
-  virtual void migrateBucket(void* sourcePtr,
-                             std::unique_ptr<Table::Subtable> targets,
-                             Table& newTable) override;
+  bool freeMemoryWhile(std::function<bool(std::uint64_t)> const& cb) override;
+  void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
+                     Table& newTable) override;
 
   // helpers
-  std::tuple<::ErrorCode, Table::BucketLocker> getBucket(
+  std::tuple<::ErrorCode, Table::BucketLocker> getBucketByHash(
       std::uint32_t hash, std::uint64_t maxTries, bool singleOperation = true);
+  std::tuple<::ErrorCode, Table::BucketLocker> getBucketById(
+      std::size_t bucket, std::uint64_t maxTries, bool singleOperation = true);
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
 };

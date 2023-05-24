@@ -63,10 +63,17 @@ void FreeMemoryTask::run() {
         SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
         TRI_ASSERT(metaGuard.isLocked());
         reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
-        metadata.adjustLimits(metadata.softUsageLimit, metadata.softUsageLimit);
+        bool ok = metadata.adjustLimits(metadata.softUsageLimit,
+                                        metadata.softUsageLimit);
         metadata.toggleResizing();
+
+        if (ok) {
+          TRI_ASSERT(_manager._globalAllocation >=
+                     reclaimed + _manager._fixedAllocation);
+          _manager._globalAllocation -= reclaimed;
+          TRI_ASSERT(_manager._globalAllocation >= _manager._fixedAllocation);
+        }
       }
-      _manager._globalAllocation -= reclaimed;
     }
 
     _manager.unprepareTask(_environment);

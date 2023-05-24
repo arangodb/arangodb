@@ -161,8 +161,12 @@ class Table : public std::enable_shared_from_this<Table> {
   /// the auxiliary table. The second member of the returned pair is the source
   /// table for the bucket returned as the first member.
   //////////////////////////////////////////////////////////////////////////////
-  BucketLocker fetchAndLockBucket(
+  BucketLocker fetchAndLockBucketByHash(
       std::uint32_t hash,
+      std::uint64_t maxTries = std::numeric_limits<std::uint64_t>::max());
+
+  BucketLocker fetchAndLockBucketById(
+      std::size_t bucket,
       std::uint64_t maxTries = std::numeric_limits<std::uint64_t>::max());
 
   //////////////////////////////////////////////////////////////////////////////
@@ -242,6 +246,10 @@ class Table : public std::enable_shared_from_this<Table> {
   /// side effect: may trigger table growth!
   //////////////////////////////////////////////////////////////////////////////
   uint32_t idealSize() noexcept;
+
+  /// @brief Returns the ideal size of the table based on fill ratio.
+  /// does not trigger table growth
+  uint32_t idealSizeValue() const noexcept;
 
  private:
   void disable() noexcept;
