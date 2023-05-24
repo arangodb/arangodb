@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/GraphStore/MemoryResource.h"
 
 /*
  * A magazine is a collection of quivers.
@@ -38,6 +39,9 @@ struct Magazine {
   using Storage = std::vector<std::shared_ptr<Quiver<V, E>>>;
   using iterator = typename Storage::iterator;
 
+  Magazine() : mr(std::experimental::pmr::new_delete_resource()) {}
+
+  MemoryResource mr;
   Storage quivers;
 
   auto emplace(std::shared_ptr<Quiver<V, E>>&& quiver) {
