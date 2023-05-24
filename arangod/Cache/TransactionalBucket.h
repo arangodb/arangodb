@@ -60,11 +60,6 @@ struct TransactionalBucket {
   std::uint32_t _cachedHashes[slotsData];
   CachedValue* _cachedData[slotsData];
 
-  // padding, if necessary?
-#ifdef TRI_PADDING_32
-  uint32_t _padding[slotsData];
-#endif
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize an empty bucket.
   //////////////////////////////////////////////////////////////////////////////

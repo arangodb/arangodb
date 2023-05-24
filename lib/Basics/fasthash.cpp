@@ -26,7 +26,7 @@
 #include "fasthash.h"
 
 uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
-#ifndef TRI_UNALIGNED_ACCESS
+#if 1
   // byte-wise hashing to support platforms that don't permit
   // unaligned accesses of uint64_t values (which is the default
   // memory access strategy of fasthash64)
