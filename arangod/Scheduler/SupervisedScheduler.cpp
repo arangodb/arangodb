@@ -179,7 +179,7 @@ DECLARE_GAUGE(arangodb_scheduler_num_working_threads, uint64_t,
 DECLARE_GAUGE(arangodb_scheduler_num_worker_threads, uint64_t,
               "Number of worker threads");
 DECLARE_GAUGE(arangodb_scheduler_stack_memory, uint64_t,
-              "Approx. stack memory usage of worker threads");
+              "Approximate stack memory usage of worker threads");
 DECLARE_GAUGE(
     arangodb_scheduler_ongoing_low_prio, uint64_t,
     "Total number of ongoing RestHandlers coming from the low prio queue");
@@ -622,7 +622,7 @@ void SupervisedScheduler::runSupervisor() {
       _metricsNumWorkingThreads.operator=(numWorking);
       _metricsNumWorkerThreads.operator=(numWorkers);
       _metricsStackMemoryWorkerThreads.operator=(
-          numWorkers* approxWorkerStackSize);
+          numWorkers * approxWorkerStackSize);
       roundCount = 0;
     }
 

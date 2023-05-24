@@ -13,3 +13,4 @@ exposedBy:
   - single
 description: |
   Approximate stack memory usage of worker threads.
+  Currently a hard-coded default value of 4MB is assumed per worker thread.
