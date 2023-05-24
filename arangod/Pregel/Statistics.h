@@ -29,6 +29,7 @@
 
 #include "Pregel/Utils.h"
 #include "Logger/LogMacros.h"
+#include "Pregel/Conductor/ConductorStatistics.h"
 
 namespace arangodb {
 namespace pregel {
@@ -55,6 +56,9 @@ struct MessageStats {
     b.add(Utils::sendCountKey, VPackValue(sendCount));
     b.add(Utils::receivedCountKey, VPackValue(receivedCount));
   }
+
+  [[nodiscard]] size_t getSendCount() const { return sendCount; }
+  [[nodiscard]] size_t getReceivedCount() const { return receivedCount; }
 
   void reset() {
     sendCount = 0;
@@ -90,12 +94,23 @@ struct StatsManager {
     _serverStats[sender].accumulate(stats);
   }
 
-  void serializeValues(VPackBuilder& b) const {
+  MessageStats getAggregatedStats() const {
     MessageStats stats;
     for (auto const& pair : _serverStats) {
       stats.accumulate(pair.second);
     }
+    return stats;
+  }
+
+  void serializeValues(VPackBuilder& b) const {
+    auto stats = getAggregatedStats();
     stats.serializeValues(b);
+  }
+
+  NetworkStruct getNetworkStruct() const {
+    auto stats = getAggregatedStats();
+    return {.receivedCount = stats.getReceivedCount(),
+            .sendCount = stats.getSendCount()};
   }
 
   /// Test if all messages were processed

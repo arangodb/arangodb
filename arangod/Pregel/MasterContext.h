@@ -104,8 +104,6 @@ class MasterContext {
 
   virtual void postApplication() {}
 
-  virtual void serializeValues(VPackBuilder& b) {}
-
   /// should indicate if compensation is supposed to start by returning true
   virtual bool preCompensation() { return true; }
   /// should indicate if compensation is finished, by returning false.

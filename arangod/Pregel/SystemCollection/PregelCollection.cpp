@@ -21,7 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CollectionStatusWriter.h"
+#include "PregelCollection.h"
 
 #include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
@@ -37,10 +37,10 @@ struct ExecutionNumber;
 }
 }  // namespace arangodb
 
-namespace arangodb::pregel::statuswriter {
+namespace arangodb::pregel::systemcollection {
 
-CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase,
-                                               ExecutionNumber& executionNumber)
+PregelCollection::PregelCollection(TRI_vocbase_t& vocbase,
+                                   ExecutionNumber& executionNumber)
     : _vocbaseGuard(vocbase), _executionNumber(executionNumber) {
   CollectionNameResolver resolver(_vocbaseGuard.database());
   auto logicalCollection =
@@ -55,7 +55,7 @@ CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase,
   }
 };
 
-CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase)
+PregelCollection::PregelCollection(TRI_vocbase_t& vocbase)
     : _vocbaseGuard(vocbase) {
   CollectionNameResolver resolver(_vocbaseGuard.database());
   auto logicalCollection =
@@ -70,8 +70,7 @@ CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase)
   }
 };
 
-auto CollectionStatusWriter::createResult(velocypack::Slice data)
-    -> OperationResult {
+auto PregelCollection::createResult(velocypack::Slice data) -> OperationResult {
   if (_executionNumber.value == 0) {
     return OperationResult(Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), {});
   }
@@ -95,7 +94,7 @@ auto CollectionStatusWriter::createResult(velocypack::Slice data)
       trx.insert(StaticStrings::PregelCollection, payload->slice(), options));
 }
 
-auto CollectionStatusWriter::readResult() -> OperationResult {
+auto PregelCollection::readResult() -> OperationResult {
   std::shared_ptr<VPackBuilder> bindParameter =
       std::make_shared<VPackBuilder>();
   bindParameter->openObject();
@@ -126,7 +125,7 @@ auto CollectionStatusWriter::readResult() -> OperationResult {
   return executeQuery(queryString, bindParameter);
 }
 
-auto CollectionStatusWriter::readAllNonExpiredResults() -> OperationResult {
+auto PregelCollection::readAllNonExpiredResults() -> OperationResult {
   std::shared_ptr<VPackBuilder> bindParameter =
       std::make_shared<VPackBuilder>();
   bindParameter->openObject();
@@ -161,7 +160,7 @@ auto CollectionStatusWriter::readAllNonExpiredResults() -> OperationResult {
   return executeQuery(queryString, bindParameter);
 }
 
-auto CollectionStatusWriter::readAllResults() -> OperationResult {
+auto PregelCollection::readAllResults() -> OperationResult {
   std::shared_ptr<VPackBuilder> bindParameter =
       std::make_shared<VPackBuilder>();
   bindParameter->openObject();
@@ -186,8 +185,7 @@ auto CollectionStatusWriter::readAllResults() -> OperationResult {
   return executeQuery(queryString, bindParameter);
 }
 
-auto CollectionStatusWriter::updateResult(velocypack::Slice data)
-    -> OperationResult {
+auto PregelCollection::updateResult(velocypack::Slice data) -> OperationResult {
   if (_executionNumber.value == 0) {
     return OperationResult(Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), {});
   }
@@ -209,7 +207,7 @@ auto CollectionStatusWriter::updateResult(velocypack::Slice data)
       trx.update(StaticStrings::PregelCollection, payload->slice(), {}));
 }
 
-auto CollectionStatusWriter::deleteResult() -> OperationResult {
+auto PregelCollection::deleteResult() -> OperationResult {
   if (_executionNumber.value == 0) {
     return OperationResult(Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), {});
   }
@@ -231,7 +229,7 @@ auto CollectionStatusWriter::deleteResult() -> OperationResult {
       trx.remove(StaticStrings::PregelCollection, payload->slice(), {}));
 }
 
-auto CollectionStatusWriter::deleteAllResults() -> OperationResult {
+auto PregelCollection::deleteAllResults() -> OperationResult {
   auto accessModeType = AccessMode::Type::WRITE;
   SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
                                   accessModeType);
@@ -247,7 +245,7 @@ auto CollectionStatusWriter::deleteAllResults() -> OperationResult {
       trx.truncateAsync(StaticStrings::PregelCollection, options).get());
 }
 
-auto CollectionStatusWriter::executeQuery(
+auto PregelCollection::executeQuery(
     std::string queryString,
     std::optional<std::shared_ptr<VPackBuilder>> bindParameters)
     -> OperationResult {
@@ -272,9 +270,10 @@ auto CollectionStatusWriter::executeQuery(
                          {});
 }
 
-auto CollectionStatusWriter::handleOperationResult(
-    SingleCollectionTransaction& trx, OperationOptions& options,
-    Result& transactionResult, OperationResult&& opRes) const
+auto PregelCollection::handleOperationResult(SingleCollectionTransaction& trx,
+                                             OperationOptions& options,
+                                             Result& transactionResult,
+                                             OperationResult&& opRes) const
     -> OperationResult {
   transactionResult = trx.finish(opRes.result);
   if (transactionResult.fail() && opRes.ok()) {
@@ -283,10 +282,9 @@ auto CollectionStatusWriter::handleOperationResult(
   return opRes;
 };
 
-auto CollectionStatusWriter::ctx()
-    -> std::shared_ptr<transaction::Context> const {
+auto PregelCollection::ctx() -> std::shared_ptr<transaction::Context> const {
   return transaction::V8Context::CreateWhenRequired(_vocbaseGuard.database(),
                                                     false);
 }
 
-}  // namespace arangodb::pregel::statuswriter
+}  // namespace arangodb::pregel::systemcollection

@@ -35,7 +35,7 @@
 #include "VocBase/vocbase.h"
 #include "fmt/core.h"
 #include "fmt/chrono.h"
-#include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "Pregel/SystemCollection/PregelCollection.h"
 
 namespace arangodb::pregel {
 
@@ -303,7 +303,7 @@ auto inspect(Inspector& f, StatusState& x) {
 template<typename Runtime>
 struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
   auto updateStatusDocument() {
-    statuswriter::CollectionStatusWriter cWriter{
+    systemcollection::PregelCollection cWriter{
         this->state->vocbaseGuard.database(), this->state->status->id.number};
     auto serializedStatus =
         inspection::serializeWithErrorT(this->state->status);
@@ -321,7 +321,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     }
   }
   auto createStatusDocument() {
-    statuswriter::CollectionStatusWriter cWriter{
+    systemcollection::PregelCollection cWriter{
         this->state->vocbaseGuard.database(), this->state->status->id.number};
     auto serializedStatus =
         inspection::serializeWithErrorT(this->state->status);

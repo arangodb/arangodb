@@ -41,6 +41,7 @@
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
+#include "Pregel/Conductor/ConductorStatistics.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
@@ -52,10 +53,9 @@
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "Pregel/SystemCollection/PregelCollection.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "velocypack/Builder.h"
 
@@ -655,10 +655,6 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
   result.add("parallelism", VPackValue(_specifications.parallelism));
-  if (_masterContext) {
-    VPackObjectBuilder ob(&result, "masterContext");
-    _masterContext->serializeValues(result);
-  }
 
   result.add(VPackValue("detail"));
   auto conductorStatus = _status.accumulate();
@@ -669,97 +665,65 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
 
 void Conductor::persistPregelState(ExecutionState state) {
   // Persist current pregel state into historic pregel system collection.
-  statuswriter::CollectionStatusWriter cWriter{_vocbaseGuard.database(),
-                                               _specifications.executionNumber};
-  VPackBuilder stateBuilder;
+  systemcollection::PregelCollection cWriter{_vocbaseGuard.database(),
+                                             _specifications.executionNumber};
 
-  auto addMinimalOutputToBuilder = [&](VPackBuilder& stateBuilder) -> void {
-    TRI_ASSERT(stateBuilder.isOpenObject());
-    stateBuilder.add(
-        "id",
-        VPackValue(std::to_string(_specifications.executionNumber.value)));
-    stateBuilder.add("database", VPackValue(_vocbaseGuard.database().name()));
-    if (_algorithm != nullptr) {
-      stateBuilder.add("algorithm", VPackValue(_algorithm->name()));
-    }
-    stateBuilder.add("created", VPackValue(timepointToString(_created)));
-    if (_expires != std::chrono::system_clock::time_point{}) {
-      stateBuilder.add("expires", VPackValue(timepointToString(_expires)));
-    }
-    stateBuilder.add("ttl", VPackValue(_specifications.ttl.duration.count()));
-    stateBuilder.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
-    stateBuilder.add("gss", VPackValue(_globalSuperstep));
+  VPackBuilder aggregatorBuilder;
+  aggregatorBuilder.openObject();
+  _masterContext->_aggregators->serializeValues(aggregatorBuilder);
+  aggregatorBuilder.close();
 
-    // Additional attributes added during actor rework
-    stateBuilder.add("graphLoaded", VPackValue(_graphLoaded));
-    stateBuilder.add("user", VPackValue(_user));
-  };
+  std::vector<double> gssTimings;
+  gssTimings.reserve(_timing.gss.size());
+  for (auto const& gssTime : _timing.gss) {
+    gssTimings.emplace_back(gssTime.elapsedSeconds().count());
+  }
 
-  auto addAdditionalOutputToBuilder = [&](VPackBuilder& builder) -> void {
-    TRI_ASSERT(builder.isOpenObject());
-    if (_timing.total.hasStarted()) {
-      builder.add("totalRuntime",
-                  VPackValue(_timing.total.elapsedSeconds().count()));
-    }
-    if (_timing.loading.hasStarted()) {
-      builder.add("startupTime",
-                  VPackValue(_timing.loading.elapsedSeconds().count()));
-    }
-    if (_timing.computation.hasStarted()) {
-      builder.add("computationTime",
-                  VPackValue(_timing.computation.elapsedSeconds().count()));
-    }
-    if (_timing.storing.hasStarted()) {
-      builder.add("storageTime",
-                  VPackValue(_timing.storing.elapsedSeconds().count()));
-    }
-    {
-      builder.add(VPackValue("gssTimes"));
-      VPackArrayBuilder array(&builder);
-      for (auto const& gssTime : _timing.gss) {
-        builder.add(VPackValue(gssTime.elapsedSeconds().count()));
-      }
-    }
-    _masterContext->_aggregators->serializeValues(builder);
-    _statistics.serializeValues(builder);
-    if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
-      builder.add("vertexCount", VPackValue(_totalVerticesCount));
-      builder.add("edgeCount", VPackValue(_totalEdgesCount));
-    }
-    builder.add("parallelism", VPackValue(_specifications.parallelism));
-    if (_masterContext) {
-      VPackObjectBuilder ob(&builder, "masterContext");
-      _masterContext->serializeValues(builder);
-    }
+  auto timingsStruct = FinishedTimingsStruct{.gssTimes = gssTimings};
 
-    builder.add(VPackValue("detail"));
-    auto conductorStatus = _status.accumulate();
-    serialize(builder, conductorStatus);
-  };
+  if (_timing.total.hasStarted()) {
+    timingsStruct.totalRuntime = _timing.total.elapsedSeconds().count();
+  }
+  if (_timing.loading.hasStarted()) {
+    timingsStruct.startupTime = _timing.loading.elapsedSeconds().count();
+  }
+  if (_timing.computation.hasStarted()) {
+    timingsStruct.computationTime =
+        _timing.computation.elapsedSeconds().count();
+  }
+  if (_timing.storing.hasStarted()) {
+    timingsStruct.storageTime = _timing.storing.elapsedSeconds().count();
+  }
 
-  if (_state == ExecutionState::DONE) {
-    // TODO: What I wanted to do here is to just use the already available
-    // toVelocyPack() method. This fails currently because of the lock:
-    // "[void arangodb::Mutex::lock()]: _holder != Thread::currentThreadId()"
-    // Therefore, for now - do it manually. Let's clean this up ASAP.
-    // this->toVelocyPack(stateBuilder);
-    // After this works, we can remove all of that code below (same scope).
-    // Including those lambda helper methods.
+  auto conductorStatistics = ConductorStatistics{
+      .id = std::to_string(_specifications.executionNumber.value),
+      .database = _vocbaseGuard.database().name(),
+      .algorithm = std::string(_algorithm->name()),
+      .created = timepointToString(_created),
+      .expires = timepointToString(_expires),
+      .ttl = _specifications.ttl.duration.count(),
+      .state = pregel::ExecutionStateNames[_state],
+      .gss = _globalSuperstep,
+      .graphLoaded = _graphLoaded,
+      .user = _user,
+      .timingsStruct = timingsStruct,
+      .aggregators = std::move(aggregatorBuilder),
+      .network = _statistics.getNetworkStruct(),
+      .vertexCount = _totalVerticesCount,
+      .edgeCount = _totalEdgesCount,
+      .parallelism = _specifications.parallelism,
+      .detail = _status.accumulate()};
 
-    stateBuilder.openObject();  // opens main builder
-    addMinimalOutputToBuilder(stateBuilder);
-    addAdditionalOutputToBuilder(stateBuilder);
-    stateBuilder.close();  // closes main builder
-  } else {
-    // minimalistic update during runs or errors (cancel, fatal)
-    // TODO: We should introduce an inspector here as well.
-    stateBuilder.openObject();  // opens main builder
-    addMinimalOutputToBuilder(stateBuilder);
-    stateBuilder.close();  // closes main builder
+  auto serialized = inspection::serializeWithErrorT(conductorStatistics);
+  if (!serialized.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        fmt::format("Cannot serialize ConductorStatistics container: {}",
+                    serialized.error().error()));
   }
 
   TRI_ASSERT(state != ExecutionState::DEFAULT);
-  auto updateResult = cWriter.updateResult(stateBuilder.slice());
+  auto updateResult = cWriter.updateResult(serialized.get().slice());
   if (updateResult.ok()) {
     LOG_PREGEL("07323", INFO)
         << "Updated state into: \"" << StaticStrings::PregelCollection

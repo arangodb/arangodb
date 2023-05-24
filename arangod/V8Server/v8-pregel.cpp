@@ -40,7 +40,7 @@
 #include "V8/v8-vpack.h"
 
 #include "Utils/OperationResult.h"
-#include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "Pregel/SystemCollection/PregelCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -205,7 +205,7 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // check the arguments
   uint32_t const argLength = args.Length();
   if (argLength == 0) {
-    pregel::statuswriter::CollectionStatusWriter cWriter{vocbase};
+    pregel::systemcollection::PregelCollection cWriter{vocbase};
     handlePregelHistoryV8Result(cWriter.readAllNonExpiredResults());
     return;
   }
@@ -217,7 +217,7 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto executionNum = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
-  pregel::statuswriter::CollectionStatusWriter cWriter{vocbase, executionNum};
+  pregel::systemcollection::PregelCollection cWriter{vocbase, executionNum};
   handlePregelHistoryV8Result(cWriter.readResult(), true);
   return;
 
@@ -377,7 +377,7 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t const argLength = args.Length();
   if (argLength == 0) {
     // Read all pregel history entries
-    pregel::statuswriter::CollectionStatusWriter cWriter{vocbase};
+    pregel::systemcollection::PregelCollection cWriter{vocbase};
     handlePregelHistoryV8Result(cWriter.readAllResults());
     return;
   }
@@ -391,8 +391,7 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto executionNumber = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
 
-  pregel::statuswriter::CollectionStatusWriter cWriter{vocbase,
-                                                       executionNumber};
+  pregel::systemcollection::PregelCollection cWriter{vocbase, executionNumber};
   handlePregelHistoryV8Result(cWriter.readResult(), true);
   return;
   TRI_V8_TRY_CATCH_END
@@ -462,7 +461,7 @@ static void JS_PregelHistoryRemove(
   uint32_t const argLength = args.Length();
   if (argLength == 0) {
     // Delete all pregel history entries
-    pregel::statuswriter::CollectionStatusWriter cWriter{vocbase};
+    pregel::systemcollection::PregelCollection cWriter{vocbase};
     handlePregelHistoryV8Result(cWriter.deleteAllResults());
     return;
   }
@@ -475,8 +474,7 @@ static void JS_PregelHistoryRemove(
   // Delete single history entry
   auto executionNumber = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
-  pregel::statuswriter::CollectionStatusWriter cWriter{vocbase,
-                                                       executionNumber};
+  pregel::systemcollection::PregelCollection cWriter{vocbase, executionNumber};
   handlePregelHistoryV8Result(cWriter.deleteResult());
   return;
   TRI_V8_TRY_CATCH_END

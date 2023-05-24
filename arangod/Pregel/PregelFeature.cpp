@@ -33,9 +33,7 @@
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/application-exit.h"
 #include "Basics/debugging.h"
-#include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -61,17 +59,15 @@
 #include "Pregel/ResultMessages.h"
 #include "Pregel/SpawnActor.h"
 #include "Pregel/MetricsActor.h"
-#include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "Pregel/SystemCollection/PregelCollection.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/Worker.h"
-#include "Rest/CommonDefines.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "Metrics/MetricsFeature.h"
 
@@ -124,7 +120,7 @@ auto PregelRunUser::authorized(ExecContext const& userContext) const -> bool {
 
 Result PregelFeature::persistExecution(TRI_vocbase_t& vocbase,
                                        ExecutionNumber en) {
-  statuswriter::CollectionStatusWriter cWriter{vocbase, en};
+  systemcollection::PregelCollection cWriter{vocbase, en};
   VPackBuilder stateBuilder;
   // TODO: Here we should also write the Coordinator's ServerID into the
   // collection

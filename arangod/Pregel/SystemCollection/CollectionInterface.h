@@ -36,10 +36,10 @@ struct ExecutionNumber;
 }
 }  // namespace arangodb
 
-namespace arangodb::pregel::statuswriter {
+namespace arangodb::pregel::systemcollection {
 
-struct StatusWriterInterface {
-  virtual ~StatusWriterInterface() = default;
+struct CollectionInterface {
+  virtual ~CollectionInterface() = default;
 
   // CRUD interface definition
   [[nodiscard]] virtual auto createResult(velocypack::Slice data)
@@ -53,4 +53,4 @@ struct StatusWriterInterface {
   [[nodiscard]] virtual auto deleteAllResults() -> OperationResult = 0;
 };
 
-}  // namespace arangodb::pregel::statuswriter
+}  // namespace arangodb::pregel::systemcollection

@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "StatusWriter.h"
+#include "CollectionInterface.h"
 
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
@@ -45,12 +45,11 @@ class SingleCollectionTransaction;
 
 }  // namespace arangodb
 
-namespace arangodb::pregel::statuswriter {
+namespace arangodb::pregel::systemcollection {
 
-struct CollectionStatusWriter : StatusWriterInterface {
-  CollectionStatusWriter(TRI_vocbase_t& vocbase,
-                         ExecutionNumber& executionNumber);
-  CollectionStatusWriter(TRI_vocbase_t& vocbase);
+struct PregelCollection : CollectionInterface {
+  PregelCollection(TRI_vocbase_t& vocbase, ExecutionNumber& executionNumber);
+  PregelCollection(TRI_vocbase_t& vocbase);
 
   [[nodiscard]] auto createResult(VPackSlice data) -> OperationResult override;
   [[nodiscard]] auto readResult() -> OperationResult override;
@@ -91,8 +90,8 @@ struct CollectionStatusWriter : StatusWriterInterface {
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, CollectionStatusWriter::OperationData& x) {
+auto inspect(Inspector& f, PregelCollection::OperationData& x) {
   return f.object(x).fields(f.field("_key", x._key), f.field("data", x.data));
 }
 
-}  // namespace arangodb::pregel::statuswriter
+}  // namespace arangodb::pregel::systemcollection
