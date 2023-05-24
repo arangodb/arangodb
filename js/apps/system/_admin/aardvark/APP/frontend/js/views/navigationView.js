@@ -463,10 +463,12 @@
     },
 
     switchTab: function (e) {
-      var id = $(e.currentTarget).children().first().attr('id');
+      var link = $(e.currentTarget).children().first();
+      var id = link.attr('id');
 
       if (id === 'enterprise') {
-        window.open('https://www.arangodb.com/download-arangodb-enterprise/', '_blank');
+        e.preventDefault();
+        window.open(link.attr('href'), '_blank');
         return;
       }
 
