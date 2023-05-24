@@ -309,34 +309,18 @@ authRouter.get('/query/download/:user', function (req, res) {
   Download and export all queries from the given username.
 `);
 
-authRouter.get('/query/result/download/:query', function (req, res) {
-  const fromBinary = (binary) => {
-    const bytes = Uint8Array.from({ length: binary.length }, (element, index) =>
-      binary.charCodeAt(index)
-    );
-    const charCodes = new Uint16Array(bytes.buffer);
-
-    let result = "";
-    charCodes.forEach((char) => {
-      result += String.fromCharCode(char);
-    });
-    return result;
-  };
-
-  let query;
-  try {
-    query = fromBinary(req.pathParams.query);
-    query = JSON.parse(query);
-  } catch (e) {
-    res.throw('bad request', e.message, {cause: e});
-  }
-
-  const result = db._query(query.query, query.bindVars).toArray();
-  const namePart = `${db._name()}`.replace(/[^-_a-z0-9]/gi, "_");
-  res.attachment(`results-${namePart}.json`);
-  res.json(result);
+authRouter.post('/query/result/download', function (req, res) {
+  console.log(req.body.query, req.body.bindVars);
+   const result = db._query(req.body.query, req.body.bindVars).toArray();
+   const namePart = `${db._name()}`.replace(/[^-_a-z0-9]/gi, "_");
+   res.attachment(`results-${namePart}.json`);
+   res.json(result);
+ })
+.body(joi.object({
+  query: joi.string().required(),
+  bindVars: joi.object().optional()
 })
-.pathParam('query', joi.string().required(), 'Base64 encoded query.')
+.required(), 'Query and bindVars to download.')
 .error('bad request', 'The query is invalid or malformed.')
 .summary('Download the result of a query')
 .description(dd`
