@@ -306,7 +306,7 @@ auto StreamProxy<S, Interface, ILogMethodsT>::release(LogIndex index) -> void {
 template<typename S, template<typename> typename Interface,
          ValidStreamLogMethods ILogMethodsT>
 void StreamProxy<S, Interface, ILogMethodsT>::throwResignedException() {
-  static constexpr auto errorCode = ([]() consteval->ErrorCode {
+  static constexpr auto errorCode = ([]() consteval -> ErrorCode {
     if constexpr (std::is_same_v<ILogMethodsT,
                                  replicated_log::IReplicatedLogLeaderMethods>) {
       return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
@@ -374,7 +374,7 @@ void LeaderStateManager<S>::recoverEntries() {
           auto guard = self->_guardedData.getLockedGuard();
           guard->_leaderState->onRecoveryCompleted();
           guard->_recoveryCompleted = true;
-          LOG_CTX("1b3de", INFO, self->_loggerContext) << "recovery completed";
+          LOG_CTX("1b246", INFO, self->_loggerContext) << "recovery completed";
         }
       });
 }
