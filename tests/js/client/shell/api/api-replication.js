@@ -53,7 +53,7 @@ const {
  * This API is used within arangodump -> arangorestore cycle on
  * the restore side.
  * If a customer needs to do bigger version jumps and cannot do
- * a rolling upgrade this API is our recomendation to upgarade from
+ * a rolling upgrade this API is our recommendation to upgrade from
  * early versions to newer ones, therefor we need to keep it backwards compatible.
  * Therefore: Please reconsider this when you ever need to adapt this test file, if
  * there is a possible path to make your change in a backwards compatible way so that
@@ -332,7 +332,7 @@ function RestoreCollectionsSuite() {
           } else {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
             // MinReplicationFactor is forced to 0 on satellites
-            // NOTE: SingleServer Enteprise is red: For some reason this restore returns MORE properties, then the others.
+            // NOTE: SingleServer Enterprise is red: For some reason this restore returns MORE properties, then the others.
             validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0}, collname, 2);
           }
         } finally {
@@ -561,7 +561,7 @@ function RestoreCollectionsSuite() {
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           if (isEnterprise) {
-            // Yes the enterprise variant reponds with "yes i did", but in fact it did not.
+            // Yes the enterprise variant responds with "yes I did", but in fact it did not.
             assertEqual(db._collections().filter(c => c.name() === name).length, 0, `Collection ${name} should not exist`);
 
           } else {
