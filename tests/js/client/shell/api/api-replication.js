@@ -147,7 +147,7 @@ const validateProperties = (overrides, colName, type, keepClusterSpecificAttribu
     expectedProps.minReplicationFactor = expectedProps.writeConcern;
   }
   for (const [key, value] of Object.entries(expectedProps)) {
-    assertEqual(props[key], value, `Differ on key ${key}`);
+    assertEqual(props[key], value, `Differ on key ${key} ${JSON.stringify(props)} vs ${JSON.stringify(expectedProps)}`);
   }
   // Note we add +1 on expected for the globallyUniqueId.
   const expectedKeys = Object.keys(expectedProps);
@@ -332,8 +332,16 @@ function RestoreCollectionsSuite() {
           } else {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
             // MinReplicationFactor is forced to 0 on satellites
-            // NOTE: SingleServer Enterprise is red: For some reason this restore returns MORE properties, then the others.
-            validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0}, collname, 2);
+            // NOTE: SingleServer Enterprise for some reason this restore returns MORE properties, then the others.
+            if (!isCluster) {
+              if (replicationFactor === 0) {
+                validateProperties({replicationFactor: "satellite", writeConcern: 1}, collname, 2);
+              } else {
+                validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0, isSmart: false, shardKeys: ["_key"], numberOfShards: 1, isDisjoint: false}, collname, 2, true);
+              }
+            } else {
+              validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0}, collname, 2);
+            }
           }
         } finally {
           db._drop(collname);
