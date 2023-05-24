@@ -37,10 +37,10 @@ struct NetworkStruct {
 };
 
 struct FinishedTimingsStruct {
-  std::optional<double> totalRuntime;
-  std::optional<double> startupTime;
-  std::optional<double> computationTime;
-  std::optional<double> storageTime;
+  std::optional<double> totalRuntime = std::nullopt;
+  std::optional<double> startupTime = std::nullopt;
+  std::optional<double> computationTime = std::nullopt;
+  std::optional<double> storageTime = std::nullopt;
   std::vector<double> gssTimes;
 };
 
