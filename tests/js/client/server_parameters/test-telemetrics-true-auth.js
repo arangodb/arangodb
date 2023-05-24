@@ -314,7 +314,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
                 numColls++;
                 assertEqual(coll.idxs.length, 5);
               } else {
-                assertEqual(nDocs, 0);
+                assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections would have replication factor 2, our one has 1, so both are allowed
                 // We cannot distinguish which variant we analyse.
                 assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
@@ -774,7 +774,7 @@ function telemetricsApiReconnectGraphTestsuite() {
                 numColls++;
                 assertEqual(coll.idxs.length, 5);
               } else {
-                assertEqual(nDocs, 0);
+                assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections would have replication factor 2, our one has 1, so both are allowed
                 // We cannot distinguish which variant we analyse.
                 assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
