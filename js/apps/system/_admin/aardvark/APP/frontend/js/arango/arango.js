@@ -92,23 +92,6 @@
       debug: 'rgb(64, 74, 83)'
     },
 
-    // convert a Unicode string to a string in which
-    // each 16-bit unit occupies only one byte.
-    // from https://developer.mozilla.org/en-US/docs/Web/API/btoa
-    toBinary: function (string) {
-      const codeUnits = Uint16Array.from(
-        { length: string.length },
-        (element, index) => string.charCodeAt(index)
-      );
-      const charCodes = new Uint8Array(codeUnits.buffer);
-
-      let result = "";
-      charCodes.forEach((char) => {
-        result += String.fromCharCode(char);
-      });
-      return result;
-    },
-
     getCurrentJwt: function () {
       return sessionStorage.getItem('jwt');
     },
