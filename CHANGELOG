@@ -14,6 +14,10 @@ v3.10.7 (XXXX-XX-XX)
 * FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
   for GeoJSON.
 
+* Support parsing HTTP GET requests with velocypack Content-Type without a
+  request body. Previously parsing such requests led to an error on the server
+  side.
+
 * ES-1566: fix an issue when trying to restrict traversals to non-existing
   collections with the `edgeCollections` traversal option.
   
