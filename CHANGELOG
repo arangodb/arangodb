@@ -11,9 +11,6 @@ v3.10.7 (XXXX-XX-XX)
   for the case when there's a named graph, but maintained when there's no 
   access to the graph's name.
 
-* FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates'
-  for GeoJSON.
-
 * Support parsing HTTP GET requests with velocypack Content-Type without a
   request body. Previously parsing such requests led to an error on the server
   side.
