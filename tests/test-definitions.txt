@@ -82,7 +82,7 @@ replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
 
 resilience_analyzers priority=500 size=small cluster -- --dumpAgencyOnError true
 resilience_failover priority=1200 size=small buckets=2 cluster -- --dumpAgencyOnError true
-resilience_move priority=600 size=medium buckets=2 cluster -- --dumpAgencyOnError true
+resilience_move priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnError true
 resilience_sharddist size=small cluster -- --dumpAgencyOnError true
 
 recovery_cluster priority=2000 size=small cluster buckets=8
