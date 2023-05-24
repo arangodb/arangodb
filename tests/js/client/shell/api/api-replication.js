@@ -1191,27 +1191,7 @@ function IgnoreIllegalTypesSuite() {
               isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_VALIDATION_BAD_PARAMETER.code, res, testParam);
               break;
             }
-            case "replicationFactor": {
-              if (isCluster) {
-                if (typeof ignoredValue === "number") {
-                  // We take doubles for integers
-                  if (ignoredValue > 2) {
-                    // but they are too large to be allowed
-                    isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, res, testParam);
-                  } else {
-                    // or too low
-                    isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
-                  }
-                } else {
-                  // All others are ignored
-                  isAllowed(res, collname, testParam);
-                }
-              } else {
-                // Just ignore if we are not in cluster.
-                isAllowed(res, collname, testParam);
-              }
-              break;
-            }
+            case "replicationFactor":
             case "writeConcern":
             case "minReplicationFactor": {
               if (isCluster) {
@@ -1226,7 +1206,6 @@ function IgnoreIllegalTypesSuite() {
                   }
                 } else {
                   isAllowed(res, collname, testParam);
-                  // isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
                 }
               } else {
                 // Just ignore if we are not in cluster.
