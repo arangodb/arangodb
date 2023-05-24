@@ -106,6 +106,8 @@ void RocksDBCuckooIndexEstimator<Key>::drain() {
 
 template<class Key>
 void RocksDBCuckooIndexEstimator<Key>::drainNoLock() {
+  checkInvariants();
+
   uint64_t memoryUsage = 0;
   for (auto const& it : _insertBuffers) {
     memoryUsage +=
@@ -124,21 +126,23 @@ void RocksDBCuckooIndexEstimator<Key>::drainNoLock() {
   _truncateBuffer.clear();
 
   decreaseMemoryUsage(memoryUsage);
+  checkInvariants();
 }
 
 template<class Key>
 void RocksDBCuckooIndexEstimator<Key>::freeMemory() {
   WRITE_LOCKER(locker, _lock);
+
+  checkInvariants();
   drainNoLock();
+  checkInvariants();
 
   // only to validate that our math is correct and we are not missing
   // anything.
-  if (_memoryUsage > 0) {
-    uint64_t memoryUsage = _slotAllocSize + _counterAllocSize;
-    TRI_ASSERT(memoryUsage == _memoryUsage)
-        << "memoryUsage: " << memoryUsage << ", _memoryUsage: " << _memoryUsage;
-    decreaseMemoryUsage(memoryUsage);
-  }
+  uint64_t memoryUsage = _slotAllocSize + _counterAllocSize;
+  TRI_ASSERT(memoryUsage == _memoryUsage)
+      << "memoryUsage: " << memoryUsage << ", _memoryUsage: " << _memoryUsage;
+  decreaseMemoryUsage(memoryUsage);
   TRI_ASSERT(_memoryUsage == 0);
 
   _nrTotal = 0;
@@ -151,6 +155,27 @@ void RocksDBCuckooIndexEstimator<Key>::freeMemory() {
   _slotBase = nullptr;
   _counters = nullptr;
   _counterBase = nullptr;
+  _slotAllocSize = 0;
+  _counterAllocSize = 0;
+
+  checkInvariants();
+}
+
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::checkInvariants() const {
+  uint64_t memoryUsage = 0;
+  for (auto const& it : _insertBuffers) {
+    memoryUsage +=
+        bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
+  }
+
+  for (auto const& it : _removalBuffers) {
+    memoryUsage +=
+        bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
+  }
+
+  memoryUsage += bufferedEntrySize() * _truncateBuffer.size();
+  TRI_ASSERT(_memoryUsage == memoryUsage + _slotAllocSize + _counterAllocSize);
 }
 
 template<class Key>
@@ -313,9 +338,11 @@ Result RocksDBCuckooIndexEstimator<Key>::bufferTruncate(
     rocksdb::SequenceNumber seq) {
   Result res = basics::catchVoidToResult([&]() -> void {
     WRITE_LOCKER(locker, _lock);
+    checkInvariants();
     _truncateBuffer.emplace(seq);
     _needToPersist.store(true, std::memory_order_release);
     increaseMemoryUsage(bufferedEntrySize());
+    checkInvariants();
   });
   return res;
 }
@@ -526,24 +553,25 @@ Result RocksDBCuckooIndexEstimator<Key>::bufferUpdates(
     std::vector<Key>&& removals) {
   TRI_ASSERT(!inserts.empty() || !removals.empty());
   Result res = basics::catchVoidToResult([&]() -> void {
-    uint64_t memoryUsage = 0;
-    auto guard =
-        scopeGuard([&]() noexcept { increaseMemoryUsage(memoryUsage); });
-
     WRITE_LOCKER(locker, _lock);
 
+    checkInvariants();
+
     if (!inserts.empty()) {
-      size_t n = inserts.size();
+      uint64_t memoryUsage =
+          bufferedEntrySize() + bufferedEntryItemSize() * inserts.size();
       _insertBuffers.emplace(seq, std::move(inserts));
-      memoryUsage += bufferedEntrySize() + bufferedEntryItemSize() * n;
+      increaseMemoryUsage(memoryUsage);
     }
     if (!removals.empty()) {
-      size_t n = removals.size();
+      uint64_t memoryUsage =
+          bufferedEntrySize() + bufferedEntryItemSize() * removals.size();
       _removalBuffers.emplace(seq, std::move(removals));
-      memoryUsage += bufferedEntrySize() + bufferedEntryItemSize() * n;
+      increaseMemoryUsage(memoryUsage);
     }
 
     _needToPersist.store(true, std::memory_order_release);
+    checkInvariants();
   });
   return res;
 }
@@ -564,6 +592,7 @@ rocksdb::SequenceNumber RocksDBCuckooIndexEstimator<Key>::applyUpdates(
       // find out if we have buffers to apply
       {
         WRITE_LOCKER(locker, _lock);
+        checkInvariants();
 
         uint64_t memoryUsage = 0;
         {
@@ -619,6 +648,7 @@ rocksdb::SequenceNumber RocksDBCuckooIndexEstimator<Key>::applyUpdates(
         }
 
         decreaseMemoryUsage(memoryUsage);
+        checkInvariants();
       }
 
       if (foundTruncate) {

@@ -531,6 +531,8 @@ class RocksDBCuckooIndexEstimator {
   // helper function for drain()
   void drainNoLock();
 
+  void checkInvariants() const;
+
  private:
   // metric for tracking global memory usage (combined memory usage of all
   // cuckoo index estimators)
