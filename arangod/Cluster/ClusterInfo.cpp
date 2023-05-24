@@ -552,25 +552,27 @@ DECLARE_GAUGE(arangodb_memory_cluster_info_bla_bla, std::size_t,
 
 namespace {
 struct CountingMemoryResource : std::pmr::memory_resource {
-  explicit CountingMemoryResource(memory_resource* base) : base(base) {}
+  explicit CountingMemoryResource(memory_resource* base,
+                                  metrics::Gauge<std::size_t>& metric)
+      : base(base), metric(metric) {}
 
  private:
   void* do_allocate(size_t bytes, size_t alignment) override {
-    amount += bytes;
+    metric += bytes;
     return base->allocate(bytes, alignment);
   }
   void do_deallocate(void* p, size_t bytes, size_t alignment) override {
     base->deallocate(p, bytes, alignment);
-    amount -= bytes;
+    metric -= bytes;
   }
 
-  bool do_is_equal(const memory_resource& __other) const noexcept override {
+  bool do_is_equal(memory_resource const&) const noexcept override {
     return false;
   }
 
  public:
-  std::atomic<std::size_t> amount{0};
   std::pmr::memory_resource* base;
+  metrics::Gauge<std::size_t>& metric;
 };
 }  // namespace
 
@@ -578,7 +580,9 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)
     : _memoryResource(std::make_unique<CountingMemoryResource>(
-          std::pmr::new_delete_resource())),
+          std::pmr::new_delete_resource(),
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_memory_cluster_info_bla_bla{}))),
       _server(server),
       _agency(server),
       _agencyCallbackRegistry(agencyCallbackRegistry),
@@ -1114,6 +1118,11 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
 }
 
 struct ClusterInfo::NewStuffByDatabase {
+  using allocator_type = std::pmr::polymorphic_allocator<NewStuffByDatabase>;
+
+  NewStuffByDatabase(allocator_type alloc)
+      : replicatedLogs(alloc), collectionGroups(alloc) {}
+
   ReplicatedLogsMap replicatedLogs;
   CollectionGroupMap collectionGroups;
 };
@@ -1218,15 +1227,16 @@ void ClusterInfo::loadPlan() {
     return;
   }
 
-  decltype(_plannedDatabases) newDatabases();
   std::set<std::string> buildingDatabases;
-  decltype(_shards) newShards;
-  decltype(_shardsToPlanServers) newShardsToPlanServers;
-  decltype(_shardToShardGroupLeader) newShardToShardGroupLeader;
-  decltype(_shardGroups) newShardGroups;
-  decltype(_shardToName) newShardToName;
-  decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
-  decltype(_newStuffByDatabase) newStuffByDatabase;
+  decltype(_plannedDatabases) newDatabases{_memoryResource.get()};
+  decltype(_shards) newShards{_memoryResource.get()};
+  decltype(_shardsToPlanServers) newShardsToPlanServers{_memoryResource.get()};
+  decltype(_shardToShardGroupLeader) newShardToShardGroupLeader{
+      _memoryResource.get()};
+  decltype(_shardGroups) newShardGroups{_memoryResource.get()};
+  decltype(_shardToName) newShardToName{_memoryResource.get()};
+  decltype(_dbAnalyzersRevision) newDbAnalyzersRevision{_memoryResource.get()};
+  decltype(_newStuffByDatabase) newStuffByDatabase{_memoryResource.get()};
 
   bool swapDatabases = false;
   bool swapCollections = false;
@@ -1650,7 +1660,9 @@ void ClusterInfo::loadPlan() {
       continue;
     }
 
-    auto databaseCollections = std::make_shared<DatabaseCollections>();
+    auto databaseCollections = std::allocate_shared<DatabaseCollections>(
+        std::pmr::polymorphic_allocator<DatabaseCollections>(
+            _memoryResource.get()));
 
     // an iterator to all collections in the current database (from the previous
     // round) we can safely keep this iterator around because we hold the
@@ -1826,7 +1838,11 @@ void ClusterInfo::loadPlan() {
               auto it = newShardGroups.find(groupLeaderCol->second->at(i));
               if (it == newShardGroups.end()) {
                 // Need to create a new list:
-                auto list = std::make_shared<std::pmr::vector<pmr::ShardID>>();
+                auto list =
+                    std::allocate_shared<std::pmr::vector<pmr::ShardID>>(
+                        std::pmr::polymorphic_allocator<
+                            std::pmr::vector<pmr::ShardID>>{
+                            _memoryResource.get()});
                 list->reserve(2);
                 // group leader as well as member:
                 list->emplace_back(groupLeaderCol->second->at(i));
@@ -1860,13 +1876,19 @@ void ClusterInfo::loadPlan() {
     ensureViews(iresearch::StaticStrings::ViewSearchAliasType);
   }
 
+  auto allocate = [&]<typename T, typename... Args>(Args && ... args) {
+    return std::allocate_shared<T>(
+        std::pmr::polymorphic_allocator<T>(_memoryResource.get()),
+        std::forward<Args>(args)...);
+  };
+
   // And now for replicated logs
   for (auto const& [databaseName, query] : changeSet.dbs) {
     if (databaseName.empty()) {
       continue;
     }
 
-    auto stuff = std::make_shared<NewStuffByDatabase>();
+    auto stuff = allocate.operator()<NewStuffByDatabase>();
     {
       auto replicatedLogsPaths = cluster::paths::aliases::plan()
                                      ->replicatedLogs()
@@ -1879,7 +1901,7 @@ void ClusterInfo::loadPlan() {
         for (auto const& [idString, logSlice] :
              VPackObjectIterator(logsSlice)) {
           auto spec =
-              std::make_shared<replication2::agency::LogPlanSpecification>(
+              allocate.operator()<replication2::agency::LogPlanSpecification>(
                   velocypack::deserialize<
                       replication2::agency::LogPlanSpecification>(logSlice));
           newLogs.emplace(spec->id, std::move(spec));
@@ -1896,8 +1918,9 @@ void ClusterInfo::loadPlan() {
         CollectionGroupMap groups;
         for (auto const& [idString, groupSlice] :
              VPackObjectIterator(groupsSlice)) {
-          auto spec = std::make_shared<replication2::agency::CollectionGroup>(
-              groupSlice);
+          auto spec =
+              allocate.operator()<replication2::agency::CollectionGroup>(
+                  groupSlice);
           groups.emplace(spec->id, std::move(spec));
         }
         stuff->collectionGroups = std::move(groups);
@@ -1907,7 +1930,7 @@ void ClusterInfo::loadPlan() {
     newStuffByDatabase[databaseName] = std::move(stuff);
   }
 
-  decltype(_replicatedLogs) newReplicatedLogs;
+  decltype(_replicatedLogs) newReplicatedLogs{_memoryResource.get()};
   for (auto& dbs : newStuffByDatabase) {
     for (auto& it : dbs.second->replicatedLogs) {
       newReplicatedLogs.emplace(it.first, it.second);
@@ -2053,9 +2076,10 @@ void ClusterInfo::loadCurrent() {
     return;
   }
 
-  decltype(_currentDatabases) newDatabases;
-  decltype(_currentCollections) newCollections;
-  decltype(_shardsToCurrentServers) newShardsToCurrentServers;
+  decltype(_currentDatabases) newDatabases{_memoryResource.get()};
+  decltype(_currentCollections) newCollections{_memoryResource.get()};
+  decltype(_shardsToCurrentServers) newShardsToCurrentServers{
+      _memoryResource.get()};
 
   {
     READ_LOCKER(guard, _currentProt.lock);
@@ -5729,10 +5753,11 @@ void ClusterInfo::loadServers() {
   }
 
   if (serversRegistered.isObject()) {
-    decltype(_servers) newServers;
-    decltype(_serverAliases) newAliases;
-    decltype(_serverAdvertisedEndpoints) newAdvertisedEndpoints;
-    decltype(_serverTimestamps) newTimestamps;
+    decltype(_servers) newServers{_memoryResource.get()};
+    decltype(_serverAliases) newAliases{_memoryResource.get()};
+    decltype(_serverAdvertisedEndpoints) newAdvertisedEndpoints{
+        _memoryResource.get()};
+    decltype(_serverTimestamps) newTimestamps{_memoryResource.get()};
 
     containers::FlatHashSet<ServerID> serverIds;
 
@@ -5990,7 +6015,7 @@ void ClusterInfo::loadCurrentCoordinators() {
             AgencyCommHelper::path(), "Current", "Coordinators"});
 
     if (currentCoordinators.isObject()) {
-      decltype(_coordinators) newCoordinators;
+      decltype(_coordinators) newCoordinators{_memoryResource.get()};
 
       for (auto const& coordinator : VPackObjectIterator(currentCoordinators)) {
         newCoordinators.try_emplace(coordinator.key.copyString(),
@@ -6039,7 +6064,7 @@ void ClusterInfo::loadCurrentMappings() {
             AgencyCommHelper::path(), "Target", "MapUniqueToShortID"});
 
     if (mappings.isObject()) {
-      decltype(_coordinatorIdMap) newCoordinatorIdMap;
+      decltype(_coordinatorIdMap) newCoordinatorIdMap{_memoryResource.get()};
 
       for (auto const& mapping : VPackObjectIterator(mappings)) {
         auto mapObject = mapping.value;
@@ -6128,7 +6153,7 @@ void ClusterInfo::loadCurrentDBServers() {
   }
 
   if (currentDBServers.isObject() && failedDBServers.isObject()) {
-    decltype(_dbServers) newDBServers;
+    decltype(_dbServers) newDBServers{_memoryResource.get()};
 
     for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
       bool found = false;
