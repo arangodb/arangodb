@@ -58,7 +58,7 @@ TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
   for (std::uint64_t i = 0; i < table->size(); i++) {
     std::uint32_t hash =
         static_cast<std::uint32_t>(i << (32 - Table::kMinLogSize));
-    Table::BucketLocker guard = table->fetchAndLockBucket(hash, -1);
+    Table::BucketLocker guard = table->fetchAndLockBucketByHash(hash, -1);
     ASSERT_TRUE(guard.isValid());
     ASSERT_TRUE(guard.isLocked());
     ASSERT_TRUE(guard.bucket<PlainBucket>().isLocked());
@@ -68,7 +68,7 @@ TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
     auto rawBucket = reinterpret_cast<PlainBucket*>(table->primaryBucket(i));
     ASSERT_EQ(&guard.bucket<PlainBucket>(), rawBucket);
 
-    Table::BucketLocker badGuard = table->fetchAndLockBucket(hash, 10);
+    Table::BucketLocker badGuard = table->fetchAndLockBucketByHash(hash, 10);
     ASSERT_FALSE(badGuard.isValid());
     ASSERT_EQ(badGuard.source(), nullptr);
   }
@@ -109,18 +109,18 @@ TEST_F(CacheTableMigrationTest,
   std::uint32_t hash = indexSmall << (32 - small->logSize());
 
   {
-    Table::BucketLocker guard = small->fetchAndLockBucket(hash, -1);
+    Table::BucketLocker guard = small->fetchAndLockBucketByHash(hash, -1);
     ASSERT_EQ(&guard.bucket<PlainBucket>(),
               reinterpret_cast<PlainBucket*>(small->primaryBucket(indexSmall)));
     guard.bucket<PlainBucket>()._state.toggleFlag(BucketState::Flag::migrated);
     ASSERT_EQ(guard.source(), small.get());
   }
 
-  Table::BucketLocker guard = small->fetchAndLockBucket(hash, -1);
+  Table::BucketLocker guard = small->fetchAndLockBucketByHash(hash, -1);
   ASSERT_EQ(&guard.bucket<PlainBucket>(),
             reinterpret_cast<PlainBucket*>(large->primaryBucket(indexLarge)));
   ASSERT_EQ(guard.source(), large.get());
-  Table::BucketLocker busyGuard = small->fetchAndLockBucket(hash, 10);
+  Table::BucketLocker busyGuard = small->fetchAndLockBucketByHash(hash, 10);
   ASSERT_FALSE(busyGuard.isValid());
   ASSERT_EQ(busyGuard.source(), nullptr);
 }

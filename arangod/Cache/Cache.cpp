@@ -397,30 +397,29 @@ bool Cache::freeMemory() {
     return false;
   }
 
-  bool underLimit = reclaimMemory(0ULL);
-  std::uint64_t failures = 0;
-  while (!underLimit) {
-    // pick a random bucket
-    std::uint32_t randomHash =
-        RandomGenerator::interval(std::numeric_limits<std::uint32_t>::max());
-    std::uint64_t reclaimed = freeMemoryFrom(randomHash);
-
+  std::uint64_t attempts;
+  auto cb = [this, &attempts](std::uint64_t reclaimed) -> bool {
     if (reclaimed > 0) {
-      failures = 0;
-      underLimit = reclaimMemory(reclaimed);
-    } else {
-      failures++;
-      if (failures > 100) {
-        if (isShutdown()) {
-          break;
-        } else {
-          failures = 0;
-        }
+      bool underLimit = reclaimMemory(reclaimed);
+      if (underLimit) {
+        // we have free enough memory.
+        // don't continue
+        return false;
       }
     }
-  }
+    if (++attempts % 32 == 0 && isShutdown()) {
+      // shutdown in progress. give up
+      return false;
+    }
+    // continue
+    return true;
+  };
 
-  return true;
+  bool underLimit = reclaimMemory(0ULL);
+  if (!underLimit) {
+    underLimit = freeMemoryWhile(cb);
+  }
+  return underLimit;
 }
 
 bool Cache::migrate(std::shared_ptr<Table> newTable) {

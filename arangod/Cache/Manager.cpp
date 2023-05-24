@@ -213,7 +213,15 @@ void Manager::shutdown() {
       SpinUnlocker unguard(SpinUnlocker::Mode::Write, _lock);
       cache->shutdown();
     }
+
+    TRI_ASSERT(_activeTables == 0);
     freeUnusedTables();
+
+    for (auto& it : _tables) {
+      TRI_ASSERT(it.empty());
+    }
+    TRI_ASSERT(_activeTables == 0);
+    TRI_ASSERT(_spareTables == 0);
     _shutdown = true;
   }
 }
@@ -369,6 +377,8 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     if (ok) {
       TRI_ASSERT(_globalAllocation + (metadata.allocatedSize - memoryUsage) >=
                  _fixedAllocation);
+      // we are subtracting the table's memory usage here because it was
+      // already tracked in leaseTable
       _globalAllocation += (metadata.allocatedSize - memoryUsage);
       TRI_ASSERT(_globalAllocation >= _fixedAllocation);
       _peakGlobalAllocation =
@@ -685,7 +695,6 @@ void Manager::freeUnusedTables() {
       TRI_ASSERT(_globalAllocation >= memoryUsage + _fixedAllocation);
       _globalAllocation -= memoryUsage;
       TRI_ASSERT(_globalAllocation >= _fixedAllocation);
-
       TRI_ASSERT(_spareTableAllocation >= memoryUsage);
       _spareTableAllocation -= memoryUsage;
 
@@ -723,16 +732,13 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     std::uint64_t oldLimit = metadata.hardUsageLimit;
     bool success = metadata.adjustLimits(newLimit, newLimit);
     TRI_ASSERT(success);
-    metaGuard.release();
 
-    if (newLimit != oldLimit) {
-      TRI_ASSERT(_globalAllocation + newLimit - oldLimit >= _fixedAllocation);
-      _globalAllocation -= oldLimit;
-      _globalAllocation += newLimit;
-      TRI_ASSERT(_globalAllocation >= _fixedAllocation);
-      _peakGlobalAllocation =
-          std::max(_globalAllocation, _peakGlobalAllocation);
-    }
+    TRI_ASSERT(_globalAllocation + newLimit - oldLimit >= _fixedAllocation);
+    _globalAllocation += newLimit;
+    _globalAllocation -= oldLimit;
+    TRI_ASSERT(_globalAllocation >= _fixedAllocation);
+    _peakGlobalAllocation = std::max(_globalAllocation, _peakGlobalAllocation);
+    metaGuard.release();
     return;
   }
 
@@ -804,7 +810,6 @@ std::shared_ptr<Table> Manager::leaseTable(std::uint32_t logSize) {
     if (increaseAllowed(Table::allocationSize(logSize), true)) {
       try {
         table = std::make_shared<Table>(logSize);
-
         _globalAllocation += table->memoryUsage();
         TRI_ASSERT(_globalAllocation >= _fixedAllocation);
         _peakGlobalAllocation =

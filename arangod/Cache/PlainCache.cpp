@@ -37,6 +37,7 @@
 #include "Cache/PlainBucket.h"
 #include "Cache/Table.h"
 #include "Cache/VPackKeyHasher.h"
+#include "Random/RandomGenerator.h"
 
 namespace arangodb::cache {
 
@@ -50,7 +51,7 @@ Finding PlainCache<Hasher>::find(void const* key, std::uint32_t keySize) {
 
   ::ErrorCode status = TRI_ERROR_NO_ERROR;
   Table::BucketLocker guard;
-  std::tie(status, guard) = getBucket(hash, Cache::triesFast);
+  std::tie(status, guard) = getBucketByHash(hash, Cache::triesFast);
   if (status != TRI_ERROR_NO_ERROR) {
     result.reportError(status);
   } else {
@@ -76,7 +77,7 @@ Result PlainCache<Hasher>::insert(CachedValue* value) {
   Table* source;
   {
     Table::BucketLocker guard;
-    std::tie(status, guard) = getBucket(hash, Cache::triesFast);
+    std::tie(status, guard) = getBucketByHash(hash, Cache::triesFast);
     if (status.fail()) {
       return status;
     }
@@ -146,7 +147,7 @@ Result PlainCache<Hasher>::remove(void const* key, std::uint32_t keySize) {
   Table* source;
   {
     Table::BucketLocker guard;
-    std::tie(status, guard) = getBucket(hash, Cache::triesSlow);
+    std::tie(status, guard) = getBucketByHash(hash, Cache::triesSlow);
     if (status.fail()) {
       return status;
     }
@@ -220,38 +221,57 @@ PlainCache<Hasher>::~PlainCache() {
 }
 
 template<typename Hasher>
-std::uint64_t PlainCache<Hasher>::freeMemoryFrom(std::uint32_t hash) {
-  std::uint64_t reclaimed = 0;
+bool PlainCache<Hasher>::freeMemoryWhile(
+    std::function<bool(std::uint64_t)> const& cb) {
+  std::shared_ptr<cache::Table> table = this->table();
+  if (!table) {
+    return false;
+  }
+
+  std::size_t const n = table->size();
+  if (n == 0) {
+    return false;
+  }
+
+  // pick a random start bucket for scanning, so that we don't
+  // prefer some buckets over others
+  std::uint64_t offset = RandomGenerator::interval(uint64_t(n));
+
   bool maybeMigrate = false;
-  Result status;
-  {
-    Table::BucketLocker guard;
-    std::tie(status, guard) = getBucket(hash, Cache::triesFast, false);
-    if (status.fail()) {
-      return 0;
+  for (std::size_t i = 0; i < n; ++i) {
+    std::uint64_t index = (offset + i) % n;
+
+    auto [status, guard] =
+        getBucketById(index, Cache::triesFast, /*singleOperation*/ false);
+
+    if (status != TRI_ERROR_NO_ERROR) {
+      continue;
     }
 
-    PlainBucket& bucket = guard.bucket<PlainBucket>();
+    PlainBucket& bucket = guard.template bucket<PlainBucket>();
     // evict LRU freeable value if exists
     CachedValue* candidate = bucket.evictionCandidate();
 
+    std::uint64_t reclaimed = 0;
     if (candidate != nullptr) {
       reclaimed = candidate->size();
       bucket.evict(candidate);
       freeValue(candidate);
-      maybeMigrate = guard.source()->slotEmptied();
+      maybeMigrate |= guard.source()->slotEmptied();
+    }
+
+    if (!cb(reclaimed)) {
+      break;
     }
   }
 
-  std::shared_ptr<cache::Table> table = this->table();
-  if (table) {
-    std::int32_t size = table->idealSize();
-    if (maybeMigrate) {
-      requestMigrate(size);
-    }
+  if (maybeMigrate) {
+    // caution: calling idealSize() can have side effects
+    // and trigger a table growth!
+    requestMigrate(table->idealSizeValue());
   }
 
-  return reclaimed;
+  return maybeMigrate;
 }
 
 template<typename Hasher>
@@ -316,7 +336,7 @@ void PlainCache<Hasher>::migrateBucket(void* sourcePtr,
 }
 
 template<typename Hasher>
-std::pair<::ErrorCode, Table::BucketLocker> PlainCache<Hasher>::getBucket(
+std::pair<::ErrorCode, Table::BucketLocker> PlainCache<Hasher>::getBucketByHash(
     std::uint32_t hash, std::uint64_t maxTries, bool singleOperation) {
   ::ErrorCode status = TRI_ERROR_NO_ERROR;
   Table::BucketLocker guard;
@@ -329,7 +349,30 @@ std::pair<::ErrorCode, Table::BucketLocker> PlainCache<Hasher>::getBucket(
       _manager->reportAccess(_id);
     }
 
-    guard = table->fetchAndLockBucket(hash, maxTries);
+    guard = table->fetchAndLockBucketByHash(hash, maxTries);
+    if (!guard.isLocked()) {
+      status = TRI_ERROR_LOCK_TIMEOUT;
+    }
+  }
+
+  return std::make_pair(status, std::move(guard));
+}
+
+template<typename Hasher>
+std::pair<::ErrorCode, Table::BucketLocker> PlainCache<Hasher>::getBucketById(
+    std::size_t bucket, std::uint64_t maxTries, bool singleOperation) {
+  ::ErrorCode status = TRI_ERROR_NO_ERROR;
+  Table::BucketLocker guard;
+
+  std::shared_ptr<Table> table = this->table();
+  if (ADB_UNLIKELY(isShutdown() || table == nullptr)) {
+    status = TRI_ERROR_SHUTTING_DOWN;
+  } else {
+    if (singleOperation) {
+      _manager->reportAccess(_id);
+    }
+
+    guard = table->fetchAndLockBucketById(bucket, maxTries);
     if (!guard.isLocked()) {
       status = TRI_ERROR_LOCK_TIMEOUT;
     }
