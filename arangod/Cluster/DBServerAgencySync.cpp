@@ -373,7 +373,18 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
                 << " message: " << r.errorMessage()
                 << ". This can be ignored, since it will be retried "
                    "automatically.";
+          } else {
+            if (VPackSlice resultsSlice = r.slice().get("results");
+                resultsSlice.length() > 0) {
+              auto waitIndex = resultsSlice[0].getNumber<uint64_t>();
+              LOG_TOPIC("cdc71", TRACE, Logger::MAINTENANCE)
+                  << "waiting for local current version to update";
+              std::ignore = clusterInfo.waitForCurrent(waitIndex).get();
+              LOG_TOPIC("3f185", TRACE, Logger::MAINTENANCE)
+                  << "current version updated";
+            }
           }
+
         } else {
           LOG_TOPIC("a07e6", TRACE, Logger::MAINTENANCE)
               << "DBServerAgencySync: Nothing to report to Current.";

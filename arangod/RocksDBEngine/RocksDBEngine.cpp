@@ -981,13 +981,6 @@ void RocksDBEngine::start() {
     TRI_ASSERT(false);
   }
 
-  if (!createdEngineDir) {
-    // database directory already existed before.
-    // now check if we have journal files of size 0 in the archive.
-    // these are useless, so we can as well delete them from the archive.
-    removeEmptyJournalFilesFromArchive();
-  }
-
   if (_createShaFiles) {
     _checksumEnv =
         std::make_unique<checksum::ChecksumEnv>(rocksdb::Env::Default(), _path);
@@ -3177,6 +3170,8 @@ void RocksDBEngine::syncIndexCaches() {
 DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
               "rocksdb_cache_active_tables");
 DECLARE_GAUGE(rocksdb_cache_allocated, uint64_t, "rocksdb_cache_allocated");
+DECLARE_GAUGE(rocksdb_cache_peak_allocated, uint64_t,
+              "rocksdb_cache_peak_allocated");
 DECLARE_GAUGE(rocksdb_cache_hit_rate_lifetime, uint64_t,
               "rocksdb_cache_hit_rate_lifetime");
 DECLARE_GAUGE(rocksdb_cache_hit_rate_recent, uint64_t,
@@ -3282,11 +3277,13 @@ DECLARE_GAUGE(rocksdb_total_sst_files_size, uint64_t,
 DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t,
               "rocksdb_engine_throttle_bps");
 DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
+DECLARE_GAUGE(rocksdb_total_sst_files, uint64_t, "rocksdb_total_sst_files");
 
 void RocksDBEngine::getStatistics(std::string& result) const {
   VPackBuilder stats;
   getStatistics(stats);
   VPackSlice sslice = stats.slice();
+
   TRI_ASSERT(sslice.isObject());
   for (auto a : VPackObjectIterator(sslice)) {
     if (a.value.isNumber()) {
@@ -3294,11 +3291,11 @@ void RocksDBEngine::getStatistics(std::string& result) const {
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
       if (!name.empty() && name.front() != 'r') {
-        name = std::string{kEngineName}.append("_").append(name);
+        name = absl::StrCat(kEngineName, "_", name);
       }
-      result += "\n# HELP " + name + " " + name + "\n# TYPE " + name +
-                " gauge\n" + name + " " +
-                std::to_string(a.value.getNumber<uint64_t>()) + "\n";
+      result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
+                             " gauge\n", name, " ",
+                             a.value.getNumber<uint64_t>(), "\n");
     }
   }
 }
@@ -3324,18 +3321,20 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   // get string property from each column family and return sum;
   auto addIntAllCf = [&](std::string const& s) {
     int64_t sum = 0;
+    std::string v;
     for (auto cfh : RocksDBColumnFamilyManager::allHandles()) {
-      std::string v;
+      v.clear();
       if (_db->GetProperty(cfh, s, &v)) {
         int64_t temp = basics::StringUtils::int64(v);
 
-        // -1 returned for somethings that are valid property but no value
+        // -1 returned for some things that are valid property but no value
         if (0 < temp) {
           sum += temp;
         }
       }
     }
     builder.add(s, VPackValue(sum));
+    return sum;
   };
 
   // add column family properties
@@ -3369,14 +3368,16 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   };
 
   builder.openObject();
+  int64_t numSstFilesOnAllLevels = 0;
   for (int i = 0; i < _optionsProvider.getOptions().num_levels; ++i) {
-    addIntAllCf(rocksdb::DB::Properties::kNumFilesAtLevelPrefix +
-                std::to_string(i));
+    numSstFilesOnAllLevels += addIntAllCf(
+        absl::StrCat(rocksdb::DB::Properties::kNumFilesAtLevelPrefix, i));
     // ratio needs new calculation with all cf, not a simple add operation
-    addIntAllCf(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix +
-                std::to_string(i));
+    addIntAllCf(absl::StrCat(
+        rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix, i));
   }
-  // caution:  you must read rocksdb/db/interal_stats.cc carefully to
+  builder.add("rocksdb.total-sst-files", VPackValue(numSstFilesOnAllLevels));
+  // caution:  you must read rocksdb/db/internal_stats.cc carefully to
   //           determine if a property is for whole database or one column
   //           family
   addIntAllCf(rocksdb::DB::Properties::kNumImmutableMemTable);
@@ -3472,6 +3473,8 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 
     builder.add("cache.limit", VPackValue(stats->globalLimit));
     builder.add("cache.allocated", VPackValue(stats->globalAllocation));
+    builder.add("cache.peak-allocated",
+                VPackValue(stats->peakGlobalAllocation));
     builder.add("cache.active-tables", VPackValue(stats->activeTables));
     builder.add("cache.unused-memory", VPackValue(stats->spareAllocation));
     builder.add("cache.unused-tables", VPackValue(stats->spareTables));
@@ -3963,44 +3966,6 @@ std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
     return std::make_shared<RocksDBSnapshot>(*_db);
   } else {
     return nullptr;
-  }
-}
-
-void RocksDBEngine::removeEmptyJournalFilesFromArchive() {
-  LOG_TOPIC("50812", DEBUG, Logger::ENGINES)
-      << "scanning WAL archive directory for empty files...";
-
-  std::string archiveDirectory =
-      basics::FileUtils::buildFilename(_dbOptions.wal_dir, "archive");
-
-  try {
-    for (auto const& f : basics::FileUtils::listFiles(archiveDirectory)) {
-      if (!f.ends_with(".log")) {
-        // we only care about .log files in there
-        continue;
-      }
-
-      std::string fn = basics::FileUtils::buildFilename(archiveDirectory, f);
-      int64_t size = TRI_SizeFile(fn.c_str());
-      if (size == 0) {
-        // file size is exactly 0 bytes
-        LOG_TOPIC("e79dd", DEBUG, Logger::ENGINES)
-            << "found empty WAL file in archive at startup: '" << f
-            << "', scheduling this file for later deletion";
-
-        WRITE_LOCKER(lock, _walFileLock);
-        _prunableWalFiles.emplace(
-            basics::FileUtils::buildFilename("archive", f),
-            TRI_microtime() + _pruneWaitTime);
-      }
-    }
-
-    _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
-                                   std::memory_order_relaxed);
-  } catch (...) {
-    // we can continue even if an exception occurs here.
-    // it is possible that during hot backup restore the archive directory
-    // does not exist.
   }
 }
 

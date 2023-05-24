@@ -112,7 +112,12 @@ arangodb::Result removeRevisions(
   using arangodb::PhysicalCollection;
   using arangodb::Result;
 
+  arangodb::Result res;
+
   if (!toRemove.empty()) {
+    TRI_ASSERT(trx.state()->hasHint(
+        arangodb::transaction::Hints::Hint::INTERMEDIATE_COMMITS));
+
     PhysicalCollection* physical = collection.getPhysical();
 
     auto indexesSnapshot = physical->getIndexesSnapshot();
@@ -130,28 +135,40 @@ arangodb::Result removeRevisions(
       auto documentId = arangodb::LocalDocumentId::create(rid);
 
       tempBuilder->clear();
-      auto r = physical->lookupDocument(trx, documentId, *tempBuilder,
-                                        /*readCache*/ true, /*fillCache*/ false,
-                                        arangodb::ReadOwnWrites::yes);
+      res = physical->lookupDocument(trx, documentId, *tempBuilder,
+                                     /*readCache*/ true, /*fillCache*/ false,
+                                     arangodb::ReadOwnWrites::yes);
 
-      if (r.ok()) {
-        r = physical->remove(trx, indexesSnapshot, documentId, rid,
-                             tempBuilder->slice(), options);
+      if (res.ok()) {
+        res = physical->remove(trx, indexesSnapshot, documentId, rid,
+                               tempBuilder->slice(), options);
       }
 
-      if (r.ok()) {
+      if (res.ok()) {
         ++stats.numDocsRemoved;
-      } else if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // ignore not found, we remove conflicting docs ahead of time
-        stats.waitedForRemovals += TRI_microtime() - t;
-        return r;
+        res.reset();
+      } else {
+        // another error. this is severe and we abort.
+        break;
       }
     }
 
+    if (res.ok()) {
+      auto fut =
+          trx.state()->performIntermediateCommitIfRequired(collection.id());
+      TRI_ASSERT(fut.isReady());
+      res = fut.get();
+    }
+
     stats.waitedForRemovals += TRI_microtime() - t;
+
+    toRemove.clear();
   }
 
-  return {};
+  TRI_ASSERT(toRemove.empty());
+  return res;
 }
 
 arangodb::Result fetchRevisions(
@@ -159,7 +176,7 @@ arangodb::Result fetchRevisions(
     arangodb::DatabaseInitialSyncer::Configuration& config,
     arangodb::Syncer::SyncerState& state,
     arangodb::LogicalCollection& collection, std::string const& leader,
-    bool encodeAsHLC, std::vector<arangodb::RevisionId> const& toFetch,
+    bool encodeAsHLC, std::vector<arangodb::RevisionId>& toFetch,
     arangodb::ReplicationMetricsFeature::InitialSyncStats& stats) {
   using arangodb::PhysicalCollection;
   using arangodb::RestReplicationHandler;
@@ -476,6 +493,9 @@ arangodb::Result fetchRevisions(
       shoppingLists.pop_front();
       TRI_ASSERT(futures.size() == shoppingLists.size());
 
+      TRI_ASSERT(trx.state()->hasHint(
+          arangodb::transaction::Hints::Hint::INTERMEDIATE_COMMITS));
+
       auto fut =
           trx.state()->performIntermediateCommitIfRequired(collection.id());
       TRI_ASSERT(fut.isReady());
@@ -487,7 +507,8 @@ arangodb::Result fetchRevisions(
     }
   }
 
-  return Result();
+  toFetch.clear();
+  return {};
 }
 }  // namespace
 
@@ -1899,9 +1920,49 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         *static_cast<RevisionReplicationIterator*>(iter.get());
 
     uint64_t const documentsFound = treeLocal->count();
+    auto& nf = coll->vocbase().server().getFeature<NetworkFeature>();
 
     std::vector<RevisionId> toFetch;
     std::vector<RevisionId> toRemove;
+
+    auto handleFetch = [this, &toFetch, &nf, &trx, &coll, &leaderColl,
+                        &encodeAsHLC, &stats](RevisionId const& id) -> Result {
+      if (toFetch.empty()) {
+        toFetch.reserve(4096);
+      }
+      toFetch.emplace_back(id);
+
+      Result res;
+      // check if we need to do something to prevent toFetch from growing too
+      // much in memory. note: we are not using the intermediateCommitCount
+      // limit here, because fetchRevisions splits the revisions to fetch in
+      // chunks of 5000 and fetches them all in parallel. using a too low limit
+      // here would counteract that.
+      if (toFetch.size() >= 250000) {
+        res = ::fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
+                               encodeAsHLC, toFetch, stats);
+        TRI_ASSERT(res.fail() || toFetch.empty());
+      }
+      return res;
+    };
+
+    auto handleRemoval = [&toRemove, &options, &coll, &trx,
+                          &stats](RevisionId const& id) -> Result {
+      // make sure we don't realloc uselessly for the initial inserts
+      if (toRemove.empty()) {
+        toRemove.reserve(4096);
+      }
+      toRemove.emplace_back(id);
+
+      Result res;
+      // check if we need to do something to prevent toRemove from growing too
+      // much in memory
+      if (toRemove.size() >= options.intermediateCommitCount) {
+        res = ::removeRevisions(*trx, *coll, toRemove, stats);
+        TRI_ASSERT(res.fail() || toRemove.empty());
+      }
+      return res;
+    };
 
     std::string const requestPayload = requestBuilder.slice().toJson();
     std::string const url = baseUrl + "/" + RestReplicationHandler::Ranges +
@@ -1925,7 +1986,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     // Builder will be recycled
     VPackBuilder responseBuilder;
 
-    auto& nf = coll->vocbase().server().getFeature<NetworkFeature>();
     while (requestResume < RevisionId::max()) {
       std::unique_ptr<httpclient::SimpleHttpResult> chunkResponse;
 
@@ -2064,7 +2124,11 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         TRI_ASSERT(mixedBound <= RevisionId{currentRange.second});
 
         while (local.hasMore() && local.revision() < removalBound) {
-          toRemove.emplace_back(local.revision());
+          res = handleRemoval(local.revision());
+          if (res.fail()) {
+            return res;
+          }
+
           iterResume = std::max(iterResume, local.revision().next());
           local.next();
         }
@@ -2079,11 +2143,18 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
           }
 
           if (local.revision() < leaderRev) {
-            toRemove.emplace_back(local.revision());
+            res = handleRemoval(local.revision());
+            if (res.fail()) {
+              return res;
+            }
+
             iterResume = std::max(iterResume, local.revision().next());
             local.next();
           } else if (leaderRev < local.revision()) {
-            toFetch.emplace_back(leaderRev);
+            res = handleFetch(leaderRev);
+            if (res.fail()) {
+              return res;
+            }
             ++index;
             iterResume = std::max(iterResume, leaderRev.next());
           } else {
@@ -2102,14 +2173,21 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
             leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
           }
           // fetch any leftovers
-          toFetch.emplace_back(leaderRev);
+          res = handleFetch(leaderRev);
+          if (res.fail()) {
+            return res;
+          }
           iterResume = std::max(iterResume, leaderRev.next());
         }
 
         while (local.hasMore() &&
                local.revision() <= std::min(requestResume.previous(),
                                             RevisionId{currentRange.second})) {
-          toRemove.emplace_back(local.revision());
+          res = handleRemoval(local.revision());
+          if (res.fail()) {
+            return res;
+          }
+
           iterResume = std::max(iterResume, local.revision().next());
           local.next();
         }
@@ -2120,22 +2198,14 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       }
 
       res = ::removeRevisions(*trx, *coll, toRemove, stats);
+      TRI_ASSERT(res.fail() || toRemove.empty());
       if (res.fail()) {
         return res;
       }
-      toRemove.clear();
 
       res = ::fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
                              encodeAsHLC, toFetch, stats);
-      if (res.fail()) {
-        return res;
-      }
-      toFetch.clear();
-
-      auto fut = trx->state()->performIntermediateCommitIfRequired(coll->id());
-      TRI_ASSERT(fut.isReady());
-      res = fut.get();
-
+      TRI_ASSERT(res.fail() || toFetch.empty());
       if (res.fail()) {
         return res;
       }

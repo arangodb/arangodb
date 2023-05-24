@@ -99,7 +99,7 @@ function transactionIntermediateCommitsSingleSuite() {
         tc.insert({});
         fail();
       } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_TRANSACTION_NOT_FOUND.code);
+        assertEqual(err.errorNum, errors.ERROR_TRANSACTION_ABORTED.code);
       }
 
       assertEqual(0, c.count());

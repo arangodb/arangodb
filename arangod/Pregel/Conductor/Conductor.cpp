@@ -384,77 +384,11 @@ void Conductor::cancelNoLock() {
   _workHandle.reset();
 }
 
-// resolves into an ordered list of shards for each collection on each server
-static void resolveInfo(
-    TRI_vocbase_t* vocbase, CollectionID const& collectionID,
-    std::unordered_map<CollectionID, std::string>& collectionPlanIdMap,
-    std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>& serverMap,
-    std::vector<ShardID>& allShards) {
-  ServerState* ss = ServerState::instance();
-  if (!ss->isRunningInCluster()) {  // single server mode
-    auto lc = vocbase->lookupCollection(collectionID);
-
-    if (lc == nullptr || lc->deleted()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                     collectionID);
-    }
-
-    collectionPlanIdMap.try_emplace(collectionID,
-                                    std::to_string(lc->planId().id()));
-    allShards.push_back(collectionID);
-    serverMap[ss->getId()][collectionID].push_back(collectionID);
-
-  } else if (ss->isCoordinator()) {  // we are in the cluster
-
-    ClusterInfo& ci =
-        vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-    std::shared_ptr<LogicalCollection> lc =
-        ci.getCollection(vocbase->name(), collectionID);
-    if (lc->deleted()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                     collectionID);
-    }
-    collectionPlanIdMap.try_emplace(collectionID,
-                                    std::to_string(lc->planId().id()));
-
-    std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci.getShardList(std::to_string(lc->id().id()));
-    allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
-
-    for (auto const& shard : *shardIDs) {
-      std::shared_ptr<std::vector<ServerID> const> servers =
-          ci.getResponsibleServer(shard);
-      if (servers->size() > 0) {
-        serverMap[(*servers)[0]][lc->name()].push_back(shard);
-      }
-    }
-  } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
-  }
-}
-
 /// should cause workers to start a new execution
 ErrorCode Conductor::_initializeWorkers() {
-  std::unordered_map<CollectionID, std::string> collectionPlanIdMap;
-  std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
-      edgeMap;
-  std::vector<ShardID> shardList;
-
-  // resolve plan id's and shards on the servers
-  for (CollectionID const& collectionID : _specifications.vertexCollections) {
-    resolveInfo(&(_vocbaseGuard.database()), collectionID, collectionPlanIdMap,
-                vertexMap,
-                shardList);  // store or
-  }
-  for (CollectionID const& collectionID : _specifications.edgeCollections) {
-    resolveInfo(&(_vocbaseGuard.database()), collectionID, collectionPlanIdMap,
-                edgeMap,
-                shardList);  // store or
-  }
-
   _dbServers.clear();
-  for (auto const& pair : vertexMap) {
-    _dbServers.push_back(pair.first);
+  for (auto server : _specifications.graphSerdeConfig.responsibleServerSet()) {
+    _dbServers.push_back(server);
   }
   _status = ConductorStatus::forWorkers(_dbServers);
 
@@ -464,25 +398,18 @@ ErrorCode Conductor::_initializeWorkers() {
   network::ConnectionPool* pool = nf.pool();
   std::vector<futures::Future<network::Response>> responses;
 
-  for (auto const& [server, vertexShardMap] : vertexMap) {
-    auto const& edgeShardMap = edgeMap[server];
-
+  for (auto const& server : _dbServers) {
     auto createWorker = worker::message::CreateWorker{
         .executionNumber = _specifications.executionNumber,
         .algorithm = std::string{_algorithm->name()},
         .userParameters = _specifications.userParameters,
         .coordinatorId = coordinatorId,
         .parallelism = _specifications.parallelism,
-        .edgeCollectionRestrictions =
-            _specifications.edgeCollectionRestrictions,
-        .vertexShards = vertexShardMap,
-        .edgeShards = edgeShardMap,
-        .collectionPlanIds = collectionPlanIdMap,
-        .allShards = shardList};
+        .graphSerdeConfig = _specifications.graphSerdeConfig,
+    };
 
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
-      TRI_ASSERT(vertexMap.size() == 1);
       if (_feature.isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
@@ -832,34 +759,15 @@ void Conductor::persistPregelState(ExecutionState state) {
   }
 
   TRI_ASSERT(state != ExecutionState::DEFAULT);
-  if (state == ExecutionState::LOADING) {
-    // During state LOADING we need to initially create the document in the
-    // collection
-    auto storeResult = cWriter.createResult(stateBuilder.slice());
-    if (storeResult.ok()) {
-      LOG_PREGEL("063x1", INFO)
-          << "Stored result into: \"" << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    } else {
-      LOG_PREGEL("063x2", INFO)
-          << "Could not store result into: \""
-          << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    }
+  auto updateResult = cWriter.updateResult(stateBuilder.slice());
+  if (updateResult.ok()) {
+    LOG_PREGEL("07323", INFO)
+        << "Updated state into: \"" << StaticStrings::PregelCollection
+        << "\" collection for PID: " << executionNumber();
   } else {
-    // During all other states, we will just simply update the already created
-    // document
-    auto updateResult = cWriter.updateResult(stateBuilder.slice());
-    if (updateResult.ok()) {
-      LOG_PREGEL("063x3", INFO)
-          << "Updated state into: \"" << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    } else {
-      LOG_PREGEL("063x4", INFO)
-          << "Could not store result into: \""
-          << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    }
+    LOG_PREGEL("0ffa4", INFO)
+        << "Could not store result into: \"" << StaticStrings::PregelCollection
+        << "\" collection for PID: " << executionNumber();
   }
 }
 

@@ -117,6 +117,7 @@ class PregelFeature final : public ArangodFeature {
   explicit PregelFeature(Server& server);
   ~PregelFeature();
 
+  Result persistExecution(TRI_vocbase_t& vocbase, ExecutionNumber en);
   ResultT<ExecutionNumber> startExecution(TRI_vocbase_t& vocbase,
                                           PregelOptions options);
 
@@ -193,10 +194,13 @@ class PregelFeature final : public ArangodFeature {
     std::shared_ptr<Conductor> conductor;
   };
 
-  std::unordered_map<ExecutionNumber, ConductorEntry> _conductors;
-  std::unordered_map<ExecutionNumber,
-                     std::pair<std::string, std::shared_ptr<IWorker>>>
-      _workers;
+  using ConductorMap = std::unordered_map<ExecutionNumber, ConductorEntry>;
+  ConductorMap _conductors;
+
+  using WorkerMap =
+      std::unordered_map<ExecutionNumber,
+                         std::pair<std::string, std::shared_ptr<IWorker>>>;
+  WorkerMap _workers;
 
   std::atomic<bool> _softShutdownOngoing;
 

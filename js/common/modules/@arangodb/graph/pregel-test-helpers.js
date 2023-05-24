@@ -86,7 +86,7 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
 
 const waitForResultsBeeingGarbageCollected = function (pid, ttl) {
   // garbage collection runs every 20s, therefore we should wait at least that long plus the ttl given
-	const maxWaitSeconds = ttl + 25;
+	const maxWaitSeconds = ttl + 100;
 	const sleepIntervalSeconds = 0.2;
   let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
 	let array;
