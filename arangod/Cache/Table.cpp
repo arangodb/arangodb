@@ -218,8 +218,8 @@ std::uint64_t Table::size() const noexcept { return _size; }
 
 std::uint32_t Table::logSize() const noexcept { return _logSize; }
 
-Table::BucketLocker Table::fetchAndLockBucket(std::uint32_t hash,
-                                              std::uint64_t maxTries) {
+Table::BucketLocker Table::fetchAndLockBucketByHash(std::uint32_t hash,
+                                                    std::uint64_t maxTries) {
   std::uint32_t index = (hash & _mask) >> _shift;
 
   BucketLocker bucketGuard;
@@ -234,7 +234,31 @@ Table::BucketLocker Table::fetchAndLockBucket(std::uint32_t hash,
         if (bucketGuard.bucket<GenericBucket>().isMigrated()) {
           bucketGuard.release();
           if (_auxiliary) {
-            bucketGuard = _auxiliary->fetchAndLockBucket(hash, maxTries);
+            bucketGuard = _auxiliary->fetchAndLockBucketByHash(hash, maxTries);
+          }
+        }
+      }
+    }
+  }
+
+  return bucketGuard;
+}
+
+Table::BucketLocker Table::fetchAndLockBucketById(std::size_t bucket,
+                                                  std::uint64_t maxTries) {
+  BucketLocker bucketGuard;
+
+  SpinLocker guard(SpinLocker::Mode::Read, _lock,
+                   static_cast<std::size_t>(maxTries));
+
+  if (guard.isLocked()) {
+    if (!_disabled && bucket < _size) {
+      bucketGuard = BucketLocker(&_buckets[bucket], this, maxTries);
+      if (bucketGuard.isLocked()) {
+        if (bucketGuard.bucket<GenericBucket>().isMigrated()) {
+          bucketGuard.release();
+          if (_auxiliary) {
+            bucketGuard = _auxiliary->fetchAndLockBucketById(bucket, maxTries);
           }
         }
       }
@@ -367,11 +391,16 @@ std::uint32_t Table::idealSize() noexcept {
   if (forceGrowth) {
     return logSize() + 1;
   }
+  return idealSizeValue();
+}
 
-  return (((static_cast<double>(_slotsUsed.load()) /
-            static_cast<double>(_slotsTotal)) > Table::idealUpperRatio)
+std::uint32_t Table::idealSizeValue() const noexcept {
+  std::uint64_t slotsUsed = _slotsUsed.load(std::memory_order_relaxed);
+
+  return (((static_cast<double>(slotsUsed) / static_cast<double>(_slotsTotal)) >
+           Table::idealUpperRatio)
               ? (logSize() + 1)
-              : (((static_cast<double>(_slotsUsed.load()) /
+              : (((static_cast<double>(slotsUsed) /
                    static_cast<double>(_slotsTotal)) < Table::idealLowerRatio)
                      ? (logSize() - 1)
                      : logSize()));
