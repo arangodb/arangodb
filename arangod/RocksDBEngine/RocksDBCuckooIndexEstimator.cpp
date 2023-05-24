@@ -99,15 +99,14 @@ RocksDBCuckooIndexEstimator<Key>::~RocksDBCuckooIndexEstimator() {
 }
 
 template<class Key>
-void RocksDBCuckooIndexEstimator<Key>::freeMemory() {
+void RocksDBCuckooIndexEstimator<Key>::drain() {
   WRITE_LOCKER(locker, _lock);
-  if (_slotBase == nullptr) {
-    // already done. don't adjust memory usage twice
-    return;
-  }
-  // only to validate that our math is correct and we are not missing
-  // anything.
-  uint64_t memoryUsage = _slotAllocSize + _counterAllocSize;
+  drainNoLock();
+}
+
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::drainNoLock() {
+  uint64_t memoryUsage = 0;
   for (auto const& it : _insertBuffers) {
     memoryUsage +=
         bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
@@ -123,6 +122,18 @@ void RocksDBCuckooIndexEstimator<Key>::freeMemory() {
   _insertBuffers.clear();
   _removalBuffers.clear();
   _truncateBuffer.clear();
+
+  decreaseMemoryUsage(memoryUsage);
+}
+
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::freeMemory() {
+  WRITE_LOCKER(locker, _lock);
+  drainNoLock();
+
+  // only to validate that our math is correct and we are not missing
+  // anything.
+  uint64_t memoryUsage = _slotAllocSize + _counterAllocSize;
 
   TRI_ASSERT(memoryUsage == _memoryUsage);
   decreaseMemoryUsage(memoryUsage);
@@ -261,23 +272,15 @@ void RocksDBCuckooIndexEstimator<Key>::appendDataBlob(
   TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <= _slotAllocSize);
   for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket);
        i += kSlotSize) {
-    if (_slotBase == nullptr) {
-      rocksutils::uint16ToPersistent(result, 0);
-    } else {
-      rocksutils::uint16ToPersistent(result,
-                                     *(reinterpret_cast<uint16_t*>(_base + i)));
-    }
+    rocksutils::uint16ToPersistent(result,
+                                   *(reinterpret_cast<uint16_t*>(_base + i)));
   }
 
   TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <= _counterAllocSize);
   for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket);
        i += kCounterSize) {
-    if (_slotBase == nullptr) {
-      rocksutils::uint32ToPersistent(result, 0);
-    } else {
-      rocksutils::uint32ToPersistent(
-          result, *(reinterpret_cast<uint32_t*>(_counters + i)));
-    }
+    rocksutils::uint32ToPersistent(
+        result, *(reinterpret_cast<uint32_t*>(_counters + i)));
   }
 }
 
@@ -290,9 +293,6 @@ void RocksDBCuckooIndexEstimator<Key>::clear() {
   _nrCuckood = 0;
   _nrUsed = 0;
 
-  if (_slotBase == nullptr) {
-    return;
-  }
   // Reset filter content
   // Now initialize all slots in all buckets with zero data:
   for (uint32_t b = 0; b < _size; ++b) {
@@ -311,9 +311,6 @@ Result RocksDBCuckooIndexEstimator<Key>::bufferTruncate(
     rocksdb::SequenceNumber seq) {
   Result res = basics::catchVoidToResult([&]() -> void {
     WRITE_LOCKER(locker, _lock);
-    if (_slotBase == nullptr) {
-      return;
-    }
     _truncateBuffer.emplace(seq);
     _needToPersist.store(true, std::memory_order_release);
     increaseMemoryUsage(bufferedEntrySize());
@@ -352,9 +349,7 @@ bool RocksDBCuckooIndexEstimator<Key>::lookup(Key const& k) const {
   bool found = false;
   {
     READ_LOCKER(guard, _lock);
-    if (_slotBase != nullptr) {
-      findSlotNoCuckoo(pos1, pos2, fingerprint, found);
-    }
+    findSlotNoCuckoo(pos1, pos2, fingerprint, found);
   }
   return found;
 }
@@ -381,7 +376,37 @@ void RocksDBCuckooIndexEstimator<Key>::insert(Key const& k) {
 
   {
     WRITE_LOCKER(guard, _lock);
-    if (_slotBase != nullptr) {
+    Slot slot = findSlotCuckoo(pos1, pos2, fingerprint);
+    if (slot.isEmpty()) {
+      // Free slot. insert ourself.
+      slot.init(fingerprint);
+      ++_nrUsed;
+      TRI_ASSERT(_nrUsed > 0);
+    } else {
+      TRI_ASSERT(slot.isEqual(fingerprint));
+      slot.increase();
+    }
+    ++_nrTotal;
+    _needToPersist.store(true, std::memory_order_release);
+  }
+}
+
+/// @brief vectorized version of insert, for multiple keys at once
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::insert(std::vector<Key> const& keys) {
+  if (!keys.empty()) {
+    WRITE_LOCKER(guard, _lock);
+
+    for (auto const& k : keys) {
+      uint64_t hash1 = _hasherKey(k);
+      uint64_t pos1 = hashToPos(hash1);
+      uint16_t fingerprint = keyToFingerprint(k);
+      // We compute the second hash already here to let it survive a
+      // mispredicted
+      // branch in the first loop:
+      uint64_t hash2 = _hasherPosFingerprint(pos1, fingerprint);
+      uint64_t pos2 = hashToPos(hash2);
+
       Slot slot = findSlotCuckoo(pos1, pos2, fingerprint);
       if (slot.isEmpty()) {
         // Free slot. insert ourself.
@@ -393,43 +418,9 @@ void RocksDBCuckooIndexEstimator<Key>::insert(Key const& k) {
         slot.increase();
       }
       ++_nrTotal;
-      _needToPersist.store(true, std::memory_order_release);
     }
-  }
-}
 
-/// @brief vectorized version of insert, for multiple keys at once
-template<class Key>
-void RocksDBCuckooIndexEstimator<Key>::insert(std::vector<Key> const& keys) {
-  if (!keys.empty()) {
-    WRITE_LOCKER(guard, _lock);
-
-    if (_slotBase != nullptr) {
-      for (auto const& k : keys) {
-        uint64_t hash1 = _hasherKey(k);
-        uint64_t pos1 = hashToPos(hash1);
-        uint16_t fingerprint = keyToFingerprint(k);
-        // We compute the second hash already here to let it survive a
-        // mispredicted
-        // branch in the first loop:
-        uint64_t hash2 = _hasherPosFingerprint(pos1, fingerprint);
-        uint64_t pos2 = hashToPos(hash2);
-
-        Slot slot = findSlotCuckoo(pos1, pos2, fingerprint);
-        if (slot.isEmpty()) {
-          // Free slot. insert ourself.
-          slot.init(fingerprint);
-          ++_nrUsed;
-          TRI_ASSERT(_nrUsed > 0);
-        } else {
-          TRI_ASSERT(slot.isEqual(fingerprint));
-          slot.increase();
-        }
-        ++_nrTotal;
-      }
-
-      _needToPersist.store(true, std::memory_order_release);
-    }
+    _needToPersist.store(true, std::memory_order_release);
   }
 }
 
@@ -452,7 +443,48 @@ bool RocksDBCuckooIndexEstimator<Key>::remove(Key const& k) {
   {
     WRITE_LOCKER(guard, _lock);
 
-    if (_slotBase != nullptr) {
+    Slot slot = findSlotNoCuckoo(pos1, pos2, fingerprint, found);
+    if (found) {
+      // only decrease the total if we actually found it
+      --_nrTotal;
+      if (!slot.decrease()) {
+        // Removed last element. Have to remove
+        slot.reset();
+        --_nrUsed;
+      }
+    } else if (_nrCuckood > 0) {
+      // If we get here we assume that the element was once inserted, but
+      // removed by cuckoo
+      // Reduce nrCuckood;
+      // not included in _nrTotal, just decrease here
+      --_nrCuckood;
+    }
+    _needToPersist.store(true, std::memory_order_release);
+  }
+
+  return found;
+}
+
+/// @brief only call directly during startup/recovery; otherwise buffer
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::remove(std::vector<Key> const& keys) {
+  if (!keys.empty()) {
+    WRITE_LOCKER(guard, _lock);
+
+    for (auto const& k : keys) {
+      // remove one element with key k, if one is in the table. Return true if
+      // a key was removed and false otherwise.
+      // look up a key, return either false if no pair with key k is
+      // found or true.
+      uint64_t hash1 = _hasherKey(k);
+      uint64_t pos1 = hashToPos(hash1);
+      uint16_t fingerprint = keyToFingerprint(k);
+      // We compute the second hash already here to allow the result to
+      // survive a mispredicted branch in the first loop. Is this sensible?
+      uint64_t hash2 = _hasherPosFingerprint(pos1, fingerprint);
+      uint64_t pos2 = hashToPos(hash2);
+
+      bool found = false;
       Slot slot = findSlotNoCuckoo(pos1, pos2, fingerprint, found);
       if (found) {
         // only decrease the total if we actually found it
@@ -469,53 +501,8 @@ bool RocksDBCuckooIndexEstimator<Key>::remove(Key const& k) {
         // not included in _nrTotal, just decrease here
         --_nrCuckood;
       }
-      _needToPersist.store(true, std::memory_order_release);
     }
-  }
-
-  return found;
-}
-
-/// @brief only call directly during startup/recovery; otherwise buffer
-template<class Key>
-void RocksDBCuckooIndexEstimator<Key>::remove(std::vector<Key> const& keys) {
-  if (!keys.empty()) {
-    WRITE_LOCKER(guard, _lock);
-
-    if (_slotBase != nullptr) {
-      for (auto const& k : keys) {
-        // remove one element with key k, if one is in the table. Return true if
-        // a key was removed and false otherwise.
-        // look up a key, return either false if no pair with key k is
-        // found or true.
-        uint64_t hash1 = _hasherKey(k);
-        uint64_t pos1 = hashToPos(hash1);
-        uint16_t fingerprint = keyToFingerprint(k);
-        // We compute the second hash already here to allow the result to
-        // survive a mispredicted branch in the first loop. Is this sensible?
-        uint64_t hash2 = _hasherPosFingerprint(pos1, fingerprint);
-        uint64_t pos2 = hashToPos(hash2);
-
-        bool found = false;
-        Slot slot = findSlotNoCuckoo(pos1, pos2, fingerprint, found);
-        if (found) {
-          // only decrease the total if we actually found it
-          --_nrTotal;
-          if (!slot.decrease()) {
-            // Removed last element. Have to remove
-            slot.reset();
-            --_nrUsed;
-          }
-        } else if (_nrCuckood > 0) {
-          // If we get here we assume that the element was once inserted, but
-          // removed by cuckoo
-          // Reduce nrCuckood;
-          // not included in _nrTotal, just decrease here
-          --_nrCuckood;
-        }
-      }
-      _needToPersist.store(true, std::memory_order_release);
-    }
+    _needToPersist.store(true, std::memory_order_release);
   }
 }
 
@@ -543,20 +530,18 @@ Result RocksDBCuckooIndexEstimator<Key>::bufferUpdates(
 
     WRITE_LOCKER(locker, _lock);
 
-    if (_slotBase != nullptr) {
-      if (!inserts.empty()) {
-        size_t n = inserts.size();
-        _insertBuffers.emplace(seq, std::move(inserts));
-        memoryUsage += bufferedEntrySize() + bufferedEntryItemSize() * n;
-      }
-      if (!removals.empty()) {
-        size_t n = removals.size();
-        _removalBuffers.emplace(seq, std::move(removals));
-        memoryUsage += bufferedEntrySize() + bufferedEntryItemSize() * n;
-      }
-
-      _needToPersist.store(true, std::memory_order_release);
+    if (!inserts.empty()) {
+      size_t n = inserts.size();
+      _insertBuffers.emplace(seq, std::move(inserts));
+      memoryUsage += bufferedEntrySize() + bufferedEntryItemSize() * n;
     }
+    if (!removals.empty()) {
+      size_t n = removals.size();
+      _removalBuffers.emplace(seq, std::move(removals));
+      memoryUsage += bufferedEntrySize() + bufferedEntryItemSize() * n;
+    }
+
+    _needToPersist.store(true, std::memory_order_release);
   });
   return res;
 }
@@ -611,10 +596,8 @@ rocksdb::SequenceNumber RocksDBCuckooIndexEstimator<Key>::applyUpdates(
           _insertBuffers.erase(it);
           break;
         }
-        decreaseMemoryUsage(memoryUsage);
 
         // check for removals
-        memoryUsage = 0;
         it = _removalBuffers.begin();  // sorted ASC
         while (it != _removalBuffers.end() && it->first <= commitSeq) {
           if (it->first <= ignoreSeq) {
@@ -632,6 +615,7 @@ rocksdb::SequenceNumber RocksDBCuckooIndexEstimator<Key>::applyUpdates(
           _removalBuffers.erase(it);
           break;
         }
+
         decreaseMemoryUsage(memoryUsage);
       }
 

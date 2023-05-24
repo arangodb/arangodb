@@ -156,10 +156,6 @@ class RocksDBCuckooIndexEstimator {
   RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) =
       delete;
 
-  // free underlying memory. after that, the estimator will not carry out
-  // calls to insert/remove etc. anymore
-  void freeMemory();
-
   enum SerializeFormat : char {
     // Estimators are serialized in the following way:
     // - the first 8 bytes contain the applied seq number, little endian
@@ -214,6 +210,9 @@ class RocksDBCuckooIndexEstimator {
 
   /// @brief only call directly during startup/recovery; otherwise buffer
   void clear();
+
+  /// @brief free internal buffers
+  void drain();
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
 
@@ -525,6 +524,12 @@ class RocksDBCuckooIndexEstimator {
 
   void increaseMemoryUsage(uint64_t value) noexcept;
   void decreaseMemoryUsage(uint64_t value) noexcept;
+
+  // free all underlying memory
+  void freeMemory();
+
+  // helper function for drain()
+  void drainNoLock();
 
  private:
   // metric for tracking global memory usage (combined memory usage of all

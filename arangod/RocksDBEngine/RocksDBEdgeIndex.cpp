@@ -1050,7 +1050,7 @@ Result RocksDBEdgeIndex::drop() {
   Result res = RocksDBIndex::drop();
 
   if (res.ok() && _estimator != nullptr) {
-    _estimator->freeMemory();
+    _estimator->drain();
   }
 
   return res;
