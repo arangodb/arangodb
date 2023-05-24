@@ -42,6 +42,15 @@ typedef std::string ViewID;           // ID of a view
 typedef std::string ShardID;          // ID of a shard
 typedef uint32_t ServerShortID;       // Short ID of a server
 typedef std::string ServerShortName;  // Short name of a server
+namespace pmr {
+typedef std::pmr::string ServerID;         // ID of a server
+typedef std::pmr::string DatabaseID;       // ID/name of a database
+typedef std::pmr::string CollectionID;     // ID of a collection
+typedef std::pmr::string ViewID;           // ID of a view
+typedef std::pmr::string ShardID;          // ID of a shard
+typedef uint32_t ServerShortID;            // Short ID of a server
+typedef std::pmr::string ServerShortName;  // Short name of a server
+}  // namespace pmr
 
 enum class ServerHealth { kGood, kBad, kFailed, kUnclear };
 

@@ -95,6 +95,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <chrono>
+#include "Metrics/GaugeBuilder.h"
 
 namespace arangodb {
 /// @brief internal helper struct for counting the number of shards etc.
@@ -546,10 +547,39 @@ DECLARE_HISTOGRAM(arangodb_load_current_runtime, ClusterInfoScale,
 DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
                   "Plan loading runtimes [ms]");
 
+DECLARE_GAUGE(arangodb_memory_cluster_info_bla_bla, std::size_t,
+              "Memory cluster info");
+
+namespace {
+struct CountingMemoryResource : std::pmr::memory_resource {
+  explicit CountingMemoryResource(memory_resource* base) : base(base) {}
+
+ private:
+  void* do_allocate(size_t bytes, size_t alignment) override {
+    amount += bytes;
+    return base->allocate(bytes, alignment);
+  }
+  void do_deallocate(void* p, size_t bytes, size_t alignment) override {
+    base->deallocate(p, bytes, alignment);
+    amount -= bytes;
+  }
+
+  bool do_is_equal(const memory_resource& __other) const noexcept override {
+    return false;
+  }
+
+ public:
+  std::atomic<std::size_t> amount{0};
+  std::pmr::memory_resource* base;
+};
+}  // namespace
+
 ClusterInfo::ClusterInfo(ArangodServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)
-    : _server(server),
+    : _memoryResource(std::make_unique<CountingMemoryResource>(
+          std::pmr::new_delete_resource())),
+      _server(server),
       _agency(server),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
@@ -967,7 +997,7 @@ std::vector<DatabaseID> ClusterInfo::databases() {
 
       if (it2 != _currentDatabases.end()) {
         if ((*it2).second.size() >= expectedSize) {
-          result.push_back((*it).first);
+          result.emplace_back((*it).first);
         }
       }
 
@@ -1188,7 +1218,7 @@ void ClusterInfo::loadPlan() {
     return;
   }
 
-  decltype(_plannedDatabases) newDatabases;
+  decltype(_plannedDatabases) newDatabases();
   std::set<std::string> buildingDatabases;
   decltype(_shards) newShards;
   decltype(_shardsToPlanServers) newShardsToPlanServers;
@@ -1723,8 +1753,12 @@ void ClusterInfo::loadPlan() {
         for (auto const& p : *shardIDs) {
           TRI_ASSERT(p.first.size() >= 2);
           shards->push_back(p.first);
-          newShardsToPlanServers.insert_or_assign(p.first, p.second);
-          newShardToName.insert_or_assign(p.first, newCollection->name());
+          auto v = std::pmr::vector<pmr::ServerID>{};
+          v.assign(p.second.begin(), p.second.end());
+          newShardsToPlanServers.insert_or_assign(pmr::ShardID{p.first},
+                                                  std::move(v));
+          newShardToName.insert_or_assign(pmr::ShardID{p.first},
+                                          newCollection->name());
         }
 
         // Sort by the number in the shard ID ("s0000001" for example):
@@ -1762,7 +1796,8 @@ void ClusterInfo::loadPlan() {
     // Now that the loop is completed, we have to run through it one more
     // time to get the shard groups done:
     for (auto const& colPair : *databaseCollections) {
-      if (colPair.first == colPair.second.collection->name()) {
+      if (colPair.first ==
+          std::string_view{colPair.second.collection->name()}) {
         // Every collection shows up once with its ID and once with its name.
         // We only want it once, so we only take it when we see the ID, not
         // the name as key:
@@ -1791,7 +1826,7 @@ void ClusterInfo::loadPlan() {
               auto it = newShardGroups.find(groupLeaderCol->second->at(i));
               if (it == newShardGroups.end()) {
                 // Need to create a new list:
-                auto list = std::make_shared<std::vector<ShardID>>();
+                auto list = std::make_shared<std::pmr::vector<pmr::ShardID>>();
                 list->reserve(2);
                 // group leader as well as member:
                 list->emplace_back(groupLeaderCol->second->at(i));
@@ -1800,7 +1835,7 @@ void ClusterInfo::loadPlan() {
                                            std::move(list));
               } else {
                 // Need to add us to the list:
-                it->second->push_back(col->second->at(i));
+                it->second->emplace_back(col->second->at(i));
               }
             }
           } else {
@@ -2076,7 +2111,7 @@ void ClusterInfo::loadCurrent() {
     }
     databaseSlice = databaseSlice.get(dbPath);
 
-    containers::FlatHashMap<ServerID, velocypack::Slice> serverList;
+    AssocUnorderedContainer<pmr::ServerID, velocypack::Slice> serverList;
     if (databaseSlice.isObject()) {
       for (auto const& serverSlicePair : VPackObjectIterator(databaseSlice)) {
         serverList.try_emplace(serverSlicePair.key.copyString(),
@@ -2084,7 +2119,8 @@ void ClusterInfo::loadCurrent() {
       }
     }
 
-    newDatabases.insert_or_assign(databaseName, std::move(serverList));
+    newDatabases.insert_or_assign(std::pmr::string{databaseName},
+                                  std::move(serverList));
     swapDatabases = true;
   }
 
@@ -2117,7 +2153,7 @@ void ClusterInfo::loadCurrent() {
                                       "Collections", databaseName};
         for (auto const& ec : existingCollections->second) {
           auto const& cid = ec.first;
-          path.push_back(cid);
+          path.emplace_back(cid);
           if (ncs.hasKey(path)) {
             std::shared_ptr<VPackBuilder> cur;
             {
@@ -2146,7 +2182,7 @@ void ClusterInfo::loadCurrent() {
 
       for (auto const& shardSlice :
            velocypack::ObjectIterator(collectionSlice.value)) {
-        std::string shardID = shardSlice.key.copyString();
+        std::pmr::string shardID{shardSlice.key.copyString()};
 
         collectionDataCurrent->add(shardID, shardSlice.value);
 
@@ -2158,9 +2194,9 @@ void ClusterInfo::loadCurrent() {
         // ask about the current collection info.
 
         // Now take note of this shard and its responsible server:
-        auto servers = std::make_shared<std::vector<ServerID>>(
-            collectionDataCurrent->servers(shardID)  // args
-        );
+        auto const& xx = collectionDataCurrent->servers(shardID);
+        auto servers = std::make_shared<std::pmr::vector<pmr::ServerID>>(
+            xx.begin(), xx.end());
 
         newShardsToCurrentServers.insert_or_assign(std::move(shardID),
                                                    std::move(servers));
@@ -5823,7 +5859,7 @@ std::string ClusterInfo::getServerEndpoint(std::string_view serverID) {
       auto it = _servers.find(serverID_);
 
       if (it != _servers.end()) {
-        return (*it).second;
+        return std::string{(*it).second};
       }
     }
 
@@ -5874,7 +5910,7 @@ std::string ClusterInfo::getServerAdvertisedEndpoint(
       // _serversAliases is a map-type <ServerID, std::string>
       auto it = _serverAdvertisedEndpoints.find(serverID_);
       if (it != _serverAdvertisedEndpoints.end()) {
-        return (*it).second;
+        return std::string{(*it).second};
       }
     }
 
@@ -5908,7 +5944,7 @@ std::string ClusterInfo::getServerName(std::string_view endpoint) {
       READ_LOCKER(readLocker, _serversProt.lock);
       for (auto const& it : _servers) {
         if (it.second == endpoint) {
-          return it.first;
+          return std::string{it.first};
         }
       }
     }
@@ -6189,21 +6225,26 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 
 std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
     std::string_view shardID) {
-  if (!shardID.empty()) {
-    if (auto result = getResponsibleServerReplication2(shardID);
-        result != nullptr) {
-      return result;
+  auto result = [&] {
+    if (!shardID.empty()) {
+      if (auto result = getResponsibleServerReplication2(shardID);
+          result != nullptr) {
+        return result;
+      }
     }
-  }
 
-  return getResponsibleServerReplication1(shardID);
+    return getResponsibleServerReplication1(shardID);
+  }();
+
+  return std::make_shared<std::vector<ServerID>>(result->begin(),
+                                                 result->end());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication1 code for getResponsibleServer
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std::vector<ServerID> const>
+std::shared_ptr<std::pmr::vector<pmr::ServerID> const>
 ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
   int tries = 0;
 
@@ -6246,14 +6287,14 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
-  return std::make_shared<std::vector<ServerID>>();
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief for replication2 we use the replicated logs data to find the servers
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std::vector<ServerID> const>
+std::shared_ptr<std::pmr::vector<pmr::ServerID> const>
 ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
   int tries = 0;
 
@@ -6265,7 +6306,7 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
   }
 
   auto logId = LogicalCollection::shardIdToStateId(shardID);
-  auto result = std::shared_ptr<std::vector<ServerID>>{nullptr};
+  auto result = std::shared_ptr<std::pmr::vector<pmr::ServerID>>{nullptr};
 
   while (true) {
     {
@@ -6283,7 +6324,7 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
           it->second->currentTerm->leader.has_value()) {
         auto& leader = it->second->currentTerm->leader->serverId;
         auto& participants = it->second->participantsConfig.participants;
-        result = std::make_shared<std::vector<ServerID>>();
+        result = std::make_shared<std::pmr::vector<pmr::ServerID>>();
 
         // TODO Sanity check, can be removed later
         TRI_ASSERT(participants.size() < 1000000);
@@ -6335,8 +6376,8 @@ ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(
     // so we don't know exactly right now.
     return ShardLeadership::kUnclear;
   }
-  return front == server ? ShardLeadership::kLeader
-                         : ShardLeadership::kFollower;
+  return front == std::string_view{server} ? ShardLeadership::kLeader
+                                           : ShardLeadership::kFollower;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -6519,7 +6560,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
   return std::make_shared<std::vector<ShardID>>();
 }
 
-std::shared_ptr<std::vector<ServerID> const>
+std::shared_ptr<std::pmr::vector<pmr::ServerID> const>
 ClusterInfo::getCurrentServersForShard(std::string_view shardId) {
   READ_LOCKER(readLocker, _currentProt.lock);
 
@@ -6572,7 +6613,7 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
 
       auto it = _coordinatorIdMap.find(shortId);
       if (it != _coordinatorIdMap.end()) {
-        return it->second;
+        return ServerID{it->second};
       }
     }
 
@@ -6651,45 +6692,70 @@ ClusterInfo::getCurrent(uint64_t& index,
 
 containers::FlatHashSet<ServerID> ClusterInfo::getFailedServers() const {
   std::lock_guard lock{_failedServersMutex};
-  return _failedServers;
+  containers::FlatHashSet<ServerID> result;
+  result.reserve(_failedServers.size());
+  for (auto const& server : _failedServers) {
+    result.emplace(server);
+  }
+  return result;
 }
 
 void ClusterInfo::setFailedServers(
     containers::FlatHashSet<ServerID> failedServers) {
   std::lock_guard lock{_failedServersMutex};
-  _failedServers = std::move(failedServers);
+  _failedServers.clear();
+  for (auto const& server : failedServers) {
+    _failedServers.emplace(server);
+  }
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 void ClusterInfo::setServers(
     containers::FlatHashMap<ServerID, std::string> servers) {
   WRITE_LOCKER(writeLocker, _serversProt.lock);
-  _servers = std::move(servers);
+  _servers.clear();
+  for (auto const& [k, v] : servers) {
+    _servers.emplace(k, v);
+  }
 }
 
 void ClusterInfo::setServerAliases(
     containers::FlatHashMap<ServerID, std::string> aliases) {
   WRITE_LOCKER(writeLocker, _serversProt.lock);
-  _serverAliases = std::move(aliases);
+  _serverAliases.clear();
+  for (auto const& [k, v] : aliases) {
+    _serverAliases.emplace(k, v);
+  }
 }
 
 void ClusterInfo::setServerAdvertisedEndpoints(
     containers::FlatHashMap<ServerID, std::string> advertisedEndpoints) {
   WRITE_LOCKER(writeLocker, _serversProt.lock);
-  _serverAdvertisedEndpoints = std::move(advertisedEndpoints);
+  _serverAdvertisedEndpoints.clear();
+  for (auto const& [k, v] : advertisedEndpoints) {
+    _serverAdvertisedEndpoints.emplace(k, v);
+  }
 }
 
 void ClusterInfo::setShardToShardGroupLeader(
     containers::FlatHashMap<ShardID, ShardID> shardToShardGroupLeader) {
   WRITE_LOCKER(writeLocker, _planProt.lock);
-  _shardToShardGroupLeader = std::move(shardToShardGroupLeader);
+  _shardToShardGroupLeader.clear();
+  for (auto const& [k, v] : shardToShardGroupLeader) {
+    _shardToShardGroupLeader.emplace(k, v);
+  }
 }
 
 void ClusterInfo::setShardGroups(
     containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>
         shardGroups) {
   WRITE_LOCKER(writeLocker, _planProt.lock);
-  _shardGroups = std::move(shardGroups);
+  _shardGroups.clear();
+  for (auto const& [k, v] : shardGroups) {
+    auto vv = std::make_shared<std::pmr::vector<pmr::ShardID>>();
+    vv->assign(v->begin(), v->end());
+    _shardGroups.emplace(k, std::move(vv));
+  }
 }
 
 void ClusterInfo::setShardIds(
@@ -6697,7 +6763,12 @@ void ClusterInfo::setShardIds(
                             std::shared_ptr<std::vector<ServerID> const>>
         shardIds) {
   WRITE_LOCKER(writeLocker, _currentProt.lock);
-  _shardsToCurrentServers = std::move(shardIds);
+  _shardsToCurrentServers.clear();
+  for (auto const& [k, v] : shardIds) {
+    auto vv = std::make_shared<std::pmr::vector<pmr::ShardID>>();
+    vv->assign(v->begin(), v->end());
+    _shardsToCurrentServers.emplace(k, std::move(vv));
+  }
 }
 #endif
 
@@ -6716,7 +6787,11 @@ containers::FlatHashMap<ServerID, std::string> ClusterInfo::getServers() {
     loadServers();
   }
   READ_LOCKER(readLocker, _serversProt.lock);
-  return _servers;
+  containers::FlatHashMap<ServerID, std::string> result;
+  for (auto const& [k, v] : _servers) {
+    result.emplace(k, v);
+  }
+  return result;
 }
 
 containers::FlatHashMap<ServerID, std::string> ClusterInfo::getServerAliases() {
@@ -6737,7 +6812,7 @@ arangodb::Result ClusterInfo::getShardServers(std::string_view shardId,
 
   auto it = _shardsToPlanServers.find(shardId);
   if (it != _shardsToPlanServers.end()) {
-    servers = (*it).second;
+    servers.assign(it->second.begin(), it->second.end());
     return arangodb::Result();
   }
 
@@ -6751,7 +6826,7 @@ CollectionID ClusterInfo::getCollectionNameForShard(std::string_view shardId) {
 
   auto it = _shardToName.find(shardId);
   if (it != _shardToName.end()) {
-    return it->second;
+    return CollectionID{it->second};
   }
   return StaticStrings::Empty;
 }
@@ -7618,7 +7693,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
 }
 
 void ClusterInfo::triggerWaiting(
-    std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
+    std::pmr::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
     uint64_t commitIndex) {
   auto* scheduler = SchedulerFeature::SCHEDULER;
   auto pit = mm.begin();

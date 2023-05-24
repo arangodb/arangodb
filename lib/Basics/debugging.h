@@ -157,6 +157,7 @@ struct is_container
               !std::is_same_v<unsigned char const*,
                               typename std::decay<T>::type> &&
               !std::is_same_v<T, std::string> &&
+              !std::is_same_v<T, std::pmr::string> &&
               !std::is_same_v<T, std::string_view> &&
               !std::is_same_v<T, const std::string>,
           std::true_type, std::false_type>::type {};

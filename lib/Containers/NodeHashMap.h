@@ -23,6 +23,10 @@
 #pragma once
 
 #include <absl/container/node_hash_map.h>
+namespace std::pmr {
+template<class T>
+class polymorphic_allocator;
+}
 
 namespace arangodb::containers {
 
@@ -33,4 +37,12 @@ template<class K, class V,
              typename absl::node_hash_map<K, V, Hash, Eq>::allocator_type>
 using NodeHashMap = absl::node_hash_map<K, V, Hash, Eq, Allocator>;
 
+namespace pmr {
+template<class K, class V,
+         class Hash = typename absl::node_hash_map<K, V>::hasher,
+         class Eq = typename absl::node_hash_map<K, V, Hash>::key_equal>
+using NodeHashMap =
+    absl::node_hash_map<K, V, Hash, Eq,
+                        std::pmr::polymorphic_allocator<std::pair<const K, V>>>;
+}
 }  // namespace arangodb::containers
