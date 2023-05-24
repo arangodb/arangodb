@@ -90,7 +90,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
       _state(WorkerState::IDLE),
       _config(std::make_shared<WorkerConfig>(&vocbase)),
       _algorithm(algo),
-      _magazine() {
+      _magazine(std::make_shared<Magazine<V, E>>()) {
   _config->updateConfig(parameters);
 
   std::lock_guard guard{_commandMutex};
@@ -162,8 +162,8 @@ void Worker<V, E, M>::setupWorker() {
                        _config->executionNumber());
     auto graphLoaded = GraphLoaded{.executionNumber = _config->_executionNumber,
                                    .sender = ServerState::instance()->getId(),
-                                   .vertexCount = _magazine.numberOfVertices(),
-                                   .edgeCount = _magazine.numberOfEdges()};
+                                   .vertexCount = _magazine->numberOfVertices(),
+                                   .edgeCount = _magazine->numberOfEdges()};
     auto serialized = inspection::serializeWithErrorT(graphLoaded);
     if (!serialized.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -231,8 +231,8 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
   return GlobalSuperStepPrepared{.executionNumber = _config->_executionNumber,
                                  .sender = ServerState::instance()->getId(),
                                  .activeCount = _activeCount,
-                                 .vertexCount = _magazine.numberOfVertices(),
-                                 .edgeCount = _magazine.numberOfEdges(),
+                                 .vertexCount = _magazine->numberOfVertices(),
+                                 .edgeCount = _magazine->numberOfEdges(),
                                  .aggregators = aggregators};
 }
 
@@ -286,7 +286,7 @@ void Worker<V, E, M>::startGlobalStep(RunGlobalSuperStep const& data) {
     _activeCount.store(0);
 
     LOG_PREGEL("425c3", DEBUG)
-        << "Starting processing on " << _magazine.size() << " shards";
+        << "Starting processing on " << _magazine->size() << " shards";
 
     //  _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
   }
@@ -321,12 +321,12 @@ void Worker<V, E, M>::_startProcessing() {
 
           while (true) {
             auto myCurrentQuiver = quiverIdx->fetch_add(1);
-            if (myCurrentQuiver >= _magazine.size()) {
+            if (myCurrentQuiver >= _magazine->size()) {
               LOG_PREGEL("ee215", DEBUG) << fmt::format(
                   "No more work left in vertex processor number {}", futureN);
               break;
             }
-            for (auto& vertex : *_magazine.quivers.at(myCurrentQuiver)) {
+            for (auto& vertex : *_magazine->quivers.at(myCurrentQuiver)) {
               auto messages =
                   _readCache->getMessages(vertex.shard(), vertex.key());
               processor.process(&vertex, messages);

@@ -71,7 +71,7 @@ struct GraphLoader : GraphLoaderBase<V, E> {
         resourceMonitor(GlobalResourceMonitor::instance()),
         config(config),
         updateCallback(updateCallback) {}
-  auto load() -> futures::Future<Magazine<V, E>> override;
+  auto load() -> futures::Future<std::shared_ptr<Magazine<V, E>>> override;
 
   auto loadVertices(LoadableVertexShard loadableVertexShard)
       -> std::shared_ptr<Quiver<V, E>>;

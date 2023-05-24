@@ -62,7 +62,7 @@ struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
     result->openArray(/*unindexed*/ true);
   }
 
-  auto store(Magazine<V, E> magazine)
+  auto store(std::shared_ptr<Magazine<V, E>> magazine)
       -> futures::Future<futures::Unit> override;
   auto stealResult() -> std::unique_ptr<VPackBuilder> {
     result->close();

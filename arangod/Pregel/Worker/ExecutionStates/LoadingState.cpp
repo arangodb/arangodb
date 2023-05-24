@@ -75,8 +75,8 @@ auto Loading<V, E, M>::receive(actor::ActorPID const& sender,
             << fmt::format("Worker {} has finished loading.", self);
         return {conductor::message::GraphLoaded{
             .executionNumber = worker.config->executionNumber(),
-            .vertexCount = worker.magazine.numberOfVertices(),
-            .edgeCount = worker.magazine.numberOfEdges()}};
+            .vertexCount = worker.magazine->numberOfVertices(),
+            .edgeCount = worker.magazine->numberOfEdges()}};
       } catch (std::exception const& ex) {
         return Result{
             TRI_ERROR_INTERNAL,

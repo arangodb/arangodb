@@ -85,7 +85,7 @@ auto GraphLoader<V, E>::requestVertexIds(uint64_t numVertices)
 }
 
 template<typename V, typename E>
-auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
+auto GraphLoader<V, E>::load() -> futures::Future<std::shared_ptr<Magazine<V, E>>> {
   LOG_PREGEL("ff00f", DEBUG)
       << "GraphSerdeConfig: " << inspection::json(config->graphSerdeConfig());
   auto const server = ServerState::instance()->getId();
@@ -93,15 +93,15 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
       config->graphSerdeConfig().loadableVertexShardsForServer(server);
 
   auto loadableShardIdx = std::make_shared<std::atomic<size_t>>(0);
-  auto futures = std::vector<futures::Future<Magazine<V, E>>>{};
+  auto futures = std::vector<futures::Future<std::shared_ptr<Magazine<V, E>>>>{};
   auto self = this->shared_from_this();
 
   for (auto futureN = size_t{0}; futureN < config->parallelism(); ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
         RequestLane::INTERNAL_LOW,
         [this, self, futureN, loadableShardIdx, myLoadableVertexShards,
-         server]() -> Magazine<V, E> {
-          auto result = Magazine<V, E>{};
+         server]() -> std::shared_ptr<Magazine<V, E>> {
+          auto result = std::make_shared<Magazine<V, E>>();
 
           LOG_PREGEL("8633a", WARN)
               << fmt::format("Starting vertex loader number {}", futureN);
@@ -115,7 +115,7 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
             try {
               auto const& loadableVertexShard =
                   myLoadableVertexShards.at(myLoadableVertexShardIdx);
-              result.emplace(loadVertices(loadableVertexShard));
+              result->emplace(loadVertices(loadableVertexShard));
             } catch (basics::Exception const& ex) {
               LOG_PREGEL("8682a", WARN)
                   << fmt::format("vertex loader number {} caught exception: {}",
@@ -136,19 +136,19 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
         }));
   }
   return collectAll(futures).thenValue([this, self](auto&& results) {
-    auto result = Magazine<V, E>{};
+    auto result = std::make_shared<Magazine<V, E>>();
     for (auto&& r : results) {
       // TODO: maybe handle exceptions here?
-      auto&& magazine = r.get();
+      auto&& magazine = r->get();
 
-      for (auto&& q : magazine) {
-        result.emplace(std::move(q));
+      for (auto&& q : *magazine) {
+        result->emplace(std::move(q));
       }
     }
     std::visit(overload{[&](ActorLoadingUpdate const& update) {
                           update.fn(message::GraphLoadingUpdate{
-                              .verticesLoaded = result.numberOfVertices(),
-                              .edgesLoaded = result.numberOfEdges(),
+                              .verticesLoaded = result->numberOfVertices(),
+                              .edgesLoaded = result->numberOfEdges(),
                               .memoryBytesUsed = 0});
                         },
                         [](OldLoadingUpdate const& update) {

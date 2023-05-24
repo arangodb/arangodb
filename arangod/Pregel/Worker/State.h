@@ -67,7 +67,8 @@ struct WorkerState {
         spawnActor(std::move(spawnActor)),
         resultActor(std::move(resultActor)),
         statusActor(std::move(statusActor)),
-        metricsActor(std::move(metricsActor)) {
+        metricsActor(std::move(metricsActor)),
+        magazine(std::make_shared<Magazine<V, E>>()) {
     executionState = std::make_unique<Initial<V, E, M>>(*this);
     config->updateConfig(specifications);
   }
@@ -89,7 +90,7 @@ struct WorkerState {
   const actor::ActorPID resultActor;
   const actor::ActorPID statusActor;
   const actor::ActorPID metricsActor;
-  Magazine<V, E> magazine;
+  std::shared_ptr<Magazine<V, E>> magazine;
   MessageStats messageStats;
 };
 template<typename V, typename E, typename M, typename Inspector>

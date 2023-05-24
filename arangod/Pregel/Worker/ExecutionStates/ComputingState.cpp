@@ -234,12 +234,12 @@ auto Computing<V, E, M>::processVertices(Dispatcher const& dispatcher)
 
           while (true) {
             auto myCurrentQuiver = quiverIdx->fetch_add(1);
-            if (myCurrentQuiver >= worker.magazine.size()) {
+            if (myCurrentQuiver >= worker.magazine->size()) {
               LOG_TOPIC("eef15", DEBUG, Logger::PREGEL) << fmt::format(
                   "No more work left in vertex processor number {}", futureN);
               break;
             }
-            for (auto& vertex : *worker.magazine.quivers.at(myCurrentQuiver)) {
+            for (auto& vertex : *worker.magazine->quivers.at(myCurrentQuiver)) {
               auto messages =
                   readCache->getMessages(vertex.shard(), vertex.key());
               auto status = processor.process(&vertex, messages);
@@ -304,7 +304,7 @@ auto Computing<V, E, M>::finishProcessing(VerticesProcessed verticesProcessed,
   // all vertices processed
   dispatchStatus(pregel::message::GlobalSuperStepUpdate{
       .gss = worker.config->globalSuperstep(),
-      .verticesProcessed = worker.magazine.numberOfVertices(),
+      .verticesProcessed = worker.magazine->numberOfVertices(),
       .messagesSent = worker.messageStats.sendCount,
       .messagesReceived = worker.messageStats.receivedCount,
       .memoryBytesUsedForMessages =
@@ -329,8 +329,8 @@ auto Computing<V, E, M>::finishProcessing(VerticesProcessed verticesProcessed,
       worker.messageStats.receivedCount,
       sendCountList,
       verticesProcessed.activeCount,
-      worker.magazine.numberOfVertices(),
-      worker.magazine.numberOfEdges(),
+      worker.magazine->numberOfVertices(),
+      worker.magazine->numberOfEdges(),
       aggregators};
   LOG_TOPIC("ade5b", DEBUG, Logger::PREGEL)
       << fmt::format("Finished GSS: {}", gssFinishedEvent);

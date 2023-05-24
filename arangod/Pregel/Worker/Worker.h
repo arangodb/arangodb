@@ -109,7 +109,7 @@ class Worker : public IWorker {
 
   std::unique_ptr<AggregatorHandler> _conductorAggregators;
   std::unique_ptr<AggregatorHandler> _workerAggregators;
-  Magazine<V, E> _magazine;
+  std::shared_ptr<Magazine<V, E>> _magazine;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
 

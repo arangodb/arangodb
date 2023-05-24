@@ -176,7 +176,7 @@ auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
 }
 
 template<typename V, typename E>
-auto GraphStorer<V, E>::store(Magazine<V, E> magazine)
+auto GraphStorer<V, E>::store(std::shared_ptr<Magazine<V, E>> magazine)
     -> futures::Future<futures::Unit> {
   auto futures = std::vector<futures::Future<futures::Unit>>{};
   auto self = this->shared_from_this();
@@ -188,11 +188,11 @@ auto GraphStorer<V, E>::store(Magazine<V, E> magazine)
         RequestLane::INTERNAL_LOW, [this, self, quiverIdx, magazine] {
           while (true) {
             auto myCurrentQuiverIdx = quiverIdx->fetch_add(1);
-            if (myCurrentQuiverIdx >= magazine.size()) {
+            if (myCurrentQuiverIdx >= magazine->size()) {
               break;
             }
 
-            storeQuiver(magazine.quivers.at(myCurrentQuiverIdx));
+            storeQuiver(magazine->quivers.at(myCurrentQuiverIdx));
           }
 
           return futures::Unit{};

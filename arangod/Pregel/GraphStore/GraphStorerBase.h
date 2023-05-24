@@ -36,7 +36,7 @@ class WorkerConfig;
 
 template<typename V, typename E>
 struct GraphStorerBase : std::enable_shared_from_this<GraphStorerBase<V, E>> {
-  virtual auto store(Magazine<V, E> magazine)
+  virtual auto store(std::shared_ptr<Magazine<V, E>> magazine)
       -> futures::Future<futures::Unit> = 0;
   virtual ~GraphStorerBase() = default;
 };

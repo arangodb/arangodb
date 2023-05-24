@@ -55,11 +55,11 @@
 namespace arangodb::pregel {
 
 template<typename V, typename E>
-auto GraphVPackBuilderStorer<V, E>::store(Magazine<V, E> magazine)
+auto GraphVPackBuilderStorer<V, E>::store(std::shared_ptr<Magazine<V, E>> magazine)
     -> futures::Future<futures::Unit> {
   std::string tmp;
 
-  for (auto& quiver : magazine) {
+  for (auto& quiver : *magazine) {
     for (auto& vertex : *quiver) {
       std::string const& cname =
           config->graphSerdeConfig().collectionName(vertex.shard());

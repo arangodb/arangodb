@@ -38,7 +38,7 @@ struct Quiver;
 
 template<typename V, typename E>
 struct GraphLoaderBase : std::enable_shared_from_this<GraphLoaderBase<V, E>> {
-  virtual auto load() -> futures::Future<Magazine<V, E>> = 0;
+  virtual auto load() -> futures::Future<std::shared_ptr<Magazine<V, E>>> = 0;
   virtual ~GraphLoaderBase() = default;
 };
 

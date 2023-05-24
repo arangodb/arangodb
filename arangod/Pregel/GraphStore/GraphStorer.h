@@ -65,7 +65,7 @@ struct GraphStorer : GraphStorerBase<V, E> {
         updateCallback(updateCallback) {}
 
   auto storeQuiver(std::shared_ptr<Quiver<V, E>> quiver) -> void;
-  auto store(Magazine<V, E> magazine)
+  auto store(std::shared_ptr<Magazine<V, E>> magazine)
       -> futures::Future<futures::Unit> override;
 
   ExecutionNumber executionNumber;
