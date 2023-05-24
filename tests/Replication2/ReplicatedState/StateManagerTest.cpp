@@ -54,11 +54,20 @@ using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_state;
 
 namespace {
-struct FakeState {
-  using LeaderType = test::EmptyLeaderType<FakeState>;
-  using FollowerType = test::EmptyFollowerType<FakeState>;
+struct EmptyState {
+  using LeaderType = test::EmptyLeaderType<EmptyState>;
+  using FollowerType = test::EmptyFollowerType<EmptyState>;
   using EntryType = test::DefaultEntryType;
   using FactoryType = test::DefaultFactory<LeaderType, FollowerType>;
+  using CoreType = test::TestCoreType;
+  using CoreParameterType = void;
+  using CleanupHandlerType = void;
+};
+struct FakeState {
+  using LeaderType = test::FakeLeaderType<FakeState>;
+  using FollowerType = test::FakeFollowerType<FakeState>;
+  using EntryType = test::DefaultEntryType;
+  using FactoryType = test::RecordingFactory<LeaderType, FollowerType>;
   using CoreType = test::TestCoreType;
   using CoreParameterType = void;
   using CleanupHandlerType = void;
@@ -108,8 +117,19 @@ struct FakeScheduler : IScheduler {
 struct DelayedScheduler : IScheduler {
   auto delayedFuture(std::chrono::nanoseconds duration, std::string_view name)
       -> arangodb::futures::Future<arangodb::futures::Unit> override {
-    ADB_PROD_CRASH() << "not implemented";
+    if (name.data() == nullptr) {
+      name = "replication-2-test";
+    }
+    auto p = futures::Promise<futures::Unit>{};
+    auto f = p.getFuture();
+    queueDelayed(name, duration, [p = std::move(p)](bool cancelled) mutable {
+      TRI_ASSERT(!cancelled);
+      p.setValue();
+    });
+
+    return f;
   }
+
   auto queueDelayed(std::string_view name, std::chrono::nanoseconds delay,
                     fu2::unique_function<void(bool canceled)> handler) noexcept
       -> WorkItemHandle override {
@@ -169,6 +189,7 @@ struct FakeFollowerFactory
   std::shared_ptr<replicated_log::ILeaderCommunicator> leaderComm;
 };
 
+template<typename State>
 struct StateManagerTest : testing::Test {
   GlobalLogIdentifier gid = GlobalLogIdentifier("db", LogId{1});
   arangodb::tests::mocks::MockServer mockServer =
@@ -214,19 +235,23 @@ struct StateManagerTest : testing::Test {
           logMetricsMock, optionsMock, participantsFactory, loggerContext,
           myself);
 
-  std::shared_ptr<FakeState::FactoryType> stateFactory =
-      std::make_shared<FakeState::FactoryType>();
-  std::unique_ptr<FakeState::CoreType> stateCore =
-      std::make_unique<FakeState::CoreType>();
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
-  std::shared_ptr<ReplicatedState<FakeState>> state =
-      std::make_shared<ReplicatedState<FakeState>>(
+
+  std::shared_ptr<typename State::FactoryType> stateFactory =
+      std::make_shared<typename State::FactoryType>();
+  std::unique_ptr<typename State::CoreType> stateCore =
+      std::make_unique<typename State::CoreType>();
+  std::shared_ptr<ReplicatedState<State>> state =
+      std::make_shared<ReplicatedState<State>>(
           gid, log, stateFactory, loggerCtx, stateMetricsMock, scheduler);
   ReplicatedLogConnection connection =
       log->connect(state->createStateHandle(vocbaseMock, std::nullopt));
 };
 
-TEST_F(StateManagerTest, get_leader_state_machine_early) {
+struct StateManagerTest_EmptyState : StateManagerTest<EmptyState> {};
+struct StateManagerTest_FakeState : StateManagerTest<FakeState> {};
+
+TEST_F(StateManagerTest_EmptyState, get_leader_state_machine_early) {
   // Overview:
   // - establish leadership
   // - let recovery finish
@@ -315,7 +340,7 @@ TEST_F(StateManagerTest, get_leader_state_machine_early) {
   }
 }
 
-TEST_F(StateManagerTest,
+TEST_F(StateManagerTest_EmptyState,
        get_follower_state_machine_early_with_snapshot_without_truncate) {
   // Overview:
   //  - start with a valid snapshot
@@ -413,7 +438,7 @@ TEST_F(StateManagerTest,
 }
 
 TEST_F(
-    StateManagerTest,
+    StateManagerTest_EmptyState,
     get_follower_state_machine_early_with_snapshot_with_truncate_append_entries_before_snapshot) {
   // Overview:
   //  - start with a valid snapshot
@@ -538,7 +563,7 @@ TEST_F(
 }
 
 TEST_F(
-    StateManagerTest,
+    StateManagerTest_EmptyState,
     get_follower_state_machine_early_with_snapshot_with_truncate_append_entries_after_snapshot) {
   // Overview:
   //  - start with a valid snapshot
@@ -660,7 +685,7 @@ TEST_F(
 }
 
 TEST_F(
-    StateManagerTest,
+    StateManagerTest_EmptyState,
     get_follower_state_machine_early_without_snapshot_append_entries_before_snapshot) {
   // Overview:
   //  - start without a snapshot
@@ -776,7 +801,7 @@ TEST_F(
 }
 
 TEST_F(
-    StateManagerTest,
+    StateManagerTest_EmptyState,
     get_follower_state_machine_early_without_snapshot_append_entries_after_snapshot) {
   // Overview:
   //  - start without a snapshot
@@ -896,4 +921,140 @@ TEST_F(
   }
 
   scheduler->runAll();
+}
+
+TEST_F(StateManagerTest_FakeState, follower_acquire_snapshot) {
+  // Overview:
+  //  - start without a snapshot
+  //  - let the state machine acquire a snapshot, but respond with an error
+  //  - let the state machine acquire a snapshot
+  // Meanwhile check that the follower state machine is inaccessible until the
+  // end.
+
+  storageContext->meta = replicated_state::PersistedStateInfo{
+      .stateId = gid.id,
+      .snapshot = {.status = SnapshotStatus::kUninitialized}};
+  auto const leaderComm =
+      std::make_shared<replication2::tests::LeaderCommunicatorMock>();
+  fakeFollowerFactory->leaderComm = leaderComm;
+
+  auto const term = LogTerm{1};
+  auto const planTerm = agency::LogPlanTermSpecification{term, other};
+  auto const config = agency::ParticipantsConfig{
+      1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
+      agency::LogPlanConfig{}};
+  log->updateConfig(planTerm, config, myself);
+  {
+    auto const logStatus = log->getQuickStatus();
+    ASSERT_EQ(logStatus.role, ParticipantRole::kFollower);
+    EXPECT_FALSE(logStatus.snapshotAvailable);
+    EXPECT_EQ(logStatus.localState, LocalStateMachineStatus::kConnecting);
+  }
+
+  auto const follower =
+      std::dynamic_pointer_cast<ILogFollower>(log->getParticipant());
+  ASSERT_NE(follower, nullptr);
+  auto const leaderId = other.serverId;
+  // Send an append entries request, just with the leader-establishing log
+  // entry.
+  auto appendEntriesFuture = std::invoke([&] {
+    auto const waitForSync = true;
+    auto meta = LogMetaPayload::FirstEntryOfTerm{.leader = leaderId,
+                                                 .participants = config};
+    auto payload = LogMetaPayload{std::move(meta)};
+    auto const termIndexPair = TermIndexPair(term, LogIndex(1));
+    auto logEntry = InMemoryLogEntry(
+        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+    auto request = AppendEntriesRequest(
+        term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
+        LogIndex(0), MessageId(1), waitForSync,
+        AppendEntriesRequest::EntryContainer({std::move(logEntry)}));
+    return follower->appendEntries(request);
+  });
+  EXPECT_FALSE(appendEntriesFuture.isReady());
+
+  auto state = stateFactory->getLatestFollower();
+  EXPECT_FALSE(state->apply.wasTriggered());
+  EXPECT_TRUE(state->acquire.wasTriggered());
+
+  // The append entries request has now been received, but not processed (i.e.
+  // not written to disk) yet.
+  {
+    auto const logStatus = log->getQuickStatus();
+    EXPECT_FALSE(logStatus.snapshotAvailable);
+    EXPECT_EQ(logStatus.localState, LocalStateMachineStatus::kConnecting);
+  }
+
+  // EXPECT_FALSE(scheduler->hasWork());
+  EXPECT_TRUE(executor->hasWork());
+  // Process the append entries request, i.e. write to disk.
+  executor->runOnce();
+  // An apply entries has been scheduled
+  EXPECT_TRUE(logScheduler->hasWork());
+  logScheduler->runAll();
+  scheduler->runAll();
+
+  // We should have converged to a stable state now.
+  EXPECT_FALSE(executor->hasWork());
+  EXPECT_FALSE(logScheduler->hasWork());
+
+  // The append entries response should be ready, but there's no snapshot yet.
+  {
+    ASSERT_TRUE(appendEntriesFuture.isReady());
+    ASSERT_TRUE(appendEntriesFuture.hasValue());
+    auto const appendEntriesResponse = appendEntriesFuture.get();
+    EXPECT_TRUE(appendEntriesResponse.isSuccess())
+        << appendEntriesResponse.errorCode;
+    EXPECT_FALSE(appendEntriesResponse.snapshotAvailable);
+  }
+
+  {
+    auto const logStatus = log->getQuickStatus();
+    EXPECT_FALSE(logStatus.snapshotAvailable);
+    EXPECT_EQ(logStatus.localState,
+              LocalStateMachineStatus::kAcquiringSnapshot);
+  }
+
+  EXPECT_TRUE(state->acquire.wasTriggered());
+  // TODO This check should be enabled after
+  //      https://arangodb.atlassian.net/browse/CINFRA-725
+  //      is solved:
+  //      EXPECT_FALSE(state->apply.wasTriggered());
+  //      Accordingly, the following line should be removed:
+  state->apply.resolveWithAndReset(Result());
+
+  // Respond that the snapshot transfer has failed
+  state->acquire.resolveWithAndReset(Result(TRI_ERROR_FAILED));
+  EXPECT_FALSE(state->apply.wasTriggered());
+  EXPECT_FALSE(state->acquire.wasTriggered());
+
+  logScheduler->runAll();
+  scheduler->runAll();
+
+  {
+    auto const logStatus = log->getQuickStatus();
+    EXPECT_FALSE(logStatus.snapshotAvailable);
+    EXPECT_EQ(logStatus.localState,
+              LocalStateMachineStatus::kAcquiringSnapshot);
+  }
+
+  EXPECT_TRUE(state->acquire.wasTriggered());
+
+  auto p = futures::Promise<Result>();
+  p.setValue(Result());
+  EXPECT_CALL(*leaderComm, reportSnapshotAvailable(MessageId{1}))
+      .WillOnce([&](MessageId) { return p.getFuture(); });
+
+  state->acquire.resolveWithAndReset(Result());
+
+  logScheduler->runAll();
+  scheduler->runAll();
+
+  EXPECT_FALSE(state->acquire.wasTriggered());
+
+  {
+    auto const logStatus = log->getQuickStatus();
+    EXPECT_TRUE(logStatus.snapshotAvailable);
+    EXPECT_EQ(logStatus.localState, LocalStateMachineStatus::kOperational);
+  }
 }
