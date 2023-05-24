@@ -108,7 +108,75 @@ function testGeneralWithGraphNoNameInQuery (amountExamples) {
   assertEqual(collNameBefore, collNameAfter);
 }
 
-function debugDumpSmartGraphTestsuite() {
+function debugDumpSmartGraphTestsuite () {
+  return {
+    setUp: function () {
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      assertNotNull(smartGraph);
+      const rel = smartGraph._relation(relationName, [vn1], [vn2]);
+      const namedGraph = smartGraph._create(graphName, [rel], [], {
+        smartGraphAttribute: "value",
+        isDisjoint: false,
+        numberOfShards: 9
+      });
+      for (let i = 0; i < 10; ++i) {
+        db[vn1].insert({_key: "value" + i + ":abc" + i, value: "value" + i});
+        db[vn2].insert({_key: "value" + i + ":def" + i, value: "value" + i});
+      }
+      for (let i = 0; i < 10; ++i) {
+        db[relationName].insert({
+          _from: vn1 + "/value" + i + ":abc" + i,
+          _to: vn2 + "/value" + i + ":def" + i,
+          _key: "value" + i + ":" + i + "123:" + "value" + i,
+          value: "value" + i
+        });
+      }
+      const newGraph = smartGraph._graph(graphName);
+      assertTrue(newGraph.hasOwnProperty(vn1));
+      assertTrue(newGraph.hasOwnProperty(vn2));
+      assertTrue(newGraph.hasOwnProperty(relationName));
+      namedGraph._addVertexCollection(vn3);
+      db._createEdgeCollection(cn1);
+      db[cn1].save(`${vn1}/pet-dog`, `${vn2}/customer-abc`, {type: "belongs-to"});
+    },
+
+    tearDown: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+      try {
+        fs.unlink(fileName);
+      } catch (err) {
+      }
+      try {
+        fs.unlink(outFileName);
+      } catch (err) {
+      }
+    },
+
+    testDebugDumpWithSmartGraphNamed: function () {
+      testGeneralWithSmartGraphNamed(0);
+      assertNull(db[vn1].any());
+      assertNull(db[vn2].any());
+      assertNull(db[relationName].any());
+    },
+
+    testDebugDumpWithSmartGraphNamedWithExamples: function () {
+      let vn1Before = createOrderedKeysArray(vn1);
+      let vn2Before = createOrderedKeysArray(vn2);
+      let relationBefore = createOrderedKeysArray(relationName);
+      testGeneralWithSmartGraphNamed(10);
+      let vn1After = createOrderedKeysArray(vn1);
+      let vn2After = createOrderedKeysArray(vn2);
+      let relationAfter = createOrderedKeysArray(relationName);
+      assertEqual(vn1Before, vn1After);
+      assertEqual(vn2Before, vn2After);
+      assertEqual(relationBefore, relationAfter);
+    },
+  };
+}
+
+function debugDumpSmartGraphDisjointTestsuite () {
   return {
     setUp: function () {
       db._createDatabase(dbName);
@@ -154,15 +222,18 @@ function debugDumpSmartGraphTestsuite() {
       }
     },
 
-    testDebugDumpWithSmartGraphNamed: function () {
-      testGeneralWithGraphNamed(0);
+    testDebugDumpWithSmartGraphDisjointNamed: function () {
+      testGeneralWithSmartGraphNamed(0);
+      assertNull(db[vn1].any());
+      assertNull(db[vn2].any());
+      assertNull(db[relationName].any());
     },
 
-    testDebugDumpWithSmartGraphNamedWithExamples: function () {
+    testDebugDumpWithSmartGraphDisjointNamedWithExamples: function () {
       let vn1Before = createOrderedKeysArray(vn1);
       let vn2Before = createOrderedKeysArray(vn2);
       let relationBefore = createOrderedKeysArray(relationName);
-      testGeneralWithGraphNamed(10);
+      testGeneralWithSmartGraphNamed(10);
       let vn1After = createOrderedKeysArray(vn1);
       let vn2After = createOrderedKeysArray(vn2);
       let relationAfter = createOrderedKeysArray(relationName);
@@ -175,7 +246,7 @@ function debugDumpSmartGraphTestsuite() {
 
 
 
-function debugDumpGraphTestsuite() {
+function debugDumpGraphTestsuite () {
   return {
     setUp: function () {
       db._createDatabase(dbName);
@@ -253,6 +324,7 @@ function debugDumpGraphTestsuite() {
 
 if (isEnterprise) {
   jsunity.run(debugDumpSmartGraphTestsuite);
+  jsunity.run(debugDumpSmartGraphDisjointTestsuite);
 }
 jsunity.run(debugDumpGraphTestsuite);
 
