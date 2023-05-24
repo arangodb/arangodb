@@ -3,30 +3,64 @@ import React from "react";
 import { useEditViewContext } from "../../editView/EditViewContext";
 
 export const LinksBreadCrumb = () => {
-  const { currentLink, setCurrentLink, currentField } = useEditViewContext();
+  const { currentLink, setCurrentLink, setCurrentField, currentField } =
+    useEditViewContext();
   return (
     <Stack direction="row" height="10" backgroundColor="gray.200" padding="2">
-      <Box
-        as="span"
-        color="blue.500"
-        textDecoration="underline"
-        cursor="pointer"
+      <BreadcrumbLink
         onClick={() => {
           setCurrentLink(undefined);
         }}
       >
         Links
-      </Box>
+      </BreadcrumbLink>
       <Box>/</Box>
-      <Box>{currentLink}</Box>
+      <BreadcrumbLink
+        active={currentField.length > 0}
+        onClick={() => {
+          setCurrentField([]);
+        }}
+      >
+        {currentLink}
+      </BreadcrumbLink>
       {currentField.map((field, index) => {
         return (
           <React.Fragment key={index}>
             <Box>/</Box>
-            <Box>{field}</Box>
+            <BreadcrumbLink
+              active={index !== currentField.length - 1}
+              onClick={() => {
+                const newCurrentField = currentField.slice(0, index + 1);
+                setCurrentField(newCurrentField);
+              }}
+            >
+              {field}
+            </BreadcrumbLink>
           </React.Fragment>
         );
       })}
     </Stack>
+  );
+};
+
+const BreadcrumbLink = ({
+  children,
+  onClick,
+  active = true
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  active?: boolean;
+}) => {
+  return (
+    <Box
+      as="span"
+      color={active ? "blue.500" : ""}
+      textDecoration={active ? "underline" : ""}
+      cursor={active ? "pointer" : ""}
+      onClick={active ? onClick : undefined}
+    >
+      {children}
+    </Box>
   );
 };
