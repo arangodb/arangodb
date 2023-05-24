@@ -360,16 +360,6 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       _pkCache = pkCacheSlice.getBool();
     }
   }
-  {
-    auto optimizeTopKSlice = slice.get(StaticStrings::kOptimizeTopKField);
-    if (!optimizeTopKSlice.isNone()) {
-      std::string err;
-      if (!_optimizeTopK.fromVelocyPack(optimizeTopKSlice, err)) {
-        errorField = absl::StrCat(StaticStrings::kOptimizeTopKField, ": ", err);
-        return false;
-      }
-    }
-  }
 #endif
 
   if (!InvertedIndexField::init(
@@ -443,10 +433,6 @@ bool IResearchInvertedIndexMeta::json(
   if (_pkCache) {
     builder.add(StaticStrings::kCachePrimaryKeyField, _pkCache);
   }
-  {
-    VPackArrayBuilder arrayScope(&builder, StaticStrings::kOptimizeTopKField);
-    _optimizeTopK.toVelocyPack(builder);
-  }
 #endif
 
   return InvertedIndexField::json(server, builder, *this, true, defaultVocbase);
@@ -458,11 +444,8 @@ bool IResearchInvertedIndexMeta::operator==(
          (static_cast<IResearchDataStoreMeta const&>(*this) ==
           static_cast<IResearchDataStoreMeta const&>(other)) &&
          (static_cast<InvertedIndexField const&>(*this) ==
-          static_cast<InvertedIndexField const&>(other))
-#ifdef USE_ENTERPRISE
-         && _optimizeTopK == other._optimizeTopK
-#endif
-         && _sort == other._sort && _storedValues == other._storedValues;
+          static_cast<InvertedIndexField const&>(other)) &&
+         _sort == other._sort && _storedValues == other._storedValues;
 }
 
 bool IResearchInvertedIndexMeta::matchesDefinition(

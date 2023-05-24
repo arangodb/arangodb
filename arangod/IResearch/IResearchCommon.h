@@ -85,7 +85,7 @@ constexpr LinkVersion getDefaultVersion(bool isUserRequest) noexcept {
 constexpr std::string_view getFormat(LinkVersion version) noexcept {
   constexpr std::array<std::string_view, 2> kFormats{
       "1_3simd",  // the old storage format used with IResearch index
-      "1_5simd"   // the current storage format used with IResearch index
+      "1_4simd"   // the current storage format used with IResearch index
   };
   return kFormats[static_cast<uint32_t>(version)];
 }
@@ -187,7 +187,6 @@ struct StaticStrings {
   // enables caching for primary key column
   static constexpr std::string_view kCachePrimaryKeyField{"primaryKeyCache"};
 
-  static constexpr std::string_view kOptimizeTopKField{"optimizeTopK"};
 #endif
 
   ////////////////////////////////////////////////////////////////////////////////
