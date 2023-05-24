@@ -701,7 +701,7 @@ void Conductor::persistPregelState(ExecutionState state) {
       .algorithm = std::string(_algorithm->name()),
       .created = timepointToString(_created),
       .expires = timepointToString(_expires),
-      .ttl = _specifications.ttl.duration.count(),
+      .ttl = static_cast<size_t>(_specifications.ttl.duration.count()),
       .state = pregel::ExecutionStateNames[_state],
       .gss = _globalSuperstep,
       .graphLoaded = _graphLoaded,

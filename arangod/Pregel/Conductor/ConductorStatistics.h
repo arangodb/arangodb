@@ -25,7 +25,6 @@
 
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
-// #include "Pregel/StatusActor.h"
 #include "Pregel/Status/ExecutionStatus.h"
 #include "Pregel/Status/ConductorStatus.h"
 
@@ -50,7 +49,7 @@ struct ConductorStatistics {
   std::optional<std::string> algorithm;
   std::string created;
   std::string expires;
-  long long ttl;
+  size_t ttl;
   std::string state;
   size_t gss;
   bool graphLoaded;
