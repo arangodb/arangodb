@@ -1,6 +1,10 @@
 v3.9.11 (XXXX-X-XX)
 --------------------
 
+* Support parsing HTTP GET requests with velocypack Content-Type without a
+  request body. Previously parsing such requests led to an error on the server
+  side.
+
 * ES-1566: fix an issue when trying to restrict traversals to non-existing
   collections with the `edgeCollections` traversal option.
   
