@@ -310,7 +310,6 @@ authRouter.get('/query/download/:user', function (req, res) {
 `);
 
 authRouter.post('/query/result/download', function (req, res) {
-  console.log(req.body.query, req.body.bindVars);
    const result = db._query(req.body.query, req.body.bindVars).toArray();
    const namePart = `${db._name()}`.replace(/[^-_a-z0-9]/gi, "_");
    res.attachment(`results-${namePart}.json`);
