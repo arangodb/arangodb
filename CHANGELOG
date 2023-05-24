@@ -1,6 +1,16 @@
 devel
 -----
 
+* Added metric "rocksdb_total_sst_files" to count the number of sst files,
+  aggregated over all levels of the LSM tree.
+
+* Added startup option `--query.max-collections-per-query` to adjust the
+  limit for the maximum number of collections/shards per query. The option
+  defaults to `2048`, which is equivalent to the previous hardcoded value.
+
+* Invalid keys are now reported as individual error for batch operations
+  and no longer abort the whole batch.
+
 * Updated bundled version of libunwind to 1.7-rc2.
 
 * In batched query results, when executing requests for 
