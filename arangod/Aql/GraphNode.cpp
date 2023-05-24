@@ -270,6 +270,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         if (!collection->isSmart()) {
           addEdgeCollection(collections, eColName, dir);
         } else {
+          addEdgeAlias(eColName);
           std::vector<std::string> names;
           if (_isSmart) {
             names = collection->realNames();
@@ -311,7 +312,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     }
     auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     auto& collections = plan->getAst()->query().collections();
-    for (const auto& n : eColls) {
+    for (auto const& n : eColls) {
       if (_options->shouldExcludeEdgeCollection(n)) {
         // excluded edge collection
         continue;
@@ -330,6 +331,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         if (!c->isSmart()) {
           addEdgeCollection(collections, n, _defaultDirection);
         } else {
+          addEdgeAlias(n);
           std::vector<std::string> names;
           if (_isSmart) {
             names = c->realNames();
@@ -450,6 +452,7 @@ GraphNode::GraphNode(ExecutionPlan* plan,
         arangodb::basics::VelocyPackHelper::getStringValue(*edgeIt, "");
     auto& aqlCollection = getAqlCollectionFromName(e);
     addEdgeCollection(aqlCollection, d);
+    addEdgeAlias(e);
   }
 
   VPackSlice vertexCollections = base.get("vertexCollections");
@@ -933,6 +936,10 @@ void GraphNode::addEdgeCollection(aql::Collection& collection,
     _directions.emplace_back(dir);
     _edgeColls.emplace_back(&collection);
   }
+}
+
+void GraphNode::addEdgeAlias(std::string const& name) {
+  _edgeAliases.emplace(name);
 }
 
 void GraphNode::addVertexCollection(Collections const& collections,
