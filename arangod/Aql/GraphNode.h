@@ -36,6 +36,7 @@
 
 #include <map>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
@@ -233,6 +234,7 @@ class GraphNode : public ExecutionNode {
   void addEdgeCollection(aql::Collections const& collections,
                          std::string const& name, TRI_edge_direction_e dir);
   void addEdgeCollection(aql::Collection& collection, TRI_edge_direction_e dir);
+  void addEdgeAlias(std::string const& name);
   void addVertexCollection(aql::Collections const& collections,
                            std::string const& name);
   void addVertexCollection(aql::Collection& collection);
@@ -272,12 +274,18 @@ class GraphNode : public ExecutionNode {
   /// @brief input graphInfo only used for serialization & info
   arangodb::velocypack::Builder _graphInfo;
 
-  /// @brief the edge collection names
+  /// @brief the edge collection names. for SmartGraph edge collections,
+  /// contains only the name of the parts.
   std::vector<aql::Collection*> _edgeColls;
 
   /// @brief the vertex collection names (can also be edge collections
   /// as an edge can also point to another edge, instead of a vertex).
   std::vector<aql::Collection*> _vertexColls;
+
+  /// real names of SmartGraph edge collections used in the traversal.
+  /// needed for checking collection names used in "edgeCollections"
+  /// option
+  std::unordered_set<std::string> _edgeAliases;
 
   /// @brief The default direction given in the query
   TRI_edge_direction_e const _defaultDirection;
