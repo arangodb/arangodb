@@ -531,9 +531,12 @@ class RocksDBCuckooIndexEstimator {
   // helper function for drain()
   void drainNoLock();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkInvariants() const;
+#else
+  inline constexpr void checkInvariants() {}
+#endif
 
- private:
   // metric for tracking global memory usage (combined memory usage of all
   // cuckoo index estimators)
   // note: may be a nullptr

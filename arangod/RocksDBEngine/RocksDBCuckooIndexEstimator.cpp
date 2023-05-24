@@ -106,8 +106,6 @@ void RocksDBCuckooIndexEstimator<Key>::drain() {
 
 template<class Key>
 void RocksDBCuckooIndexEstimator<Key>::drainNoLock() {
-  checkInvariants();
-
   uint64_t memoryUsage = 0;
   for (auto const& it : _insertBuffers) {
     memoryUsage +=
@@ -133,9 +131,7 @@ template<class Key>
 void RocksDBCuckooIndexEstimator<Key>::freeMemory() {
   WRITE_LOCKER(locker, _lock);
 
-  checkInvariants();
   drainNoLock();
-  checkInvariants();
 
   // only to validate that our math is correct and we are not missing
   // anything.
@@ -161,8 +157,13 @@ void RocksDBCuckooIndexEstimator<Key>::freeMemory() {
   checkInvariants();
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 template<class Key>
 void RocksDBCuckooIndexEstimator<Key>::checkInvariants() const {
+  // invariants check is disabled because it slows down
+  // everything considerably. can be turned back on for
+  // debugging.
+#if 0
   uint64_t memoryUsage = 0;
   for (auto const& it : _insertBuffers) {
     memoryUsage +=
@@ -176,7 +177,9 @@ void RocksDBCuckooIndexEstimator<Key>::checkInvariants() const {
 
   memoryUsage += bufferedEntrySize() * _truncateBuffer.size();
   TRI_ASSERT(_memoryUsage == memoryUsage + _slotAllocSize + _counterAllocSize);
+#endif
 }
+#endif
 
 template<class Key>
 /*static*/ bool RocksDBCuckooIndexEstimator<Key>::isFormatSupported(
@@ -338,7 +341,6 @@ Result RocksDBCuckooIndexEstimator<Key>::bufferTruncate(
     rocksdb::SequenceNumber seq) {
   Result res = basics::catchVoidToResult([&]() -> void {
     WRITE_LOCKER(locker, _lock);
-    checkInvariants();
     _truncateBuffer.emplace(seq);
     _needToPersist.store(true, std::memory_order_release);
     increaseMemoryUsage(bufferedEntrySize());
@@ -555,8 +557,6 @@ Result RocksDBCuckooIndexEstimator<Key>::bufferUpdates(
   Result res = basics::catchVoidToResult([&]() -> void {
     WRITE_LOCKER(locker, _lock);
 
-    checkInvariants();
-
     if (!inserts.empty()) {
       uint64_t memoryUsage =
           bufferedEntrySize() + bufferedEntryItemSize() * inserts.size();
@@ -592,7 +592,6 @@ rocksdb::SequenceNumber RocksDBCuckooIndexEstimator<Key>::applyUpdates(
       // find out if we have buffers to apply
       {
         WRITE_LOCKER(locker, _lock);
-        checkInvariants();
 
         uint64_t memoryUsage = 0;
         {
