@@ -133,10 +133,12 @@ void RocksDBCuckooIndexEstimator<Key>::freeMemory() {
 
   // only to validate that our math is correct and we are not missing
   // anything.
-  uint64_t memoryUsage = _slotAllocSize + _counterAllocSize;
-
-  TRI_ASSERT(memoryUsage == _memoryUsage);
-  decreaseMemoryUsage(memoryUsage);
+  if (_memoryUsage > 0) {
+    uint64_t memoryUsage = _slotAllocSize + _counterAllocSize;
+    TRI_ASSERT(memoryUsage == _memoryUsage)
+        << "memoryUsage: " << memoryUsage << ", _memoryUsage: " << _memoryUsage;
+    decreaseMemoryUsage(memoryUsage);
+  }
   TRI_ASSERT(_memoryUsage == 0);
 
   _nrTotal = 0;
