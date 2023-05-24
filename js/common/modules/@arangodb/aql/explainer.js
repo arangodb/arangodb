@@ -2274,6 +2274,10 @@ function debug(query, bindVars, options) {
               }
             });
           } catch (err) { }
+        } else {
+          node.graph.forEach(edgeColl => {
+            collections.push({name: edgeColl});
+          });
         }
       } else if (node.type === 'SubqueryNode') {
         // recurse into subqueries
