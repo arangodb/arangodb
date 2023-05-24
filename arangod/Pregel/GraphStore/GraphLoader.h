@@ -74,6 +74,16 @@ struct GraphLoader : GraphLoaderBase<V, E> {
         config(config),
         metrics(metrics),
         updateCallback(updateCallback) {}
+
+  explicit GraphLoader(std::shared_ptr<WorkerConfig const> config,
+                       std::shared_ptr<GraphFormat<V, E> const> graphFormat,
+                       LoadingUpdateCallback updateCallback)
+      : graphFormat(graphFormat),
+        resourceMonitor(GlobalResourceMonitor::instance()),
+        config(config),
+        metrics(nullptr),
+        updateCallback(updateCallback) {}
+
   auto load() -> futures::Future<Magazine<V, E>> override;
 
   auto loadVertices(LoadableVertexShard loadableVertexShard)

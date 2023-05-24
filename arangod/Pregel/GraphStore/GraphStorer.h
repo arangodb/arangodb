@@ -67,6 +67,22 @@ struct GraphStorer : GraphStorerBase<V, E> {
         metrics(metrics),
         updateCallback(updateCallback) {}
 
+  explicit GraphStorer(ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
+                       size_t parallelism,
+                       std::shared_ptr<GraphFormat<V, E> const> graphFormat,
+                       GraphSerdeConfig graphSerdeConfig,
+                       StoringUpdateCallback updateCallback)
+      : executionNumber(executionNumber),
+        vocbaseGuard(vocbase),
+        parallelism(parallelism),
+        graphFormat(graphFormat),
+        graphSerdeConfig(graphSerdeConfig),
+        metrics(nullptr),
+        updateCallback(updateCallback) {}
+
+
+
+
   auto storeQuiver(std::shared_ptr<Quiver<V, E>> quiver) -> void;
   auto store(Magazine<V, E> magazine)
       -> futures::Future<futures::Unit> override;

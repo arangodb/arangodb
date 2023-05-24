@@ -65,6 +65,19 @@ struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
     result->openArray(/*unindexed*/ true);
   }
 
+  explicit GraphVPackBuilderStorer(
+      bool withId, std::shared_ptr<WorkerConfig> config,
+      std::shared_ptr<GraphFormat<V, E> const> graphFormat)
+      : result(std::make_unique<VPackBuilder>()),
+        withId(withId),
+        graphFormat(graphFormat),
+        config(config),
+        metrics(nullptr) {
+    result->openArray(/*unindexed*/ true);
+  }
+
+
+
   auto store(Magazine<V, E> magazine)
       -> futures::Future<futures::Unit> override;
   auto stealResult() -> std::unique_ptr<VPackBuilder> {
