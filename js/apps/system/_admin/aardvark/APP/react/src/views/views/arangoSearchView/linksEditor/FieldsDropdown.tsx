@@ -1,6 +1,6 @@
 import { Box, FormLabel, Stack } from "@chakra-ui/react";
 import { useFormikContext } from "formik";
-import { get, set } from "lodash";
+import { cloneDeep, get, set } from "lodash";
 import React from "react";
 import { components, MultiValueGenericProps } from "react-select";
 import CreatableMultiSelect from "../../../../components/select/CreatableMultiSelect";
@@ -41,18 +41,26 @@ export const FieldsDropdown = () => {
     fieldPath.length > 0
       ? get(currentLinkFieldsValue, fieldPath)?.fields
       : currentLinkFieldsValue?.fields;
-  console.log({ fieldPath, currentLinkFieldsValue, fieldsValue });
   const value = fieldsValue
-    ? Object.keys(fieldsValue).map(key => {
-        return {
-          label: key,
-          value: key
-        };
-      })
+    ? (Object.keys(fieldsValue)
+        .map(key => {
+          if (fieldsValue[key] === undefined) {
+            return null;
+          }
+          return {
+            label: key,
+            value: key
+          };
+        })
+        .filter(Boolean) as OptionType[])
     : [];
   const addField = (field: string) => {
     const newLinks = values.links
-      ? set(values.links, [currentLink, ...fieldPath, "fields", field], {})
+      ? set(
+          cloneDeep(values.links),
+          [currentLink, ...fieldPath, "fields", field],
+          {}
+        )
       : {};
 
     setValues({
@@ -67,7 +75,7 @@ export const FieldsDropdown = () => {
   const removeField = (field: string) => {
     const newLinks = values.links
       ? set(
-          values.links,
+          cloneDeep(values.links),
           [currentLink, ...fieldPath, "fields", field],
           undefined
         )
