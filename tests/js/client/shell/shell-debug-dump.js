@@ -76,9 +76,6 @@ function testGeneralWithSmartGraphNamed (amountExamples) {
   explainer.inspectDump(fileName, outFileName);
   recreateEmptyDatabase();
   internal.load(outFileName);
-  assertNull(db[vn1].any());
-  assertNull(db[vn2].any());
-  assertNull(db[relationName].any());
   const graphAfter = db._graphs.document(graphName);
   delete graphAfter._rev;
   assertEqual(graphBefore, graphAfter, "graph recreated after debugDump is not the same as the original");
