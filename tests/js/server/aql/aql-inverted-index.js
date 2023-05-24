@@ -44,7 +44,7 @@ function optimizerRuleInvertedIndexTestSuite() {
   return {
     setUpAll: function () {
       col = db._create(colName);
-      analyzers.save("my_geo", "geojson",{type: 'point'}, ["frequency", "norm", "position"]);
+      analyzers.save("my_geo", "geojson",{type: 'point'}, []);
       col.ensureIndex({type: 'inverted',
                        name: 'InvertedIndexUnsorted',
                        fields: ['data_field', {name:'norm_field', analyzer: 'text_en'},

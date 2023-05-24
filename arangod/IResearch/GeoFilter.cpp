@@ -592,13 +592,11 @@ irs::filter::prepared::ptr prepareInterval(
   S2RegionTermIndexer indexer(options.options);
   S2RegionCoverer coverer(options.options);
 
-  // max.Intersection(min.Complement()) instead of max.Difference(min) used here
-  // because we want to make conservative covering
-  minBound = minBound.Complement();
   TRI_ASSERT(!minBound.is_empty());
   TRI_ASSERT(!maxBound.is_empty());
-  auto const ring =
-      coverer.GetCovering(maxBound).Intersection(coverer.GetCovering(minBound));
+
+  auto const ring = coverer.GetCovering(maxBound).Difference(
+      coverer.GetInteriorCovering(minBound));
   auto const geoTerms =
       indexer.GetQueryTermsForCanonicalCovering(ring, options.prefix);
 
