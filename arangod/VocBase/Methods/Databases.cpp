@@ -546,7 +546,7 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
     };
     if (auto cleanupUsersRes = um->enumerateUsers(cb, /*retryOnConflict*/ true);
         cleanupUsersRes.fail()) {
-      LOG_TOPIC("9f8b7", ERR, Logger::AUTHORIZATION)
+      LOG_TOPIC("9f8b7", WARN, Logger::AUTHORIZATION)
           << "Failed to cleanup "
              "users permissions after dropping "
              "database "
