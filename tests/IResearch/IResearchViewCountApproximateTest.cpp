@@ -549,12 +549,9 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader, arangodb::aql::RegisterId::makeInvalid(),
-      arangodb::aql::RegisterId::makeInvalid(), {}, *query,
-#ifdef USE_ENTERPRISE
-      _view->meta()._optimizeTopK,
-#endif
-      emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
-      viewNode.outVariable(), viewNode.filterCondition(), {false, false},
+      arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
+      {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
+      viewNode.filterCondition(), {false, false},
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
@@ -632,12 +629,9 @@ TEST_F(IResearchViewCountApproximateTest,
   std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader, arangodb::aql::RegisterId::makeInvalid(),
-      arangodb::aql::RegisterId::makeInvalid(), {}, *query,
-#ifdef USE_ENTERPRISE
-      _view->meta()._optimizeTopK,
-#endif
-      emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
-      viewNode.outVariable(), viewNode.filterCondition(), {false, false},
+      arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
+      {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
+      viewNode.filterCondition(), {false, false},
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
@@ -717,12 +711,9 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader, arangodb::aql::RegisterId::makeInvalid(),
-      arangodb::aql::RegisterId::makeInvalid(), {}, *query,
-#ifdef USE_ENTERPRISE
-      _view->meta()._optimizeTopK,
-#endif
-      emptyScorers, {&sort, 1U}, _view->storedValues(), *plan,
-      viewNode.outVariable(), viewNode.filterCondition(), {false, false},
+      arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
+      {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
+      viewNode.filterCondition(), {false, false},
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Cost,
