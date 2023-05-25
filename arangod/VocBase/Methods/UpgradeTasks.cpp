@@ -317,6 +317,48 @@ Result createSystemStatisticsCollections(
   return {TRI_ERROR_NO_ERROR};
 }
 
+Result createSystemPregelCollection(TRI_vocbase_t& vocbase) {
+  if (vocbase.isSystem()) {
+    std::vector<CollectionCreationInfo> systemCollectionsToCreate;
+    // the order of systemCollections is important. If we're in _system db, the
+    // UsersCollection needs to be first, otherwise, the GraphsCollection must
+    // be first.
+    std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
+    Result res;
+
+    std::shared_ptr<LogicalCollection> col;
+    res = methods::Collections::lookup(vocbase, StaticStrings::PregelCollection,
+                                       col);
+    if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+      // if not found, create it
+      VPackBuilder options;
+      options.openObject();
+      options.add(StaticStrings::DataSourceSystem, VPackSlice::trueSlice());
+      options.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
+      options.close();
+
+      systemCollectionsToCreate.emplace_back(
+          CollectionCreationInfo{StaticStrings::PregelCollection,
+                                 TRI_COL_TYPE_DOCUMENT, options.slice()});
+      buffers.emplace_back(options.steal());
+    }
+
+    // We capture the vector of created LogicalCollections here
+    // to use it to create indices later.
+    if (!systemCollectionsToCreate.empty()) {
+      std::vector<std::shared_ptr<LogicalCollection>> cols;
+      OperationOptions options(ExecContext::current());
+      res = methods::Collections::create(
+          vocbase, options, systemCollectionsToCreate, true, false, false,
+          nullptr, cols, true /* allow system collection creation */);
+      if (res.fail()) {
+        return res;
+      }
+    }
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+
 Result createIndex(
     std::string const& name, Index::IndexType type,
     std::vector<std::string> const& fields, bool unique, bool sparse,
@@ -513,6 +555,26 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(
     return res.ok();
   }
   return res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates '_pregel_queries' system collection
+////////////////////////////////////////////////////////////////////////////////
+bool UpgradeTasks::createHistoricPregelSystemCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  // This vector should after the call to ::createSystemCollections contain
+  // a LogicalCollection for *every* (required) system collection.
+  Result res = ::createSystemPregelCollection(vocbase);
+
+  if (res.fail()) {
+    LOG_TOPIC("2824e", ERR, Logger::STARTUP)
+        << "could not create system collections"
+        << ": error: " << res.errorMessage();
+    return false;
+  }
+
+  return true;
 }
 
 bool UpgradeTasks::addDefaultUserOther(
