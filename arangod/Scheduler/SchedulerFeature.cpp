@@ -89,7 +89,7 @@ Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(Server& server)
     : ArangodFeature{server, *this},
-      _schedulerImpl("thread-pool"),
+      _schedulerImpl("supervised"),
       _scheduler(nullptr) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
@@ -280,6 +280,8 @@ void SchedulerFeature::validateOptions(
         << ") must be at least 4";
     _nrMinimalThreads = 4;
   }
+
+  _nrMinimalThreads = _nrMaximalThreads;
 
   if (_ongoingLowPriorityMultiplier < 1.0) {
     LOG_TOPIC("0a93a", WARN, arangodb::Logger::THREADS)
