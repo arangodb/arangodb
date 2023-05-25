@@ -385,7 +385,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
         return Result{TRI_ERROR_SHUTTING_DOWN};
       }
     } else {
-      return {TRI_ERROR_INTERNAL,
+      return {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
               fmt::format("Failed to create collection, the operation has been "
                           "rejected by the agency ({})",
                           res.errorMessage())};
