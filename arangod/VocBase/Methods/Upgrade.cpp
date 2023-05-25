@@ -233,7 +233,7 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
   TRI_ASSERT(_tasks.empty());
 
   // note: all tasks here should be idempotent, so that they produce the same
-  // result when run again
+  // result when run again.
   addTask(upgradeFeature, "createSystemCollectionsAndIndices",
           "creates all system collections including their indices",
           /*system*/ Flags::DATABASE_ALL,
