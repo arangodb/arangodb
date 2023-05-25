@@ -397,8 +397,7 @@ bool Cache::freeMemory() {
     return false;
   }
 
-  std::uint64_t attempts;
-  auto cb = [this, &attempts](std::uint64_t reclaimed) -> bool {
+  auto cb = [this](std::uint64_t reclaimed) -> bool {
     if (reclaimed > 0) {
       bool underLimit = reclaimMemory(reclaimed);
       if (underLimit) {
@@ -407,12 +406,8 @@ bool Cache::freeMemory() {
         return false;
       }
     }
-    if (++attempts % 32 == 0 && isShutdown()) {
-      // shutdown in progress. give up
-      return false;
-    }
-    // continue
-    return true;
+    // check if shutdown is in progress. then give up
+    return !isShutdown();
   };
 
   bool underLimit = reclaimMemory(0ULL);
