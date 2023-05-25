@@ -248,10 +248,6 @@ class Table : public std::enable_shared_from_this<Table> {
   //////////////////////////////////////////////////////////////////////////////
   uint32_t idealSize() noexcept;
 
-  /// @brief Returns the ideal size of the table based on fill ratio.
-  /// does not trigger table growth
-  uint32_t idealSizeValue() const noexcept;
-
  private:
   void disable() noexcept;
   bool isEnabled(std::uint64_t maxTries = triesGuarantee) noexcept;
