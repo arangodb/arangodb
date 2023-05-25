@@ -80,7 +80,7 @@ Table::Subtable::Subtable(std::shared_ptr<Table> source, GenericBucket* buckets,
       _shift(shift) {}
 
 void* Table::Subtable::fetchBucket(std::uint32_t hash) noexcept {
-  return &(_buckets[(hash & _mask) >> _shift]);
+  return &_buckets[(hash & _mask) >> _shift];
 }
 
 std::vector<Table::BucketLocker> Table::Subtable::lockAllBuckets() {
@@ -236,8 +236,7 @@ Table::BucketLocker Table::fetchAndLockBucket(Table::HashOrId bucket,
 
   if (guard.isLocked()) {
     if (!_disabled) {
-      bucketGuard =
-          BucketLocker(&(_buckets[(hash & _mask) >> _shift]), this, maxTries);
+      bucketGuard = BucketLocker(&_buckets[index], this, maxTries);
       if (bucketGuard.isLocked()) {
         if (bucketGuard.bucket<GenericBucket>().isMigrated()) {
           bucketGuard.release();
@@ -266,7 +265,7 @@ void* Table::primaryBucket(uint64_t index) noexcept {
   if (!isEnabled()) {
     return nullptr;
   }
-  return &(_buckets[index]);
+  return &_buckets[index];
 }
 
 std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(std::uint32_t index) {
@@ -315,7 +314,7 @@ void Table::clear() {
   }
   disable();
   for (std::uint64_t i = 0; i < _size; i++) {
-    _bucketClearer(&(_buckets[i]));
+    _bucketClearer(&_buckets[i]);
   }
   _slotsUsed = 0;
   _bucketClearer = Table::defaultClearer;
