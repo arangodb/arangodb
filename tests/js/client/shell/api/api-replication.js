@@ -30,6 +30,7 @@ const {arango, db} = require("@arangodb");
 const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const _ = require("lodash");
+const isWindows = (require("internal").platform.substr(0, 3) === 'win');
 
 const {
   ERROR_HTTP_BAD_PARAMETER,
@@ -87,7 +88,8 @@ const getDefaultProps = () => {
         "allowUserKeys": true,
         "type": "traditional"
       },
-      "replicationFactor": 2,
+      /* On windows we start with a replicationFactor of 1 */
+      "replicationFactor": isWindows ? 1 : 2,
       "minReplicationFactor": 1,
       "writeConcern": 1,
       /* Is this a reasonable default?, We have a new collection */
