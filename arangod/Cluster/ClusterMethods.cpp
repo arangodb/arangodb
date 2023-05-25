@@ -2985,6 +2985,7 @@ ClusterMethods::persistCollectionsInAgency(
     infos.reserve(collections.size());
 
     TRI_IF_FAILURE("allShardsOnSameServer") {
+      std::sort(dbServers.begin(), dbServers.end());
       while (dbServers.size() > 1) {
         dbServers.pop_back();
       }
