@@ -568,7 +568,7 @@ bool UpgradeTasks::createHistoricPregelSystemCollection(
   Result res = ::createSystemPregelCollection(vocbase);
 
   if (res.fail()) {
-    LOG_TOPIC("2824e", ERR, Logger::STARTUP)
+    LOG_TOPIC("2824f", ERR, Logger::STARTUP)
         << "could not create system collections"
         << ": error: " << res.errorMessage();
     return false;
