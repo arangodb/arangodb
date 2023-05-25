@@ -1,4 +1,4 @@
-v3.11.0 (XXXX-XX-XX)
+v3.11.1 (XXXX-XX-XX)
 --------------------
 
 * BTS-1255: Fix sporadic memory usage accounting underflows in in-memory
@@ -6,6 +6,14 @@ v3.11.0 (XXXX-XX-XX)
   Also turn the algorithm for freeing memory from a cache's buckets from a
   non-deterministic one that did not guarantee progress into a bounded
   algorithm with guaranteed progress.
+
+
+v3.11.0 (2023-05-23)
+--------------------
+
+* Convert v3.11.0-rc.2 into v3.11.0.
+
+* SEARCH-477: stabilize ArangoSearch (stage of BTS-1416).
 
 
 v3.11.0-rc.2 (2023-05-17)
