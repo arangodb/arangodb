@@ -24,7 +24,7 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   Mocks/MockVocbase.h
   Mocks/LeaderCommunicatorMock.h
   Mocks/StorageManagerMock.h
-  )
+  Mocks/StateHandleManagerMock.h)
 
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES

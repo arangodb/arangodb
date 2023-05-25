@@ -31,7 +31,8 @@
 
 using namespace arangodb::replication2::replicated_log::comp;
 
-auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
+auto FollowerCommitManager::updateCommitIndex(LogIndex index,
+                                              bool snapshotAvailable) noexcept
     -> std::pair<std::optional<LogIndex>, DeferredAction> {
   auto guard = guardedData.getLockedGuard();
 
@@ -47,7 +48,7 @@ auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
   auto newResolveIndex = std::min(guard->commitIndex, localSpearhead.index);
 
   auto resolveIndex = std::optional<LogIndex>();
-  if (newResolveIndex > guard->resolveIndex) {
+  if (snapshotAvailable && newResolveIndex > guard->resolveIndex) {
     LOG_CTX("71a8f", TRACE, loggerContext)
         << "resolving commit index up to " << newResolveIndex;
     guard->resolveIndex = newResolveIndex;

@@ -39,7 +39,9 @@ struct IReplicatedLogFollowerMethods;
 inline namespace comp {
 struct IStateHandleManager {
   virtual ~IStateHandleManager() = default;
-  virtual auto updateCommitIndex(LogIndex) noexcept -> DeferredAction = 0;
+  virtual auto updateCommitIndex(LogIndex commitIndex,
+                                 bool snapshotAvailable) noexcept
+      -> DeferredAction = 0;
   virtual auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> = 0;
   virtual void becomeFollower(
       std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;

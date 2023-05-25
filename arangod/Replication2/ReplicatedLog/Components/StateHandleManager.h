@@ -38,7 +38,8 @@ struct StateHandleManager : IStateHandleManager {
       IFollowerCommitManager& commit);
 
   auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> override;
-  auto updateCommitIndex(LogIndex index) noexcept -> DeferredAction override;
+  auto updateCommitIndex(LogIndex index, bool snapshotAvailable) noexcept
+      -> DeferredAction override;
   void becomeFollower(
       std::unique_ptr<IReplicatedLogFollowerMethods> ptr) override;
 
