@@ -318,44 +318,47 @@ Result createSystemStatisticsCollections(
 }
 
 Result createSystemPregelCollection(TRI_vocbase_t& vocbase) {
-  if (vocbase.isSystem()) {
-    std::vector<CollectionCreationInfo> systemCollectionsToCreate;
-    // the order of systemCollections is important. If we're in _system db, the
-    // UsersCollection needs to be first, otherwise, the GraphsCollection must
-    // be first.
-    std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
-    Result res;
+  auto const& cname = StaticStrings::PregelCollection;
+  std::shared_ptr<LogicalCollection> col;
+  auto res = methods::Collections::lookup(vocbase, cname, col);
 
-    std::shared_ptr<LogicalCollection> col;
-    res = methods::Collections::lookup(vocbase, StaticStrings::PregelCollection,
-                                       col);
-    if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      // if not found, create it
-      VPackBuilder options;
-      options.openObject();
-      options.add(StaticStrings::DataSourceSystem, VPackSlice::trueSlice());
-      options.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
-      options.close();
+  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    // if not found, create it
 
-      systemCollectionsToCreate.emplace_back(
-          CollectionCreationInfo{StaticStrings::PregelCollection,
-                                 TRI_COL_TYPE_DOCUMENT, options.slice()});
-      buffers.emplace_back(options.steal());
-    }
-
-    // We capture the vector of created LogicalCollections here
-    // to use it to create indices later.
-    if (!systemCollectionsToCreate.empty()) {
-      std::vector<std::shared_ptr<LogicalCollection>> cols;
-      OperationOptions options(ExecContext::current());
-      res = methods::Collections::create(
-          vocbase, options, systemCollectionsToCreate, true, false, false,
-          nullptr, cols, true /* allow system collection creation */);
-      if (res.fail()) {
-        return res;
+    std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
+    {
+      // Take _users first
+      auto distributeLikeRes = methods::Collections::lookup(
+          vocbase, StaticStrings::UsersCollection, colToDistributeShardsLike);
+      if (distributeLikeRes.fail() || colToDistributeShardsLike == nullptr) {
+        // Take _graphs second
+        distributeLikeRes = methods::Collections::lookup(
+            vocbase, StaticStrings::GraphsCollection,
+            colToDistributeShardsLike);
+        if (distributeLikeRes.fail()) {
+          // Could not even find leading collection, something bad gone wrong
+          return distributeLikeRes;
+        }
+        if (colToDistributeShardsLike == nullptr) {
+          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  "Could not identify _system collection leaders"};
+        }
       }
     }
+
+    VPackBuilder options;
+    methods::Collections::createSystemCollectionProperties(cname, options,
+                                                           vocbase);
+    CollectionCreationInfo info{cname, TRI_COL_TYPE_DOCUMENT, options.slice()};
+    std::vector<std::shared_ptr<LogicalCollection>> cols;
+
+    OperationOptions operationOptions(ExecContext::current());
+    return methods::Collections::create(
+        vocbase, operationOptions, {info}, true, true, true,
+        colToDistributeShardsLike, cols,
+        true /* allow system collection creation */);
   }
+
   return {TRI_ERROR_NO_ERROR};
 }
 
