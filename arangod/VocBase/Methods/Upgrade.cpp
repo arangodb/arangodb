@@ -24,7 +24,6 @@
 #include "Upgrade.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -258,6 +257,8 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::renameReplicationApplierStateFiles);
+
+  // Note: Added with ArangoDB version 3.11
   addTask(upgradeFeature, "createHistoricPregelSystemCollection",
           "creates the pregel system collection",
           /*system*/ Flags::DATABASE_ALL,
