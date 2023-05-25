@@ -131,6 +131,8 @@ Result PlainCache<Hasher>::insert(CachedValue* value) {
   }
 
   if (maybeMigrate) {
+    // caution: calling idealSize() can have side effects
+    // and trigger a table growth!
     requestMigrate(source->idealSize());  // let function do the hard work
   }
 
@@ -171,6 +173,8 @@ Result PlainCache<Hasher>::remove(void const* key, std::uint32_t keySize) {
   }
 
   if (maybeMigrate) {
+    // caution: calling idealSize() can have side effects
+    // and trigger a table growth!
     requestMigrate(source->idealSize());
   }
 
@@ -268,7 +272,7 @@ bool PlainCache<Hasher>::freeMemoryWhile(
   if (maybeMigrate) {
     // caution: calling idealSize() can have side effects
     // and trigger a table growth!
-    requestMigrate(table->idealSizeValue());
+    requestMigrate(table->idealSize());
   }
 
   return maybeMigrate;

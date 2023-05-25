@@ -390,10 +390,7 @@ std::uint32_t Table::idealSize() noexcept {
   if (forceGrowth) {
     return logSize() + 1;
   }
-  return idealSizeValue();
-}
 
-std::uint32_t Table::idealSizeValue() const noexcept {
   std::uint64_t slotsUsed = _slotsUsed.load(std::memory_order_relaxed);
 
   return (((static_cast<double>(slotsUsed) / static_cast<double>(_slotsTotal)) >
