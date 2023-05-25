@@ -273,6 +273,8 @@ void SchedulerFeature::validateOptions(
     _nrMinimalThreads = 4;
   }
 
+  _nrMinimalThreads = _nrMaximalThreads;
+
   if (_ongoingLowPriorityMultiplier < 1.0) {
     LOG_TOPIC("0a93a", WARN, arangodb::Logger::THREADS)
         << "--server.ongoing-low-priority-multiplier ("
