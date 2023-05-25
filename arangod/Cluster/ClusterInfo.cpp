@@ -547,7 +547,7 @@ DECLARE_HISTOGRAM(arangodb_load_current_runtime, ClusterInfoScale,
 DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
                   "Plan loading runtimes [ms]");
 
-DECLARE_GAUGE(arangodb_memory_cluster_info_bla_bla, std::size_t,
+DECLARE_GAUGE(arangodb_internal_cluster_info_memory, std::size_t,
               "Memory cluster info");
 
 namespace {
@@ -582,7 +582,7 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
     : _memoryResource(std::make_unique<CountingMemoryResource>(
           std::pmr::new_delete_resource(),
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_memory_cluster_info_bla_bla{}))),
+              arangodb_internal_cluster_info_memory{}))),
       _server(server),
       _agency(server),
       _agencyCallbackRegistry(agencyCallbackRegistry),
@@ -2040,7 +2040,6 @@ void ClusterInfo::loadCurrent() {
 
   auto& feature = _server.getFeature<ClusterFeature>();
   auto& agencyCache = feature.agencyCache();
-  auto currentBuilder = std::make_shared<arangodb::velocypack::Builder>();
 
   // reread from the agency!
   std::lock_guard mutexLocker{
