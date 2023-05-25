@@ -1,6 +1,16 @@
 devel
 -----
 
+* BTS-1261 For some named graphs in cluster, when creating a debugDump for a 
+  traversal query that would use the graph's name, the graph wouldn't be able 
+  to be recreated because the info gathered in the process of creating a 
+  debugDump was broken. It uses the result form an aql explain to get the graph 
+  info and use in the debugDump, but this wouldn't be available because, 
+  instead of having the name of the graph as key in the graph object of the 
+  explain, there would be an array with edge collection names. It was changed 
+  for the case when there's a named graph, but maintained when there's no 
+  access to the graph's name.
+
 * ECONNABORTED is treated as a ConnectionClosed error in fuerte.
 
 * Database drop operation no longer fails if we cannot remove
