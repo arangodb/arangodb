@@ -740,10 +740,11 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
       constexpr bool isMock = false;
 #endif
 
-      if (!isMock && _replicationType == Methods::ReplicationType::LEADER &&
+      if (false &&
+          (!isMock && _replicationType == Methods::ReplicationType::LEADER &&
           (!_followers->empty() ||
            _replicationVersion == replication::Version::TWO) &&
-          !_replicationData->slice().isEmptyArray()) {
+           !_replicationData->slice().isEmptyArray())) {
         // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
         // get here, in the single document case, we do not try to replicate
         // in case of an error.
