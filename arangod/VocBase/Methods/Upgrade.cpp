@@ -258,6 +258,12 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::renameReplicationApplierStateFiles);
+  addTask(upgradeFeature, "createHistoricPregelSystemCollection",
+          "creates the pregel system collection",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
+          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::createHistoricPregelSystemCollection);
 
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
@@ -267,9 +273,9 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           Upgrade::Flags::DATABASE_SYSTEM,                  // system flags
           Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL        // cluster flags
               | Upgrade::Flags::CLUSTER_NONE,
-          Upgrade::Flags::DATABASE_INIT  // database flags
+          Upgrade::Flags::DATABASE_INIT                     // database flags
               | Upgrade::Flags::DATABASE_UPGRADE,
-          &UpgradeTasks::dropLegacyAnalyzersCollection  // action
+          &UpgradeTasks::dropLegacyAnalyzersCollection      // action
   );
 #ifdef USE_ENTERPRISE
   registerTasksEE(upgradeFeature);
