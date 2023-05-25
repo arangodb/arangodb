@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +26,8 @@
 #include "Basics/debugging.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
-#include "Logger/LogMacros.h"
 
 #include <algorithm>
-#include <atomic>
-#include <cstdint>
 
 namespace arangodb::cache {
 
@@ -43,7 +40,6 @@ Metadata::Metadata() noexcept
       usage(0),
       softUsageLimit(0),
       hardUsageLimit(0),
-      _lock(),
       _migrating(false),
       _resizing(false) {}
 
@@ -58,7 +54,6 @@ Metadata::Metadata(std::uint64_t usageLimit, std::uint64_t fixed,
       usage(0),
       softUsageLimit(usageLimit),
       hardUsageLimit(usageLimit),
-      _lock(),
       _migrating(false),
       _resizing(false) {
   TRI_ASSERT(allocatedSize <= maxSize);

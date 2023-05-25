@@ -176,6 +176,10 @@ bool Cache::isResizing() const noexcept {
     return false;
   }
 
+  return isResizingFlagSet();
+}
+
+bool Cache::isResizingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing();
 }
@@ -185,15 +189,15 @@ bool Cache::isMigrating() const noexcept {
     return false;
   }
 
+  return isMigratingFlagSet();
+}
+
+bool Cache::isMigratingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isMigrating();
 }
 
-bool Cache::isBusy() const noexcept {
-  if (ADB_UNLIKELY(isShutdown())) {
-    return false;
-  }
-
+bool Cache::isResizingOrMigratingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing() || _metadata.isMigrating();
 }
@@ -335,11 +339,8 @@ void Cache::shutdown() {
   TRI_ASSERT(handle.get() == this);
   if (!_shutdown.exchange(true)) {
     while (true) {
-      {
-        SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-        if (!_metadata.isMigrating() && !_metadata.isResizing()) {
-          break;
-        }
+      if (!isResizingOrMigratingFlagSet()) {
+        break;
       }
 
       SpinUnlocker taskUnguard(SpinUnlocker::Mode::Write, _taskLock);
@@ -373,8 +374,7 @@ bool Cache::canResize() noexcept {
     return false;
   }
 
-  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-  return !(_metadata.isResizing() || _metadata.isMigrating());
+  return !isResizingOrMigratingFlagSet();
 }
 
 bool Cache::canMigrate() noexcept {
