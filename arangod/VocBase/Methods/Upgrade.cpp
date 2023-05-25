@@ -274,9 +274,9 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           Upgrade::Flags::DATABASE_SYSTEM,                  // system flags
           Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL        // cluster flags
               | Upgrade::Flags::CLUSTER_NONE,
-          Upgrade::Flags::DATABASE_INIT                     // database flags
+          Upgrade::Flags::DATABASE_INIT  // database flags
               | Upgrade::Flags::DATABASE_UPGRADE,
-          &UpgradeTasks::dropLegacyAnalyzersCollection      // action
+          &UpgradeTasks::dropLegacyAnalyzersCollection  // action
   );
 #ifdef USE_ENTERPRISE
   registerTasksEE(upgradeFeature);
