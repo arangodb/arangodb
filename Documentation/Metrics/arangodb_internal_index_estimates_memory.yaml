@@ -1,4 +1,4 @@
-name: arangodb_index_selectivity_estimates_memory_usage
+name: arangodb_internal_index_estimates_memory
 introducedIn: "3.12.0"
 help: |
   Total memory usage of all index selectivity estimates.
@@ -14,5 +14,7 @@ description: |
   Total memory usage of all index selectivity estimates.
   Index selectivity estimates are used for edge indexes and
   persistent indexes.
+troubleshoot: |
   Persistent indexes can be created with selectivity
-  estimates turned off to save a bit of memory.
+  estimates turned off to save a bit of memory and slightly
+  improve index write performance.
