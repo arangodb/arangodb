@@ -99,13 +99,17 @@ TEST(CacheTransactionalBucketTest, verify_eviction_behavior) {
 
   for (std::size_t i = 0; i < 8; i++) {
     ASSERT_EQ(ptrs[i], bucket->evictionCandidate(false));
+    std::uint64_t expected = ptrs[i]->size();
     std::uint64_t reclaimed = bucket->evictCandidate(/*moveToFront*/ false);
-    ASSERT_EQ(reclaimed, ptrs[i]->size());
+    ASSERT_EQ(reclaimed, expected);
+    ptrs[i] = nullptr;
 
     for (std::size_t j = 0; j < 8; ++j) {
       CachedValue* res = bucket->find<BinaryKeyHasher>(
-          hashes[j], ptrs[j]->key(), ptrs[j]->keySize(), /*moveToFront*/ false);
+          hashes[j], &keys[j], /*keySize*/ sizeof(std::uint64_t),
+          /*moveToFront*/ false);
       if (j > i) {
+        ASSERT_NE(nullptr, ptrs[j]);
         ASSERT_EQ(res, ptrs[j]);
       } else {
         ASSERT_EQ(res, nullptr);
@@ -113,6 +117,12 @@ TEST(CacheTransactionalBucketTest, verify_eviction_behavior) {
     }
   }
   ASSERT_EQ(nullptr, bucket->evictionCandidate(false));
+  bucket->unlock();
+
+  // cleanup
+  for (std::size_t i = 0; i < 9; i++) {
+    delete ptrs[i];
+  }
 }
 
 TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
