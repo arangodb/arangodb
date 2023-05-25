@@ -217,9 +217,8 @@ void Manager::shutdown() {
     TRI_ASSERT(_activeTables == 0);
     freeUnusedTables();
 
-    for (auto& it : _tables) {
-      TRI_ASSERT(it.empty());
-    }
+    TRI_ASSERT(std::all_of(_tables.begin(), _tables.end(),
+                           [](auto const& t) { return t.empty(); }));
     TRI_ASSERT(_activeTables == 0);
     TRI_ASSERT(_spareTables == 0);
     _shutdown = true;
@@ -731,6 +730,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   if (metadata.usage <= newLimit) {
     std::uint64_t oldLimit = metadata.hardUsageLimit;
     bool success = metadata.adjustLimits(newLimit, newLimit);
+    metaGuard.release();
     TRI_ASSERT(success);
 
     TRI_ASSERT(_globalAllocation + newLimit - oldLimit >= _fixedAllocation);
@@ -738,7 +738,6 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     _globalAllocation -= oldLimit;
     TRI_ASSERT(_globalAllocation >= _fixedAllocation);
     _peakGlobalAllocation = std::max(_globalAllocation, _peakGlobalAllocation);
-    metaGuard.release();
     return;
   }
 
