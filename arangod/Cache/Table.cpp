@@ -26,6 +26,7 @@
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <variant>
 
 #include "Cache/Table.h"
 
@@ -218,8 +219,16 @@ std::uint64_t Table::size() const noexcept { return _size; }
 
 std::uint32_t Table::logSize() const noexcept { return _logSize; }
 
-Table::BucketLocker Table::fetchAndLockBucketByHash(std::uint32_t hash,
-                                                    std::uint64_t maxTries) {
+Table::BucketLocker Table::fetchAndLockBucket(Table::HashOrId bucket,
+                                              std::uint64_t maxTries) {
+  std::size_t index = [this, &bucket]() -> std::size_t {
+    if (std::holds_alternative<Table::BucketHash>(bucket)) {
+      return (std::get<Table::BucketHash>(bucket).value & _mask) >> _shift;
+    } else {
+      return std::get<Table::BucketId>(bucket).value;
+    }
+  }();
+
   BucketLocker bucketGuard;
 
   SpinLocker guard(SpinLocker::Mode::Read, _lock,
@@ -233,31 +242,7 @@ Table::BucketLocker Table::fetchAndLockBucketByHash(std::uint32_t hash,
         if (bucketGuard.bucket<GenericBucket>().isMigrated()) {
           bucketGuard.release();
           if (_auxiliary) {
-            bucketGuard = _auxiliary->fetchAndLockBucketByHash(hash, maxTries);
-          }
-        }
-      }
-    }
-  }
-
-  return bucketGuard;
-}
-
-Table::BucketLocker Table::fetchAndLockBucketById(std::size_t bucket,
-                                                  std::uint64_t maxTries) {
-  BucketLocker bucketGuard;
-
-  SpinLocker guard(SpinLocker::Mode::Read, _lock,
-                   static_cast<std::size_t>(maxTries));
-
-  if (guard.isLocked()) {
-    if (!_disabled && bucket < _size) {
-      bucketGuard = BucketLocker(&_buckets[bucket], this, maxTries);
-      if (bucketGuard.isLocked()) {
-        if (bucketGuard.bucket<GenericBucket>().isMigrated()) {
-          bucketGuard.release();
-          if (_auxiliary) {
-            bucketGuard = _auxiliary->fetchAndLockBucketById(bucket, maxTries);
+            bucketGuard = _auxiliary->fetchAndLockBucket(bucket, maxTries);
           }
         }
       }

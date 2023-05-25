@@ -48,16 +48,16 @@ Finding TransactionalCache<Hasher>::find(void const* key,
                                          std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   Finding result;
-  std::uint32_t hash = Hasher::hashKey(key, keySize);
+  Table::BucketHash hash{Hasher::hashKey(key, keySize)};
 
   ::ErrorCode status = TRI_ERROR_NO_ERROR;
   Table::BucketLocker guard;
-  std::tie(status, guard) = getBucketByHash(hash, Cache::triesFast, false);
+  std::tie(status, guard) = getBucket(hash, Cache::triesFast, false);
   if (status != TRI_ERROR_NO_ERROR) {
     result.reportError(status);
   } else {
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
-    result.set(bucket.find<Hasher>(hash, key, keySize));
+    result.set(bucket.find<Hasher>(hash.value, key, keySize));
     if (result.found()) {
       recordStat(Stat::findHit);
     } else {
@@ -72,24 +72,24 @@ template<typename Hasher>
 Result TransactionalCache<Hasher>::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = Hasher::hashKey(value->key(), value->keySize());
+  Table::BucketHash hash{Hasher::hashKey(value->key(), value->keySize())};
 
   Result status;
   Table* source;
   {
     Table::BucketLocker guard;
-    std::tie(status, guard) = getBucketByHash(hash, Cache::triesFast, false);
+    std::tie(status, guard) = getBucket(hash, Cache::triesFast, false);
     if (status.fail()) {
       return status;
     }
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     source = guard.source();
-    bool allowed = !bucket.isBanished(hash);
+    bool allowed = !bucket.isBanished(hash.value);
     if (allowed) {
       std::int64_t change = static_cast<std::int64_t>(value->size());
       CachedValue* candidate =
-          bucket.find<Hasher>(hash, value->key(), value->keySize());
+          bucket.find<Hasher>(hash.value, value->key(), value->keySize());
 
       if (candidate == nullptr && bucket.isFull()) {
         candidate = bucket.evictionCandidate();
@@ -119,7 +119,7 @@ Result TransactionalCache<Hasher>::insert(CachedValue* value) {
             }
             freeValue(candidate);
           }
-          bucket.insert(hash, value);
+          bucket.insert(hash.value, value);
           if (!eviction) {
             TRI_ASSERT(source != nullptr);
             maybeMigrate = source->slotFilled();
@@ -150,20 +150,20 @@ Result TransactionalCache<Hasher>::remove(void const* key,
                                           std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = Hasher::hashKey(key, keySize);
+  Table::BucketHash hash{Hasher::hashKey(key, keySize)};
 
   Result status;
   Table* source;
   {
     Table::BucketLocker guard;
-    std::tie(status, guard) = getBucketByHash(hash, Cache::triesSlow, false);
+    std::tie(status, guard) = getBucket(hash, Cache::triesSlow, false);
     if (status.fail()) {
       return status;
     }
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     source = guard.source();
-    CachedValue* candidate = bucket.remove<Hasher>(hash, key, keySize);
+    CachedValue* candidate = bucket.remove<Hasher>(hash.value, key, keySize);
 
     if (candidate != nullptr) {
       std::int64_t change = -static_cast<std::int64_t>(candidate->size());
@@ -194,20 +194,20 @@ Result TransactionalCache<Hasher>::banish(void const* key,
                                           std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = Hasher::hashKey(key, keySize);
+  Table::BucketHash hash{Hasher::hashKey(key, keySize)};
 
   Result status;
   Table* source;
   {
     Table::BucketLocker guard;
-    std::tie(status, guard) = getBucketByHash(hash, Cache::triesSlow, false);
+    std::tie(status, guard) = getBucket(hash, Cache::triesSlow, false);
     if (status.fail()) {
       return status;
     }
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     source = guard.source();
-    CachedValue* candidate = bucket.banish<Hasher>(hash, key, keySize);
+    CachedValue* candidate = bucket.banish<Hasher>(hash.value, key, keySize);
 
     if (candidate != nullptr) {
       std::int64_t change = -static_cast<std::int64_t>(candidate->size());
@@ -289,8 +289,8 @@ bool TransactionalCache<Hasher>::freeMemoryWhile(
   for (std::size_t i = 0; i < n; ++i) {
     std::uint64_t index = (offset + i) % n;
 
-    auto [status, guard] =
-        getBucketById(index, Cache::triesFast, /*singleOperation*/ false);
+    auto [status, guard] = getBucket(Table::BucketId{index}, Cache::triesFast,
+                                     /*singleOperation*/ false);
 
     if (status != TRI_ERROR_NO_ERROR) {
       continue;
@@ -435,9 +435,9 @@ void TransactionalCache<Hasher>::migrateBucket(
 
 template<typename Hasher>
 std::tuple<::ErrorCode, Table::BucketLocker>
-TransactionalCache<Hasher>::getBucketByHash(std::uint32_t hash,
-                                            std::uint64_t maxTries,
-                                            bool singleOperation) {
+TransactionalCache<Hasher>::getBucket(Table::HashOrId bucket,
+                                      std::uint64_t maxTries,
+                                      bool singleOperation) {
   ::ErrorCode status = TRI_ERROR_NO_ERROR;
   Table::BucketLocker guard;
 
@@ -450,35 +450,7 @@ TransactionalCache<Hasher>::getBucketByHash(std::uint32_t hash,
     }
 
     std::uint64_t term = _manager->_transactions.term();
-    guard = table->fetchAndLockBucketByHash(hash, maxTries);
-    if (guard.isLocked()) {
-      guard.bucket<TransactionalBucket>().updateBanishTerm(term);
-    } else {
-      status = TRI_ERROR_LOCK_TIMEOUT;
-    }
-  }
-
-  return std::make_tuple(status, std::move(guard));
-}
-
-template<typename Hasher>
-std::tuple<::ErrorCode, Table::BucketLocker>
-TransactionalCache<Hasher>::getBucketById(std::size_t bucket,
-                                          std::uint64_t maxTries,
-                                          bool singleOperation) {
-  ::ErrorCode status = TRI_ERROR_NO_ERROR;
-  Table::BucketLocker guard;
-
-  std::shared_ptr<Table> table = this->table();
-  if (ADB_UNLIKELY(isShutdown() || table == nullptr)) {
-    status = TRI_ERROR_SHUTTING_DOWN;
-  } else {
-    if (singleOperation) {
-      _manager->reportAccess(_id);
-    }
-
-    std::uint64_t term = _manager->_transactions.term();
-    guard = table->fetchAndLockBucketById(bucket, maxTries);
+    guard = table->fetchAndLockBucket(bucket, maxTries);
     if (guard.isLocked()) {
       guard.bucket<TransactionalBucket>().updateBanishTerm(term);
     } else {
