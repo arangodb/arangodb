@@ -20,6 +20,8 @@
 ///
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
+
 #include <experimental/memory_resource>
 #include <vector>
 #include <string>
@@ -34,6 +36,7 @@ struct MemoryResource : std::experimental::pmr::memory_resource {
   virtual void* do_allocate(std::size_t bytes, std::size_t alignment) override {
     bytesAllocated += bytes;
     numberAllocations += 1;
+    std::cout << "allocated: " << bytes << " bytes for a total of " << bytesAllocated << std::endl;
     return base->allocate(bytes, alignment);
   };
   virtual void do_deallocate(void* p, std::size_t bytes,

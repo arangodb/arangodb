@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include <memory>
+#include <experimental/vector>
+
 #include "Pregel/GraphStore/Edge.h"
 #include "Pregel/GraphStore/Vertex.h"
 
@@ -38,6 +41,7 @@ template<typename V, typename E>
 struct Quiver {
   using VertexType = Vertex<V, E>;
   using EdgeType = Edge<E>;
+  using allocator_type = std::experimental::pmr::polymorphic_allocator<VertexType>;
 
   auto emplace(VertexType&& v) -> void {
     edgeCounter += v._edges.size();
@@ -52,8 +56,11 @@ struct Quiver {
   auto begin() { return std::begin(vertices); }
   auto end() { return std::end(vertices); }
 
-  std::vector<VertexType> vertices;
+  std::experimental::pmr::vector<VertexType> vertices;
   std::size_t edgeCounter{0};
+
+  Quiver() = default;
+  Quiver(allocator_type const& alloc) : vertices(alloc){};
 };
 
 template<typename V, typename E, typename Inspector>

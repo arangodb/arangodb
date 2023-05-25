@@ -26,7 +26,9 @@
 #include "Assertions/Assert.h"
 
 #include <string>
-#include <vector>
+#include <memory>
+#include <experimental/vector>
+#include <experimental/string>
 
 #include "Edge.h"
 #include "VertexID.h"
@@ -35,14 +37,19 @@ namespace arangodb::pregel {
 
 template<typename V, typename E>
 struct Vertex {
+  using allocator_type = std::experimental::pmr::polymorphic_allocator<Edge<E>>;
+
   Vertex() noexcept : _key(), _shard(), _edges(), _active(true) {}
+  Vertex(allocator_type const& alloc) noexcept : _key(alloc), _shard(), _edges(alloc), _active(true) {}
   Vertex(Vertex const&) = delete;
   Vertex(Vertex&&) = default;
+  Vertex(allocator_type const& alloc, Vertex&& other) {}
+
   auto operator=(Vertex const& other) -> Vertex& = delete;
   auto operator=(Vertex&& other) -> Vertex& = default;
 
-  std::vector<Edge<E>>& getEdges() noexcept { return _edges; }
-  std::vector<Edge<E>>& getEdges() const noexcept { return _edges; }
+  std::experimental::pmr::vector<Edge<E>>& getEdges() noexcept { return _edges; }
+  std::experimental::pmr::vector<Edge<E>>& getEdges() const noexcept { return _edges; }
 
   size_t addEdge(Edge<E>&& edge) noexcept {
     // must only be called during initial vertex creation
@@ -74,9 +81,10 @@ struct Vertex {
 
   [[nodiscard]] VertexID pregelId() const { return VertexID{_shard, _key}; }
 
-  std::string _key;
+  std::experimental::pmr::string _key;
   PregelShard _shard;
-  std::vector<Edge<E>> _edges;
+  std::experimental::pmr::vector<Edge<E>> _edges;
+//  std::vector<Edge<E>> _edges;
   bool _active;
   V _data;
 };

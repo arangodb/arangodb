@@ -547,6 +547,7 @@ if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
       set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++ -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
       set(BASE_LD_FLAGS "${BASE_LD_FLAGS} -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
     endif ()
+    list(APPEND BASE_LIBS c++experimental)
     add_definitions("-Wno-deprecated-declarations")
   else ()
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")

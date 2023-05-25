@@ -17,7 +17,7 @@ target_link_libraries(arango_tests_pregel
   arango_pregel_with_actors
   date_interface
   velocypack
-  fmt)
+  fmt c++experimental)
 
 add_executable(arangodbtests_pregel
   EXCLUDE_FROM_ALL)

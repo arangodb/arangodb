@@ -1,5 +1,7 @@
 add_library(arango_tests_pregel_graphstore OBJECT
-  QuiverTest.cpp)
+  MemoryResourceTest.cpp
+#  QuiverTest.cpp
+)
 
 target_include_directories(arango_tests_pregel_graphstore
   PRIVATE
