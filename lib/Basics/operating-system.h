@@ -31,16 +31,6 @@
 // --Section--                                                processor features
 // -----------------------------------------------------------------------------
 
-// padding
-
-#if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || \
-    defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64) ||     \
-    defined(__aarch64__)
-#undef TRI_PADDING_32
-#else
-#define TRI_PADDING_32 1
-#endif
-
 // aligned / unaligned access
 
 #if defined(__sparc__) || defined(__arm__) || defined(__arm64__) || \
@@ -64,8 +54,6 @@
 // -----------------------------------------------------------------------------
 
 #if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
-#define TRI_V8_MAXHEAP 1 * 1024
-#elif TRI_PADDING_32
 #define TRI_V8_MAXHEAP 1 * 1024
 #else
 #define TRI_V8_MAXHEAP 3 * 1024

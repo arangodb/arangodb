@@ -137,6 +137,8 @@ Result TransactionalCache<Hasher>::insert(CachedValue* value) {
 
   if (maybeMigrate) {
     TRI_ASSERT(source != nullptr);
+    // caution: calling idealSize() can have side effects
+    // and trigger a table growth!
     requestMigrate(source->idealSize());  // let function do the hard work
   }
 
@@ -179,6 +181,8 @@ Result TransactionalCache<Hasher>::remove(void const* key,
 
   if (maybeMigrate) {
     TRI_ASSERT(source != nullptr);
+    // caution: calling idealSize() can have side effects
+    // and trigger a table growth!
     requestMigrate(source->idealSize());
   }
 
@@ -222,6 +226,8 @@ Result TransactionalCache<Hasher>::banish(void const* key,
 
   if (maybeMigrate) {
     TRI_ASSERT(source != nullptr);
+    // caution: calling idealSize() can have side effects
+    // and trigger a table growth!
     requestMigrate(source->idealSize());
   }
 
@@ -306,7 +312,7 @@ bool TransactionalCache<Hasher>::freeMemoryWhile(
   if (maybeMigrate) {
     // caution: calling idealSize() can have side effects
     // and trigger a table growth!
-    requestMigrate(table->idealSizeValue());
+    requestMigrate(table->idealSize());
   }
 
   return maybeMigrate;
