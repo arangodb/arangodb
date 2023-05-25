@@ -85,10 +85,12 @@ std::atomic<pid_t> processIdRequestingLogRotate{processIdUnspecified};
 
 namespace arangodb {
 
-SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
+Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(Server& server)
-    : ArangodFeature{server, *this}, _scheduler(nullptr) {
+    : ArangodFeature{server, *this},
+      _schedulerImpl("thread-pool"),
+      _scheduler(nullptr) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
   if constexpr (Server::contains<FileDescriptorsFeature>()) {
@@ -241,6 +243,12 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
       new UInt64Parameter(&_fifo1Size),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
+  options->addOption(
+      "--server.scheduler-impl", "Which scheduler implementation to use",
+      new DiscreteValuesParameter<StringParameter>(
+          &_schedulerImpl, {"supervised", "thread-pool"}),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);
 
@@ -326,17 +334,24 @@ void SchedulerFeature::prepare() {
 #pragma warning(disable : 4316)  // Object allocated on the heap may not be
                                  // aligned for this type
 #endif
-  auto sched = std::make_unique<SupervisedScheduler>(
-      server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
-      _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
-      _unavailabilityQueueFillGrade);
+  if (_schedulerImpl == "supervised") {
+    _scheduler = std::make_unique<ThreadPoolScheduler>(
+        server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
+        _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
+        _unavailabilityQueueFillGrade);
+  } else {
+    ADB_PROD_ASSERT(_schedulerImpl == "thread-pool");
+
+    _scheduler = std::make_unique<ThreadPoolScheduler>(
+        server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
+        _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
+        _unavailabilityQueueFillGrade);
+  }
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
 
-  SCHEDULER = sched.get();
-
-  _scheduler = std::move(sched);
+  SCHEDULER = _scheduler.get();
 }
 
 void SchedulerFeature::start() {

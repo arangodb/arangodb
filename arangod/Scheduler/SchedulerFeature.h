@@ -26,6 +26,7 @@
 #include "Basics/asio_ns.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
+#include "Scheduler/ThreadPoolScheduler.h"
 #include "RestServer/arangod.h"
 
 #include <functional>
@@ -37,7 +38,7 @@ class SchedulerFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Scheduler"; }
 
-  static SupervisedScheduler* SCHEDULER;
+  static Scheduler* SCHEDULER;
 
   explicit SchedulerFeature(Server& server);
   ~SchedulerFeature();
@@ -69,6 +70,7 @@ class SchedulerFeature final : public ArangodFeature {
   uint64_t _fifo3Size = 4096;
   double _ongoingLowPriorityMultiplier = 4.0;
   double _unavailabilityQueueFillGrade = 0.75;
+  std::string _schedulerImpl;
 
   std::unique_ptr<Scheduler> _scheduler;
 

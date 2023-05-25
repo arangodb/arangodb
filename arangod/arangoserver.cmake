@@ -156,6 +156,7 @@ add_library(arangoserver STATIC
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
   Scheduler/SupervisedScheduler.cpp
+  Scheduler/ThreadPoolScheduler.cpp
   Sharding/ShardDistributionReporter.cpp
   Sharding/ShardingFeature.cpp
   Sharding/ShardingInfo.cpp

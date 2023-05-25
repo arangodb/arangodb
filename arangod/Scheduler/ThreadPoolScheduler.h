@@ -38,20 +38,19 @@
 namespace arangodb {
 class NetworkFeature;
 class SharedPRNGFeature;
-class SupervisedSchedulerWorkerThread;
-class SupervisedSchedulerManagerThread;
+class ThreadPoolSchedulerWorkerThread;
 
-class SupervisedScheduler final : public Scheduler {
+class ThreadPoolScheduler final : public Scheduler {
  public:
-  SupervisedScheduler(ArangodServer& server, uint64_t minThreads,
+  ThreadPoolScheduler(ArangodServer& server, uint64_t minThreads,
                       uint64_t maxThreads, uint64_t maxQueueSize,
                       uint64_t fifo1Size, uint64_t fifo2Size,
                       uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
                       double unavailabilityQueueFillGrade);
-  ~SupervisedScheduler() final;
+  ~ThreadPoolScheduler() final;
 
-  bool start() override;
   void shutdown() override;
+  bool start() override;
 
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
@@ -98,8 +97,7 @@ class SupervisedScheduler final : public Scheduler {
   bool isStopping() override { return _stopping; }
 
  private:
-  friend class SupervisedSchedulerManagerThread;
-  friend class SupervisedSchedulerWorkerThread;
+  friend class ThreadPoolSchedulerWorkerThread;
 
   // each worker thread has a state block which contains configuration values.
   // _queueRetryTime_us is the number of microseconds this particular
@@ -127,12 +125,12 @@ class SupervisedScheduler final : public Scheduler {
     // to _ready is protected by the Scheduler's condition variable & mutex
     bool _ready;
     std::atomic<clock::time_point> _lastJobStarted;
-    std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
+    std::unique_ptr<ThreadPoolSchedulerWorkerThread> _thread;
     std::mutex _mutex;
     std::condition_variable _conditionWork;
 
     // initialize with harmless defaults: spin once, sleep forever
-    explicit WorkerState(SupervisedScheduler& scheduler);
+    explicit WorkerState(ThreadPoolScheduler& scheduler);
     WorkerState(WorkerState const&) = delete;
     WorkerState& operator=(WorkerState const&) = delete;
 
@@ -142,19 +140,12 @@ class SupervisedScheduler final : public Scheduler {
 
   std::unique_ptr<WorkItemBase> getWork(std::shared_ptr<WorkerState>& state);
   void startOneThread();
-  void stopOneThread();
-
-  bool cleanupAbandonedThreads();
-  /// @brief returns whether or not a new thread was started by
-  /// the method
-  bool sortoutLongRunningThreads();
 
   // Check if we are allowed to pull from a queue with the given index
   // This is used to give priority to "FAST" and "MED" lanes accordingly.
   bool canPullFromQueue(uint64_t queueIdx) const noexcept;
 
   void runWorker();
-  void runSupervisor();
 
   [[nodiscard]] bool queueItem(RequestLane lane,
                                std::unique_ptr<WorkItemBase> item,
@@ -204,10 +195,6 @@ class SupervisedScheduler final : public Scheduler {
   // mutex, never, the other way round. You may acquire only the
   // worker's mutex.
   std::mutex _mutex;
-
-  std::mutex _mutexSupervisor;
-  std::condition_variable _conditionSupervisor;
-  std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
   metrics::Gauge<uint64_t>& _metricsQueueLength;
   metrics::Counter& _metricsJobsDoneTotal;

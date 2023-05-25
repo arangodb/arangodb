@@ -286,6 +286,19 @@ class Scheduler {
   /// the server is considered unavailable (because of overload)
   virtual double unavailabilityQueueFillGrade() const = 0;
 
+  virtual void trackCreateHandlerTask() noexcept = 0;
+  virtual void trackBeginOngoingLowPriorityTask() noexcept = 0;
+  virtual void trackEndOngoingLowPriorityTask() noexcept = 0;
+
+  virtual void trackQueueTimeViolation() noexcept = 0;
+  virtual void trackQueueItemSize(std::int64_t) noexcept = 0;
+
+  /// @brief set the time it took for the last low prio item to be dequeued
+  /// (time between queuing and dequeing) [ms]
+  virtual void setLastLowPriorityDequeueTime(uint64_t time) noexcept = 0;
+
+  virtual std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued()
+      const = 0;
   // ---------------------------------------------------------------------------
   // Start/Stop/IsRunning stuff
   // ---------------------------------------------------------------------------

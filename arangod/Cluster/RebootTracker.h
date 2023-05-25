@@ -36,7 +36,7 @@
 
 namespace arangodb {
 
-class SupervisedScheduler;
+class Scheduler;
 
 namespace velocypack {
 
@@ -51,7 +51,7 @@ namespace cluster {
 // scheduler is destroyed.
 class RebootTracker {
  public:
-  using SchedulerPointer = SupervisedScheduler*;
+  using SchedulerPointer = Scheduler*;
   using Callback = fu2::unique_function<void()>;
   struct DescriptedCallback {
     Callback callback;
