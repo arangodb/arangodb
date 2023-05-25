@@ -560,7 +560,7 @@ struct ReplicatedLogMethodsCoordinator final
                waitForSync ? "true" : "false");
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
-                                payload.copyBuffer(), opts)
+                                payload.stealBuffer(), opts)
         .thenValue([](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
@@ -670,7 +670,7 @@ struct ReplicatedLogMethodsCoordinator final
     opts.param(StaticStrings::DontWaitForCommit, "true");
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
-                                payload.copyBuffer(), opts)
+                                payload.stealBuffer(), opts)
         .thenValue([](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());

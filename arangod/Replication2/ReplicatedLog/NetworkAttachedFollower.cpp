@@ -54,6 +54,7 @@ auto NetworkAttachedFollower::getParticipantId() const noexcept
 auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
   VPackBufferUInt8 buffer;
+  buffer.reserve(1024 * 1024); // TODO - use config params
   {
     VPackBuilder builder(buffer);
     request.toVelocyPack(builder);
