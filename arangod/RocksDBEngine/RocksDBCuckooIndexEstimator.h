@@ -107,11 +107,9 @@ class RocksDBCuckooIndexEstimator {
       *counter() = 0;
     }
 
-    bool isEqual(uint16_t fp) const noexcept {
-      return ((*fingerprint()) == fp);
-    }
+    bool isEqual(uint16_t fp) const noexcept { return *fingerprint() == fp; }
 
-    bool isEmpty() const noexcept { return (*fingerprint()) == 0; }
+    bool isEmpty() const noexcept { return *fingerprint() == 0; }
 
     // If this returns FALSE we have removed the
     // last element => we need to remove the fingerprint as well.
@@ -124,7 +122,7 @@ class RocksDBCuckooIndexEstimator {
     }
 
     void increase() noexcept {
-      if ((*counter()) < UINT32_MAX) {
+      if (*counter() < UINT32_MAX) {
         (*counter())++;
       }
     }
@@ -142,6 +140,10 @@ class RocksDBCuckooIndexEstimator {
 
     void injectCounter(uint32_t* cnt) noexcept { _counter = cnt; }
   };
+
+  // private common constructor, used by the public constructors
+  explicit RocksDBCuckooIndexEstimator(
+      metrics::Gauge<uint64_t>* memoryUsageMetric);
 
  public:
   explicit RocksDBCuckooIndexEstimator(
@@ -317,8 +319,7 @@ class RocksDBCuckooIndexEstimator {
   rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq);
 
   uint64_t memoryUsage() const {
-    return sizeof(RocksDBCuckooIndexEstimator) + _slotAllocSize +
-           _counterAllocSize;
+    return sizeof(RocksDBCuckooIndexEstimator) + _allocSize;
   }
 
   Slot findSlotNoCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp,
@@ -472,7 +473,8 @@ class RocksDBCuckooIndexEstimator {
   }
 
   Slot findSlot(uint64_t pos, uint64_t slot) const noexcept {
-    TRI_ASSERT(kSlotSize * (pos * kSlotsPerBucket + slot) <= _slotAllocSize);
+    TRI_ASSERT(kSlotSize * (pos * kSlotsPerBucket + slot) <=
+               _size * kSlotSize * kSlotsPerBucket);
     char* address = _base + kSlotSize * (pos * kSlotsPerBucket + slot);
     auto ret = reinterpret_cast<uint16_t*>(address);
     return Slot(ret);
@@ -480,7 +482,7 @@ class RocksDBCuckooIndexEstimator {
 
   uint32_t* findCounter(uint64_t pos, uint64_t slot) const noexcept {
     TRI_ASSERT(kCounterSize * (pos * kSlotsPerBucket + slot) <=
-               _counterAllocSize);
+               _size * kCounterSize * kSlotsPerBucket);
     char* address = _counters + kCounterSize * (pos * kSlotsPerBucket + slot);
     return reinterpret_cast<uint32_t*>(address);
   }
@@ -550,15 +552,12 @@ class RocksDBCuckooIndexEstimator {
                         // 2^_logSize
   uint64_t _sizeMask;   // used to mask out some bits from the hash
   uint32_t _sizeShift;  // used to shift the bits down to get a position
-  uint64_t _slotAllocSize;     // number of allocated bytes for the slots,
-                               // == _size * kSlotsPerBucket * kSlotSize + 64
-  uint64_t _counterAllocSize;  // number of allocated bytes ofr the counters,
-                               // == _size * kSlotsPerBucket * kCounterSize + 64
-  char* _base;                 // pointer to allocated space, 64-byte aligned
-  char* _slotBase;             // base of original allocation
-  char* _counters;             // pointer to allocated space, 64-byte aligned
-  char* _counterBase;          // base of original counter allocation
-  uint64_t _nrUsed;            // number of pairs stored in the table
+  uint64_t _allocSize;  // number of dynamic allocated bytes for the slots and
+                        // counters
+  char* _allocBase;     // base of original allocation
+  char* _base;          // pointer to allocated space, 64-byte aligned
+  char* _counters;      // pointer to allocated space, 64-byte aligned
+  uint64_t _nrUsed;     // number of pairs stored in the table
   uint64_t _nrCuckood;  // number of elements that have been removed by cuckoo
   uint64_t _nrTotal;    // number of elements included in total (not cuckood)
 

@@ -1266,14 +1266,14 @@ void RocksDBEngine::trackRevisionTreeResurrection() noexcept {
 
 void RocksDBEngine::trackRevisionTreeMemoryIncrease(
     std::uint64_t value) noexcept {
-  if (ADB_LIKELY(value != 0)) {
+  if (value != 0) {
     _metricsTreeMemoryUsage += value;
   }
 }
 
 void RocksDBEngine::trackRevisionTreeMemoryDecrease(
     std::uint64_t value) noexcept {
-  if (ADB_LIKELY(value != 0)) {
+  if (value != 0) {
     [[maybe_unused]] auto old = _metricsTreeMemoryUsage.fetch_sub(value);
     TRI_ASSERT(old >= value);
   }

@@ -1,6 +1,12 @@
 devel
 -----
 
+* APM-671: index selectivity estimates (cuckoo estimator) memory tracking.
+  This adds a new metric "arangodb_internal_index_estimates_memory" that
+  reports the total memory usage of all index selectivity estimates combined.
+  The metric includes memory used for buffering index write operations that
+  still have to applied.
+
 * BTS-1261 For some named graphs in cluster, when creating a debugDump for a 
   traversal query that would use the graph's name, the graph wouldn't be able 
   to be recreated because the info gathered in the process of creating a 

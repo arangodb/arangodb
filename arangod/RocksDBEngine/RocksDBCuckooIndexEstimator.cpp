@@ -37,7 +37,7 @@ namespace arangodb {
 
 template<class Key>
 RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(
-    metrics::Gauge<uint64_t>* memoryUsageMetric, uint64_t size)
+    metrics::Gauge<uint64_t>* memoryUsageMetric)
     : _memoryUsageMetric(memoryUsageMetric),
       _randState(0x2636283625154737ULL),
       _logSize(0),
@@ -45,18 +45,21 @@ RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(
       _niceSize(0),
       _sizeMask(0),
       _sizeShift(0),
-      _slotAllocSize(0),
-      _counterAllocSize(0),
+      _allocSize(0),
+      _allocBase(nullptr),
       _base(nullptr),
-      _slotBase(nullptr),
       _counters(nullptr),
-      _counterBase(nullptr),
       _nrUsed(0),
       _nrCuckood(0),
       _nrTotal(0),
       _appliedSeq(0),
       _needToPersist(false),
-      _memoryUsage(0) {
+      _memoryUsage(0) {}
+
+template<class Key>
+RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(
+    metrics::Gauge<uint64_t>* memoryUsageMetric, uint64_t size)
+    : RocksDBCuckooIndexEstimator<Key>(memoryUsageMetric) {
   // Inflate size so that we have some padding to avoid failure
   size *= 2;
   size = (size >= 1024) ? size : 1024;  // want 256 buckets minimum
@@ -70,25 +73,7 @@ RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(
 template<class Key>
 RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(
     metrics::Gauge<uint64_t>* memoryUsageMetric, std::string_view serialized)
-    : _memoryUsageMetric(memoryUsageMetric),
-      _randState(0x2636283625154737ULL),
-      _logSize(0),
-      _size(0),
-      _niceSize(0),
-      _sizeMask(0),
-      _sizeShift(0),
-      _slotAllocSize(0),
-      _counterAllocSize(0),
-      _base(nullptr),
-      _slotBase(nullptr),
-      _counters(nullptr),
-      _counterBase(nullptr),
-      _nrUsed(0),
-      _nrCuckood(0),
-      _nrTotal(0),
-      _appliedSeq(0),
-      _needToPersist(false),
-      _memoryUsage(0) {
+    : RocksDBCuckooIndexEstimator<Key>(memoryUsageMetric) {
   // note: this may throw!
   deserialize(serialized);
 }
@@ -103,83 +88,6 @@ void RocksDBCuckooIndexEstimator<Key>::drain() {
   WRITE_LOCKER(locker, _lock);
   drainNoLock();
 }
-
-template<class Key>
-void RocksDBCuckooIndexEstimator<Key>::drainNoLock() {
-  uint64_t memoryUsage = 0;
-  for (auto const& it : _insertBuffers) {
-    memoryUsage +=
-        bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
-  }
-
-  for (auto const& it : _removalBuffers) {
-    memoryUsage +=
-        bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
-  }
-
-  memoryUsage += bufferedEntrySize() * _truncateBuffer.size();
-
-  _insertBuffers.clear();
-  _removalBuffers.clear();
-  _truncateBuffer.clear();
-
-  decreaseMemoryUsage(memoryUsage);
-  checkInvariants();
-}
-
-template<class Key>
-void RocksDBCuckooIndexEstimator<Key>::freeMemory() {
-  WRITE_LOCKER(locker, _lock);
-
-  drainNoLock();
-
-  // only to validate that our math is correct and we are not missing
-  // anything.
-  uint64_t memoryUsage = _slotAllocSize + _counterAllocSize;
-  TRI_ASSERT(memoryUsage == _memoryUsage)
-      << "memoryUsage: " << memoryUsage << ", _memoryUsage: " << _memoryUsage;
-  decreaseMemoryUsage(memoryUsage);
-  TRI_ASSERT(_memoryUsage == 0);
-
-  _nrTotal = 0;
-  _nrCuckood = 0;
-  _nrUsed = 0;
-
-  delete[] _slotBase;
-  delete[] _counterBase;
-  _base = nullptr;
-  _slotBase = nullptr;
-  _counters = nullptr;
-  _counterBase = nullptr;
-  _slotAllocSize = 0;
-  _counterAllocSize = 0;
-
-  checkInvariants();
-}
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-template<class Key>
-void RocksDBCuckooIndexEstimator<Key>::checkInvariants() const {
-  // invariants check is disabled because it slows down
-  // everything considerably. can be turned back on for
-  // debugging.
-#if 0
-  uint64_t memoryUsage = 0;
-  for (auto const& it : _insertBuffers) {
-    memoryUsage +=
-        bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
-  }
-
-  for (auto const& it : _removalBuffers) {
-    memoryUsage +=
-        bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
-  }
-
-  memoryUsage += bufferedEntrySize() * _truncateBuffer.size();
-  TRI_ASSERT(_memoryUsage == memoryUsage + _slotAllocSize + _counterAllocSize);
-#endif
-}
-#endif
 
 template<class Key>
 /*static*/ bool RocksDBCuckooIndexEstimator<Key>::isFormatSupported(
@@ -299,14 +207,16 @@ template<class Key>
 void RocksDBCuckooIndexEstimator<Key>::appendDataBlob(
     std::string& result) const {
   // Size is as follows: nrOfBuckets * kSlotsPerBucket * SlotSize
-  TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <= _slotAllocSize);
+  TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <=
+             _size * kSlotSize * kSlotsPerBucket);
   for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket);
        i += kSlotSize) {
     rocksutils::uint16ToPersistent(result,
                                    *(reinterpret_cast<uint16_t*>(_base + i)));
   }
 
-  TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <= _counterAllocSize);
+  TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <=
+             _size * kCounterSize * kSlotsPerBucket);
   for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket);
        i += kCounterSize) {
     rocksutils::uint32ToPersistent(
@@ -780,7 +690,8 @@ void RocksDBCuckooIndexEstimator<Key>::deserializeUncompressedBody(
 
   // Insert the raw data
   // Size is as follows: nrOfBuckets * kSlotsPerBucket * SlotSize
-  TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <= _slotAllocSize);
+  TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <=
+             _size * kSlotSize * kSlotsPerBucket);
 
   for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket);
        i += kSlotSize) {
@@ -789,7 +700,8 @@ void RocksDBCuckooIndexEstimator<Key>::deserializeUncompressedBody(
     current += kSlotSize;
   }
 
-  TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <= _counterAllocSize);
+  TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <=
+             _size * kCounterSize * kSlotsPerBucket);
 
   for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket);
        i += kCounterSize) {
@@ -844,37 +756,102 @@ void RocksDBCuckooIndexEstimator<Key>::deriveSizesAndAlloc() {
   _sizeMask = _niceSize - 1;
   _sizeShift = static_cast<uint32_t>((64 - _logSize) / 2);
 
-  // give 64 bytes padding to enable 64-byte alignment
-  _slotAllocSize = _size * kSlotSize * kSlotsPerBucket + 64;
+  // bytes for slots
+  std::size_t bytesForSlots = _size * kSlotSize * kSlotsPerBucket;
+  // we assume it to be a multiple of 64, cache-line aligned
+  TRI_ASSERT(bytesForSlots % 64 == 0);
 
-  _slotBase = new char[_slotAllocSize];
+  std::size_t bytesForCounters = _size * kCounterSize * kSlotsPerBucket;
+
+  // give 64 bytes padding to enable 64-byte alignment
+  _allocSize = bytesForSlots + bytesForCounters + 64;
+
+  _allocBase = new char[_allocSize];
 
   _base = reinterpret_cast<char*>(
-      (reinterpret_cast<uintptr_t>(_slotBase) + 63) &
+      (reinterpret_cast<uintptr_t>(_allocBase) + 63) &
       ~((uintptr_t)0x3fu));  // to actually implement the 64-byte alignment,
   // shift base pointer within allocated space to
   // 64-byte boundary
+  TRI_ASSERT(reinterpret_cast<uintptr_t>(_base) % 64 == 0);
 
-  // give 64 bytes padding to enable 64-byte alignment
-  _counterAllocSize = _size * kCounterSize * kSlotsPerBucket + 64;
-  try {
-    _counterBase = new char[_counterAllocSize];
+  _counters = _base + bytesForSlots;
+  TRI_ASSERT(reinterpret_cast<uintptr_t>(_counters) % 64 == 0);
 
-    _counters = reinterpret_cast<char*>(
-        (reinterpret_cast<uintptr_t>(_counterBase) + 63) &
-        ~((uintptr_t)0x3fu));  // to actually implement the 64-byte alignment,
-    // shift base pointer within allocated space to
-    // 64-byte boundary
-  } catch (...) {
-    // in case the new allocation fails, we need to free the
-    // previous allocation in order to not leak
-    delete[] _slotBase;
-    _slotBase = nullptr;
-    throw;
+  increaseMemoryUsage(_allocSize);
+}
+
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::drainNoLock() {
+  uint64_t memoryUsage = 0;
+  for (auto const& it : _insertBuffers) {
+    memoryUsage +=
+        bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
   }
 
-  increaseMemoryUsage(_slotAllocSize + _counterAllocSize);
+  for (auto const& it : _removalBuffers) {
+    memoryUsage +=
+        bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
+  }
+
+  memoryUsage += bufferedEntrySize() * _truncateBuffer.size();
+
+  _insertBuffers.clear();
+  _removalBuffers.clear();
+  _truncateBuffer.clear();
+
+  decreaseMemoryUsage(memoryUsage);
+  checkInvariants();
 }
+
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::freeMemory() {
+  WRITE_LOCKER(locker, _lock);
+
+  drainNoLock();
+
+  // only to validate that our math is correct and we are not missing
+  // anything.
+  TRI_ASSERT(_allocSize == _memoryUsage);
+  decreaseMemoryUsage(_allocSize);
+  TRI_ASSERT(_memoryUsage == 0);
+
+  _nrTotal = 0;
+  _nrCuckood = 0;
+  _nrUsed = 0;
+
+  delete[] _allocBase;
+  _allocBase = nullptr;
+  _base = nullptr;
+  _counters = nullptr;
+  _allocSize = 0;
+
+  checkInvariants();
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::checkInvariants() const {
+  // invariants check is disabled because it slows down
+  // everything considerably. can be turned back on for
+  // debugging.
+#if 0
+  uint64_t memoryUsage = 0;
+  for (auto const& it : _insertBuffers) {
+    memoryUsage +=
+        bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
+  }
+
+  for (auto const& it : _removalBuffers) {
+    memoryUsage +=
+        bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
+  }
+
+  memoryUsage += bufferedEntrySize() * _truncateBuffer.size();
+  TRI_ASSERT(_memoryUsage == memoryUsage + _allocSize);
+#endif
+}
+#endif
 
 template class arangodb::RocksDBCuckooIndexEstimator<uint64_t>;
 

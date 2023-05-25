@@ -463,8 +463,7 @@ TEST(MerkleTreeTest, test_stats) {
   EXPECT_EQ(0, t.count());
   EXPECT_EQ(0, t.rootValue());
   EXPECT_EQ(8256, t.byteSize());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize, t.memoryUsage());
-  EXPECT_EQ(0, t.dynamicMemoryUsage());
+  EXPECT_EQ(0, t.memoryUsage());
 
   for (std::uint64_t i = 0; i < 100'000; ++i) {
     t.insert((8 * i) + 1);
@@ -475,17 +474,14 @@ TEST(MerkleTreeTest, test_stats) {
   EXPECT_EQ(100000, t.count());
   EXPECT_EQ(1167003112264018688ULL, t.rootValue());
   EXPECT_EQ(8256, t.byteSize());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize + 65536,
-            t.memoryUsage());
-  EXPECT_EQ(65536, t.dynamicMemoryUsage());
+  EXPECT_EQ(65536, t.memoryUsage());
 
   t.clear();
   EXPECT_EQ(3, t.depth());
   EXPECT_EQ(0, t.count());
   EXPECT_EQ(0, t.rootValue());
   EXPECT_EQ(8256, t.byteSize());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize, t.memoryUsage());
-  EXPECT_EQ(0, t.dynamicMemoryUsage());
+  EXPECT_EQ(0, t.memoryUsage());
 }
 
 TEST(MerkleTreeTest, test_diff_equal) {
@@ -522,15 +518,13 @@ TEST(MerkleTreeTest, test_diff_one_empty) {
   EXPECT_EQ(0, t1.count());
   EXPECT_EQ(0, t1.rootValue());
   EXPECT_EQ(1088, t1.byteSize());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize, t1.memoryUsage());
-  EXPECT_EQ(0, t1.dynamicMemoryUsage());
+  EXPECT_EQ(0, t1.memoryUsage());
 
   EXPECT_EQ(2, t1.depth());
   EXPECT_EQ(0, t2.count());
   EXPECT_EQ(0, t2.rootValue());
   EXPECT_EQ(1088, t2.byteSize());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize, t2.memoryUsage());
-  EXPECT_EQ(0, t2.dynamicMemoryUsage());
+  EXPECT_EQ(0, t2.memoryUsage());
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;
   EXPECT_TRUE(::diffAsExpected(t1, t2, expected));
@@ -545,9 +539,7 @@ TEST(MerkleTreeTest, test_diff_one_empty) {
   EXPECT_EQ(8, t1.count());
   EXPECT_EQ(119171121494394880ULL, t1.rootValue());
   EXPECT_EQ(1088, t1.byteSize());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize + 65536,
-            t1.memoryUsage());
-  EXPECT_EQ(65536, t1.dynamicMemoryUsage());
+  EXPECT_EQ(65536, t1.memoryUsage());
 
   expected.clear();
   for (std::uint64_t i = 0; i < 8; ++i) {
@@ -560,9 +552,7 @@ TEST(MerkleTreeTest, test_diff_one_empty) {
   EXPECT_EQ(16, t1.count());
   EXPECT_EQ(150767561592393728ULL, t1.rootValue());
   EXPECT_EQ(1088, t1.byteSize());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize + 65536,
-            t1.memoryUsage());
-  EXPECT_EQ(65536, t1.dynamicMemoryUsage());
+  EXPECT_EQ(65536, t1.memoryUsage());
 
   expected.clear();
   for (std::uint64_t i = 0; i < 8; ++i) {
@@ -576,9 +566,7 @@ TEST(MerkleTreeTest, test_diff_one_empty) {
   EXPECT_EQ(32, t1.count());
   EXPECT_EQ(13554546285411683328ULL, t1.rootValue());
   EXPECT_EQ(1088, t1.byteSize());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize + 65536,
-            t1.memoryUsage());
-  EXPECT_EQ(65536, t1.dynamicMemoryUsage());
+  EXPECT_EQ(65536, t1.memoryUsage());
 
   expected.clear();
   for (std::uint64_t i = 0; i < 8; ++i) {
@@ -601,15 +589,13 @@ TEST(MerkleTreeTest, test_diff_misc) {
   EXPECT_EQ(0, t1.count());
   EXPECT_EQ(0, t1.rootValue());
   EXPECT_EQ(1088, t1.byteSize());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize, t1.memoryUsage());
-  EXPECT_EQ(0, t1.dynamicMemoryUsage());
+  EXPECT_EQ(0, t1.memoryUsage());
 
   EXPECT_EQ(2, t1.depth());
   EXPECT_EQ(0, t2.count());
   EXPECT_EQ(0, t2.rootValue());
   EXPECT_EQ(1088, t2.byteSize());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize, t2.memoryUsage());
-  EXPECT_EQ(0, t2.dynamicMemoryUsage());
+  EXPECT_EQ(0, t2.memoryUsage());
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> expected;
   EXPECT_TRUE(::diffAsExpected(t1, t2, expected));
@@ -1029,9 +1015,7 @@ TEST(MerkleTreeTest, test_tree_based_on_2021_hlcs) {
   EXPECT_EQ(6, tree.depth());
   EXPECT_EQ(10000, tree.count());
   EXPECT_EQ(4298149919775466880ULL, tree.rootValue());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize + 65536,
-            tree.memoryUsage());
-  EXPECT_EQ(65536, tree.dynamicMemoryUsage());
+  EXPECT_EQ(65536, tree.memoryUsage());
   std::tie(left, right) = tree.range();
   EXPECT_EQ(rangeMin, left);
   EXPECT_EQ(rangeMax, right);
@@ -1043,9 +1027,7 @@ TEST(MerkleTreeTest, test_tree_based_on_2021_hlcs) {
   EXPECT_EQ(6, tree.depth());
   EXPECT_EQ(0, tree.count());
   EXPECT_EQ(0, tree.rootValue());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize + 65536,
-            tree.memoryUsage());
-  EXPECT_EQ(65536, tree.dynamicMemoryUsage());
+  EXPECT_EQ(65536, tree.memoryUsage());
   std::tie(left, right) = tree.range();
   EXPECT_EQ(rangeMin, left);
   EXPECT_EQ(rangeMax, right);
@@ -1067,9 +1049,7 @@ TEST(MerkleTreeTest, test_tree_based_on_2021_hlcs) {
   EXPECT_EQ(6, tree.depth());
   EXPECT_EQ(10'000'000, tree.count());
   EXPECT_EQ(9116977756596679424ULL, tree.rootValue());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize + 2555904,
-            tree.memoryUsage());
-  EXPECT_EQ(2555904, tree.dynamicMemoryUsage());
+  EXPECT_EQ(2555904, tree.memoryUsage());
   std::tie(left, right) = tree.range();
   EXPECT_EQ(rangeMin, left);
   EXPECT_EQ(rangeMax, right);
@@ -1085,9 +1065,7 @@ TEST(MerkleTreeTest, test_tree_based_on_2021_hlcs) {
   EXPECT_EQ(6, tree.depth());
   EXPECT_EQ(0, tree.count());
   EXPECT_EQ(0, tree.rootValue());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize + 2555904,
-            tree.memoryUsage());
-  EXPECT_EQ(2555904, tree.dynamicMemoryUsage());
+  EXPECT_EQ(2555904, tree.memoryUsage());
   std::tie(left, right) = tree.range();
   EXPECT_EQ(rangeMin, left);
   EXPECT_EQ(rangeMax, right);
@@ -1103,9 +1081,7 @@ TEST(MerkleTreeTest, test_large_steps) {
   EXPECT_EQ(6, tree.depth());
   EXPECT_EQ(0, tree.count());
   EXPECT_EQ(0, tree.rootValue());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize,
-            tree.memoryUsage());
-  EXPECT_EQ(0, tree.dynamicMemoryUsage());
+  EXPECT_EQ(0, tree.memoryUsage());
 
   auto [left, right] = tree.range();
   EXPECT_EQ(rangeMin, left);
@@ -1121,9 +1097,7 @@ TEST(MerkleTreeTest, test_large_steps) {
   EXPECT_EQ(6, tree.depth());
   EXPECT_EQ(10'000'000, tree.count());
   EXPECT_EQ(7036974261486883938ULL, tree.rootValue());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize + 4194304,
-            tree.memoryUsage());
-  EXPECT_EQ(4194304, tree.dynamicMemoryUsage());
+  EXPECT_EQ(4194304, tree.memoryUsage());
   std::tie(left, right) = tree.range();
   rangeMax = 1609459337438953472ULL;
   EXPECT_EQ(rangeMin, left);
@@ -1136,9 +1110,7 @@ TEST(MerkleTreeTest, test_large_steps) {
   EXPECT_EQ(6, tree.depth());
   EXPECT_EQ(0, tree.count());
   EXPECT_EQ(0, tree.rootValue());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize + 4194304,
-            tree.memoryUsage());
-  EXPECT_EQ(4194304, tree.dynamicMemoryUsage());
+  EXPECT_EQ(4194304, tree.memoryUsage());
   std::tie(left, right) = tree.range();
   EXPECT_EQ(rangeMin, left);
   EXPECT_EQ(rangeMax, right);
@@ -1154,9 +1126,7 @@ TEST(MerkleTreeTest, test_clear) {
   EXPECT_EQ(6, tree.depth());
   EXPECT_EQ(0, tree.count());
   EXPECT_EQ(0, tree.rootValue());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize,
-            tree.memoryUsage());
-  EXPECT_EQ(0, tree.dynamicMemoryUsage());
+  EXPECT_EQ(0, tree.memoryUsage());
 
   auto [left, right] = tree.range();
   EXPECT_EQ(rangeMin, left);
@@ -1172,9 +1142,7 @@ TEST(MerkleTreeTest, test_clear) {
   EXPECT_EQ(6, tree.depth());
   EXPECT_EQ(2'000'000, tree.count());
   EXPECT_EQ(12929699950823344265ULL, tree.rootValue());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize + 4194304,
-            tree.memoryUsage());
-  EXPECT_EQ(4194304, tree.dynamicMemoryUsage());
+  EXPECT_EQ(4194304, tree.memoryUsage());
   std::tie(left, right) = tree.range();
   rangeMax = 1609459337438953472ULL;
   EXPECT_EQ(rangeMin, left);
@@ -1185,9 +1153,7 @@ TEST(MerkleTreeTest, test_clear) {
   EXPECT_EQ(6, tree.depth());
   EXPECT_EQ(0, tree.count());
   EXPECT_EQ(0, tree.rootValue());
-  EXPECT_EQ(::arangodb::containers::MerkleTreeBase::MetaSize,
-            tree.memoryUsage());
-  EXPECT_EQ(0, tree.dynamicMemoryUsage());
+  EXPECT_EQ(0, tree.memoryUsage());
   std::tie(left, right) = tree.range();
   EXPECT_EQ(rangeMin, left);
   EXPECT_EQ(rangeMax, right);

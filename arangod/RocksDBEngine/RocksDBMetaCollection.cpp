@@ -77,8 +77,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _revisionTreeApplied(0),
       _revisionTreeCreationSeq(0),
       _revisionTreeSerializedSeq(0),
-      _revisionTreeSerializedTime(std::chrono::steady_clock::now()),
-      _revisionsBufferedMemoryUsage(0) {
+      _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
@@ -88,27 +87,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       .engine<RocksDBEngine>()
       .addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
                             _logicalCollection.id());
-}
-
-RocksDBMetaCollection::~RocksDBMetaCollection() {
-  {
-    std::unique_lock<std::mutex> lock(_revisionTreeLock);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // only to validate that our math is correct and we are not missing
-    // anything.
-    uint64_t memoryUsage = 0;
-    for (auto const& it : _revisionInsertBuffers) {
-      memoryUsage +=
-          bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
-    }
-    for (auto const& it : _revisionRemovalBuffers) {
-      memoryUsage +=
-          bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
-    }
-    TRI_ASSERT(memoryUsage == _revisionsBufferedMemoryUsage);
-#endif
-    decreaseBufferedMemoryUsage(_revisionsBufferedMemoryUsage);
-  }
 }
 
 void RocksDBMetaCollection::deferDropCollection(
@@ -909,25 +887,17 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       }
 
       {
-        uint64_t memoryUsage = 0;
         auto it = _revisionInsertBuffers.begin();
         while (it != _revisionInsertBuffers.end() && it->first <= seq) {
-          memoryUsage +=
-              bufferedEntrySize() + bufferedEntryItemSize() * it->second.size();
           it = _revisionInsertBuffers.erase(it);
         }
-        decreaseBufferedMemoryUsage(memoryUsage);
       }
 
       {
-        uint64_t memoryUsage = 0;
         auto it = _revisionRemovalBuffers.begin();
         while (it != _revisionRemovalBuffers.end() && it->first <= seq) {
-          memoryUsage +=
-              bufferedEntrySize() + bufferedEntryItemSize() * it->second.size();
           it = _revisionRemovalBuffers.erase(it);
         }
-        decreaseBufferedMemoryUsage(memoryUsage);
       }
     };
 
@@ -1141,7 +1111,7 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder,
 
   uint64_t count = 0;
   uint64_t hash = 0;
-  uint64_t memoryUsage = 0;
+  uint64_t byteSize = 0;
 
   if (fromCollection) {
     // rebuild a temporary tree from the collection
@@ -1157,7 +1127,7 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder,
 
     count = tree->count();
     hash = tree->rootValue();
-    memoryUsage = tree->memoryUsage();
+    byteSize = tree->byteSize();
   } else {
     // use existing revision tree
     std::unique_lock<std::mutex> guard(_revisionTreeLock);
@@ -1165,14 +1135,14 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder,
     if (_revisionTree != nullptr) {
       count = _revisionTree->count();
       hash = _revisionTree->rootValue();
-      memoryUsage = _revisionTree->compressedSize();
+      byteSize = _revisionTree->compressedSize();
     }
   }
 
   VPackObjectBuilder obj(&builder);
   obj->add(StaticStrings::RevisionTreeCount, VPackValue(count));
   obj->add(StaticStrings::RevisionTreeHash, VPackValue(hash));
-  obj->add("byteSize", VPackValue(memoryUsage));
+  obj->add("byteSize", VPackValue(byteSize));
 }
 
 void RocksDBMetaCollection::revisionTreePendingUpdates(VPackBuilder& builder) {
@@ -1280,21 +1250,37 @@ void RocksDBMetaCollection::bufferUpdates(
       << "for collection " << _logicalCollection.name();
 
   if (!inserts.empty()) {
-    auto [it, inserted] =
-        _revisionInsertBuffers.emplace(seq, std::move(inserts));
-    TRI_ASSERT(inserted);
-    if (inserted) {
-      increaseBufferedMemoryUsage(bufferedEntrySize() +
-                                  bufferedEntryItemSize() * it->second.size());
+    // will default-construct an empty entry if it does not yet exist
+    TRI_ASSERT(_revisionInsertBuffers.find(seq) ==
+               _revisionInsertBuffers.end());
+    auto& elem = _revisionInsertBuffers[seq];
+    if (elem.empty()) {
+      elem = std::move(inserts);
+    } else {
+      // should only happen in recovery, if at all
+      TRI_ASSERT(_logicalCollection.vocbase()
+                     .server()
+                     .getFeature<EngineSelectorFeature>()
+                     .engine()
+                     .inRecovery());
+      elem.insert(elem.end(), inserts.begin(), inserts.end());
     }
   }
   if (!removals.empty()) {
-    auto [it, inserted] =
-        _revisionRemovalBuffers.emplace(seq, std::move(removals));
-    TRI_ASSERT(inserted);
-    if (inserted) {
-      increaseBufferedMemoryUsage(bufferedEntrySize() +
-                                  bufferedEntryItemSize() * it->second.size());
+    // will default-construct an empty entry if it does not yet exist
+    TRI_ASSERT(_revisionRemovalBuffers.find(seq) ==
+               _revisionRemovalBuffers.end());
+    auto& elem = _revisionRemovalBuffers[seq];
+    if (elem.empty()) {
+      elem = std::move(removals);
+    } else {
+      // should only happen in recovery, if at all
+      TRI_ASSERT(_logicalCollection.vocbase()
+                     .server()
+                     .getFeature<EngineSelectorFeature>()
+                     .engine()
+                     .inRecovery());
+      elem.insert(elem.end(), removals.begin(), removals.end());
     }
   }
 }
@@ -1389,27 +1375,13 @@ void RocksDBMetaCollection::applyUpdates(
 
       if (foundTruncate) {
         TRI_ASSERT(ignoreSeq <= commitSeq);
-
-        {
-          uint64_t memoryUsage = 0;
-          while (insertIt != _revisionInsertBuffers.end() &&
-                 insertIt->first <= ignoreSeq) {
-            memoryUsage += bufferedEntrySize() +
-                           bufferedEntryItemSize() * insertIt->second.size();
-            insertIt = _revisionInsertBuffers.erase(insertIt);
-          }
-          decreaseBufferedMemoryUsage(memoryUsage);
+        while (insertIt != _revisionInsertBuffers.end() &&
+               insertIt->first <= ignoreSeq) {
+          insertIt = _revisionInsertBuffers.erase(insertIt);
         }
-
-        {
-          uint64_t memoryUsage = 0;
-          while (removeIt != _revisionRemovalBuffers.end() &&
-                 removeIt->first <= ignoreSeq) {
-            memoryUsage += bufferedEntrySize() +
-                           bufferedEntryItemSize() * removeIt->second.size();
-            removeIt = _revisionRemovalBuffers.erase(removeIt);
-          }
-          decreaseBufferedMemoryUsage(memoryUsage);
+        while (removeIt != _revisionRemovalBuffers.end() &&
+               removeIt->first <= ignoreSeq) {
+          removeIt = _revisionRemovalBuffers.erase(removeIt);
         }
 
         checkIterators();
@@ -1425,7 +1397,6 @@ void RocksDBMetaCollection::applyUpdates(
     }
 
     // still holding the mutex here
-    bool worked = false;
 
     while (true) {
       checkIterators();
@@ -1448,16 +1419,8 @@ void RocksDBMetaCollection::applyUpdates(
               RandomGenerator::interval(uint32_t(5))));
         }
         bumpSequence(commitSeq);
-
-        if (worked) {
-          // delay next compression attempt so that we don't have data
-          // changes followed by an immediate compression
-          _revisionTree->delayCompression();
-        }
         return;
       }
-
-      worked = true;
 
       // another concurrent thread may insert new elements into
       // _revisionInsertBuffers or _revisionRemovalBuffers while we are here. it
@@ -1503,11 +1466,7 @@ void RocksDBMetaCollection::applyUpdates(
 
         // if the insert succeeded, we remove it from the list of operations,
         // so it won't be reapplied even if subsequent operations fail.
-        uint64_t memoryUsage =
-            bufferedEntrySize() +
-            bufferedEntryItemSize() * insertIt->second.size();
         insertIt = _revisionInsertBuffers.erase(insertIt);
-        decreaseBufferedMemoryUsage(memoryUsage);
       }
 
       // check for removals
@@ -1546,11 +1505,7 @@ void RocksDBMetaCollection::applyUpdates(
 
         // if the remove succeeded, we remove it from the list of operations,
         // so it won't be reapplied even if subsequent operations fail.
-        uint64_t memoryUsage =
-            bufferedEntrySize() +
-            bufferedEntryItemSize() * removeIt->second.size();
         removeIt = _revisionRemovalBuffers.erase(removeIt);
-        decreaseBufferedMemoryUsage(memoryUsage);
       }
     }
   });
@@ -1853,10 +1808,9 @@ void RocksDBMetaCollection::RevisionTreeAccessor::clear() {
 
   // do not track memory usage here. the caller has to do this
   _tree->clear();
-  TRI_ASSERT(_tree->memoryUsage() == containers::MerkleTreeBase::MetaSize);
+  TRI_ASSERT(_tree->memoryUsage() == 0);
   _compressed.clear();
   _compressible = true;
-  _lastCompressAttempt = {};
 
   TRI_ASSERT(_tree != nullptr && _compressed.empty());
 }
@@ -1949,28 +1903,18 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
       return;
     }
 
-    if (oldMemoryUsage <= 512) {
-      // tree is empty or at least small -> we do not want to compress it!
+    if (oldMemoryUsage == 0) {
+      // tree is empty -> we do not want to compress it!
       return;
     }
 
-    auto now = std::chrono::steady_clock::now();
-
-    if (_lastCompressAttempt.time_since_epoch().count() > 0 &&
-        now - _lastCompressAttempt < std::chrono::minutes(1)) {
-      // wait at least one minute before retrying the compression
-      return;
-    }
-
-    if (++_hibernationRequests < 12) {
+    if (++_hibernationRequests < 10) {
       // sit out the first few hibernation requests before we
       // actually work (10 is just an arbitrary value here to avoid
       // some pathologic hibernation/resurrection cycles, e.g. by
       // the statistics collections)
       return;
     }
-
-    _lastCompressAttempt = now;
   }
 
   double start = TRI_microtime();
@@ -1984,12 +1928,12 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   LOG_TOPIC("45eae", DEBUG, Logger::REPLICATION)
       << "hibernating revision tree for " << _logicalCollection.vocbase().name()
       << "/" << _logicalCollection.name() << " with " << count
-      << " entries and size " << _tree->memoryUsage()
+      << " entries and size " << _tree->byteSize()
       << ", hibernated size: " << _compressed.size()
       << ", hibernation took: " << (TRI_microtime() - start);
 
   // we would like to see at least 50% compressibility
-  if (_compressed.size() * 2 < _tree->memoryUsage()) {
+  if (_compressed.size() * 2 < _tree->byteSize()) {
     // compression ratio ok.
     // remove tree from memory. now we only have _compressed
     RocksDBEngine& engine = _logicalCollection.vocbase()
@@ -2023,10 +1967,6 @@ void RocksDBMetaCollection::RevisionTreeAccessor::serializeBinary(
   }
 }
 
-void RocksDBMetaCollection::RevisionTreeAccessor::delayCompression() {
-  _lastCompressAttempt = std::chrono::steady_clock::now();
-}
-
 // unfortunately we need to declare this method const although it can
 // modify internal (mutable) state
 void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
@@ -2056,7 +1996,6 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
 
     // reset hibernation counter
     _hibernationRequests = 0;
-    _lastCompressAttempt = {};
 
     TRI_ASSERT(_tree->depth() == _depth);
 
@@ -2071,15 +2010,4 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
   }
   TRI_ASSERT(_tree != nullptr);
   TRI_ASSERT(_compressed.empty());
-}
-
-void RocksDBMetaCollection::increaseBufferedMemoryUsage(
-    uint64_t value) noexcept {
-  _revisionsBufferedMemoryUsage += value;
-}
-
-void RocksDBMetaCollection::decreaseBufferedMemoryUsage(
-    uint64_t value) noexcept {
-  TRI_ASSERT(_revisionsBufferedMemoryUsage >= value);
-  _revisionsBufferedMemoryUsage -= value;
 }

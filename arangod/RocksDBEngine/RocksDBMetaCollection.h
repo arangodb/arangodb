@@ -33,11 +33,7 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <chrono>
 #include <functional>
-#include <map>
-#include <memory>
-#include <mutex>
 
 namespace arangodb {
 class RevisionReplicationIterator;
@@ -46,7 +42,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
  public:
   explicit RocksDBMetaCollection(LogicalCollection& collection,
                                  velocypack::Slice info);
-  virtual ~RocksDBMetaCollection();
+  virtual ~RocksDBMetaCollection() = default;
 
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const&) override;
@@ -169,15 +165,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
           std::unique_ptr<containers::RevisionTree>,
           std::unique_lock<std::mutex>& lock)> const& callback);
 
-  // used for calculating memory usage in _revisionsBufferedMemoryUsage
-  // approximate memory usage for top-level items
-  static constexpr uint64_t bufferedEntrySize() { return 40; }
-  // approximate memory usage for individual items in a top-level item
-  static constexpr uint64_t bufferedEntryItemSize() { return sizeof(uint64_t); }
-
-  void increaseBufferedMemoryUsage(uint64_t value) noexcept;
-  void decreaseBufferedMemoryUsage(uint64_t value) noexcept;
-
  protected:
   RocksDBMetadata _meta;  /// collection metadata
   /// @brief collection lock used for write access
@@ -223,7 +210,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
     void checkConsistency() const;
     void serializeBinary(std::string& output) const;
-    void delayCompression();
 
     // turn the full-blown revision tree into a potentially smaller
     // compressed representation
@@ -259,10 +245,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
     /// @brief whether or not we should attempt to compress the tree
     bool _compressible;
-
-    /// @brief when we last tried to compress the revision tree
-    std::chrono::time_point<
-        std::chrono::steady_clock> mutable _lastCompressAttempt;
   };
 
   // The following rules/definitions apply:
@@ -301,8 +283,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
   std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>>
       _revisionRemovalBuffers;
   std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;
-
-  uint64_t _revisionsBufferedMemoryUsage;
 };
 
 }  // namespace arangodb

@@ -12,6 +12,8 @@ exposedBy:
   - single
 description: |
   Total memory usage of all index selectivity estimates.
+  The metric includes memory used for buffering index write 
+  operations that still have to applied.
   Index selectivity estimates are used for edge indexes and
   persistent indexes.
 troubleshoot: |
