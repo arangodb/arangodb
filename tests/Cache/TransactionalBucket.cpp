@@ -65,25 +65,25 @@ TEST(CacheTransactionalBucketTest, test_locking_behavior) {
 TEST(CacheTransactionalBucketTest, verify_eviction_behavior) {
   auto bucket = std::make_unique<TransactionalBucket>();
 
-  std::uint32_t hashes[9] = {
-      1, 2, 3, 4, 5,
-      6, 7, 8, 9};  // don't have to be real, but should be unique and non-zero
-  std::uint64_t keys[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
-  std::uint64_t values[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
-  CachedValue* ptrs[9];
-  for (std::size_t i = 0; i < 9; i++) {
+  std::uint32_t hashes[8] = {
+      1, 2, 3, 4,
+      5, 6, 7, 8};  // don't have to be real, but should be unique and non-zero
+  std::uint64_t keys[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::uint64_t values[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+  CachedValue* ptrs[8];
+  for (std::size_t i = 0; i < 8; i++) {
     ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(std::uint64_t),
                                      &(values[i]), sizeof(std::uint64_t));
-    TRI_ASSERT(ptrs[i] != nullptr);
+    ASSERT_NE(ptrs[i], nullptr);
   }
 
   bool success = bucket->lock(-1LL);
   ASSERT_TRUE(success);
 
-  // insert three to fill
   ASSERT_FALSE(bucket->isFull());
   ASSERT_EQ(nullptr, bucket->evictionCandidate(false));
 
+  // fill bucket
   for (std::size_t i = 0; i < 8; i++) {
     ASSERT_FALSE(bucket->isFull());
     bucket->insert(hashes[i], ptrs[i]);
@@ -118,11 +118,6 @@ TEST(CacheTransactionalBucketTest, verify_eviction_behavior) {
   }
   ASSERT_EQ(nullptr, bucket->evictionCandidate(false));
   bucket->unlock();
-
-  // cleanup
-  for (std::size_t i = 0; i < 9; i++) {
-    delete ptrs[i];
-  }
 }
 
 TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
@@ -144,7 +139,7 @@ TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
   success = bucket->lock(-1LL);
   ASSERT_TRUE(success);
 
-  // insert three to fill
+  // fill bucket
   ASSERT_FALSE(bucket->isFull());
   for (std::size_t i = 0; i < 8; i++) {
     bucket->insert(hashes[i], ptrs[i]);
