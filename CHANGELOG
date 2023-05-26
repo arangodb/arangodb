@@ -1,8 +1,8 @@
 v3.9.11 (XXXX-X-XX)
 --------------------
 
-* Fix (UI): query editor null/undefined check filters out 
-  bindParams with value 0.
+* Fix issue #18982: query editor null/undefined check filters out bindParams
+  with value 0.
 
 * Support parsing HTTP GET requests with velocypack Content-Type without a
   request body. Previously parsing such requests led to an error on the server
