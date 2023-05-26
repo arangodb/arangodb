@@ -299,6 +299,10 @@ void NetworkFeature::beginShutdown() {
   {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
+    for (auto const& [req, item] : _retryRequests) {
+      item->cancel();
+    }
+    _retryRequests.clear();
   }
   _poolPtr.store(nullptr, std::memory_order_relaxed);
   if (_pool) {  // first cancel all connections
@@ -311,6 +315,10 @@ void NetworkFeature::stop() {
     // we might have posted another workItem during shutdown.
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
+    for (auto const& [req, item] : _retryRequests) {
+      item->cancel();
+    }
+    _retryRequests.clear();
   }
   if (_pool) {
     _pool->shutdownConnections();
@@ -479,6 +487,31 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
           << req->header.path;
     }
   }
+}
+
+void NetworkFeature::retryRequest(
+    std::shared_ptr<network::RetryableRequest> req, RequestLane lane,
+    std::chrono::steady_clock::duration duration) {
+  if (server().isStopping()) {
+    req->cancel();
+  }
+  std::unique_lock guard(_workItemMutex);
+  auto item = SchedulerFeature::SCHEDULER->queueDelayed(
+      "retry-requests", lane, duration,
+      [this, weak = std::weak_ptr(req)](bool cancelled) {
+        if (auto self = weak.lock(); self) {
+          {
+            std::unique_lock guard(_workItemMutex);
+            _retryRequests.erase(self);
+          }
+          if (cancelled) {
+            self->cancel();
+          } else {
+            self->retry();
+          }
+        }
+      });
+  _retryRequests.emplace(std::move(req), std::move(item));
 }
 
 }  // namespace arangodb
