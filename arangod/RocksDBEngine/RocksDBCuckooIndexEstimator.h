@@ -554,7 +554,8 @@ class RocksDBCuckooIndexEstimator {
   uint32_t _sizeShift;  // used to shift the bits down to get a position
   uint64_t _allocSize;  // number of dynamic allocated bytes for the slots and
                         // counters
-  char* _allocBase;     // base of original allocation
+  std::unique_ptr<char[]>
+      _allocBase;       // base of original allocation of _allocSize
   char* _base;          // pointer to allocated space, 64-byte aligned
   char* _counters;      // pointer to allocated space, 64-byte aligned
   uint64_t _nrUsed;     // number of pairs stored in the table

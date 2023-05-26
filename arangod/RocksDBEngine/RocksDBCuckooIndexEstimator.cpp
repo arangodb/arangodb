@@ -46,7 +46,6 @@ RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(
       _sizeMask(0),
       _sizeShift(0),
       _allocSize(0),
-      _allocBase(nullptr),
       _base(nullptr),
       _counters(nullptr),
       _nrUsed(0),
@@ -766,10 +765,10 @@ void RocksDBCuckooIndexEstimator<Key>::deriveSizesAndAlloc() {
   // give 64 bytes padding to enable 64-byte alignment
   _allocSize = bytesForSlots + bytesForCounters + 64;
 
-  _allocBase = new char[_allocSize];
+  _allocBase = std::make_unique<char[]>(_allocSize);
 
   _base = reinterpret_cast<char*>(
-      (reinterpret_cast<uintptr_t>(_allocBase) + 63) &
+      (reinterpret_cast<uintptr_t>(_allocBase.get()) + 63) &
       ~((uintptr_t)0x3fu));  // to actually implement the 64-byte alignment,
   // shift base pointer within allocated space to
   // 64-byte boundary
@@ -820,8 +819,7 @@ void RocksDBCuckooIndexEstimator<Key>::freeMemory() {
   _nrCuckood = 0;
   _nrUsed = 0;
 
-  delete[] _allocBase;
-  _allocBase = nullptr;
+  _allocBase.reset();
   _base = nullptr;
   _counters = nullptr;
   _allocSize = 0;
