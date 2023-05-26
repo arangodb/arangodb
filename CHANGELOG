@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix issue #18982: query editor null/undefined check filters out bindParams
+  with value 0.
+
+* In batched query results, when executing requests for 
+
 * BTS-1261 For some named graphs in cluster, when creating a debugDump for a 
   traversal query that would use the graph's name, the graph wouldn't be able 
   to be recreated because the info gathered in the process of creating a 
