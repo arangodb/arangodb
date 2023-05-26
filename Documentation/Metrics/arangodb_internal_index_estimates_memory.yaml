@@ -16,6 +16,7 @@ description: |
   operations that still have to applied.
   Index selectivity estimates are used for edge indexes and
   persistent indexes.
+  On coordinators, this metric will always have a value of 0.
 troubleshoot: |
   Persistent indexes can be created with selectivity
   estimates turned off to save a bit of memory and slightly
