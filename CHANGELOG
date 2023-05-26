@@ -5,6 +5,12 @@ devel
   Tracking memory used for buffered updates to all revision trees in a new
   metric `arangodb_revision_tree_buffered_memory_usage`.
 
+* Optimize hibernation and resurrection of revision trees so that there are
+  no recurring hibernations and resurrections of the same tree quickly after
+  each other. This is achieved by tracking the time of the last hibernation
+  attempt for each revision tree and not hibernating it if the last attempt
+  was less than a minute ago.
+
 * BTS-1261 For some named graphs in cluster, when creating a debugDump for a 
   traversal query that would use the graph's name, the graph wouldn't be able 
   to be recreated because the info gathered in the process of creating a 
