@@ -12,7 +12,6 @@
       'click .tab': 'navigateByTab',
       'click li': 'switchTab',
       'click .arangodbLogo': 'selectMenuItem',
-      'click .shortcut-icons p': 'showShortcutModal'
     },
 
     renderFirst: true,
@@ -326,7 +325,7 @@
       var navigateTo = tab.id;
       var dropdown = false;
 
-      if (navigateTo === 'enterprise') {
+      if (navigateTo === 'enterprise' || navigateTo === 'shortcuts') {
         return;
       }
 
@@ -469,6 +468,13 @@
       if (id === 'enterprise') {
         e.preventDefault();
         window.open(link.attr('href'), '_blank');
+        return;
+      }
+
+      if (id === 'shortcuts') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this.showShortcutModal();
         return;
       }
 
