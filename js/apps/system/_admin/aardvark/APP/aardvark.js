@@ -1323,7 +1323,7 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
                 } else {
                   // in case we do not have a string here, we need to stringify it
                   // otherwise we might end up sending not displayable values.
-                  label += "<b>" + attr + ":</b> " + JSON.stringify(getAttributeByKey(node, attr)) + "\n";
+                  label += "<b>" + attr + ":</b> " + truncate(JSON.stringify(getAttributeByKey(node, attr)), 16) + "\n";
                   tooltipText += attr + ": " + JSON.stringify(getAttributeByKey(node, attr)) + "\n";
                 }
               } else {
