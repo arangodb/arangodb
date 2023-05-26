@@ -15,6 +15,7 @@ import { useDeleteView } from "./useDeleteView";
 
 type EditViewContextType = {
   errors: ValidationError[];
+  initialView: ViewPropertiesType;
   changed: boolean;
   isAdminUser: boolean;
   isCluster: boolean;
@@ -117,6 +118,7 @@ const EditViewProviderInner = ({
   return (
     <EditViewContext.Provider
       value={{
+        initialView,
         currentField,
         setCurrentField,
         currentLink,
