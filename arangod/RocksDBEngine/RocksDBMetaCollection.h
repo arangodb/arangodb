@@ -263,9 +263,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
     /// @brief whether or not we should attempt to compress the tree
     bool _compressible;
 
-    /// @brief when we last tried to compress the revision tree
+    /// @brief when we last tried to hibernate/compress the revision tree
     std::chrono::time_point<
-        std::chrono::steady_clock> mutable _lastCompressAttempt;
+        std::chrono::steady_clock> mutable _lastHibernateAttempt;
   };
 
   // The following rules/definitions apply:

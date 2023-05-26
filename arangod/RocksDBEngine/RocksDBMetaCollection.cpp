@@ -1839,7 +1839,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::clear() {
   TRI_ASSERT(_tree->memoryUsage() == containers::MerkleTreeBase::MetaSize);
   _compressed.clear();
   _compressible = true;
-  _lastCompressAttempt = {};
+  _lastHibernateAttempt = {};
 
   TRI_ASSERT(_tree != nullptr && _compressed.empty());
 }
@@ -1939,8 +1939,8 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
 
     auto now = std::chrono::steady_clock::now();
 
-    if (_lastCompressAttempt.time_since_epoch().count() > 0 &&
-        now - _lastCompressAttempt < std::chrono::minutes(1)) {
+    if (_lastHibernateAttempt.time_since_epoch().count() > 0 &&
+        now - _lastHibernateAttempt < std::chrono::minutes(1)) {
       // wait at least one minute before retrying the compression
       return;
     }
@@ -1953,7 +1953,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
       return;
     }
 
-    _lastCompressAttempt = now;
+    _lastHibernateAttempt = now;
   }
 
   double start = TRI_microtime();
@@ -2007,7 +2007,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::serializeBinary(
 }
 
 void RocksDBMetaCollection::RevisionTreeAccessor::delayCompression() {
-  _lastCompressAttempt = std::chrono::steady_clock::now();
+  _lastHibernateAttempt = std::chrono::steady_clock::now();
 }
 
 // unfortunately we need to declare this method const although it can
@@ -2039,7 +2039,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
 
     // reset hibernation counter
     _hibernationRequests = 0;
-    _lastCompressAttempt = {};
+    _lastHibernateAttempt = {};
 
     TRI_ASSERT(_tree->depth() == _depth);
 
