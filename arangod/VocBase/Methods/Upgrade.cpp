@@ -262,7 +262,7 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
   addTask(upgradeFeature, "createHistoricPregelSystemCollection",
           "creates the pregel system collection",
           /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
+          /*cluster*/ Flags::CLUSTER_NONE,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::createHistoricPregelSystemCollection);
 
