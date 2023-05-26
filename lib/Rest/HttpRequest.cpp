@@ -936,14 +936,16 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
     }
     return VPackSlice::noneSlice();  // no body
   } else if (_contentType == ContentType::VPACK) {
-    if (!_validatedPayload) {
-      VPackOptions const* options = validationOptions(strictValidation);
-      VPackValidator validator(options);
-      _validatedPayload = validator.validate(
-          _payload.data(), _payload.length());  // throws on error
-    }
-    TRI_ASSERT(_validatedPayload);
-    return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));
+    if (!_payload.empty()) {
+      if (!_validatedPayload) {
+        VPackOptions const* options = validationOptions(strictValidation);
+        VPackValidator validator(options);
+        _validatedPayload = validator.validate(
+            _payload.data(), _payload.length());  // throws on error
+      }
+      TRI_ASSERT(_validatedPayload);
+      return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));
+    }  // fallthrough intentional
   }
   return VPackSlice::noneSlice();
 }

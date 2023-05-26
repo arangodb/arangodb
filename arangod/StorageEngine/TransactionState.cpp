@@ -83,6 +83,7 @@ TransactionCollection* TransactionState::collection(
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
+  std::lock_guard lock(_collectionsLock);
   size_t unused;
   TransactionCollection* trxCollection = findCollection(cid, unused);
 
@@ -198,6 +199,8 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
                                                AccessMode::Type accessType,
                                                bool lockUsage) {
   Result res;
+
+  std::lock_guard lock(_collectionsLock);
 
   // check if we already got this collection in the _collections vector
   size_t position = 0;
