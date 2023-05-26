@@ -1166,7 +1166,10 @@
 
       var newObject = {};
       _.each(foundBindParams, function (word) {
-        if (self.bindParamTableObj[word]) {
+        if (
+          self.bindParamTableObj[word] !== undefined &&
+          self.bindParamTableObj[word] !== null
+        ) {
           newObject[word] = self.bindParamTableObj[word];
         } else if (self.bindParamTableObj[word] === null) {
           newObject[word] = null;

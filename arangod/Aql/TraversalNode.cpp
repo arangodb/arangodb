@@ -40,6 +40,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterTraverser.h"
+#include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Cluster/SmartGraphTraverser.h"
@@ -162,6 +163,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
+  validateCollections();
 }
 
 /// @brief Internal constructor to clone the node.
@@ -178,7 +180,9 @@ TraversalNode::TraversalNode(
       _inVariable(inVariable),
       _vertexId(vertexId),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {}
+      _toCondition(nullptr) {
+  validateCollections();
+}
 
 TraversalNode::TraversalNode(ExecutionPlan* plan,
                              arangodb::velocypack::Slice const& base)
@@ -296,6 +300,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
+  validateCollections();
 }
 
 // This constructor is only used from LocalTraversalNode, and GraphNode
@@ -312,6 +317,7 @@ TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
     TRI_ASSERT(!other._optionsBuilt);
   }
   other.traversalCloneHelper(plan, *this, false);
+  validateCollections();
 }
 
 TraversalNode::~TraversalNode() = default;
@@ -1085,5 +1091,60 @@ void TraversalNode::checkConditionsDefined() const {
   TRI_ASSERT(_toCondition != nullptr);
   TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 }
-
 #endif
+
+void TraversalNode::validateCollections() const {
+  if (!ServerState::instance()->isSingleServerOrCoordinator()) {
+    // validation must happen on single/coordinator.
+    // DB servers only see shard names here
+    return;
+  }
+  auto* g = graph();
+  if (g == nullptr) {
+    // list of edge collections
+    for (auto const& it : options()->edgeCollections) {
+      if (_edgeAliases.find(it) != _edgeAliases.end()) {
+        // SmartGraph edge collection. its real name is contained
+        // in the aliases list
+        continue;
+      }
+      if (std::find_if(_edgeColls.begin(), _edgeColls.end(),
+                       [&it](aql::Collection const* c) {
+                         return c->name() == it;
+                       }) == _edgeColls.end()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,
+            std::string("edge collection '") + it +
+                "' used in 'edgeCollections' option is not part of the "
+                "specified edge collection list");
+      }
+    }
+  } else {
+    // named graph
+    {
+      auto colls = g->vertexCollections();
+      for (auto const& it : options()->vertexCollections) {
+        if (colls.find(it) == colls.end()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
+              std::string("vertex collection '") + it +
+                  "' used in 'vertexCollections' option is not part of "
+                  "the specified graph");
+        }
+      }
+    }
+
+    {
+      auto colls = g->edgeCollections();
+      for (auto const& it : options()->edgeCollections) {
+        if (colls.find(it) == colls.end()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,
+              std::string("edge collection '") + it +
+                  "' used in 'edgeCollections' option is not part of the "
+                  "specified graph");
+        }
+      }
+    }
+  }
+}
