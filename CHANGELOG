@@ -1,8 +1,12 @@
-v3.11.0 (XXXX-XX-XX)
+v3.11.1 (XXXX-XX-XX)
 --------------------
 
-* fix(UI): query editor null/undefined check filters out 
-  bindParams with value 0.
+* Fix issue #18982: query editor null/undefined check filters out bindParams
+  with value 0.
+
+
+v3.11.0 (XXXX-XX-XX)
+--------------------
 
 * Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 
