@@ -147,13 +147,6 @@ class Store {
 
   void clear();
 
-  /// @brief Remove time to live entries for uri
-  void removeTTL(std::string const&);
-
-  std::unordered_multimap<std::string, std::string>& observedTable();
-  std::unordered_multimap<std::string, std::string> const& observedTable()
-      const;
-
   static std::string normalize(char const* key, size_t length);
 
   /// @brief Normalize node URIs
@@ -184,14 +177,9 @@ class Store {
   bool applies(arangodb::velocypack::Slice const&);
 
   friend class consensus::Node;
-  std::multimap<TimePoint, std::string>& timeTable();
-  std::multimap<TimePoint, std::string> const& timeTable() const;
   /// @brief Check precondition
   check_ret_t check(arangodb::velocypack::Slice slice,
                     CheckMode = FIRST_FAIL) const;
-
-  /// @brief Clear entries, whose time to live has expired
-  query_t clearExpired() const;
 
  private:
   /// @brief underlying application server, needed for testing code
@@ -206,13 +194,6 @@ class Store {
 
   /// @brief My own agent
   Agent* _agent;
-
-  /// @brief Table of expiries in tree (only used in root node)
-  std::multimap<TimePoint, std::string> _timeTable;
-
-  /// @brief Table of observers in tree (only used in root node)
-  std::unordered_multimap<std::string, std::string> _observerTable;
-  std::unordered_multimap<std::string, std::string> _observedTable;
 
   /// @brief Root node
   Node _node;

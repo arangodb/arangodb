@@ -216,7 +216,6 @@ Node::Node(Node const& other)
 /// 3. copy from rhs buffer to my buffer
 /// @brief Must not copy _parent, _store, _ttl
 Node& Node::operator=(VPackSlice const& slice) {
-  removeTimeToLive();
   _children.reset();
   _value.reset();
   if (slice.isArray()) {
@@ -266,7 +265,6 @@ Node& Node::operator=(Node const& rhs) {
   // 2. clear children map
   // 3. move from rhs to buffer pointer
   // Must not move rhs's _parent, _store
-  removeTimeToLive();
   _nodeName = rhs._nodeName;
   if (rhs._children) {
     if (_children) {
@@ -333,7 +331,6 @@ arangodb::ResultT<std::shared_ptr<Node>> Node::removeChild(
     return arangodb::ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
   }
   auto ret = it->second;
-  ret->removeTimeToLive();
   _children->erase(it);
   return arangodb::ResultT<std::shared_ptr<Node>>::success(std::move(ret));
 }
@@ -344,22 +341,11 @@ NodeType Node::type() const {
   return (_isArray || (_value != nullptr && _value->size())) ? LEAF : NODE;
 }
 
-bool Node::lifetimeExpired() const {
-  using clock = std::chrono::system_clock;
-  return _ttl != clock::time_point() && _ttl < clock::now();
-}
-
 /// @brief lh-value at path vector
 Node& Node::getOrCreate(std::vector<std::string> const& pv) {
   Node* current = this;
 
   for (std::string const& key : pv) {
-    // Remove TTL for any nodes on the way down, if and only if the noted TTL
-    // is expired.
-    if (current->lifetimeExpired()) {
-      current->clear();
-    }
-
     if (!current->_children) {
       current->_children = std::make_unique<Children>();
     }
@@ -397,7 +383,7 @@ std::optional<std::reference_wrapper<Node const>> Node::get(
     auto const& children = *current->_children;
     auto const child = children.find(key);
 
-    if (child == children.end() || child->second->lifetimeExpired()) {
+    if (child == children.end()) {
       return std::nullopt;
     } else {
       current = child->second.get();
@@ -459,30 +445,6 @@ Store* Node::getRootStore() const {
 // velocypack value type of this node
 ValueType Node::valueType() const { return slice().type(); }
 
-// file time to live entry for this node to now + millis
-bool Node::addTimeToLive(
-    std::chrono::time_point<std::chrono::system_clock> const& tkey) {
-  Store& store = *(root()._store);
-  store.timeTable().insert(std::pair<TimePoint, std::string>(tkey, uri()));
-  _ttl = tkey;
-  return true;
-}
-
-void Node::timeToLive(TimePoint const& ttl) { _ttl = ttl; }
-
-// remove time to live entry for this node
-bool Node::removeTimeToLive() {
-  Store* s = getRootStore();  // We could be in a Node that belongs to a store,
-                              // or in one that doesn't.
-  if (s != nullptr) {
-    s->removeTTL(uri());
-  }
-  if (_ttl != std::chrono::system_clock::time_point()) {
-    _ttl = std::chrono::system_clock::time_point();
-  }
-  return true;
-}
-
 namespace arangodb {
 namespace consensus {
 
@@ -514,31 +476,6 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
   } else {
     *this = val;
   }
-
-  VPackSlice ttl_v = slice.get("ttl");
-  if (!ttl_v.isNone()) {
-    if (ttl_v.isNumber()) {
-      // ttl in millisconds
-      long ttl = 1000l * ((ttl_v.isDouble())
-                              ? static_cast<long>(ttl_v.getNumber<double>())
-                              : static_cast<long>(ttl_v.getNumber<int>()));
-
-      // calclate expiry time
-      auto const expires =
-          slice.hasKey("epoch_millis")
-              ? time_point<system_clock>(milliseconds(
-                    slice.get("epoch_millis").getNumber<uint64_t>() + ttl))
-              : system_clock::now() + milliseconds(ttl);
-
-      // set ttl limit
-      addTimeToLive(expires);
-
-    } else {
-      LOG_TOPIC("66da2", WARN, Logger::AGENCY)
-          << "Non-number value assigned to ttl: " << ttl_v.toJson();
-    }
-  }
-
   return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
 
@@ -587,7 +524,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<PUSH>(VPackSlice const& slice) {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray() && !lifetimeExpired()) {
+    if (this->slice().isArray()) {
       for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
     }
     tmp.add(v);
@@ -626,7 +563,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
   {
     VPackArrayBuilder t(&tmp);
 
-    if (this->slice().isArray() && !lifetimeExpired()) {
+    if (this->slice().isArray()) {
       if (haveVal) {
         VPackSlice valToErase = slice.get("val");
         for (auto const& old : VPackArrayIterator(this->slice())) {
@@ -674,7 +611,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<PUSH_QUEUE>(
     {
       VPackArrayBuilder t(&tmp);
       auto ol = l.getNumber<int64_t>();
-      if (this->slice().isArray() && !lifetimeExpired()) {
+      if (this->slice().isArray()) {
         auto tl = this->slice().length();
         if (ol < 0) {
           return ResultT<std::shared_ptr<Node>>::error(
@@ -725,7 +662,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<REPLACE>(VPackSlice const& slice) {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray() && !lifetimeExpired()) {
+    if (this->slice().isArray()) {
       VPackSlice valToRepl = slice.get("val");
       for (auto const& old : VPackArrayIterator(this->slice())) {
         if (VelocyPackHelper::equal(old, valToRepl, /*useUTF8*/ true)) {
@@ -746,7 +683,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<POP>(VPackSlice const& slice) {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray() && !lifetimeExpired()) {
+    if (this->slice().isArray()) {
       VPackArrayIterator it(this->slice());
       if (it.size() > 1) {
         size_t j = it.size() - 1;
@@ -775,7 +712,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<PREPEND>(VPackSlice const& slice) {
   {
     VPackArrayBuilder t(&tmp);
     tmp.add(slice.get("new"));
-    if (this->slice().isArray() && !lifetimeExpired()) {
+    if (this->slice().isArray()) {
       for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
     }
   }
@@ -789,7 +726,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<SHIFT>(VPackSlice const& slice) {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray() && !lifetimeExpired()) {  // If a
+    if (this->slice().isArray()) {  // If a
       VPackArrayIterator it(this->slice());
       bool first = true;
       for (auto const& old : it) {
@@ -1328,7 +1265,6 @@ std::optional<Slice> Node::getArray() const {
 
 void Node::clear() {
   _children.reset();
-  removeTimeToLive();
   _value.reset();
   _vecBuf.reset();
   _vecBufDirty = true;

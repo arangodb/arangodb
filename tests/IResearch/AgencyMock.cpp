@@ -62,28 +62,6 @@ void Store::notifyObservers() const {
 
   std::vector<uint32_t> callbackIds;
 
-  {
-    std::lock_guard storeLocker{_storeLock};
-
-    for (auto& entry : _observerTable) {
-      auto& key = entry.first;
-      auto pos = key.rfind("/");  // observer id is after the last '/'
-
-      if (std::string::npos == pos) {
-        continue;
-      }
-
-      bool success;
-      auto* idStr = &(key[pos + 1]);
-      auto id = arangodb::NumberUtils::atoi<uint32_t>(
-          idStr, idStr + std::strlen(idStr), success);
-
-      if (success) {
-        callbackIds.emplace_back(id);
-      }
-    }
-  }
-
   for (auto& id : callbackIds) {
     try {
       callbackRegistry->getCallback(id)->refetchAndUpdate(

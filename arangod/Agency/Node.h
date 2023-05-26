@@ -375,14 +375,11 @@ class Node final {
 
   template<typename T>
   auto getNumberUnlessExpiredWithDefault() -> T {
-    if (ADB_LIKELY(!lifetimeExpired())) {
-      try {
-        return this->slice().getNumber<T>();
-      } catch (...) {
-      }
+    try {
+      return this->slice().getNumber<T>();
+    } catch (...) {
+      return T{0};
     }
-
-    return T{0};
   }
 
   static auto getIntWithDefault(Slice slice, std::string_view key,
@@ -412,16 +409,6 @@ class Node final {
   /// @return If not root node, shared pointer copy to this node is returned
   ///         to control life time by caller; else nullptr.
   arangodb::ResultT<std::shared_ptr<Node>> deleteMe();
-
-  // @brief check lifetime expiry
-  bool lifetimeExpired() const;
-
-  /// @brief Add time to live entry
-  bool addTimeToLive(
-      std::chrono::time_point<std::chrono::system_clock> const& tp);
-
-  /// @brief Remove time to live entry
-  bool removeTimeToLive();
 
   void rebuildVecBuf() const;
 

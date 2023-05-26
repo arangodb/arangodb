@@ -99,9 +99,6 @@ Store& Store::operator=(Store const& rhs) {
     std::lock_guard otherLock{rhs._storeLock};
     std::lock_guard lock{_storeLock};
     _agent = rhs._agent;
-    _timeTable = rhs._timeTable;
-    _observerTable = rhs._observerTable;
-    _observedTable = rhs._observedTable;
     _node = rhs._node;
   }
   return *this;
@@ -113,9 +110,6 @@ Store& Store::operator=(Store&& rhs) {
     std::lock_guard otherLock{rhs._storeLock};
     std::lock_guard lock{_storeLock};
     _agent = std::move(rhs._agent);
-    _timeTable = std::move(rhs._timeTable);
-    _observerTable = std::move(rhs._observerTable);
-    _observedTable = std::move(rhs._observedTable);
     _node = std::move(rhs._node);
   }
   return *this;
@@ -293,16 +287,6 @@ std::vector<bool> Store::applyLogEntries(
               uri = std::string("/") + uri;
             }
             while (true) {
-              // TODO: Check if not a special lock will help
-              {
-                std::lock_guard storeLocker{_storeLock};
-                auto ret = _observedTable.equal_range(uri);
-                for (auto it = ret.first; it != ret.second; ++it) {
-                  in.emplace(it->second, std::make_shared<notify_t>(
-                                             it->first, j.key.copyString(),
-                                             operSlice.copyString()));
-                }
-              }
               size_t pos = uri.find_last_of('/');
               if (pos == std::string::npos || pos == 0) {
                 break;
@@ -748,71 +732,10 @@ bool Store::read(VPackSlice query, Builder& ret) const {
   return success;
 }
 
-/// TTL clear values from store
-query_t Store::clearExpired() const {
-  query_t tmp = std::make_shared<Builder>();
-  {
-    VPackArrayBuilder t(tmp.get());
-    std::lock_guard storeLocker{_storeLock};
-    if (!_timeTable.empty()) {
-      for (auto it = _timeTable.cbegin(); it != _timeTable.cend(); ++it) {
-        if (it->first < std::chrono::system_clock::now()) {
-          VPackArrayBuilder ttt(tmp.get());
-          {
-            VPackObjectBuilder tttt(tmp.get());
-            tmp->add(VPackValue(it->second));
-            {
-              VPackObjectBuilder ttttt(tmp.get());
-              tmp->add("op", VPackValue("delete"));
-            }
-          }
-        } else {
-          break;
-        }
-      }
-    }
-  }
-  return tmp;
-}
-
 /// Dump internal data to builder
 void Store::dumpToBuilder(Builder& builder) const {
   std::lock_guard storeLocker{_storeLock};
   toBuilder(builder, true);
-
-  std::map<std::string, int64_t> clean;
-  for (auto const& i : _timeTable) {
-    auto ts = std::chrono::duration_cast<std::chrono::seconds>(
-                  i.first.time_since_epoch())
-                  .count();
-    auto it = clean.find(i.second);
-    if (it == clean.end()) {
-      clean[i.second] = ts;
-    } else if (ts < it->second) {
-      it->second = ts;
-    }
-  }
-  {
-    VPackObjectBuilder guard(&builder);
-    for (auto const& c : clean) {
-      builder.add(c.first, VPackValue(c.second));
-    }
-  }
-
-  {
-    VPackArrayBuilder garray(&builder);
-    for (auto const& i : _observerTable) {
-      VPackObjectBuilder guard(&builder);
-      builder.add(i.first, VPackValue(i.second));
-    }
-  }
-  {
-    VPackArrayBuilder garray(&builder);
-    for (auto const& i : _observedTable) {
-      VPackObjectBuilder guard(&builder);
-      builder.add(i.first, VPackValue(i.second));
-    }
-  }
 }
 
 /// Apply transaction to key value store. Guarded by caller
@@ -884,47 +807,8 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
         }
       }
       auto uri = Store::normalize(abskeys.at(i.first));
-      if (op == "observe") {
-        bool found = false;
-        if (value.get("url").isString()) {
-          auto url = value.get("url").copyString();
-          auto ret = _observerTable.equal_range(url);
-          for (auto it = ret.first; it != ret.second; ++it) {
-            if (it->second == uri) {
-              found = true;
-              break;
-            }
-          }
-          if (!found) {
-            _observerTable.emplace(
-                std::pair<std::string, std::string>(url, uri));
-            _observedTable.emplace(
-                std::pair<std::string, std::string>(uri, url));
-          }
-        }
-      } else if (op == "unobserve") {
-        if (value.get("url").isString()) {
-          auto url = value.get("url").copyString();
-          auto ret = _observerTable.equal_range(url);
-          for (auto it = ret.first; it != ret.second; ++it) {
-            if (it->second == uri) {
-              _observerTable.erase(it);
-              break;
-            }
-          }
-          ret = _observedTable.equal_range(uri);
-          for (auto it = ret.first; it != ret.second; ++it) {
-            if (it->second == url) {
-              _observedTable.erase(it);
-              break;
-            }
-          }
-        }
-      } else {
-        auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).applyOp(value);
-        success &= ret.ok();
-      }
-
+      auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).applyOp(value);
+      success &= ret.ok();
       // check for triggers here
       callTriggers(abskeys.at(i.first), op, value);
     } else {
@@ -938,9 +822,6 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 // Clear my data
 void Store::clear() {
   std::lock_guard storeLocker{_storeLock};
-  _timeTable.clear();
-  _observerTable.clear();
-  _observedTable.clear();
   _node.clear();
 }
 
@@ -961,28 +842,12 @@ Store& Store::operator=(VPackSlice const& s) {
         if (entry.value.isNumber()) {
           auto const& key = entry.key.copyString();
           if (_node.has(key)) {
-            auto tp =
-                TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
-            _node.getOrCreate(key).timeToLive(tp);
-            _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+            _node.getOrCreate(key);
           }
         }
       }
     }
 
-    TRI_ASSERT(slice[2].isArray());
-    for (VPackSlice entry : VPackArrayIterator(slice[2])) {
-      TRI_ASSERT(entry.isObject());
-      _observerTable.emplace(std::pair<std::string, std::string>(
-          entry.keyAt(0).copyString(), entry.valueAt(0).copyString()));
-    }
-
-    TRI_ASSERT(slice[3].isArray());
-    for (VPackSlice entry : VPackArrayIterator(slice[3])) {
-      TRI_ASSERT(entry.isObject());
-      _observedTable.emplace(std::pair<std::string, std::string>(
-          entry.keyAt(0).copyString(), entry.valueAt(0).copyString()));
-    }
   } else if (slice.isObject()) {
     _node.applies(slice);
   }
@@ -992,25 +857,6 @@ Store& Store::operator=(VPackSlice const& s) {
 /// Put key value store in velocypack, guarded by caller
 void Store::toBuilder(Builder& b, bool showHidden) const {
   _node.toBuilder(b, showHidden);
-}
-
-/// Time table
-std::multimap<TimePoint, std::string>& Store::timeTable() { return _timeTable; }
-
-/// Time table
-std::multimap<TimePoint, std::string> const& Store::timeTable() const {
-  return _timeTable;
-}
-
-/// Observed table
-std::unordered_multimap<std::string, std::string>& Store::observedTable() {
-  return _observedTable;
-}
-
-/// Observed table
-std::unordered_multimap<std::string, std::string> const& Store::observedTable()
-    const {
-  return _observedTable;
 }
 
 /// Get node at path under mutex and store it in velocypack
@@ -1036,19 +882,6 @@ Node Store::get(std::string const& path) const {
 bool Store::has(std::string const& path) const {
   std::lock_guard storeLocker{_storeLock};
   return _node.has(path);
-}
-
-/// Remove ttl entry for path, guarded by caller
-void Store::removeTTL(std::string const& uri) {
-  if (!_timeTable.empty()) {
-    for (auto it = _timeTable.cbegin(); it != _timeTable.cend();) {
-      if (it->second == uri) {
-        it = _timeTable.erase(it);
-      } else {
-        ++it;
-      }
-    }
-  }
 }
 
 std::string Store::normalize(char const* key, size_t length) {
