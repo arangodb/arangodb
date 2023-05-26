@@ -11,6 +11,9 @@ devel
   attempt for each revision tree and not hibernating it if the last attempt
   was less than a minute ago.
 
+* Fix issue #18982: query editor null/undefined check filters out bindParams
+  with value 0.
+
 * BTS-1261 For some named graphs in cluster, when creating a debugDump for a 
   traversal query that would use the graph's name, the graph wouldn't be able 
   to be recreated because the info gathered in the process of creating a 
@@ -42,8 +45,8 @@ devel
 * Updated bundled version of libunwind to 1.7-rc2.
 
 * In batched query results, when executing requests for
-  `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user 
-  would only be able to fetch the next batch using the next batch id in 
+  `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user
+  would only be able to fetch the next batch using the next batch id in
   <batchId> if the query option `allowRetry` was set to true, but maintained
   the restriction that the user can only retrieve the latest batch if the
   query option `allowRetry` is set to true.
