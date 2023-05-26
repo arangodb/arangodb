@@ -1,10 +1,11 @@
 import { Box } from "@chakra-ui/react";
 import Ajv from "ajv";
 import { useFormikContext } from "formik";
-import { ValidationError } from "jsoneditor-react";
-import React, { useState } from "react";
-import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
+import React from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
+import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
+import { useEditViewContext } from "../editView/EditViewContext";
+import { useArangoSearchJSONSchema } from "../SearchJSONSchema";
 
 const ajv = new Ajv({
   allErrors: true,
@@ -15,7 +16,8 @@ const ajv = new Ajv({
 
 export const ArangoSearchJSONEditor = () => {
   const { values, setValues } = useFormikContext();
-  const [errors, setErrors] = useState<ValidationError[]>();
+  const { initialView, setErrors, errors } = useEditViewContext();
+  const { schema } = useArangoSearchJSONSchema({ view: initialView });
   return (
     <Box height="100%" backgroundColor="white" position="relative" minWidth={0}>
       <ControlledJSONEditor
@@ -26,7 +28,7 @@ export const ArangoSearchJSONEditor = () => {
         mode={"code"}
         ajv={ajv}
         history
-        // schema={schema}
+        schema={schema}
         onChange={json => {
           if (JSON.stringify(json) !== JSON.stringify(values)) {
             setValues(json);

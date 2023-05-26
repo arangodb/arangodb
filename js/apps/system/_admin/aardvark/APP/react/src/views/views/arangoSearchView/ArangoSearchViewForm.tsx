@@ -14,6 +14,7 @@ import { useField } from "formik";
 import React from "react";
 import { FormField } from "../../../components/form/FormField";
 import { IndexInfoTooltip } from "../../collections/indices/addIndex/IndexInfoTooltip";
+import { PrimarySortType, StoredValueType } from "../searchView.types";
 import { LinksEditor } from "./linksEditor/LinksEditor";
 
 import { useArangoSearchFieldsData } from "./useArangoSearchFieldsData";
@@ -128,7 +129,7 @@ const ConsolidationPolicyAccordionItem = () => {
 };
 
 const PrimarySortAccordionItem = () => {
-  const [primarySortField] = useField("primarySort");
+  const [primarySortField] = useField<PrimarySortType[] | undefined>("primarySort");
   const [primarySortCompressionField] = useField("primarySortCompression");
   return (
     <AccordionItem>
@@ -140,7 +141,7 @@ const PrimarySortAccordionItem = () => {
       </AccordionButton>
       <AccordionPanel pb={4}>
         <FieldsGrid>
-          {primarySortField.value.map((item: any, index: number) => {
+          {primarySortField.value?.map((item: any, index: number) => {
             return (
               <React.Fragment key={`${item.field}_${index}`}>
                 <Box>
@@ -158,7 +159,7 @@ const PrimarySortAccordionItem = () => {
 };
 
 const StoredValuesAccordionItem = () => {
-  const [storedValuesField] = useField("storedValues");
+  const [storedValuesField] = useField<StoredValueType[] | undefined>("storedValues");
   return (
     <AccordionItem>
       <AccordionButton>
@@ -169,7 +170,7 @@ const StoredValuesAccordionItem = () => {
       </AccordionButton>
       <AccordionPanel pb={4}>
         <FieldsGrid>
-          {storedValuesField.value.map((item: any, index: number) => {
+          {storedValuesField.value?.map((item: any, index: number) => {
             return (
               <React.Fragment key={index}>
                 <Stack direction="row">

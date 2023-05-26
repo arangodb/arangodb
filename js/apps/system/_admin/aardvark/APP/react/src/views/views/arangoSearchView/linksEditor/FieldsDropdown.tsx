@@ -1,13 +1,11 @@
 import { Box, FormLabel, Stack } from "@chakra-ui/react";
-import { useFormikContext } from "formik";
-import { cloneDeep, get, set } from "lodash";
 import React from "react";
 import { components, MultiValueGenericProps } from "react-select";
 import CreatableMultiSelect from "../../../../components/select/CreatableMultiSelect";
 import { OptionType } from "../../../../components/select/SelectBase";
 import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { useEditViewContext } from "../../editView/EditViewContext";
-import { ArangoSearchViewPropertiesType } from "../../searchView.types";
+import { useLinksSetter } from "./useLinksSetter";
 
 const MultiValueLabelFields = (props: MultiValueGenericProps<OptionType>) => {
   const { setCurrentField, currentField } = useEditViewContext();
@@ -27,66 +25,7 @@ const MultiValueLabelFields = (props: MultiValueGenericProps<OptionType>) => {
   );
 };
 export const FieldsDropdown = () => {
-  const { currentField, currentLink = "" } = useEditViewContext();
-  // convert ['test', 'test1'] to ['fields', 'test', 'fields', 'test1']
-  const fieldPath = currentField.reduce((acc, curr) => {
-    acc.push("fields");
-    acc.push(curr);
-    return acc;
-  }, [] as string[]);
-  const { values, setValues } =
-    useFormikContext<ArangoSearchViewPropertiesType>();
-  const currentLinkFieldsValue = values?.links?.[currentLink];
-  const fieldsValue =
-    fieldPath.length > 0
-      ? get(currentLinkFieldsValue, fieldPath)?.fields
-      : currentLinkFieldsValue?.fields;
-  const value = fieldsValue
-    ? (Object.keys(fieldsValue)
-        .map(key => {
-          if (fieldsValue[key] === undefined) {
-            return null;
-          }
-          return {
-            label: key,
-            value: key
-          };
-        })
-        .filter(Boolean) as OptionType[])
-    : [];
-  const addField = (field: string) => {
-    const newLinks = values.links
-      ? set(
-          cloneDeep(values.links),
-          [currentLink, ...fieldPath, "fields", field],
-          {}
-        )
-      : {};
-
-    setValues({
-      ...values,
-      links: newLinks
-    });
-    // fieldsHelpers.setValue({
-    //   ...fieldsField.value,
-    //   [field]: {}
-    // });
-  };
-  const removeField = (field: string) => {
-    const newLinks = values.links
-      ? set(
-          cloneDeep(values.links),
-          [currentLink, ...fieldPath, "fields", field],
-          undefined
-        )
-      : {};
-    setValues({
-      ...values,
-      links: newLinks
-    });
-    // delete newFields[field];
-    // fieldsHelpers.setValue(newFields);
-  };
+  const { fields, addField, removeField } = useLinksSetter();
   return (
     <>
       <Stack direction="row" alignItems="center">
@@ -105,9 +44,8 @@ export const FieldsDropdown = () => {
           MultiValueLabel: MultiValueLabelFields
         }}
         isClearable={false}
-        value={value}
+        value={fields}
         onChange={(_, action) => {
-          console.log("onChange", action);
           if (action.action === "remove-value") {
             removeField(action.removedValue.value);
             return;

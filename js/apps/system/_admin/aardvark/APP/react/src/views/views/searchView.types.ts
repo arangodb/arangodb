@@ -2,18 +2,18 @@ import { SearchViewType } from "./viewsList/useViewsList";
 
 type Compression = "lz4" | "none";
 
-type PrimarySortType = {
+export type PrimarySortType = {
   field: string;
   asc: boolean;
 };
 
-type StoredValue = {
+export type StoredValueType = {
   fields: string[];
   compression: Compression;
 };
 
 type StoredValues = {
-  storedValues?: StoredValue[];
+  storedValues?: StoredValueType[];
 };
 
 type PrimarySort = {
@@ -52,7 +52,7 @@ type AdvancedProperties = {
   writebufferSizeMax?: number;
 };
 
-type LinkProperties = {
+export type LinkProperties = {
   analyzers?: string[];
   fields?: {
     [attributeName: string]: LinkProperties;
@@ -64,14 +64,15 @@ type LinkProperties = {
   cache?: boolean;
 };
 
+export type LinksType = {
+  [collectionName: string]: LinkProperties | null;
+};
 export type ArangoSearchViewPropertiesType = SearchViewType &
   PrimarySort &
   StoredValues &
   ConsolidationPolicy &
   AdvancedProperties & {
-    links?: {
-      [collectionName: string]: LinkProperties | null;
-    };
+    links?: LinksType;
   };
 
 export interface SearchAliasViewPropertiesType extends SearchViewType {
