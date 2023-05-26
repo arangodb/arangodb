@@ -160,6 +160,9 @@ DECLARE_GAUGE(rocksdb_wal_pruning_active, uint64_t,
               "Whether or not RocksDB WAL file pruning is active");
 DECLARE_GAUGE(arangodb_revision_tree_memory_usage, uint64_t,
               "Total memory consumed by all revision trees");
+DECLARE_GAUGE(
+    arangodb_revision_tree_buffered_memory_usage, uint64_t,
+    "Total memory consumed by buffered updates for all revision trees");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total,
                 "Number of successful revision tree rebuilds");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_failure_total,
@@ -284,6 +287,9 @@ RocksDBEngine::RocksDBEngine(Server& server,
           rocksdb_wal_pruning_active{})),
       _metricsTreeMemoryUsage(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_revision_tree_memory_usage{})),
+      _metricsTreeBufferedMemoryUsage(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_revision_tree_buffered_memory_usage{})),
       _metricsTreeRebuildsSuccess(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_revision_tree_rebuilds_success_total{})),
@@ -1261,17 +1267,24 @@ void RocksDBEngine::trackRevisionTreeResurrection() noexcept {
 
 void RocksDBEngine::trackRevisionTreeMemoryIncrease(
     std::uint64_t value) noexcept {
-  if (value != 0) {
-    _metricsTreeMemoryUsage += value;
-  }
+  _metricsTreeMemoryUsage.fetch_add(value);
 }
 
 void RocksDBEngine::trackRevisionTreeMemoryDecrease(
     std::uint64_t value) noexcept {
-  if (value != 0) {
-    [[maybe_unused]] auto old = _metricsTreeMemoryUsage.fetch_sub(value);
-    TRI_ASSERT(old >= value);
-  }
+  [[maybe_unused]] auto old = _metricsTreeMemoryUsage.fetch_sub(value);
+  TRI_ASSERT(old >= value);
+}
+
+void RocksDBEngine::trackRevisionTreeBufferedMemoryIncrease(
+    std::uint64_t value) noexcept {
+  _metricsTreeBufferedMemoryUsage.fetch_add(value);
+}
+
+void RocksDBEngine::trackRevisionTreeBufferedMemoryDecrease(
+    std::uint64_t value) noexcept {
+  [[maybe_unused]] auto old = _metricsTreeBufferedMemoryUsage.fetch_sub(value);
+  TRI_ASSERT(old >= value);
 }
 
 bool RocksDBEngine::hasBackgroundError() const {

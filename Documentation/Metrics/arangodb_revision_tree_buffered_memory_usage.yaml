@@ -1,0 +1,24 @@
+name: arangodb_revision_tree_buffered_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Total memory usage of buffered updates for all revision trees.
+unit: bytes
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Total memory usage of buffered updates for all revision trees of
+  collections/shards.
+  When data in a collection/shard is modified, the changes to the
+  revision trees are first buffered in memory and applied later after
+  the operation commits.
+  Buffered changes are applied to the revision trees in large chunks.
+  Whenever the buffered changes are applied, memory is freed again
+  and this metric should go down.
+troubleshoot: |
+  If this metric keeps increasing, it is a sign that the instance
+  cannot catch up with the write load.

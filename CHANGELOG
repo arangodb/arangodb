@@ -1,6 +1,10 @@
 devel
 -----
 
+* APM-663: revision tree memory tracking.
+  Tracking memory used for buffered updates to all revision trees in a new
+  metric `arangodb_revision_tree_buffered_memory_usage`.
+
 * BTS-1261 For some named graphs in cluster, when creating a debugDump for a 
   traversal query that would use the graph's name, the graph wouldn't be able 
   to be recreated because the info gathered in the process of creating a 
