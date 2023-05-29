@@ -174,11 +174,7 @@ class BufferHeapSortContext {
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     ViewSnapshotPtr reader, RegisterId outRegister,
     RegisterId searchDocRegister, std::vector<RegisterId> scoreRegisters,
-    arangodb::aql::QueryContext& query,
-#ifdef USE_ENTERPRISE
-    iresearch::IResearchOptimizeTopK const& optimizeTopK,
-#endif
-    std::vector<SearchFunc> const& scorers,
+    arangodb::aql::QueryContext& query, std::vector<SearchFunc> const& scorers,
     std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
@@ -195,9 +191,6 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _scoreRegistersCount{_scoreRegisters.size()},
       _reader{std::move(reader)},
       _query{query},
-#ifdef USE_ENTERPRISE
-      _optimizeTopK{optimizeTopK},
-#endif
       _scorers{scorers},
       _sort{std::move(sort)},
       _storedValues{storedValues},
@@ -1092,12 +1085,6 @@ template<typename ExecutionTraits>
 void IResearchViewHeapSortExecutor<ExecutionTraits>::reset(
     [[maybe_unused]] bool needFullCount) {
   Base::reset();
-#ifdef USE_ENTERPRISE
-  if (!needFullCount) {
-    this->_wand = this->_infos.optimizeTopK().makeWandContext(
-        this->_infos.scoresSort(), this->_scorers);
-  }
-#endif
   _totalCount = 0;
   _bufferedCount = 0;
   _bufferFilled = false;
