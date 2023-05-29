@@ -1,6 +1,9 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* When trying to read multiple documents, the coordinator will now handle empty
+  lists gracefully and return an empty result set instead of an error.
+
 * Added metric "rocksdb_total_sst_files" to count the number of sst files,
   aggregated over all levels of the LSM tree.
 
