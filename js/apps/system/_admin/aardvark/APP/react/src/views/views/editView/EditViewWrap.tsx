@@ -14,7 +14,6 @@ import { SearchViewsCustomStyleReset } from "../SearchViewsCustomStyleReset";
 
 export const EditViewWrap = ({ name }: { name: string }) => {
   const { view, isLoading } = useFetchViewProperties(name);
-  console.log({ view, isLoading });
   useDisableNavBar();
   useGlobalStyleReset();
   if (isLoading) {
