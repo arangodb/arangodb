@@ -524,6 +524,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     RequestStatistics::Item stats = stealStatistics(messageId);
     stats.SET_ASYNC();
     handler->setStatistics(std::move(stats));
+    handler->setIsAsyncRequest();
 
     uint64_t jobId = 0;
 

@@ -98,6 +98,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestStatistics::Item&& stealStatistics();
   void setStatistics(RequestStatistics::Item&& stat);
 
+  void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }
+
   /// Execute the rest handler state machine
   void runHandler(std::function<void(rest::RestHandler*)> cb) {
     TRI_ASSERT(_state == HandlerState::PREPARE);
@@ -213,6 +215,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // can only be true during handler execution, and only for
   // low priority tasks
   bool _trackedAsOngoingLowPrio;
+
+  // whether or not the handler handles a request for the async
+  // job api (/_api/job) or the batch API (/_api/batch)
+  bool _isAsyncRequest = false;
 
   RequestLane _lane;
 
