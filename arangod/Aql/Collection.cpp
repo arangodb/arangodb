@@ -23,8 +23,6 @@
 
 #include "Collection.h"
 
-#include <velocypack/Iterator.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -36,6 +34,9 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+
+#include <absl/strings/str_cat.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -259,10 +260,10 @@ std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(
   auto idx = this->getCollection()->lookupIndex(iid);
 
   if (!idx) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-                                   "Could not find index '" + idxId +
-                                       "' in collection '" + this->name() +
-                                       "'.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+        absl::StrCat("Could not find index '", idxId, "' in collection '",
+                     this->name(), "'."));
   }
 
   return idx;
@@ -302,7 +303,7 @@ void Collection::checkCollection() const {
   if (_collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
-            ": " + _name);
+        absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND),
+                     ": ", _name));
   }
 }
