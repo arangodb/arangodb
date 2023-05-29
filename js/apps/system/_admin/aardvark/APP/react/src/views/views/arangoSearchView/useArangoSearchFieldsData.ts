@@ -101,47 +101,6 @@ const arangoSearchFields = [
   arangoSearchFieldsMap.consolidationPolicy
 ];
 
-// <FormField
-//           field={{
-//             name: "consolidationPolicy.segmentsMin",
-//             label: "Segments Min",
-//             type: "number",
-//             isDisabled: field.isDisabled,
-//             tooltip:
-//               "The minimum number of segments that will be evaluated as candidates for consolidation."
-//           }}
-//         />
-//         <FormField
-//           field={{
-//             name: "consolidationPolicy.segmentsMax",
-//             label: "Segments Max",
-//             type: "number",
-//             isDisabled: field.isDisabled,
-//             tooltip:
-//               "The maximum number of segments that will be evaluated as candidates for consolidation."
-//           }}
-//         />
-//         <FormField
-//           field={{
-//             name: "consolidationPolicy.segmentsBytesMax",
-//             label: "Segments Bytes Max",
-//             type: "number",
-//             isDisabled: field.isDisabled,
-//             tooltip:
-//               "Maximum allowed size of all consolidated segments in bytes."
-//           }}
-//         />
-//         <FormField
-//           field={{
-//             name: "consolidationPolicy.segmentsBytesFloor",
-//             label: "Segments Bytes Floor",
-//             type: "number",
-//             isDisabled: field.isDisabled,
-//             tooltip:
-//               "Defines the value (in bytes) to treat all smaller segments as equal for consolidation selection."
-//           }}
-//         />
-// ^ these should be stored in an array
 const tierConsolidationPolicyFields = [
   {
     name: "consolidationPolicy.segmentsMin",
