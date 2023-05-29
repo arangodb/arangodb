@@ -1,15 +1,28 @@
 import { Checkbox, Grid, HStack, Stack } from "@chakra-ui/react";
+
+import { useFormikContext } from "formik";
+import { get } from "lodash";
 import React from "react";
 import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { useEditViewContext } from "../../editView/EditViewContext";
+import { ArangoSearchViewPropertiesType } from "../../searchView.types";
 import { AnalyzersDropdown } from "./AnalyzersDropdown";
 import { FieldsDropdown } from "./FieldsDropdown";
 import { LinksBreadCrumb } from "./LinksBreadCrumb";
-import { useLinkModifiers } from "./useLinkModifiers";
+import { useFieldPath, useLinkModifiers } from "./useLinkModifiers";
 
 export const LinksDetails = () => {
   const { currentLink, currentField } = useEditViewContext();
-  if (!currentLink) {
+  const { values } = useFormikContext<ArangoSearchViewPropertiesType>();
+  const { fieldPath } = useFieldPath();
+  const hasValue = currentLink
+    ? get(values.links?.[currentLink], fieldPath)
+    : false;
+  if (
+    !currentLink ||
+    !values.links?.[currentLink] ||
+    (fieldPath.length > 0 && !hasValue)
+  ) {
     return null;
   }
   const isFieldView = currentField.length > 0;
