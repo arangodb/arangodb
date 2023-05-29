@@ -1,6 +1,12 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* Increase too short timeouts for requests made from coordinators to DB-servers
+  when retrieving the number of documents or the index selectivity estimates for
+  SmartGraph edge collection parts. These parts were treated like system
+  collections because of their naming convention, and the requests were run with
+  a timeout of only 5s.
+
 * In batched query results, when executing requests for
   `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user
   would only be able to fetch the next batch using the next batch id in
