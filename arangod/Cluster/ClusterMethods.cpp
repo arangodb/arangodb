@@ -930,8 +930,8 @@ futures::Future<OperationResult> revisionOnCoordinator(
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
@@ -991,8 +991,8 @@ futures::Future<OperationResult> checksumOnCoordinator(
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
@@ -1079,8 +1079,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, cid);
+  std::shared_ptr<LogicalCollection> collinfo = ci.getCollectionNT(dbname, cid);
   if (collinfo == nullptr) {
     return futures::makeFuture(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1177,8 +1176,8 @@ futures::Future<OperationResult> figuresOnCoordinator(
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
@@ -1237,23 +1236,21 @@ futures::Future<OperationResult> figuresOnCoordinator(
 futures::Future<OperationResult> countOnCoordinator(
     transaction::Methods& trx, std::string const& cname,
     OperationOptions const& options, transaction::MethodsApi api) {
-  std::vector<std::pair<std::string, uint64_t>> result;
-
   // Set a few variables needed for our work:
   ClusterFeature& feature = trx.vocbase().server().getFeature<ClusterFeature>();
   ClusterInfo& ci = feature.clusterInfo();
 
   std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, cname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, cname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
   std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
-  const bool isManaged =
+  bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged) {
     Result res = ::beginTransactionOnAllLeaders(
@@ -1269,11 +1266,12 @@ futures::Future<OperationResult> countOnCoordinator(
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
-  if (NameValidator::isSystemName(cname)) {
-    // system collection (e.g. _apps, _jobs, _graphs...
+  if (NameValidator::isSystemName(cname) &&
+      !(collinfo->isSmartChild() || collinfo->isSmartEdgeCollection())) {
+    // system collection (e.g. _apps, _jobs, _graphs...) that is not
     // very likely this is an internal request that should not block other
     // processing in case we don't get a timely response
-    reqOpts.timeout = network::Timeout(5.0);
+    reqOpts.timeout = network::Timeout(10.0);
   }
 
   std::vector<Future<network::Response>> futures;
@@ -1420,8 +1418,8 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
   result.clear();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
@@ -1434,11 +1432,12 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = true;
 
-  if (NameValidator::isSystemName(collname)) {
-    // system collection (e.g. _apps, _jobs, _graphs...
+  if (NameValidator::isSystemName(collname) &&
+      !(collinfo->isSmartChild() || collinfo->isSmartEdgeCollection())) {
+    // system collection (e.g. _apps, _jobs, _graphs...) that is not
     // very likely this is an internal request that should not block other
     // processing in case we don't get a timely response
-    reqOpts.timeout = network::Timeout(5.0);
+    reqOpts.timeout = network::Timeout(10.0);
   }
 
   std::vector<Future<network::Response>> futures;
@@ -1894,8 +1893,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
       trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(trx.vocbase().name(), collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(trx.vocbase().name(), collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(OperationResult(
         res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), options));
@@ -2898,6 +2897,12 @@ ClusterMethods::persistCollectionsInAgency(
     ci.loadCurrentDBServers();
     std::vector<std::string> dbServers = ci.getCurrentDBServers();
     infos.reserve(collections.size());
+
+    TRI_IF_FAILURE("allShardsOnSameServer") {
+      while (dbServers.size() > 1) {
+        dbServers.pop_back();
+      }
+    }
 
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackData;
     vpackData.reserve(collections.size());

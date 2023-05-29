@@ -626,6 +626,76 @@ std::vector<std::string> listFiles(std::string const& directory) {
   return result;
 }
 
+size_t countFiles(std::string const& directory) {
+  size_t result = 0;
+
+#ifdef TRI_HAVE_WIN32_LIST_FILES
+  char* fn = nullptr;
+
+  struct _wfinddata_t oneItem;
+  intptr_t handle;
+  std::string rcs;
+
+  std::string filter = directory + "\\*";
+  icu::UnicodeString f(filter.c_str());
+  handle = _wfindfirst(
+      reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
+
+  if (handle == -1) {
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+    auto message =
+        StringUtils::concatT("failed to enumerate files in directory '",
+                             directory, "': ", TRI_last_error());
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
+  }
+
+  do {
+    rcs.clear();
+    icu::UnicodeString d((wchar_t*)oneItem.name,
+                         static_cast<int32_t>(wcslen(oneItem.name)));
+    d.toUTF8String<std::string>(rcs);
+    fn = (char*)rcs.c_str();
+
+    if (!strcmp(fn, ".") || !strcmp(fn, "..")) {
+      continue;
+    }
+
+    ++result;
+  } while (_wfindnext(handle, &oneItem) != -1);
+
+  _findclose(handle);
+
+#else
+
+  DIR* d = opendir(directory.c_str());
+
+  if (d == nullptr) {
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+    auto message =
+        StringUtils::concatT("failed to enumerate files in directory '",
+                             directory, "': ", TRI_last_error());
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
+  }
+
+  dirent* de = readdir(d);
+
+  while (de != nullptr) {
+    if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
+      ++result;
+    }
+
+    de = readdir(d);
+  }
+
+  closedir(d);
+
+#endif
+
+  return result;
+}
+
 bool isDirectory(std::string const& path) {
   return ::statResultType(path) == ::StatResultType::Directory;
 }
