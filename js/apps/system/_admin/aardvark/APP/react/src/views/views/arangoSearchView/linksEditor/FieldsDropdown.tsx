@@ -5,7 +5,7 @@ import CreatableMultiSelect from "../../../../components/select/CreatableMultiSe
 import { OptionType } from "../../../../components/select/SelectBase";
 import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { useEditViewContext } from "../../editView/EditViewContext";
-import { useLinksSetter } from "./useLinksSetter";
+import { useLinkModifiers } from "./useLinkModifiers";
 
 const MultiValueLabelFields = (props: MultiValueGenericProps<OptionType>) => {
   const { setCurrentField, currentField } = useEditViewContext();
@@ -25,7 +25,33 @@ const MultiValueLabelFields = (props: MultiValueGenericProps<OptionType>) => {
   );
 };
 export const FieldsDropdown = () => {
-  const { fields, addField, removeField } = useLinksSetter();
+  const { getCurrentLinkValue, setCurrentLinkValue } = useLinkModifiers();
+  const fieldsValue = getCurrentLinkValue(["fields"]);
+  const fields = fieldsValue
+    ? (Object.keys(fieldsValue)
+        .map(key => {
+          if (fieldsValue[key] === undefined) {
+            return null;
+          }
+          return {
+            label: key,
+            value: key
+          };
+        })
+        .filter(Boolean) as OptionType[])
+    : [];
+  const addField = (field: string) => {
+    setCurrentLinkValue({
+      id: ["fields", field],
+      value: {}
+    });
+  };
+  const removeField = (field: string) => {
+    setCurrentLinkValue({
+      id: ["fields", field],
+      value: undefined
+    });
+  };
   return (
     <>
       <Stack direction="row" alignItems="center">

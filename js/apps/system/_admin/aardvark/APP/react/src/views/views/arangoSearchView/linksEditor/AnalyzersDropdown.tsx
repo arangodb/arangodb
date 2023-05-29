@@ -3,7 +3,7 @@ import { AnalyzerDescription } from "arangojs/analyzer";
 import React, { useEffect, useState } from "react";
 import MultiSelect from "../../../../components/select/MultiSelect";
 import { getCurrentDB } from "../../../../utils/arangoClient";
-import { useLinksSetter } from "./useLinksSetter";
+import { useLinkModifiers } from "./useLinkModifiers";
 
 export const AnalyzersDropdown = () => {
   const analyzersOptions = useFetchAnalyzers();
@@ -11,7 +11,27 @@ export const AnalyzersDropdown = () => {
     label: analyzer.name,
     value: analyzer.name
   }));
-  const { analyzers, addAnalyzer, removeAnalyzer } = useLinksSetter();
+  const { getCurrentLinkValue, setCurrentLinkValue } = useLinkModifiers();
+  const analyzersValue = getCurrentLinkValue(["analyzers"]);
+  const analyzers =
+    analyzersValue?.map((analyzer: string) => ({
+      label: analyzer,
+      value: analyzer
+    })) || [];
+  const addAnalyzer = (analyzer: string) => {
+    setCurrentLinkValue({
+      id: ["analyzers"],
+      value: [...analyzersValue, analyzer]
+    });
+  };
+  const removeAnalyzer = (analyzer: string) => {
+    setCurrentLinkValue({
+      id: ["analyzers"],
+      value: analyzersValue.filter(
+        (analyzerName: string) => analyzerName !== analyzer
+      )
+    });
+  };
   return (
     <>
       <FormLabel htmlFor="analyzers">Analyzers</FormLabel>
