@@ -216,6 +216,11 @@ RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
       _requiresFullDocument(requiresFullDocument) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!globalIndexConditions.empty());
+  if (globalIndexConditions.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "index conditions in SingleServerEdgeCursor should not be empty");
+  }
   _lookupInfo.reserve(globalIndexConditions.size());
   _depthLookupInfo.reserve(depthBasedIndexConditions.size());
 

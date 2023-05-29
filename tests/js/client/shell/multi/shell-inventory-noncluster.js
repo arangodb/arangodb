@@ -71,11 +71,7 @@ function inventorySuite () {
     assertEqual("object", typeof view.links);
     Object.keys(view.links).forEach(function(collection) {
       let link = view.links[collection];
-      if (isEnterprise) {
-        assertEqual(11, Object.keys(link).length);
-      } else {
-        assertEqual(10, Object.keys(link).length);
-      }
+      assertEqual(10, Object.keys(link).length);
       assertEqual("number", typeof link.version);
       assertEqual(1, link.version);
       assertTrue(Array.isArray(link.analyzerDefinitions));
@@ -366,11 +362,7 @@ function inventorySuite () {
         assertEqual(1, Object.keys(links).length);
         assertEqual("UnitTestsDumpEmpty", Object.keys(links)[0]);
         let link = links["UnitTestsDumpEmpty"];
-        if (isEnterprise) {
-          assertEqual(11, Object.keys(link).length);
-        } else {
-          assertEqual(10, Object.keys(link).length);
-        }
+        assertEqual(10, Object.keys(link).length);
         assertEqual("number", typeof link.version);
         assertEqual(1, link.version);
         assertTrue(link.includeAllFields);
