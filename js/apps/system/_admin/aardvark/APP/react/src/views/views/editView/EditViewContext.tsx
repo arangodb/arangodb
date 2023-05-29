@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import { useIsAdminUser } from "../../../utils/usePermissions";
 import { ViewPropertiesType } from "../searchView.types";
-import { useSyncSearchViewUpdates } from "../useSyncSearchViewUpdates";
+import { useSyncSearchViewUpdates } from "./useSyncSearchViewUpdates";
 import { useDeleteView } from "./useDeleteView";
 
 type EditViewContextType = {
@@ -84,7 +84,6 @@ const EditViewProviderInner = ({
   changed: boolean;
   setChanged: (changed: boolean) => void;
 }) => {
-  useSyncSearchViewUpdates({ viewName: initialView.name });
 
   const { setValues, values } = useFormikContext<ViewPropertiesType>();
   const isAdminUser = useIsAdminUser();
