@@ -1,4 +1,3 @@
-import * as Yup from "yup";
 
 const arangoSearchFieldsMap = {
   links: {
@@ -139,16 +138,6 @@ const bytesAccumConsolidationPolicyFields = [
       "Consolidation is performed on segments which accumulated size in bytes is less than all segments’ byte size multiplied by the threshold."
   }
 ];
-const fieldSchema: any = Yup.object().shape({
-  name: Yup.string().required(),
-  inBackground: Yup.boolean(),
-  analyzer: Yup.string(),
-  features: Yup.array().of(Yup.string().required()),
-  includeAllFields: Yup.boolean(),
-  trackListPositions: Yup.boolean(),
-  searchField: Yup.boolean(),
-  nested: Yup.array().of(Yup.lazy(() => fieldSchema.default(undefined)))
-});
 
 export const useArangoSearchFieldsData = () => {
   return {
