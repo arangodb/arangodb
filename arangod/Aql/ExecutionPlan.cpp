@@ -1395,7 +1395,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   TRI_ASSERT(direction->isIntValue());
 
   // First create the node
-  auto travNode = new TraversalNode(
+  auto travNode = createNode<TraversalNode>(
       this, nextId(), &(_ast->query().vocbase()), direction, start, graph,
       std::move(pruneExpression), std::move(options));
 
@@ -1422,9 +1422,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     }
   }
 
-  ExecutionNode* en = registerNode(travNode);
-  TRI_ASSERT(en != nullptr);
-  return addDependency(previous, en);
+  return addDependency(previous, travNode);
 }
 
 AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode*& previous,
@@ -2278,7 +2276,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
-  ExecutionNode* en = registerNode(new SingletonNode(this, nextId()));
+  ExecutionNode* en = createNode<SingletonNode>(this, nextId());
 
   size_t const n = node->numMembers();
 
@@ -2385,6 +2383,8 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
     }
+
+    TRI_ASSERT(en != nullptr);
 
     if (en == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "type not handled");

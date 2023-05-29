@@ -31,10 +31,6 @@
 #include "IResearch/ViewSnapshot.h"
 #include "Containers/FlatHashMap.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
-#endif
-
 #include <shared_mutex>
 #include <atomic>
 
@@ -53,9 +49,6 @@ struct MetaFst;
 
 class SearchMeta final {
  public:
-#ifdef USE_ENTERPRISE
-  IResearchOptimizeTopK optimizeTopK;
-#endif
   IResearchInvertedIndexSort primarySort;
   IResearchViewStoredValues storedValues;
   struct Field final {

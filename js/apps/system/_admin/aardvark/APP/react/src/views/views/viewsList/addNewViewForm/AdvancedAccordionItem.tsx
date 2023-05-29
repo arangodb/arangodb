@@ -7,7 +7,6 @@ import {
   FormLabel
 } from "@chakra-ui/react";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../../components/form/CreatableMultiSelectControl";
 import { InputControl } from "../../../../components/form/InputControl";
 
 export const AdvancedAccordionItem = () => {
@@ -40,8 +39,6 @@ const AdvancedFields = () => {
       <InputControl inputProps={{
         type: 'number'
       }} name="writebufferSizeMax" />
-      <FormLabel htmlFor="optimizeTopK">Optimize Top K</FormLabel>
-      <CreatableMultiSelectControl name="optimizeTopK" />
     </Box>
   );
 };
