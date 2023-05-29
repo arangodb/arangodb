@@ -2,14 +2,12 @@ import { pick } from "lodash";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 import { ArangoSearchViewPropertiesType } from "../searchView.types";
-import { useSyncSearchViewUpdates } from "../useSyncSearchViewUpdates";
 
 export function usePatchArangoSearchView(
   view: ArangoSearchViewPropertiesType,
   oldName: string | undefined,
   setChanged: (changed: boolean) => void
 ) {
-  useSyncSearchViewUpdates({ viewName: view.name });
   const handleSave = async () => {
     let hasError = false;
     const isNameChanged = (oldName && view.name !== oldName) || false;

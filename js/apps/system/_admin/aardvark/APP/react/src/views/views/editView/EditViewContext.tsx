@@ -4,8 +4,8 @@ import _ from "lodash";
 import React, {
   createContext,
   ReactNode,
+  useCallback,
   useContext,
-  useEffect,
   useState
 } from "react";
 import { useIsAdminUser } from "../../../utils/usePermissions";
@@ -16,6 +16,7 @@ import { useDeleteView } from "./useDeleteView";
 type EditViewContextType = {
   errors: ValidationError[];
   initialView: ViewPropertiesType;
+  setChanged: (changed: boolean) => void;
   changed: boolean;
   isAdminUser: boolean;
   isCluster: boolean;
@@ -85,7 +86,7 @@ const EditViewProviderInner = ({
 }) => {
   useSyncSearchViewUpdates({ viewName: initialView.name });
 
-  const { setValues, values, touched } = useFormikContext<ViewPropertiesType>();
+  const { setValues, values } = useFormikContext<ViewPropertiesType>();
   const isAdminUser = useIsAdminUser();
   const [errors, setErrors] = useState<ValidationError[]>([]);
 
@@ -97,24 +98,26 @@ const EditViewProviderInner = ({
     const copiedValues = _.omit(selectedView, "id", "globallyUniqueId", "name");
     setValues({ ...values, ...copiedValues });
   };
-  const { onDelete } = useDeleteView({ name: initialView.name });
 
-  useEffect(() => {
-    if (JSON.stringify(values) !== JSON.stringify(initialView)) {
-      setChanged(true);
-      window.sessionStorage.setItem(`${initialView.name}-changed`, "true");
-      window.sessionStorage.setItem(
-        `${initialView.name}`,
-        JSON.stringify(values)
-      );
-    } else {
-      setChanged(false);
-      window.sessionStorage.removeItem(`${initialView.name}-changed`);
-      window.sessionStorage.removeItem(`${initialView.name}`);
-    }
-  }, [values, touched, initialView.name, initialView, setChanged]);
+  const { onDelete } = useDeleteView({ name: initialView.name });
   const [currentLink, setCurrentLink] = useState<string>();
   const [currentField, setCurrentField] = useState<string[]>([]);
+  const handleSetChanged = useCallback(
+    (changed: boolean) => {
+      if (!changed) {
+        window.sessionStorage.removeItem(`${initialView.name}-changed`);
+        window.sessionStorage.removeItem(`${initialView.name}`);
+      } else {
+        window.sessionStorage.setItem(`${initialView.name}-changed`, "true");
+        window.sessionStorage.setItem(
+          `${initialView.name}`,
+          JSON.stringify(values)
+        );
+      }
+      setChanged(changed);
+    },
+    [initialView.name, setChanged, values]
+  );
   return (
     <EditViewContext.Provider
       value={{
@@ -125,6 +128,7 @@ const EditViewProviderInner = ({
         setCurrentLink,
         errors,
         setErrors,
+        setChanged: handleSetChanged,
         changed,
         onCopy: handleCopy,
         onDelete,
