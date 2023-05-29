@@ -3,43 +3,31 @@ import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 import { ArangoSearchViewPropertiesType } from "../searchView.types";
 
-export const useUpdateArangoSearchViewProperties = ({
-  setChanged
-}: {
-  setChanged: (changed: boolean) => void;
-}) => {
+export const useUpdateArangoSearchViewProperties = () => {
   const onSave = async ({
     view,
-    initialView
+    initialView,
+    setChanged
   }: {
     view: ArangoSearchViewPropertiesType;
     initialView: ArangoSearchViewPropertiesType;
+    setChanged: (changed: boolean) => void;
   }) => {
-    try {
-      const isNameChanged =
-        (initialView.name && view.name !== initialView.name) || false;
-      let isError = false;
-      if (isNameChanged) {
-        isError = await putRenameView({
-          initialName: initialView.name,
-          name: view.name
-        });
-      }
-
-      if (!isError) {
-        await patchViewProperties({
-          view,
-          isNameChanged,
-          initialView,
-          setChanged
-        });
-      }
-    } catch (e: any) {
-      window.arangoHelper.arangoError(
-        "Failure",
-        `Got unexpected server response: ${e.message}`
-      );
+    const isNameChanged =
+      (initialView.name && view.name !== initialView.name) || false;
+    if (isNameChanged) {
+      const { isError } = await putRenameView({
+        initialName: initialView.name,
+        name: view.name
+      });
+      if (isError) return;
     }
+    await patchViewProperties({
+      view,
+      isNameChanged,
+      initialView,
+      setChanged
+    });
   };
 
   return { onSave };
@@ -68,7 +56,7 @@ const putRenameView = async ({
     );
     isError = true;
   }
-  return isError;
+  return { isError };
 };
 async function patchViewProperties({
   view,
@@ -84,28 +72,37 @@ async function patchViewProperties({
   const encodedViewName = encodeHelper(view.name).encoded;
   const path = `/view/${encodedViewName}/properties`;
   window.arangoHelper.hideArangoNotifications();
-  const result = await patchProperties({ view, path, initialView });
-
-  if (result.body.error) {
+  try {
+    const result = await patchProperties({ view, path, initialView });
+    console.log({result})
+    if (result.body.error) {
+      window.arangoHelper.arangoError(
+        "Failure",
+        `Got unexpected server response: ${result.body.errorMessage}`
+      );
+    } else {
+      console.log('setting changed to false!');
+      window.sessionStorage.removeItem(`${initialView.name}-changed`);
+      window.sessionStorage.removeItem(`${initialView.name}`);
+      
+      if (!isNameChanged) {
+        await mutate(path);
+        console.log('setting to false again')
+        setChanged(false);
+      } else {
+        const { encoded: encodedViewName } = encodeHelper(view.name);
+        let newRoute = `#view/${encodedViewName}`;
+        window.App.navigate(newRoute, {
+          trigger: true,
+          replace: true
+        });
+      }
+    }
+  } catch (error: any) {
     window.arangoHelper.arangoError(
       "Failure",
-      `Got unexpected server response: ${result.body.errorMessage}`
+      `Got unexpected server response: ${error.message}`
     );
-  } else {
-    setChanged(false);
-    window.sessionStorage.removeItem(`${initialView.name}-changed`);
-    window.sessionStorage.removeItem(`${initialView.name}`);
-
-    if (!isNameChanged) {
-      await mutate(path);
-    } else {
-      const { encoded: encodedViewName } = encodeHelper(view.name);
-      let newRoute = `#view/${encodedViewName}`;
-      window.App.navigate(newRoute, {
-        trigger: true,
-        replace: true
-      });
-    }
   }
 }
 
