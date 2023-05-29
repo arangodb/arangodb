@@ -2356,7 +2356,6 @@ function IResearchFeatureDDLTestSuite2() {
           commitIntervalMsec: 0,
           primarySortCache: true,
           primaryKeyCache: true,
-          optimizeTopK: ["BM25(@doc) DESC"],
           links: {
             [colName]: {
               storeValues: 'id',
@@ -2365,7 +2364,6 @@ function IResearchFeatureDDLTestSuite2() {
         let props = view.properties();
         assertUndefined(props.links[colName].primarySortCache);
         assertUndefined(props.links[colName].primaryKeyCache);
-        assertUndefined(props.links[colName].optimizeTopK);
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
