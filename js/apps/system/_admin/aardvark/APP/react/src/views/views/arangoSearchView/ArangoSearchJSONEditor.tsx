@@ -5,7 +5,7 @@ import React, { useEffect } from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
 import { useEditViewContext } from "../editView/EditViewContext";
-import { useArangoSearchJSONSchema } from "../SearchJSONSchema";
+import { useArangoSearchJSONSchema } from "./SearchJSONSchema";
 import { ArangoSearchViewPropertiesType } from "../searchView.types";
 
 const ajv = new Ajv({
