@@ -1,3 +1,10 @@
+v3.11.1 (XXXX-XX-XX)
+--------------------
+
+* Fix issue #18982: query editor null/undefined check filters out bindParams
+  with value 0.
+
+
 v3.11.0 (2023-05-23)
 --------------------
 
