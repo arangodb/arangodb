@@ -1,6 +1,15 @@
 devel
 -----
 
+* Add a startup parameter `--rclone.argument` which can be utilised to enable
+  debugging with logfiles in hot backup RClone upload operacions:
+  `--rclone.argument=--log-level=DEBUG`
+  `--rclone.argument=-log-file=/tmp/rclone.log`
+
+* In batched query results, when executing requests for 
+  `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user 
+  would only be able to fetch the next batch using the next batch id in 
+
 * Fix issue #18982: query editor null/undefined check filters out bindParams
   with value 0.
 
