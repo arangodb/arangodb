@@ -1,6 +1,9 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* Added metric "rocksdb_total_sst_files" to count the number of sst files,
+  aggregated over all levels of the LSM tree.
+
 * Increase too short timeouts for requests made from coordinators to DB-servers
   when retrieving the number of documents or the index selectivity estimates for
   SmartGraph edge collection parts. These parts were treated like system
