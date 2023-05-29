@@ -46,7 +46,6 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 #ifdef USE_ENTERPRISE
       _sortCache(mask),
       _pkCache(mask),
-      _optimizeTopK(mask),
 #endif
       _primarySortCompression(mask) {
 }
@@ -78,7 +77,6 @@ void IResearchViewMeta::storeFull(IResearchViewMeta const& other) {
 #ifdef USE_ENTERPRISE
   _sortCache = other._sortCache;
   _pkCache = other._pkCache;
-  _optimizeTopK = other._optimizeTopK;
 #endif
   IResearchDataStoreMeta::storeFull(other);
 }
@@ -93,7 +91,6 @@ void IResearchViewMeta::storeFull(IResearchViewMeta&& other) noexcept {
 #ifdef USE_ENTERPRISE
   _sortCache = other._sortCache;
   _pkCache = other._pkCache;
-  _optimizeTopK = std::move(other._optimizeTopK);
 #endif
   IResearchDataStoreMeta::storeFull(std::move(other));
 }
@@ -110,8 +107,7 @@ bool IResearchViewMeta::operator==(
     return false;
   }
 #ifdef USE_ENTERPRISE
-  if (_sortCache != other._sortCache || _pkCache != other._pkCache ||
-      _optimizeTopK != other._optimizeTopK) {
+  if (_sortCache != other._sortCache || _pkCache != other._pkCache) {
     return false;
   }
 #endif
@@ -228,19 +224,6 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
       _pkCache = defaults._pkCache;
     }
   }
-  {
-    auto const field = slice.get(StaticStrings::kOptimizeTopKField);
-    mask->_optimizeTopK = !field.isNone();
-    if (mask->_optimizeTopK) {
-      std::string err;
-      if (!_optimizeTopK.fromVelocyPack(field, err)) {
-        errorField = absl::StrCat(StaticStrings::kOptimizeTopKField, ": ", err);
-        return false;
-      }
-    } else {
-      _optimizeTopK = defaults._optimizeTopK;
-    }
-  }
 #endif
   return true;
 }
@@ -292,15 +275,6 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
       ((!ignoreEqual && _pkCache) ||
        (ignoreEqual && _pkCache != ignoreEqual->_pkCache))) {
     builder.add(StaticStrings::kCachePrimaryKeyField, VPackValue(_pkCache));
-  }
-
-  if ((!mask || mask->_optimizeTopK) &&
-      (!ignoreEqual || _optimizeTopK != ignoreEqual->_optimizeTopK)) {
-    velocypack::ArrayBuilder arrayScope(&builder,
-                                        StaticStrings::kOptimizeTopKField);
-    if (!_optimizeTopK.toVelocyPack(builder)) {
-      return false;
-    }
   }
 
 #endif

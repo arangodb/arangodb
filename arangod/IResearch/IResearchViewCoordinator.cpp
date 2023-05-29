@@ -195,7 +195,6 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
     auto const accept = [](std::string_view key) {
       return key != iresearch::StaticStrings::AnalyzerDefinitionsField &&
 #ifdef USE_ENTERPRISE
-             key != iresearch::StaticStrings::kOptimizeTopKField &&
              key != iresearch::StaticStrings::kPrimarySortCacheField &&
              key != iresearch::StaticStrings::kCachePrimaryKeyField &&
 #endif
