@@ -1,6 +1,10 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* Added startup option `--query.max-collections-per-query` to adjust the limit
+  for the maximum number of collections/shards per query. The option defaults to
+  `2048`, which is equivalent to the previous hardcoded value.
+
 * BTS-1261 For some named graphs in cluster, when creating a debugDump for a
   traversal query that would use the graph's name, the graph wouldn't be able to
   be recreated because the info gathered in the process of creating a debugDump
