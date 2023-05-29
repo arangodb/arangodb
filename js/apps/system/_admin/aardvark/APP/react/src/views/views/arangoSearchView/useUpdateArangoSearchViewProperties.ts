@@ -74,20 +74,17 @@ async function patchViewProperties({
   window.arangoHelper.hideArangoNotifications();
   try {
     const result = await patchProperties({ view, path, initialView });
-    console.log({result})
     if (result.body.error) {
       window.arangoHelper.arangoError(
         "Failure",
         `Got unexpected server response: ${result.body.errorMessage}`
       );
     } else {
-      console.log('setting changed to false!');
       window.sessionStorage.removeItem(`${initialView.name}-changed`);
       window.sessionStorage.removeItem(`${initialView.name}`);
       
       if (!isNameChanged) {
         await mutate(path);
-        console.log('setting to false again')
         setChanged(false);
       } else {
         const { encoded: encodedViewName } = encodeHelper(view.name);
