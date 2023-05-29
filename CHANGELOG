@@ -1,6 +1,11 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* ECONNABORTED is treated as a ConnectionClosed error in fuerte.
+
+* Database drop operation no longer fails if we cannot remove the corresponding
+  permissions from the _users collection.
+
 * Added startup option `--query.max-collections-per-query` to adjust the limit
   for the maximum number of collections/shards per query. The option defaults to
   `2048`, which is equivalent to the previous hardcoded value.
@@ -53,11 +58,6 @@ v3.11.0 (2023-05-23)
 
 v3.11.0-rc.2 (2023-05-17)
 -------------------------
-
-* ECONNABORTED is treated as a ConnectionClosed error in fuerte.
-
-* Database drop operation no longer fails if we cannot remove
-  the corresponding permissions from the _users collection.
 
 * Internal bug-fixes and stabilization improvements.
 
