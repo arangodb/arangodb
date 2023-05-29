@@ -1,14 +1,11 @@
 import { Checkbox, Grid, HStack, Stack } from "@chakra-ui/react";
-import { useFormikContext } from "formik";
-import { cloneDeep, get, set } from "lodash";
 import React from "react";
 import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { useEditViewContext } from "../../editView/EditViewContext";
-import { ArangoSearchViewPropertiesType } from "../../searchView.types";
 import { AnalyzersDropdown } from "./AnalyzersDropdown";
 import { FieldsDropdown } from "./FieldsDropdown";
 import { LinksBreadCrumb } from "./LinksBreadCrumb";
-import { useFieldPath } from "./useLinksSetter";
+import { useLinkModifiers } from "./useLinkModifiers";
 
 export const LinksDetails = () => {
   const { currentLink, currentField } = useEditViewContext();
@@ -52,21 +49,8 @@ export const LinksDetails = () => {
 
 const StoreIDValuesCheckbox = () => {
   const id = "storeValues";
-  const label = "Store ID Values";
-  const tooltip =
-    "Store information about value presence to allow use of the EXISTS() function.";
-  const { currentLink, currentField } = useEditViewContext();
-  const { fieldPath } = useFieldPath();
-  const { values, setValues } =
-    useFormikContext<ArangoSearchViewPropertiesType>();
-
-  const isFieldView = currentField.length > 0;
-  const currentLinkFieldsValue = currentLink
-    ? values?.links?.[currentLink]
-    : {};
-  const isChecked = isFieldView
-    ? get(currentLinkFieldsValue, [...fieldPath, id]) === "id" || false
-    : get(currentLinkFieldsValue, id) === "id" || false;
+  const { setCurrentLinkValue, getCurrentLinkValue } = useLinkModifiers();
+  const isChecked = getCurrentLinkValue([id]) === "id" ? true : false;
   return (
     <HStack>
       <Checkbox
@@ -74,42 +58,13 @@ const StoreIDValuesCheckbox = () => {
         margin="0"
         borderColor="gray.400"
         onChange={() => {
-          const newValue = !isChecked;
-          if (!currentLinkFieldsValue || !currentLink) {
-            return;
-          }
-          if (isFieldView) {
-            const newLink = set(
-              cloneDeep(currentLinkFieldsValue),
-              [...fieldPath, id],
-              newValue ? "id" : "none"
-            );
-            setValues({
-              ...values,
-              links: {
-                ...values.links,
-                [currentLink]: newLink
-              }
-            });
-          } else {
-            const newLink = set(
-              cloneDeep(currentLinkFieldsValue),
-              id,
-              newValue ? "id" : "none"
-            );
-            setValues({
-              ...values,
-              links: {
-                ...values.links,
-                [currentLink]: newLink
-              }
-            });
-          }
+          const newChecked = !isChecked;
+          setCurrentLinkValue({ id: [id], value: newChecked ? "id" : "none" });
         }}
       >
-        {label}
+        Store ID Values
       </Checkbox>
-      <InfoTooltip label={tooltip} />
+      <InfoTooltip label="Store information about value presence to allow use of the EXISTS() function." />
     </HStack>
   );
 };
@@ -125,18 +80,8 @@ const CheckboxField = ({
   tooltip: string;
   onChange?: (value: boolean) => void;
 }) => {
-  const { currentLink, currentField } = useEditViewContext();
-  const { fieldPath } = useFieldPath();
-  const { values, setValues } =
-    useFormikContext<ArangoSearchViewPropertiesType>();
-
-  const isFieldView = currentField.length > 0;
-  const currentLinkFieldsValue = currentLink
-    ? values?.links?.[currentLink]
-    : {};
-  const isChecked = isFieldView
-    ? get(currentLinkFieldsValue, [...fieldPath, id]) || false
-    : get(currentLinkFieldsValue, id) || false;
+  const { setCurrentLinkValue, getCurrentLinkValue } = useLinkModifiers();
+  const isChecked = getCurrentLinkValue([id]);
   return (
     <HStack>
       <Checkbox
@@ -148,36 +93,10 @@ const CheckboxField = ({
           if (onChange) {
             onChange(newValue);
           }
-          if (!currentLinkFieldsValue || !currentLink) {
-            return;
-          }
-          if (isFieldView) {
-            const newLink = set(
-              cloneDeep(currentLinkFieldsValue),
-              [...fieldPath, id],
-              newValue
-            );
-            setValues({
-              ...values,
-              links: {
-                ...values.links,
-                [currentLink]: newLink
-              }
-            });
-          } else {
-            const newLink = set(
-              cloneDeep(currentLinkFieldsValue),
-              id,
-              newValue
-            );
-            setValues({
-              ...values,
-              links: {
-                ...values.links,
-                [currentLink]: newLink
-              }
-            });
-          }
+          setCurrentLinkValue({
+            id: [id],
+            value: newValue
+          });
         }}
       >
         {label}
