@@ -8,6 +8,20 @@ v3.11.1 (XXXX-XX-XX)
 v3.11.0 (XXXX-XX-XX)
 --------------------
 
+* Convert v3.11.0-rc.2 into v3.11.0.
+
+* SEARCH-477: stabilize ArangoSearch (stage of BTS-1416).
+
+
+v3.11.0-rc.2 (2023-05-17)
+-------------------------
+
+* Internal bug-fixes and stabilization improvements.
+
+
+v3.11.0-rc.1 (2023-05-13)
+-------------------------
+
 * Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 
 * Improved error reporting for system calls on Windows and fixed a

@@ -8001,11 +8001,8 @@ namespace {
 /// @brief is the node parallelizable?
 struct ParallelizableFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-  bool const _parallelizeWrites;
-  bool _isParallelizable;
-
-  explicit ParallelizableFinder(bool parallelizeWrites)
-      : _parallelizeWrites(parallelizeWrites), _isParallelizable(true) {}
+  bool _isParallelizable = true;
+  bool _hasParallelTraversal = false;
 
   ~ParallelizableFinder() = default;
 
@@ -8014,9 +8011,12 @@ struct ParallelizableFinder final
   }
 
   bool before(ExecutionNode* node) override final {
-    if (node->getType() == ExecutionNode::SCATTER ||
-        node->getType() == ExecutionNode::GATHER ||
-        node->getType() == ExecutionNode::DISTRIBUTE) {
+    if ((node->getType() == ExecutionNode::SCATTER ||
+         node->getType() == ExecutionNode::DISTRIBUTE) &&
+        _hasParallelTraversal) {
+      // we cannot parallelize the gather if we have a parallel traversal which
+      // itself depends again on a scatter/distribute node, because we are
+      // currently lacking synchronization for that scatter/distribute node.
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
@@ -8025,21 +8025,11 @@ struct ParallelizableFinder final
         node->getType() == ExecutionNode::SHORTEST_PATH ||
         node->getType() == ExecutionNode::ENUMERATE_PATHS) {
       auto* gn = ExecutionNode::castTo<GraphNode*>(node);
+      _hasParallelTraversal |= gn->options()->parallelism() > 1;
       if (!gn->isLocalGraphNode()) {
         _isParallelizable = false;
         return true;  // true to abort the whole walking process
       }
-    }
-
-    // write operations of type REMOVE, REPLACE and UPDATE
-    // can be parallelized, provided the rest of the plan
-    // does not prohibit this
-    if (node->isModificationNode() &&
-        (!_parallelizeWrites || (node->getType() != ExecutionNode::REMOVE &&
-                                 node->getType() != ExecutionNode::REPLACE &&
-                                 node->getType() != ExecutionNode::UPDATE))) {
-      _isParallelizable = false;
-      return true;  // true to abort the whole walking process
     }
 
     // continue inspecting
@@ -8048,13 +8038,13 @@ struct ParallelizableFinder final
 };
 
 /// no modification nodes, ScatterNodes etc
-bool isParallelizable(GatherNode* node, bool parallelizeWrites) {
+bool isParallelizable(GatherNode* node) {
   if (node->parallelism() == GatherNode::Parallelism::Serial) {
     // node already defined to be serial
     return false;
   }
 
-  ParallelizableFinder finder(parallelizeWrites);
+  ParallelizableFinder finder;
   for (ExecutionNode* e : node->getDependencies()) {
     e->walk(finder);
     if (!finder._isParallelizable) {
@@ -8360,58 +8350,21 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
 
   bool modified = false;
 
-  // find all GatherNodes in the main query, starting from the query's root node
-  // (the node most south when looking at the query execution plan).
-  //
-  // for now, we effectively stop right after the first GatherNode we found,
-  // regardless of whether we can make that node use parallelism or not. the
-  // reason we have to stop here is that if we have multiple query snippets on a
-  // server they will use the same underlying transaction object. however,
-  // transactions are not thread-safe right now, so we must avoid any
-  // parallelism when there can be another snippet with the same transaction on
-  // the same server.
-  //
-  // for example consider the following query, joining the shards of two
-  // collections on 2 database servers:
-  //
-  //   (4)      DBS1                            DBS2               database
-  //        users, shard 1                 users, shard 2          servers
-  //       --------------------------------------------------------
-  //   (3)                      Gather                             coordinator
-  //       --------------------------------------------------------
-  //   (2)      DBS1            Scatter         DBS2               database
-  //       orders, shard 1                orders, shard 2          servers
-  //       --------------------------------------------------------
-  //   (1)                      Gather                             coordinator
-  //
-  // the query starts with a GatherNode (1). if we make that parallel, then it
-  // will ask the shards of `orders` on the database servers in parallel (2). So
-  // there can be 2 threads in (2), on different servers. all is fine until
-  // here. however, if the thread for DBS1 fetches upstream data from the
-  // coordinator (3), then the coordinator may reach out to DBS2 to get more
-  // data from the `users` collection (4). so one thread will be on DBS2 and
-  // using the transaction. at the very same time we already have another thread
-  // working on the same server on (2). they are using the same transaction
-  // object, which currently is not thread-safe. we need to avoid any such
-  // situation, and thus we cannot make any of the GatherNodes thread-safe here.
-  // the only case in which we currently can employ parallelization is when
-  // there is only a single GatherNode. all other restrictions for
-  // parallelization (e.g. no DistributeNodes around) still apply.
   containers::SmallVector<ExecutionNode*, 8> nodes;
+  containers::SmallVector<ExecutionNode*, 8> graphNodes;
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  if (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) &&
-      !plan->contains(EN::SCATTER)) {
-    constexpr bool parallelizeWrites = true;
-    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
+  for (auto node : nodes) {
+    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(node);
 
-    if (!gn->isInSubquery() && isParallelizable(gn, parallelizeWrites)) {
+    if (!gn->isInSubquery() && isParallelizable(gn)) {
       // find all graph nodes and make sure that they all are using satellite
-      nodes.clear();
+      graphNodes.clear();
       plan->findNodesOfType(
-          nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::ENUMERATE_PATHS}, true);
+          graphNodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::ENUMERATE_PATHS},
+          true);
       bool const allSatellite =
-          std::all_of(nodes.begin(), nodes.end(), [](auto n) {
+          std::all_of(graphNodes.begin(), graphNodes.end(), [](auto n) {
             GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(n);
             return graphNode->isLocalGraphNode();
           });

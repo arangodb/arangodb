@@ -720,27 +720,6 @@ std::shared_ptr<SearchMeta const> getMeta(
   return basics::downCast<Search>(*view).meta();
 }
 
-#ifdef USE_ENTERPRISE
-
-IResearchOptimizeTopK const& optimizeTopK(
-    std::shared_ptr<SearchMeta const> const& meta,
-    std::shared_ptr<LogicalView const> const& view) {
-  if (meta) {
-    TRI_ASSERT(!view || view->type() == ViewType::kSearchAlias);
-    return meta->optimizeTopK;
-  }
-  TRI_ASSERT(view);
-  TRI_ASSERT(view->type() == ViewType::kArangoSearch);
-  if (ServerState::instance()->isCoordinator()) {
-    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
-    return viewImpl.meta()._optimizeTopK;
-  }
-  auto const& viewImpl = basics::downCast<IResearchView>(*view);
-  return viewImpl.meta()._optimizeTopK;
-}
-
-#endif
-
 IResearchSortBase const& primarySort(
     std::shared_ptr<SearchMeta const> const& meta,
     std::shared_ptr<LogicalView const> const& view) {
@@ -803,9 +782,6 @@ char const* NODE_VIEW_SCORERS_SORT_LIMIT = "scorersSortLimit";
 char const* NODE_VIEW_META_FIELDS = "metaFields";
 char const* NODE_VIEW_META_SORT = "metaSort";
 char const* NODE_VIEW_META_STORED = "metaStored";
-#ifdef USE_ENTERPRISE
-char const* NODE_VIEW_META_TOPK = "metaTopK";
-#endif
 
 void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
                   bool needSort, [[maybe_unused]] bool needScorerSort) {
@@ -814,13 +790,6 @@ void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
     [[maybe_unused]] bool const result = meta.primarySort.toVelocyPack(node);
     TRI_ASSERT(result);
   }
-#ifdef USE_ENTERPRISE
-  if (needScorerSort) {
-    VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_TOPK};
-    [[maybe_unused]] bool const result = meta.optimizeTopK.toVelocyPack(node);
-    TRI_ASSERT(result);
-  }
-#endif
   {
     VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_STORED};
     [[maybe_unused]] bool const result = meta.storedValues.toVelocyPack(node);
@@ -851,14 +820,6 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
     meta.primarySort.fromVelocyPack(slice, error);
     checkError(NODE_VIEW_META_SORT);
   }
-
-#ifdef USE_ENTERPRISE
-  slice = node.get(NODE_VIEW_META_TOPK);
-  if (!slice.isNone()) {
-    meta.optimizeTopK.fromVelocyPack(slice, error);
-    checkError(NODE_VIEW_META_TOPK);
-  }
-#endif
 
   slice = node.get(NODE_VIEW_META_STORED);
   meta.storedValues.fromVelocyPack(slice, error);
@@ -1936,9 +1897,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         searchDocRegId,
         std::move(scoreRegisters),
         engine.getQuery(),
-#ifdef USE_ENTERPRISE
-        optimizeTopK(_meta, _view),
-#endif
         scorers(),
         sort(),
         storedValues(_meta, _view),
