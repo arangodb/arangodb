@@ -113,7 +113,8 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
 #endif
     
     if (e == asio_ns::error::misc_errors::eof ||
-        e == asio_ns::error::connection_reset) {
+        e == asio_ns::error::connection_reset ||
+        e == asio_ns::error::connection_aborted) {
       return fuerte::Error::ConnectionClosed;
     } else if (e == asio_ns::error::operation_aborted) {
       // keepalive timeout may have expired

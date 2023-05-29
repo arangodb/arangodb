@@ -515,7 +515,14 @@ arangodb::Result Databases::drop(ExecContext const& exec,
     auto cb = [&](auth::User& entry) -> bool {
       return entry.removeDatabase(dbName);
     };
-    res = um->enumerateUsers(cb, /*retryOnConflict*/ true);
+    if (auto cleanupUsersRes = um->enumerateUsers(cb, /*retryOnConflict*/ true);
+        cleanupUsersRes.fail()) {
+      LOG_TOPIC("9f8b7", WARN, Logger::AUTHORIZATION)
+          << "Failed to cleanup "
+             "users permissions after dropping "
+             "database "
+          << dbName << ": " << cleanupUsersRes;
+    }
   }
 
   events::DropDatabase(dbName, res, exec);
