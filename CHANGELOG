@@ -1,5 +1,5 @@
-v3.11.0-rc.1 (2023-05-13)
--------------------------
+v3.11.1 (XXXX-XX-XX)
+--------------------
 
 * In batched query results, when executing requests for 
   `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user 
@@ -7,6 +7,11 @@ v3.11.0-rc.1 (2023-05-13)
   <batchId> if the query option `allowRetry` was set to true, but maintained
   the restriction that the user can only retrieve the latest batch if the
   query option `allowRetry` is set to true.
+
+
+
+v3.11.0-rc.1 (2023-05-13)
+-------------------------
 
 * Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 
