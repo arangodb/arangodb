@@ -1,6 +1,11 @@
 v3.9.11 (XXXX-X-XX)
 --------------------
 
+* ECONNABORTED is treated as a ConnectionClosed error in fuerte.
+
+* Database drop operation no longer fails if we cannot remove the corresponding
+  permissions from the _users collection.
+
 * BTS-1261 For some named graphs in cluster, when creating a debugDump for a
   traversal query that would use the graph's name, the graph wouldn't be able to
   be recreated because the info gathered in the process of creating a debugDump
