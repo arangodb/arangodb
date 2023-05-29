@@ -4,15 +4,10 @@ import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 
 import useSWR from "swr";
 import { encodeHelper } from "../../../utils/encodeHelper";
-import {
-  ArangoSearchViewPropertiesType,
-  SearchAliasViewPropertiesType
-} from "../searchView.types";
+import { ViewPropertiesType } from "../searchView.types";
 
 export function useFetchViewProperties(name: string) {
-  const [view, setView] = useState<
-    SearchAliasViewPropertiesType | ArangoSearchViewPropertiesType | undefined
-  >();
+  const [view, setView] = useState<ViewPropertiesType | undefined>();
   const { encoded: encodedName } = encodeHelper(name);
   const { data, error, isLoading } = useSWR(
     `/view/${encodedName}/properties`,
@@ -32,11 +27,7 @@ export function useFetchViewProperties(name: string) {
 
   useEffect(() => {
     if (data) {
-      const viewState = omit(
-        data.body,
-        "error",
-        "code"
-      ) as SearchAliasViewPropertiesType;
+      const viewState = omit(data.body, "error", "code") as ViewPropertiesType;
       setView(viewState);
     }
   }, [data, name]);
