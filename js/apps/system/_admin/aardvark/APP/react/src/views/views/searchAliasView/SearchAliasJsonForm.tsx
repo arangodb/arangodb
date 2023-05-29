@@ -29,7 +29,7 @@ const useResetSchema = (
 };
 
 export const SearchAliasJsonForm = () => {
-  const { setErrors, errors } = useEditViewContext();
+  const { setErrors, errors, setChanged } = useEditViewContext();
   const { setValues, values } =
     useFormikContext<SearchAliasViewPropertiesType>();
   const { schema } = useAliasViewSchema({ view: values });
@@ -48,6 +48,7 @@ export const SearchAliasJsonForm = () => {
         onChange={json => {
           if (JSON.stringify(json) !== JSON.stringify(values)) {
             setValues(json);
+            setChanged(true);
           }
         }}
         htmlElementProps={{

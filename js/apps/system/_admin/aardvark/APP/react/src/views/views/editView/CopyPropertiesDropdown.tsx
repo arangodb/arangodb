@@ -28,8 +28,9 @@ export const CopyPropertiesDropdown = () => {
 };
 
 const CopyPropertiesInner = ({ views }: { views: SearchViewType[] }) => {
+  const { onCopy, isAdminUser, initialView, setChanged } = useEditViewContext();
   const initialViewName = views?.find(
-    view => view.type === "search-alias"
+    view => view.type === initialView.type
   )?.name;
   const [options, setOptions] = useState<OptionType[]>([]);
   const [selectedViewName, setSelectedViewName] = useState(initialViewName);
@@ -43,19 +44,18 @@ const CopyPropertiesInner = ({ views }: { views: SearchViewType[] }) => {
     "error",
     "code"
   ) as SearchAliasViewPropertiesType;
-  const { onCopy, isAdminUser } = useEditViewContext();
   useEffect(() => {
     if (views) {
       const newViews = views
         .filter(view => {
-          return view.type !== "arangosearch";
+          return view.type === initialView.type;
         })
         .map(view => {
           return { label: view.name, value: view.name };
         });
       setOptions(newViews);
     }
-  }, [views]);
+  }, [views, initialView.type]);
 
   return (
     <Stack direction="row" alignItems="center">
@@ -73,11 +73,15 @@ const CopyPropertiesInner = ({ views }: { views: SearchViewType[] }) => {
         size="xs"
         leftIcon={<ArrowBackIcon />}
         isLoading={isLoading}
-        onClick={() =>
+        onClick={() => {
           onCopy({
             selectedView
-          })
-        }
+          });
+          // TODO: remove this once there are forms in search-alias view
+          if (initialView.type === "search-alias") {
+            setChanged(true);
+          }
+        }}
         isDisabled={!isAdminUser}
       >
         Copy from
