@@ -42,11 +42,14 @@ export const LinksDropdown = () => {
     setCollections();
   }, []);
   const value = Object.keys(linksField.value).map(key => {
+    if (linksField.value[key] === null) {
+      return null;
+    }
     return {
       label: key,
       value: key
     };
-  });
+  }).filter(Boolean) as OptionType[];
   const addLink = (link: string) => {
     helpers.setValue({
       ...linksField.value,
@@ -54,8 +57,7 @@ export const LinksDropdown = () => {
     });
   };
   const removeLink = (link: string) => {
-    const newLinks = { ...linksField.value };
-    delete newLinks[link];
+    const newLinks = { ...linksField.value, [link]: null };
     helpers.setValue(newLinks);
   };
   return (
