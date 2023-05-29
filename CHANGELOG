@@ -1,3 +1,45 @@
+v3.11.1 (XXXX-XX-XX)
+--------------------
+
+* Added metric "rocksdb_total_sst_files" to count the number of sst files,
+  aggregated over all levels of the LSM tree.
+
+* Increase too short timeouts for requests made from coordinators to DB-servers
+  when retrieving the number of documents or the index selectivity estimates for
+  SmartGraph edge collection parts. These parts were treated like system
+  collections because of their naming convention, and the requests were run with
+  a timeout of only 5s.
+
+* In batched query results, when executing requests for
+  `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user
+  would only be able to fetch the next batch using the next batch id in
+  <batchId> if the query option `allowRetry` was set to true, but maintained the
+  restriction that the user can only retrieve the latest batch if the query
+  option `allowRetry` is set to true.
+
+* Add a startup parameter `--rclone.argument` which can be utilised to enable
+  debugging with logfiles in hot backup RClone upload operacions:
+  `--rclone.argument=--log-level=DEBUG`
+  `--rclone.argument=-log-file=/tmp/rclone.log`
+
+* Fix issue #18982: query editor null/undefined check filters out bindParams
+  with value 0.
+
+
+v3.11.0 (2023-05-23)
+--------------------
+
+* Convert v3.11.0-rc.2 into v3.11.0.
+
+* SEARCH-477: stabilize ArangoSearch (stage of BTS-1416).
+
+
+v3.11.0-rc.2 (2023-05-17)
+-------------------------
+
+* Internal bug-fixes and stabilization improvements.
+
+
 v3.11.0-rc.1 (2023-05-13)
 -------------------------
 * When trying to read multiple documents, the coordinator will now handle

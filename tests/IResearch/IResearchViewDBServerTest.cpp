@@ -86,11 +86,7 @@ class IResearchViewDBServerTest : public ::testing::Test {
   ~IResearchViewDBServerTest() = default;
 };
 
-#ifdef USE_ENTERPRISE
-static constexpr size_t kEnterpriseFields = 1;
-#else
 static constexpr size_t kEnterpriseFields = 0;
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
