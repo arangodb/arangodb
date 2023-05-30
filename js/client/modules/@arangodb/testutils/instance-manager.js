@@ -654,11 +654,15 @@ class instanceManager {
       }
     } catch (ex) {
       let timeout = internal.SetGlobalExecutionDeadlineTo(0.0);
-      print(RED + 'netstat gathering has thrown: ' + (timeout? "because of timeout in execution":""));
+      let moreReason = ": " + ex.message;
+      if (timeout) {
+        moreReason = "because of :" + ex.message;
+      }
+      print(RED + 'netstat gathering has thrown: ' + moreReason);
       print(ex, ex.stack);
       print(RESET);
       this.cleanup = false;
-      return this._forceTerminate(ex.message + " during health check");
+      return this._forceTerminate(ex.message + " during health check: " + moreReason);
     }
     if (this.options.activefailover &&
         this.hasOwnProperty('authOpts') &&
@@ -826,6 +830,7 @@ class instanceManager {
         print(e.stack);
       }
     }
+    return false;
   }
 
   _forceTerminate(moreReason="") {
