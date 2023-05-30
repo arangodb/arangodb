@@ -3,6 +3,10 @@ import { cloneDeep, get, set } from "lodash";
 import { useEditViewContext } from "../../editView/EditViewContext";
 import { ArangoSearchViewPropertiesType } from "../../searchView.types";
 
+/**
+ * Converts to path.
+ * Eg: ["field1", "field2"] -> ["fields", "field1", "fields", "field2"]
+ */
 export const useFieldPath = () => {
   const { currentField } = useEditViewContext();
 
