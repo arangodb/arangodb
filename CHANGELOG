@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-15: Removed green checkmark next to the version number and made
+  keyboard shortcuts button easier to discover.
+
 * Removed the long-deprecated JavaScript-based traversal functionality,
   including the following APIs:
 
