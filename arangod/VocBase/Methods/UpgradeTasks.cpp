@@ -325,27 +325,6 @@ Result createSystemPregelCollection(TRI_vocbase_t& vocbase) {
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // if not found, create it
 
-    std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
-    {
-      // Take _users first
-      auto distributeLikeRes = methods::Collections::lookup(
-          vocbase, StaticStrings::UsersCollection, colToDistributeShardsLike);
-      if (distributeLikeRes.fail() || colToDistributeShardsLike == nullptr) {
-        // Take _graphs second
-        distributeLikeRes = methods::Collections::lookup(
-            vocbase, StaticStrings::GraphsCollection,
-            colToDistributeShardsLike);
-        if (distributeLikeRes.fail()) {
-          // Could not even find leading collection, something bad gone wrong
-          return distributeLikeRes;
-        }
-        if (colToDistributeShardsLike == nullptr) {
-          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  "Could not identify _system collection leaders"};
-        }
-      }
-    }
-
     VPackBuilder options;
     methods::Collections::createSystemCollectionProperties(cname, options,
                                                            vocbase);
@@ -355,8 +334,10 @@ Result createSystemPregelCollection(TRI_vocbase_t& vocbase) {
     OperationOptions operationOptions(ExecContext::current());
     return methods::Collections::create(
         vocbase, operationOptions, {info}, true, true, true,
-        colToDistributeShardsLike, cols,
-        true /* allow system collection creation */);
+        nullptr /*nullptr on purpose, distributeShardsLike is defined by
+                   createSystemCollectionProperties */
+        ,
+        cols, true /* allow system collection creation */);
   }
 
   return {TRI_ERROR_NO_ERROR};
@@ -572,7 +553,7 @@ bool UpgradeTasks::createHistoricPregelSystemCollection(
 
   if (res.fail()) {
     LOG_TOPIC("2824f", ERR, Logger::STARTUP)
-        << "could not create system collections"
+        << "could not create Pregel system collection"
         << ": error: " << res.errorMessage();
     return false;
   }
