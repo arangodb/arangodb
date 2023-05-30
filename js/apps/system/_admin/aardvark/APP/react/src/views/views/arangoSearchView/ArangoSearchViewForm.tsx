@@ -155,6 +155,9 @@ const PrimarySortAccordionItem = () => {
     "primarySort"
   );
   const [primarySortCompressionField] = useField("primarySortCompression");
+  const isPrimarySortEmpty =
+    primarySortField.value?.length === 0 || !primarySortField.value;
+
   return (
     <AccordionItem>
       <AccordionButton>
@@ -164,19 +167,23 @@ const PrimarySortAccordionItem = () => {
         <AccordionIcon />
       </AccordionButton>
       <AccordionPanel pb={4}>
-        <FieldsGrid>
-          {primarySortField.value?.map((item: any, index: number) => {
-            return (
-              <React.Fragment key={`${item.field}_${index}`}>
-                <Box>
-                  <Tag>{item.field}</Tag>
-                </Box>
-                <Box>{item.asc ? "asc" : "desc"}</Box>
-                <Spacer />
-              </React.Fragment>
-            );
-          })}
-        </FieldsGrid>
+        {isPrimarySortEmpty ? (
+          <Box padding="4">No fields set</Box>
+        ) : (
+          <FieldsGrid>
+            {primarySortField.value?.map((item: any, index: number) => {
+              return (
+                <React.Fragment key={`${item.field}_${index}`}>
+                  <Box>
+                    <Tag>{item.field}</Tag>
+                  </Box>
+                  <Box>{item.asc ? "asc" : "desc"}</Box>
+                  <Spacer />
+                </React.Fragment>
+              );
+            })}
+          </FieldsGrid>
+        )}
       </AccordionPanel>
     </AccordionItem>
   );
@@ -186,6 +193,8 @@ const StoredValuesAccordionItem = () => {
   const [storedValuesField] = useField<StoredValueType[] | undefined>(
     "storedValues"
   );
+  const isStoredValuesEmpty =
+    storedValuesField.value?.length === 0 || !storedValuesField.value;
   return (
     <AccordionItem>
       <AccordionButton>
@@ -195,21 +204,26 @@ const StoredValuesAccordionItem = () => {
         <AccordionIcon />
       </AccordionButton>
       <AccordionPanel pb={4}>
-        <FieldsGrid>
-          {storedValuesField.value?.map((item: any, index: number) => {
-            return (
-              <React.Fragment key={index}>
-                <Stack direction="row">
-                  {item.fields.map((field: any) => {
-                    return <Tag key={field}>{field}</Tag>;
-                  })}
-                </Stack>
-                <Box>{item.compression}</Box>
-                <Spacer />
-              </React.Fragment>
-            );
-          })}
-        </FieldsGrid>
+        {" "}
+        {isStoredValuesEmpty ? (
+          <Box padding="4">No fields set</Box>
+        ) : (
+          <FieldsGrid>
+            {storedValuesField.value?.map((item: any, index: number) => {
+              return (
+                <React.Fragment key={index}>
+                  <Stack direction="row">
+                    {item.fields.map((field: any) => {
+                      return <Tag key={field}>{field}</Tag>;
+                    })}
+                  </Stack>
+                  <Box>{item.compression}</Box>
+                  <Spacer />
+                </React.Fragment>
+              );
+            })}
+          </FieldsGrid>
+        )}
       </AccordionPanel>
     </AccordionItem>
   );
