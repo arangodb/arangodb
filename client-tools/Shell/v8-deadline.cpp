@@ -22,14 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "ProcessMonitoringFeature.h"
 #include "Basics/system-functions.h"
-
-#include "V8/V8SecurityFeature.h"
 #include "V8/v8-deadline.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-#include "ProcessMonitoringFeature.h"
+#include "arangosh.h"
 
 #include <stddef.h>
 #include <cstdint>

@@ -33,7 +33,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 
 #include "V8/v8-deadline.h"
-#include "V8/V8SecurityFeature.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 
 #include "ProcessMonitoringFeature.h"
 
@@ -87,7 +87,7 @@ ProcessMonitoringFeature::getHistoricStatus(TRI_pid_t pid) {
 }
 
 ProcessMonitoringFeature::ProcessMonitoringFeature(Server& server)
-    : ArangoshFeature{server, *this} {
+  : ArangoshFeature(server, *this) {
   startsAfter<V8SecurityFeature>();
   _monitoredProcesses.reserve(10);
 }
@@ -149,8 +149,8 @@ void ProcessMonitorThread::run() {  // override
 std::optional<ExternalProcessStatus> getHistoricStatus(
     TRI_pid_t pid, application_features::ApplicationServer& server) {
   return static_cast<ArangoshServer&>(server)
-      .getFeature<ProcessMonitoringFeature>()
-      .getHistoricStatus(pid);
+    .getFeature<ProcessMonitoringFeature>()
+    .getHistoricStatus(pid);
 }
 
 }  // namespace arangodb

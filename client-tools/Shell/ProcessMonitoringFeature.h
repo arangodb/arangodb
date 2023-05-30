@@ -29,9 +29,9 @@
 #include <vector>
 #include <mutex>
 
+#include "Shell/arangosh.h"
 #include "Basics/Thread.h"
 #include "Basics/process-utils.h"
-#include "Shell/arangosh.h"
 #include <absl/cleanup/cleanup.h>
 
 namespace arangodb {

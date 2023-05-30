@@ -29,6 +29,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/threads.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalid process id
@@ -123,6 +125,7 @@ struct ExternalProcess : public ExternalId {
 ////////////////////////////////////////////////////////////////////////////////
 
 extern std::vector<ExternalProcess*> ExternalProcesses;
+extern arangodb::Mutex ExternalProcessesLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief external process status

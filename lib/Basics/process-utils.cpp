@@ -163,7 +163,7 @@ T readEntry(char const*& p, char const* e) {
 std::vector<ExternalProcess*> ExternalProcesses;
 
 /// @brief lock for protected access to vector ExternalProcesses
-static arangodb::Mutex ExternalProcessesLock;
+arangodb::Mutex ExternalProcessesLock;
 
 ProcessInfo::ProcessInfo()
     : _minorPageFaults(0),
@@ -1168,10 +1168,9 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
       LOG_TOPIC("308ea", WARN, arangodb::Logger::FIXME)
           << "waitpid returned error for pid " << pid._pid << " (" << wait
           << "): " << TRI_last_error();
-      status->_errorMessage =
-          std::string("waitpid returned error for pid ") +
-          arangodb::basics::StringUtils::itoa(pid._pid) +
-          std::string(": ") + std::string(TRI_last_error());
+      status->_errorMessage = std::string("waitpid returned error for pid ") +
+                              arangodb::basics::StringUtils::itoa(pid._pid) +
+                              std::string(": ") + std::string(TRI_last_error());
     } else if (static_cast<TRI_pid_t>(pid._pid) ==
                static_cast<TRI_pid_t>(res)) {
       if (timeoutHappened) {
@@ -1192,12 +1191,11 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
       }
     } else {
       LOG_TOPIC("0ab33", WARN, arangodb::Logger::FIXME)
-          << "unexpected waitpid result for pid " << external->_pid << ": "
-          << res;
-      status._errorMessage =
+          << "unexpected waitpid result for pid " << pid._pid << ": " << res;
+      status->_errorMessage =
           std::string("unexpected waitpid result for pid ") +
-          arangodb::basics::StringUtils::itoa(external->_pid) +
-          std::string(": ") + arangodb::basics::StringUtils::itoa(res);
+          arangodb::basics::StringUtils::itoa(pid._pid) + std::string(": ") +
+          arangodb::basics::StringUtils::itoa(res);
     }
 #else
     {
@@ -1218,8 +1216,8 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
           FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                         windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
           LOG_TOPIC("64246", WARN, arangodb::Logger::FIXME)
-              << "could not wait for subprocess with pid " << pid._pid
-              << ": " << windowsErrorBuf;
+              << "could not wait for subprocess with pid " << pid._pid << ": "
+              << windowsErrorBuf;
           status->_errorMessage =
               std::string("could not wait for subprocess with pid ") +
               arangodb::basics::StringUtils::itoa(
@@ -1253,8 +1251,8 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
             FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                           windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
             LOG_TOPIC("f79de", WARN, arangodb::Logger::FIXME)
-                << "could not wait for subprocess with pid " << pid._pid
-                << ": " << windowsErrorBuf;
+                << "could not wait for subprocess with pid " << pid._pid << ": "
+                << windowsErrorBuf;
             status->_errorMessage =
                 std::string("could not wait for subprocess with PID '") +
                 arangodb::basics::StringUtils::itoa(
@@ -1272,8 +1270,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
         DWORD exitCode = STILL_ACTIVE;
         if (!GetExitCodeProcess(process, &exitCode)) {
           LOG_TOPIC("798af", WARN, arangodb::Logger::FIXME)
-              << "exit status could not be determined for pid "
-              << pid._pid;
+              << "exit status could not be determined for pid " << pid._pid;
           status->_errorMessage =
               std::string("exit status could not be determined for pid ") +
               arangodb::basics::StringUtils::itoa(
