@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.8-preview-1.
+
 * BTS-1255: Fix sporadic memory usage accounting underflows in in-memory
   cache subsystem.
   Also turn the algorithm for freeing memory from a cache's buckets from a
