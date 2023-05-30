@@ -1,6 +1,18 @@
 devel
 -----
 
+* Removed the long-deprecated JavaScript-based traversal functionality,
+  including the following APIs:
+
+  - REST API endpoint `/_api/traversal`
+  - JavaScript module `@arangodb/graph/traversal`
+
+  The functionality provided by these APIs was deprecated and unmaintained
+  for many years. JavaScript-based traversals were replaced with AQL
+  traversals in ArangoDB version 3.0. Additionally, the JavaScript-based
+  traversals could not handle larger amounts of data and were thus very
+  limited.
+
 * Updated ArangoDB Starter to 0.15.8-preview-1.
 
 * BTS-1255: Fix sporadic memory usage accounting underflows in in-memory
