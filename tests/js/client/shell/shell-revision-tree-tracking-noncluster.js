@@ -103,7 +103,10 @@ function RevisionTreeTrackingSuite () {
 
       // must have more memory allocated for the documents
       let metric = getMetric();
-      assertTrue(metric >= initial + n * (8 + 32), { metric, initial });
+      // 48 = sizeof(void*) + sizeof(decltype(_revisionInsertBuffers)::mapped_type).
+      // must be changed when type of RocksDBMetaCollection::_revisionInsertBuffers
+      // changes.
+      assertTrue(metric >= initial + n * 48, { metric, initial });
     },
     
   };

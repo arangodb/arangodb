@@ -38,6 +38,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <type_traits>
 
 namespace arangodb {
 class RevisionReplicationIterator;
@@ -171,10 +172,19 @@ class RocksDBMetaCollection : public PhysicalCollection {
           std::unique_lock<std::mutex>& lock)> const& callback);
 
   // used for calculating memory usage in _revisionsBufferedMemoryUsage
-  // approximate memory usage for top-level items
-  static constexpr uint64_t bufferedEntrySize() { return 40; }
-  // approximate memory usage for individual items in a top-level item
-  static constexpr uint64_t bufferedEntryItemSize() { return sizeof(uint64_t); }
+  // approximate memory usage for top-level items.
+  // approximate size of a single entry in _revisionInsertBuffers plus the
+  // size of one allocation.
+  static constexpr uint64_t bufferedEntrySize() {
+    return sizeof(void*) + sizeof(decltype(_revisionInsertBuffers)::value_type);
+  }
+  // approximate memory usage for individual items in a top-level item,
+  // i.e. size of _revisionInsertBuffers.second::value_type.
+  // this does not take into account unused capacity in the
+  // _revisionInsertBuffers.second.
+  static constexpr uint64_t bufferedEntryItemSize() {
+    return sizeof(decltype(_revisionInsertBuffers)::mapped_type::value_type);
+  }
 
   void increaseBufferedMemoryUsage(uint64_t value) noexcept;
   void decreaseBufferedMemoryUsage(uint64_t value) noexcept;
@@ -303,6 +313,12 @@ class RocksDBMetaCollection : public PhysicalCollection {
       _revisionInsertBuffers;
   std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>>
       _revisionRemovalBuffers;
+
+  // current memory accounting implementation requires both members to use the
+  // same underlying data structures
+  static_assert(std::is_same_v<decltype(_revisionInsertBuffers)::value_type,
+                               decltype(_revisionRemovalBuffers)::value_type>);
+
   std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;
 
   uint64_t _revisionsBufferedMemoryUsage;
