@@ -200,7 +200,7 @@ std::string Supervision::_agencyPrefix = "/arango";
 Supervision::Supervision(ArangodServer& server)
     : arangodb::Thread(server, "Supervision"),
       _agent(nullptr),
-      _spearhead(server, _agent),
+      _spearhead(server),
       _snapshot(nullptr),
       _transient("Transient"),
       _frequency(1.),

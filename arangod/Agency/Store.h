@@ -76,7 +76,7 @@ class Agent;
 class Store {
  public:
   /// @brief Construct with name
-  explicit Store(arangodb::ArangodServer& server, Agent* agent,
+  explicit Store(arangodb::ArangodServer& server,
                  std::string const& name = "root");
 
   /// @brief Destruct
@@ -111,7 +111,7 @@ class Store {
 
   /// @brief Apply log entries in query, also process callbacks
   std::vector<bool> applyLogEntries(arangodb::velocypack::Builder const& query,
-                                    index_t index, term_t term, bool inform);
+                                    index_t index, term_t term);
 
   /// @brief Read multiple entries from store
   std::vector<bool> readMultiple(arangodb::velocypack::Slice query,
@@ -184,9 +184,6 @@ class Store {
   /// @brief Read/Write mutex on database
   /// guard _node, _timeTable, _observerTable, _observedTable
   mutable std::mutex _storeLock;
-
-  /// @brief My own agent
-  Agent* _agent;
 
   /// @brief Root node
   Node _node;

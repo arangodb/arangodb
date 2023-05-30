@@ -47,58 +47,15 @@
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
 
-/// Build endpoint from URL
-static bool endpointPathFromUrl(std::string_view url, std::string& endpoint,
-                                std::string& path) {
-  std::stringstream ep;
-  path = "/";
-  size_t pos = 7;
-
-  if (url.starts_with("http://")) {
-    ep << "tcp://";
-  } else if (url.starts_with("https://")) {
-    ep << "ssl://";
-    pos = 8;
-  } else {
-    return false;
-  }
-
-  size_t slash_p = url.find('/', pos);
-  if (slash_p == std::string::npos) {
-    ep << url.substr(pos);
-  } else {
-    ep << url.substr(pos, slash_p - pos);
-    path = url.substr(slash_p);
-  }
-
-  TRI_ASSERT(ep.str().find(':') != std::string::npos);
-  // the following if condition should never be true, as we
-  // have always added one of the protocol strings "tcp://" or
-  // "ssl://" to ep when we get here. these protocol strings
-  // both contain a colon character.
-  // TODO: remove it entirely if the assertion above does
-  // never trigger
-  //
-  //   if (ep.str().find(':') == std::string::npos) {
-  //    ep << ":8529";
-  //   }
-
-  endpoint = ep.str();
-
-  return true;
-}
-
 /// Ctor with name
-Store::Store(arangodb::ArangodServer& server, Agent* agent,
-             std::string const& name)
-    : _server(server), _agent(agent), _node(name, this) {}
+Store::Store(arangodb::ArangodServer& server, std::string const& name)
+    : _server(server), _node(name, this) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
   if (&rhs != this) {
     std::lock_guard otherLock{rhs._storeLock};
     std::lock_guard lock{_storeLock};
-    _agent = rhs._agent;
     _node = rhs._node;
   }
   return *this;
@@ -109,7 +66,6 @@ Store& Store::operator=(Store&& rhs) {
   if (&rhs != this) {
     std::lock_guard otherLock{rhs._storeLock};
     std::lock_guard lock{_storeLock};
-    _agent = std::move(rhs._agent);
     _node = std::move(rhs._node);
   }
   return *this;
@@ -254,8 +210,7 @@ struct notify_t {
 
 /// Apply (from logs)
 std::vector<bool> Store::applyLogEntries(
-    arangodb::velocypack::Builder const& queries, index_t index, term_t term,
-    bool inform) {
+    arangodb::velocypack::Builder const& queries, index_t index, term_t term) {
   std::vector<bool> applied;
 
   // Apply log entries
@@ -264,132 +219,6 @@ std::vector<bool> Store::applyLogEntries(
 
     for (auto it : VPackArrayIterator(queries.slice())) {
       applied.push_back(applies(it.value()));
-    }
-  }
-
-  if (inform && _agent->leading()) {
-    // Find possibly affected callbacks
-    std::multimap<std::string, std::shared_ptr<notify_t>> in;
-
-    for (auto it : VPackArrayIterator(queries.slice())) {
-      for (auto j : VPackObjectIterator(it.value())) {
-        if (!j.value.isObject()) {
-          continue;
-        }
-
-        if (auto operSlice = j.value.get("op"); !operSlice.isNone()) {
-          // we have an "op" key
-
-          if (operSlice.stringView() != "observe" &&
-              operSlice.stringView() != "unobserve") {
-            std::string uri = j.key.copyString();
-            if (!uri.empty() && uri.at(0) != '/') {
-              uri = std::string("/") + uri;
-            }
-            while (true) {
-              size_t pos = uri.find_last_of('/');
-              if (pos == std::string::npos || pos == 0) {
-                break;
-              } else {
-                // this is superior to  uri = uri.substr(0, pos);
-                uri.resize(pos);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // Sort by URLs to avoid multiple callbacks
-    std::vector<std::string> urls;
-    for (auto it = in.begin(), end = in.end(); it != end;
-         it = in.upper_bound(it->first)) {
-      urls.push_back(it->first);
-    }
-
-    auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
-    network::ConnectionPool* cp = nf.pool();
-
-    network::RequestOptions reqOpts;
-    reqOpts.timeout = network::Timeout(2);
-
-    // Callback
-
-    for (auto const& url : urls) {
-      VPackBufferUInt8 buffer;
-      VPackBuilder body(buffer);  // host
-      {
-        VPackObjectBuilder b(&body);
-        body.add("term", VPackValue(term));
-        body.add("index", VPackValue(index));
-
-        auto ret = in.equal_range(url);
-
-        // key -> (modified -> op)
-        // using the map to make sure no double key entries end up in document
-        std::map<std::string, std::map<std::string, std::string>> result;
-        for (auto it = ret.first; it != ret.second; ++it) {
-          result[it->second->key][it->second->modified] = it->second->oper;
-        }
-
-        // Work the map into JSON
-        for (auto const& m : result) {
-          body.add(VPackValue(m.first));
-          {
-            VPackObjectBuilder guard(&body);
-            for (auto const& m2 : m.second) {
-              body.add(VPackValue(m2.first));
-              {
-                VPackObjectBuilder guard2(&body);
-                body.add("op", VPackValue(m2.second));
-              }
-            }
-          }
-        }
-      }
-
-      std::string endpoint, path;
-      if (endpointPathFromUrl(url, endpoint, path)) {
-        LOG_TOPIC("9dbfc", TRACE, Logger::AGENCY)
-            << "Sending callback to " << url;
-        Agent* agent = _agent;
-        try {
-          network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path,
-                               buffer, reqOpts)
-              .thenValue([=, this](network::Response r) {
-                if (r.fail()) {
-                  LOG_TOPIC("9dbf1", TRACE, Logger::AGENCY)
-                      << url << "(no response, " << fuerte::to_string(r.error)
-                      << "): " << r.slice().toJson();
-                } else {
-                  if (r.statusCode() >= 400) {
-                    LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
-                        << url << "(" << r.statusCode() << ", "
-                        << fuerte::to_string(r.error)
-                        << "): " << r.slice().toJson();
-
-                    if (r.statusCode() == 404 && _agent != nullptr) {
-                      LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY)
-                          << "dropping dead callback at " << url;
-                      agent->trashStoreCallback(url, VPackSlice(buffer.data()));
-                    }
-                  } else {
-                    LOG_TOPIC("9dbfb", TRACE, Logger::AGENCY)
-                        << "Successfully sent callback to " << url;
-                  }
-                }
-              });
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("c4612", DEBUG, Logger::AGENCY)
-              << "Failed to deliver callback to endpoint " << endpoint << ": "
-              << ex.what();
-        } catch (...) {
-          LOG_TOPIC("e931c", DEBUG, Logger::AGENCY)
-              << "Failed to deliver callback to endpoint " << endpoint;
-        }
-      } else {
-        LOG_TOPIC("76aca", WARN, Logger::AGENCY) << "Malformed URL " << url;
-      }
     }
   }
 
