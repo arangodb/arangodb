@@ -7,6 +7,12 @@ devel
   The metric includes memory used for buffering index write operations that
   still have to applied.
 
+* BTS-1255: Fix sporadic memory usage accounting underflows in in-memory
+  cache subsystem.
+  Also turn the algorithm for freeing memory from a cache's buckets from a
+  non-deterministic one that did not guarantee progress into a bounded
+  algorithm with guaranteed progress.
+
 * Add a startup parameter `--rclone.argument` which can be utilised to enable
   debugging with logfiles in hot backup RClone upload operacions:
   `--rclone.argument=--log-level=DEBUG`
