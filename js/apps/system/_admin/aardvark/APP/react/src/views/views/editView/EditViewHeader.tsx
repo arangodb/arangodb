@@ -14,14 +14,17 @@ import { CopyPropertiesDropdown } from "./CopyPropertiesDropdown";
 import { EditableViewNameField } from "./EditableViewNameField";
 
 export const EditViewHeader = () => {
+  const { isAdminUser } = useEditViewContext();
   return (
     <Box padding="4" borderBottomWidth="2px" borderColor="gray.200">
       <Box display="grid" gap="4" gridTemplateRows={"30px 1fr"}>
         <EditableNameFieldWrap />
-        <Box display="grid" gridTemplateColumns="1fr 0.5fr">
-          <CopyPropertiesDropdown />
-          <ActionButtons />
-        </Box>
+        {isAdminUser && (
+          <Box display="grid" gridTemplateColumns="1fr 0.5fr">
+            <CopyPropertiesDropdown />
+            <ActionButtons />
+          </Box>
+        )}
       </Box>
     </Box>
   );
