@@ -320,7 +320,7 @@ struct GeoDistanceRangeAcceptor {
   bool operator()(geo::ShapeContainer const& shape) const {
     auto const point = shape.centroid();
 
-    return (MinIncl ? min.Contains(point) : min.InteriorContains(point)) &&
+    return !(MinIncl ? min.InteriorContains(point) : min.Contains(point)) &&
            (MaxIncl ? max.Contains(point) : max.InteriorContains(point));
   }
 };
