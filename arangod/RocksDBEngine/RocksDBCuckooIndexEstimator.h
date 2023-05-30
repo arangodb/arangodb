@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <map>
 #include <set>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -518,11 +519,20 @@ class RocksDBCuckooIndexEstimator {
 
   void deriveSizesAndAlloc();
 
-  // used for calculating memory usage in _bfferedMemoryUsage
-  // approximate memory usage for top-level items
-  static constexpr uint64_t bufferedEntrySize() { return 40; }
-  // approximate memory usage for individual items in a top-level item
-  static constexpr uint64_t bufferedEntryItemSize() { return sizeof(uint64_t); }
+  // used for calculating memory usage in _bufferedMemoryUsage
+  // approximate memory usage for top-level items.
+  // size of one allocation plus the size of an entry in _insertBuffers.
+  static constexpr uint64_t bufferedEntrySize() {
+    return sizeof(void*) +
+           sizeof(typename decltype(_insertBuffers)::value_type);
+  }
+
+  // approximate memory usage for individual items in a top-level item.
+  // does not take into account unused capacity in _insertBuffers.second.
+  static constexpr uint64_t bufferedEntryItemSize() {
+    return sizeof(
+        typename decltype(_insertBuffers)::value_type::second_type::value_type);
+  }
 
   void increaseMemoryUsage(uint64_t value) noexcept;
   void decreaseMemoryUsage(uint64_t value) noexcept;
@@ -568,6 +578,12 @@ class RocksDBCuckooIndexEstimator {
   uint64_t _memoryUsage;
   std::multimap<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
   std::multimap<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
+
+  // current assumption for memory accounting is that both members use the same
+  // underlying data structures.
+  static_assert(std::is_same_v<typename decltype(_insertBuffers)::value_type,
+                               typename decltype(_removalBuffers)::value_type>);
+
   std::set<rocksdb::SequenceNumber> _truncateBuffer;
 
   // Instance to compute the first hash function

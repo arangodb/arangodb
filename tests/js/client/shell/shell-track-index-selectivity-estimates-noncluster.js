@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen : 4000 */
-/* global arango, assertTrue, assertFalse, assertEqual, assertNotEqual */
+/* global arango, assertTrue, assertEqual, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -40,18 +40,14 @@ function IndexEstimatesMemorySuite () {
   };
   
   return {
-    setUpAll: function () {
-      // unfortunately this test may be affected by previous tests in 
-      // other test suites that had created indexes with selectivity
-      // estimates in other databases. database dropping executes the
-      // dropping of the collection only slightly deferred, so it is
-      // possible that a database is still being dropped (and estimates
-      // are being shut down for the underlying collections) while this
-      // test executes.
-      internal.sleep(1);
+    setUp: function () {
+      // wait until all pending estimates & revision tree buffers have been applied
+      let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      assertNull(res);
     },
 
     tearDown: function () {
+      internal.debugClearFailAt();
       db._drop(cn);
     },
     
@@ -97,17 +93,42 @@ function IndexEstimatesMemorySuite () {
     },
     
     testEstimatesShouldIncreaseWithEdgeIndex: function () {
+      // block sync thread from doing anything from now on
+      internal.debugSetFailAt("RocksDBSettingsManagerSync");
+
+      // wait until all pending estimates & revision tree buffers have been applied
+      let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      assertNull(res);
+
+      let c = db._create(cn);
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
+      
       const initial = getMetric();
 
-      // creating an edge collection creates an edge index with 2 caches
-      db._createEdgeCollection(cn);
+      const n = 10000;
+
+      let docs = [];
+      for (let i = 0; i < n; ++i) {
+        docs.push({value: i});
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
       
       let metric = getMetric();
-      assertTrue(metric > initial, { metric, initial });
+      // memory usage tracking. assumption is each index modification takes
+      // at least 8 bytes. we do not expect the exact amount here, as it depends
+      // on how many batches we will use etc.
+      assertTrue(metric >= initial + n * 8, { metric, initial });
     },
 
+    testEstimatesShouldWhenInsertingIntoPersistentIndex: function () {
+    },
   };
 }
 
-jsunity.run(IndexEstimatesMemorySuite);
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(IndexEstimatesMemorySuite);
+}
 return jsunity.done();
