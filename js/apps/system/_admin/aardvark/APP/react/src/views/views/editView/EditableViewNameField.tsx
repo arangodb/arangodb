@@ -24,17 +24,7 @@ export const EditableViewNameField = ({
   const [newName, setNewName] = useState(view.name);
   if (isOpen) {
     return (
-      <Stack
-        as="form"
-        margin="0"
-        direction="row"
-        alignItems="center"
-        onSubmit={async event => {
-          event.preventDefault();
-          setCurrentName(newName);
-          onClose();
-        }}
-      >
+      <Stack margin="0" direction="row" alignItems="center">
         <Input
           autoFocus
           value={newName}
@@ -45,7 +35,16 @@ export const EditableViewNameField = ({
           maxWidth="300px"
           placeholder="Enter name"
         />
-        <IconButton type="submit" aria-label="Edit name" icon={<CheckIcon />} />
+        <IconButton
+          onClick={async event => {
+            event.stopPropagation();
+            event.preventDefault();
+            setCurrentName(newName);
+            onClose();
+          }}
+          aria-label="Edit name"
+          icon={<CheckIcon />}
+        />
       </Stack>
     );
   }
