@@ -12,7 +12,7 @@ export const AnalyzersDropdown = () => {
     value: analyzer.name
   }));
   const { getCurrentLinkValue, setCurrentLinkValue } = useLinkModifiers();
-  const analyzersValue = getCurrentLinkValue(["analyzers"]);
+  const analyzersValue = getCurrentLinkValue(["analyzers"]) || [];
   const analyzers =
     analyzersValue?.map((analyzer: string) => ({
       label: analyzer,
