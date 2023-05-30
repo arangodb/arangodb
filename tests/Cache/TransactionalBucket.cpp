@@ -62,6 +62,64 @@ TEST(CacheTransactionalBucketTest, test_locking_behavior) {
   ASSERT_EQ(1ULL, bucket->_banishTerm);
 }
 
+TEST(CacheTransactionalBucketTest, verify_eviction_behavior) {
+  auto bucket = std::make_unique<TransactionalBucket>();
+
+  std::uint32_t hashes[8] = {
+      1, 2, 3, 4,
+      5, 6, 7, 8};  // don't have to be real, but should be unique and non-zero
+  std::uint64_t keys[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+  std::uint64_t values[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+  CachedValue* ptrs[8];
+  for (std::size_t i = 0; i < 8; i++) {
+    ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(std::uint64_t),
+                                     &(values[i]), sizeof(std::uint64_t));
+    ASSERT_NE(ptrs[i], nullptr);
+  }
+
+  bool success = bucket->lock(-1LL);
+  ASSERT_TRUE(success);
+
+  ASSERT_FALSE(bucket->isFull());
+  ASSERT_EQ(nullptr, bucket->evictionCandidate(false));
+
+  // fill bucket
+  for (std::size_t i = 0; i < 8; i++) {
+    ASSERT_FALSE(bucket->isFull());
+    bucket->insert(hashes[i], ptrs[i]);
+    ASSERT_EQ(ptrs[0], bucket->evictionCandidate(false));
+  }
+  ASSERT_TRUE(bucket->isFull());
+
+  for (std::size_t i = 0; i < 8; i++) {
+    CachedValue* res = bucket->find<BinaryKeyHasher>(
+        hashes[i], ptrs[i]->key(), ptrs[i]->keySize(), /*moveToFront*/ false);
+    ASSERT_EQ(res, ptrs[i]);
+  }
+
+  for (std::size_t i = 0; i < 8; i++) {
+    ASSERT_EQ(ptrs[i], bucket->evictionCandidate(false));
+    std::uint64_t expected = ptrs[i]->size();
+    std::uint64_t reclaimed = bucket->evictCandidate(/*moveToFront*/ false);
+    ASSERT_EQ(reclaimed, expected);
+    ptrs[i] = nullptr;
+
+    for (std::size_t j = 0; j < 8; ++j) {
+      CachedValue* res = bucket->find<BinaryKeyHasher>(
+          hashes[j], &keys[j], /*keySize*/ sizeof(std::uint64_t),
+          /*moveToFront*/ false);
+      if (j > i) {
+        ASSERT_NE(nullptr, ptrs[j]);
+        ASSERT_EQ(res, ptrs[j]);
+      } else {
+        ASSERT_EQ(res, nullptr);
+      }
+    }
+  }
+  ASSERT_EQ(nullptr, bucket->evictionCandidate(false));
+  bucket->unlock();
+}
+
 TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
   auto bucket = std::make_unique<TransactionalBucket>();
   bool success;
@@ -81,7 +139,7 @@ TEST(CacheTransactionalBucketTest, verify_that_insertion_works_as_expected) {
   success = bucket->lock(-1LL);
   ASSERT_TRUE(success);
 
-  // insert three to fill
+  // fill bucket
   ASSERT_FALSE(bucket->isFull());
   for (std::size_t i = 0; i < 8; i++) {
     bucket->insert(hashes[i], ptrs[i]);

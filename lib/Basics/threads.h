@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include "Basics/ErrorCode.h"
 #include "Basics/operating-system.h"
 
