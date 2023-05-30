@@ -431,7 +431,7 @@ index_t State::logFollower(VPackSlice transactions) {
       // Now we must completely erase our log and compaction snapshots and
       // start from the snapshot
       Store snapshot(_agent->server(), _agent, "snapshot");
-      snapshot = transactions[0];
+      snapshot.loadFromVelocyPack(transactions[0]);
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC("f7250", FATAL, Logger::AGENCY)
             << "Could not restore received log snapshot.";
@@ -984,7 +984,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
 
     VPackSlice ii = result[0];
     try {
-      store = ii;
+      store.loadFromVelocyPack(ii);
       index = extractIndexFromKey(ii);
       term = ii.get("term").getNumber<uint64_t>();
     } catch (std::exception const& e) {
@@ -1739,7 +1739,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   if (result.length() == 1) {
     // Result can only have length 0 or 1.
     VPackSlice s = result[0];
-    store = s;
+    store.loadFromVelocyPack(s);
     index = extractIndexFromKey(s);
     term = s.get("term").getNumber<uint64_t>();
     LOG_TOPIC("d838b", INFO, Logger::AGENCY)

@@ -124,7 +124,7 @@ class Store {
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
 
-  Store& operator=(VPackSlice const& slice);
+  Store& loadFromVelocyPack(VPackSlice slice);
 
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;

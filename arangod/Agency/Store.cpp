@@ -826,14 +826,14 @@ void Store::clear() {
 }
 
 /// Apply a request to my key value store
-Store& Store::operator=(VPackSlice const& s) {
+Store& Store::loadFromVelocyPack(VPackSlice s) {
   TRI_ASSERT(s.isObject());
   TRI_ASSERT(s.hasKey("readDB"));
   auto const& slice = s.get("readDB");
 
   std::lock_guard storeLocker{_storeLock};
   if (slice.isArray()) {
-    TRI_ASSERT(slice.length() == 4);
+    TRI_ASSERT(slice.length() >= 2);
     _node.applies(slice[0]);
 
     if (s.hasKey("version")) {
