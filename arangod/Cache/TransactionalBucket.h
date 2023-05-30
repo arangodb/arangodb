@@ -174,7 +174,7 @@ struct TransactionalBucket {
   /// Returns the size of the evicted value in case a value was evicted.
   /// Returns 0 otherwise.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t evictCandidate() noexcept;
+  std::uint64_t evictCandidate(bool moveToFront) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Evicts the given value from the bucket. Requires state to be
