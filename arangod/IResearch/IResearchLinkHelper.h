@@ -35,10 +35,6 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
-#endif
-
 namespace arangodb {
 
 class LogicalCollection;
@@ -103,7 +99,6 @@ struct IResearchLinkHelper {
       irs::type_info::type_id const* primarySortCompression = nullptr,
       IResearchViewStoredValues const* storedValues = nullptr,
 #ifdef USE_ENTERPRISE
-      IResearchOptimizeTopK const* optimizeTopK = nullptr,
       bool const* pkCache = nullptr, bool const* sortCache = nullptr,
 #endif
       velocypack::Slice idSlice = {}, std::string_view collectionName = {});

@@ -308,7 +308,7 @@ Result modifyLinks(containers::FlatHashSet<DataSourceId>& modified,
         &view.primarySort(), &view.primarySortCompression(),
         &view.storedValues(),
 #ifdef USE_ENTERPRISE
-        &view.meta()._optimizeTopK, &pkCache, &sortCache,
+        &pkCache, &sortCache,
 #endif
         link.get(arangodb::StaticStrings::IndexId), collectionName);
 
@@ -695,8 +695,7 @@ Result IResearchLinkHelper::normalize(
     irs::type_info::type_id const* primarySortCompression,
     IResearchViewStoredValues const* storedValues,
 #ifdef USE_ENTERPRISE
-    IResearchOptimizeTopK const* optimizeTopK, bool const* pkCache,
-    bool const* sortCache,
+    bool const* pkCache, bool const* sortCache,
 #endif
     velocypack::Slice idSlice, std::string_view collectionName) {
   if (!normalized.isOpenObject()) {
@@ -776,10 +775,6 @@ Result IResearchLinkHelper::normalize(
     meta._storedValues = *storedValues;
   }
 #ifdef USE_ENTERPRISE
-  if (optimizeTopK) {
-    meta._optimizeTopK = *optimizeTopK;
-  }
-
   if (pkCache) {
     meta._pkCache = *pkCache;
   }

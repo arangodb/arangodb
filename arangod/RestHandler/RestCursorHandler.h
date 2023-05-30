@@ -33,6 +33,7 @@
 #include "Scheduler/Scheduler.h"
 
 #include <mutex>
+#include <optional>
 
 namespace arangodb {
 namespace velocypack {
@@ -122,7 +123,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   /// @brief look up cursor by id. side-effect: populates _cursor in case cursor
   /// was found. in case cursor was not found, writes an error into the response
-  void lookupCursor(std::string_view id, bool mustBeRetriable);
+  void lookupCursor(std::string_view id,
+                    std::optional<uint64_t> batchId = std::nullopt);
 
   /// @brief return a cursor to the repository, if one is set.
   void releaseCursor();
