@@ -833,20 +833,8 @@ Store& Store::loadFromVelocyPack(VPackSlice s) {
 
   std::lock_guard storeLocker{_storeLock};
   if (slice.isArray()) {
-    TRI_ASSERT(slice.length() >= 2);
+    TRI_ASSERT(slice.length() >= 1);
     _node.applies(slice[0]);
-
-    if (s.hasKey("version")) {
-      TRI_ASSERT(slice[1].isObject());
-      for (auto const& entry : VPackObjectIterator(slice[1])) {
-        if (entry.value.isNumber()) {
-          auto const& key = entry.key.copyString();
-          if (_node.has(key)) {
-            _node.getOrCreate(key);
-          }
-        }
-      }
-    }
 
   } else if (slice.isObject()) {
     _node.applies(slice);
