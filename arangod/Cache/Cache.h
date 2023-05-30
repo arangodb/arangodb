@@ -36,6 +36,7 @@
 #include "Cache/Table.h"
 
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <memory>
 
@@ -140,19 +141,30 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool isResizing() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Check whether the cache is currently in the process of resizing.
+  //////////////////////////////////////////////////////////////////////////////
+  bool isResizingFlagSet() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache is currently in the process of migrating.
   //////////////////////////////////////////////////////////////////////////////
   bool isMigrating() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Chedk whether the cache is currently migrating or resizing.
+  /// @brief Check whether the cache is currently in the process of migrating.
   //////////////////////////////////////////////////////////////////////////////
-  bool isBusy() const noexcept;
+  bool isMigratingFlagSet() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Check whether the cache is currently in the process of resizing
+  /// or migrating.
+  //////////////////////////////////////////////////////////////////////////////
+  bool isResizingOrMigratingFlagSet() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begun the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
-  inline bool isShutdown() const noexcept { return _shutdown.load(); }
+  bool isShutdown() const noexcept { return _shutdown.load(); }
 
   // helper struct that takes care of inserting into the cache during
   // object construction. The insertion is not guaranteed to work. To
@@ -264,7 +276,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool freeMemory();
   bool migrate(std::shared_ptr<Table> newTable);
 
-  virtual std::uint64_t freeMemoryFrom(std::uint32_t hash) = 0;
+  // free memory while callback returns true
+  virtual bool freeMemoryWhile(
+      std::function<bool(std::uint64_t)> const& cb) = 0;
   virtual void migrateBucket(void* sourcePtr,
                              std::unique_ptr<Table::Subtable> targets,
                              Table& newTable) = 0;

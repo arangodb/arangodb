@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +26,8 @@
 #include "Basics/debugging.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
-#include "Logger/LogMacros.h"
 
 #include <algorithm>
-#include <atomic>
-#include <cstdint>
 
 namespace arangodb::cache {
 
@@ -43,24 +40,24 @@ Metadata::Metadata() noexcept
       usage(0),
       softUsageLimit(0),
       hardUsageLimit(0),
-      _lock(),
       _migrating(false),
       _resizing(false) {}
 
-Metadata::Metadata(uint64_t usageLimit, std::uint64_t fixed,
-                   std::uint64_t table, std::uint64_t max) noexcept
+Metadata::Metadata(std::uint64_t usageLimit, std::uint64_t fixed,
+                   std::uint64_t tableSize, std::uint64_t max) noexcept
     : fixedSize(fixed),
-      tableSize(table),
+      tableSize(tableSize),
       maxSize(max),
-      allocatedSize(usageLimit + fixed + table + Manager::cacheRecordOverhead),
+      allocatedSize(usageLimit + fixed + tableSize +
+                    Manager::cacheRecordOverhead),
       deservedSize(allocatedSize),
       usage(0),
       softUsageLimit(usageLimit),
       hardUsageLimit(usageLimit),
-      _lock(),
       _migrating(false),
       _resizing(false) {
   TRI_ASSERT(allocatedSize <= maxSize);
+  checkInvariants();
 }
 
 Metadata::Metadata(Metadata&& other) noexcept
@@ -119,6 +116,14 @@ bool Metadata::adjustUsageIfAllowed(std::int64_t usageChange) noexcept {
   return true;
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void Metadata::checkInvariants() const noexcept {
+  TRI_ASSERT(allocatedSize == hardUsageLimit + tableSize + fixedSize +
+                                  Manager::cacheRecordOverhead);
+  TRI_ASSERT(allocatedSize <= maxSize);
+}
+#endif
+
 bool Metadata::adjustLimits(std::uint64_t softLimit,
                             std::uint64_t hardLimit) noexcept {
   TRI_ASSERT(_lock.isLockedWrite());
@@ -127,6 +132,7 @@ bool Metadata::adjustLimits(std::uint64_t softLimit,
     softUsageLimit = softLimit;
     hardUsageLimit = hardLimit;
     allocatedSize = hardUsageLimit + fixed;
+    checkInvariants();
 
     return true;
   };
@@ -190,6 +196,7 @@ void Metadata::changeTable(std::uint64_t newTableSize) noexcept {
   tableSize = newTableSize;
   allocatedSize =
       hardUsageLimit + fixedSize + tableSize + Manager::cacheRecordOverhead;
+  checkInvariants();
 }
 
 }  // namespace arangodb::cache
