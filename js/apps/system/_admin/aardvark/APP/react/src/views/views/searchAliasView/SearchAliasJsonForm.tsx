@@ -1,7 +1,7 @@
 import { Box } from "@chakra-ui/react";
-import Ajv, { JSONSchemaType } from "ajv";
+import Ajv from "ajv";
 import { useFormikContext } from "formik";
-import React, { useEffect } from "react";
+import React from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
 import { useEditViewContext } from "../editView/EditViewContext";
@@ -15,25 +15,11 @@ const ajv = new Ajv({
   $data: true
 });
 
-/**
- * used to remove the schema on unmount, to avoid issues in next usage
- */
-const useResetSchema = (
-  schema: JSONSchemaType<SearchAliasViewPropertiesType>
-) => {
-  useEffect(() => {
-    return () => {
-      ajv.removeSchema(schema.$id);
-    };
-  }, [schema]);
-};
-
 export const SearchAliasJsonForm = () => {
   const { setErrors, errors, setChanged } = useEditViewContext();
   const { setValues, values } =
     useFormikContext<SearchAliasViewPropertiesType>();
   const { schema } = useAliasViewSchema({ view: values });
-  useResetSchema(schema);
   return (
     <Box>
       <ControlledJSONEditor
