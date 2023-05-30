@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-20: fix UI placeholder format for locale when creating analyzers.
+
 * Removed the long-deprecated JavaScript-based traversal functionality,
   including the following APIs:
 
