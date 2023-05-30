@@ -1,5 +1,5 @@
 import { differenceWith, isEqual } from "lodash";
-import { useUpdateSearchView } from "../arangoSearchView/useUpdateSearchView";
+import { useUpdateSearchView } from "../editView/useUpdateSearchView";
 import { SearchAliasViewPropertiesType } from "../searchView.types";
 
 export const useUpdateAliasViewProperties = () => {

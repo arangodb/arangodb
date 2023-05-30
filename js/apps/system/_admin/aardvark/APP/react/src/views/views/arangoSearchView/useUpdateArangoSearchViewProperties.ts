@@ -1,6 +1,6 @@
 import { pick } from "lodash";
 import { ArangoSearchViewPropertiesType } from "../searchView.types";
-import { useUpdateSearchView } from "./useUpdateSearchView";
+import { useUpdateSearchView } from "../editView/useUpdateSearchView";
 
 export const useUpdateArangoSearchViewProperties = () => {
   const getProperties = ({
