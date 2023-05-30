@@ -198,7 +198,14 @@ void Manager::shutdown() {
       SpinUnlocker unguard(SpinUnlocker::Mode::Write, _lock);
       cache->shutdown();
     }
+
+    TRI_ASSERT(_activeTables == 0);
     freeUnusedTables();
+
+    TRI_ASSERT(std::all_of(_tables.begin(), _tables.end(),
+                           [](auto const& t) { return t.empty(); }));
+    TRI_ASSERT(_activeTables == 0);
+    TRI_ASSERT(_spareTables == 0);
     _shutdown = true;
   }
 }
@@ -316,7 +323,11 @@ void Manager::endTransaction(Transaction* tx) noexcept {
   _transactions.end(tx);
 }
 
-bool Manager::post(std::function<void()> fn) { return _schedulerPost(fn); }
+bool Manager::post(std::function<void()> fn) {
+  // lock already acquired by caller
+  TRI_ASSERT(_lock.isLockedWrite());
+  return _schedulerPost(std::move(fn));
+}
 
 std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     std::uint64_t fixedSize, std::uint64_t maxSize) {
@@ -342,6 +353,10 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     TRI_ASSERT(metadata.allocatedSize >= memoryUsage);
     ok = increaseAllowed(metadata.allocatedSize - memoryUsage, true);
     if (ok) {
+      TRI_ASSERT(_globalAllocation + (metadata.allocatedSize - memoryUsage) >=
+                 _fixedAllocation);
+      // we are subtracting the table's memory usage here because it was
+      // already tracked in leaseTable
       _globalAllocation += (metadata.allocatedSize - memoryUsage);
       TRI_ASSERT(_globalAllocation >= _fixedAllocation);
       _peakGlobalAllocation =
@@ -504,14 +519,17 @@ bool Manager::globalProcessRunning() const noexcept {
 }
 
 void Manager::prepareTask(Manager::TaskEnvironment environment) {
-  _outstandingTasks++;
+  // lock already acquired by caller
+  TRI_ASSERT(_lock.isLockedWrite());
+
+  ++_outstandingTasks;
   switch (environment) {
     case TaskEnvironment::rebalancing: {
-      _rebalancingTasks++;
+      ++_rebalancingTasks;
       break;
     }
     case TaskEnvironment::resizing: {
-      _resizingTasks++;
+      ++_resizingTasks;
       break;
     }
     case TaskEnvironment::none:
@@ -524,7 +542,8 @@ void Manager::prepareTask(Manager::TaskEnvironment environment) {
 void Manager::unprepareTask(Manager::TaskEnvironment environment) {
   switch (environment) {
     case TaskEnvironment::rebalancing: {
-      if ((--_rebalancingTasks) == 0) {
+      TRI_ASSERT(_rebalancingTasks > 0);
+      if (--_rebalancingTasks == 0) {
         SpinLocker guard(SpinLocker::Mode::Write, _lock);
         _rebalancing = false;
         _rebalanceCompleted = std::chrono::steady_clock::now();
@@ -532,7 +551,8 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
       break;
     }
     case TaskEnvironment::resizing: {
-      if ((--_resizingTasks) == 0) {
+      TRI_ASSERT(_resizingTasks > 0);
+      if (--_resizingTasks == 0) {
         SpinLocker guard(SpinLocker::Mode::Write, _lock);
         _resizing = false;
       }
@@ -544,7 +564,7 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
     }
   }
 
-  _outstandingTasks--;
+  --_outstandingTasks;
 }
 
 /// TODO Improve rebalancing algorithm
@@ -652,6 +672,7 @@ void Manager::freeUnusedTables() {
       _globalAllocation -= memoryUsage;
 
       TRI_ASSERT(_globalAllocation >= _fixedAllocation);
+      TRI_ASSERT(_spareTableAllocation >= memoryUsage);
       _spareTableAllocation -= memoryUsage;
       TRI_ASSERT(_spareTables > 0);
       --_spareTables;
@@ -684,11 +705,12 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   if (metadata.usage <= newLimit) {
     std::uint64_t oldLimit = metadata.hardUsageLimit;
     bool success = metadata.adjustLimits(newLimit, newLimit);
-    TRI_ASSERT(success);
     metaGuard.release();
-    _globalAllocation -= oldLimit;
-    _globalAllocation += newLimit;
+    TRI_ASSERT(success);
 
+    TRI_ASSERT(_globalAllocation + newLimit - oldLimit >= _fixedAllocation);
+    _globalAllocation += newLimit;
+    _globalAllocation -= oldLimit;
     TRI_ASSERT(_globalAllocation >= _fixedAllocation);
     _peakGlobalAllocation = std::max(_globalAllocation, _peakGlobalAllocation);
     return;
@@ -698,15 +720,25 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   TRI_ASSERT(success);
   TRI_ASSERT(!metadata.isResizing());
   metadata.toggleResizing();
+  TRI_ASSERT(metadata.isResizing());
   metaGuard.release();
 
-  auto task = std::make_shared<FreeMemoryTask>(environment, *this,
-                                               cache->shared_from_this());
-  bool dispatched = task->dispatch();
+  bool dispatched = false;
+  if (!cache->isShutdown()) {
+    try {
+      auto task = std::make_shared<FreeMemoryTask>(environment, *this,
+                                                   cache->shared_from_this());
+      dispatched = task->dispatch();
+    } catch (...) {
+      dispatched = false;
+    }
+  }
+
   if (!dispatched) {
-    // TODO: decide what to do if we don't have an io_service
     SpinLocker altMetaGuard(SpinLocker::Mode::Write, metadata.lock());
+    TRI_ASSERT(metadata.isResizing());
     metadata.toggleResizing();
+    TRI_ASSERT(!metadata.isResizing());
   }
 }
 
@@ -715,26 +747,31 @@ void Manager::migrateCache(Manager::TaskEnvironment environment,
                            std::shared_ptr<Table> table) {
   TRI_ASSERT(_lock.isLockedWrite());
   TRI_ASSERT(metaGuard.isLocked());
+  TRI_ASSERT(cache != nullptr);
   Metadata& metadata = cache->metadata();
 
   TRI_ASSERT(!metadata.isMigrating());
   metadata.toggleMigrating();
+  TRI_ASSERT(metadata.isMigrating());
   metaGuard.release();
 
-  bool dispatched;
-  try {
-    auto task = std::make_shared<MigrateTask>(environment, *this,
-                                              cache->shared_from_this(), table);
-    dispatched = task->dispatch();
-  } catch (...) {
-    dispatched = false;
+  bool dispatched = false;
+  if (!cache->isShutdown()) {
+    try {
+      auto task = std::make_shared<MigrateTask>(
+          environment, *this, cache->shared_from_this(), table);
+      dispatched = task->dispatch();
+    } catch (...) {
+      dispatched = false;
+    }
   }
 
   if (!dispatched) {
-    // TODO: decide what to do if we don't have an io_service
     SpinLocker altMetaGuard(SpinLocker::Mode::Write, metadata.lock());
     reclaimTable(std::move(table), true);
+    TRI_ASSERT(metadata.isMigrating());
     metadata.toggleMigrating();
+    TRI_ASSERT(!metadata.isMigrating());
   }
 }
 
@@ -747,7 +784,6 @@ std::shared_ptr<Table> Manager::leaseTable(std::uint32_t logSize) {
     if (increaseAllowed(Table::allocationSize(logSize), true)) {
       try {
         table = std::make_shared<Table>(logSize);
-
         _globalAllocation += table->memoryUsage();
         TRI_ASSERT(_globalAllocation >= _fixedAllocation);
         _peakGlobalAllocation =
