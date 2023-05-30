@@ -232,10 +232,14 @@ function runArangodRecovery (params, useEncryption) {
       arangod.pid = 0;
     });
   } else {
-    params.instanceManager.shutdownInstance(false);
+    return {
+      status: params.instanceManager.shutdownInstance(false),
+      message: "during shutdown"
+    };
   }
   return {
-    status: true
+    status: true,
+    message: ""
   };
 }
 
@@ -304,9 +308,10 @@ function recovery (options) {
           message: "unable to run recovery test " + test,
           duration: -1
         });
-    } catch (er) { print(er);}
+      } catch (er) { print(er);}
+      let res = { status: false};
       try {
-        runArangodRecovery(params, useEncryption);
+        res = runArangodRecovery(params, useEncryption);
       } catch (err) {
         results[test] = {
           failed: 1,
@@ -327,6 +332,12 @@ function recovery (options) {
         },
         test
       );
+      if (!res.status) {
+        results.status = false;
+        results[test].status = false;
+        results[test].failed = 1;
+        results[test].message += " - " + res.message;
+      }
       params.instanceManager.destructor(results[test].status);
       if (results[test].status) {
         if (params.keyDir !== "") {

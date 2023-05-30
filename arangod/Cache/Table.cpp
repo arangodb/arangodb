@@ -26,6 +26,7 @@
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <variant>
 
 #include "Cache/Table.h"
 
@@ -218,9 +219,15 @@ std::uint64_t Table::size() const noexcept { return _size; }
 
 std::uint32_t Table::logSize() const noexcept { return _logSize; }
 
-Table::BucketLocker Table::fetchAndLockBucket(std::uint32_t hash,
+Table::BucketLocker Table::fetchAndLockBucket(Table::HashOrId bucket,
                                               std::uint64_t maxTries) {
-  std::uint32_t index = (hash & _mask) >> _shift;
+  std::size_t index = [this, &bucket]() -> std::size_t {
+    if (std::holds_alternative<Table::BucketHash>(bucket)) {
+      return (std::get<Table::BucketHash>(bucket).value & _mask) >> _shift;
+    } else {
+      return std::get<Table::BucketId>(bucket).value;
+    }
+  }();
 
   BucketLocker bucketGuard;
 
@@ -234,7 +241,7 @@ Table::BucketLocker Table::fetchAndLockBucket(std::uint32_t hash,
         if (bucketGuard.bucket<GenericBucket>().isMigrated()) {
           bucketGuard.release();
           if (_auxiliary) {
-            bucketGuard = _auxiliary->fetchAndLockBucket(hash, maxTries);
+            bucketGuard = _auxiliary->fetchAndLockBucket(bucket, maxTries);
           }
         }
       }
@@ -368,10 +375,12 @@ std::uint32_t Table::idealSize() noexcept {
     return logSize() + 1;
   }
 
-  return (((static_cast<double>(_slotsUsed.load()) /
-            static_cast<double>(_slotsTotal)) > Table::idealUpperRatio)
+  std::uint64_t slotsUsed = _slotsUsed.load(std::memory_order_relaxed);
+
+  return (((static_cast<double>(slotsUsed) / static_cast<double>(_slotsTotal)) >
+           Table::idealUpperRatio)
               ? (logSize() + 1)
-              : (((static_cast<double>(_slotsUsed.load()) /
+              : (((static_cast<double>(slotsUsed) /
                    static_cast<double>(_slotsTotal)) < Table::idealLowerRatio)
                      ? (logSize() - 1)
                      : logSize()));
