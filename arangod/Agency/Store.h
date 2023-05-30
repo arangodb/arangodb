@@ -78,6 +78,7 @@ class Store {
   /// @brief Construct with name
   explicit Store(arangodb::ArangodServer& server,
                  std::string const& name = "root");
+  explicit Store(arangodb::ArangodServer& server, std::nullptr_t) = delete;
 
   /// @brief Destruct
   ~Store();

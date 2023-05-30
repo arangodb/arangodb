@@ -1732,7 +1732,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   VPackSlice result = queryResult.data->slice();
   TRI_ASSERT(result.isArray());
 
-  Store store(vocbase.server(), nullptr);
+  Store store(vocbase.server());
   index = 0;
   term = 0;
   if (result.length() == 1) {
