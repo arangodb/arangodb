@@ -1,6 +1,8 @@
 devel
 -----
 
+* Remove ttl and observe/unobserve from agency api.
+
 * Fix issue #18982: query editor null/undefined check filters out bindParams
   with value 0.
 
