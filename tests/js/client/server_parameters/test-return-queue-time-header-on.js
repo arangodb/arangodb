@@ -162,7 +162,7 @@ function testSuite() {
       waitForPending(pendingAtStart, 1, n - 30);
 
       let result = arango.GET("/_api/version", { "x-arango-queue-time-seconds": "0.00001" });
-      assertEqual(412, result.code);
+      assertEqual(412, result.code, JSON.stringify(result));
       assertEqual(errors.ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED.code, result.errorNum);
       
       // try with much higher queue time. this should succeed

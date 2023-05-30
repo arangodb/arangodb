@@ -56,8 +56,8 @@ TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
   ASSERT_NE(table.get(), nullptr);
   table->enable();
   for (std::uint64_t i = 0; i < table->size(); i++) {
-    std::uint32_t hash =
-        static_cast<std::uint32_t>(i << (32 - Table::kMinLogSize));
+    Table::BucketHash hash{
+        static_cast<std::uint32_t>(i << (32 - Table::kMinLogSize))};
     Table::BucketLocker guard = table->fetchAndLockBucket(hash, -1);
     ASSERT_TRUE(guard.isValid());
     ASSERT_TRUE(guard.isLocked());
@@ -106,7 +106,7 @@ TEST_F(CacheTableMigrationTest,
 
   std::uint32_t indexSmall = 17;  // picked something at "random"
   std::uint32_t indexLarge = indexSmall << 2;
-  std::uint32_t hash = indexSmall << (32 - small->logSize());
+  Table::BucketHash hash{indexSmall << (32 - small->logSize())};
 
   {
     Table::BucketLocker guard = small->fetchAndLockBucket(hash, -1);

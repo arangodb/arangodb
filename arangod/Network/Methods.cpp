@@ -343,7 +343,8 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
 
 /// Stateful handler class with enough information to keep retrying
 /// a request until an overall timeout is hit (or the request succeeds)
-class RequestsState final : public std::enable_shared_from_this<RequestsState> {
+class RequestsState final : public std::enable_shared_from_this<RequestsState>,
+                            public RetryableRequest {
  public:
   RequestsState(ConnectionPool* pool, DestinationId&& destination,
                 RestVerb type, std::string&& path,
@@ -585,17 +586,17 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       return;
     }
 
-    _workItem = sch->queueDelayed(
-        "request-retry", _options.continuationLane, tryAgainAfter,
-        [self = shared_from_this()](bool canceled) {
-          if (canceled) {
-            self->_promise.setValue(Response{std::move(self->_destination),
-                                             Error::ConnectionCanceled, nullptr,
-                                             nullptr});
-          } else {
-            self->startRequest();
-          }
-        });
+    auto& server = _pool->config().clusterInfo->server();
+    NetworkFeature& nf = server.getFeature<NetworkFeature>();
+    nf.retryRequest(shared_from_this(), _options.continuationLane,
+                    tryAgainAfter);
+  }
+
+ public:
+  void retry() override { startRequest(); }
+  void cancel() override {
+    _promise.setValue(Response{std::move(_destination),
+                               Error::ConnectionCanceled, nullptr, nullptr});
   }
 
  private:

@@ -761,11 +761,11 @@ void Conductor::persistPregelState(ExecutionState state) {
   TRI_ASSERT(state != ExecutionState::DEFAULT);
   auto updateResult = cWriter.updateResult(stateBuilder.slice());
   if (updateResult.ok()) {
-    LOG_PREGEL("063x3", INFO)
+    LOG_PREGEL("07323", INFO)
         << "Updated state into: \"" << StaticStrings::PregelCollection
         << "\" collection for PID: " << executionNumber();
   } else {
-    LOG_PREGEL("063x4", INFO)
+    LOG_PREGEL("0ffa4", INFO)
         << "Could not store result into: \"" << StaticStrings::PregelCollection
         << "\" collection for PID: " << executionNumber();
   }
