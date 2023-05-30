@@ -55,7 +55,13 @@ Result RocksDBSyncThread::syncWal() {
 
   // set time of last syncing under the lock
   auto const now = std::chrono::steady_clock::now();
-  {
+
+  // actual syncing is done without holding the lock
+  auto const result = sync(db);
+
+  if (result.ok()) {
+    auto lastSequenceNumber = db->GetLatestSequenceNumber();
+
     std::lock_guard guard{_condition.mutex};
 
     if (now > _lastSyncTime) {
@@ -63,16 +69,13 @@ Result RocksDBSyncThread::syncWal() {
       _lastSyncTime = now;
     }
 
-    auto lastSequenceNumber = db->GetLatestSequenceNumber();
-
     if (lastSequenceNumber > _lastSequenceNumber) {
       // update last sequence number
       _lastSequenceNumber = lastSequenceNumber;
     }
   }
 
-  // actual syncing is done without holding the lock
-  return sync(db);
+  return result;
 }
 
 Result RocksDBSyncThread::sync(rocksdb::DB* db) {
