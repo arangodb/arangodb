@@ -1311,30 +1311,53 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
       var tooltipText = "";
 
       if (config.nodeLabel) {
-        var nodeLabelArr = config.nodeLabel.split(" ");
+        var nodeLabelArr = config.nodeLabel.trim().split(" ");
+        // in case multiple node labels are given
         if(nodeLabelArr.length > 1) {
           _.each(nodeLabelArr, function (attr) {
 
             var attrVal = getAttributeByKey(node, attr);
             if(attrVal !== undefined) {
               if (typeof attrVal === 'string') {
-                label += "<b>" + attr + ":</b> " + truncate(getAttributeByKey(node, attr), 16) + "\n";
-                tooltipText += attr + ": " + getAttributeByKey(node, attr) + "\n";
+                tooltipText += attr + ": " + attrVal + "\n";
               } else {
                 // in case we do not have a string here, we need to stringify it
                 // otherwise we might end up sending not displayable values.
-                label += "<b>" + attr + ":</b> " + truncate(JSON.stringify(getAttributeByKey(node, attr)), 16) + "\n";
-                tooltipText += attr + ": " + JSON.stringify(getAttributeByKey(node, attr)) + "\n";
+                tooltipText += attr + ": " + JSON.stringify(attrVal) + "\n";
               }
             } else {
-              label += "<b>" + attr + ":</b> " + notFoundString + "\n";
+              label += attr + ": " + notFoundString;
               tooltipText += attr + ": " + notFoundString + "\n";
             }
             
           });
+          // in case of multiple node labels just display the first one in the graph
+          // and the others in the tooltip
+          var firstAttrVal = getAttributeByKey(node, nodeLabelArr[0]);
+          if(firstAttrVal !== undefined) {
+            if (typeof firstAttrVal === 'string') {
+              label = nodeLabelArr[0] + ": " + truncate(firstAttrVal, 16) + " ...";
+            } else {
+              label = nodeLabelArr[0] + ": " + truncate(JSON.stringify(firstAttrVal), 16) + " ...";
+            }
+          } else {
+            label = nodeLabelArr[0] + ": " + notFoundString + " ...";
+          }
         } else {
-          label = getAttributeByKey(node, config.nodeLabel);
-          tooltipText = getAttributeByKey(node, config.nodeLabel);
+          // in case of single node attribute given
+          var singleAttrVal = getAttributeByKey(node, nodeLabelArr[0]);
+          if(singleAttrVal !== undefined) {
+            if (typeof singleAttrVal === 'string') {
+              label = nodeLabelArr[0] + ": " + truncate(singleAttrVal, 16);
+              tooltipText = nodeLabelArr[0] + ": " + singleAttrVal;
+            } else {
+              label = nodeLabelArr[0] + ": " + truncate(JSON.stringify(singleAttrVal), 16);
+              tooltipText = nodeLabelArr[0] + ": " + truncate(JSON.stringify(singleAttrVal), 16);
+            }
+          } else {
+            label = nodeLabelArr[0] + ": " + notFoundString;
+            tooltipText = nodeLabelArr[0] + ": " + notFoundString;
+          }
         }
       } else {
         label = node._key || node._id;
