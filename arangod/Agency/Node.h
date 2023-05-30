@@ -49,8 +49,6 @@ enum Operation {
   POP,
   PREPEND,
   SHIFT,
-  OBSERVE,
-  UNOBSERVE,
   ERASE,
   REPLACE,
   READ_LOCK,
