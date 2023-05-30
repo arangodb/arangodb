@@ -72,8 +72,6 @@ class Collections {
 
   std::map<std::string, std::unique_ptr<aql::Collection>, std::less<>>
       _collections;
-
-  static size_t const MaxCollections = 2048;
 };
 }  // namespace aql
 }  // namespace arangodb
