@@ -1,6 +1,9 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* Invalid keys are now reported as individual errors for batch insert operations
+  and no longer abort the whole batch.
+
 * BTS-1255: Fix sporadic memory usage accounting underflows in in-memory cache
   subsystem.
   Also turn the algorithm for freeing memory from a cache's buckets from a
