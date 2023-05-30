@@ -37,6 +37,10 @@ bool ValidationResult::isFiltered() const noexcept {
   return _type == Type::FILTER || _type == Type::FILTER_AND_PRUNE;
 }
 
+bool ValidationResult::isUnknown() const noexcept {
+  return _type == Type::UNKNOWN;
+}
+
 void ValidationResult::combine(Type t) noexcept {
   switch (t) {
     case Type::TAKE:
@@ -58,6 +62,8 @@ void ValidationResult::combine(Type t) noexcept {
     case Type::FILTER_AND_PRUNE:
       _type = Type::FILTER_AND_PRUNE;
       break;
+    case Type::UNKNOWN:
+      break;
   }
 }
 
@@ -75,6 +81,9 @@ std::ostream& arangodb::graph::operator<<(std::ostream& stream,
       break;
     case ValidationResult::Type::FILTER_AND_PRUNE:
       stream << "filter and prune";
+      break;
+    case ValidationResult::Type::UNKNOWN:
+      stream << "unknown";
       break;
   }
   return stream;
