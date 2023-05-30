@@ -165,13 +165,6 @@ class Store {
 
   void registerPrefixTrigger(std::string const& prefix, AgencyTriggerCallback);
 
-#if !defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
- private:
-#endif  // defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
-
-  /// @brief Notify observers
-  void notifyObservers() const;
-
  private:
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);

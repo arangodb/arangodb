@@ -22,7 +22,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#define MAKE_NOTIFY_OBSERVERS_PUBLIC
 #include "AgencyMock.h"
 
 #include <fuerte/requests.h>
@@ -37,42 +36,6 @@
 #include "Cluster/ClusterInfo.h"
 
 #include <utility>
-
-namespace arangodb::consensus {
-
-// FIXME TODO this implementation causes deadlock when unregistering a callback,
-//            if there is still another callback registered; it's not obvious
-//            how to fix this, as it seems the problem is that both "agents"
-//            live on the same server and share an AgencyCallbackRegistry
-//            instance; we could solve this if we could have two
-//            ApplicationServers in the same instance, but too many things in
-//            the feature stack are static still to make the changes right now
-// FIXME TODO for some reason the implementation of this function is missing in
-// the arangodb code
-void Store::notifyObservers() const {
-  if (!_server.hasFeature<arangodb::ClusterFeature>()) {
-    return;
-  }
-  auto& clusterFeature = _server.getFeature<arangodb::ClusterFeature>();
-  auto* callbackRegistry = clusterFeature.agencyCallbackRegistry();
-
-  if (!callbackRegistry) {
-    return;
-  }
-
-  std::vector<uint32_t> callbackIds;
-
-  for (auto& id : callbackIds) {
-    try {
-      callbackRegistry->getCallback(id)->refetchAndUpdate(
-          true, true);  // force a check
-    } catch (...) {
-      // ignore
-    }
-  }
-}
-
-}  // namespace arangodb::consensus
 
 using namespace arangodb;
 using namespace arangodb::network;
@@ -140,8 +103,6 @@ auto AsyncAgencyStorePoolConnection::handleWrite(VPackSlice body)
 
   auto response = std::make_unique<fuerte::Response>(std::move(header));
   response->setPayload(std::move(responseBody), 0);
-
-  _cache.store().notifyObservers();
 
   return response;
 }
