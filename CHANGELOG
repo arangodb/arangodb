@@ -1,7 +1,7 @@
 devel
 -----
 
-* Remove ttl and observe/unobserve from agency api.
+* Updated ArangoDB Starter to 0.15.8-preview-1.
 
 * BTS-1255: Fix sporadic memory usage accounting underflows in in-memory
   cache subsystem.
@@ -13,6 +13,8 @@ devel
   debugging with logfiles in hot backup RClone upload operacions:
   `--rclone.argument=--log-level=DEBUG`
   `--rclone.argument=-log-file=/tmp/rclone.log`
+
+* Remove ttl and observe/unobserve from agency api.
 
 * Fix issue #18982: query editor null/undefined check filters out bindParams
   with value 0.
