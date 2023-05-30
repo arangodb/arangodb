@@ -1092,8 +1092,9 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
         << "checkExternal: pid not found: " << pid._pid;
     return ExternalProcessStatus{
         TRI_EXT_NOT_FOUND, -1,
-        absl::StrCat("the pid you're looking for is not in our list: ",
-                     pid._pid)};
+        std::string("the pid you're looking for is not in our list: ") +
+        arangodb::basics::StringUtils::itoa(pid._pid)
+    };
   }
 
   if (status->_status == TRI_EXT_RUNNING ||
