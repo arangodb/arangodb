@@ -28,28 +28,6 @@
 #endif
 
 // -----------------------------------------------------------------------------
-// --Section--                                                processor features
-// -----------------------------------------------------------------------------
-
-// aligned / unaligned access
-
-#if defined(__sparc__) || defined(__arm__) || defined(__arm64__) || \
-    defined(__aarch64__)
-/* unaligned accesses not allowed */
-#undef TRI_UNALIGNED_ACCESS
-#elif defined(__ppc__) || defined(__POWERPC__) || defined(_M_PPC)
-/* unaligned accesses are slow */
-#undef TRI_UNALIGNED_ACCESS
-#elif defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || \
-    defined(_M_X64)
-/* unaligned accesses should work */
-#define TRI_UNALIGNED_ACCESS 1
-#else
-/* unknown platform. better not use unaligned accesses */
-#undef TRI_UNALIGNED_ACCESS
-#endif
-
-// -----------------------------------------------------------------------------
 // --Section--                                                       v8 features
 // -----------------------------------------------------------------------------
 
