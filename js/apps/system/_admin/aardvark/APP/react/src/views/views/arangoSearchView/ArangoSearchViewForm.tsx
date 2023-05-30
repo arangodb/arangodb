@@ -14,6 +14,7 @@ import { useField } from "formik";
 import React from "react";
 import { FormField } from "../../../components/form/FormField";
 import { IndexInfoTooltip } from "../../collections/indices/addIndex/IndexInfoTooltip";
+import { useEditViewContext } from "../editView/EditViewContext";
 import { PrimarySortType, StoredValueType } from "../searchView.types";
 import { LinksEditor } from "./linksEditor/LinksEditor";
 
@@ -76,6 +77,8 @@ const LinksAccordionItem = () => {
 const GeneralAccordionItem = () => {
   const { fields } = useArangoSearchFieldsData();
   const generalFields = fields.filter(field => field.group === "general");
+  const { isAdminUser } = useEditViewContext();
+
   return (
     <AccordionItem>
       <AccordionButton>
@@ -87,7 +90,15 @@ const GeneralAccordionItem = () => {
       <AccordionPanel pb={4}>
         <FieldsGrid>
           {generalFields.map(field => {
-            return <FormField field={field} key={field.name} />;
+            return (
+              <FormField
+                field={{
+                  ...field,
+                  isDisabled: field.isDisabled || !isAdminUser
+                }}
+                key={field.name}
+              />
+            );
           })}
         </FieldsGrid>
       </AccordionPanel>
@@ -99,6 +110,7 @@ const ConsolidationPolicyAccordionItem = () => {
   const { tierConsolidationPolicyFields, bytesAccumConsolidationPolicyFields } =
     useArangoSearchFieldsData();
   const [policyTypeField] = useField("consolidationPolicy.type");
+  const { isAdminUser } = useEditViewContext();
   return (
     <AccordionItem>
       <AccordionButton>
@@ -114,12 +126,22 @@ const ConsolidationPolicyAccordionItem = () => {
           <IndexInfoTooltip label="Represents the type of policy." />
           {policyTypeField.value === "tier"
             ? tierConsolidationPolicyFields.map(field => {
-                return <FormField field={field} key={field.name} />;
+                return (
+                  <FormField
+                    field={{ ...field, isDisabled: !isAdminUser }}
+                    key={field.name}
+                  />
+                );
               })
             : null}
           {policyTypeField.value === "bytes_accum"
             ? bytesAccumConsolidationPolicyFields.map(field => {
-                return <FormField field={field} key={field.name} />;
+                return (
+                  <FormField
+                    field={{ ...field, isDisabled: !isAdminUser }}
+                    key={field.name}
+                  />
+                );
               })
             : null}
         </FieldsGrid>
@@ -129,7 +151,9 @@ const ConsolidationPolicyAccordionItem = () => {
 };
 
 const PrimarySortAccordionItem = () => {
-  const [primarySortField] = useField<PrimarySortType[] | undefined>("primarySort");
+  const [primarySortField] = useField<PrimarySortType[] | undefined>(
+    "primarySort"
+  );
   const [primarySortCompressionField] = useField("primarySortCompression");
   return (
     <AccordionItem>
@@ -159,7 +183,9 @@ const PrimarySortAccordionItem = () => {
 };
 
 const StoredValuesAccordionItem = () => {
-  const [storedValuesField] = useField<StoredValueType[] | undefined>("storedValues");
+  const [storedValuesField] = useField<StoredValueType[] | undefined>(
+    "storedValues"
+  );
   return (
     <AccordionItem>
       <AccordionButton>

@@ -77,6 +77,17 @@ const arangoSearchFieldsMap = {
   }
 };
 
+type FieldType = {
+  label: string;
+  name: string;
+  type: string;
+  initialValue?: string | number | boolean;
+  group?: string;
+  tooltip?: string;
+  isDisabled?: boolean;
+  isRequired?: boolean;
+};
+
 const arangoSearchFields = [
   arangoSearchFieldsMap.links,
   {
@@ -95,7 +106,7 @@ const arangoSearchFields = [
   arangoSearchFieldsMap.commitIntervalMsec,
   arangoSearchFieldsMap.consolidationIntervalMsec,
   arangoSearchFieldsMap.consolidationPolicy
-];
+] as FieldType[];
 
 const tierConsolidationPolicyFields = [
   {
