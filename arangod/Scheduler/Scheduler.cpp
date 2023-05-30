@@ -36,8 +36,10 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/GaugeBuilder.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
@@ -81,6 +83,12 @@ Scheduler::~Scheduler() = default;
 bool Scheduler::start() {
   _cronThread.reset(new SchedulerCronThread(_server, *this));
   return _cronThread->start();
+}
+
+void Scheduler::schedulerJobMemoryAccounting(std::int64_t x) noexcept {
+  if (SchedulerFeature::SCHEDULER) {
+    SchedulerFeature::SCHEDULER->trackQueueItemSize(x);
+  }
 }
 
 void Scheduler::shutdown() {

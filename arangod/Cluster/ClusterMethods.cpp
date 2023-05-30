@@ -358,8 +358,10 @@ OperationResult handleCRUDShardResponsesFast(
   std::map<ShardID, int> shardError;
   std::unordered_map<::ErrorCode, size_t> errorCounter;
 
-  fuerte::StatusCode code = fuerte::StatusInternalError;
-  // If none of the shards responded we return a SERVER_ERROR;
+  fuerte::StatusCode code =
+      results.empty() ? fuerte::StatusOK : fuerte::StatusInternalError;
+  // If the list of shards is not empty and none of the shards responded we
+  // return a SERVER_ERROR;
   if constexpr (std::is_same_v<CT, InsertOperationCtx>) {
     if (opCtx.reverseMapping.size() == opCtx.localErrors.size()) {
       // all batch operations failed because of key errors, return Accepted
@@ -2985,6 +2987,12 @@ ClusterMethods::persistCollectionsInAgency(
     ci.loadCurrentDBServers();
     std::vector<std::string> dbServers = ci.getCurrentDBServers();
     infos.reserve(collections.size());
+
+    TRI_IF_FAILURE("allShardsOnSameServer") {
+      while (dbServers.size() > 1) {
+        dbServers.pop_back();
+      }
+    }
 
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackData;
     vpackData.reserve(collections.size());

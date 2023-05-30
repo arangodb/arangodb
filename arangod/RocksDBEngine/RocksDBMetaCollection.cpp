@@ -77,8 +77,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _revisionTreeApplied(0),
       _revisionTreeCreationSeq(0),
       _revisionTreeSerializedSeq(0),
-      _revisionTreeSerializedTime(std::chrono::steady_clock::now()),
-      _revisionsBufferedMemoryUsage(0) {
+      _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
@@ -88,27 +87,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       .engine<RocksDBEngine>()
       .addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
                             _logicalCollection.id());
-}
-
-RocksDBMetaCollection::~RocksDBMetaCollection() {
-  {
-    std::unique_lock<std::mutex> lock(_revisionTreeLock);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // only to validate that our math is correct and we are not missing
-    // anything.
-    uint64_t memoryUsage = 0;
-    for (auto const& it : _revisionInsertBuffers) {
-      memoryUsage +=
-          bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
-    }
-    for (auto const& it : _revisionRemovalBuffers) {
-      memoryUsage +=
-          bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
-    }
-    TRI_ASSERT(memoryUsage == _revisionsBufferedMemoryUsage);
-#endif
-    decreaseBufferedMemoryUsage(_revisionsBufferedMemoryUsage);
-  }
 }
 
 void RocksDBMetaCollection::deferDropCollection(
@@ -909,25 +887,17 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       }
 
       {
-        uint64_t memoryUsage = 0;
         auto it = _revisionInsertBuffers.begin();
         while (it != _revisionInsertBuffers.end() && it->first <= seq) {
-          memoryUsage +=
-              bufferedEntrySize() + bufferedEntryItemSize() * it->second.size();
           it = _revisionInsertBuffers.erase(it);
         }
-        decreaseBufferedMemoryUsage(memoryUsage);
       }
 
       {
-        uint64_t memoryUsage = 0;
         auto it = _revisionRemovalBuffers.begin();
         while (it != _revisionRemovalBuffers.end() && it->first <= seq) {
-          memoryUsage +=
-              bufferedEntrySize() + bufferedEntryItemSize() * it->second.size();
           it = _revisionRemovalBuffers.erase(it);
         }
-        decreaseBufferedMemoryUsage(memoryUsage);
       }
     };
 
@@ -1280,21 +1250,37 @@ void RocksDBMetaCollection::bufferUpdates(
       << "for collection " << _logicalCollection.name();
 
   if (!inserts.empty()) {
-    auto [it, inserted] =
-        _revisionInsertBuffers.emplace(seq, std::move(inserts));
-    TRI_ASSERT(inserted);
-    if (inserted) {
-      increaseBufferedMemoryUsage(bufferedEntrySize() +
-                                  bufferedEntryItemSize() * it->second.size());
+    // will default-construct an empty entry if it does not yet exist
+    TRI_ASSERT(_revisionInsertBuffers.find(seq) ==
+               _revisionInsertBuffers.end());
+    auto& elem = _revisionInsertBuffers[seq];
+    if (elem.empty()) {
+      elem = std::move(inserts);
+    } else {
+      // should only happen in recovery, if at all
+      TRI_ASSERT(_logicalCollection.vocbase()
+                     .server()
+                     .getFeature<EngineSelectorFeature>()
+                     .engine()
+                     .inRecovery());
+      elem.insert(elem.end(), inserts.begin(), inserts.end());
     }
   }
   if (!removals.empty()) {
-    auto [it, inserted] =
-        _revisionRemovalBuffers.emplace(seq, std::move(removals));
-    TRI_ASSERT(inserted);
-    if (inserted) {
-      increaseBufferedMemoryUsage(bufferedEntrySize() +
-                                  bufferedEntryItemSize() * it->second.size());
+    // will default-construct an empty entry if it does not yet exist
+    TRI_ASSERT(_revisionRemovalBuffers.find(seq) ==
+               _revisionRemovalBuffers.end());
+    auto& elem = _revisionRemovalBuffers[seq];
+    if (elem.empty()) {
+      elem = std::move(removals);
+    } else {
+      // should only happen in recovery, if at all
+      TRI_ASSERT(_logicalCollection.vocbase()
+                     .server()
+                     .getFeature<EngineSelectorFeature>()
+                     .engine()
+                     .inRecovery());
+      elem.insert(elem.end(), removals.begin(), removals.end());
     }
   }
 }
@@ -1389,27 +1375,13 @@ void RocksDBMetaCollection::applyUpdates(
 
       if (foundTruncate) {
         TRI_ASSERT(ignoreSeq <= commitSeq);
-
-        {
-          uint64_t memoryUsage = 0;
-          while (insertIt != _revisionInsertBuffers.end() &&
-                 insertIt->first <= ignoreSeq) {
-            memoryUsage += bufferedEntrySize() +
-                           bufferedEntryItemSize() * insertIt->second.size();
-            insertIt = _revisionInsertBuffers.erase(insertIt);
-          }
-          decreaseBufferedMemoryUsage(memoryUsage);
+        while (insertIt != _revisionInsertBuffers.end() &&
+               insertIt->first <= ignoreSeq) {
+          insertIt = _revisionInsertBuffers.erase(insertIt);
         }
-
-        {
-          uint64_t memoryUsage = 0;
-          while (removeIt != _revisionRemovalBuffers.end() &&
-                 removeIt->first <= ignoreSeq) {
-            memoryUsage += bufferedEntrySize() +
-                           bufferedEntryItemSize() * removeIt->second.size();
-            removeIt = _revisionRemovalBuffers.erase(removeIt);
-          }
-          decreaseBufferedMemoryUsage(memoryUsage);
+        while (removeIt != _revisionRemovalBuffers.end() &&
+               removeIt->first <= ignoreSeq) {
+          removeIt = _revisionRemovalBuffers.erase(removeIt);
         }
 
         checkIterators();
@@ -1494,11 +1466,7 @@ void RocksDBMetaCollection::applyUpdates(
 
         // if the insert succeeded, we remove it from the list of operations,
         // so it won't be reapplied even if subsequent operations fail.
-        uint64_t memoryUsage =
-            bufferedEntrySize() +
-            bufferedEntryItemSize() * insertIt->second.size();
         insertIt = _revisionInsertBuffers.erase(insertIt);
-        decreaseBufferedMemoryUsage(memoryUsage);
       }
 
       // check for removals
@@ -1537,11 +1505,7 @@ void RocksDBMetaCollection::applyUpdates(
 
         // if the remove succeeded, we remove it from the list of operations,
         // so it won't be reapplied even if subsequent operations fail.
-        uint64_t memoryUsage =
-            bufferedEntrySize() +
-            bufferedEntryItemSize() * removeIt->second.size();
         removeIt = _revisionRemovalBuffers.erase(removeIt);
-        decreaseBufferedMemoryUsage(memoryUsage);
       }
     }
   });
@@ -2046,15 +2010,4 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
   }
   TRI_ASSERT(_tree != nullptr);
   TRI_ASSERT(_compressed.empty());
-}
-
-void RocksDBMetaCollection::increaseBufferedMemoryUsage(
-    uint64_t value) noexcept {
-  _revisionsBufferedMemoryUsage += value;
-}
-
-void RocksDBMetaCollection::decreaseBufferedMemoryUsage(
-    uint64_t value) noexcept {
-  TRI_ASSERT(_revisionsBufferedMemoryUsage >= value);
-  _revisionsBufferedMemoryUsage -= value;
 }
