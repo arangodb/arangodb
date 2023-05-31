@@ -106,6 +106,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
 
+  Result drop() override;
+
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
                 OperationOptions const& options,
