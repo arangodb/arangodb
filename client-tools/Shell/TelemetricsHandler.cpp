@@ -136,6 +136,19 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
             _telemetricsFetchResponse.is(TRI_ERROR_HTTP_FORBIDDEN) ||
             _telemetricsFetchResponse.is(TRI_ERROR_HTTP_ENHANCE_YOUR_CALM)) {
           _telemetricsFetchedInfo.add(response->getBodyVelocyPack()->slice());
+          auto deploymentSlice =
+              _telemetricsFetchedInfo.slice().get("deployment");
+          if (!deploymentSlice.isNone()) {
+            auto deploymentType = deploymentSlice.get("type").stringView();
+            if (deploymentType == "active_failover") {
+              if (deploymentSlice.get("active_failover_leader").getBoolean() ==
+                  false) {
+                _sendToEndpoint = false;
+              }
+            }
+          } else {
+            _sendToEndpoint = false;
+          }
           _httpClient.reset();
           break;
         }
