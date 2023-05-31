@@ -346,6 +346,9 @@ void mergeResultsAllShards(
   }
 }
 
+const ShardID LocalErrorsShard = "#ERRORS";
+struct InsertOperationCtx;
+
 /// @brief handle CRUD api shard responses, fast path
 template<typename F, typename CT>
 OperationResult handleCRUDShardResponsesFast(
@@ -355,8 +358,15 @@ OperationResult handleCRUDShardResponsesFast(
   std::map<ShardID, int> shardError;
   std::unordered_map<::ErrorCode, size_t> errorCounter;
 
-  fuerte::StatusCode code = fuerte::StatusInternalError;
+  fuerte::StatusCode code =
+      results.empty() ? fuerte::StatusOK : fuerte::StatusInternalError;
   // If none of the shards responded we return a SERVER_ERROR;
+  if constexpr (std::is_same_v<CT, InsertOperationCtx>) {
+    if (opCtx.reverseMapping.size() == opCtx.localErrors.size()) {
+      // all batch operations failed because of key errors, return Accepted
+      code = fuerte::StatusAccepted;
+    }
+  }
 
   for (Try<arangodb::network::Response> const& tryRes : results) {
     network::Response const& res = tryRes.get();  // throws exceptions upwards
@@ -399,8 +409,22 @@ OperationResult handleCRUDShardResponsesFast(
   resultBody.openArray();
   for (auto const& pair : opCtx.reverseMapping) {
     ShardID const& sId = pair.first;
-    auto const& it = resultMap.find(sId);
-    if (it == resultMap.end()) {  // no answer from this shard
+    if constexpr (std::is_same_v<CT, InsertOperationCtx>) {
+      if (sId == LocalErrorsShard) {
+        Result const& res = opCtx.localErrors[pair.second];
+        resultBody.openObject(
+            /*unindexed*/ true);
+        resultBody.add(StaticStrings::Error, VPackValue(true));
+        resultBody.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
+        resultBody.add(StaticStrings::ErrorMessage,
+                       VPackValue(res.errorMessage()));
+        resultBody.close();
+        ++errorCounter[res.errorNumber()];
+        continue;
+      }
+    }
+    if (auto const& it = resultMap.find(sId);
+        it == resultMap.end()) {  // no answer from this shard
       auto const& it2 = shardError.find(sId);
       TRI_ASSERT(it2 != shardError.end());
       resultBody.openObject(/*unindexed*/ true);
@@ -539,6 +563,7 @@ struct InsertOperationCtx {
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   std::map<ShardID, std::vector<std::pair<VPackSlice, std::string>>> shardMap;
   arangodb::OperationOptions options;
+  std::vector<Result> localErrors;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,6 +582,13 @@ struct InsertOperationCtx {
   bool isRestore = opCtx.options.isRestore;
   ShardID shardID;
   std::string key;
+
+  auto addLocalError = [&](Result err) {
+    TRI_ASSERT(err.fail());
+    auto idx = opCtx.localErrors.size();
+    opCtx.localErrors.emplace_back(std::move(err));
+    opCtx.reverseMapping.emplace_back(LocalErrorsShard, idx);
+  };
 
   if (!value.isObject()) {
     // We have invalid input at this point.
@@ -594,7 +626,8 @@ struct InsertOperationCtx {
           auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
                                                       value, isRestore);
           if (res != TRI_ERROR_NO_ERROR) {
-            return res;
+            addLocalError(res);
+            return TRI_ERROR_NO_ERROR;
           }
         }
       }
@@ -1546,6 +1579,15 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     if (res != TRI_ERROR_NO_ERROR) {
       return makeFuture(OperationResult(res, options));
     }
+    if (!opCtx.localErrors.empty()) {
+      return makeFuture(OperationResult(opCtx.localErrors.front(), options));
+    }
+  }
+
+  if (opCtx.shardMap.empty()) {
+    return handleCRUDShardResponsesFast(network::clusterResultInsert, opCtx,
+                                        {});
+    // all operations failed with a local error
   }
 
   bool const isJobsCollection =
@@ -2944,6 +2986,12 @@ ClusterMethods::persistCollectionsInAgency(
     ci.loadCurrentDBServers();
     std::vector<std::string> dbServers = ci.getCurrentDBServers();
     infos.reserve(collections.size());
+
+    TRI_IF_FAILURE("allShardsOnSameServer") {
+      while (dbServers.size() > 1) {
+        dbServers.pop_back();
+      }
+    }
 
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackData;
     vpackData.reserve(collections.size());
