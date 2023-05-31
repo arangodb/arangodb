@@ -2,7 +2,7 @@ devel
 -----
 
 * BTS-1396: Restricted followers from attempting to send telemetrics data to 
-  the endpoint.
+  the endpoint on active failover mode.
 
 * APM-663: revision tree memory tracking.
   Tracking memory used for buffered updates to all revision trees in a new
