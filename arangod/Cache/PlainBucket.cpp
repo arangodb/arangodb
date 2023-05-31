@@ -210,6 +210,7 @@ void PlainBucket::moveSlot(std::size_t slot) noexcept {
   _cachedData[i] = value;
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void PlainBucket::checkInvariants() const noexcept {
 #if 0
   // intentionally disabled. can be reenabled when there
@@ -226,6 +227,7 @@ void PlainBucket::checkInvariants() const noexcept {
   }
 #endif
 }
+#endif
 
 template CachedValue* PlainBucket::find<BinaryKeyHasher>(
     std::uint32_t hash, void const* key, std::size_t keySize,

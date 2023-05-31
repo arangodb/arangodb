@@ -291,6 +291,7 @@ bool TransactionalBucket::haveOpenTransaction() const noexcept {
   return ((_banishTerm & static_cast<uint64_t>(1)) > 0);
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void TransactionalBucket::checkInvariants() const noexcept {
 #if 0
   // intentionally disabled. can be reenabled when there
@@ -307,6 +308,7 @@ void TransactionalBucket::checkInvariants() const noexcept {
   }
 #endif
 }
+#endif
 
 template CachedValue* TransactionalBucket::find<BinaryKeyHasher>(
     std::uint32_t hash, void const* key, std::size_t keySize,
