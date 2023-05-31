@@ -47,7 +47,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
-
 using namespace std::chrono;
 using namespace date;
 
