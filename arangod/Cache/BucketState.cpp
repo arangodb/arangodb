@@ -45,17 +45,19 @@ BucketState& BucketState::operator=(BucketState const& other) noexcept {
 }
 
 bool BucketState::isLocked() const noexcept {
-  return ((_state.load() & static_cast<FlagType>(Flag::locked)) > 0);
+  return (_state.load() & static_cast<FlagType>(Flag::locked)) > 0;
 }
 
 bool BucketState::lock(std::uint64_t maxTries) noexcept {
-  uint64_t attempt = 0;
-  while (attempt < maxTries) {
+  uint64_t attempts = 0;
+  do {
     // expect unlocked, but need to preserve migrating status
     FlagType current = _state.load(std::memory_order_relaxed);
-    FlagType expected = current & (~static_cast<FlagType>(Flag::locked));
+    FlagType expected =
+        static_cast<FlagType>(current & (~static_cast<FlagType>(Flag::locked)));
     if (current == expected) {
-      uint32_t desired = expected | static_cast<FlagType>(Flag::locked);
+      FlagType desired =
+          static_cast<FlagType>(expected | static_cast<FlagType>(Flag::locked));
       // try to lock
       bool success = _state.compare_exchange_strong(expected, desired,
                                                     std::memory_order_acq_rel,
@@ -64,23 +66,22 @@ bool BucketState::lock(std::uint64_t maxTries) noexcept {
         return true;
       }
     }
-    attempt++;
     basics::cpu_relax();
     // TODO: exponential back-off for failure?
-  }
+  } while (++attempts < maxTries);
 
   return false;
 }
 
 void BucketState::unlock() noexcept {
   TRI_ASSERT(isLocked());
-  _state.fetch_and(~static_cast<FlagType>(Flag::locked),
+  _state.fetch_and(static_cast<FlagType>(~static_cast<FlagType>(Flag::locked)),
                    std::memory_order_release);
 }
 
 bool BucketState::isSet(BucketState::Flag flag) const noexcept {
   TRI_ASSERT(isLocked());
-  return ((_state.load() & static_cast<FlagType>(flag)) > 0);
+  return static_cast<FlagType>(_state.load() & static_cast<FlagType>(flag)) > 0;
 }
 
 void BucketState::toggleFlag(BucketState::Flag flag) noexcept {
