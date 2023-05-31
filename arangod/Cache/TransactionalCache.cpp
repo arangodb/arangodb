@@ -420,7 +420,8 @@ void TransactionalCache<Hasher>::migrateBucket(
 
         source._cachedHashes[j] = 0;
         source._cachedData[j] = nullptr;
-        --source._bucketsUsed;
+        TRI_ASSERT(source._slotsUsed > 0);
+        --source._slotsUsed;
       }
     }
     reclaimMemory(totalSize);

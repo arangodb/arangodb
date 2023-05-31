@@ -49,7 +49,7 @@ namespace arangodb::cache {
 ////////////////////////////////////////////////////////////////////////////////
 struct TransactionalBucket {
   BucketState _state;
-  std::uint16_t _bucketsUsed;
+  std::uint16_t _slotsUsed;
 
   // banish entries for transactional semantics
   static constexpr std::size_t kSlotsBanish = 5;

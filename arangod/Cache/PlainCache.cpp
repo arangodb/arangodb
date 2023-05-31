@@ -292,7 +292,7 @@ void PlainCache<Hasher>::migrateBucket(void* sourcePtr,
     std::uint64_t filled = 0;
     std::uint64_t emptied = 0;
 
-    std::size_t slot = source._bucketsUsed;
+    std::size_t slot = source._slotsUsed;
     while (slot-- > 0) {
       if (source._cachedData[slot] != nullptr) {
         std::uint32_t hash = source._cachedHashes[slot];
@@ -321,7 +321,8 @@ void PlainCache<Hasher>::migrateBucket(void* sourcePtr,
 
         source._cachedHashes[slot] = 0;
         source._cachedData[slot] = nullptr;
-        --source._bucketsUsed;
+        TRI_ASSERT(source._slotsUsed > 0);
+        --source._slotsUsed;
       }
     }
     reclaimMemory(totalSize);

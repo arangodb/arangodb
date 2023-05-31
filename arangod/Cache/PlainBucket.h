@@ -46,7 +46,7 @@ namespace arangodb::cache {
 ////////////////////////////////////////////////////////////////////////////////
 struct PlainBucket {
   BucketState _state;
-  std::uint16_t _bucketsUsed;
+  std::uint16_t _slotsUsed;
   std::uint32_t _paddingExplicit;  // fill 4-byte gap for alignment purposes
 
   // actual cached entries
