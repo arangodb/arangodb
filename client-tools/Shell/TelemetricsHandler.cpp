@@ -142,12 +142,12 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
             auto deploymentType = deploymentSlice.get("type").stringView();
             if (deploymentType == "active_failover") {
               if (auto s = deploymentSlice.get("active_failover_leader");
-                  (!s.isNone() && s.isFalse())) {
+                  s.isFalse()) {
                 _sendToEndpoint = false;
               }
             }
           } else {
-            _sendToEndpoint = false;
+            _sendToEndpoint = true;
           }
           _httpClient.reset();
           break;
