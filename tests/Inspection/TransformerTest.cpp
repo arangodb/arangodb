@@ -86,7 +86,9 @@ namespace {
 struct IContainATimeStamp {
   std::chrono::system_clock::time_point stamp;
 
-  auto operator<=>(IContainATimeStamp const& other) const = default;
+  auto operator==(IContainATimeStamp const& other) const {
+    return stamp == other.stamp;
+  }
 };
 template<class Inspector>
 auto inspect(Inspector& f, IContainATimeStamp& x) {
