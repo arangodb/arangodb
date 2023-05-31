@@ -209,8 +209,8 @@ Result RocksDBIndex::drop() {
   bool const prefixSameAsStart = type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
   bool const useRangeDelete = coll->meta().numberDocuments() >= 32 * 1024;
 
-  arangodb::Result r = rocksutils::removeLargeRange(
-      _engine.db(), getBounds(), prefixSameAsStart, useRangeDelete);
+  Result r = rocksutils::removeLargeRange(_engine.db(), getBounds(),
+                                          prefixSameAsStart, useRangeDelete);
 
   // Try to drop the cache as well.
   if (_cache) {
