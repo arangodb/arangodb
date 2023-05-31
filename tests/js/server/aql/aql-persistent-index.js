@@ -32,6 +32,7 @@ const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
   
 const cn = "UnitTestsCollection";
+const idxName = "testIdx";
   
 let explain = function (query, params) {
   return helper.removeClusterNodes(helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes" ] } })).map(function(node) { return node.type; }));
@@ -1552,8 +1553,85 @@ function PersistentIndexOverlappingSuite () {
   };
 }
 
+function PersistentIndexUniqueSimpleTestSuite () {
+  return {
+    setUp: function () {
+      internal.db._drop(cn);
+      let c = internal.db._create(cn);
+      let docs = [];
+      for (let i = 0; i < 10; ++i) {
+        docs.push({value: i});
+      }
+      c.insert(docs);
+      c.ensureIndex({type: "persistent", name: idxName, unique: true, fields: ["value"]});
+
+    },
+
+    tearDown: function () {
+      internal.db._drop(cn);
+    },
+
+    testUniqueSimple: function () {
+      let query = `FOR d IN ${cn} FILTER d.value == 1 SORT d._key RETURN d`;
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      for (const key in nodes) {
+        if (nodes[key].type === "IndexNode") {
+          const indexNode = nodes[key];
+          assertEqual(indexNode.indexes.length, 1);
+          const usedIndex = indexNode.indexes[0];
+          assertEqual(usedIndex.type, "persistent");
+          assertEqual(usedIndex.name, idxName);
+          assertEqual(usedIndex.fields.length, 1);
+          assertEqual(usedIndex.fields[0], "value");
+        }
+      }
+    }
+  };
+}
+
+function PersistentIndexNonUniqueSimpleTestSuite () {
+  return {
+    setUp: function () {
+      internal.db._drop(cn);
+      let c = internal.db._create(cn);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({value: 2});
+      }
+      docs.push({value: 1});
+      c.insert(docs);
+      c.ensureIndex({type: "persistent", name: idxName, unique: false, fields: ["value"]});
+
+    },
+
+    tearDown: function () {
+      internal.db._drop(cn);
+    },
+
+    // because of the selectivity estimate, the primary index will be chosen
+    testNonUniqueSimple: function () {
+      let query = `FOR d IN ${cn} FILTER d.value == 1 SORT d._key RETURN d`;
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      for (const key in nodes) {
+        if (nodes[key].type === "IndexNode") {
+          const indexNode = nodes[key];
+          assertEqual(indexNode.indexes.length, 1);
+          const usedIndex = indexNode.indexes[0];
+          assertEqual(usedIndex.type, "primary");
+          assertEqual(usedIndex.name, "primary");
+          assertEqual(usedIndex.fields.length, 1);
+          assertEqual(usedIndex.fields[0], "_key");
+        }
+      }
+    }
+  };
+}
+
+
 jsunity.run(PersistentIndexTestSuite);
 jsunity.run(PersistentIndexMultipleIndexesTestSuite);
 jsunity.run(PersistentIndexOverlappingSuite);
+jsunity.run(PersistentIndexUniqueSimpleTestSuite);
+jsunity.run(PersistentIndexNonUniqueSimpleTestSuite);
 
 return jsunity.done();
