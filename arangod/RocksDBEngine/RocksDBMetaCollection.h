@@ -33,16 +33,22 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <chrono>
 #include <functional>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <type_traits>
 
 namespace arangodb {
 class RevisionReplicationIterator;
+class RocksDBEngine;
 
 class RocksDBMetaCollection : public PhysicalCollection {
  public:
   explicit RocksDBMetaCollection(LogicalCollection& collection,
                                  velocypack::Slice info);
-  virtual ~RocksDBMetaCollection() = default;
+  virtual ~RocksDBMetaCollection();
 
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const&) override;
@@ -165,6 +171,24 @@ class RocksDBMetaCollection : public PhysicalCollection {
           std::unique_ptr<containers::RevisionTree>,
           std::unique_lock<std::mutex>& lock)> const& callback);
 
+  // used for calculating memory usage in _revisionsBufferedMemoryUsage
+  // approximate memory usage for top-level items.
+  // approximate size of a single entry in _revisionInsertBuffers plus the
+  // size of one allocation.
+  static constexpr uint64_t bufferedEntrySize() {
+    return sizeof(void*) + sizeof(decltype(_revisionInsertBuffers)::value_type);
+  }
+  // approximate memory usage for individual items in a top-level item,
+  // i.e. size of _revisionInsertBuffers.second::value_type.
+  // this does not take into account unused capacity in the
+  // _revisionInsertBuffers.second.
+  static constexpr uint64_t bufferedEntryItemSize() {
+    return sizeof(decltype(_revisionInsertBuffers)::mapped_type::value_type);
+  }
+
+  void increaseBufferedMemoryUsage(uint64_t value) noexcept;
+  void decreaseBufferedMemoryUsage(uint64_t value) noexcept;
+
  protected:
   RocksDBMetadata _meta;  /// collection metadata
   /// @brief collection lock used for write access
@@ -180,6 +204,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   static constexpr std::size_t revisionTreeDepth = 6;
 
  private:
+  RocksDBEngine& _engine;
+
   uint64_t const _objectId;  /// rocksdb-specific object id for collection
 
   /// @brief helper class for accessing revision trees in a compressed or
@@ -210,6 +236,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
     void checkConsistency() const;
     void serializeBinary(std::string& output) const;
+    void delayCompression();
 
     // turn the full-blown revision tree into a potentially smaller
     // compressed representation
@@ -245,6 +272,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
     /// @brief whether or not we should attempt to compress the tree
     bool _compressible;
+
+    /// @brief when we last tried to hibernate/compress the revision tree
+    std::chrono::time_point<
+        std::chrono::steady_clock> mutable _lastHibernateAttempt;
   };
 
   // The following rules/definitions apply:
@@ -282,7 +313,15 @@ class RocksDBMetaCollection : public PhysicalCollection {
       _revisionInsertBuffers;
   std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>>
       _revisionRemovalBuffers;
+
+  // current memory accounting implementation requires both members to use the
+  // same underlying data structures
+  static_assert(std::is_same_v<decltype(_revisionInsertBuffers)::value_type,
+                               decltype(_revisionRemovalBuffers)::value_type>);
+
   std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;
+
+  uint64_t _revisionsBufferedMemoryUsage;
 };
 
 }  // namespace arangodb
