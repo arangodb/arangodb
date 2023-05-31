@@ -1,6 +1,16 @@
 devel
 -----
 
+* APM-665: RocksDB memory tracking
+  Changed the default value of the command line options: 
+  
+  - `--rocksdb.reserve-table-builder-memory`
+  - `--rocksdb.reserve-table-reader-memory`
+  - `--rocksdb.reserve-file-metadata-memory`
+
+  to `true` by default to count the memory use towards
+  `rocksdb_block_cache_usage`.
+
 * APM-663: revision tree memory tracking.
   Tracking memory used for buffered updates to all revision trees in a new
   metric `arangodb_revision_tree_buffered_memory_usage`.
