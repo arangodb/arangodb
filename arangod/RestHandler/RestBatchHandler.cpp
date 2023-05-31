@@ -234,6 +234,8 @@ bool RestBatchHandler::executeNextHandler() {
 
       return false;
     }
+
+    handler->setIsAsyncRequest();
   }
 
   // assume a bad lane, so the request is definitely executed via the queues

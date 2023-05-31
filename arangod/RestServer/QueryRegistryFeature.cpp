@@ -181,6 +181,7 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
       _allowCollectionsInExpressions(false),
       _logFailedQueries(false),
       _maxQueryStringLength(4096),
+      _maxCollectionsPerQuery(2048),
       _peakMemoryUsageThreshold(4294967296),  // 4GB
       _queryGlobalMemoryLimit(
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
@@ -692,6 +693,19 @@ Once the threshold value is reached during the DNF conversion of a FILTER
 condition, the conversion is aborted, and the query continues with a simplified
 internal representation of the condition, which cannot be used for index
 lookups.)");
+
+  options
+      ->addOption(
+          "--query.max-collections-per-query",
+          "The maximum number of collections/shards that can be used in "
+          "one AQL query.",
+          new SizeTParameter(&_maxCollectionsPerQuery),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31007);
 }
 
 void QueryRegistryFeature::validateOptions(

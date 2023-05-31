@@ -39,10 +39,6 @@
 #include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
-#endif
-
 #include <formats/formats.hpp>
 #include <index/heap_iterator.hpp>
 
@@ -76,9 +72,6 @@ class IResearchViewExecutorInfos {
       iresearch::ViewSnapshotPtr reader, RegisterId outRegister,
       RegisterId searchDocRegister, std::vector<RegisterId> scoreRegisters,
       aql::QueryContext& query,
-#ifdef USE_ENTERPRISE
-      iresearch::IResearchOptimizeTopK const& optimizeTopK,
-#endif
       std::vector<iresearch::SearchFunc> const& scorers,
       std::pair<iresearch::IResearchSortBase const*, size_t> sort,
       iresearch::IResearchViewStoredValues const& storedValues,
@@ -119,12 +112,6 @@ class IResearchViewExecutorInfos {
     return _filterOptimization;
   }
 
-#ifdef USE_ENTERPRISE
-  iresearch::IResearchOptimizeTopK const& optimizeTopK() const noexcept {
-    return _optimizeTopK;
-  }
-#endif
-
   // first - sort
   // second - number of sort conditions to take into account
   std::pair<iresearch::IResearchSortBase const*, size_t> const& sort()
@@ -147,9 +134,6 @@ class IResearchViewExecutorInfos {
   size_t _scoreRegistersCount;
   iresearch::ViewSnapshotPtr const _reader;
   aql::QueryContext& _query;
-#ifdef USE_ENTERPRISE
-  iresearch::IResearchOptimizeTopK const& _optimizeTopK;
-#endif
   std::vector<iresearch::SearchFunc> const& _scorers;
   std::pair<iresearch::IResearchSortBase const*, size_t> _sort;
   iresearch::IResearchViewStoredValues const& _storedValues;

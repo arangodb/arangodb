@@ -521,8 +521,6 @@ class RocksDBEngine final : public StorageEngine {
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
 
-  void removeEmptyJournalFilesFromArchive();
-
   RocksDBOptionsProvider const& _optionsProvider;
 
   /// single rocksdb database used in this storage engine

@@ -96,11 +96,7 @@
 
 namespace {
 
-#ifdef USE_ENTERPRISE
-static constexpr size_t kEnterpriseFields = 1;
-#else
 static constexpr size_t kEnterpriseFields = 0;
-#endif
 
 struct DocIdScorer final : public irs::ScorerBase<void> {
   static constexpr std::string_view type_name() noexcept {
@@ -703,12 +699,6 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
       EXPECT_FALSE(tmpSlice2.get("storedValues").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySort").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySortCompression").isNone());
-      auto valueTopK = tmpSlice2.get("optimizeTopK");
-#ifdef USE_ENTERPRISE
-      EXPECT_TRUE(valueTopK.isEmptyArray());
-#else
-      EXPECT_TRUE(valueTopK.isNone());
-#endif
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1039,12 +1029,6 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
       EXPECT_FALSE(tmpSlice2.get("storedValues").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySort").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySortCompression").isNone());
-      auto valueTopK = tmpSlice2.get("optimizeTopK");
-#ifdef USE_ENTERPRISE
-      EXPECT_TRUE(valueTopK.isEmptyArray());
-#else
-      EXPECT_TRUE(valueTopK.isNone());
-#endif
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1374,12 +1358,6 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
       EXPECT_FALSE(tmpSlice2.get("storedValues").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySort").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySortCompression").isNone());
-      auto valueTopK = tmpSlice2.get("optimizeTopK");
-#ifdef USE_ENTERPRISE
-      EXPECT_TRUE(valueTopK.isEmptyArray());
-#else
-      EXPECT_TRUE(valueTopK.isNone());
-#endif
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1710,12 +1688,6 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
       EXPECT_FALSE(tmpSlice2.get("storedValues").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySort").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySortCompression").isNone());
-      auto valueTopK = tmpSlice2.get("optimizeTopK");
-#ifdef USE_ENTERPRISE
-      EXPECT_TRUE(valueTopK.isEmptyArray());
-#else
-      EXPECT_TRUE(valueTopK.isNone());
-#endif
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
