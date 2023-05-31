@@ -44,7 +44,7 @@ TEST_F(TimeStampTransformerTest, transforms_min) {
   auto result = transformer.toSerialized(TimeStamp::min(), target);
 
   EXPECT_TRUE(result.ok());
-  EXPECT_EQ(date::format("%Y-%m-%d %H:%M:%S", TimeStamp::min()), target);
+  EXPECT_EQ(date::format("%FT%TZ", TimeStamp::min()), target);
 }
 
 TEST_F(TimeStampTransformerTest, transforms_now) {
@@ -54,12 +54,12 @@ TEST_F(TimeStampTransformerTest, transforms_now) {
   auto result = transformer.toSerialized(now, target);
 
   EXPECT_TRUE(result.ok());
-  EXPECT_EQ(date::format("%Y-%m-%d %H:%M:%S", now), target);
+  EXPECT_EQ(date::format("%FT%TZ", now), target);
 }
 
 TEST_F(TimeStampTransformerTest, transforms_back) {
   using namespace std::chrono;
-  constexpr auto testinput = "2021-11-11 11:11:11";
+  constexpr auto testinput = "2021-11-11T11:11:11Z";
   constexpr system_clock::time_point testoutput =
       std::chrono::sys_days{2021y / 11 / 11} + 11h + 11min + 11s;
 
@@ -78,7 +78,7 @@ TEST_F(TimeStampTransformerTest, parse_fails) {
 
   ASSERT_EQ(result.error(),
             "failed to parse timestamp `2021-11-11 __:??:11` using format "
-            "string `%Y-%m-%d %H:%M:%S`");
+            "string `%FT%TZ`");
   EXPECT_FALSE(result.ok());
 }
 
@@ -106,13 +106,13 @@ TEST_F(TimeStampTransformerTest, struct_with_timestamp_serializes) {
 
   ASSERT_TRUE(res.ok());
   ASSERT_EQ(res.get().toJson(),
-            R"json({"timeStamp":"2021-11-11 11:11:11.000000000"})json");
+            R"json({"timeStamp":"2021-11-11T11:11:11.000000000Z"})json");
 }
 
 TEST_F(TimeStampTransformerTest, struct_with_timestamp_deserializes) {
   using namespace std::chrono;
 
-  auto input = R"({"timeStamp":"1900-01-01 11:11:11.000000000"})"_vpack;
+  auto input = R"({"timeStamp":"1900-01-01T11:11:11.000000000Z"})"_vpack;
 
   auto res = inspection::deserializeWithErrorT<IContainATimeStamp>(input);
 
@@ -133,7 +133,7 @@ TEST_F(TimeStampTransformerTest, transformer_is_left_inverse) {
   auto serResult = transformer.toSerialized(test, serialized);
 
   EXPECT_TRUE(serResult.ok());
-  EXPECT_EQ(date::format("2021-01-27 11:17:19.000000000", test), serialized);
+  EXPECT_EQ(date::format("2021-01-27T11:17:19.000000000Z", test), serialized);
 
   auto deserResult = transformer.fromSerialized(serialized, deserialized);
 
