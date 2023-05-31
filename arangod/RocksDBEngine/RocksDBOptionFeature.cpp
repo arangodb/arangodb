@@ -285,9 +285,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
 #ifdef ARANGODB_ROCKSDB8
       _prepopulateBlobCache(false),
 #endif
-      _reserveTableBuilderMemory(false),
-      _reserveTableReaderMemory(false),
-      _reserveFileMetadataMemory(false),
+      _reserveTableBuilderMemory(true),
+      _reserveTableReaderMemory(true),
+      _reserveFileMetadataMemory(true),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
       _cacheIndexAndFilterBlocks(true),
