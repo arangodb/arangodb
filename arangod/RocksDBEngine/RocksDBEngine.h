@@ -387,6 +387,16 @@ class RocksDBEngine final : public StorageEngine {
   void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
   void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
 
+  void trackRevisionTreeBufferedMemoryIncrease(std::uint64_t value) noexcept;
+  void trackRevisionTreeBufferedMemoryDecrease(std::uint64_t value) noexcept;
+
+  void trackIndexSelectivityMemoryIncrease(std::uint64_t value) noexcept;
+  void trackIndexSelectivityMemoryDecrease(std::uint64_t value) noexcept;
+
+  metrics::Gauge<uint64_t>& indexEstimatorMemoryUsageMetric() const noexcept {
+    return _metricsIndexEstimatorMemoryUsage;
+  }
+
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
@@ -520,8 +530,6 @@ class RocksDBEngine final : public StorageEngine {
 
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
-
-  void removeEmptyJournalFilesFromArchive();
 
   RocksDBOptionsProvider const& _optionsProvider;
 
@@ -707,6 +715,7 @@ class RocksDBEngine final : public StorageEngine {
   // an auto-flush
   uint64_t _autoFlushMinWalFiles;
 
+  metrics::Gauge<uint64_t>& _metricsIndexEstimatorMemoryUsage;
   metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   metrics::Gauge<uint64_t>& _metricsLiveWalFiles;
@@ -716,6 +725,7 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Gauge<uint64_t>& _metricsPrunableWalFiles;
   metrics::Gauge<uint64_t>& _metricsWalPruningActive;
   metrics::Gauge<uint64_t>& _metricsTreeMemoryUsage;
+  metrics::Gauge<uint64_t>& _metricsTreeBufferedMemoryUsage;
   metrics::Counter& _metricsTreeRebuildsSuccess;
   metrics::Counter& _metricsTreeRebuildsFailure;
   metrics::Counter& _metricsTreeHibernations;

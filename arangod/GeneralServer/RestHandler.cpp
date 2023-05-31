@@ -597,7 +597,7 @@ void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber,
 }
 
 void RestHandler::compressResponse() {
-  if (_response->isCompressionAllowed()) {
+  if (!_isAsyncRequest && _response->isCompressionAllowed()) {
     switch (_request->acceptEncoding()) {
       case rest::EncodingType::DEFLATE:
         _response->deflate();
