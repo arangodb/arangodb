@@ -1,6 +1,13 @@
 devel
 -----
 
+* BTS-846: Relaxed setup cost for calculation of default sort cost. There was 
+  a hardcoded value of 100 being added to the sort cost that would be dominant
+  when there was a small amount of documents in the collection. Even if an 
+  index would be the best candidate, if it doesn't cover a sort node present
+  in a query, it might end up not being chosen because the default sort cost 
+  would be minimum 100 because of the former hardcoded value.
+
 * Add a startup parameter `--rclone.argument` which can be utilised to enable
   debugging with logfiles in hot backup RClone upload operacions:
   `--rclone.argument=--log-level=DEBUG`
