@@ -495,22 +495,23 @@ void NetworkFeature::retryRequest(
   if (server().isStopping()) {
     req->cancel();
   }
+  auto cb = [this, weak = std::weak_ptr(req)](bool cancelled) {
+    std::unique_lock guard(_workItemMutex);
+    if (auto self = weak.lock(); self) {
+      _retryRequests.erase(self);
+      guard.unlock();  // resuming the request does not access _retryRequests
+      if (cancelled) {
+        self->cancel();
+      } else {
+        self->retry();
+      }
+    }
+  };
+  // we need the mutex during `queueDelayed` because the lambda might be
+  // executed faster than we can add the work item to the _retryRequests map.
   std::unique_lock guard(_workItemMutex);
   auto item = SchedulerFeature::SCHEDULER->queueDelayed(
-      "retry-requests", lane, duration,
-      [this, weak = std::weak_ptr(req)](bool cancelled) {
-        if (auto self = weak.lock(); self) {
-          {
-            std::unique_lock guard(_workItemMutex);
-            _retryRequests.erase(self);
-          }
-          if (cancelled) {
-            self->cancel();
-          } else {
-            self->retry();
-          }
-        }
-      });
+      "retry-requests", lane, duration, std::move(cb));
   _retryRequests.emplace(std::move(req), std::move(item));
 }
 
