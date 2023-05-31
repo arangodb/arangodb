@@ -98,7 +98,6 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                            [&dbViews, &database = std::as_const(database)](
                                LogicalView::ptr const& view) -> bool {
                              dbViews[database]++;
-
                              return true;
                            });
   }
@@ -559,7 +558,6 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
     VPackBuilder stats;
     StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
     engine.getStatistics(stats);
-
     auto names = {
         // edge cache
         "cache.limit",
@@ -689,20 +687,20 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             auto flags = Index::makeFlags(Index::Serialize::Estimates,
                                           Index::Serialize::Figures);
             constexpr std::array<std::string_view, 12> idxTypes = {
-                "edge",     "geo",        "hash",      "fulltext",
-                "inverted", "persistent", "iresearch", "skiplist",
-                "ttl",      "zkd",        "primary",   "unknown"};
+                "edge",     "geo",        "hash",     "fulltext",
+                "inverted", "persistent", "skiplist", "ttl",
+                "zkd",      "iresearch",  "primary",  "unknown"};
             for (auto const& type : idxTypes) {
               idxTypesToAmounts.try_emplace(type, 0);
             }
 
             VPackBuilder output;
-            std::ignore =
-                methods::Indexes::getAll(coll.get(), flags, false, output);
+            std::ignore = methods::Indexes::getAll(*coll, flags, true, output);
             velocypack::Slice outSlice = output.slice();
 
             result.add("idxs", VPackValue(VPackValueType::Array));
             for (auto const it : velocypack::ArrayIterator(outSlice)) {
+              auto idxType = it.get("type").stringView();
               result.openObject();
 
               if (auto figures = it.get("figures"); !figures.isNone()) {
@@ -729,7 +727,14 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
                 result.add("cache_usage", VPackValue(cacheUsage));
               }
 
-              auto idxType = it.get("type").stringView();
+              if (idxType == "arangosearch") {
+                // this is because the telemetrics parser for the object in the
+                // endpoint should contain the arangosearch index with the name
+                // "iresearch" hardcoded, so, until it's changed, we write the
+                // amounts of indexes of this type as "iresearch" in the object
+                idxType = "iresearch";
+              }
+
               if (idxType == "geo1" || idxType == "geo2") {
                 // older deployments can have indexes of type "geo1"
                 // and "geo2". these are old names for "geo" indexes with
@@ -737,8 +742,16 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
                 idxType = "geo";
               }
               result.add("type", VPackValue(idxType));
-              bool isSparse = it.get("sparse").getBoolean();
-              bool isUnique = it.get("unique").getBoolean();
+              bool isSparse = false;
+              auto idxSlice = it.get("sparse");
+              if (!idxSlice.isNone()) {
+                isSparse = idxSlice.getBoolean();
+              }
+              bool isUnique = false;
+              idxSlice = it.get("unique");
+              if (!idxSlice.isNone()) {
+                isUnique = idxSlice.getBoolean();
+              }
               result.add("sparse", VPackValue(isSparse));
               result.add("unique", VPackValue(isUnique));
               idxTypesToAmounts[idxType]++;

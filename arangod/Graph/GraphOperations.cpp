@@ -30,9 +30,11 @@
 #include <boost/range/join.hpp>
 #include <utility>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
@@ -100,14 +102,16 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(
   collectionOptions.openObject();
   _graph.createCollectionOptions(collectionOptions, waitForSync);
   collectionOptions.close();
+  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
+  bool waitForSyncReplication = cluster.createWaitsForSyncReplication();
   for (auto const& newCollection : newCollections) {
     // While the collection is new in the graph, it may still already exist.
     if (GraphManager::getCollectionByName(_vocbase, newCollection)) {
       continue;
     }
 
-    Result result = gmngr.createVertexCollection(newCollection, waitForSync,
-                                                 collectionOptions.slice());
+    Result result = gmngr.createVertexCollection(
+        newCollection, waitForSyncReplication, collectionOptions.slice());
     if (result.fail()) {
       return OperationResult(result, options);
     }

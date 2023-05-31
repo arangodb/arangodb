@@ -28,6 +28,7 @@
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
+#include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
@@ -58,6 +59,7 @@
 #include "Indexes/Index.h"
 #include "Inspection/VPack.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchLinkCoordinator.h"
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -81,6 +83,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -296,6 +299,104 @@ class CollectionWatcher
   std::atomic<bool> _present;
 };
 
+constexpr frozen::unordered_map<std::string_view, ServerHealth, 4>
+    kHealthStatusMap = {
+        {consensus::Supervision::HEALTH_STATUS_BAD, ServerHealth::kBad},
+        {consensus::Supervision::HEALTH_STATUS_FAILED, ServerHealth::kFailed},
+        {consensus::Supervision::HEALTH_STATUS_GOOD, ServerHealth::kGood},
+        {consensus::Supervision::HEALTH_STATUS_UNCLEAR,
+         ServerHealth::kUnclear}};
+
+[[nodiscard]] ServersKnown parseServersKnown(
+    VPackSlice const serversKnownSlice, VPackSlice const supervisionHealth,
+    containers::FlatHashSet<ServerID> const& serverIds) {
+  ServersKnown res;
+  TRI_ASSERT(serversKnownSlice.isNone() || serversKnownSlice.isObject());
+  LOG_TOPIC("91da8", TRACE, Logger::CLUSTER)
+      << "Supervision health is:" << supervisionHealth.toString();
+  if (serversKnownSlice.isObject()) {
+    for (auto const it : VPackObjectIterator(serversKnownSlice)) {
+      auto status = ServerHealth::kUnclear;
+      std::string serverId = it.key.copyString();
+      if (ADB_LIKELY(supervisionHealth.isObject())) {
+        auto serverKey = supervisionHealth.get(serverId);
+        // Server may be missing from Health if it has just arrived
+        // to our cluster.
+        if (serverKey.isObject()) {
+          auto statusString = serverKey.get("Status");
+          if (statusString.isString()) {
+            auto decoded = kHealthStatusMap.find(statusString.stringView());
+            if (decoded != kHealthStatusMap.end()) {
+              status = decoded->second;
+            }
+          }
+        }
+      }
+      VPackSlice const knownServerSlice = it.value;
+      TRI_ASSERT(knownServerSlice.isObject());
+      if (knownServerSlice.isObject()) {
+        VPackSlice const rebootIdSlice = knownServerSlice.get("rebootId");
+        TRI_ASSERT(rebootIdSlice.isInteger());
+        if (rebootIdSlice.isInteger()) {
+          auto const rebootId =
+              RebootId{rebootIdSlice.getNumericValue<uint64_t>()};
+          res.emplace(
+              std::move(serverId),
+              ServerHealthState{.rebootId = rebootId, .status = status});
+        }
+      }
+    }
+  }
+  return res;
+}
+
+void doQueueLinkDrop(IndexId id, std::string const& collection,
+                     std::string const& vocbase, ClusterInfo& ci) {
+  auto* scheduler = SchedulerFeature::SCHEDULER;
+  if (!scheduler || ci.server().isStopping()) {
+    return;
+  }
+  LOG_TOPIC("0d7b2", WARN, Logger::CLUSTER)
+      << "Scheduling drop for dangling link " << id;
+  auto dropTask = [id = id, collection = collection, vocbase = vocbase,
+                   &ci = ci] {
+    if (!ci.server().isStopping()) {
+      auto coll = ci.getCollectionNT(vocbase, collection);
+      if (coll) {
+        velocypack::Builder builder;
+        builder.openObject();
+        builder.add(arangodb::StaticStrings::IndexId,
+                    velocypack::Value(id.id()));
+        builder.close();
+        LOG_TOPIC("d7665", TRACE, Logger::CLUSTER)
+            << "Dropping dangling link " << id;
+        Result res;
+        TRI_IF_FAILURE("IResearchLink::failDropDangling") {
+          res = Result{TRI_ERROR_DEBUG};
+        }
+        else {
+          res = methods::Indexes::drop(*coll, builder.slice());
+        }
+        if (res.fail() && res.isNot(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
+          // we should have internal superuser
+          TRI_ASSERT(res.isNot(TRI_ERROR_FORBIDDEN));
+          LOG_TOPIC("b27f3", WARN, Logger::CLUSTER)
+              << "Failed to drop dangling link " << id
+              << " Err: " << res.errorMessage();
+          doQueueLinkDrop(id, collection, vocbase, ci);
+        } else {
+          LOG_TOPIC("2c47a", TRACE, Logger::CLUSTER)
+              << "Removed dangling link" << id;
+        }
+      } else {
+        LOG_TOPIC("f5596", TRACE, Logger::CLUSTER)
+            << "Scheduled drop for dangling link " << id
+            << " skipped as collection is dropped";
+      }
+    };
+  };
+  scheduler->queue(RequestLane::INTERNAL_LOW, dropTask);
+}
 }  // namespace
 }  // namespace arangodb
 
@@ -895,7 +996,7 @@ void ClusterInfo::loadClusterId() {
 ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     bool isBuilding, AllCollections::const_iterator existingCollections,
     std::string_view collectionId, arangodb::velocypack::Slice data,
-    TRI_vocbase_t& vocbase, uint64_t planVersion) const {
+    TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const {
   std::shared_ptr<LogicalCollection> collection;
   uint64_t hash = 0;
 
@@ -935,7 +1036,6 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     // changed
     collection = vocbase.createCollectionObject(data, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
-
     if (!isBuilding) {
       auto indexes = collection->getIndexes();
       // if the collection has a link to a view, there are dependencies between
@@ -949,6 +1049,27 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
         // we do have a view. set hash to 0, which will disable the caching
         // optimization
         hash = 0;
+        if (cleanupLinks) {
+          TRI_ASSERT(ServerState::instance()->isCoordinator());
+          for (auto const& idx : indexes) {
+            TRI_ASSERT(idx);
+            if (idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+              auto& coordLink =
+                  basics::downCast<iresearch::IResearchLinkCoordinator const>(
+                      *idx);
+              auto const& viewId = coordLink.getViewId();
+              auto vocbaseViews = _newPlannedViews.find(vocbase.name());
+              if (vocbaseViews == _newPlannedViews.end() ||
+                  !vocbaseViews->second.contains(viewId)) {
+                if (!_pendingCleanups.contains(idx->id().id())) {
+                  doQueueLinkDrop(idx->id(), collection->name(), vocbase.name(),
+                                  const_cast<ClusterInfo&>(*this));
+                }
+                _currentCleanups.emplace(idx->id().id());
+              }
+            }
+          }
+        }
       } else if (hash == 0) {
         // not yet hashed. now calculate the hash value
         hash = data.hash();
@@ -1014,6 +1135,7 @@ void ClusterInfo::loadPlan() {
     _newPlannedViews = _plannedViews;
     _newPlannedCollections = _plannedCollections;
     _planLoader = std::this_thread::get_id();
+    _currentCleanups.clear();
   }
 
   // ensure we'll eventually reset plan loader
@@ -1433,6 +1555,20 @@ void ClusterInfo::loadPlan() {
   //    },...
   //  },...
   // }}
+  bool cleanupLinkResponsible{ServerState::instance()->isCoordinator() &&
+                              !changeSet.dbs.empty()};
+  if (cleanupLinkResponsible) {
+    auto const myId = ServerState::instance()->getId();
+    auto ctors = getCurrentCoordinators();
+    for (auto const& s : ctors) {
+      if (_rebootTracker.isServerAlive(s) && s < myId) {
+        cleanupLinkResponsible = false;
+        break;
+      }
+    }
+    LOG_TOPIC_IF("567be", TRACE, Logger::CLUSTER, cleanupLinkResponsible)
+        << "This server is responsible for dangling links cleanup.";
+  }
   for (auto const& database : changeSet.dbs) {
     if (database.first.empty()) {  // Rest of plan
       continue;
@@ -1557,9 +1693,9 @@ void ClusterInfo::loadPlan() {
       // scratch in every iteration the cache check is very coarse-grained: it
       // simply hashes the Plan VelocyPack data for the collection, and will
       // only reuse a collection from the cache if the hash is identical.
-      CollectionWithHash cwh =
-          buildCollection(isBuilding, existingCollections, collectionId,
-                          collectionSlice, *vocbase, changeSet.version);
+      CollectionWithHash cwh = buildCollection(
+          isBuilding, existingCollections, collectionId, collectionSlice,
+          *vocbase, changeSet.version, cleanupLinkResponsible);
       auto& newCollection = cwh.collection;
       TRI_ASSERT(newCollection != nullptr);
 
@@ -1788,6 +1924,7 @@ void ClusterInfo::loadPlan() {
     _shardToShardGroupLeader.swap(newShardToShardGroupLeader);
     _shardGroups.swap(newShardGroups);
     _shardToName.swap(newShardToName);
+    _pendingCleanups.swap(_currentCleanups);
   }
 
   if (swapViews) {
@@ -3197,6 +3334,14 @@ Result ClusterInfo::createCollectionsCoordinator(
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive
   // Mutex)
   for (auto& info : infos) {
+    TRI_IF_FAILURE("ClusterInfo::requiresWaitForReplication") {
+      if (info.waitForReplication) {
+        return TRI_ERROR_DEBUG;
+      } else {
+        TRI_ASSERT(false) << "We required to have waitForReplication, but it "
+                             "was set to false";
+      }
+    }
     TRI_ASSERT(!info.name.empty());
 
     if (info.state == ClusterCollectionCreationState::DONE) {
@@ -3849,11 +3994,6 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     double timeout  // request timeout
 ) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  if (dbName.empty() || (dbName[0] > '0' && dbName[0] < '9')) {
-    events::DropCollection(dbName, collectionID,
-                           TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-  }
 
   AgencyComm ac(_server);
   AgencyCommResult res;
@@ -5500,6 +5640,7 @@ Result ClusterInfo::dropIndexCoordinatorInner(std::string const& databaseName,
 static std::string const prefixServersRegistered = "Current/ServersRegistered";
 static std::string const prefixServersKnown = "Current/ServersKnown";
 static std::string const mapUniqueToShortId = "Target/MapUniqueToShortID";
+static std::string const prefixHealth = "Supervision/Health";
 
 void ClusterInfo::loadServers() {
   ++_serversProt.wantedVersion;  // Indicate that after *NOW* somebody has to
@@ -5516,7 +5657,8 @@ void ClusterInfo::loadServers() {
   auto [acb, index] = agencyCache.read(
       std::vector<std::string>({AgencyCommHelper::path(prefixServersRegistered),
                                 AgencyCommHelper::path(mapUniqueToShortId),
-                                AgencyCommHelper::path(prefixServersKnown)}));
+                                AgencyCommHelper::path(prefixServersKnown),
+                                AgencyCommHelper::path(prefixHealth)}));
   auto result = acb->slice();
   if (!result.isArray()) {
     LOG_TOPIC("be98b", DEBUG, Logger::CLUSTER)
@@ -5525,8 +5667,10 @@ void ClusterInfo::loadServers() {
     return;
   }
 
-  VPackSlice serversRegistered, serversAliases, serversKnownSlice;
+  VPackSlice serversRegistered, serversAliases, serversKnownSlice,
+      supervisionHealth;
 
+  // FIXME(Dronplane): use std::arrays
   std::initializer_list<std::string_view> const serversRegisteredPath{
       AgencyCommHelper::path(), "Current", "ServersRegistered"};
   if (result[0].hasKey(serversRegisteredPath)) {
@@ -5541,6 +5685,11 @@ void ClusterInfo::loadServers() {
       AgencyCommHelper::path(), "Current", "ServersKnown"};
   if (result[0].hasKey(serversKnownPath)) {
     serversKnownSlice = result[0].get(serversKnownPath);
+  }
+  std::initializer_list<std::string_view> const supervisionHealthPath{
+      AgencyCommHelper::path(), "Supervision", "Health"};
+  if (result[0].hasKey(supervisionHealthPath)) {
+    supervisionHealth = result[0].get(supervisionHealthPath);
   }
 
   if (serversRegistered.isObject()) {
@@ -5583,7 +5732,8 @@ void ClusterInfo::loadServers() {
       }
     }
 
-    decltype(_serversKnown) newServersKnown(serversKnownSlice, serverIds);
+    auto newServersKnown =
+        parseServersKnown(serversKnownSlice, supervisionHealth, serverIds);
 
     // Now set the new value:
     {
@@ -5596,17 +5746,20 @@ void ClusterInfo::loadServers() {
       _serversProt.doneVersion = storedVersion;
       _serversProt.isValid = true;
     }
+    // FIXME: Here _serversKnown was read without readlock. It looks safe
+    // for now as the only write (not include setters for tests) is in this
+    // method and it is protexted by mutex _serversProt.mutex
+
     // Our own RebootId might have changed if we have been FAILED at least once
     // since our last actual reboot, let's update it:
-    auto rebootIds = _serversKnown.rebootIds();
     auto* serverState = ServerState::instance();
-    auto it = rebootIds.find(serverState->getId());
-    if (it != rebootIds.end()) {
+    auto it = _serversKnown.find(serverState->getId());
+    if (it != _serversKnown.end()) {
       // should always be ok
-      if (serverState->getRebootId() != it->second) {
-        serverState->setRebootId(it->second);
+      if (serverState->getRebootId() != it->second.rebootId) {
+        serverState->setRebootId(it->second.rebootId);
         LOG_TOPIC("feaab", INFO, Logger::CLUSTER)
-            << "Updating my own rebootId to " << it->second.value();
+            << "Updating my own rebootId to " << it->second.rebootId.value();
       }
     } else {
       LOG_TOPIC("feaaa", WARN, Logger::CLUSTER)
@@ -5616,7 +5769,7 @@ void ClusterInfo::loadServers() {
     }
     // RebootTracker has its own mutex, and doesn't strictly need to be in
     // sync with the other members.
-    rebootTracker().updateServerState(std::move(rebootIds));
+    rebootTracker().updateServerState(_serversKnown);
     return;
   }
 
@@ -5629,9 +5782,9 @@ void ClusterInfo::loadServers() {
 /// @brief Hand out copy of reboot ids
 ////////////////////////////////////////////////////////////////////////////////
 
-containers::FlatHashMap<ServerID, RebootId> ClusterInfo::rebootIds() const {
+ServersKnown ClusterInfo::rebootIds() const {
   std::lock_guard mutexLocker{_serversProt.mutex};
-  return _serversKnown.rebootIds();
+  return _serversKnown;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -6161,6 +6314,31 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
   return result;
 }
 
+ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(
+    ServerID const& server, ShardID const& shard) const {
+  if (!_currentProt.isValid) {
+    return ShardLeadership::kUnclear;
+  }
+  READ_LOCKER(readLocker, _currentProt.lock);
+  auto it = _shardsToCurrentServers.find(shard);
+  if (it == _shardsToCurrentServers.end()) {
+    return ShardLeadership::kUnclear;
+  }
+  auto const& serverList = it->second;
+  if (!serverList || serverList->empty()) {
+    return ShardLeadership::kUnclear;
+  }
+  auto const& front = serverList->front();
+  TRI_ASSERT(!front.empty());
+  if (front.starts_with('_')) {
+    // This is a temporary situation in which the leader has already resigned,
+    // so we don't know exactly right now.
+    return ShardLeadership::kUnclear;
+  }
+  return front == server ? ShardLeadership::kLeader
+                         : ShardLeadership::kFollower;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief atomically find all servers who are responsible for the given
 /// shards (only the leaders).
@@ -6341,6 +6519,18 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
   return std::make_shared<std::vector<ShardID>>();
 }
 
+std::shared_ptr<std::vector<ServerID> const>
+ClusterInfo::getCurrentServersForShard(std::string_view shardId) {
+  READ_LOCKER(readLocker, _currentProt.lock);
+
+  if (auto it = _shardsToCurrentServers.find(shardId);
+      it != _shardsToCurrentServers.end()) {
+    return it->second;
+  } else {
+    return nullptr;
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of coordinator server names
 ////////////////////////////////////////////////////////////////////////////////
@@ -6503,7 +6693,8 @@ void ClusterInfo::setShardGroups(
 }
 
 void ClusterInfo::setShardIds(
-    containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
+    containers::FlatHashMap<ShardID,
+                            std::shared_ptr<std::vector<ServerID> const>>
         shardIds) {
   WRITE_LOCKER(writeLocker, _currentProt.lock);
   _shardsToCurrentServers = std::move(shardIds);
@@ -6997,38 +7188,6 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
 
 ArangodServer& ClusterInfo::server() const { return _server; }
 
-ClusterInfo::ServersKnown::ServersKnown(
-    VPackSlice const serversKnownSlice,
-    containers::FlatHashSet<ServerID> const& serverIds)
-    : _serversKnown() {
-  TRI_ASSERT(serversKnownSlice.isNone() || serversKnownSlice.isObject());
-  if (serversKnownSlice.isObject()) {
-    for (auto const it : VPackObjectIterator(serversKnownSlice)) {
-      std::string serverId = it.key.copyString();
-      VPackSlice const knownServerSlice = it.value;
-      TRI_ASSERT(knownServerSlice.isObject());
-      if (knownServerSlice.isObject()) {
-        VPackSlice const rebootIdSlice = knownServerSlice.get("rebootId");
-        TRI_ASSERT(rebootIdSlice.isInteger());
-        if (rebootIdSlice.isInteger()) {
-          auto const rebootId =
-              RebootId{rebootIdSlice.getNumericValue<uint64_t>()};
-          _serversKnown.try_emplace(std::move(serverId), rebootId);
-        }
-      }
-    }
-  }
-}
-
-containers::FlatHashMap<ServerID, RebootId>
-ClusterInfo::ServersKnown::rebootIds() const {
-  containers::FlatHashMap<ServerID, RebootId> rebootIds;
-  for (auto const& it : _serversKnown) {
-    rebootIds.try_emplace(it.first, it.second.rebootId());
-  }
-  return rebootIds;
-}
-
 void ClusterInfo::startSyncers() {
   _planSyncer = std::make_unique<SyncerThread>(
       _server, "Plan", [this] { loadPlan(); }, _agencyCallbackRegistry);
@@ -7043,25 +7202,20 @@ void ClusterInfo::startSyncers() {
 }
 
 void ClusterInfo::drainSyncers() {
-  {
-    std::lock_guard g(_waitPlanLock);
-    auto pit = _waitPlan.begin();
-    while (pit != _waitPlan.end()) {
+  auto clearWaitForMaps = [&](auto& mutex, auto& map) {
+    std::lock_guard g(mutex);
+    auto pit = map.begin();
+    while (pit != map.end()) {
       pit->second.setValue(Result(_syncerShutdownCode));
       ++pit;
     }
-    _waitPlan.clear();
-  }
+    map.clear();
+  };
 
-  {
-    std::lock_guard g(_waitCurrentLock);
-    auto pit = _waitCurrent.begin();
-    while (pit != _waitCurrent.end()) {
-      pit->second.setValue(Result(_syncerShutdownCode));
-      ++pit;
-    }
-    _waitCurrent.clear();
-  }
+  clearWaitForMaps(_waitPlanLock, _waitPlan);
+  clearWaitForMaps(_waitPlanVersionLock, _waitPlanVersion);
+  clearWaitForMaps(_waitCurrentLock, _waitCurrent);
+  clearWaitForMaps(_waitCurrentVersionLock, _waitCurrentVersion);
 }
 
 void ClusterInfo::shutdownSyncers() {
@@ -7319,6 +7473,24 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
           return clusterInfo.waitForPlanVersion(planVersion);
         } else {
           return futures::Future<Result>{maybePlanVersion.result()};
+        }
+      });
+}
+
+futures::Future<Result> ClusterInfo::fetchAndWaitForCurrentVersion(
+    network::Timeout timeout) const {
+  // Save the applicationServer, not the ClusterInfo, in case of shutdown.
+  return cluster::fetchCurrentVersion(timeout).thenValue(
+      [&applicationServer = server()](auto maybeCurrentVersion) {
+        if (maybeCurrentVersion.ok()) {
+          auto currentVersion = maybeCurrentVersion.get();
+
+          auto& clusterInfo =
+              applicationServer.getFeature<ClusterFeature>().clusterInfo();
+
+          return clusterInfo.waitForCurrentVersion(currentVersion);
+        } else {
+          return futures::Future<Result>{maybeCurrentVersion.result()};
         }
       });
 }

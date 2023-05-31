@@ -33,24 +33,16 @@ DATAFORM=		main
 #	make zonenames
 # to get a list of the values you can use for LOCALTIME.
 
-LOCALTIME=	GMT
+LOCALTIME=	Factory
 
-# The POSIXRULES macro controls interpretation of nonstandard and obsolete
-# POSIX-like TZ settings like TZ='EET-2EEST' that lack DST transition rules.
-# Such a setting uses the rules in a template file to determine
-# "spring forward" and "fall back" days and times; the environment
-# variable itself specifies UT offsets of standard and daylight saving time.
-#
+# The POSIXRULES macro controls interpretation of POSIX-like TZ
+# settings like TZ='EET-2EEST' that lack DST transition rules.
 # If POSIXRULES is '-', no template is installed; this is the default.
-#
 # Any other value for POSIXRULES is obsolete and should not be relied on, as:
 # * It does not work correctly in popular implementations such as GNU/Linux.
 # * It does not work even in tzcode, except for historical timestamps
 #   that precede the last explicit transition in the POSIXRULES file.
 #   Hence it typically does not work for current and future timestamps.
-# In short, software should avoid ruleless settings like TZ='EET-2EEST'
-# and so should not depend on the value of POSIXRULES.
-#
 # If, despite the above, you want a template for handling these settings,
 # you can change the line below (after finding the timezone you want in the
 # one of the $(TDATA) source files, or adding it to a source file).
@@ -63,7 +55,7 @@ LOCALTIME=	GMT
 POSIXRULES=	-
 
 # Also see TZDEFRULESTRING below, which takes effect only
-# if the time zone files cannot be accessed.
+# if POSIXRULES is '-' or if the template file cannot be accessed.
 
 
 # Installation locations.
@@ -176,12 +168,19 @@ TZDATA_TEXT=	leapseconds tzdata.zi
 
 BACKWARD=	backward
 
-# If you want out-of-scope and often-wrong data from the file 'backzone', use
+# If you want out-of-scope and often-wrong data from the file 'backzone',
+# but only for entries listed in the backward-compatibility file zone.tab, use
 #	PACKRATDATA=	backzone
+#	PACKRATLIST=	zone.tab
+# If you want all the 'backzone' data, use
+#	PACKRATDATA=	backzone
+#	PACKRATLIST=
 # To omit this data, use
 #	PACKRATDATA=
+#	PACKRATLIST=
 
 PACKRATDATA=
+PACKRATLIST=
 
 # The name of a locale using the UTF-8 encoding, used during self-tests.
 # The tests are skipped if the name does not appear to work on this system.
@@ -189,6 +188,7 @@ PACKRATDATA=
 UTF8_LOCALE=	en_US.utf8
 
 # Non-default libraries needed to link.
+# On some hosts, this should have -lintl unless CFLAGS has -DHAVE_GETTEXT=0.
 LDLIBS=
 
 # Add the following to the end of the "CFLAGS=" line as needed to override
@@ -201,13 +201,18 @@ LDLIBS=
 #	For example, N is 252460800 on AmigaOS.
 #  -DHAVE_DECL_ASCTIME_R=0 if <time.h> does not declare asctime_r
 #  -DHAVE_DECL_ENVIRON if <unistd.h> declares 'environ'
+#  -DHAVE_DECL_TIMEGM=0 if <time.h> does not declare timegm
 #  -DHAVE_DIRECT_H if mkdir needs <direct.h> (MS-Windows)
-#  -DHAVE_GENERIC=0 if _Generic does not work
-#  -DHAVE_GETTEXT if 'gettext' works (e.g., GNU/Linux, FreeBSD, Solaris)
+#  -DHAVE__GENERIC=0 if _Generic does not work*
+#  -DHAVE_GETRANDOM if getrandom works (e.g., GNU/Linux),
+#	-DHAVE_GETRANDOM=0 to avoid using getrandom
+#  -DHAVE_GETTEXT if gettext works (e.g., GNU/Linux, FreeBSD, Solaris),
+#	where LDLIBS also needs to contain -lintl on some hosts;
+#	-DHAVE_GETTEXT=0 to avoid using gettext
 #  -DHAVE_INCOMPATIBLE_CTIME_R if your system's time.h declares
 #	ctime_r and asctime_r incompatibly with the POSIX standard
 #	(Solaris when _POSIX_PTHREAD_SEMANTICS is not defined).
-#  -DHAVE_INTTYPES_H if you have a non-C99 compiler with <inttypes.h>
+#  -DHAVE_INTTYPES_H=0 if <inttypes.h> does not work*+
 #  -DHAVE_LINK=0 if your system lacks a link function
 #  -DHAVE_LOCALTIME_R=0 if your system lacks a localtime_r function
 #  -DHAVE_LOCALTIME_RZ=0 if you do not want zdump to use localtime_rz
@@ -215,20 +220,25 @@ LDLIBS=
 #  -DHAVE_MALLOC_ERRNO=0 if malloc etc. do not set errno on failure.
 #  -DHAVE_POSIX_DECLS=0 if your system's include files do not declare
 #	functions like 'link' or variables like 'tzname' required by POSIX
-#  -DHAVE_SNPRINTF=0 if your system lacks the snprintf function
-#  -DHAVE_STDBOOL_H if you have a non-C99 compiler with <stdbool.h>
-#  -DHAVE_STDINT_H if you have a non-C99 compiler with <stdint.h>
+#  -DHAVE_SETENV=0 if your system lacks the setenv function
+#  -DHAVE_SNPRINTF=0 if your system lacks the snprintf function+
+#  -DHAVE_STDCKDINT_H=0 if neither <stdckdint.h> nor substitutes like
+#	__builtin_add_overflow work*
+#  -DHAVE_STDINT_H=0 if <stdint.h> does not work*+
 #  -DHAVE_STRFTIME_L if <time.h> declares locale_t and strftime_l
 #  -DHAVE_STRDUP=0 if your system lacks the strdup function
-#  -DHAVE_STRTOLL=0 if your system lacks the strtoll function
+#  -DHAVE_STRTOLL=0 if your system lacks the strtoll function+
 #  -DHAVE_SYMLINK=0 if your system lacks the symlink function
-#  -DHAVE_SYS_STAT_H=0 if your compiler lacks a <sys/stat.h>
+#  -DHAVE_SYS_STAT_H=0 if <sys/stat.h> does not work*
 #  -DHAVE_TZSET=0 if your system lacks a tzset function
-#  -DHAVE_UNISTD_H=0 if your compiler lacks a <unistd.h>
+#  -DHAVE_UNISTD_H=0 if <unistd.h> does not work*
+#  -DHAVE_UTMPX_H=0 if <utmpx.h> does not work*
 #  -Dlocale_t=XXX if your system uses XXX instead of locale_t
+#  -DPORT_TO_C89 if tzcode should also run on C89 platforms+
 #  -DRESERVE_STD_EXT_IDS if your platform reserves standard identifiers
 #	with external linkage, e.g., applications cannot define 'localtime'.
 #  -Dssize_t=long on hosts like MS-Windows that lack ssize_t
+#  -DSUPPORT_C89 if the tzcode library should support C89 callers+
 #  -DSUPPRESS_TZDIR to not prepend TZDIR to file names; this has
 #	security implications and is not recommended for general use
 #  -DTHREAD_SAFE to make localtime.c thread-safe, as POSIX requires;
@@ -240,21 +250,32 @@ LDLIBS=
 #  -DTZ_DOMAINDIR=\"/path\" to use "/path" for gettext directory;
 #	the default is system-supplied, typically "/usr/lib/locale"
 #  -DTZDEFRULESTRING=\",date/time,date/time\" to default to the specified
-#	DST transitions if the time zone files cannot be accessed
+#	DST transitions for POSIX-style TZ strings lacking them,
+#	in the usual case where POSIXRULES is '-'.  If not specified,
+#	TZDEFRULESTRING defaults to US rules for future DST transitions.
+#	This mishandles some past timestamps, as US DST rules have changed.
+#	It also mishandles settings like TZ='EET-2EEST' for eastern Europe,
+#	as Europe and US DST rules differ.
+#  -DTZNAME_MAXIMUM=N to limit time zone abbreviations to N bytes (default 255)
 #  -DUNINIT_TRAP if reading uninitialized storage can cause problems
 #	other than simply getting garbage data
 #  -DUSE_LTZ=0 to build zdump with the system time zone library
 #	Also set TZDOBJS=zdump.o and CHECK_TIME_T_ALTERNATIVES= below.
 #  -DZIC_BLOAT_DEFAULT=\"fat\" to default zic's -b option to "fat", and
 #	similarly for "slim".  Fat TZif files work around incompatibilities
-#	and bugs in some TZif readers, notably readers that mishandle 64-bit
-#	data in TZif files.  Slim TZif files are more efficient and do not
-#	work around these incompatibilities and bugs.  If not given, the
-#	default is "slim".
+#	and bugs in some TZif readers, notably older ones that
+#	ignore or otherwise mishandle 64-bit data in TZif files;
+#	however, fat TZif files may trigger bugs in newer TZif readers.
+#	Slim TZif files are more efficient, and are the default.
 #  -DZIC_MAX_ABBR_LEN_WO_WARN=3
 #	(or some other number) to set the maximum time zone abbreviation length
 #	that zic will accept without a warning (the default is 6)
 #  $(GCC_DEBUG_FLAGS) if you are using recent GCC and want lots of checking
+#
+# * Options marked "*" can be omitted if your compiler is C23 compatible.
+# * Options marked "+" are obsolescent and are planned to be removed
+#   once the code assumes C99 or later.
+#
 # Select instrumentation via "make GCC_INSTRUMENT='whatever'".
 GCC_INSTRUMENT = \
   -fsanitize=undefined -fsanitize-address-use-after-scope \
@@ -264,11 +285,11 @@ GCC_DEBUG_FLAGS = -DGCC_LINT -g3 -O3 -fno-common \
   $(GCC_INSTRUMENT) \
   -Wall -Wextra \
   -Walloc-size-larger-than=100000 -Warray-bounds=2 \
-  -Wbad-function-cast -Wcast-align=strict -Wdate-time \
+  -Wbad-function-cast -Wbidi-chars=any,ucn -Wcast-align=strict -Wdate-time \
   -Wdeclaration-after-statement -Wdouble-promotion \
   -Wduplicated-branches -Wduplicated-cond \
   -Wformat=2 -Wformat-overflow=2 -Wformat-signedness -Wformat-truncation \
-  -Winit-self -Wlogical-op \
+  -Wimplicit-fallthrough=5 -Winit-self -Wlogical-op \
   -Wmissing-declarations -Wmissing-prototypes -Wnested-externs \
   -Wnull-dereference \
   -Wold-style-definition -Woverlength-strings -Wpointer-arith \
@@ -278,10 +299,10 @@ GCC_DEBUG_FLAGS = -DGCC_LINT -g3 -O3 -fno-common \
   -Wsuggest-attribute=const -Wsuggest-attribute=format \
   -Wsuggest-attribute=malloc \
   -Wsuggest-attribute=noreturn -Wsuggest-attribute=pure \
-  -Wtrampolines -Wundef -Wuninitialized -Wunused-macros \
+  -Wtrampolines -Wundef -Wuninitialized -Wunused-macros -Wuse-after-free=3 \
   -Wvariadic-macros -Wvla -Wwrite-strings \
   -Wno-address -Wno-format-nonliteral -Wno-sign-compare \
-  -Wno-type-limits -Wno-unused-parameter
+  -Wno-type-limits
 #
 # If your system has a "GMT offset" field in its "struct tm"s
 # (or if you decide to add such a field in your system's "time.h" file),
@@ -291,8 +312,9 @@ GCC_DEBUG_FLAGS = -DGCC_LINT -g3 -O3 -fno-common \
 # guess TM_GMTOFF from other macros; define NO_TM_GMTOFF to suppress this.
 # Similarly, if your system has a "zone abbreviation" field, define
 #	-DTM_ZONE=tm_zone
-# and define NO_TM_ZONE to suppress any guessing.  These two fields are not
-# required by POSIX, but are widely available on GNU/Linux and BSD systems.
+# and define NO_TM_ZONE to suppress any guessing.  Although these two fields
+# not required by POSIX, a future version of POSIX is planned to require them
+# and they are widely available on GNU/Linux and BSD systems.
 #
 # The next batch of options control support for external variables
 # exported by tzcode.  In practice these variables are less useful
@@ -327,14 +349,11 @@ GCC_DEBUG_FLAGS = -DGCC_LINT -g3 -O3 -fno-common \
 # If you want functions that were inspired by early versions of X3J11's work,
 # add
 #	-DSTD_INSPIRED
-# to the end of the "CFLAGS=" line.  This arranges for the functions
-# "offtime", "timelocal", "timegm", "timeoff",
-# "posix2time", and "time2posix" to be added to the time conversion library.
+# to the end of the "CFLAGS=" line.  This arranges for the following
+# functions to be added to the time conversion library.
 # "offtime" is like "gmtime" except that it accepts a second (long) argument
 # that gives an offset to add to the time_t when converting it.
 # "timelocal" is equivalent to "mktime".
-# "timegm" is like "timelocal" except that it turns a struct tm into
-# a time_t using UT (rather than local time as "timelocal" does).
 # "timeoff" is like "timegm" except that it accepts a second (long) argument
 # that gives an offset to use when converting to a time_t.
 # "posix2time" and "time2posix" are described in an included manual page.
@@ -346,7 +365,7 @@ GCC_DEBUG_FLAGS = -DGCC_LINT -g3 -O3 -fno-common \
 #	-DNETBSD_INSPIRED=0
 # to the end of the "CFLAGS=" line.  Otherwise, the functions
 # "localtime_rz", "mktime_z", "tzalloc", and "tzfree" are added to the
-# time library, and if STD_INSPIRED is also defined the functions
+# time library, and if STD_INSPIRED is also defined to nonzero the functions
 # "posix2time_z" and "time2posix_z" are added as well.
 # The functions ending in "_z" (or "_rz") are like their unsuffixed
 # (or suffixed-by-"_r") counterparts, except with an extra first
@@ -389,8 +408,9 @@ ZIC=		$(zic) $(ZFLAGS)
 
 # To shrink the size of installed TZif files,
 # append "-r @N" to omit data before N-seconds-after-the-Epoch.
-# To grow the files and work around older application bugs, append "-b fat";
-# see ZIC_BLOAT_DEFAULT above.
+# To grow the files and work around bugs in older applications,
+# possibly at the expense of introducing bugs in newer ones,
+# append "-b fat"; see ZIC_BLOAT_DEFAULT above.
 # See the zic man page for more about -b and -r.
 ZFLAGS=
 
@@ -437,16 +457,16 @@ SAFE_CHARSET3=	'abcdefghijklmnopqrstuvwxyz{|}~'
 SAFE_CHARSET=	$(SAFE_CHARSET1)$(SAFE_CHARSET2)$(SAFE_CHARSET3)
 SAFE_CHAR=	'[]'$(SAFE_CHARSET)'-]'
 
-# These characters are Latin-1, and so are likely to be displayable
-# even in editors with limited character sets.
-UNUSUAL_OK_LATIN_1 = «°±»½¾×
-# This IPA symbol is represented in Unicode as the composition of
-# U+0075 and U+032F, and U+032F is not considered alphabetic by some
-# grep implementations that do not grok composition.
-UNUSUAL_OK_IPA = u̯
+# These non-alphabetic, non-ASCII printable characters are Latin-1,
+# and so are likely displayable even in editors like XEmacs 21
+# that have limited display capabilities.
+UNUSUAL_OK_LATIN_1 = ¡¢£¤¥¦§¨©«¬®¯°±²³´¶·¸¹»¼½¾¿×÷
 # Non-ASCII non-letters that OK_CHAR allows, as these characters are
 # useful in commentary.
-UNUSUAL_OK_CHARSET= $(UNUSUAL_OK_LATIN_1)$(UNUSUAL_OK_IPA)
+UNUSUAL_OK_CHARSET= $(UNUSUAL_OK_LATIN_1)
+
+# Put this in a bracket expression to match spaces.
+s = [:space:]
 
 # OK_CHAR matches any character allowed in the distributed files.
 # This is the same as SAFE_CHAR, except that UNUSUAL_OK_CHARSET and
@@ -477,6 +497,11 @@ TARFLAGS=	`if tar $(GNUTARFLAGS) --version >/dev/null 2>&1; \
 
 # Flags to give 'gzip' when making a distribution.
 GZIPFLAGS=	-9n
+
+# When comparing .tzs files, use GNU diff's -F'^TZ=' option if supported.
+# This makes it easier to see which Zone has been affected.
+DIFF_TZS=	 diff -u$$(! diff -u -F'^TZ=' - - <>/dev/null >&0 2>&1 \
+			   || echo ' -F^TZ=')
 
 ###############################################################################
 
@@ -521,21 +546,23 @@ TDATA=		$(YDATA) $(NDATA) $(BACKWARD)
 ZONETABLES=	zone1970.tab zone.tab
 TABDATA=	iso3166.tab $(TZDATA_TEXT) $(ZONETABLES)
 LEAP_DEPS=	leapseconds.awk leap-seconds.list
-TZDATA_ZI_DEPS=	ziguard.awk zishrink.awk version $(TDATA) $(PACKRATDATA)
-DSTDATA_ZI_DEPS= ziguard.awk $(TDATA) $(PACKRATDATA)
+TZDATA_ZI_DEPS=	ziguard.awk zishrink.awk version $(TDATA) \
+		  $(PACKRATDATA) $(PACKRATLIST)
+DSTDATA_ZI_DEPS= ziguard.awk $(TDATA) $(PACKRATDATA) $(PACKRATLIST)
 DATA=		$(TDATA_TO_CHECK) backzone iso3166.tab leap-seconds.list \
 			leapseconds $(ZONETABLES)
 AWK_SCRIPTS=	checklinks.awk checktab.awk leapseconds.awk \
 			ziguard.awk zishrink.awk
-MISC=		$(AWK_SCRIPTS) zoneinfo2tdf.pl
+MISC=		$(AWK_SCRIPTS)
 TZS_YEAR=	2050
 TZS_CUTOFF_FLAG=	-c $(TZS_YEAR)
 TZS=		to$(TZS_YEAR).tzs
 TZS_NEW=	to$(TZS_YEAR)new.tzs
 TZS_DEPS=	$(YDATA) asctime.c localtime.c \
 			private.h tzfile.h zdump.c zic.c
+TZDATA_DIST = $(COMMON) $(DATA) $(MISC)
 # EIGHT_YARDS is just a yard short of the whole ENCHILADA.
-EIGHT_YARDS = $(COMMON) $(DOCS) $(SOURCES) $(DATA) $(MISC) tzdata.zi
+EIGHT_YARDS = $(TZDATA_DIST) $(DOCS) $(SOURCES) tzdata.zi
 ENCHILADA = $(EIGHT_YARDS) $(TZS)
 
 # Consult these files when deciding whether to rebuild the 'version' file.
@@ -555,7 +582,7 @@ VERSION_DEPS= \
 		tzfile.5 tzfile.h tzselect.8 tzselect.ksh \
 		workman.sh zdump.8 zdump.c zic.8 zic.c \
 		ziguard.awk zishrink.awk \
-		zone.tab zone1970.tab zoneinfo2tdf.pl
+		zone.tab zone1970.tab
 
 # And for the benefit of csh users on systems that assume the user
 # shell should be used to handle commands in Makefiles. . .
@@ -608,13 +635,17 @@ version:	$(VERSION_DEPS)
 		printf '%s\n' "$$V" >$@.out
 		mv $@.out $@
 
-# These files can be tailored by setting BACKWARD and PACKRATDATA.
+# These files can be tailored by setting BACKWARD, PACKRATDATA, PACKRATLIST.
 vanguard.zi main.zi rearguard.zi: $(DSTDATA_ZI_DEPS)
-		$(AWK) -v DATAFORM=`expr $@ : '\(.*\).zi'` -f ziguard.awk \
+		$(AWK) \
+		  -v DATAFORM=`expr $@ : '\(.*\).zi'` \
+		  -v PACKRATDATA='$(PACKRATDATA)' \
+		  -v PACKRATLIST='$(PACKRATLIST)' \
+		  -f ziguard.awk \
 		  $(TDATA) $(PACKRATDATA) >$@.out
 		mv $@.out $@
 # This file has a version comment that attempts to capture any tailoring
-# via BACKWARD, DATAFORM, PACKRATDATA, and REDO.
+# via BACKWARD, DATAFORM, PACKRATDATA, PACKRATLIST, and REDO.
 tzdata.zi:	$(DATAFORM).zi version zishrink.awk
 		version=`sed 1q version` && \
 		  LC_ALL=C $(AWK) \
@@ -652,6 +683,7 @@ INSTALLARGS = \
  DESTDIR='$(DESTDIR)' \
  LEAPSECONDS='$(LEAPSECONDS)' \
  PACKRATDATA='$(PACKRATDATA)' \
+ PACKRATLIST='$(PACKRATLIST)' \
  TZDEFAULT='$(TZDEFAULT)' \
  TZDIR='$(TZDIR)' \
  ZIC='$(ZIC)'
@@ -689,11 +721,6 @@ posix_right:	posix_only
 		ln -s '$(TZDIR_BASENAME)' '$(DESTDIR)$(TZDIR)-posix' || \
 		  $(MAKE) $(INSTALLARGS) TZDIR='$(TZDIR)-posix' posix_only
 		$(MAKE) $(INSTALLARGS) TZDIR='$(TZDIR)-leaps' right_only
-
-# This obsolescent rule is present for backwards compatibility with
-# tz releases 2014g through 2015g.  It should go away eventually.
-posix_packrat: $(INSTALL_DATA_DEPS)
-		$(MAKE) $(INSTALLARGS) PACKRATDATA=backzone posix_only
 
 zones:		$(REDO)
 
@@ -754,9 +781,10 @@ tzselect:	tzselect.ksh version
 		chmod +x $@.out
 		mv $@.out $@
 
-check:		check_character_set check_white_space check_links \
-		  check_name_lengths check_sorted \
-		  check_tables check_web check_zishrink check_tzs
+check: check_back check_mild
+check_mild:	check_character_set check_white_space check_links \
+		  check_name_lengths check_slashed_abbrs check_sorted \
+		  check_tables check_web check_ziguard check_zishrink check_tzs
 
 check_character_set: $(ENCHILADA)
 	test ! '$(UTF8_LOCALE)' || \
@@ -780,29 +808,47 @@ check_white_space: $(ENCHILADA)
 		patfmt=' \t|[\f\r\v]' && pat=`printf "$$patfmt\\n"` && \
 		! grep -En "$$pat" \
 			$$(ls $(ENCHILADA) | grep -Fvx leap-seconds.list)
-		! grep -n '[[:space:]]$$' \
+		! grep -n '[$s]$$' \
 			$$(ls $(ENCHILADA) | grep -Fvx leap-seconds.list)
 		touch $@
 
-PRECEDES_FILE_NAME = ^(Zone|Link[[:space:]]+[^[:space:]]+)[[:space:]]+
-FILE_NAME_COMPONENT_TOO_LONG = \
-  $(PRECEDES_FILE_NAME)[^[:space:]]*[^/[:space:]]{15}
+PRECEDES_FILE_NAME = ^(Zone|Link[$s]+[^$s]+)[$s]+
+FILE_NAME_COMPONENT_TOO_LONG = $(PRECEDES_FILE_NAME)[^$s]*[^/$s]{15}
 
 check_name_lengths: $(TDATA_TO_CHECK) backzone
 		! grep -En '$(FILE_NAME_COMPONENT_TOO_LONG)' \
 			$(TDATA_TO_CHECK) backzone
 		touch $@
 
+PRECEDES_STDOFF = ^(Zone[$s]+[^$s]+)?[$s]+
+STDOFF = [-+]?[0-9:.]+
+RULELESS_SAVE = (-|$(STDOFF)[sd]?)
+RULELESS_SLASHED_ABBRS = \
+  $(PRECEDES_STDOFF)$(STDOFF)[$s]+$(RULELESS_SAVE)[$s]+[^$s]*/
+
+check_slashed_abbrs: $(TDATA_TO_CHECK)
+		! grep -En '$(RULELESS_SLASHED_ABBRS)' $(TDATA_TO_CHECK)
+		touch $@
+
 CHECK_CC_LIST = { n = split($$1,a,/,/); for (i=2; i<=n; i++) print a[1], a[i]; }
 
-check_sorted: backward backzone iso3166.tab zone.tab zone1970.tab
-		$(AWK) '/^Link/ {print $$3}' backward | LC_ALL=C sort -cu
+check_sorted: backward backzone
+		$(AWK) '/^Link/ {printf "%.5d %s\n", g, $$3} !/./ {g++}' \
+		  backward | LC_ALL=C sort -cu
 		$(AWK) '/^Zone/ {print $$2}' backzone | LC_ALL=C sort -cu
 		touch $@
 
-check_links:	checklinks.awk $(TDATA_TO_CHECK) tzdata.zi
-		$(AWK) -f checklinks.awk $(TDATA_TO_CHECK)
-		$(AWK) -f checklinks.awk tzdata.zi
+check_back:	checklinks.awk $(TDATA_TO_CHECK)
+		$(AWK) \
+		  -v DATAFORM=$(DATAFORM) \
+		  -v backcheck=backward \
+		  -f checklinks.awk $(TDATA_TO_CHECK)
+		touch $@
+
+check_links:	checklinks.awk tzdata.zi
+		$(AWK) \
+		  -v DATAFORM=$(DATAFORM) \
+		  -f checklinks.awk tzdata.zi
 		touch $@
 
 check_tables:	checktab.awk $(YDATA) backward $(ZONETABLES)
@@ -815,7 +861,7 @@ check_tables:	checktab.awk $(YDATA) backward $(ZONETABLES)
 
 check_tzs:	$(TZS) $(TZS_NEW)
 		if test -s $(TZS); then \
-		  diff -u $(TZS) $(TZS_NEW); \
+		  $(DIFF_TZS) $(TZS) $(TZS_NEW); \
 		else \
 		  cp $(TZS_NEW) $(TZS); \
 		fi
@@ -832,11 +878,19 @@ check_theory.html check_tz-art.html check_tz-how-to.html check_tz-link.html:
 		  test ! -s $@.out || { cat $@.out; exit 1; }
 		mv $@.out $@
 
+check_ziguard: rearguard.zi vanguard.zi ziguard.awk
+		$(AWK) -v DATAFORM=rearguard -f ziguard.awk vanguard.zi | \
+		  diff -u rearguard.zi -
+		$(AWK) -v DATAFORM=vanguard -f ziguard.awk rearguard.zi | \
+		  diff -u vanguard.zi -
+		touch $@
+
 # Check that zishrink.awk does not alter the data, and that ziguard.awk
 # preserves main-format data.
 check_zishrink: check_zishrink_posix check_zishrink_right
 check_zishrink_posix check_zishrink_right: \
-  zic leapseconds $(PACKRATDATA) $(TDATA) $(DATAFORM).zi tzdata.zi
+  zic leapseconds $(PACKRATDATA) $(PACKRATLIST) \
+  $(TDATA) $(DATAFORM).zi tzdata.zi
 		rm -fr $@.dir $@-t.dir $@-shrunk.dir
 		mkdir $@.dir $@-t.dir $@-shrunk.dir
 		case $@ in \
@@ -845,8 +899,8 @@ check_zishrink_posix check_zishrink_right: \
 		esac && \
 		  $(ZIC) $$leap -d $@.dir $(DATAFORM).zi && \
 		  $(ZIC) $$leap -d $@-shrunk.dir tzdata.zi && \
-		  case $(DATAFORM) in \
-		    main) \
+		  case $(DATAFORM),$(PACKRATLIST) in \
+		    main,) \
 		      $(ZIC) $$leap -d $@-t.dir $(TDATA) && \
 		      $(AWK) '/^Rule/' $(TDATA) | \
 			$(ZIC) $$leap -d $@-t.dir - $(PACKRATDATA) && \
@@ -967,6 +1021,10 @@ check_public: $(VERSION_DEPS)
 		rm public.dir/main.zi
 		cd public.dir && $(MAKE) PACKRATDATA=backzone main.zi
 		public.dir/zic -d public.dir/zoneinfo main.zi
+		rm public.dir/main.zi
+		cd public.dir && \
+		  $(MAKE) PACKRATDATA=backzone PACKRATLIST=zone.tab main.zi
+		public.dir/zic -d public.dir/zoneinfo main.zi
 		:
 		rm -fr public.dir
 		touch $@
@@ -1004,7 +1062,7 @@ $(TIME_T_ALTERNATIVES): $(VERSION_DEPS)
 		      TZS_YEAR="$$range" TZS_CUTOFF_FLAG="-t $$range" \
 			D=$$wd/$@.dir \
 		      to$$range.tzs) && \
-		  diff -u $(TIME_T_ALTERNATIVES_HEAD).dir/to$$range.tzs \
+		  $(DIFF_TZS) $(TIME_T_ALTERNATIVES_HEAD).dir/to$$range.tzs \
 			  $@.dir/to$$range.tzs && \
 		  if diff -q Makefile Makefile 2>/dev/null; then \
 		    quiet_option='-q'; \
@@ -1027,9 +1085,9 @@ REARGUARD_ASC = \
 ALL_ASC = $(TRADITIONAL_ASC) $(REARGUARD_ASC) \
   tzdb-$(VERSION).tar.lz.asc
 
-tarballs rearguard_tarballs traditional_tarballs \
+tarballs rearguard_tarballs tailored_tarballs traditional_tarballs \
 signatures rearguard_signatures traditional_signatures: \
-  version set-timestamps.out rearguard.zi
+  version set-timestamps.out rearguard.zi vanguard.zi
 		VERSION=`cat version` && \
 		$(MAKE) AWK='$(AWK)' VERSION="$$VERSION" $@_version
 
@@ -1042,6 +1100,8 @@ rearguard_tarballs_version: \
   tzdata$(VERSION)-rearguard.tar.gz
 traditional_tarballs_version: \
   tzcode$(VERSION).tar.gz tzdata$(VERSION).tar.gz
+tailored_tarballs_version: \
+  tzdata$(VERSION)-tailored.tar.gz
 signatures_version: $(ALL_ASC)
 rearguard_signatures_version: $(REARGUARD_ASC)
 traditional_signatures_version: $(TRADITIONAL_ASC)
@@ -1055,32 +1115,74 @@ tzcode$(VERSION).tar.gz: set-timestamps.out
 
 tzdata$(VERSION).tar.gz: set-timestamps.out
 		LC_ALL=C && export LC_ALL && \
-		tar $(TARFLAGS) -cf - $(COMMON) $(DATA) $(MISC) | \
+		tar $(TARFLAGS) -cf - $(TZDATA_DIST) | \
 		  gzip $(GZIPFLAGS) >$@.out
 		mv $@.out $@
 
+# Create empty files with a reproducible timestamp.
+CREATE_EMPTY = TZ=UTC0 touch -mt 202010122253.00
+
+# The obsolescent *rearguard* targets and related macros are present
+# for backwards compatibility with tz releases 2018e through 2022a.
+# They should go away eventually.  To build rearguard tarballs you
+# can instead use 'make DATAFORM=rearguard tailored_tarballs'.
 tzdata$(VERSION)-rearguard.tar.gz: rearguard.zi set-timestamps.out
-		rm -fr tzdata$(VERSION)-rearguard.dir
-		mkdir tzdata$(VERSION)-rearguard.dir
-		ln $(COMMON) $(DATA) $(MISC) tzdata$(VERSION)-rearguard.dir
-		cd tzdata$(VERSION)-rearguard.dir && \
-		  rm -f $(TDATA) $(PACKRATDATA) version
+		rm -fr $@.dir
+		mkdir $@.dir
+		ln $(TZDATA_DIST) $@.dir
+		cd $@.dir && rm -f $(TDATA) $(PACKRATDATA) version
 		for f in $(TDATA) $(PACKRATDATA); do \
-		  rearf=tzdata$(VERSION)-rearguard.dir/$$f; \
+		  rearf=$@.dir/$$f; \
 		  $(AWK) -v DATAFORM=rearguard -f ziguard.awk $$f >$$rearf && \
 		  $(SET_TIMESTAMP_DEP) $$rearf ziguard.awk $$f || exit; \
 		done
-		sed '1s/$$/-rearguard/' \
-		  <version >tzdata$(VERSION)-rearguard.dir/version
+		sed '1s/$$/-rearguard/' <version >$@.dir/version
 		: The dummy pacificnew pacifies TZUpdater 2.3.1 and earlier.
-		TZ=UTC0 touch -mt 202010122253.00 \
-		  tzdata$(VERSION)-rearguard.dir/pacificnew
-		touch -cmr version tzdata$(VERSION)-rearguard.dir/version
+		$(CREATE_EMPTY) $@.dir/pacificnew
+		touch -cmr version $@.dir/version
 		LC_ALL=C && export LC_ALL && \
-		  (cd tzdata$(VERSION)-rearguard.dir && \
+		  (cd $@.dir && \
 		   tar $(TARFLAGS) -cf - \
-			$(COMMON) $(DATA) $(MISC) pacificnew | \
+			$(TZDATA_DIST) pacificnew | \
 		     gzip $(GZIPFLAGS)) >$@.out
+		mv $@.out $@
+
+# Create a tailored tarball suitable for TZUpdater and compatible tools.
+# For example, 'make DATAFORM=vanguard tailored_tarballs' makes a tarball
+# useful for testing whether TZUpdater supports vanguard form.
+# The generated tarball is not byte-for-byte equivalent to a hand-tailored
+# traditional tarball, as data entries are put into 'etcetera' even if they
+# came from some other source file.  However, the effect should be the same
+# for ordinary use, which reads all the source files.
+tzdata$(VERSION)-tailored.tar.gz: set-timestamps.out
+		rm -fr $@.dir
+		mkdir $@.dir
+		: The dummy pacificnew pacifies TZUpdater 2.3.1 and earlier.
+		cd $@.dir && \
+		  $(CREATE_EMPTY) $(PRIMARY_YDATA) $(NDATA) backward \
+		  `test $(DATAFORM) = vanguard || echo pacificnew`
+		(grep '^#' tzdata.zi && echo && cat $(DATAFORM).zi) \
+		  >$@.dir/etcetera
+		touch -cmr tzdata.zi $@.dir/etcetera
+		sed -n \
+		  -e '/^# *version  *\(.*\)/h' \
+		  -e '/^# *ddeps  */H' \
+		  -e '$$!d' \
+		  -e 'g' \
+		  -e 's/^# *version  *//' \
+		  -e 's/\n# *ddeps  */-/' \
+		  -e 's/ /-/g' \
+		  -e 'p' \
+		  <tzdata.zi >$@.dir/version
+		touch -cmr version $@.dir/version
+		links= && \
+		  for file in $(TZDATA_DIST); do \
+		    test -f $@.dir/$$file || links="$$links $$file"; \
+		  done && \
+		  ln $$links $@.dir
+		LC_ALL=C && export LC_ALL && \
+		  (cd $@.dir && \
+		   tar $(TARFLAGS) -cf - * | gzip $(GZIPFLAGS)) >$@.out
 		mv $@.out $@
 
 tzdb-$(VERSION).tar.lz: set-timestamps.out set-tzs-timestamp.out
@@ -1130,17 +1232,18 @@ zdump.o:	version.h
 zic.o:		private.h tzfile.h version.h
 
 .PHONY: ALL INSTALL all
-.PHONY: check check_time_t_alternatives
+.PHONY: check check_mild check_time_t_alternatives
 .PHONY: check_web check_zishrink
 .PHONY: clean clean_misc dummy.zd force_tzs
 .PHONY: install install_data maintainer-clean names
-.PHONY: posix_only posix_packrat posix_right public
+.PHONY: posix_only posix_right public
 .PHONY: rearguard_signatures rearguard_signatures_version
 .PHONY: rearguard_tarballs rearguard_tarballs_version
 .PHONY: right_only right_posix signatures signatures_version
 .PHONY: tarballs tarballs_version
 .PHONY: traditional_signatures traditional_signatures_version
 .PHONY: traditional_tarballs traditional_tarballs_version
+.PHONY: tailored_tarballs tailored_tarballs_version
 .PHONY: typecheck
 .PHONY: zonenames zones
 .PHONY: $(ZDS)

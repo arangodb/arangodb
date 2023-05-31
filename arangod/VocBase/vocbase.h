@@ -91,7 +91,6 @@ template<typename T>
 class Future;
 }
 class CursorRepository;
-struct DatabaseConfiguration;
 struct DatabaseJavaScriptCache;
 class DatabaseReplicationApplier;
 class LogicalCollection;
@@ -202,9 +201,6 @@ struct TRI_vocbase_t {
       -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>;
   auto getReplicatedLogFollowerById(arangodb::replication2::LogId id)
       -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
-
-  [[nodiscard]] auto getDatabaseConfiguration()
-      -> arangodb::DatabaseConfiguration;
 
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId,

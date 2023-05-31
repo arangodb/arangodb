@@ -22,6 +22,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+
+#include <cstdint>
 #include <cstddef>
 #include <iosfwd>
 #include <limits>

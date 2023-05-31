@@ -48,13 +48,8 @@
         db._createDatabase(newDbName, dbArgs);
         db._useDatabase(newDbName);
 
-        let numberOfShards = 3;
-        if (dbArgs.sharding === "single") {
-          numberOfShards = 1;
-        }
-
-        let c = db._create(cn, {numberOfShards});
-        let c2 = db._create(cn1, {numberOfShards});
+        let c = db._create(cn, {numberOfShards: 3});
+        let c2 = db._create(cn1, {numberOfShards: 3});
         if (isSearchAlias) {
           let props = {
             type: "inverted", includeAllFields: true,

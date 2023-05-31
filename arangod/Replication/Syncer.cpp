@@ -828,7 +828,7 @@ void Syncer::createIndexInternal(velocypack::Slice idxDef,
     std::string name;  // placeholder for now
     CollectionNameResolver resolver(col.vocbase());
     Result res =
-        methods::Indexes::extractHandle(&col, &resolver, idxDef, iid, name);
+        methods::Indexes::extractHandle(col, &resolver, idxDef, iid, name);
     if (res.ok() && iid.isSet()) {
       // lookup by id
       auto byId = physical->lookupIndex(iid);

@@ -26,15 +26,18 @@
 #include <functional>
 #include <memory>
 
-#include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/GraphStore/Magazine.h"
+
+#include "Futures/Future.h"
 
 namespace arangodb::pregel {
 
 class WorkerConfig;
 
 template<typename V, typename E>
-struct GraphStorerBase {
-  virtual auto store(std::shared_ptr<Quiver<V, E>> quiver) -> void = 0;
+struct GraphStorerBase : std::enable_shared_from_this<GraphStorerBase<V, E>> {
+  virtual auto store(Magazine<V, E> magazine)
+      -> futures::Future<futures::Unit> = 0;
   virtual ~GraphStorerBase() = default;
 };
 

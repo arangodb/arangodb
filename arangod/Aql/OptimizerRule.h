@@ -233,6 +233,9 @@ struct OptimizerRule {
     // handling.
     substituteSingleDocumentOperations,
 
+    // special cluster handling for multiple operations (babies)
+    substituteMultipleDocumentOperations,
+
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule,
 

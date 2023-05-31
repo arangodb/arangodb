@@ -186,8 +186,9 @@ ServerID const RebootTrackerTest::serverC = "PRMR-srv-C";
 // Test that a registered callback is called once on the next change, but not
 // after that
 TEST_F(RebootTrackerTest, one_server_call_once_after_change) {
-  auto state =
-      containers::FlatHashMap<ServerID, RebootId>{{serverA, RebootId{1}}};
+  auto state = containers::FlatHashMap<ServerID, ServerHealthState>{
+      {serverA, ServerHealthState{.rebootId = RebootId{1},
+                                  .status = ServerHealth::kGood}}};
 
   uint64_t numCalled = 0;
   auto callback = [&numCalled]() { ++numCalled; };
@@ -207,13 +208,17 @@ TEST_F(RebootTrackerTest, one_server_call_once_after_change) {
     EXPECT_EQ(0, numCalled) << "Callback must not be called before a change";
 
     // Set state to { serverA => 2 }
-    state.insert_or_assign(serverA, RebootId{2});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{2},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(1, numCalled) << "Callback must be called after a change";
 
     // Set state to { serverA => 3 }
-    state.insert_or_assign(serverA, RebootId{3});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{3},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(1, numCalled) << "Callback must not be called twice";
@@ -231,8 +236,9 @@ TEST_F(RebootTrackerTest, one_server_call_once_after_change) {
 // Test that a registered callback is called immediately when its reboot id
 // is lower than the last known one, but not after that
 TEST_F(RebootTrackerTest, one_server_call_once_with_old_rebootid) {
-  auto state =
-      containers::FlatHashMap<ServerID, RebootId>{{serverA, RebootId{2}}};
+  auto state = containers::FlatHashMap<ServerID, ServerHealthState>{
+      {serverA, ServerHealthState{.rebootId = RebootId{2},
+                                  .status = ServerHealth::kGood}}};
 
   uint64_t numCalled = 0;
   auto callback = [&numCalled]() { ++numCalled; };
@@ -253,7 +259,9 @@ TEST_F(RebootTrackerTest, one_server_call_once_with_old_rebootid) {
         << "Callback with lower value must be called immediately";
 
     // Set state to { serverA => 3 }
-    state.insert_or_assign(serverA, RebootId{3});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{3},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(1, numCalled) << "Callback must not be called again";
@@ -270,8 +278,9 @@ TEST_F(RebootTrackerTest, one_server_call_once_with_old_rebootid) {
 
 // Tests that callbacks and interleaved updates don't interfere
 TEST_F(RebootTrackerTest, one_server_call_interleaved) {
-  auto state =
-      containers::FlatHashMap<ServerID, RebootId>{{serverA, RebootId{1}}};
+  auto state = containers::FlatHashMap<ServerID, ServerHealthState>{
+      {serverA, ServerHealthState{.rebootId = RebootId{1},
+                                  .status = ServerHealth::kGood}}};
 
   uint64_t numCalled = 0;
   auto callback = [&numCalled]() { ++numCalled; };
@@ -291,13 +300,17 @@ TEST_F(RebootTrackerTest, one_server_call_interleaved) {
     EXPECT_EQ(0, numCalled) << "Callback must not be called before a change";
 
     // Set state to { serverA => 2 }
-    state.insert_or_assign(serverA, RebootId{2});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{2},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(1, numCalled) << "Callback must be called after a change";
 
     // Set state to { serverA => 3 }
-    state.insert_or_assign(serverA, RebootId{3});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{3},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(1, numCalled) << "Callback must not be called twice";
@@ -309,13 +322,17 @@ TEST_F(RebootTrackerTest, one_server_call_interleaved) {
     EXPECT_EQ(1, numCalled) << "Callback must not be called before a change";
 
     // Set state to { serverA => 4 }
-    state.insert_or_assign(serverA, RebootId{4});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{4},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(2, numCalled) << "Callback must be called after a change";
 
     // Set state to { serverA => 5 }
-    state.insert_or_assign(serverA, RebootId{5});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{5},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(2, numCalled) << "Callback must not be called twice";
@@ -332,8 +349,9 @@ TEST_F(RebootTrackerTest, one_server_call_interleaved) {
 
 // Tests that multiple callbacks and updates don't interfere
 TEST_F(RebootTrackerTest, one_server_call_sequential) {
-  auto state =
-      containers::FlatHashMap<ServerID, RebootId>{{serverA, RebootId{1}}};
+  auto state = containers::FlatHashMap<ServerID, ServerHealthState>{
+      {serverA, ServerHealthState{.rebootId = RebootId{1},
+                                  .status = ServerHealth::kGood}}};
 
   uint64_t numCalled = 0;
   auto callback = [&numCalled]() { ++numCalled; };
@@ -359,13 +377,17 @@ TEST_F(RebootTrackerTest, one_server_call_sequential) {
     EXPECT_EQ(0, numCalled) << "Callback must not be called before a change";
 
     // Set state to { serverA => 2 }
-    state.insert_or_assign(serverA, RebootId{2});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{2},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(2, numCalled) << "Both callbacks must be called after a change";
 
     // Set state to { serverA => 3 }
-    state.insert_or_assign(serverA, RebootId{3});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{3},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(2, numCalled) << "No callback must be called twice";
@@ -382,8 +404,9 @@ TEST_F(RebootTrackerTest, one_server_call_sequential) {
 
 // Test that a registered callback is removed when its guard is destroyed
 TEST_F(RebootTrackerTest, one_server_guard_removes_callback) {
-  auto state =
-      containers::FlatHashMap<ServerID, RebootId>{{serverA, RebootId{1}}};
+  auto state = containers::FlatHashMap<ServerID, ServerHealthState>{
+      {serverA, ServerHealthState{.rebootId = RebootId{1},
+                                  .status = ServerHealth::kGood}}};
 
   uint64_t numCalled = 0;
   auto callback = [&numCalled]() { ++numCalled; };
@@ -406,7 +429,9 @@ TEST_F(RebootTrackerTest, one_server_guard_removes_callback) {
         << "Callback must not be called when the guard is destroyed";
 
     // Set state to { serverA => 2 }
-    state.insert_or_assign(serverA, RebootId{2});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{2},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(0, numCalled) << "Callback must not be called after a change "
@@ -421,8 +446,9 @@ TEST_F(RebootTrackerTest, one_server_guard_removes_callback) {
 // Test that callback removed by a guard doesn't interfere with other registered
 // callbacks for the same server and reboot id
 TEST_F(RebootTrackerTest, one_server_guard_doesnt_interfere) {
-  auto state =
-      containers::FlatHashMap<ServerID, RebootId>{{serverA, RebootId{1}}};
+  auto state = containers::FlatHashMap<ServerID, ServerHealthState>{
+      {serverA, ServerHealthState{.rebootId = RebootId{1},
+                                  .status = ServerHealth::kGood}}};
 
   uint64_t counterA = 0;
   uint64_t counterB = 0;
@@ -472,7 +498,9 @@ TEST_F(RebootTrackerTest, one_server_guard_doesnt_interfere) {
         << "Callback must not be called when the guard is destroyed";
 
     // Set state to { serverA => 2 }
-    state.insert_or_assign(serverA, RebootId{2});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{2},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(1, counterA) << "Callback must be called after a change";
@@ -481,7 +509,9 @@ TEST_F(RebootTrackerTest, one_server_guard_doesnt_interfere) {
     EXPECT_EQ(1, counterC) << "Callback must be called after a change";
 
     // Set state to { serverA => 3 }
-    state.insert_or_assign(serverA, RebootId{3});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{3},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(1, counterA) << "No callback must be called twice";
@@ -498,7 +528,7 @@ TEST_F(RebootTrackerTest, one_server_guard_doesnt_interfere) {
 }
 
 TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
-  auto state = containers::FlatHashMap<ServerID, RebootId>{};
+  auto state = containers::FlatHashMap<ServerID, ServerHealthState>{};
 
   uint64_t numCalled = 0;
   auto callback = [&numCalled]() { ++numCalled; };
@@ -518,7 +548,8 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
     EXPECT_EQ(0, numCalled) << "Callback must not be called before a change";
 
     // Set state to { serverA => 1 }
-    state.emplace(serverA, RebootId{1});
+    state.emplace(serverA, ServerHealthState{.rebootId = RebootId{1},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(0, numCalled)
@@ -526,7 +557,9 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
            "set to the same RebootId, as it shouldn't have been registered";
 
     // Set state to { serverA => 2 }
-    state.insert_or_assign(serverA, RebootId{2});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{2},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(0, numCalled) << "Callback must not be called after a change, as "
@@ -539,7 +572,7 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
 }
 
 TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_older_id) {
-  auto state = containers::FlatHashMap<ServerID, RebootId>{};
+  auto state = containers::FlatHashMap<ServerID, ServerHealthState>{};
 
   uint64_t numCalled = 0;
   auto callback = [&numCalled]() { ++numCalled; };
@@ -559,21 +592,26 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_older_id) {
     EXPECT_EQ(0, numCalled) << "Callback must not be called before a change";
 
     // Set state to { serverA => 1 }
-    state.emplace(serverA, RebootId{1});
+    state.emplace(serverA, ServerHealthState{.rebootId = RebootId{1},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(0, numCalled) << "Callback must not be called when the state is "
                                "set to an older RebootId";
 
     // Set state to { serverA => 2 }
-    state.insert_or_assign(serverA, RebootId{2});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{2},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(0, numCalled) << "Callback must not be called when the state is "
                                "set to the same RebootId";
 
     // Set state to { serverA => 3 }
-    state.insert_or_assign(serverA, RebootId{3});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{3},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(0, numCalled) << "Callback must not be called after a change, as "
@@ -586,8 +624,9 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_older_id) {
 }
 
 TEST_F(RebootTrackerTest, two_servers_call_interleaved) {
-  auto state =
-      containers::FlatHashMap<ServerID, RebootId>{{serverA, RebootId{1}}};
+  auto state = containers::FlatHashMap<ServerID, ServerHealthState>{
+      {serverA, ServerHealthState{.rebootId = RebootId{1},
+                                  .status = ServerHealth::kGood}}};
 
   uint64_t numCalled = 0;
   auto callback = [&numCalled]() { ++numCalled; };
@@ -607,13 +646,17 @@ TEST_F(RebootTrackerTest, two_servers_call_interleaved) {
     EXPECT_EQ(0, numCalled) << "Callback must not be called before a change";
 
     // Set state to { serverA => 2 }
-    state.insert_or_assign(serverA, RebootId{2});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{2},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(1, numCalled) << "Callback must be called after a change";
 
     // Set state to { serverA => 3 }
-    state.insert_or_assign(serverA, RebootId{3});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{3},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(1, numCalled) << "Callback must not be called twice";
@@ -625,13 +668,17 @@ TEST_F(RebootTrackerTest, two_servers_call_interleaved) {
     EXPECT_EQ(1, numCalled) << "Callback must not be called before a change";
 
     // Set state to { serverA => 4 }
-    state.insert_or_assign(serverA, RebootId{4});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{4},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(2, numCalled) << "Callback must be called after a change";
 
     // Set state to { serverA => 5 }
-    state.insert_or_assign(serverA, RebootId{5});
+    state.insert_or_assign(serverA,
+                           ServerHealthState{.rebootId = RebootId{5},
+                                             .status = ServerHealth::kGood});
     rebootTracker.updateServerState(state);
     waitForSchedulerEmpty();
     EXPECT_EQ(2, numCalled) << "Callback must not be called twice";

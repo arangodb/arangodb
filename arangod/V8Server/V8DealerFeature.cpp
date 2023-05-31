@@ -47,6 +47,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
@@ -54,8 +56,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FrontendFeature.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -805,8 +805,10 @@ void V8DealerFeature::unprepare() {
 /// in every OS
 [[nodiscard]] static std::string_view getDatabaseDirName(std::string_view name,
                                                          std::string_view id) {
-  bool const isOldStyleName = DatabaseNameValidator::isAllowedName(
-      /*allowSystem=*/true, /*extendedNames=*/false, name);
+  bool const isOldStyleName =
+      DatabaseNameValidator::validateName(
+          /*allowSystem=*/true, /*extendedNames=*/false, name)
+          .ok();
   return (isOldStyleName || id.empty()) ? name : id;
 }
 
@@ -1809,7 +1811,7 @@ std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
                                      TRI_V8_ASCII_STRING(isolate, "APP_PATH"),
                                      TRI_V8_STD_STRING(isolate, _appPath));
 
-        for (auto j : _definedBooleans) {
+        for (auto const& j : _definedBooleans) {
           localContext->Global()
               ->DefineOwnProperty(TRI_IGETC,
                                   TRI_V8_STD_STRING(isolate, j.first),
@@ -1818,7 +1820,7 @@ std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
               .FromMaybe(false);  // Ignore it...
         }
 
-        for (auto j : _definedDoubles) {
+        for (auto const& j : _definedDoubles) {
           localContext->Global()
               ->DefineOwnProperty(
                   TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),

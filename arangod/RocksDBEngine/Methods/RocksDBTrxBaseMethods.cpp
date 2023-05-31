@@ -47,7 +47,10 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
   _readOptions.fill_cache = _state->options().fillBlockCache;
 }
 
-RocksDBTrxBaseMethods::~RocksDBTrxBaseMethods() { cleanupTransaction(); }
+RocksDBTrxBaseMethods::~RocksDBTrxBaseMethods() {
+  // cppcheck-suppress *
+  RocksDBTrxBaseMethods::cleanupTransaction();
+}
 
 bool RocksDBTrxBaseMethods::DisableIndexing() {
   if (!_indexingDisabled) {

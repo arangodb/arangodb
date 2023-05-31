@@ -36,11 +36,11 @@
 
 #include "Metrics/Fwd.h"
 
+#include <map>
 #include <memory>
 #include <mutex>
-#include <shared_mutex>
 #include <queue>
-#include <map>
+#include <shared_mutex>
 
 namespace arangodb {
 class LogicalCollection;
@@ -95,7 +95,6 @@ class MaintenanceFeature : public ArangodFeature {
   /// @brief Highest limit for worker threads
   static constexpr uint32_t const maxThreadLimit = 64;
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
@@ -413,6 +412,14 @@ class MaintenanceFeature : public ArangodFeature {
   /// @brief maximum number of replication error occurrences that are kept per
   /// shard.
   static constexpr size_t maxReplicationErrorsPerShard = 20;
+
+  /// @brief maximum number of replication error occurrences that are tolerated
+  /// before an auto-repair is attempted
+  static constexpr size_t maxReplicationErrorsPerShardBeforeAutoRepair =
+      maxReplicationErrorsPerShard - 3;
+
+  static_assert(maxReplicationErrorsPerShard >
+                maxReplicationErrorsPerShardBeforeAutoRepair);
 
   /// @brief maximum age of replication error occurrences that are kept per
   /// shard. error occurrences older than this max age will be removed only

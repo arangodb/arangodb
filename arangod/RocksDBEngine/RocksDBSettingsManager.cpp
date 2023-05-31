@@ -146,7 +146,6 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
     _tmpBuilder.clear();  // recycle our builder
 
     auto& dbfeature = _engine.server().getFeature<arangodb::DatabaseFeature>();
-    TRI_ASSERT(!_engine.inRecovery());  // just don't
 
     bool didWork = false;
     auto mappings = _engine.collectionMappings();

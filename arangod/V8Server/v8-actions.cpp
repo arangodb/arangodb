@@ -825,9 +825,6 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>());
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP: {
-        //  OBI FIXME - vpack
-        //  HTTP SHOULD USE vpack interface
-
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         v8::Handle<v8::Array> transformations = transformArray.As<v8::Array>();
         bool setRegularBody = !transformArray->IsArray();

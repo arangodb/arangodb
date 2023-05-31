@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_revisions_ranges
 @brief retrieves the revision IDs of documents within requested ranges
 
-@RESTHEADER{PUT /_api/replication/revisions/ranges, Return revision IDs within requested ranges,handleCommandRevisionRanges}
+@RESTHEADER{PUT /_api/replication/revisions/ranges, Return revision IDs within requested ranges, listReplicationRevisionRanges}
 
 @HINTS
 {% hint 'warning' %}

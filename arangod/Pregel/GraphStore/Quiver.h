@@ -43,8 +43,11 @@ struct Quiver {
     edgeCounter += v._edges.size();
     vertices.emplace_back(std::move(v));
   }
-  auto numberOfVertices() -> size_t { return vertices.size(); }
-  auto numberOfEdges() -> size_t { return edgeCounter; }
+  auto numberOfVertices() const -> size_t { return vertices.size(); }
+  auto numberOfEdges() const -> size_t { return edgeCounter; }
+
+  auto begin() const { return std::begin(vertices); }
+  auto end() const { return std::end(vertices); }
 
   auto begin() { return std::begin(vertices); }
   auto end() { return std::end(vertices); }
@@ -57,5 +60,4 @@ template<typename V, typename E, typename Inspector>
 auto inspect(Inspector& f, Quiver<V, E>& s) {
   return f.object(s).fields(f.field("vertices", s.vertices));
 }
-
 }  // namespace arangodb::pregel

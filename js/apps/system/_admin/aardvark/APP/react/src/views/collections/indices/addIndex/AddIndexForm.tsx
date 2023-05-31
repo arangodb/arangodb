@@ -5,7 +5,7 @@ import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { IndexType } from "../useFetchIndices";
 import { FulltextIndexForm } from "./FulltextIndexForm";
 import { GeoIndexForm } from "./GeoIndexForm";
-import { InfoTooltip } from "./InfoTooltip";
+import { IndexInfoTooltip } from "./IndexInfoTooltip";
 import { InvertedIndexFormWrap } from "./invertedIndex/InvertedIndexFormWrap";
 import { PersistentIndexForm } from "./PersistentIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
@@ -32,7 +32,8 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
         columnGap="3"
         maxWidth="800px"
         marginTop="4"
-        paddingX="10"
+        paddingRight="8"
+        paddingLeft="10"
       >
         <FormLabel htmlFor="type">Type</FormLabel>
         <SingleSelect
@@ -43,7 +44,7 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
             setIndexType(value?.value as IndexType);
           }}
         />
-        <InfoTooltip label={tooltipText} />
+        <IndexInfoTooltip label={tooltipText} />
       </Box>
       <Box height="calc(100% - 48px)" marginTop="2">
         <IndexTypeForm onClose={onClose} type={indexType} />

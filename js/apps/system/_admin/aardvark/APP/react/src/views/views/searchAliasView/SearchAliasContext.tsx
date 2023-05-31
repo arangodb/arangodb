@@ -8,8 +8,10 @@ import React, {
 } from "react";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { encodeHelper } from "../../../utils/encodeHelper";
 import { useIsAdminUser } from "../../../utils/usePermissions";
 import { ViewPropertiesType } from "./useFetchViewProperties";
+import { useSyncSearchViewUpdates } from "./useSyncSearchViewUpdates";
 import {
   getUpdatedIndexes,
   useUpdateAliasViewProperties
@@ -62,6 +64,8 @@ export const SearchAliasProvider = ({
     !!window.sessionStorage.getItem(`${initialView.name}-changed`)
   );
   const { onSave } = useUpdateAliasViewProperties({ setChanged });
+  useSyncSearchViewUpdates({ viewName: view.name });
+
   const onChange = (view: ViewPropertiesType) => {
     setView(view);
   };
@@ -81,8 +85,9 @@ export const SearchAliasProvider = ({
 
   const handleDelete = async () => {
     try {
+      const { encoded: encodedViewName } = encodeHelper(view.name);
       const result = await getApiRouteForCurrentDB().delete(
-        `/view/${view.name}`
+        `/view/${encodedViewName}`
       );
 
       if (result.body.error) {

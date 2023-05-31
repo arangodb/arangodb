@@ -136,16 +136,14 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateInvalid : function () {
-      let invalidNames = ["123", "_x", "_x", "!", "?", "%", "xyz&asd", "&"];
-      let properties = {};
+      let invalidNames = ["123", "_x", "/", "/?/", "\t", "\r\n"];
 
-      let c;
       invalidNames.forEach(function (collectionName) {
         try {
-          c = db._create(collectionName, properties);
+          db._create(collectionName);
           fail();
         } catch (err) {
-          assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+          assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum, collectionName);
         }
       });
     },
@@ -474,12 +472,9 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testCreateEmptyShardKeysArray : function () {
-      try {
-        db._create("UnitTestsClusterCrud", {shardKeys: []});
-        fail("Managed to create collection with illegal shardKey entry");
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
+      db._create("UnitTestsClusterCrud", { shardKeys: [ ] });
+      let props = db["UnitTestsClusterCrud"].properties();
+      assertEqual(["_key"], props.shardKeys);
     },
     
     testCreateShardKeysOnKey : function () {

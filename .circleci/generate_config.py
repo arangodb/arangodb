@@ -1,6 +1,7 @@
 #!/bin/env python3
 """ read test definition, and generate the output for the specified target """
 import argparse
+import os
 import sys
 import traceback
 import yaml
@@ -11,6 +12,7 @@ if sys.version_info[0] != 3:
     sys.exit()
 
 # pylint: disable=line-too-long disable=broad-except disable=chained-comparison
+IS_COVERAGE = 'COVERAGE' in os.environ and os.environ['COVERAGE'] == 'On'
 
 known_flags = {
     "cluster": "this test requires a cluster",
@@ -24,6 +26,7 @@ known_flags = {
     "!windows": "test is excluded from ps1 output",
     "!mac": "test is excluded when launched on MacOS",
     "!arm": "test is excluded when launched on Arm Linux/MacOS hosts",
+    "!coverage": "test is excluded when coverage scenario are ran",
     "no_report": "disable reporting",
 }
 
@@ -210,6 +213,9 @@ def filter_tests(args, tests, enterprise):
 
     # if IS_ARM:
     #     filters.append(lambda test: "!arm" not in test["flags"])
+
+    if IS_COVERAGE:
+        filters.append(lambda test: "!coverage" not in test["flags"])
 
     for one_filter in filters:
         tests = filter(one_filter, tests)

@@ -189,7 +189,7 @@ bool FieldMeta::init(
     } else {
       auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
       bool const extendedNames =
-          server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+          server.getFeature<DatabaseFeature>().extendedNames();
 
       if (!field.isArray()) {
         errorField = kFieldName;
@@ -781,7 +781,7 @@ bool IResearchLinkMeta::init(
   }
 
   bool const extendedNames =
-      server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+      server.getFeature<DatabaseFeature>().extendedNames();
 
   {
     _analyzerDefinitions.clear();

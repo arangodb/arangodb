@@ -39,7 +39,9 @@ export const EditableViewNameField = ({
           autoFocus
           value={newName}
           backgroundColor={"white"}
-          onChange={e => setNewName(e.target.value)}
+          onChange={e => {
+            setNewName(e.target.value.normalize());
+          }}
           maxWidth="300px"
           placeholder="Enter name"
         />

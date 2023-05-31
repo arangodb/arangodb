@@ -4,7 +4,7 @@ import { InputControl } from "../../../../components/form/InputControl";
 import { MultiSelectControl } from "../../../../components/form/MultiSelectControl";
 import { SwitchControl } from "../../../../components/form/SwitchControl";
 import { OptionType } from "../../../../components/select/SelectBase";
-import { InfoTooltip } from "./InfoTooltip";
+import { IndexInfoTooltip } from "./IndexInfoTooltip";
 
 export type IndexFormFieldProps = {
   label: string;
@@ -46,7 +46,7 @@ export const IndexFormField = ({
             isRequired={field.isRequired}
             name={field.name}
           />
-          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Spacer />}
+          {field.tooltip ? <IndexInfoTooltip label={field.tooltip} /> : <Spacer />}
         </>
       );
     case "number":
@@ -61,7 +61,7 @@ export const IndexFormField = ({
             isRequired={field.isRequired}
             name={field.name}
           />
-          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Spacer />}
+          {field.tooltip ? <IndexInfoTooltip label={field.tooltip} /> : <Spacer />}
         </>
       );
     case "multiSelect":
@@ -79,7 +79,7 @@ export const IndexFormField = ({
             isRequired={field.isRequired}
             name={field.name}
           />
-          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Spacer />}
+          {field.tooltip ? <IndexInfoTooltip label={field.tooltip} /> : <Spacer />}
         </>
       );
     case "text":
@@ -95,7 +95,7 @@ export const IndexFormField = ({
             name={field.name}
             inputProps={{ autoFocus }}
           />
-          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Spacer />}
+          {field.tooltip ? <IndexInfoTooltip label={field.tooltip} /> : <Spacer />}
         </>
       );
   }

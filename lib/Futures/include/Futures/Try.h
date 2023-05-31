@@ -212,6 +212,7 @@ class Try {
         return;
       case Content::None:
       default:
+        TRI_ASSERT(false);
         throw std::logic_error("Using uninitialized Try");
     }
   }

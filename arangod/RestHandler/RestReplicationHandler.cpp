@@ -47,6 +47,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Indexes/Index.h"
+#include "Metrics/Counter.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Replication/DatabaseInitialSyncer.h"
@@ -58,6 +59,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -446,6 +448,10 @@ RestStatus RestReplicationHandler::execute() {
           handleCommandRevisionTree();
         } else if (type == rest::RequestType::POST && subCommand == Tree) {
           handleCommandRebuildRevisionTree();
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        } else if (type == rest::RequestType::PUT && subCommand == Tree) {
+          handleCommandCorruptRevisionTree();
+#endif
         } else if (type == rest::RequestType::PUT && subCommand == Ranges) {
           handleCommandRevisionRanges();
         } else if (type == rest::RequestType::PUT && subCommand == Documents) {
@@ -877,6 +883,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     // We want to check if the collection is usable and all followers
     // are in sync:
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
+
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
     auto cic = ci.getCollectionCurrent(dbName,
@@ -886,13 +893,36 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     bool allInSync = true;
     for (auto const& p : *shardMap) {
       auto currentServerList = cic->servers(p.first /* shardId */);
-      if (currentServerList.size() == 0 || p.second.size() == 0 ||
-          currentServerList[0] != p.second[0] ||
-          (!p.second[0].empty() && p.second[0][0] == '_')) {
-        isReady = false;
-      }
-      if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
-        allInSync = false;
+      if (c->isSmart() && c->type() == TRI_COL_TYPE_EDGE && c->isAStub()) {
+        // Means we do have a Virtual SmartEdge Collection.
+        // A Virtual SmartEdge Collection does not include any shards.
+        // Therefore, we cannot, and we do not need to verify if shards are in
+        // sync or not.
+        ADB_PROD_ASSERT(!c->isSmartChild());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        // Additionally, whenever we see a Virtual Edge Collection, we must make
+        // sure that the related shadow collections are part of the inventory.
+        for (auto const& shadowCollectionName : c->realNames()) {
+          bool foundShadowCollection = false;
+          for (auto const& logicalCollection : cols) {
+            if (logicalCollection->name() == shadowCollectionName) {
+              // A ShadowCollection must be a SmartChild
+              TRI_ASSERT(logicalCollection->isSmartChild());
+              foundShadowCollection = true;
+            }
+          }
+          TRI_ASSERT(foundShadowCollection);
+        }
+#endif
+      } else {
+        if (currentServerList.size() == 0 || p.second.size() == 0 ||
+            currentServerList[0] != p.second[0] ||
+            (!p.second[0].empty() && p.second[0][0] == '_')) {
+          isReady = false;
+        }
+        if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
+          allInSync = false;
+        }
       }
     }
     c->toVelocyPackForClusterInventory(resultBuilder, includeSystem, isReady,
@@ -906,8 +936,9 @@ void RestReplicationHandler::handleCommandClusterInventory() {
           resultBuilder.openObject();
           view->properties(resultBuilder,
                            LogicalDataSource::Serialization::Inventory);
-          // details, !forPersistence because on restore any datasource ids will
-          // differ, so need an end-user representation
+          // details, !forPersistence because on restore any
+          // datasource ids will differ, so need an end-user
+          // representation
           resultBuilder.close();
         }
 
@@ -2456,10 +2487,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
 
   auto col = _vocbase.lookupCollection(shardSlice.stringView());
-  if (col == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  "did not find collection");
+  if (col == nullptr || col->deleted()) {
+    generateError(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
     return;
   }
 
@@ -2591,6 +2620,41 @@ void RestReplicationHandler::handleCommandAddFollower() {
             ". actual (follower): " + checksum);
     return;
   }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // compare hash and count values of the local revision tree in case the
+  // caller posted the revision tree data as well.
+  // this check is only performed during failure-testing.
+  // it is not safe to activate it in general, because revision trees on the
+  // leader can advance when there are further writes into the shard.
+  if (body.get("treeHash").isString() && body.get("treeCount").isString()) {
+    auto context = transaction::StandaloneContext::Create(_vocbase);
+    SingleCollectionTransaction trx(context, *col, AccessMode::Type::READ, {});
+
+    auto res = trx.begin();
+    if (res.ok()) {
+      auto tree = col->getPhysical()->revisionTree(trx);
+      if (std::to_string(tree->rootValue()) !=
+          body.get("treeHash").stringView()) {
+        generateError(
+            rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+            "revision tree hashes are different. Expected (leader): " +
+                std::to_string(tree->rootValue()) +
+                ". actual (follower): " + body.get("treeHash").copyString());
+        return;
+      }
+
+      if (std::to_string(tree->count()) != body.get("treeCount").stringView()) {
+        generateError(
+            rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+            "revision tree counts are different. Expected (leader): " +
+                std::to_string(tree->count()) +
+                ". actual (follower): " + body.get("treeCount").copyString());
+        return;
+      }
+    }
+  }
+#endif
 
   Result res = col->followers()->add(followerId);
 
@@ -2799,22 +2863,13 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   TransactionId id = ExtractReadlockId(idSlice);
   auto col = _vocbase.lookupCollection(collection.stringView());
 
-  if (col == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  "did not find collection");
+  if (col == nullptr || col->deleted()) {
+    generateError(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
     return;
   }
 
   // 0.0 means using the default timeout (whatever that is)
   double ttl = VelocyPackHelper::getNumericValue(ttlSlice, 0.0);
-
-  if (col->deleted()) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
-                  "collection not loaded");
-    return;
-  }
 
   // This is an optional parameter, it may not be set (backwards compatible)
   // If it is not set it will default to a hard-lock, otherwise we do a
@@ -3045,17 +3100,15 @@ bool RestReplicationHandler::prepareRevisionOperation(
   LOG_TOPIC("253e2", TRACE, arangodb::Logger::REPLICATION)
       << "enter prepareRevisionOperation";
 
-  bool found = false;
-
-  // get collection Name
-  ctx.cname = _request->value("collection");
-  if (ctx.cname.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid collection parameter");
+  // get collection name
+  if (!prepareCollectionForRevisionOperation(ctx)) {
     return false;
   }
+  TRI_ASSERT(!ctx.cname.empty());
+  TRI_ASSERT(ctx.collection != nullptr);
 
   // get batchId
+  bool found = false;
   std::string const& batchIdString = _request->value("batchId", found);
   if (found) {
     ctx.batchId = StringUtils::uint64(batchIdString);
@@ -3089,6 +3142,32 @@ bool RestReplicationHandler::prepareRevisionOperation(
       << "requested revision tree for collection '" << ctx.cname
       << "' using contextId '" << ctx.batchId << "'";
 
+  ctx.iter = ctx.collection->getPhysical()->getReplicationIterator(
+      ReplicationIterator::Ordering::Revision, ctx.batchId);
+  if (!ctx.iter) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "could not get replication iterator for collection '" +
+                      ctx.cname + "'");
+    return false;
+  }
+
+  return true;
+}
+
+bool RestReplicationHandler::prepareCollectionForRevisionOperation(
+    RevisionOperationContext& ctx) {
+  // get collection Name
+  ctx.cname = _request->value("collection");
+  if (ctx.cname.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return false;
+  }
+
+  // print request
+  LOG_TOPIC("6e075", TRACE, arangodb::Logger::REPLICATION)
+      << "requested revision tree for collection '" << ctx.cname << "'";
+
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   if (!ExecContext::current().canUseCollection(_vocbase.name(), ctx.cname,
@@ -3110,23 +3189,21 @@ bool RestReplicationHandler::prepareRevisionOperation(
     return false;
   }
 
-  ctx.iter = ctx.collection->getPhysical()->getReplicationIterator(
-      ReplicationIterator::Ordering::Revision, ctx.batchId);
-  if (!ctx.iter) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "could not get replication iterator for collection '" +
-                      ctx.cname + "'");
-    return false;
-  }
-
   return true;
 }
 
 void RestReplicationHandler::handleCommandRebuildRevisionTree() {
   RevisionOperationContext ctx;
-  if (!prepareRevisionOperation(ctx)) {
+  // get collection Name
+  if (!prepareCollectionForRevisionOperation(ctx)) {
+    // error was already generator by called function
     return;
   }
+  TRI_ASSERT(!ctx.cname.empty());
+  TRI_ASSERT(ctx.collection != nullptr);
+
+  // increase metric
+  ++server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
 
   Result res = ctx.collection->getPhysical()->rebuildRevisionTree();
   if (res.fail()) {
@@ -3136,6 +3213,26 @@ void RestReplicationHandler::handleCommandRebuildRevisionTree() {
 
   generateResult(rest::ResponseCode::NO_CONTENT, VPackSlice::nullSlice());
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+void RestReplicationHandler::handleCommandCorruptRevisionTree() {
+  RevisionOperationContext ctx;
+  // get collection name
+  if (!prepareCollectionForRevisionOperation(ctx)) {
+    // error was already generated by called function
+    return;
+  }
+  TRI_ASSERT(!ctx.cname.empty());
+  TRI_ASSERT(ctx.collection != nullptr);
+
+  auto count = _request->parsedValue("count", uint64_t(0));
+  auto hash = _request->parsedValue("hash", uint64_t(0xbadbadbadbadULL));
+  static_cast<RocksDBCollection*>(ctx.collection->getPhysical())
+      ->corruptRevisionTree(count, hash);
+
+  generateResult(rest::ResponseCode::OK, VPackSlice::nullSlice());
+}
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return the requested revision ranges for a given collection, if

@@ -68,7 +68,9 @@ std::regex const uuidRegex(
     "^(SNGL|CRDN|PRMR|AGNT)-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-"
     "f0-9]{12}$");
 
-constexpr char const* extendedNamesDatabasesKey = "extendedNamesDatabases";
+// naming is not 100% accurate, but it needs to be downwards-compatible to
+// previous versions (e.g. 3.9 and 3.10)
+constexpr std::string_view extendedNamesKey = "extendedNamesDatabases";
 
 constexpr char const* currentServersRegisteredPref =
     "/Current/ServersRegistered/";
@@ -95,7 +97,6 @@ ServerState::ServerState(ArangodServer& server)
       _shortId(0),
       _rebootId(0),
       _state(STATE_UNDEFINED),
-      _initialized(false),
       _foxxmasterSince(0),
       _foxxmasterQueueupdate(false) {
   TRI_ASSERT(Instance == nullptr);
@@ -676,15 +677,18 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
       return true;  // do not do anything harsh here
     }
 
-    for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(servers)) {
-      if (pair.value.isObject()) {
-        std::string_view const engineName =
-            _server.getFeature<EngineSelectorFeature>().engineName();
+    std::string_view engineName =
+        _server.getFeature<EngineSelectorFeature>().engineName();
 
-        VPackSlice engineStr = pair.value.get("engine");
-        if (engineStr.isString() && !engineStr.isEqualString(engineName)) {
-          return false;
-        }
+    for (auto pair : VPackObjectIterator(servers)) {
+      if (!pair.value.isObject()) {
+        continue;
+      }
+
+      VPackSlice engine = pair.value.get("engine");
+      if (engine.isString() && engine.stringView() != engineName) {
+        // different storage engine type found
+        return false;
       }
     }
   }
@@ -695,13 +699,8 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
 /// @brief check equality of naming conventions settings with other registered
 /// servers
 bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
-  // our own setting
-  bool const extendedNamesForDatabases =
-      _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
-
   AgencyCommResult result = comm.getValues(::currentServersRegisteredPref);
   if (result.successful()) {  // no error if we cannot reach agency directly
-
     auto slicePath =
         AgencyCommHelper::slicePath(::currentServersRegisteredPref);
     VPackSlice servers = result.slice()[0].get(slicePath);
@@ -709,49 +708,76 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
       return true;  // do not do anything harsh here
     }
 
-    for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(servers)) {
-      if (!pair.value.isObject()) {
-        continue;
-      }
-      VPackSlice setting = pair.value.get(::extendedNamesDatabasesKey);
-      if (setting.isBool() && setting.getBool() != extendedNamesForDatabases) {
-        // different setting detected. bail out!
-        LOG_TOPIC("75972", FATAL, arangodb::Logger::STARTUP)
-            << "The usage of different settings for database object naming "
-            << "conventions (i.e. `--database.extended-names-databases` "
-               "settings) "
-            << "in the cluster is unsupported and may cause follow-up issues. "
-            << "Please unify the settings for the startup option "
-               "`--database.extended-names-databases` "
-            << "on all coordinators and DB servers in this cluster.";
+    auto checkSetting = [](velocypack::Slice servers,
+                           std::string_view optionName, std::string_view key,
+                           bool localValue) -> bool {
+      for (auto pair : VPackObjectIterator(servers)) {
+        if (!pair.value.isObject()) {
+          continue;
+        }
 
-        std::string msg;
-        for (VPackObjectIterator::ObjectPair p : VPackObjectIterator(servers)) {
-          if (!p.value.isObject()) {
-            continue;
+        VPackSlice setting = pair.value.get(key);
+        if (!setting.isBool()) {
+          // value not yet configured
+          continue;
+        }
+
+        if (!localValue && setting.isTrue()) {
+          // different settings detected:
+          //  stored value ii true, but we are locally setting it to false
+          // bail out!
+          LOG_TOPIC("75972", ERR, arangodb::Logger::STARTUP)
+              << "The usage of different settings for object naming "
+              << "conventions (i.e. `--" << optionName << "` settings) "
+              << "in the cluster is unsupported and may cause follow-up "
+                 "issues. "
+              << "Please unify the settings for the startup option "
+                 "`--"
+              << optionName << "` "
+              << "on all coordinators and DB servers in this cluster.";
+
+          std::string msg;
+          for (auto p : VPackObjectIterator(servers)) {
+            if (!p.value.isObject()) {
+              continue;
+            }
+            VPackSlice s = p.value.get(key);
+            if (!msg.empty()) {
+              msg += ", ";
+            }
+            msg += "[" + p.key.copyString() + ": " +
+                   (s.isBool() ? (s.getBool() ? "true" : "false") : "not set") +
+                   "]";
           }
-          VPackSlice s = p.value.get(::extendedNamesDatabasesKey);
+
           if (!msg.empty()) {
-            msg += ", ";
+            LOG_TOPIC("1220d", INFO, arangodb::Logger::STARTUP)
+                << "The following effective settings exist for "
+                   "`--"
+                << optionName << "` "
+                << "for the servers in this cluster, either explicitly "
+                   "configured or persisted on database servers: "
+                << msg;
           }
-          msg += "[" + p.key.copyString() + ": " +
-                 (s.isBool() ? (s.getBool() ? "true" : "false") : "not set") +
-                 "]";
+          return false;
         }
-
-        if (!msg.empty()) {
-          LOG_TOPIC("1220d", FATAL, arangodb::Logger::STARTUP)
-              << "The following effective settings exist for "
-                 "`--database.extended-names-databases` "
-              << "for the servers in this cluster, either explicitly "
-                 "configured or persisted on database servers: "
-              << msg;
-        }
-        return false;
       }
+      return true;
+    };
+
+    // now verify our own settings against the settings of other servers in the
+    // cluster
+    auto& df = _server.getFeature<DatabaseFeature>();
+
+    // --database.extended-names
+    if (!checkSetting(servers, "database.extended-names", ::extendedNamesKey,
+                      df.extendedNames())) {
+      // settings mismatch
+      return false;
     }
   }
 
+  // all settings fine
   return true;
 }
 
@@ -967,6 +993,12 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm,
                                         AgencyPrecondition::Type::EMPTY, true));
   }
 
+  auto& df = _server.getFeature<DatabaseFeature>();
+
+  constexpr int64_t minDelay = 50;    // ms
+  constexpr int64_t maxDelay = 1000;  // ms
+  int64_t delay = minDelay;           // ms
+
   while (!_server.isStopping()) {
     VPackBuilder builder;
     {
@@ -983,9 +1015,22 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm,
       builder.add(
           "engine",
           VPackValue(_server.getFeature<EngineSelectorFeature>().engineName()));
-      builder.add(::extendedNamesDatabasesKey,
-                  VPackValue(_server.getFeature<DatabaseFeature>()
-                                 .extendedNamesForDatabases()));
+
+      if (df.extendedNames()) {
+        // only store value of this config variable when it is activated.
+        // so whenever this variable was set to true, we store its value in
+        // Current/ServersRegistered for ourselves.
+        // the value in the agency is read back at server start by every
+        // coordinator and DB server, and compared against its local setting.
+        // if a coordinator or DB server is started with a different setting,
+        // then this is an unsupported configuration, and there will be
+        // warnings during startup.
+        // we don't store the value in the agency if the option was not set.
+        // that way we can still upgrade the value from "not set" to true,
+        // but never from "true" to "false" or "not set".
+        builder.add(::extendedNamesKey, VPackValue(df.extendedNames()));
+      }
+
       builder.add(
           "timestamp",
           VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -1003,18 +1048,22 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm,
 
     if (result.successful()) {
       break;  // Continue below to read back the rebootId
-    } else {
-      LOG_TOPIC("ba205", WARN, arangodb::Logger::CLUSTER)
-          << "failed to register server in agency: http code: "
-          << result.httpCode() << ", body: '" << result.body()
-          << "', retrying ...";
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    LOG_TOPIC("ba205", WARN, arangodb::Logger::CLUSTER)
+        << "failed to register server in agency: http code: "
+        << result.httpCode() << ", body: '" << result.body()
+        << "', retrying ...";
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    // use exponential backoff, but limit the maximum delay
+    delay *= 2;
+    delay = std::clamp(delay, minDelay, maxDelay);
   }
 
   // if we left the above retry loop because the server is stopping
   // we'll skip this and return false right away.
+  delay = minDelay;
   while (!_server.isStopping()) {
     auto result = readRebootIdFromAgency(comm);
 
@@ -1022,7 +1071,11 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm,
       setRebootId(RebootId{result.get()});
       return true;
     }
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    // use exponential backoff, but limit the maximum delay
+    delay *= 2;
+    delay = std::clamp(delay, minDelay, maxDelay);
   }
 
   return false;

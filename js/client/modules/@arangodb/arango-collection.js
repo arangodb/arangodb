@@ -151,7 +151,10 @@ ArangoCollection.prototype._baseurl = function (suffix) {
 
 ArangoCollection.prototype._documenturl = function (id) {
   let s = id.split('/'), url;
-  let name = this.name();
+  let name = this.name(); 
+  // note: no need to use encodeURIComponent(name) here, because
+  // _database._documenturl() will call URL-encode the parts of
+  // the URL already
   if (s.length === 1) {
     url = this._database._documenturl(name + '/' + id, name);
   } else {
@@ -166,7 +169,7 @@ ArangoCollection.prototype._documenturl = function (id) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype._documentcollectionurl = function () {
-  return this._prefixurl('/_api/document/' + this.name());
+  return this._prefixurl('/_api/document/' + encodeURIComponent(this.name()));
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -194,7 +197,7 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
 
   // get the edges
   let url = '/_api/edges/' + encodeURIComponent(this.name())
-    + (direction ? '?direction=' + direction : '');
+    + (direction ? '?direction=' + encodeURIComponent(direction) : '');
 
   let requestResult = this._database._connection.POST(this._prefixurl(url), vertex);
   arangosh.checkRequestResult(requestResult);
@@ -598,13 +601,6 @@ ArangoCollection.prototype.dropIndex = function (id) {
   }
 
   let requestResult = this._database._connection.DELETE(this._database._indexurl(id, this.name()));
-
-  if (requestResult !== null
-    && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
-    return false;
-  }
-
   arangosh.checkRequestResult(requestResult);
   return true;
 };
@@ -1066,17 +1062,17 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
       fillInSpecial(id[i], data[i]);
     }
     url = this._documentcollectionurl();
-  } else if (typeof id === 'object') {
-    if (id.hasOwnProperty('_rev')) {
-      rev = id._rev;
-    }
-    if (id.hasOwnProperty('_id')) {
-      id = id._id;
-    } else if (id.hasOwnProperty('_key')) {
-      id = id._key;
-    }
-    url = this._documenturl(id);
   } else {
+    if (typeof id === 'object') {
+      if (id.hasOwnProperty('_rev')) {
+        rev = id._rev;
+      }
+      if (id.hasOwnProperty('_id')) {
+        id = id._id;
+      } else if (id.hasOwnProperty('_key')) {
+        id = id._key;
+      }
+    }
     url = this._documenturl(id);
   }
 
@@ -1192,17 +1188,17 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
       fillInSpecial(id[i], data[i]);
     }
     url = this._documentcollectionurl() + params;
-  } else if (typeof id === 'object') {
-    if (id.hasOwnProperty('_rev')) {
-      rev = id._rev;
-    }
-    if (id.hasOwnProperty('_id')) {
-      id = id._id;
-    } else if (id.hasOwnProperty('_key')) {
-      id = id._key;
-    }
-    url = this._documenturl(id) + params;
   } else {
+    if (typeof id === 'object') {
+      if (id.hasOwnProperty('_rev')) {
+        rev = id._rev;
+      }
+      if (id.hasOwnProperty('_id')) {
+        id = id._id;
+      } else if (id.hasOwnProperty('_key')) {
+        id = id._key;
+      }
+    }
     url = this._documenturl(id) + params;
   }
 

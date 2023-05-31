@@ -199,11 +199,21 @@ int TRI_createFile(char const* filename, int openFlags, int modeFlags) {
   int fileDescriptor;
   icu::UnicodeString fn(filename);
 
+  // Note: CREATE_NEW fails if the file already exists.
+  DWORD dwCreationDisposition = CREATE_NEW;
+  if (openFlags & O_APPEND) {
+    // open the file only if it exists
+    dwCreationDisposition = OPEN_ALWAYS;
+  } else if (openFlags & O_TRUNC) {
+    // overwrite existing file
+    dwCreationDisposition = CREATE_ALWAYS;
+  }
+
   fileHandle =
       CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()),
                   GENERIC_READ | GENERIC_WRITE,
                   FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
-                  (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW, 0, NULL);
+                  dwCreationDisposition, 0, NULL);
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;
@@ -275,12 +285,12 @@ TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
         continue;
       } else if (err == ERROR_BROKEN_PIPE) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
-        LOG_TOPIC("87f53", ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("87f53", TRACE, arangodb::Logger::SYSCALL)
             << "cannot read, end-of-file";
         return static_cast<TRI_read_return_t>(length - remainLength);
       } else {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
-        LOG_TOPIC("c9c0d", ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("c9c0d", TRACE, arangodb::Logger::SYSCALL)
             << "cannot read: " << TRI_LAST_ERROR_STR;
         return static_cast<TRI_read_return_t>(length - remainLength);
       }

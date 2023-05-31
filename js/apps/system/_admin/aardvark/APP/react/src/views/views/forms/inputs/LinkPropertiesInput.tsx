@@ -8,9 +8,9 @@ import {
 } from "@chakra-ui/react";
 import { get } from "lodash";
 import React, { ChangeEvent } from "react";
+import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { FormProps } from "../../../../utils/constants";
 import { getBooleanFieldSetter } from "../../../../utils/helpers";
-import { InfoTooltip } from "../../../collections/indices/addIndex/InfoTooltip";
 import { LinkProperties } from "../../constants";
 import { AnalyzersDropdown } from "./AnalyzersDropdown";
 import { FieldsDropdown } from "./FieldsDropdown";
@@ -41,7 +41,7 @@ const LinkPropertiesInput = ({
 
   return (
     <Grid
-      templateColumns="1fr 1fr"
+      templateColumns="minmax(300px, 1fr) 1fr"
       columnGap="10"
       border="2px solid"
       borderColor="gray.300"
@@ -61,9 +61,7 @@ const LinkPropertiesInput = ({
 
         <Stack>
           <HStack alignItems="center">
-            <FormLabel margin="0" position="relative" top="1">
-              Fields
-            </FormLabel>
+            <FormLabel margin="0">Fields</FormLabel>
             <InfoTooltip label="Add field names that you want to be indexed here. Click on a field name to set field details." />
           </HStack>
           <FieldsDropdown
@@ -75,7 +73,7 @@ const LinkPropertiesInput = ({
       </Stack>
       <Stack>
         <HStack alignItems="center">
-          <FormControl width="auto" top="1">
+          <FormControl width="auto">
             <HStack>
               <Checkbox
                 borderColor="gray.400"
@@ -86,7 +84,7 @@ const LinkPropertiesInput = ({
                   basePath
                 )}
                 disabled={disabled}
-                checked={formState.includeAllFields}
+                isChecked={!!formState.includeAllFields}
               />
               <FormLabel htmlFor="includeAllFields">
                 Include All Fields
@@ -96,7 +94,7 @@ const LinkPropertiesInput = ({
           <InfoTooltip label="Process all document attributes." />
         </HStack>
         <HStack alignItems="center">
-          <FormControl width="auto" top="1">
+          <FormControl width="auto">
             <HStack>
               <Checkbox
                 borderColor="gray.400"
@@ -107,7 +105,7 @@ const LinkPropertiesInput = ({
                   basePath
                 )}
                 disabled={disabled}
-                checked={formState.trackListPositions}
+                isChecked={!!formState.trackListPositions}
               />
               <FormLabel htmlFor="trackListPositions">
                 Track List Positions
@@ -117,14 +115,14 @@ const LinkPropertiesInput = ({
           <InfoTooltip label="For array values track the value position in arrays." />
         </HStack>
         <HStack alignItems="center">
-          <FormControl width="auto" top="1">
+          <FormControl width="auto">
             <HStack>
               <Checkbox
                 borderColor="gray.400"
                 id="storeIdValue"
                 onChange={updateStoreValues}
                 disabled={disabled}
-                checked={storeIdValues}
+                isChecked={!!storeIdValues}
               />
               <FormLabel htmlFor="storeIdValue">Store ID Values</FormLabel>
             </HStack>
@@ -133,7 +131,7 @@ const LinkPropertiesInput = ({
         </HStack>
         {hideInBackgroundField ? null : (
           <HStack alignItems="center">
-            <FormControl width="auto" top="1">
+            <FormControl width="auto">
               <HStack>
                 <Checkbox
                   borderColor="gray.400"
@@ -144,7 +142,7 @@ const LinkPropertiesInput = ({
                     basePath
                   )}
                   disabled={disabled}
-                  checked={formState.inBackground}
+                  isChecked={!!formState.inBackground}
                 />
                 <FormLabel htmlFor="inBackground">In Background</FormLabel>
               </HStack>

@@ -54,9 +54,9 @@
           });
 
           this.collection.each(function (model) {
-            $('#collection_' + model.get('name')).removeClass('locked');
-            if ($('#collection_' + model.get('name') + ' .corneredBadge').hasClass('inProgress')) {
-              $('#collection_' + model.get('name') + ' .corneredBadge').removeClass('inProgress');
+            $('#collection_' + window.CSS.escape(model.get('name'))).removeClass('locked');
+            if ($('#collection_' + window.CSS.escape(model.get('name')) + ' .corneredBadge').hasClass('inProgress')) {
+              $('#collection_' + window.CSS.escape(model.get('name')) + ' .corneredBadge').removeClass('inProgress');
             }
           });
         }
@@ -241,7 +241,7 @@
 
     search: function () {
       var searchOptions = this.collection.searchOptions;
-      var searchPhrase = $('#searchInput').val();
+      var searchPhrase = $('#searchInput').val().normalize();
       if (searchPhrase === searchOptions.searchPhrase) {
         return;
       }
@@ -324,7 +324,7 @@
         if (error) {
           arangoHelper.arangoError('DB', 'Could not check coordinator state');
         } else {
-          var collName = $('#new-collection-name').val();
+          var collName = String($('#new-collection-name').val()).normalize();
           var collSize = $('#new-collection-size').val();
           var replicationFactor = Number($('#new-replication-factor').val());
           var writeConcern = Number($('#new-write-concern').val());
@@ -498,6 +498,8 @@
           var tableContent = [];
           var advanced = {};
           var advancedTableContent = [];
+          var collectionNameValidations = 
+            window.arangoValidationHelper.getCollectionNameValidations();
 
           tableContent.push(
             window.modalView.createTextEntry(
@@ -507,20 +509,7 @@
               false,
               '',
               true,
-              [
-                {
-                  rule: Joi.string().regex(/^[a-zA-Z]/),
-                  msg: 'Collection name must always start with a letter.'
-                },
-                {
-                  rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-                  msg: 'Only symbols, "_" and "-" are allowed.'
-                },
-                {
-                  rule: Joi.string().required(),
-                  msg: 'No collection name given.'
-                }
-              ]
+              collectionNameValidations
             )
           );
 

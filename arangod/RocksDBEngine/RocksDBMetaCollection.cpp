@@ -1533,9 +1533,7 @@ void RocksDBMetaCollection::applyUpdates(
   }
 
   TRI_IF_FAILURE("applyUpdates::forceHibernation2") {
-    if (_revisionTree != nullptr) {
-      _revisionTree->hibernate(/*force*/ true);
-    }
+    _revisionTree->hibernate(/*force*/ true);
   }
 }
 

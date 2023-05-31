@@ -151,8 +151,9 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  auto handlePregelHistoryV8Result =
-      [&](ResultT<OperationResult> const& result) -> void {
+  auto handlePregelHistoryV8Result = [&](ResultT<OperationResult> const& result,
+                                         bool onlyReturnFirstAqlResultEntry =
+                                             false) -> void {
     if (result.fail()) {
       // check outer ResultT
       TRI_V8_THROW_EXCEPTION_MESSAGE(result.errorNumber(),
@@ -174,7 +175,19 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
         // Truncate does not deliver a proper slice in a Cluster.
         TRI_V8_RETURN(TRI_VPackToV8(isolate, VPackSlice::trueSlice()));
       } else {
-        TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+        if (onlyReturnFirstAqlResultEntry) {
+          TRI_ASSERT(result->slice().isArray());
+          // due to AQL returning "null" values in case a document does not
+          // exist ....
+          if (result->slice().at(0).isNull()) {
+            Result nf = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+            TRI_V8_THROW_EXCEPTION_MESSAGE(nf.errorNumber(), nf.errorMessage());
+          } else {
+            TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice().at(0)));
+          }
+        } else {
+          TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+        }
       }
     } else {
       // Should always have a slice, doing this check to be sure.
@@ -188,7 +201,6 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
-  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
 
   // check the arguments
   uint32_t const argLength = args.Length();
@@ -205,29 +217,11 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto executionNum = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
-  auto c = pregel.conductor(executionNum);
-  if (!c) {
-    auto status = pregel.getStatus(executionNum);
-    if (not status.ok()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(status.errorNumber(),
-                                     status.errorMessage());
-      return;
-    }
-    auto serializedState = inspection::serializeWithErrorT(status.get());
-    if (!serializedState.ok()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(
-          TRI_ERROR_CURSOR_NOT_FOUND,
-          fmt::format("Cannot serialize status {}",
-                      serializedState.error().error()));
-      return;
-    }
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, serializedState.get().slice()));
-    return;
-  }
+  pregel::statuswriter::CollectionStatusWriter cWriter{vocbase, executionNum};
+  handlePregelHistoryV8Result(cWriter.readResult(), true);
+  return;
 
-  VPackBuilder builder;
-  c->toVelocyPack(builder);
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+  return;
   TRI_V8_TRY_CATCH_END
 }
 
@@ -287,13 +281,23 @@ static void JS_PregelAQLResult(
   auto executionNum = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
+    VPackBuilder docs;
     auto c = pregel.conductor(executionNum);
     if (!c) {
+      // check for actor run
+      auto pregelResults = pregel.getResults(executionNum);
+      if (!pregelResults.ok()) {
+        TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
+        return;
+      }
+      {
+        VPackArrayBuilder ab(&docs);
+        docs.add(VPackArrayIterator(pregelResults.get().results.slice()));
+      }
       TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
+    } else {
+      c->collectAQLResults(docs, withId);
     }
-
-    VPackBuilder docs;
-    c->collectAQLResults(docs, withId);
     if (docs.isEmpty()) {
       TRI_V8_RETURN_NULL();
     }
@@ -314,8 +318,9 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto handlePregelHistoryV8Result =
-      [&](ResultT<OperationResult> const& result) -> void {
+  auto handlePregelHistoryV8Result = [&](ResultT<OperationResult> const& result,
+                                         bool onlyReturnFirstAqlResultEntry =
+                                             false) -> void {
     if (result.fail()) {
       // check outer ResultT
       TRI_V8_THROW_EXCEPTION_MESSAGE(result.errorNumber(),
@@ -337,7 +342,19 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
         // Truncate does not deliver a proper slice in a Cluster.
         TRI_V8_RETURN(TRI_VPackToV8(isolate, VPackSlice::trueSlice()));
       } else {
-        TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+        if (onlyReturnFirstAqlResultEntry) {
+          TRI_ASSERT(result->slice().isArray());
+          // due to AQL returning "null" values in case a document does not
+          // exist ....
+          if (result->slice().at(0).isNull()) {
+            Result nf = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+            TRI_V8_THROW_EXCEPTION_MESSAGE(nf.errorNumber(), nf.errorMessage());
+          } else {
+            TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice().at(0)));
+          }
+        } else {
+          TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+        }
       }
     } else {
       // Should always have a slice, doing this check to be sure.
@@ -376,7 +393,7 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   pregel::statuswriter::CollectionStatusWriter cWriter{vocbase,
                                                        executionNumber};
-  handlePregelHistoryV8Result(cWriter.readResult());
+  handlePregelHistoryV8Result(cWriter.readResult(), true);
   return;
   TRI_V8_TRY_CATCH_END
 }
@@ -386,8 +403,9 @@ static void JS_PregelHistoryRemove(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto handlePregelHistoryV8Result =
-      [&](ResultT<OperationResult> const& result) -> void {
+  auto handlePregelHistoryV8Result = [&](ResultT<OperationResult> const& result,
+                                         bool onlyReturnFirstAqlResultEntry =
+                                             false) -> void {
     if (result.fail()) {
       // check outer ResultT
       TRI_V8_THROW_EXCEPTION_MESSAGE(result.errorNumber(),
@@ -404,13 +422,24 @@ static void JS_PregelHistoryRemove(
 
       TRI_V8_THROW_EXCEPTION_MESSAGE(result.get().errorNumber(), message);
     }
-
     if (result.get().hasSlice()) {
       if (result->slice().isNone()) {
         // Truncate does not deliver a proper slice in a Cluster.
         TRI_V8_RETURN(TRI_VPackToV8(isolate, VPackSlice::trueSlice()));
       } else {
-        TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+        if (onlyReturnFirstAqlResultEntry) {
+          TRI_ASSERT(result->slice().isArray());
+          // due to AQL returning "null" values in case a document does not
+          // exist ....
+          if (result->slice().at(0).isNull()) {
+            Result nf = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+            TRI_V8_THROW_EXCEPTION_MESSAGE(nf.errorNumber(), nf.errorMessage());
+          } else {
+            TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice().at(0)));
+          }
+        } else {
+          TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+        }
       }
     } else {
       // Should always have a slice, doing this check to be sure.

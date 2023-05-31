@@ -914,9 +914,13 @@ bool KeyGeneratorHelper::validateId(char const* key, size_t len,
   }
   if (p == key) {
     // non-numeric id
-    if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true,
-                                                extendedNames,
-                                                std::string_view(key, split))) {
+    try {
+      if (CollectionNameValidator::validateName(
+              /*allowSystem*/ true, extendedNames, std::string_view(key, split))
+              .fail()) {
+        return false;
+      }
+    } catch (...) {
       return false;
     }
   } else {

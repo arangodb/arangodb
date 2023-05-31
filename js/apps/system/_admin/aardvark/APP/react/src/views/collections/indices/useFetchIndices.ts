@@ -2,6 +2,7 @@ import { ArangojsResponse } from "arangojs/lib/request";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { encodeHelper } from "../../../utils/encodeHelper";
 
 export type StoredValue = {
   fields: string[];
@@ -47,13 +48,14 @@ export const useFetchIndices = ({
 }: {
   collectionName: string;
 }) => {
+  const { encoded: encodedCollectionName } = encodeHelper(collectionName);
   const { data, ...rest } = useSWR<IndicesResponse>(
-    `/index/?collection=${collectionName}`,
+    `/index/?collection=${encodedCollectionName}`,
     () => {
-      return (getApiRouteForCurrentDB().get(
+      return getApiRouteForCurrentDB().get(
         `/index/`,
-        `collection=${collectionName}`
-      ) as any) as Promise<IndicesResponse>;
+        `collection=${encodedCollectionName}`
+      ) as any as Promise<IndicesResponse>;
     }
   );
   const result = data?.body.indexes;

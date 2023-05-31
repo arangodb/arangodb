@@ -13,27 +13,6 @@
       }
     });
 
-    const updateOptions = function(options) {
-      const update = { ...options };
-      update.headers = {
-        ...update.headers,
-        'X-Arango-Frontend': 'true'
-      };
-      var currentJwt = window.arangoHelper.getCurrentJwt();
-      if (currentJwt) {
-        update.headers = {
-          ...update.headers,
-          Authorization: 'bearer ' + currentJwt
-        };
-      }
-      return update;
-    };
-    
-    window.arangoFetch = function (url, options) {
-      // eslint-disable-next-line
-      return fetch(url, updateOptions(options));
-    };
-
     $.ajaxSetup({
       error: function (x, status, error) {
         if (x.status === 401) {

@@ -42,10 +42,15 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("5adb0", INFO, Logger::PREGEL) << fmt::format(
         "Conductor Actor {} started with state {}", this->self, *this->state);
-    this->state->executionState = std::make_unique<CreateWorkers>(*this->state);
+    auto stateChange =
+        this->state->executionState->receive(this->sender, start);
+    if (stateChange.has_value()) {
+      changeState(std::move(stateChange.value()));
+    }
+
     /*
        CreateWorkers is a special state because it creates the workers instead
-       of just sending messages to them. Therefore we cannot use the messages
+       of just sending messages to them. Therefore, we cannot use the messages
        fct of the ExecutionState but need to call the special messagesToServers
        function which is specific to the CreateWorkers state only
     */
@@ -60,6 +65,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
               .conductor = this->self,
               .resultActorOnCoordinator = this->state->resultActor,
               .statusActor = this->state->statusActor,
+              .metricsActor = this->state->metricsActor,
               .ttl = this->state->specifications.ttl,
               .message = message}});
     }
@@ -94,9 +100,6 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
 
   auto operator()(ResultT<message::GlobalSuperStepFinished> message)
       -> std::unique_ptr<ConductorState> {
-    LOG_TOPIC("543aa", INFO, Logger::PREGEL) << fmt::format(
-        "Conductor Actor: Global super step finished on worker {}",
-        this->sender);
     auto stateChange =
         this->state->executionState->receive(this->sender, std::move(message));
     if (stateChange.has_value()) {
@@ -106,7 +109,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
-  auto operator()(message::StatusUpdate message)
+  auto operator()(const message::StatusUpdate& message)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("f89db", INFO, Logger::PREGEL) << fmt::format(
         "Conductor Actor: Received status update from worker {}: {}",
@@ -135,6 +138,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     auto stateChange = this->state->executionState->receive(this->sender, msg);
     if (stateChange.has_value()) {
       changeState(std::move(stateChange.value()));
+      sendMessagesToWorkers();
     }
 
     this->template dispatch<pregel::message::ResultMessages>(
@@ -151,12 +155,14 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     LOG_TOPIC("02da1", INFO, Logger::PREGEL) << fmt::format(
         "Conductor Actor: Worker {} is cleaned up", this->sender);
     auto stateChange =
-        this->state->executionState->receive(this->sender, std::move(start));
+        this->state->executionState->receive(this->sender, start);
     if (stateChange.has_value()) {
       changeState(std::move(stateChange.value()));
       this->finish();
       this->template dispatch<pregel::message::SpawnMessages>(
           this->state->spawnActor, pregel::message::SpawnCleanup{});
+      this->template dispatch<pregel::message::StatusMessages>(
+          this->state->statusActor, pregel::message::Cleanup{});
     }
     return std::move(this->state);
   }
@@ -165,11 +171,24 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     LOG_TOPIC("012d3", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Run {} is canceled",
                        this->state->specifications.executionNumber);
-    if (this->state->executionState->canBeCanceled()) {
-      changeState(
-          StateChange{.newState = std::make_unique<Canceled>(*this->state)});
-      sendMessagesToWorkers();
+    auto stateChange = this->state->executionState->cancel(this->sender, msg);
+    if (stateChange.has_value()) {
+      changeState(std::move(stateChange.value()));
     }
+    sendMessagesToWorkers();
+    return std::move(this->state);
+  }
+
+  auto operator()(ResultT<message::WorkerFailed> msg)
+      -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("b7bff", INFO, Logger::PREGEL) << fmt::format(
+        "Conductor Actor: Run {} is canceled. {}",
+        this->state->specifications.executionNumber, msg.errorMessage());
+    auto stateChange = this->state->executionState->cancel(this->sender, msg);
+    if (stateChange.has_value()) {
+      changeState(std::move(stateChange.value()));
+    }
+    sendMessagesToWorkers();
     return std::move(this->state);
   }
 
@@ -206,6 +225,10 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     if (auto statusMessage = std::move(stateChange.statusMessage);
         statusMessage.has_value()) {
       this->dispatch(this->state->statusActor, statusMessage.value());
+    }
+    if (auto metricsMessage = std::move(stateChange.metricsMessage);
+        metricsMessage.has_value()) {
+      this->dispatch(this->state->metricsActor, metricsMessage.value());
     }
     this->state->executionState = std::move(stateChange.newState);
     LOG_TOPIC("e3b0c", INFO, Logger::PREGEL)

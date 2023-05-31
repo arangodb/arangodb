@@ -47,11 +47,21 @@ auto AQLResultsAvailable::receive(actor::ActorPID sender,
     -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<message::CleanupFinished>(message)) {
-    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .errorMessage =
+                    fmt::format("In {}: Received unexpected message {} from {}",
+                                name(), inspection::json(message), sender)},
+        .metricsMessage = pregel::metrics::message::ConductorFinished{},
+        .newState = std::move(newState)};
   }
   conductor.workers.erase(sender);
   if (conductor.workers.empty()) {
     return StateChange{.newState = std::make_unique<CleanedUp>()};
   }
   return std::nullopt;
-};
+}

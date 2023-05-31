@@ -68,7 +68,7 @@ function ViewSuite () {
     testErrorHandlingRenameIllegal : function () {
       try {
         var v = db._createView("abc", "arangosearch", {});
-        v.rename("@bc!");
+        v.rename("/bc/");
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);

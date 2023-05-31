@@ -40,8 +40,8 @@ function runSetup () {
     let c = db._create('UnitTestsRecovery' + i);
     c.save({ _key: 'foo', value1: 'foo', value2: 'bar' });
 
-    c.ensureIndex({ type: "hash", fields: ["value1"] });
-    c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+    c.ensureIndex({ type: "persistent", fields: ["value1"] });
+    c.ensureIndex({ type: "persistent", fields: ["value2"] });
   }
 
   // drop all indexes but primary
@@ -49,7 +49,7 @@ function runSetup () {
   for (let i = 0; i < 4; ++i) {
     c = db._collection('UnitTestsRecovery' + i);
     let idx = c.getIndexes();
-    for (let j = 0; j < idx.length; ++j) {
+    for (let j = 1; j < idx.length; ++j) {
       c.dropIndex(idx[j].id);
     }
   }

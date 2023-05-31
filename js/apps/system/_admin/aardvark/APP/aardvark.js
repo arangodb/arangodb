@@ -97,6 +97,7 @@ router.get('/config.js', function (req, res) {
       defaultReplicationFactor: internal.defaultReplicationFactor,
       maxNumberOfShards: internal.maxNumberOfShards,
       maxNumberOfMoveShards: internal.maxNumberOfMoveShards,
+      extendedNames: internal.extendedNames,
       forceOneShard: internal.forceOneShard,
       sessionTimeout: internal.sessionTimeout,
       showMaintenanceStatus: true
@@ -309,9 +310,22 @@ authRouter.get('/query/download/:user', function (req, res) {
 `);
 
 authRouter.get('/query/result/download/:query', function (req, res) {
+  const fromBinary = (binary) => {
+    const bytes = Uint8Array.from({ length: binary.length }, (element, index) =>
+      binary.charCodeAt(index)
+    );
+    const charCodes = new Uint16Array(bytes.buffer);
+
+    let result = "";
+    charCodes.forEach((char) => {
+      result += String.fromCharCode(char);
+    });
+    return result;
+  };
+
   let query;
   try {
-    query = internal.base64Decode(req.pathParams.query);
+    query = fromBinary(req.pathParams.query);
     query = JSON.parse(query);
   } catch (e) {
     res.throw('bad request', e.message, {cause: e});
@@ -603,7 +617,7 @@ authRouter.get('/graph/:name', function (req, res) {
   var getPseudoRandomStartVertex = function () {
     for (var i = 0; i < graph._vertexCollections().length; i++) {
       var vertexCollection = graph._vertexCollections()[i];
-      let maxDoc = db[vertexCollection.name()].count();
+      let maxDoc =  db._collection(vertexCollection.name()).count();
 
       if (maxDoc === 0) {
         continue;
@@ -1007,7 +1021,7 @@ authRouter.get('/graph/:name', function (req, res) {
   This function returns vertices and edges for a specific graph.
 `);
 
-authRouter.get('/visgraph/:name', function (req, res) {
+authRouter.get('/graphs-v2/:name', function (req, res) {
   var name = req.pathParams.name;
   var gm;
   if (isEnterprise) {
@@ -1058,14 +1072,23 @@ authRouter.get('/visgraph/:name', function (req, res) {
     res.throw('bad request', e.errorMessage);
   }
 
-  var verticesCollections = graph._vertexCollections();
-  if (!verticesCollections || verticesCollections.length === 0) {
+  var edgesCollections = [];
+
+  _.each(graph._edgeCollections(), function (edge) {
+    edgesCollections.push({
+      name: edge.name(),
+      id: edge._id
+    });
+  });
+
+  var graphVertexCollections = graph._vertexCollections();
+  if (!graphVertexCollections || graphVertexCollections.length === 0) {
     res.throw('404 NOT FOUND', 'no vertex collections found for graph');
   }
 
   var vertexCollections = [];
 
-  _.each(graph._vertexCollections(), function (vertex) {
+  _.each(graphVertexCollections, function (vertex) {
     vertexCollections.push({
       name: vertex.name(),
       id: vertex._id
@@ -1081,33 +1104,24 @@ authRouter.get('/visgraph/:name', function (req, res) {
   }
 
   var getPseudoRandomStartVertex = function () {
+    var vertexCandidates = [];
     for (var i = 0; i < graph._vertexCollections().length; i++) {
       var vertexCollection = graph._vertexCollections()[i];
-      let maxDoc = db[vertexCollection.name()].count();
-
-      if (maxDoc === 0) {
-        continue;
-      }
-
-      if (maxDoc > 1000) {
-        maxDoc = 1000;
-      }
-
-      let randDoc = Math.floor(Math.random() * maxDoc);
-
-      let potentialVertex = db._query(
-        'FOR vertex IN @@vertexCollection LIMIT @skipN, 1 RETURN vertex',
-        {
-          '@vertexCollection': vertexCollection.name(),
-          'skipN': randDoc
-        }
-      ).toArray()[0];
-
-      if (potentialVertex) {
-        return potentialVertex;
+      if (db._collection(vertexCollection.name()).count()) {
+        let randomVertex = db._query(
+          'FOR vertex IN @@vertexCollection SORT rand() LIMIT 1 RETURN vertex',
+          {
+            '@vertexCollection': vertexCollection.name()
+          }
+        ).next();
+        
+        vertexCandidates.push(randomVertex);
       }
     }
-
+    
+    if (vertexCandidates.length) {
+      return _.sample(vertexCandidates);
+    }
     return null;
   };
 
@@ -1171,7 +1185,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
         */
         _.each(multipleIds, function (nodeid) {
           aqlQuery =
-            'FOR v, e, p IN 1..' + (depth || '2') + ' ANY ' + JSON.stringify(nodeid) + ' GRAPH ' + JSON.stringify(name);
+            'FOR v, e, p IN 0..' + (depth || '2') + ' ANY ' + JSON.stringify(nodeid) + ' GRAPH ' + JSON.stringify(name);
           if (limit !== 0) {
             aqlQuery += ' LIMIT ' + limit;
           }
@@ -1180,7 +1194,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
         });
       } else {
         aqlQuery =
-          'FOR v, e, p IN 1..' + (depth || '2') + ' ANY ' + JSON.stringify(startVertex._id) + ' GRAPH ' + JSON.stringify(name);
+          'FOR v, e, p IN 0..' + (depth || '2') + ' ANY ' + JSON.stringify(startVertex._id) + ' GRAPH ' + JSON.stringify(name);
         if (limit !== 0) {
           aqlQuery += ' LIMIT ' + limit;
         }
@@ -1286,7 +1300,8 @@ authRouter.get('/visgraph/:name', function (req, res) {
     var nodeSize;
     var sizeCategory;
     var nodeObj;
-
+    var notFoundString = "(attribute not found)";
+    
     const generateNodeObject = (node) => {
       nodeNames[node._id] = true;
 
@@ -1297,10 +1312,21 @@ authRouter.get('/visgraph/:name', function (req, res) {
             nodeLabel = node._id;
           }
         } else {
-          nodeLabel = node[config.nodeLabel];
+          if (node[config.nodeLabel] !== undefined) {
+            if (typeof node[config.nodeLabel] === 'string') {
+              nodeLabel = node[config.nodeLabel];
+            } else {
+              // in case we do not have a string here, we need to stringify it
+              // otherwise we might end up sending not displayable values.
+              nodeLabel = JSON.stringify(node[config.nodeLabel]);
+            }
+          } else {
+            // in case the document does not have the nodeLabel in it, return fallback string
+            nodeLabel = notFoundString;
+          }
         }
       } else {
-        nodeLabel = node._key;
+        nodeLabel = node._key || node._id;
       }
 
       if (config.nodeLabelByCollection === 'true') {
@@ -1309,15 +1335,20 @@ authRouter.get('/visgraph/:name', function (req, res) {
       if (typeof nodeLabel === 'number') {
         nodeLabel = JSON.stringify(nodeLabel);
       }
-      
+      let sizeAttributeFound;
       if (config.nodeSize && config.nodeSizeByEdges === 'false') {
-        // original code
-        nodeSize = node[config.nodeSize];
+        nodeSize = 20;
+        if (Number.isInteger(node[config.nodeSize])) {
+          nodeSize = node[config.nodeSize];  
+          sizeAttributeFound = true;
+        } else {
+          sizeAttributeFound = false;
+        }
         
         sizeCategory = node[config.nodeSize] || '';
         nodesSizeValues.push(node[config.nodeSize]);
       }
-      var calculatedNodeColor = '#CBDF2F';
+      var calculatedNodeColor = '#48BB78';
       if (config.nodeColor !== undefined) {
         if(!config.nodeColor.startsWith('#')) {
           calculatedNodeColor = '#' + config.nodeColor;
@@ -1333,17 +1364,13 @@ authRouter.get('/visgraph/:name', function (req, res) {
         value: nodeSize || 20,
         sizeCategory: sizeCategory || '',
         shape: "dot",
-        //shape: "circle",
-        color: calculatedNodeColor
-        /*
-        style: {
-          fill: calculatedNodeColor,
-          stroke: calculatedNodeColor,
-          label: {
-            value: nodeLabel
-          }
-        }
-        */
+        color: calculatedNodeColor,
+        font: {
+          strokeWidth: 2,
+          strokeColor: '#ffffff',
+          vadjust: -7
+        },
+        sizeAttributeFound
       };
 
       if (config.nodeColorByCollection === 'true') {
@@ -1351,13 +1378,22 @@ authRouter.get('/visgraph/:name', function (req, res) {
         nodeObj.group = coll;
         nodeObj.color = "";
       } else if (config.nodeColorAttribute !== '') {
-        nodeObj.group = JSON.stringify(node[config.nodeColorAttribute]);
-        nodeObj.color = "";
+        var attr = node[config.nodeColorAttribute]
+        if (attr) {
+          nodeObj.group = JSON.stringify(attr);
+          nodeObj.color = "";
+          nodeObj.colorAttributeFound = true;
+        } else {
+          nodeObj.colorAttributeFound = false;
+        }
       }
 
       nodeObj.sortColor = nodeObj.color;
       return nodeObj;
     }
+
+
+    
 
     _.each(cursor.json, function (obj) {
       var edgeLabel = '';
@@ -1373,7 +1409,18 @@ authRouter.get('/visgraph/:name', function (req, res) {
                 edgeLabel = edgeLabel._id;
               }
             } else {
-              edgeLabel = edge[config.edgeLabel];
+              if (edge[config.edgeLabel] !== undefined) {
+                if (typeof edge[config.edgeLabel] === 'string') {
+                  edgeLabel = edge[config.edgeLabel];
+                } else {
+                  // in case we do not have a string here, we need to stringify it
+                  // otherwise we might end up sending not displayable values.
+                  edgeLabel = JSON.stringify(edge[config.edgeLabel]);
+                }
+              } else {
+                // in case the document does not have the edgeLabel in it, return fallback string
+                edgeLabel = notFoundString;
+              }
             }
 
             if (typeof edgeLabel !== 'string') {
@@ -1428,10 +1475,14 @@ authRouter.get('/visgraph/:name', function (req, res) {
             source: edge._from,
             from: edge._from,
             label: edgeLabel,
-            font: { align: 'top' },
             target: edge._to,
             to: edge._to,
             color: calculatedEdgeColor,
+            font: {
+              strokeWidth: 2,
+              strokeColor: '#ffffff',
+              align: 'top'
+            },
             length: 500,
             ...edgestyle
           };
@@ -1480,6 +1531,9 @@ authRouter.get('/visgraph/:name', function (req, res) {
                 edgeObj.color = tmpObjEdges[attr];
                 //edgeObj.style.fill = tmpObjEdges[attr] || '#ff0'; 
               }
+              edgeObj.colorAttributeFound = true;
+            } else {
+              edgeObj.colorAttributeFound = false;
             }
           }
         }
@@ -1496,10 +1550,13 @@ authRouter.get('/visgraph/:name', function (req, res) {
 
     // In case our AQL query did not deliver any nodes, we will put the "startVertex" into the "nodes" list
     // as well (to be able to display at least the starting point of our graph)
-    if (Object.keys(nodesObj).length === 0) {
+    if (Object.keys(nodesObj).length === 0 && startVertex) {
       nodesObj[startVertex._id] = generateNodeObject(startVertex);
     }
 
+    let nodeColorAttributeFound;
+    let nodeSizeAttributeFound;
+    
     _.each(nodesObj, function (node) {
       if (config.nodeSizeByEdges === 'true') {
         // + 10 visual adjustment sigma
@@ -1512,6 +1569,44 @@ authRouter.get('/visgraph/:name', function (req, res) {
           node.size = 10;
         }
       }
+
+      if(multipleIds !== undefined) {
+        // mark every starting node
+        if(multipleIds.includes(node.id)) {
+          node.borderWidth = 4;
+          node.shadow = {
+            enabled: true,
+            color: 'rgba(0,0,0,0.5)',
+            size: 16,
+            x: 0,
+            y: 0
+          };
+          node.shapeProperties = {
+            borderDashes: [10, 15]
+          };
+        }
+      } else {
+        // mark the one starting node
+        if(node.id === startVertex._id) {
+          node.borderWidth = 4;
+          node.shadow = {
+            enabled: true,
+            color: 'rgba(0,0,0,0.5)',
+            size: 16,
+            x: 0,
+            y: 0
+          };
+          node.shapeProperties = {
+            borderDashes: [10, 15]
+          };
+        }
+      }
+      if (node.colorAttributeFound) {
+          nodeColorAttributeFound = true;
+      }
+      if (node.sizeAttributeFound) {
+          nodeSizeAttributeFound = true;
+      }
       nodesArr.push(node);
     });
 
@@ -1520,10 +1615,14 @@ authRouter.get('/visgraph/:name', function (req, res) {
       nodeNamesArr.push(key);
     });
 
+    let edgeColorAttributeFound;
     // array format for sigma.js
     _.each(edgesObj, function (edge) {
       if (nodeNamesArr.indexOf(edge.source) > -1 && nodeNamesArr.indexOf(edge.target) > -1) {
         edgesArr.push(edge);
+      }
+      if(edge.colorAttributeFound) {
+        edgeColorAttributeFound = true;
       }
     });
 
@@ -1555,10 +1654,18 @@ authRouter.get('/visgraph/:name', function (req, res) {
     const barnesHutOptions = {
       interaction: interactionOptions,
       layout: {
+          randomSeed: 0,
           hierarchical: false
       },
       edges: {
-        smooth: false
+        smooth: { type:"dynamic" },
+        arrows: {
+          to: {
+            enabled: (config.edgeDirection === "true"),
+            type: "arrow",
+            scaleFactor: 0.5
+          },
+        },
       },
       physics: {
           barnesHut: {
@@ -1574,6 +1681,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
     const hierarchicalOptions = {
       interaction: interactionOptions,
         layout: {
+          randomSeed: 0,
           hierarchical: {
             levelSeparation: 150,
             nodeSpacing: 300,
@@ -1581,7 +1689,14 @@ authRouter.get('/visgraph/:name', function (req, res) {
           },
         },
         edges: {
-          smooth: false
+          smooth: { type:"dynamic" },
+          arrows: {
+            to: {
+              enabled: (config.edgeDirection === "true"),
+              type: "arrow",
+              scaleFactor: 0.5
+            },
+          },
         },
         physics: {
           barnesHut: {
@@ -1596,17 +1711,27 @@ authRouter.get('/visgraph/:name', function (req, res) {
     const forceAtlas2BasedOptions = {
       interaction: interactionOptions,
           layout: {
+              randomSeed: 0,
               hierarchical: false
           },
           edges: {
-            smooth: false
+            smooth: { type:"dynamic" },
+            arrows: {
+              to: {
+                enabled: (config.edgeDirection === "true"),
+                type: "arrow",
+                scaleFactor: 0.5
+              },
+            },
           },
           physics: {
-              forceAtlas2Based: {
-                  springLength: 100
-              },
-              minVelocity: 0.75,
-              solver: "forceAtlas2Based"
+            forceAtlas2Based: {
+              springLength: 10,
+              springConstant: 1.5,
+              gravitationalConstant: -500
+            },
+            minVelocity: 0.75,
+            solver: "forceAtlas2Based"
           }
       };
 
@@ -1615,6 +1740,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
       switch (config.layout) {
         case 'forceAtlas2':
           layoutObject = forceAtlas2BasedOptions;
+          break;
         case 'barnesHut':
           layoutObject = barnesHutOptions;
           break;
@@ -1624,14 +1750,29 @@ authRouter.get('/visgraph/:name', function (req, res) {
         default:
           layoutObject = barnesHutOptions;
       }
-
+    const nodeSizeAttributeMessage = 
+      !nodeSizeAttributeFound && config.nodeSize
+        ? "Invalid attribute specified"
+        : "";
+    const nodeColorAttributeMessage = 
+      !nodeColorAttributeFound && config.nodeColorAttribute
+        ? "Invalid attribute specified"
+        : "";
+    const edgeColorAttributeMessage = 
+      !edgeColorAttributeFound && config.edgeColorAttribute
+        ? "Invalid attribute specified"
+        : "";
     toReturn = {
       nodes: nodesArr,
       edges: edgesArr,
       settings: {
+        nodeColorAttributeMessage,
+        nodeSizeAttributeMessage,
+        edgeColorAttributeMessage,
         configlayout: config.layout,
         layout: layoutObject,
         vertexCollections: vertexCollections,
+        edgesCollections: edgesCollections,
         startVertex: startVertex,
         nodesColorAttributes: nodesColorAttributes,
         edgesColorAttributes: edgesColorAttributes,

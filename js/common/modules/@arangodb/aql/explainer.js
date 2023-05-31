@@ -245,7 +245,7 @@ function printRules(rules, stats) {
     }
   }
   stringBuilder.appendLine();
- 
+
   if (!stats || !stats.rules) {
     return;
   }
@@ -273,7 +273,7 @@ function printRules(rules, stats) {
     times.forEach(function(rule) {
       stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
     });
-  
+
     stringBuilder.appendLine();
   }
 
@@ -324,7 +324,7 @@ function printStats(stats, isCoord) {
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') + 
+    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') +
     header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
@@ -1355,7 +1355,7 @@ function processQuery(query, explain, planIndex) {
             return keyword(' LET ') + variableName(scorer) + ' = ' + buildExpression(scorer.node);
           }).join('');
         }
-        
+
         var scorersSort = '';
         if (node.hasOwnProperty('scorersSort') && node.scorersSort.length > 0) {
           node.scorersSort.forEach(function(sort) {
@@ -1368,11 +1368,11 @@ function processQuery(query, explain, planIndex) {
               } else {
                 scorersSort += keyword(' DESC');
               }
-          
+
           });
            scorersSort = keyword(' SORT ') + scorersSort;
            scorersSort += keyword(' LIMIT ') + value('0, ' + JSON.stringify(node.scorersSortLimit));
-           
+
         }
         let viewAnnotation = '/* view query';
         if (node.hasOwnProperty('outNmDocId')) {
@@ -2045,6 +2045,19 @@ function processQuery(query, explain, planIndex) {
         }
       }
         break;
+      case 'MultipleRemoteModificationNode': {
+        modificationFlags = node.modificationFlags;
+        collectionVariables[node.inVariable.id] = node.collection;
+        let indexRef = `${variableName(node.inVariable)}`;
+        if (node.hasOwnProperty('indexes')) {
+          node.indexes.forEach(function (idx, i) {
+            iterateIndexes(idx, i, node, types, indexRef);
+          });
+        }
+        return `${keyword('FOR')} d ${keyword('IN')} ${variableName(node.inVariable)} ${keyword('INSERT')} d ${keyword('IN')} ${collection(node.collection)}`;
+      }
+        break;
+
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
@@ -2435,6 +2448,10 @@ function debug(query, bindVars, options) {
               }
             });
           } catch (err) { }
+        } else {
+          node.graph.forEach(edgeColl => {
+            collections.push({name: edgeColl});
+          });
         }
       } else if (node.type === 'SubqueryNode') {
         // recurse into subqueries

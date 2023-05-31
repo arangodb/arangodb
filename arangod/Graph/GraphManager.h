@@ -53,7 +53,7 @@ class GraphManager {
   /// @brief find or create collection by name and type
   ////////////////////////////////////////////////////////////////////////////////
   Result createCollection(std::string const& name, TRI_col_type_e colType,
-                          bool waitForSync, VPackSlice options);
+                          bool waitForSyncReplication, VPackSlice options);
 
  public:
   explicit GraphManager(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {}
@@ -96,14 +96,15 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a vertex collection
   ////////////////////////////////////////////////////////////////////////////////
-  Result createVertexCollection(std::string const& name, bool waitForSync,
+  Result createVertexCollection(std::string const& name,
+                                bool waitForSyncReplication,
                                 VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create an edge collection
   ////////////////////////////////////////////////////////////////////////////////
-  Result createEdgeCollection(std::string const& name, bool waitForSync,
-                              VPackSlice options);
+  Result createEdgeCollection(std::string const& name,
+                              bool waitForSyncReplication, VPackSlice options);
 
   /// @brief rename a collection used in an edge definition
   bool renameGraphCollection(std::string const& oldName,
@@ -177,7 +178,7 @@ class GraphManager {
  private:
 #ifdef USE_ENTERPRISE
   std::pair<Result, std::string> ensureEnterpriseCollectionSharding(
-      Graph const* graph, bool waitForSync,
+      Graph const* graph, bool waitForSync, bool waitForSyncReplication,
       std::unordered_set<std::string>& documentCollections) const;
 #endif
 

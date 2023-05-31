@@ -109,7 +109,9 @@
     switchToVisGraphViewer: function () {
       const url = window.location.href;
       const linkToNewGraphViewer = url.substring(url.lastIndexOf('/') + 1);
-      window.location.href = `/_db/_system/_admin/aardvark/index.html#visgraphs/${linkToNewGraphViewer}`;
+      window.App.navigate(
+        `#graphs-v2/${linkToNewGraphViewer}`, { trigger: true }
+      );
     },
 
     loadFullGraphModal: function () {
@@ -175,7 +177,9 @@
     },
 
     render: function (toFocus) {
-      this.$el.html(this.template.render({}));
+      this.$el.html(this.template.render({
+        noDefinedGraph: false
+      }));
 
       // render navigation
       $('#subNavigationBar .breadcrumb').html(
@@ -235,7 +239,9 @@
     },
 
     renderAQLPreview: function (data) {
-      this.$el.html(this.template.render({}));
+      this.$el.html(this.template.render({
+        noDefinedGraph: true
+      }));
 
       // remove not needed elements
       this.$el.find('.headerBar').remove();
@@ -258,7 +264,9 @@
     },
 
     renderAQL: function (data) {
-      this.$el.html(this.template.render({}));
+      this.$el.html(this.template.render({
+        noDefinedGraph: true
+      }));
 
       // render navigation
       $('#subNavigationBar .breadcrumb').html(

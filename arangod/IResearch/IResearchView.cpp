@@ -477,6 +477,7 @@ arangodb::ViewFactory const& IResearchView::factory() {
 }
 
 Result IResearchView::link(AsyncLinkPtr const& link) {
+  TRI_IF_FAILURE("IResearchLink::alwaysDangling") { return {}; }
   if (!link) {
     return {TRI_ERROR_BAD_PARAMETER,
             absl::StrCat("invalid link parameter while emplacing collection "

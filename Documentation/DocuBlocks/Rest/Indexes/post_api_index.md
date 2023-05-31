@@ -2,14 +2,15 @@
 @startDocuBlock post_api_index
 @brief creates an index
 
-@RESTHEADER{POST /_api/index#general, Create index, createIndex:general}
+@RESTHEADER{POST /_api/index, Create index, createIndex}
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{collection,string,required}
 The collection name.
 
-@RESTALLBODYPARAM{index-details,json,required}
+@RESTALLBODYPARAM{index-details,object,required}
+The options for the index.
 
 @RESTDESCRIPTION
 Creates a new index in the collection `collection`. Expects
