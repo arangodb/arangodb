@@ -32,6 +32,7 @@ database. Each query is a JSON object with the following attributes:
   - `"loading collections"`
   - `"instantiating plan"`
   - `"optimizing plan"`
+  - `"instantiating executors"`
   - `"executing"`
   - `"finalizing"`
   - `"finished"`
