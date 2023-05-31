@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-1396: Restricted followers from attempting to send telemetrics data to 
+  the endpoint.
+
 * APM-663: revision tree memory tracking.
   Tracking memory used for buffered updates to all revision trees in a new
   metric `arangodb_revision_tree_buffered_memory_usage`.
