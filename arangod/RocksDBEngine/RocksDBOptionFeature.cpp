@@ -1281,7 +1281,7 @@ version.)");
 #ifdef ARANGODB_ROCKSDB8
   options
       ->addOption("--rocksdb.prepopulate-blob-cache",
-                  "Prepopulate the blob cache on flushes.",
+                  "Pre-populate the blob cache on flushes.",
                   new BooleanParameter(&_prepopulateBlobCache),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Experimental,
