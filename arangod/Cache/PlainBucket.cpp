@@ -33,7 +33,7 @@
 
 namespace arangodb::cache {
 
-PlainBucket::PlainBucket() noexcept {
+PlainBucket::PlainBucket() noexcept : _bucketsUsed(0) {
   _state.lock();
   clear();
 }
@@ -56,16 +56,7 @@ bool PlainBucket::isMigrated() const noexcept {
 
 bool PlainBucket::isFull() const noexcept {
   TRI_ASSERT(isLocked());
-  bool hasEmptySlot = false;
-  for (size_t i = 0; i < slotsData; i++) {
-    size_t slot = slotsData - (i + 1);
-    if (_cachedHashes[slot] == 0) {
-      hasEmptySlot = true;
-      break;
-    }
-  }
-
-  return !hasEmptySlot;
+  return _bucketsUsed == kSlotsData;
 }
 
 template<typename Hasher>
@@ -74,16 +65,16 @@ CachedValue* PlainBucket::find(std::uint32_t hash, void const* key,
   TRI_ASSERT(isLocked());
   CachedValue* result = nullptr;
 
-  for (std::size_t i = 0; i < slotsData; i++) {
-    if (_cachedHashes[i] == 0) {
-      break;
-    }
+  for (std::size_t i = 0; i < _bucketsUsed; i++) {
+    TRI_ASSERT(_cachedData[i] != nullptr);
+
     if (_cachedHashes[i] == hash &&
         Hasher::sameKey(_cachedData[i]->key(), _cachedData[i]->keySize(), key,
                         keySize)) {
       result = _cachedData[i];
       if (moveToFront) {
-        moveSlot(i, true);
+        moveSlot(i);
+        checkInvariants();
       }
       break;
     }
@@ -95,16 +86,16 @@ CachedValue* PlainBucket::find(std::uint32_t hash, void const* key,
 // requires there to be an open slot, otherwise will not be inserted
 void PlainBucket::insert(std::uint32_t hash, CachedValue* value) noexcept {
   TRI_ASSERT(isLocked());
-  for (std::size_t i = 0; i < slotsData; i++) {
-    if (_cachedHashes[i] == 0) {
-      // found an empty slot
-      _cachedHashes[i] = hash;
-      _cachedData[i] = value;
-      if (i != 0) {
-        moveSlot(i, true);
-      }
-      return;
+  if (_bucketsUsed < kSlotsData) {
+    // found an empty slot
+    TRI_ASSERT(_cachedData[_bucketsUsed] == nullptr);
+    _cachedHashes[_bucketsUsed] = hash;
+    _cachedData[_bucketsUsed] = value;
+    if (_bucketsUsed != 0) {
+      moveSlot(_bucketsUsed);
     }
+    ++_bucketsUsed;
+    checkInvariants();
   }
 }
 
@@ -112,23 +103,57 @@ template<typename Hasher>
 CachedValue* PlainBucket::remove(std::uint32_t hash, void const* key,
                                  std::size_t keySize) noexcept {
   TRI_ASSERT(isLocked());
-  CachedValue* value = find<Hasher>(hash, key, keySize, false);
-  if (value != nullptr) {
-    evict(value, false);
+  CachedValue* result = nullptr;
+
+  for (std::size_t i = 0; i < _bucketsUsed; i++) {
+    if (_cachedHashes[i] == hash &&
+        Hasher::sameKey(_cachedData[i]->key(), _cachedData[i]->keySize(), key,
+                        keySize)) {
+      result = _cachedData[i];
+      _cachedHashes[i] = _cachedHashes[_bucketsUsed - 1];
+      _cachedData[i] = _cachedData[_bucketsUsed - 1];
+      _cachedHashes[_bucketsUsed - 1] = 0;
+      _cachedData[_bucketsUsed - 1] = nullptr;
+      --_bucketsUsed;
+      checkInvariants();
+      break;
+    }
   }
 
-  return value;
+  return result;
 }
 
-CachedValue* PlainBucket::evictionCandidate(
-    bool ignoreRefCount) const noexcept {
+std::uint64_t PlainBucket::evictCandidate() noexcept {
   TRI_ASSERT(isLocked());
-  for (std::size_t i = 0; i < slotsData; i++) {
-    std::size_t slot = slotsData - (i + 1);
-    if (_cachedData[slot] == nullptr) {
+  std::size_t slot = _bucketsUsed;
+  while (slot-- > 0) {
+    TRI_ASSERT(_cachedData[slot] != nullptr);
+    if (!_cachedData[slot]->isFreeable()) {
       continue;
     }
-    if (ignoreRefCount || _cachedData[slot]->isFreeable()) {
+
+    std::uint64_t size = _cachedData[slot]->size();
+    // evict value. we checked that it is freeable
+    delete _cachedData[slot];
+    _cachedHashes[slot] = _cachedHashes[_bucketsUsed - 1];
+    _cachedData[slot] = _cachedData[_bucketsUsed - 1];
+    _cachedHashes[_bucketsUsed - 1] = 0;
+    _cachedData[_bucketsUsed - 1] = nullptr;
+    --_bucketsUsed;
+    checkInvariants();
+    return size;
+  }
+
+  // nothing evicted
+  return 0;
+}
+
+CachedValue* PlainBucket::evictionCandidate() const noexcept {
+  TRI_ASSERT(isLocked());
+  std::size_t slot = _bucketsUsed;
+  while (slot-- > 0) {
+    TRI_ASSERT(_cachedData[slot] != nullptr);
+    if (_cachedData[slot]->isFreeable()) {
       return _cachedData[slot];
     }
   }
@@ -136,16 +161,17 @@ CachedValue* PlainBucket::evictionCandidate(
   return nullptr;
 }
 
-void PlainBucket::evict(CachedValue* value,
-                        bool optimizeForInsertion) noexcept {
+void PlainBucket::evict(CachedValue* value) noexcept {
   TRI_ASSERT(isLocked());
-  for (std::size_t i = 0; i < slotsData; i++) {
-    std::size_t slot = slotsData - (i + 1);
-    if (_cachedData[slot] == value) {
+  for (std::size_t i = 0; i < _bucketsUsed; i++) {
+    if (_cachedData[i] == value) {
       // found a match
-      _cachedHashes[slot] = 0;
-      _cachedData[slot] = nullptr;
-      moveSlot(slot, optimizeForInsertion);
+      _cachedHashes[i] = _cachedHashes[_bucketsUsed - 1];
+      _cachedData[i] = _cachedData[_bucketsUsed - 1];
+      _cachedHashes[_bucketsUsed - 1] = 0;
+      _cachedData[_bucketsUsed - 1] = nullptr;
+      --_bucketsUsed;
+      checkInvariants();
       return;
     }
   }
@@ -155,34 +181,46 @@ void PlainBucket::clear() noexcept {
   TRI_ASSERT(isLocked());
   _state.clear();  // "clear" will keep the lock!
 
-  for (std::size_t i = 0; i < slotsData; ++i) {
+  for (std::size_t i = 0; i < kSlotsData; ++i) {
     _cachedHashes[i] = 0;
     _cachedData[i] = nullptr;
   }
+  _bucketsUsed = 0;
+  checkInvariants();
 
   _state.unlock();
 }
 
-void PlainBucket::moveSlot(std::size_t slot, bool moveToFront) noexcept {
+void PlainBucket::moveSlot(std::size_t slot) noexcept {
   TRI_ASSERT(isLocked());
   std::uint32_t hash = _cachedHashes[slot];
   CachedValue* value = _cachedData[slot];
   std::size_t i = slot;
-  if (moveToFront) {
-    // move slot to front
-    for (; i >= 1; i--) {
-      _cachedHashes[i] = _cachedHashes[i - 1];
-      _cachedData[i] = _cachedData[i - 1];
-    }
-  } else {
-    // move slot to back
-    for (; (i < slotsData - 1) && (_cachedHashes[i + 1] != 0); i++) {
-      _cachedHashes[i] = _cachedHashes[i + 1];
-      _cachedData[i] = _cachedData[i + 1];
-    }
+  // move slot to front
+  for (; i >= 1; i--) {
+    TRI_ASSERT(_cachedData[i - 1] != nullptr);
+    _cachedHashes[i] = _cachedHashes[i - 1];
+    _cachedData[i] = _cachedData[i - 1];
   }
   _cachedHashes[i] = hash;
   _cachedData[i] = value;
+}
+
+void PlainBucket::checkInvariants() const noexcept {
+#if 0
+  // intentionally disabled. can be reenabled when there
+  // is need for debugging.
+  TRI_ASSERT(_bucketsUsed <= kSlotsData);
+  for (std::size_t i = 0; i < kSlotsData; ++i) {
+    if (i < _bucketsUsed) {
+      TRI_ASSERT(_cachedHashes[i] != 0);
+      TRI_ASSERT(_cachedData[i] != nullptr);
+    } else {
+      TRI_ASSERT(_cachedHashes[i] == 0);
+      TRI_ASSERT(_cachedData[i] == nullptr);
+    }
+  }
+#endif
 }
 
 template CachedValue* PlainBucket::find<BinaryKeyHasher>(

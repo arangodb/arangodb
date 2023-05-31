@@ -34,7 +34,7 @@
 
 namespace arangodb::cache {
 
-TransactionalBucket::TransactionalBucket() noexcept {
+TransactionalBucket::TransactionalBucket() noexcept : _bucketsUsed(0) {
   _state.lock();
   clear();
 }
@@ -64,16 +64,7 @@ bool TransactionalBucket::isFullyBanished() const noexcept {
 
 bool TransactionalBucket::isFull() const noexcept {
   TRI_ASSERT(isLocked());
-  bool hasEmptySlot = false;
-  for (std::size_t i = 0; i < slotsData; i++) {
-    std::size_t slot = slotsData - (i + 1);
-    if (_cachedData[slot] == nullptr) {
-      hasEmptySlot = true;
-      break;
-    }
-  }
-
-  return !hasEmptySlot;
+  return _bucketsUsed == kSlotsData;
 }
 
 template<typename Hasher>
@@ -83,16 +74,14 @@ CachedValue* TransactionalBucket::find(std::uint32_t hash, void const* key,
   TRI_ASSERT(isLocked());
   CachedValue* result = nullptr;
 
-  for (std::size_t i = 0; i < slotsData; i++) {
-    if (_cachedData[i] == nullptr) {
-      break;
-    }
+  for (std::size_t i = 0; i < _bucketsUsed; i++) {
     if (_cachedHashes[i] == hash &&
         Hasher::sameKey(_cachedData[i]->key(), _cachedData[i]->keySize(), key,
                         keySize)) {
       result = _cachedData[i];
-      if (moveToFront && i != 0) {
-        moveSlot(i, true);
+      if (moveToFront) {
+        moveSlot(i);
+        checkInvariants();
       }
       break;
     }
@@ -106,16 +95,15 @@ void TransactionalBucket::insert(std::uint32_t hash,
   TRI_ASSERT(isLocked());
   TRI_ASSERT(!isBanished(hash));  // check needs to be done outside
 
-  for (std::size_t i = 0; i < slotsData; i++) {
-    if (_cachedData[i] == nullptr) {
-      // found an empty slot
-      _cachedHashes[i] = hash;
-      _cachedData[i] = value;
-      if (i != 0) {
-        moveSlot(i, true);
-      }
-      return;
+  if (_bucketsUsed < kSlotsData) {
+    TRI_ASSERT(_cachedData[_bucketsUsed] == nullptr);
+    _cachedHashes[_bucketsUsed] = hash;
+    _cachedData[_bucketsUsed] = value;
+    if (_bucketsUsed != 0) {
+      moveSlot(_bucketsUsed);
     }
+    ++_bucketsUsed;
+    checkInvariants();
   }
 }
 
@@ -125,17 +113,17 @@ CachedValue* TransactionalBucket::remove(std::uint32_t hash, void const* key,
   TRI_ASSERT(isLocked());
   CachedValue* result = nullptr;
 
-  for (std::size_t i = 0; i < slotsData; i++) {
-    if (_cachedData[i] == nullptr) {
-      break;
-    }
+  for (std::size_t i = 0; i < _bucketsUsed; i++) {
     if (_cachedHashes[i] == hash &&
         Hasher::sameKey(_cachedData[i]->key(), _cachedData[i]->keySize(), key,
                         keySize)) {
       result = _cachedData[i];
-      _cachedHashes[i] = 0;
-      _cachedData[i] = nullptr;
-      moveSlot(i, false);
+      _cachedHashes[i] = _cachedHashes[_bucketsUsed - 1];
+      _cachedData[i] = _cachedData[_bucketsUsed - 1];
+      _cachedHashes[_bucketsUsed - 1] = 0;
+      _cachedData[_bucketsUsed - 1] = nullptr;
+      --_bucketsUsed;
+      checkInvariants();
       break;
     }
   }
@@ -159,7 +147,7 @@ CachedValue* TransactionalBucket::banish(std::uint32_t hash, void const* key,
     return value;
   }
 
-  for (std::size_t i = 0; i < slotsBanish; i++) {
+  for (std::size_t i = 0; i < kSlotsBanish; i++) {
     if (_banishHashes[i] == 0) {
       // found an empty slot
       _banishHashes[i] = hash;
@@ -183,7 +171,7 @@ bool TransactionalBucket::isBanished(std::uint32_t hash) const noexcept {
   }
 
   bool banished = false;
-  for (std::size_t i = 0; i < slotsBanish; i++) {
+  for (std::size_t i = 0; i < kSlotsBanish; i++) {
     if (_banishHashes[i] == hash) {
       banished = true;
       break;
@@ -193,43 +181,37 @@ bool TransactionalBucket::isBanished(std::uint32_t hash) const noexcept {
   return banished;
 }
 
-std::uint64_t TransactionalBucket::evictCandidate(bool moveToFront) noexcept {
+std::uint64_t TransactionalBucket::evictCandidate() noexcept {
   TRI_ASSERT(isLocked());
-  for (std::size_t i = 0; i < slotsData; i++) {
-    std::size_t slot = slotsData - (i + 1);
-    if (_cachedData[slot] == nullptr) {
+  std::size_t slot = _bucketsUsed;
+  while (slot-- > 0) {
+    TRI_ASSERT(_cachedData[slot] != nullptr);
+    if (!_cachedData[slot]->isFreeable()) {
       continue;
     }
-    if (_cachedData[slot]->isFreeable()) {
-      std::uint64_t size = _cachedData[slot]->size();
-      // evict value. we checked that it is freeable
-      delete _cachedData[slot];
-      _cachedHashes[slot] = 0;
-      _cachedData[slot] = nullptr;
-      if (moveToFront) {
-        if (slot != 0) {
-          moveSlot(slot, /*moveToFront*/ true);
-        }
-      } else {
-        moveSlot(slot, /*moveToFront*/ false);
-      }
-      return size;
-    }
+
+    std::uint64_t size = _cachedData[slot]->size();
+    // evict value. we checked that it is freeable
+    delete _cachedData[slot];
+    _cachedHashes[slot] = _cachedHashes[_bucketsUsed - 1];
+    _cachedData[slot] = _cachedData[_bucketsUsed - 1];
+    _cachedHashes[_bucketsUsed - 1] = 0;
+    _cachedData[_bucketsUsed - 1] = nullptr;
+    --_bucketsUsed;
+    checkInvariants();
+    return size;
   }
 
   // nothing evicted
   return 0;
 }
 
-CachedValue* TransactionalBucket::evictionCandidate(
-    bool ignoreRefCount) const noexcept {
+CachedValue* TransactionalBucket::evictionCandidate() const noexcept {
   TRI_ASSERT(isLocked());
-  for (std::size_t i = 0; i < slotsData; i++) {
-    std::size_t slot = slotsData - (i + 1);
-    if (_cachedData[slot] == nullptr) {
-      continue;
-    }
-    if (ignoreRefCount || _cachedData[slot]->isFreeable()) {
+  std::size_t slot = _bucketsUsed;
+  while (slot-- > 0) {
+    TRI_ASSERT(_cachedData[slot] != nullptr);
+    if (_cachedData[slot]->isFreeable()) {
       return _cachedData[slot];
     }
   }
@@ -237,16 +219,17 @@ CachedValue* TransactionalBucket::evictionCandidate(
   return nullptr;
 }
 
-void TransactionalBucket::evict(CachedValue* value,
-                                bool optimizeForInsertion) noexcept {
+void TransactionalBucket::evict(CachedValue* value) noexcept {
   TRI_ASSERT(isLocked());
-  for (std::size_t i = 0; i < slotsData; i++) {
-    std::size_t slot = slotsData - (i + 1);
-    if (_cachedData[slot] == value) {
+  for (std::size_t i = 0; i < _bucketsUsed; i++) {
+    if (_cachedData[i] == value) {
       // found a match
-      _cachedHashes[slot] = 0;
-      _cachedData[slot] = nullptr;
-      moveSlot(slot, optimizeForInsertion);
+      _cachedHashes[i] = _cachedHashes[_bucketsUsed - 1];
+      _cachedData[i] = _cachedData[_bucketsUsed - 1];
+      _cachedHashes[_bucketsUsed - 1] = 0;
+      _cachedData[_bucketsUsed - 1] = nullptr;
+      --_bucketsUsed;
+      checkInvariants();
       return;
     }
   }
@@ -255,14 +238,18 @@ void TransactionalBucket::evict(CachedValue* value,
 void TransactionalBucket::clear() noexcept {
   TRI_ASSERT(isLocked());
   _state.clear();  // "clear" will keep the lock!
-  for (std::size_t i = 0; i < slotsBanish; ++i) {
+                   //
+  for (std::size_t i = 0; i < kSlotsBanish; ++i) {
     _banishHashes[i] = 0;
   }
   _banishTerm = 0;
-  for (std::size_t i = 0; i < slotsData; ++i) {
+  for (std::size_t i = 0; i < kSlotsData; ++i) {
     _cachedHashes[i] = 0;
     _cachedData[i] = nullptr;
   }
+  _bucketsUsed = 0;
+  checkInvariants();
+
   _state.unlock();
 }
 
@@ -274,28 +261,21 @@ void TransactionalBucket::updateBanishTerm(std::uint64_t term) noexcept {
       _state.toggleFlag(BucketState::Flag::banished);
     }
 
-    memset(_banishHashes, 0, (slotsBanish * sizeof(std::uint32_t)));
+    for (std::size_t i = 0; i < kSlotsBanish; ++i) {
+      _banishHashes[i] = 0;
+    }
   }
 }
 
-void TransactionalBucket::moveSlot(std::size_t slot,
-                                   bool moveToFront) noexcept {
+void TransactionalBucket::moveSlot(std::size_t slot) noexcept {
   TRI_ASSERT(isLocked());
   std::uint32_t hash = _cachedHashes[slot];
   CachedValue* value = _cachedData[slot];
   std::size_t i = slot;
-  if (moveToFront) {
-    // move slot to front
-    for (; i >= 1; i--) {
-      _cachedHashes[i] = _cachedHashes[i - 1];
-      _cachedData[i] = _cachedData[i - 1];
-    }
-  } else {
-    // move slot to back
-    for (; (i < slotsData - 1) && (_cachedHashes[i + 1] != 0); i++) {
-      _cachedHashes[i] = _cachedHashes[i + 1];
-      _cachedData[i] = _cachedData[i + 1];
-    }
+  // move slot to front
+  for (; i >= 1; i--) {
+    _cachedHashes[i] = _cachedHashes[i - 1];
+    _cachedData[i] = _cachedData[i - 1];
   }
   _cachedHashes[i] = hash;
   _cachedData[i] = value;
@@ -305,6 +285,23 @@ bool TransactionalBucket::haveOpenTransaction() const noexcept {
   TRI_ASSERT(isLocked());
   // only have open transactions if term is odd
   return ((_banishTerm & static_cast<uint64_t>(1)) > 0);
+}
+
+void TransactionalBucket::checkInvariants() const noexcept {
+#if 0
+  // intentionally disabled. can be reenabled when there
+  // is need for debugging.
+  TRI_ASSERT(_bucketsUsed <= kSlotsData);
+  for (std::size_t i = 0; i < kSlotsData; ++i) {
+    if (i < _bucketsUsed) {
+      TRI_ASSERT(_cachedHashes[i] != 0);
+      TRI_ASSERT(_cachedData[i] != nullptr);
+    } else {
+      TRI_ASSERT(_cachedHashes[i] == 0);
+      TRI_ASSERT(_cachedData[i] == nullptr);
+    }
+  }
+#endif
 }
 
 template CachedValue* TransactionalBucket::find<BinaryKeyHasher>(

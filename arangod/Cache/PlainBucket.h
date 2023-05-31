@@ -46,13 +46,13 @@ namespace arangodb::cache {
 ////////////////////////////////////////////////////////////////////////////////
 struct PlainBucket {
   BucketState _state;
-
+  std::uint16_t _bucketsUsed;
   std::uint32_t _paddingExplicit;  // fill 4-byte gap for alignment purposes
 
   // actual cached entries
-  static constexpr std::size_t slotsData = 10;
-  std::uint32_t _cachedHashes[slotsData];
-  CachedValue* _cachedData[slotsData];
+  static constexpr std::size_t kSlotsData = 10;
+  std::uint32_t _cachedHashes[kSlotsData];
+  CachedValue* _cachedData[kSlotsData];
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize an empty bucket.
@@ -126,15 +126,21 @@ struct PlainBucket {
                       std::size_t keySize) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief evicts a candidate in the bucket. Requires state to be locked.
+  /// Returns the size of the evicted value in case a value was evicted.
+  /// Returns 0 otherwise.
+  //////////////////////////////////////////////////////////////////////////////
+  std::uint64_t evictCandidate() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Searches for the best candidate in the bucket to evict. Requires
   /// state to be locked.
   ///
   /// Usually returns a pointer to least recently used freeable value. If the
   /// bucket contains no values or all have outstanding references, then it
-  /// returns nullptr. In the case that ignoreRefCount is set to true, then it
-  /// simply returns the least recently used value, regardless of freeability.
+  /// returns nullptr.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* evictionCandidate(bool ignoreRefCount = false) const noexcept;
+  CachedValue* evictionCandidate() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Evicts the given value from the bucket. Requires state to be
@@ -144,7 +150,7 @@ struct PlainBucket {
   /// preparing an empty slot for insertion, specify the second parameter to be
   /// true. This will move the empty slot to the front instead.
   //////////////////////////////////////////////////////////////////////////////
-  void evict(CachedValue* value, bool optimizeForInsertion = false) noexcept;
+  void evict(CachedValue* value) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reinitializes a bucket to be completely empty and unlocked.
@@ -153,7 +159,13 @@ struct PlainBucket {
   void clear() noexcept;
 
  private:
-  void moveSlot(std::size_t slot, bool moveToFront) noexcept;
+  void moveSlot(std::size_t slot) noexcept;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void checkInvariants() const noexcept;
+#else
+  constexpr inline void checkInvariants() noexcept {}
+#endif
 };
 
 // ensure that PlainBucket is exactly BUCKET_SIZE
