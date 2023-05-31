@@ -7,6 +7,30 @@ devel
   The metric includes memory used for buffering index write operations that
   still have to applied.
 
+* APM-663: revision tree memory tracking.
+  Tracking memory used for buffered updates to all revision trees in a new
+  metric `arangodb_revision_tree_buffered_memory_usage`.
+
+* Optimize hibernation and resurrection of revision trees so that there are
+  no recurring hibernations and resurrections of the same tree quickly after
+  each other. This is achieved by tracking the time of the last hibernation
+  attempt for each revision tree and not hibernating it if the last attempt
+  was less than a minute ago.
+
+* Removed the long-deprecated JavaScript-based traversal functionality,
+  including the following APIs:
+
+  - REST API endpoint `/_api/traversal`
+  - JavaScript module `@arangodb/graph/traversal`
+
+  The functionality provided by these APIs was deprecated and unmaintained
+  for many years. JavaScript-based traversals were replaced with AQL
+  traversals in ArangoDB version 3.0. Additionally, the JavaScript-based
+  traversals could not handle larger amounts of data and were thus very
+  limited.
+
+* Updated ArangoDB Starter to 0.15.8-preview-1.
+
 * BTS-1255: Fix sporadic memory usage accounting underflows in in-memory
   cache subsystem.
   Also turn the algorithm for freeing memory from a cache's buckets from a

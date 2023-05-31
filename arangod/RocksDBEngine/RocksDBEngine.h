@@ -387,6 +387,9 @@ class RocksDBEngine final : public StorageEngine {
   void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
   void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
 
+  void trackRevisionTreeBufferedMemoryIncrease(std::uint64_t value) noexcept;
+  void trackRevisionTreeBufferedMemoryDecrease(std::uint64_t value) noexcept;
+
   void trackIndexSelectivityMemoryIncrease(std::uint64_t value) noexcept;
   void trackIndexSelectivityMemoryDecrease(std::uint64_t value) noexcept;
 
@@ -722,6 +725,7 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Gauge<uint64_t>& _metricsPrunableWalFiles;
   metrics::Gauge<uint64_t>& _metricsWalPruningActive;
   metrics::Gauge<uint64_t>& _metricsTreeMemoryUsage;
+  metrics::Gauge<uint64_t>& _metricsTreeBufferedMemoryUsage;
   metrics::Counter& _metricsTreeRebuildsSuccess;
   metrics::Counter& _metricsTreeRebuildsFailure;
   metrics::Counter& _metricsTreeHibernations;
