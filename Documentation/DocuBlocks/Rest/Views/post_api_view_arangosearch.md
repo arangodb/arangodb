@@ -66,7 +66,7 @@ cache in cluster deployments by only using the cache for leader shards, see the
 
 @RESTBODYPARAM{optimizeTopK,array,optional,string}
 An array of strings defining sort expressions that you want to optimize.
-This is also known as _WAND optimization_.
+This is also known as _WAND optimization_ (introduced in v3.11.1).
 
 If you query a View with the `SEARCH` operation in combination with a
 `SORT` and `LIMIT` operation, search results can be retrieved faster if the
