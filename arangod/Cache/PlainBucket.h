@@ -159,7 +159,12 @@ struct PlainBucket {
   void clear() noexcept;
 
  private:
-  void moveSlot(std::size_t slot) noexcept;
+  /// @brief overrides the slot <slot> with the last populated slot, moving
+  /// the contents of the last populated slot into <slot>. this is cheaper than
+  /// closing the gap by moving all following slots one to the front.
+  void closeGap(std::size_t slot) noexcept;
+
+  void moveSlotToFront(std::size_t slot) noexcept;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkInvariants() const noexcept;
@@ -172,4 +177,4 @@ struct PlainBucket {
 static_assert(sizeof(PlainBucket) == BUCKET_SIZE,
               "Expected sizeof(PlainBucket) == BUCKET_SIZE.");
 
-};  // end namespace arangodb::cache
+}  // end namespace arangodb::cache
