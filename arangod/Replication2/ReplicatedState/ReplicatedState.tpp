@@ -47,6 +47,8 @@
 #include "Replication2/Streams/Streams.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+
 namespace arangodb::replication2::replicated_state {
 
 template<typename S>
@@ -346,6 +348,15 @@ template<typename S>
 auto ProducerStreamProxy<S>::insert(const EntryType& v) -> LogIndex {
   auto guard = this->_logMethods.getLockedGuard();
   if (auto& methods = guard.get(); methods != nullptr) [[likely]] {
+    constexpr auto replicateCommitsOnly = false;
+
+    if constexpr (replicateCommitsOnly &&
+                  std::is_same_v<S, document::DocumentLogEntry>) {
+      if (std::holds_alternative<document::ReplicatedOperation::Commit>(
+              v.getInnerOperation())) {
+        return methods->insertDontTriggerReplication(serialize(v));
+      }
+    }
     return methods->insert(serialize(v));
   } else {
     this->throwResignedException();
