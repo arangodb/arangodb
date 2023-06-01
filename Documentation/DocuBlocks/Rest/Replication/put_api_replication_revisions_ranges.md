@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_replication_revisions_ranges
-@brief retrieves the revision IDs of documents within requested ranges
 
-@RESTHEADER{PUT /_api/replication/revisions/ranges, Return revision IDs within requested ranges, listReplicationRevisionRanges}
+@RESTHEADER{PUT /_api/replication/revisions/ranges, List document revision IDs within requested ranges, listReplicationRevisionRanges}
 
 @HINTS
 {% hint 'warning' %}
@@ -22,7 +21,7 @@ The id of the snapshot to use
 The revision at which to resume, if a previous request was truncated
 
 @RESTDESCRIPTION
-Returns the revision IDs of documents within requested ranges
+Returns the revision IDs of documents within the requested ranges.
 
 The body of the request should be JSON/VelocyPack and should consist of an
 array of pairs of string-encoded revision IDs:

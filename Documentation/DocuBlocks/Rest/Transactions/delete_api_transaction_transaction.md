@@ -1,8 +1,7 @@
 
 @startDocuBlock delete_api_transaction_transaction
-@brief abort a server-side transaction
 
-@RESTHEADER{DELETE /_api/transaction/{transaction-id}, Abort transaction, abortStreamTransaction}
+@RESTHEADER{DELETE /_api/transaction/{transaction-id}, Abort a Stream Transaction, abortStreamTransaction}
 
 @RESTURLPARAMETERS
 
@@ -16,14 +15,14 @@ It is not an error to abort a transaction more than once.
 If the transaction can be aborted, *HTTP 200* will be returned.
 The returned JSON object has the following properties:
 
-- *error*: boolean flag to indicate if an error occurred (*false*
+- `error`: boolean flag to indicate if an error occurred (`false`
   in this case)
 
-- *code*: the HTTP status code
+- `code`: the HTTP status code
 
-- *result*: result containing
-    - *id*: the identifier of the transaction
-    - *status*: containing the string 'aborted'
+- `result`: result containing
+    - `id`: the identifier of the transaction
+    - `status`: containing the string 'aborted'
 
 If the transaction cannot be found, aborting is not allowed or the
 transaction was already committed, the server
@@ -32,13 +31,13 @@ will respond with *HTTP 400*, *HTTP 404* or *HTTP 409*.
 The body of the response will then contain a JSON object with additional error
 details. The object has the following attributes:
 
-- *error*: boolean flag to indicate that an error occurred (*true* in this case)
+- `error`: boolean flag to indicate that an error occurred (`true` in this case)
 
-- *code*: the HTTP status code
+- `code`: the HTTP status code
 
-- *errorNum*: the server error number
+- `errorNum`: the server error number
 
-- *errorMessage*: a descriptive error message
+- `errorMessage`: a descriptive error message
 
 @RESTRETURNCODES
 
