@@ -70,7 +70,7 @@ TEST_F(AsyncExecutorTest, sleepingBeauty) {
   testHelper.setWakeupCallback(wakeupHandler);
   testHelper.prepareInput();
 
-  asyncBlock0->setFailureCallback([&] {
+  asyncBlock0->setPostAsyncExecuteCallback([&] {
     while (!scheduler.queueEmpty()) {
       scheduler.runOnce();
     }
@@ -180,9 +180,9 @@ TEST_F(AsyncExecutorTest, sleepingBeautyRandom) {
   };
 
   // get the "lower" of the two async blocks
-  asyncBlock0->setFailureCallback([&] { doSomething(false); });
+  asyncBlock0->setPostAsyncExecuteCallback([&] { doSomething(false); });
   // get the "upper" of the two async blocks
-  asyncBlock1->setFailureCallback([&] { doSomething(false); });
+  asyncBlock1->setPostAsyncExecuteCallback([&] { doSomething(false); });
 
   doSomething(true);
 

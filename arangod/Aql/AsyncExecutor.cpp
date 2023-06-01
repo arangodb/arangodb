@@ -115,8 +115,8 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
           auto [state, skip, block] = _dependencies[0]->execute(stack);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-          if (_failureCallback) {
-            _failureCallback();
+          if (_postAsyncExecuteCallback) {
+            _postAsyncExecuteCallback();
           }
 #endif
 
@@ -232,8 +232,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-void ExecutionBlockImpl<AsyncExecutor>::setFailureCallback(
+void ExecutionBlockImpl<AsyncExecutor>::setPostAsyncExecuteCallback(
     std::function<void()> cb) {
-  _failureCallback = std::move(cb);
+  _postAsyncExecuteCallback = std::move(cb);
 }
 #endif
