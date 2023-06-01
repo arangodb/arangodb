@@ -36,7 +36,9 @@ class PrimaryKeysFilterBase : public irs::filter,
                               public irs::filter::prepared,
                               public irs::doc_iterator {
  public:
-  void emplace(LocalDocumentId value) { _pks.emplace_back(value.id()); }
+  void emplace(LocalDocumentId value) {
+    _pks.emplace_back(DocumentPrimaryKey::encode(value));
+  }
 
   bool empty() const noexcept { return _pks.empty(); }
 
