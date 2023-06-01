@@ -21,35 +21,34 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "RocksDBEngine/RocksDBDumpContextGuard.h"
 
-#include "Basics/Result.h"
-#include "Basics/ResultT.h"
-#include "RestHandler/RestVocbaseBaseHandler.h"
-
-#include <string>
-#include <utility>
+#include "Basics/debugging.h"
+#include "RocksDBEngine/RocksDBDumpContext.h"
+#include "RocksDBEngine/RocksDBDumpManager.h"
 
 namespace arangodb {
 
-class RestDumpHandler : public RestVocbaseBaseHandler {
- public:
-  RestDumpHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+RocksDBDumpContextGuard::RocksDBDumpContextGuard(
+    RocksDBDumpManager& manager, std::shared_ptr<RocksDBDumpContext> ctx)
+    : _manager(manager), _ctx(std::move(ctx)) {
+  TRI_ASSERT(_ctx != nullptr);
+}
 
-  char const* name() const override final { return "RestDumpHandler"; }
+RocksDBDumpContextGuard::RocksDBDumpContextGuard(
+    RocksDBDumpContextGuard&& other) noexcept
+    : _manager(other._manager), _ctx(std::move(other._ctx)) {
+  TRI_ASSERT(_ctx != nullptr);
+}
 
-  RequestLane lane() const override final;
+RocksDBDumpContextGuard::~RocksDBDumpContextGuard() {
+  TRI_ASSERT(_ctx != nullptr);
+  _ctx->extendLifetime();
+}
 
-  RestStatus execute() override;
+RocksDBDumpContext* RocksDBDumpContextGuard::operator->() {
+  TRI_ASSERT(_ctx != nullptr);
+  return _ctx.get();
+}
 
- protected:
-  ResultT<std::pair<std::string, bool>> forwardingTarget() override final;
-
- private:
-  void handleCommandDumpStart();
-
-  void handleCommandDumpNext();
-
-  void handleCommandDumpFinished();
-};
 }  // namespace arangodb
