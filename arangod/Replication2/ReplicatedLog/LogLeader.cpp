@@ -752,9 +752,13 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
       << ", current commit index = " << commitIndex
       << ", last acked lci = " << follower->lastAckedLowestIndexToKeep
       << ", current lci = " << lowestIndexToKeep;
+
+  constexpr auto dontTriggerAppendEntriesOnIndexChangeOnly = false;
+
   if (follower->nextPrevLogIndex == lastAvailableIndex.index &&
-      commitIndex == follower->lastAckedCommitIndex &&
-      lowestIndexToKeep == follower->lastAckedLowestIndexToKeep) {
+      (dontTriggerAppendEntriesOnIndexChangeOnly ||
+       (commitIndex == follower->lastAckedCommitIndex &&
+        lowestIndexToKeep == follower->lastAckedLowestIndexToKeep))) {
     LOG_CTX("74b71", TRACE, follower->logContext) << "up to date";
     return std::nullopt;  // nothing to replicate
   }
