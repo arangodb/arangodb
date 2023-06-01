@@ -119,7 +119,7 @@ auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
     if (vertex.shard() != currentShard || numDocs >= 1000) {
       commitTransaction();
       currentShard = vertex.shard();
-      shard = globalShards[currentShard.value];
+      shard = graphSerdeConfig.shardID(currentShard);
 
       auto ctx =
           transaction::StandaloneContext::Create(vocbaseGuard.database());
@@ -180,10 +180,21 @@ auto GraphStorer<V, E>::store(Magazine<V, E> magazine)
     -> futures::Future<futures::Unit> {
   auto futures = std::vector<futures::Future<futures::Unit>>{};
   auto self = this->shared_from_this();
-  for (auto& quiver : magazine) {
+
+  auto quiverIdx = std::make_shared<std::atomic<size_t>>(0);
+
+  for (auto futureN = size_t{0}; futureN < parallelism; ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
-        RequestLane::INTERNAL_LOW, [this, self, quiver] {
-          storeQuiver(quiver);
+        RequestLane::INTERNAL_LOW, [this, self, quiverIdx, magazine] {
+          while (true) {
+            auto myCurrentQuiverIdx = quiverIdx->fetch_add(1);
+            if (myCurrentQuiverIdx >= magazine.size()) {
+              break;
+            }
+
+            storeQuiver(magazine.quivers.at(myCurrentQuiverIdx));
+          }
+
           return futures::Unit{};
         }));
   }

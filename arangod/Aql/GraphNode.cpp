@@ -268,6 +268,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         if (!collection->isSmart()) {
           addEdgeCollection(collections, eColName, dir);
         } else {
+          addEdgeAlias(eColName);
           std::vector<std::string> names;
           if (_isSmart) {
             names = collection->realNames();
@@ -309,7 +310,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     }
     auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     auto& collections = plan->getAst()->query().collections();
-    for (const auto& n : eColls) {
+    for (auto const& n : eColls) {
       if (_options->shouldExcludeEdgeCollection(n)) {
         // excluded edge collection
         continue;
@@ -329,6 +330,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         if (!c->isSmart()) {
           addEdgeCollection(collections, n, _defaultDirection);
         } else {
+          addEdgeAlias(n);
           std::vector<std::string> names;
           if (_isSmart) {
             names = c->realNames();
@@ -450,6 +452,7 @@ GraphNode::GraphNode(ExecutionPlan* plan,
         arangodb::basics::VelocyPackHelper::getStringValue(*edgeIt, "");
     auto& aqlCollection = getAqlCollectionFromName(e);
     addEdgeCollection(aqlCollection, d);
+    addEdgeAlias(e);
   }
 
   VPackSlice vertexCollections = base.get("vertexCollections");
@@ -566,13 +569,21 @@ void GraphNode::determineEnterpriseFlags(AstNode const*) {
 void GraphNode::setGraphInfoAndCopyColls(
     std::vector<Collection*> const& edgeColls,
     std::vector<Collection*> const& vertexColls) {
-  _graphInfo.openArray();
-  for (auto& it : edgeColls) {
-    TRI_ASSERT(it != nullptr);
-    _edgeColls.emplace_back(it);
-    _graphInfo.add(VPackValue(it->name()));
+  if (_graphObj == nullptr) {
+    _graphInfo.openArray();
+    for (auto const& it : edgeColls) {
+      TRI_ASSERT(it != nullptr);
+      _edgeColls.emplace_back(it);
+      _graphInfo.add(VPackValue(it->name()));
+    }
+    _graphInfo.close();
+  } else {
+    _graphInfo.add(VPackValue(_graphObj->name()));
+    for (auto const& it : edgeColls) {
+      TRI_ASSERT(it != nullptr);
+      _edgeColls.emplace_back(it);
+    }
   }
-  _graphInfo.close();
 
   for (auto& it : vertexColls) {
     TRI_ASSERT(it != nullptr);
@@ -949,6 +960,10 @@ void GraphNode::addEdgeCollection(aql::Collection& collection,
   }
 }
 
+void GraphNode::addEdgeAlias(std::string const& name) {
+  _edgeAliases.emplace(name);
+}
+
 void GraphNode::addVertexCollection(Collections const& collections,
                                     std::string const& name) {
   auto aqlCollection = collections.get(name);
@@ -1072,9 +1087,6 @@ bool GraphNode::isUsedAsSatellite() const { return false; }
 bool GraphNode::isLocalGraphNode() const { return false; }
 
 bool GraphNode::isHybridDisjoint() const { return false; }
-
-void GraphNode::waitForSatelliteIfRequired(
-    ExecutionEngine const* engine) const {}
 
 void GraphNode::enableClusterOneShardRule(bool enable) { TRI_ASSERT(false); }
 

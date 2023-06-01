@@ -171,7 +171,7 @@
         }
       ];
 
-      if(frontendConfig.db === '_system') {
+      if (frontendConfig.db === '_system') {
         tableContent.push(
           window.modalView.createTextEntry(
             'editCurrentUserProfileImg',

@@ -131,9 +131,6 @@ class ExecutionEngine {
   ///  @brief collected execution stats
   void collectExecutionStats(ExecutionStats& other);
 
-  bool waitForSatellites(aql::QueryContext& query,
-                         Collection const* collection) const;
-
   std::vector<arangodb::cluster::CallbackGuard>& rebootTrackers();
 
 #ifdef USE_ENTERPRISE

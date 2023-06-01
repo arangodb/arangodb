@@ -5,10 +5,12 @@ import { HashRouter } from "react-router-dom";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { FormDispatch, State } from "../../utils/constants";
+import { encodeHelper } from "../../utils/encodeHelper";
 import { getReducer } from "../../utils/helpers";
 import { usePermissions, userIsAdmin } from "../../utils/usePermissions";
 import { FormState, ViewContext } from "./constants";
 import { postProcessor, useView } from "./helpers";
+import { LinksContextProvider } from "./LinksContext";
 import { ViewHeader } from "./ViewHeader";
 import { ViewSection } from "./ViewSection";
 
@@ -28,7 +30,7 @@ export const ViewSettings = ({ name }: { name: string }) => {
     lockJsonForm: false
   });
   // workaround, because useView only exposes partial FormState by default
-  const view = (useView(name) as any) as FormState;
+  const view = useView(name) as any as FormState;
   const [changed, setChanged] = useState(
     !!window.sessionStorage.getItem(`${name}-changed`)
   );
@@ -81,6 +83,7 @@ export const ViewSettings = ({ name }: { name: string }) => {
       setViews(data.body.result);
     }
   }
+  const { encoded: encodedName } = encodeHelper(name);
   return (
     <ViewContext.Provider
       value={{
@@ -91,7 +94,7 @@ export const ViewSettings = ({ name }: { name: string }) => {
         setChanged
       }}
     >
-      <HashRouter basename={`view/${name}`} hashType={"noslash"}>
+      <HashRouter basename={`view/${encodedName}`} hashType={"noslash"}>
         <ViewSettingsInner
           formState={formState}
           updateName={updateName}
@@ -130,29 +133,30 @@ const ViewSettingsInner = ({
   state: State<FormState>;
 }) => {
   return (
-    <Box
-      height="calc(100vh - 60px)"
-      display="grid"
-      gridTemplateRows="120px 1fr"
-      width="full"
-    >
-      <ViewHeader
-        formState={formState}
-        updateName={updateName}
-        isAdminUser={isAdminUser}
-        views={views}
-        dispatch={dispatch}
-        changed={changed}
-        name={name}
-        setChanged={setChanged}
-      />
-      <ViewSection
-        name={name}
-        formState={formState}
-        dispatch={dispatch}
-        isAdminUser={isAdminUser}
-        state={state}
-      />
-    </Box>
+    <LinksContextProvider>
+      <Box
+        height="calc(100vh - 60px)"
+        display="grid"
+        gridTemplateRows="120px 1fr"
+        width="full"
+      >
+        <ViewHeader
+          formState={formState}
+          updateName={updateName}
+          isAdminUser={isAdminUser}
+          views={views}
+          dispatch={dispatch}
+          changed={changed}
+          name={name}
+          setChanged={setChanged}
+        />
+        <ViewSection
+          formState={formState}
+          dispatch={dispatch}
+          isAdminUser={isAdminUser}
+          state={state}
+        />
+      </Box>
+    </LinksContextProvider>
   );
 };

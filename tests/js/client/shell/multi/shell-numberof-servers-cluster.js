@@ -31,8 +31,19 @@
 'use strict';
 const jsunity = require('jsunity');
 
+const { getDBServers } = require('@arangodb/test-helper');
+
 function numberOfServersSuite () {
+  let numberFound = 3;  // will be overwritten in setUp
   return {
+    setUpAll : function() {
+      // We need the actual number of DBServers, since when we later
+      // set the target number, we want that no cleanOutServer job is
+      // started.
+      const dbservers = getDBServers();
+      numberFound = dbservers.length;
+    },
+
     setUp : function () {
       arango.PUT("/_admin/cluster/numberOfServers", { numberOfCoordinators: null, numberOfDBServers: null });
     },
@@ -57,20 +68,20 @@ function numberOfServersSuite () {
     }, 
     
     testPutNumberOfDBServers : function () {
-      let result = arango.PUT("/_admin/cluster/numberOfServers", { numberOfDBServers: 2 });
+      let result = arango.PUT("/_admin/cluster/numberOfServers", { numberOfDBServers: numberFound });
       assertFalse(result.error);
       assertEqual(200, result.code);
       
       result = arango.GET("/_admin/cluster/numberOfServers");
       assertFalse(result.error);
       assertEqual(200, result.code);
-      assertEqual(2, result.numberOfDBServers);
+      assertEqual(numberFound, result.numberOfDBServers);
       assertNull(result.numberOfCoordinators);
       assertEqual([], result.cleanedServers);
     }, 
     
     testPutNumberOfCoordinators : function () {
-      let result = arango.PUT("/_admin/cluster/numberOfServers", { numberOfCoordinators: 2 });
+      let result = arango.PUT("/_admin/cluster/numberOfServers", { numberOfCoordinators: numberFound });
       assertFalse(result.error);
       assertEqual(200, result.code);
       
@@ -78,7 +89,7 @@ function numberOfServersSuite () {
       assertFalse(result.error);
       assertEqual(200, result.code);
       assertNull(result.numberOfDBServers);
-      assertEqual(2, result.numberOfCoordinators);
+      assertEqual(numberFound, result.numberOfCoordinators);
       assertEqual([], result.cleanedServers);
     },
 

@@ -172,7 +172,7 @@
       var dbname = String($('#newDatabaseName').val()).trim();
       try {
         // create NFC-normalized variant of the database name
-        dbname = dbname.normalize("NFC");
+        dbname = dbname.normalize();
       } catch (err) {
         // for browsers not supporting the normalize API
       }
@@ -259,7 +259,7 @@
         reducedCollection;
 
       searchInput = $('#databaseSearchInput');
-      searchString = arangoHelper.escapeHtml($('#databaseSearchInput').val());
+      searchString = arangoHelper.escapeHtml($('#databaseSearchInput').val().normalize());
       reducedCollection = this.collection.filter(
         function (u) {
           return u.get('name').indexOf(searchString) !== -1;
@@ -386,7 +386,8 @@
       var dbDefaultProperties = data;
       var buttons = [];
       var tableContent = [];
-
+      var databaseNameValidations =
+        window.arangoValidationHelper.getDatabaseNameValidations();
       // Database Name
       tableContent.push(
         window.modalView.createTextEntry(
@@ -396,12 +397,7 @@
           false,
           'Database Name',
           true,
-          [
-            {
-              rule: Joi.string().required(),
-              msg: 'No database name given.'
-            }
-          ]
+          databaseNameValidations
         )
       );
 

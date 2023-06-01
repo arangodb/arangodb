@@ -41,6 +41,7 @@
 #include "Pregel/GraphStore/GraphStorer.h"
 #include "Pregel/GraphStore/GraphVPackBuilderStorer.h"
 #include "Pregel/Worker/Messages.h"
+#include "Pregel/Worker/VertexProcessor.h"
 #include "Pregel/Worker/Worker.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
@@ -109,19 +110,23 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
 
   if (_messageCombiner) {
     _readCache =
-        new CombiningInCache<M>(_config->localPregelShardIDs(),
+        new CombiningInCache<M>(_config->graphSerdeConfig().localPregelShardIDs(
+                                    ServerState::instance()->getId()),
                                 _messageFormat.get(), _messageCombiner.get());
     _writeCache =
-        new CombiningInCache<M>(_config->localPregelShardIDs(),
+        new CombiningInCache<M>(_config->graphSerdeConfig().localPregelShardIDs(
+                                    ServerState::instance()->getId()),
                                 _messageFormat.get(), _messageCombiner.get());
   } else {
-    _readCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
-                                     _messageFormat.get());
-    _writeCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
-                                      _messageFormat.get());
+    _readCache =
+        new ArrayInCache<M>(_config->graphSerdeConfig().localPregelShardIDs(
+                                ServerState::instance()->getId()),
+                            _messageFormat.get());
+    _writeCache =
+        new ArrayInCache<M>(_config->graphSerdeConfig().localPregelShardIDs(
+                                ServerState::instance()->getId()),
+                            _messageFormat.get());
   }
-
-  _initializeMessageCaches();
 }
 
 template<typename V, typename E, typename M>
@@ -131,41 +136,10 @@ Worker<V, E, M>::~Worker() {
       std::chrono::milliseconds(50));  // wait for threads to die
   delete _readCache;
   delete _writeCache;
-  delete _writeCacheNextGSS;
-  for (InCache<M>* cache : _inCaches) {
-    delete cache;
-  }
-  for (OutCache<M>* cache : _outCaches) {
-    delete cache;
-  }
   _writeCache = nullptr;
 
   _feature.metrics()->pregelWorkersNumber->fetch_sub(1);
   _feature.metrics()->pregelMemoryUsedForGraph->fetch_sub(0);
-}
-
-template<typename V, typename E, typename M>
-void Worker<V, E, M>::_initializeMessageCaches() {
-  const size_t p = _magazine.size();
-  if (_messageCombiner) {
-    for (size_t i = 0; i < p; i++) {
-      auto incoming = std::make_unique<CombiningInCache<M>>(
-          std::set<PregelShard>{}, _messageFormat.get(),
-          _messageCombiner.get());
-      _inCaches.push_back(incoming.get());
-      _outCaches.push_back(new CombiningOutCache<M>(
-          _config, _messageFormat.get(), _messageCombiner.get()));
-      incoming.release();
-    }
-  } else {
-    for (size_t i = 0; i < p; i++) {
-      auto incoming = std::make_unique<ArrayInCache<M>>(std::set<PregelShard>{},
-                                                        _messageFormat.get());
-      _inCaches.push_back(incoming.get());
-      _outCaches.push_back(new ArrayOutCache<M>(_config, _messageFormat.get()));
-      incoming.release();
-    }
-  }
 }
 
 // @brief load the initial worker data, call conductor eventually
@@ -315,7 +289,6 @@ void Worker<V, E, M>::startGlobalStep(RunGlobalSuperStep const& data) {
         << "Starting processing on " << _magazine.size() << " shards";
 
     //  _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
-    _initializeMessageCaches();
   }
   // release the lock because processing is using futures (and we do not need to
   // protect)
@@ -333,110 +306,78 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::_startProcessing() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   auto self = shared_from_this();
-  auto futures = std::vector<futures::Future<ResultT<ProcessVerticesResult>>>{};
-  for (auto [idx, quiver] : enumerate(_magazine)) {
+  auto futures = std::vector<futures::Future<VertexProcessorResult>>();
+  auto quiverIdx = std::make_shared<std::atomic<size_t>>(0);
+
+  for (auto futureN = size_t{0}; futureN < _config->parallelism(); ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
-        RequestLane::INTERNAL_LOW, [self, this, idx = idx, quiver = quiver]() {
-          return _processVertices(_inCaches[idx], _outCaches[idx], quiver);
+        RequestLane::INTERNAL_LOW, [self, this, quiverIdx, futureN]() {
+          LOG_PREGEL("ee2ac", DEBUG) << fmt::format(
+              "Starting vertex processor number {} with batch size", futureN,
+              _messageBatchSize);
+          auto processor = VertexProcessor<V, E, M>(
+              _config, _algorithm, _workerContext, _messageCombiner,
+              _messageFormat, _messageBatchSize);
+
+          while (true) {
+            auto myCurrentQuiver = quiverIdx->fetch_add(1);
+            if (myCurrentQuiver >= _magazine.size()) {
+              LOG_PREGEL("ee215", DEBUG) << fmt::format(
+                  "No more work left in vertex processor number {}", futureN);
+              break;
+            }
+            for (auto& vertex : *_magazine.quivers.at(myCurrentQuiver)) {
+              auto messages =
+                  _readCache->getMessages(vertex.shard(), vertex.key());
+              processor.process(&vertex, messages);
+
+              // TODO: this code looks completely out of place here;
+              // preferably it should stay out of the way of the
+              // control flow
+              // Also, the number of messages received is counted multiple
+              // times over; so this redundancy should be removed.
+              // Watch out for the fact that some algorithms want to
+              // do batch sizing based on the rate of messages sent and
+              // this might need to be taken into account.
+              _currentGssObservables.verticesProcessed.fetch_add(1);
+              _currentGssObservables.messagesReceived.fetch_add(
+                  messages.size());
+              _currentGssObservables.memoryBytesUsedForMessages.fetch_add(
+                  messages.size() * sizeof(M));
+              if (_currentGssObservables.verticesProcessed %
+                      Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+                  0) {
+                _makeStatusCallback()();
+              }
+
+              if (_state != WorkerState::COMPUTING) {
+                LOG_PREGEL("ee2ab", WARN) << fmt::format(
+                    "Vertex processor number {} aborted.", futureN);
+                break;
+              }
+            }
+          }
+          processor.outCache->flushMessages();
+          _writeCache->mergeCache(processor.localMessageCache.get());
+
+          return processor.result();
         }));
   }
-
   futures::collectAll(std::move(futures))
       .thenFinal([self, this](auto&& tryResults) {
+        // TODO: exception handling
         auto&& results = tryResults.get();
         for (auto&& tryRes : results) {
+          // TODO: exception handling
           auto&& res = tryRes.get();
-          if (res.ok()) {
-            auto& processRes = res.get();
-            _workerContext->_writeAggregators->aggregateValues(
-                processRes.workerAggregator);
-            _messageStats.accumulate(processRes.stats);
-          } else {
-            // TODO: ?
-          }
+
+          _workerContext->_writeAggregators->aggregateValues(
+              *res.workerAggregator);
+          _messageStats.accumulate(res.messageStats);
+          _activeCount += res.activeCount;
         }
         _finishedProcessing();
       });
-}
-
-template<typename V, typename E, typename M>
-void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
-  ctx->_gss = _config->globalSuperstep();
-  ctx->_lss = _config->localSuperstep();
-  ctx->_context = _workerContext.get();
-  ctx->_readAggregators = _workerContext->_readAggregators.get();
-}
-
-// internally called in a WORKER THREAD!!
-template<typename V, typename E, typename M>
-ResultT<ProcessVerticesResult> Worker<V, E, M>::_processVertices(
-    InCache<M>* inCache, OutCache<M>* outCache,
-    std::shared_ptr<Quiver<V, E>> quiver) {
-  double start = TRI_microtime();
-
-  // thread local caches
-  outCache->setBatchSize(_messageBatchSize);
-  outCache->setLocalCache(inCache);
-  TRI_ASSERT(outCache->sendCount() == 0);
-
-  ProcessVerticesResult verticesResult{
-      .workerAggregator = AggregatorHandler(_algorithm.get()), .stats = {}};
-
-  std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
-      _algorithm->createComputation(_config));
-  _initializeVertexContext(vertexComputation.get());
-  vertexComputation->_writeAggregators = &verticesResult.workerAggregator;
-  vertexComputation->_cache = outCache;
-
-  size_t activeCount = 0;
-  for (auto& vertexEntry : *quiver) {
-    MessageIterator<M> messages =
-        _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
-    _currentGssObservables.messagesReceived += messages.size();
-    _currentGssObservables.memoryBytesUsedForMessages +=
-        messages.size() * sizeof(M);
-
-    if (messages.size() > 0 || vertexEntry.active()) {
-      vertexComputation->_vertexEntry = &vertexEntry;
-      vertexComputation->compute(messages);
-      if (vertexEntry.active()) {
-        activeCount++;
-      }
-    }
-    if (_state != WorkerState::COMPUTING) {
-      break;
-    }
-
-    ++_currentGssObservables.verticesProcessed;
-    if (_currentGssObservables.verticesProcessed %
-            Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
-        0) {
-      _makeStatusCallback()();
-    }
-  }
-
-  // ==================== send messages to other shards ====================
-  outCache->flushMessages();
-  if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-    LOG_PREGEL("ee2ab", WARN) << "Execution aborted prematurely.";
-    return {TRI_ERROR_INTERNAL};
-  }
-
-  // merge thread local messages, _writeCache does locking
-  _writeCache->mergeCache(inCache);
-  _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
-
-  verticesResult.stats.sendCount = outCache->sendCount();
-  _currentGssObservables.messagesSent += outCache->sendCount();
-  _currentGssObservables.memoryBytesUsedForMessages +=
-      outCache->sendCount() * sizeof(M);
-  verticesResult.stats.superstepRuntimeSecs = TRI_microtime() - start;
-  inCache->clear();
-  outCache->clear();
-
-  _activeCount += activeCount;
-  _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
-  return {std::move(verticesResult)};
 }
 
 // called at the end of a worker thread, needs mutex
@@ -528,7 +469,8 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
     try {
       auto storer = std::make_shared<GraphStorer<V, E>>(
           _config->executionNumber(), *_config->vocbase(),
-          _algorithm->inputFormat(), _config->globalShardIDs(),
+          _config->parallelism(), _algorithm->inputFormat(),
+          _config->graphSerdeConfig(),
           OldStoringUpdate{.fn = std::move(_makeStatusCallback())});
       _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
       storer->store(_magazine).thenFinal(
@@ -549,8 +491,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
-      withId, _config, _algorithm->inputFormat(),
-      std::move(_makeStatusCallback()));
+      withId, _config, _algorithm->inputFormat());
 
   storer->store(_magazine).get();
   return PregelResults{.results =

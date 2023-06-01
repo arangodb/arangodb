@@ -44,7 +44,7 @@ struct Magazine {
     return quivers.emplace_back(std::move(quiver));
   }
 
-  auto size() -> size_t { return quivers.size(); }
+  auto size() const -> size_t { return quivers.size(); }
 
   auto begin() const { return std::begin(quivers); }
   auto end() const { return std::end(quivers); }

@@ -924,13 +924,6 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
   }
 }
 
-#ifndef USE_ENTERPRISE
-bool ExecutionEngine::waitForSatellites(
-    QueryContext& /*query*/, Collection const* /*collection*/) const {
-  return true;
-}
-#endif
-
 std::vector<arangodb::cluster::CallbackGuard>&
 ExecutionEngine::rebootTrackers() {
   return _rebootTrackers;

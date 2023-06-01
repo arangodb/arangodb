@@ -7,13 +7,11 @@ import { ViewLeftPane } from "./ViewLeftPane";
 import { ViewRightPane } from "./ViewRightPane";
 
 export const ViewSection = ({
-  name,
   formState,
   dispatch,
   isAdminUser,
   state
 }: {
-  name: string;
   formState: FormState;
   isAdminUser: boolean;
   state: State<FormState>;
@@ -28,7 +26,6 @@ export const ViewSection = ({
           return (
             <Box display="grid" height="full" {...gridProps}>
               <ViewLeftPane
-                name={name}
                 formState={formState}
                 dispatch={dispatch}
                 isAdminUser={isAdminUser}

@@ -29,6 +29,7 @@
 #include "Inspection/Types.h"
 #include "Inspection/Format.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/GraphStore/GraphSerdeConfig.h"
 #include "velocypack/Builder.h"
 
 namespace arangodb::pregel {
@@ -120,13 +121,7 @@ auto inspect(Inspector& f, TTL& x) {
 struct ExecutionSpecifications {
   ExecutionNumber executionNumber;
   std::string algorithm;
-  std::vector<CollectionID> vertexCollections;
-  std::vector<CollectionID> edgeCollections;
-  // maps from vertex collection name to a list of edge collections that this
-  // vertex collection is restricted to. only use for a collection if there is
-  // at least one entry for the collection!
-  std::unordered_map<std::string, std::vector<std::string>>
-      edgeCollectionRestrictions;
+  GraphSerdeConfig graphSerdeConfig;
   /// adjustable maximum gss for some algorithms
   /// some algorithms need several gss per iteration and it is more natural
   /// for the user to give a maximum number of iterations
@@ -143,16 +138,14 @@ struct ExecutionSpecifications {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ExecutionSpecifications& x) {
-  return f.object(x).fields(
-      f.field("executionNumber", x.executionNumber),
-      f.field("algorithm", x.algorithm),
-      f.field("vertexCollections", x.vertexCollections),
-      f.field("edgeCollections", x.edgeCollections),
-      f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
-      f.field("maxSuperstep", x.maxSuperstep),
-      f.field("storeResults", x.storeResults), f.field("ttl", x.ttl),
-      f.field("parallelism", x.parallelism),
-      f.field("userParamters", x.userParameters));
+  return f.object(x).fields(f.field("executionNumber", x.executionNumber),
+                            f.field("algorithm", x.algorithm),
+                            f.field("graphSerdeConfig", x.graphSerdeConfig),
+                            f.field("maxSuperstep", x.maxSuperstep),
+                            f.field("storeResults", x.storeResults),
+                            f.field("ttl", x.ttl),
+                            f.field("parallelism", x.parallelism),
+                            f.field("userParameters", x.userParameters));
 }
 
 }  // namespace arangodb::pregel

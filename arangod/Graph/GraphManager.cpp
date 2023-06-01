@@ -81,19 +81,22 @@ std::shared_ptr<transaction::Context> GraphManager::ctx() const {
 }
 
 Result GraphManager::createEdgeCollection(std::string const& name,
-                                          bool waitForSync,
+                                          bool waitForSyncReplication,
                                           VPackSlice options) {
-  return createCollection(name, TRI_COL_TYPE_EDGE, waitForSync, options);
+  return createCollection(name, TRI_COL_TYPE_EDGE, waitForSyncReplication,
+                          options);
 }
 
 Result GraphManager::createVertexCollection(std::string const& name,
-                                            bool waitForSync,
+                                            bool waitForSyncReplication,
                                             VPackSlice options) {
-  return createCollection(name, TRI_COL_TYPE_DOCUMENT, waitForSync, options);
+  return createCollection(name, TRI_COL_TYPE_DOCUMENT, waitForSyncReplication,
+                          options);
 }
 
 Result GraphManager::createCollection(std::string const& name,
-                                      TRI_col_type_e colType, bool waitForSync,
+                                      TRI_col_type_e colType,
+                                      bool waitForSyncReplication,
                                       VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
@@ -107,7 +110,7 @@ Result GraphManager::createCollection(std::string const& name,
       name,     // collection name
       colType,  // collection type
       options,  // collection properties
-      /*createWaitsForSyncReplication*/ waitForSync,
+      /*createWaitsForSyncReplication*/ waitForSyncReplication,
       /*enforceReplicationFactor*/ true,
       /*isNewDatabase*/ false, coll);
 
@@ -573,13 +576,16 @@ Result GraphManager::ensureCollections(
       graph.ensureInitial(*col);
     }
   }
+  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
+  bool waitForSyncReplication = cluster.createWaitsForSyncReplication();
 
   // b) Enterprise Sharding
 #ifdef USE_ENTERPRISE
   std::string createdInitialName;
   {
     auto [res, createdCollectionName] = ensureEnterpriseCollectionSharding(
-        &graph, waitForSync, documentCollectionsToCreate);
+        &graph, waitForSync, waitForSyncReplication,
+        documentCollectionsToCreate);
     if (res.fail()) {
       return res;
     }
@@ -654,7 +660,7 @@ Result GraphManager::ensureCollections(
 
   Result finalResult = methods::Collections::create(
       ctx()->vocbase(), opOptions, collectionsToCreate.get(),
-      /*createWaitsForSyncReplication*/ waitForSync,
+      /*createWaitsForSyncReplication*/ waitForSyncReplication,
       /*enforceReplicationFactor*/ true,
       /*isNewDatabase*/ false, nullptr, created, /*allowSystem*/ false,
       allowEnterpriseCollectionsOnSingleServer);

@@ -266,8 +266,7 @@ arangodb::Result tryCreateDatabase(
   VPackBuilder builder;
   {
     ObjectBuilder object(&builder);
-    object->add(arangodb::StaticStrings::DatabaseName,
-                VPackValue(normalizeUtf8ToNFC(name)));
+    object->add(arangodb::StaticStrings::DatabaseName, VPackValue(name));
 
     // add replication factor write concern etc
     if (properties.isObject()) {

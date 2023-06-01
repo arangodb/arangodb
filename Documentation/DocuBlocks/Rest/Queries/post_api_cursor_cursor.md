@@ -30,6 +30,9 @@ still return no documents. If, however, *hasMore* is *false*, then
 the cursor is exhausted.  Once the *hasMore* attribute has a value of
 *false*, the client can stop.
 
+If the cursor is not fully consumed, the time-to-live for the cursor
+is renewed by this API call.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}

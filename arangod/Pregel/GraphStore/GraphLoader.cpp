@@ -44,6 +44,7 @@
 #include "Pregel/Algos/SCC/SCCValue.h"
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
+#include "Pregel/GraphStore/LoadableVertexShard.h"
 #include "Pregel/StatusMessages.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -57,12 +58,6 @@
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
       << "[job " << config->executionNumber() << "] "
-
-namespace {
-constexpr auto shardError = std::string_view{
-    "Collections need to have the same number of shards,"
-    " use distributeShardsLike"};
-}
 
 namespace arangodb::pregel {
 template<typename V, typename E>
@@ -91,80 +86,64 @@ auto GraphLoader<V, E>::requestVertexIds(uint64_t numVertices)
 
 template<typename V, typename E>
 auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
-  auto futures = std::vector<futures::Future<std::shared_ptr<Quiver<V, E>>>>{};
+  LOG_PREGEL("ff00f", DEBUG)
+      << "GraphSerdeConfig: " << inspection::json(config->graphSerdeConfig());
+  auto const server = ServerState::instance()->getId();
+  auto const myLoadableVertexShards =
+      config->graphSerdeConfig().loadableVertexShardsForServer(server);
 
-  // Contains the shards located on this db server in the right order
-  // assuming edges are sharded after _from, vertices after _key
-  // then every ith vertex shard has the corresponding edges in
-  // the ith edge shard
-  std::map<CollectionID, std::vector<ShardID>> const& vertexCollMap =
-      config->vertexCollectionShards();
-  std::map<CollectionID, std::vector<ShardID>> const& edgeCollMap =
-      config->edgeCollectionShards();
-  size_t numShards = SIZE_MAX;
+  auto loadableShardIdx = std::make_shared<std::atomic<size_t>>(0);
+  auto futures = std::vector<futures::Future<Magazine<V, E>>>{};
+  auto self = this->shared_from_this();
 
-  for (auto const& pair : vertexCollMap) {
-    std::vector<ShardID> const& vertexShards = pair.second;
-    if (numShards == SIZE_MAX) {
-      numShards = vertexShards.size();
-    } else if (numShards != vertexShards.size()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
-    }
+  for (auto futureN = size_t{0}; futureN < config->parallelism(); ++futureN) {
+    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+        RequestLane::INTERNAL_LOW,
+        [this, self, futureN, loadableShardIdx, myLoadableVertexShards,
+         server]() -> Magazine<V, E> {
+          auto result = Magazine<V, E>{};
 
-    for (size_t i = 0; i < vertexShards.size(); i++) {
-      ShardID const& vertexShard = vertexShards[i];
+          LOG_PREGEL("8633a", WARN)
+              << fmt::format("Starting vertex loader number {}", futureN);
 
-      auto const& edgeCollectionRestrictions =
-          config->edgeCollectionRestrictions(vertexShard);
+          while (true) {
+            auto myLoadableVertexShardIdx = loadableShardIdx->fetch_add(1);
+            if (myLoadableVertexShardIdx >= myLoadableVertexShards.size()) {
+              break;
+            }
 
-      // distributeshardslike should cause the edges for a vertex to be
-      // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
-      std::vector<ShardID> edges;
-      for (auto const& pair2 : edgeCollMap) {
-        std::vector<ShardID> const& edgeShards = pair2.second;
-        if (vertexShards.size() != edgeShards.size()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
-        }
-
-        // optionally restrict edge collections to a positive list
-        if (edgeCollectionRestrictions.empty() ||
-            std::find(edgeCollectionRestrictions.begin(),
-                      edgeCollectionRestrictions.end(),
-                      edgeShards[i]) != edgeCollectionRestrictions.end()) {
-          edges.emplace_back(edgeShards[i]);
-        }
-      }
-
-      auto self = this->shared_from_this();
-      futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
-          RequestLane::INTERNAL_LOW,
-          [this, self, vertexShard, edges]() -> std::shared_ptr<Quiver<V, E>> {
             try {
-              return loadVertices(vertexShard, edges);
+              auto const& loadableVertexShard =
+                  myLoadableVertexShards.at(myLoadableVertexShardIdx);
+              result.emplace(loadVertices(loadableVertexShard));
             } catch (basics::Exception const& ex) {
               LOG_PREGEL("8682a", WARN)
-                  << "caught exception while loading pregel graph: "
-                  << ex.what();
-              return nullptr;
+                  << fmt::format("vertex loader number {} caught exception: {}",
+                                 futureN, ex.what());
+              break;
             } catch (std::exception const& ex) {
               LOG_PREGEL("c87c9", WARN)
-                  << "caught exception while loading pregel graph: "
-                  << ex.what();
-              return nullptr;
+                  << fmt::format("vertex loader number {} caught exception: {}",
+                                 futureN, ex.what());
+              break;
             } catch (...) {
-              LOG_PREGEL("c7240", WARN)
-                  << "caught unknown exception while loading pregel graph";
-              return nullptr;
+              LOG_PREGEL("c7240", WARN) << fmt::format(
+                  "vertex loader number {} caught unknown exception", futureN);
+              break;
             }
-          }));
-    }
+          }
+          return result;
+        }));
   }
-  auto self = this->shared_from_this();
   return collectAll(futures).thenValue([this, self](auto&& results) {
     auto result = Magazine<V, E>{};
     for (auto&& r : results) {
       // TODO: maybe handle exceptions here?
-      result.emplace(std::move(r.get()));
+      auto&& magazine = r.get();
+
+      for (auto&& q : magazine) {
+        result.emplace(std::move(q));
+      }
     }
     std::visit(overload{[&](ActorLoadingUpdate const& update) {
                           update.fn(message::GraphLoadingUpdate{
@@ -182,9 +161,10 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
 }
 
 template<typename V, typename E>
-auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
-                                     std::vector<ShardID> const& edgeShards)
+auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
     -> std::shared_ptr<Quiver<V, E>> {
+  auto const& vertexShard = loadableVertexShard.vertexShard;
+  auto const& edgeShards = loadableVertexShard.edgeShards;
   auto result = std::make_shared<Quiver<V, E>>();
 
   transaction::Options trxOpts;
@@ -198,7 +178,7 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto sourceShard = config->shardId(vertexShard);
+  auto sourceShard = config->graphSerdeConfig().pregelShard(vertexShard);
   auto cursor =
       trx.indexScan(resourceMonitor, vertexShard,
                     transaction::Methods::CursorType::ALL, ReadOwnWrites::no);

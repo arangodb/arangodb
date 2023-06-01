@@ -467,7 +467,7 @@ class instanceManager {
       let deltaStats = {};
       let deltaSum = {};
       this.arangods.forEach((arangod) => {
-        let newStats = arangod.getProcessStats();
+        let newStats = arangod._getProcessStats();
         let myDeltaStats = {};
         for (let key in arangod.stats) {
           if (key.startsWith('sockstat_')) {
@@ -490,7 +490,7 @@ class instanceManager {
       return deltaStats;
     }
     catch (x) {
-      print("aborting stats generation");
+      print("aborting stats generation: " + x);
       return {};
     }
   }
@@ -826,6 +826,7 @@ class instanceManager {
         print(e.stack);
       }
     }
+    return false;
   }
 
   _forceTerminate(moreReason="") {
@@ -894,7 +895,7 @@ class instanceManager {
       }
     }
 
-    if (this.options.cluster && this.hasOwnProperty('clusterHealthMonitor')) {
+    if ((this.options.cluster || this.options.agency) && this.hasOwnProperty('clusterHealthMonitor')) {
       try {
         this.clusterHealthMonitor['kill'] = killExternal(this.clusterHealthMonitor.pid);
         this.clusterHealthMonitor['statusExternal'] = statusExternal(this.clusterHealthMonitor.pid, true);
@@ -1081,6 +1082,12 @@ class instanceManager {
         }
         if (haveLeader === 1 && haveConfig === this.agencyConfig.agencySize) {
           print("Agency Up!");
+          try {
+            // set back log level to info for agents
+            for (let agentIndex = 0; agentIndex < this.agencyConfig.agencySize; agentIndex ++) {
+              this.agencyConfig.agencyInstances[agentIndex].getAgent('/_admin/log/level', 'PUT', JSON.stringify({"agency":"info"}));
+            }
+          } catch (err) {}
           return;
         }
         if (count === 0) {
@@ -1426,11 +1433,17 @@ class instanceManager {
       print("spawning cluster health inspector");
       internal.env.INSTANCEINFO = JSON.stringify(this.getStructure());
       internal.env.OPTIONS = JSON.stringify(this.options);
+      let tmp = internal.env.TEMP;
+      internal.env.TMP = this.rootDir;
+      internal.env.TEMP = this.rootDir;
       let args = pu.makeArgs.arangosh(this.options);
+      args['javascript.allow-external-process-control'] =  true;
       args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'testutils', 'clusterstats.js');
       const argv = toArgv(args);
       this.clusterHealthMonitor = executeExternal(pu.ARANGOSH_BIN, argv);
       this.clusterHealthMonitorFile = fs.join(this.rootDir, 'stats.jsonl');
+      internal.env.TMP = tmp;
+      internal.env.TEMP = tmp;
     }
     if (!this.options.disableClusterMonitor) {
       this.initProcessStats();

@@ -320,7 +320,7 @@ struct GeoDistanceRangeAcceptor {
   bool operator()(geo::ShapeContainer const& shape) const {
     auto const point = shape.centroid();
 
-    return (MinIncl ? min.Contains(point) : min.InteriorContains(point)) &&
+    return !(MinIncl ? min.InteriorContains(point) : min.Contains(point)) &&
            (MaxIncl ? max.Contains(point) : max.InteriorContains(point));
   }
 };
@@ -479,13 +479,11 @@ irs::filter::prepared::ptr prepareOpenInterval(
             auto& excl = root.add<irs::Not>().filter<GeoDistanceFilter>();
             *excl.mutable_field() = field;
             auto& opts = *excl.mutable_options();
-            opts.prefix = options.prefix;
-            opts.options = options.options;
+            opts = options;
             opts.range.min = 0;
             opts.range.min_type = irs::BoundType::INCLUSIVE;
             opts.range.max = 0;
             opts.range.max_type = irs::BoundType::INCLUSIVE;
-            opts.origin = origin;
           }
 
           return root.prepare(index, order, boost);
@@ -594,13 +592,11 @@ irs::filter::prepared::ptr prepareInterval(
   S2RegionTermIndexer indexer(options.options);
   S2RegionCoverer coverer(options.options);
 
-  // max.Intersection(min.Complement()) instead of max.Difference(min) used here
-  // because we want to make conservative covering
-  minBound = minBound.Complement();
   TRI_ASSERT(!minBound.is_empty());
   TRI_ASSERT(!maxBound.is_empty());
-  auto const ring =
-      coverer.GetCovering(maxBound).Intersection(coverer.GetCovering(minBound));
+
+  auto const ring = coverer.GetCovering(maxBound).Difference(
+      coverer.GetInteriorCovering(minBound));
   auto const geoTerms =
       indexer.GetQueryTermsForCanonicalCovering(ring, options.prefix);
 

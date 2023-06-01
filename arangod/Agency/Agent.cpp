@@ -990,7 +990,6 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
   // code here answers with a current snapshot of the readDB, whenever it is
   // asked for updates since index 0!
 
-  std::vector<log_t> logs;
   query_t builder;
 
   std::string leader = _constituent.leaderID();
@@ -1008,43 +1007,38 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
 
   {
     READ_LOCKER(oLocker, _outputLock);
+    auto ci = _commitIndex.load(std::memory_order_relaxed);
     if (index == 0 || index < _state.firstIndex()) {  // deliver as if index = 0
       builder = std::make_shared<VPackBuilder>();
-      VPackObjectBuilder r(builder.get());
+      VPackObjectBuilder r(builder.get(), /*allowUnindexed*/ true);
       builder->add(VPackValue("result"));
-      VPackObjectBuilder r2(builder.get());
-      builder->add("commitIndex",
-                   VPackValue(_commitIndex.load(std::memory_order_relaxed)));
+      VPackObjectBuilder r2(builder.get(), /*allowUnindexed*/ true);
+      builder->add("commitIndex", VPackValue(ci));
       builder->add("firstIndex", VPackValue(0));
       builder->add(VPackValue("readDB"));
       _readDB.get("", *builder, true);
-    } else if (index <= _commitIndex.load(std::memory_order_relaxed)) {
+    } else if (index <= ci) {
       // deliver immediately all logs since index
       builder = std::make_shared<VPackBuilder>();
-      VPackObjectBuilder r(builder.get());
+      VPackObjectBuilder r(builder.get(), /*allowUnindexed*/ true);
       builder->add(VPackValue("result"));
-      VPackObjectBuilder r2(builder.get());
-      auto ci = _commitIndex.load(std::memory_order_relaxed);
-      logs = _state.get(index, ci);
-      builder->add("commitIndex", VPackValue(ci));
-      builder->add("firstIndex", VPackValue(logs.front().index));
+      VPackObjectBuilder r2(builder.get(), /*allowUnindexed*/ true);
       builder->add(VPackValue("log"));
-      VPackArrayBuilder ls(builder.get());
-      for (auto const& l : logs) {
-        VPackObjectBuilder o(builder.get());
-        builder->add("index", VPackValue(l.index));
-        builder->add("query", VPackSlice(l.entry->data()));
-      }
-    }
-    if (builder != nullptr) {
-      return std::tuple<futures::Future<query_t>, bool, std::string>{
-          futures::makeFuture(std::move(builder)), true, std::string()};
+      auto firstIndex = _state.toVelocyPack(*builder, index, ci);
+      builder->add("commitIndex", VPackValue(ci));
+      builder->add("firstIndex", VPackValue(firstIndex));
     }
   }
 
-  std::lock_guard guard(_promLock);
+  if (builder != nullptr) {
+    return std::tuple<futures::Future<query_t>, bool, std::string>{
+        futures::makeFuture(std::move(builder)), true, std::string()};
+  }
+
   auto tp = steady_clock::now() +
             duration_cast<milliseconds>(duration<double>(timeout));
+
+  std::lock_guard guard(_promLock);
 
   try {
     auto res = _promises.emplace(tp, futures::Promise<query_t>());

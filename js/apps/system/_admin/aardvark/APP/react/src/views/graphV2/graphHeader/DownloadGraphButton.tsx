@@ -4,18 +4,17 @@ import { AddAPhoto } from "styled-icons/material";
 import { useGraph } from "../GraphContext";
 
 const downloadCanvas = (graphName: string) => {
-  let canvas = document.getElementsByTagName("canvas")[0];
-
+  const canvas = document.getElementsByTagName("canvas")[0];
+  const newCanvas = canvas.cloneNode(true) as HTMLCanvasElement;
   // set canvas background to white for screenshot download
-  let context = canvas.getContext("2d");
+  const context = newCanvas.getContext("2d");
   if (!context) {
     return;
   }
-  context.globalCompositeOperation = "destination-over";
   context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-
-  let canvasUrl = canvas.toDataURL("image/jpeg", 1);
+  context.fillRect(0, 0, newCanvas.width, newCanvas.height);
+  context.drawImage(canvas, 0, 0);
+  const canvasUrl = newCanvas.toDataURL("image/jpeg", 1);
   const createEl = document.createElement("a");
   createEl.href = canvasUrl;
   createEl.download = `${graphName}`;
@@ -30,7 +29,8 @@ export const DownloadGraphButton = () => {
         onClick={() => downloadCanvas(graphName)}
         size="sm"
         icon={<Icon width="5" height="5" as={AddAPhoto} />}
-        aria-label={"Take a screenshot"} />
+        aria-label={"Take a screenshot"}
+      />
     </Tooltip>
   );
 };

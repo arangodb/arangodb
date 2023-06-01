@@ -99,7 +99,7 @@ class Worker : public IWorker {
   std::atomic<WorkerState> _state = WorkerState::DEFAULT;
   std::shared_ptr<WorkerConfig> _config;
   uint64_t _expectedGSS = 0;
-  uint32_t _messageBatchSize = 500;
+  size_t _messageBatchSize = 500;
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
   // locks modifying member vars
@@ -117,12 +117,6 @@ class Worker : public IWorker {
   InCache<M>* _readCache = nullptr;
   // for the current or next superstep
   InCache<M>* _writeCache = nullptr;
-  // intended for the next superstep phase
-  InCache<M>* _writeCacheNextGSS = nullptr;
-  // preallocated incoming caches
-  std::vector<InCache<M>*> _inCaches;
-  // preallocated ootgoing caches
-  std::vector<OutCache<M>*> _outCaches;
 
   GssObservables _currentGssObservables;
   Guarded<AllGssStatus> _allGssStatus;
@@ -135,12 +129,7 @@ class Worker : public IWorker {
   size_t _runningThreads = 0;
   Scheduler::WorkHandle _workHandle;
 
-  void _initializeMessageCaches();
-  void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
-  ResultT<ProcessVerticesResult> _processVertices(
-      InCache<M>* inCache, OutCache<M>* outCache,
-      std::shared_ptr<Quiver<V, E>> quiver);
   void _finishedProcessing();
   void _callConductor(std::string const& path,
                       VPackBuilder const& message) const;

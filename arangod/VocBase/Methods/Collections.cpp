@@ -413,22 +413,11 @@ Collections::Context::~Context() {
 }
 
 transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
-                                                bool embeddable,
-                                                bool forceLoadCollection) {
+                                                bool embeddable) {
   if (_responsibleForTrx && _trx == nullptr) {
     auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(),
                                                           embeddable);
     auto trx = std::make_unique<SingleCollectionTransaction>(ctx, *_coll, type);
-    if (!trx) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY,
-                                     "Cannot create Transaction");
-    }
-
-    if (!forceLoadCollection) {
-      // we actually need this hint here, so that the collection is not
-      // loaded if it has status unloaded.
-      trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
-    }
 
     Result res = trx->begin();
 
@@ -885,7 +874,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
          StaticStrings::ShardingStrategy, StaticStrings::IsDisjoint});
 
     // this transaction is held longer than the following if...
-    auto trx = ctxt.trx(AccessMode::Type::READ, true, false);
+    auto trx = ctxt.trx(AccessMode::Type::READ, true);
     TRI_ASSERT(trx != nullptr);
   }
 
@@ -1176,7 +1165,7 @@ futures::Future<OperationResult> Collections::revisionId(
   }
 
   RevisionId rid =
-      ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true, true));
+      ctxt.coll()->revision(ctxt.trx(AccessMode::Type::READ, true));
 
   VPackBuilder builder;
   builder.add(VPackValue(rid.toString()));

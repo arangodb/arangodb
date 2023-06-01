@@ -28,20 +28,14 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var db = arangodb.db;
-var graph = require("@arangodb/general-graph");
-let cluster;
-if (require("internal").isArangod()) {
-  cluster = require("@arangodb/cluster");
-} else {
-  cluster = {};
-}
-var ERRORS = arangodb.errors;
-
-var _ = require("lodash");
-
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const db = arangodb.db;
+const graph = require("@arangodb/general-graph");
+const internal = require("internal");
+const isCluster = internal.isCluster;
+const ERRORS = arangodb.errors;
+const _ = require("lodash");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: general-graph Creation and edge definition
@@ -127,13 +121,32 @@ function GeneralGraphCreationSuite() {
         db._collection("_graphs").remove(gn2);
       }
     },
+    
+    test_createWithOrphan: function () {
+      graph._create(
+        gN1,
+        graph._edgeDefinitions(
+          graph._relation(rn1, [vn1], [vn2])
+        ),
+        [vn3, vn4] 
+      );
+
+      let doc = db._graphs.document(gN1);
+      assertEqual(1, doc.edgeDefinitions.length);
+      assertEqual(rn1, doc.edgeDefinitions[0].collection);
+      assertEqual(1, doc.edgeDefinitions[0].from.length);
+      assertEqual([vn1], doc.edgeDefinitions[0].from);
+      assertEqual(1, doc.edgeDefinitions[0].to.length);
+      assertEqual([vn2], doc.edgeDefinitions[0].to);
+      assertEqual([vn3, vn4], doc.orphanCollections);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rename
 ////////////////////////////////////////////////////////////////////////////////
 
     test_collectionRenameEdge: function () {
-      if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
+      if (isCluster()) {
         return;
       }
 
@@ -170,7 +183,7 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     test_collectionRenameVertex: function () {
-      if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
+      if (isCluster()) {
         return;
       }
 
@@ -198,7 +211,7 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     test_collectionRenameVertices: function () {
-      if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
+      if (isCluster()) {
         return;
       }
 
@@ -229,7 +242,7 @@ function GeneralGraphCreationSuite() {
 
     test_collectionRenameCollectionsWithModule1: function () {
       // tests edge collection name from vertex and to vertex collections
-      if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
+      if (isCluster()) {
         return;
       }
 
@@ -255,8 +268,8 @@ function GeneralGraphCreationSuite() {
     },
 
     test_collectionRenameCollectionsWithModule2: function () {
-      // tests orpahns rename in one graph
-      if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
+      // tests orphans rename in one graph
+      if (isCluster()) {
         return;
       }
 
