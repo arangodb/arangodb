@@ -27,15 +27,17 @@
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBDumpContext.h"
+#include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 
 RocksDBDumpManager::RocksDBDumpManager(RocksDBEngine& engine)
-    : _engine(engine), _nextId(0) {}
+    : _engine(engine) {}
 
 RocksDBDumpManager::~RocksDBDumpManager() {
   std::lock_guard mutexLocker{_lock};
@@ -49,9 +51,12 @@ RocksDBDumpContextGuard RocksDBDumpManager::createContext(
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
 
+  // generating the dump context can throw exceptions. if it does, then
+  // no harm is done, and no resources will be leaked.
   auto context = std::make_shared<RocksDBDumpContext>(
-      _engine, generateId(), batchSize, prefetchCount, parallelism,
-      std::move(shards), ttl, user, database);
+      _engine, _engine.server().getFeature<DatabaseFeature>(), generateId(),
+      batchSize, prefetchCount, parallelism, std::move(shards), ttl, user,
+      database);
 
   std::lock_guard mutexLocker{_lock};
 
@@ -78,8 +83,10 @@ RocksDBDumpContextGuard RocksDBDumpManager::find(std::string const& id,
 
   auto it = _contexts.find(id);
   if (it == _contexts.end()) {
-    // TODO: improve error code/message
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+    // "cursor not found" is not a great return code, but it is much more
+    // specific than a generic error. we can also think of a dump context
+    // as a collection of cursors for shard dumping.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
                                    "requested dump context not found");
   }
 
@@ -89,6 +96,8 @@ RocksDBDumpContextGuard RocksDBDumpManager::find(std::string const& id,
                                    "insufficient permissions");
   }
 
+  // whenever we access a context, we proactively extend its lifetime,
+  // so it does not expire quickly after
   context->extendLifetime();
 
   return RocksDBDumpContextGuard(*this, std::move(context));
@@ -101,8 +110,10 @@ void RocksDBDumpManager::remove(std::string const& id,
 
   auto it = _contexts.find(id);
   if (it == _contexts.end()) {
-    // TODO: improve error code/message
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+    // "cursor not found" is not a great return code, but it is much more
+    // specific than a generic error. we can also think of a dump context
+    // as a collection of cursors for shard dumping.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
                                    "requested dump context not found");
   }
 
@@ -112,11 +123,12 @@ void RocksDBDumpManager::remove(std::string const& id,
                                    "insufficient permissions");
   }
 
+  // if we remove the context from the map, then the context will be
+  // destroyed if it is not in use by any other thread. if it is in
+  // use by another thread, the thread will have a shared_ptr of the
+  // context, and the context will be destroyed once the shared_ptr
+  // goes out of scope in the other thread
   _contexts.erase(it);
-}
-
-std::string RocksDBDumpManager::generateId() {
-  return absl::StrCat("dump-", ++_nextId);
 }
 
 void RocksDBDumpManager::dropDatabase(TRI_vocbase_t& vocbase) {
@@ -151,3 +163,12 @@ void RocksDBDumpManager::garbageCollect(bool force) {
 }
 
 void RocksDBDumpManager::beginShutdown() { garbageCollect(false); }
+
+std::string RocksDBDumpManager::generateId() {
+  // rationale: we use a HLC value here, because it is guaranteed to
+  // move forward, even across restarts. the last HLC value is persisted
+  // on server shutdown, so we avoid handing out an HLC value, shutting
+  // down the server, and handing out the same HLC value for a different
+  // dump after the restart.
+  return absl::StrCat("dump-", TRI_HybridLogicalClock());
+}

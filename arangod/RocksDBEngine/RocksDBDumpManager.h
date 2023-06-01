@@ -26,7 +26,6 @@
 #include "RocksDBEngine/RocksDBDumpContext.h"
 #include "RocksDBEngine/RocksDBDumpContextGuard.h"
 
-#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -52,13 +51,23 @@ class RocksDBDumpManager {
                                         double ttl, std::string const& user,
                                         std::string const& database);
 
+  // look up context by id. must provide the same database name and
+  // user name as when creating the context. otherwise a "forbidden"
+  // exception is thrown.
   RocksDBDumpContextGuard find(std::string const& id,
                                std::string const& database,
                                std::string const& user);
 
+  // remove a context by id. must provide the same database name and
+  // user name as when creating the context. otherwise a "forbidden"
+  // exception is thrown.
+  // if no other thread uses the context, it will be destroyed. otherwise
+  // the last shared_ptr to the context that goes out of scope will
+  // destroy the context.
   void remove(std::string const& id, std::string const& database,
               std::string const& user);
 
+  // delete all contexts for the given database.
   void dropDatabase(TRI_vocbase_t& vocbase);
 
   void garbageCollect(bool force);
@@ -70,12 +79,14 @@ class RocksDBDumpManager {
 
   RocksDBEngine& _engine;
 
+  // lock for _contexts
   std::mutex _lock;
 
+  // this maps stores contexts by their id. contexts are handed out from the
+  // manager as shared_ptrs. if remove is called on a context, it will be
+  // destroyed once the last shared_ptr to it goes out of scope.
   std::unordered_map<std::string, std::shared_ptr<RocksDBDumpContext>>
       _contexts;
-
-  std::atomic<uint64_t> _nextId;
 };
 
 }  // namespace arangodb
