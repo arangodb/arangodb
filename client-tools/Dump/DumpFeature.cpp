@@ -585,7 +585,7 @@ Result DumpFeature::DumpCollectionJob::run(
     }
   }
 
-  if (res.ok()) {
+  if (res.ok() && !options.useExperimentalDump) {
     // always create the file so that arangorestore does not complain
     auto file =
         directory.writableFile(escapedName + "_" + hexString + ".data.json",
@@ -629,29 +629,11 @@ Result DumpFeature::DumpCollectionJob::run(
 
           std::string server = it.value[0].copyString();
 
-          if (options.useExperimentalDump) {
-            // TODO actually we should collect all shards for one dbserver
-            // and then receive all of them at once
-            std::unordered_map<std::string,
-                               DumpFeature::ParallelDumpServer::ShardInfo>
-                shardInfos;
-            shardInfos.emplace(
-                shardName,
-                DumpFeature::ParallelDumpServer::ShardInfo{sharedFile});
-
-            auto dumpJob =
-                std::make_unique<arangodb::DumpFeature::ParallelDumpServer>(
-                    directory, feature, feature._clientManager, options,
-                    maskings, stats, shardInfos, server);
-            feature.taskQueue().queueJob(std::move(dumpJob));
-          } else {
-            // create one new job per shard
-            auto dumpJob =
-                std::make_unique<arangodb::DumpFeature::DumpShardJob>(
-                    directory, feature, options, maskings, stats,
-                    collectionInfo, shardName, server, sharedFile);
-            feature.taskQueue().queueJob(std::move(dumpJob));
-          }
+          // create one new job per shard
+          auto dumpJob = std::make_unique<arangodb::DumpFeature::DumpShardJob>(
+              directory, feature, options, maskings, stats, collectionInfo,
+              shardName, server, sharedFile);
+          feature.taskQueue().queueJob(std::move(dumpJob));
         }
 
         TRI_ASSERT(res.ok());
@@ -1121,6 +1103,31 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     FATAL_ERROR_EXIT();
   }
 
+  std::unordered_map<
+      std::string,
+      std::unordered_map<std::string, ParallelDumpServer::ShardInfo>>
+      shardsByServer;
+
+  std::unordered_map<std::string, std::shared_ptr<ManagedDirectory::File>>
+      filesByShard;
+
+  auto getFileForShard = [&](std::string const& shard,
+                             VPackSlice collectionInfo,
+                             std::string const& name) {
+    if (auto iter = filesByShard.find(shard); iter == filesByShard.end()) {
+      std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
+      std::string escapedName =
+          escapedCollectionName(name, collectionInfo.get("parameters"));
+      auto file =
+          _directory->writableFile(escapedName + "_" + hexString + ".data.json",
+                                   true /*overwrite*/, 0, true /*gzipOk*/);
+      return filesByShard[shard] =
+                 std::shared_ptr<ManagedDirectory::File>(file.release());
+    } else {
+      return iter->second;
+    }
+  };
+
   for (auto const& [name, collectionInfo] : restrictList) {
     if (collectionInfo.isNone()) {
       LOG_TOPIC("e650c", WARN, arangodb::Logger::DUMP)
@@ -1128,11 +1135,33 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       continue;
     }
 
+    if (_options.useExperimentalDump) {
+      for (auto const& [shard, servers] : VPackObjectIterator(
+               collectionInfo.get("parameters").get("shards"))) {
+        TRI_ASSERT(servers.isArray());
+        auto serverStr = servers.at(0).copyString();
+        auto shardStr = shard.copyString();
+        shardsByServer[serverStr][shardStr].file =
+            getFileForShard(shardStr, collectionInfo, name);
+      }
+    }
+
     // queue job to actually dump collection
     auto dumpJob = std::make_unique<DumpCollectionJob>(
         *_directory, *this, _options, _maskings.get(), _stats, collectionInfo,
         batchId);
     _clientTaskQueue.queueJob(std::move(dumpJob));
+  }
+
+  if (_options.useExperimentalDump) {
+    // now start jobs for each dbserver
+
+    for (auto& [dbserver, shards] : shardsByServer) {
+      auto job = std::make_unique<ParallelDumpServer>(
+          *_directory, *this, _clientManager, _options, _maskings.get(), _stats,
+          std::move(shards), dbserver);
+      _clientTaskQueue.queueJob(std::move(job));
+    }
   }
 
   // wait for all jobs to finish, then check for errors
@@ -1452,7 +1481,7 @@ void DumpFeature::ParallelDumpServer::createDumpContext(
   }
 
   bool headerExtracted;
-  _dumpId = response->getHeaderField("x-arango-dump-id", headerExtracted);
+  dumpId = response->getHeaderField("x-arango-dump-id", headerExtracted);
   if (!headerExtracted) {
     LOG_TOPIC("d7a76", FATAL, Logger::DUMP)
         << "dump create response did not contain any dump id for server "
@@ -1464,7 +1493,7 @@ void DumpFeature::ParallelDumpServer::createDumpContext(
 void DumpFeature::ParallelDumpServer::finishDumpContext(
     httpclient::SimpleHttpClient& client) {
   auto url =
-      basics::StringUtils::concatT("_api/dump/", _dumpId, "?dbserver=", server);
+      basics::StringUtils::concatT("_api/dump/", dumpId, "?dbserver=", server);
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::DELETE_REQ, url, nullptr, 0,
                      {}));
@@ -1479,6 +1508,9 @@ void DumpFeature::ParallelDumpServer::finishDumpContext(
 
 Result DumpFeature::ParallelDumpServer::run(
     httpclient::SimpleHttpClient& client) {
+  LOG_TOPIC("23f92", INFO, Logger::DUMP)
+      << "preparing data stream for server " << server;
+
   // create context on dbserver
   createDumpContext(client);
 
@@ -1569,7 +1601,7 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
     httpclient::SimpleHttpClient& client, std::uint64_t batchId,
     std::optional<std::uint64_t> lastBatch) {
   std::string url = basics::StringUtils::concatT(
-      "_api/dump/next/", _dumpId, "?batchId=", batchId, "&dbserver=", server);
+      "_api/dump/next/", dumpId, "?batchId=", batchId, "&dbserver=", server);
   if (lastBatch) {
     url += "&lastBatch=" + std::to_string(*lastBatch);
   }
