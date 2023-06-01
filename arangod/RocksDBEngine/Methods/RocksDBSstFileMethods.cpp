@@ -39,17 +39,18 @@ using namespace arangodb;
 
 RocksDBSstFileMethods::RocksDBSstFileMethods(
     bool isForeground, rocksdb::DB* rootDB,
-    RocksDBTransactionCollection* trxColl, RocksDBIndex& ridx,
+    RocksDBTransactionCollection* trxColl, RocksDBIndex* ridx,
     rocksdb::Options const& dbOptions, std::string const& idxPath,
     StorageUsageTracker& usageTracker)
     : RocksDBMethods(),
       _isForeground(isForeground),
       _rootDB(rootDB),
       _trxColl(trxColl),
-      _ridx(&ridx),
-      _cf(ridx.columnFamily()),
+      _ridx(ridx),
+      _cf(ridx->columnFamily()),
       _sstFileWriter(rocksdb::EnvOptions(dbOptions), dbOptions,
-                     ridx.columnFamily()->GetComparator(), ridx.columnFamily()),
+                     ridx->columnFamily()->GetComparator(),
+                     ridx->columnFamily()),
       _idxPath(idxPath),
       _usageTracker(usageTracker),
       _bytesWrittenToDir(0) {}
@@ -63,6 +64,7 @@ RocksDBSstFileMethods::RocksDBSstFileMethods(rocksdb::DB* rootDB,
       _isForeground(false),
       _rootDB(rootDB),
       _trxColl(nullptr),
+      _ridx(nullptr),
       _cf(cf),
       _sstFileWriter(rocksdb::EnvOptions(dbOptions), dbOptions,
                      _cf->GetComparator(), _cf),
@@ -75,6 +77,7 @@ RocksDBSstFileMethods::~RocksDBSstFileMethods() { cleanUpFiles(); }
 void RocksDBSstFileMethods::insertEstimators() {
   auto ops = _trxColl->stealTrackedIndexOperations();
   if (!ops.empty()) {
+    TRI_ASSERT(_ridx != nullptr);
     TRI_ASSERT(_ridx->hasSelectivityEstimate() && ops.size() == 1);
     auto it = ops.begin();
     TRI_ASSERT(_ridx->id() == it->first);
@@ -135,7 +138,7 @@ rocksdb::Status RocksDBSstFileMethods::writeToFile() {
     }
     if (!res.ok()) {
       cleanUpFiles();
-    } else if (_ridx.get() != nullptr) {
+    } else if (_ridx != nullptr) {
       insertEstimators();
     }
   }

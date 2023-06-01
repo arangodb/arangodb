@@ -42,7 +42,7 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
  public:
   explicit RocksDBSstFileMethods(bool isForeground, rocksdb::DB* rootDB,
                                  RocksDBTransactionCollection* trxColl,
-                                 RocksDBIndex& ridx,
+                                 RocksDBIndex* ridx,
                                  rocksdb::Options const& dbOptions,
                                  std::string const& idxPath,
                                  StorageUsageTracker& usageTracker);
@@ -96,7 +96,7 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
   bool _isForeground;
   rocksdb::DB* _rootDB;
   RocksDBTransactionCollection* _trxColl;
-  std::unique_ptr<RocksDBIndex> _ridx;
+  RocksDBIndex* _ridx;
   rocksdb::ColumnFamilyHandle* _cf;
   rocksdb::SstFileWriter _sstFileWriter;
   std::string _idxPath;
