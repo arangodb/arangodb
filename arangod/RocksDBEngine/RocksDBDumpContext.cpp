@@ -24,7 +24,10 @@
 #include "RocksDBDumpContext.h"
 
 #include "Basics/system-functions.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "Utils/CollectionGuard.h"
+#include "Utils/DatabaseGuard.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/snapshot.h>
@@ -32,29 +35,41 @@
 
 using namespace arangodb;
 
-RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine, std::string id,
-                                       uint64_t batchSize,
-                                       uint64_t prefetchCount,
-                                       uint64_t parallelism,
-                                       std::vector<std::string> shards,
-                                       double ttl, std::string const& user,
-                                       std::string const& database)
+RocksDBDumpContext::RocksDBDumpContext(
+    RocksDBEngine& engine, DatabaseFeature& databaseFeature, std::string id,
+    uint64_t batchSize, uint64_t prefetchCount, uint64_t parallelism,
+    std::vector<std::string> const& shards, double ttl, std::string const& user,
+    std::string const& database)
     : _engine(engine),
       _id(std::move(id)),
       _batchSize(batchSize),
       _prefetchCount(prefetchCount),
       _parallelism(parallelism),
-      _shards(std::move(shards)),
       _ttl(ttl),
       _user(user),
       _database(database),
       _expires(TRI_microtime() + _ttl) {
+  // this DatabaseGuard will protect the database object from being deleted
+  // while the context is in use. that way we only have to ensure once that the
+  // database is there. creating this guard will throw if the database cannot be
+  // found.
+  _databaseGuard = std::make_unique<DatabaseGuard>(databaseFeature, database);
+
+  // these CollectionGuards will protect the collection/shard objects from being
+  // deleted while the context is in use. that we we only have to ensure once
+  // that the collections are there. creating the guards will throw if any of
+  // the collections/shards cannot be found.
+  for (auto const& it : shards) {
+    _collectionGuards.emplace(
+        it, std::make_unique<CollectionGuard>(&_databaseGuard->database(), it));
+  }
+
   // acquire RocksDB snapshot
   _snapshot =
       std::make_shared<rocksdb::ManagedSnapshot>(_engine.db()->GetRootDB());
 }
 
-// will automatically delete the RocksDB snapshot
+// will automatically delete the RocksDB snapshot and all guards
 RocksDBDumpContext::~RocksDBDumpContext() = default;
 
 std::string const& RocksDBDumpContext::id() const noexcept { return _id; }
