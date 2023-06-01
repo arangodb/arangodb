@@ -232,8 +232,19 @@ void RestDumpHandler::handleCommandDumpNext() {
   auto* manager = engine.dumpManager();
   auto guard = manager->find(id, database, user);
 
-  // For now there is nothing to transfer
-  generateOk(rest::ResponseCode::NO_CONTENT, VPackSlice::noneSlice());
+  auto batch = guard->next(*batchId, lastBatch);
+
+  if (batch == nullptr) {
+    // all batches have been received
+    return generateOk(rest::ResponseCode::NO_CONTENT, VPackSlice::noneSlice());
+  }
+
+  // output the batch value
+  _response->setHeaderNC("x-arango-dump-shard-id", batch->shard);
+  _response->setContentType(rest::ContentType::DUMP);
+  _response->addRawPayload(batch->content);
+  _response->setGenerateBody(true);
+  _response->setResponseCode(rest::ResponseCode::OK);
 }
 
 void RestDumpHandler::handleCommandDumpFinished() {
