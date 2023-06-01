@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for AQL, persistent index
@@ -30,42 +30,35 @@ const internal = require("internal");
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
-const isCluster = require('internal').isCluster();
 
 const cn = "UnitTestsCollection";
 const idxName = "testIdx";
 const query1 = `FOR d IN ${cn} FILTER d.value == 1 SORT d._key RETURN d`;
 const query2 = `FOR d IN ${cn} FILTER d.value == 2 SORT d._key RETURN d`;
+const tolerance = 0.03;
 
 
 let explain = function (query, params) {
   return helper.removeClusterNodes(helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes" ] } })).map(function(node) { return node.type; }));
 };
 
-let testandValidate = function (query, isUnique, insertMoreDocs, insertIndexBeforeDocs, sameValue, isPrimary, selectivity) {
-  let ensureIndex = () => {
-    internal.db[cn].ensureIndex({type: "persistent", name: idxName, unique: isUnique, fields: ["value"]});
-  };
-
-  if (insertMoreDocs) {
-    if (insertIndexBeforeDocs) {
-      ensureIndex();
+let insertMoreDocs = function (numDocs, sameValue) {
+  let docs = [];
+  for (let i = 0; i < numDocs; ++i) {
+    docs.push({value: (sameValue ? 2 : i)});
+    if (docs.length >= numDocs / 10) {
+      internal.db[cn].insert(docs);
+      docs = [];
     }
-    let docs = [];
-    for (let i = 0; i < 10000; ++i) {
-      docs.push({value: (sameValue ? 2 : i + 10)});
-      if (docs.length >= 1000) {
-        internal.db[cn].insert(docs);
-        docs = [];
-      }
-    }
-    if (!insertIndexBeforeDocs) {
-      ensureIndex();
-    }
-  } else {
-    ensureIndex();
   }
-  require("internal").waitForEstimatorSync();
+};
+
+let testAndValidate = function (query, isUnique, moreDocs, numDocs, sameValue, isPrimary, selectivity) {
+  if (moreDocs) {
+    insertMoreDocs(numDocs, sameValue);
+  }
+  internal.db[cn].ensureIndex({type: "persistent", name: idxName, unique: isUnique, fields: ["value"]});
+
   const nodes = AQL_EXPLAIN(query).plan.nodes;
   for (const key in nodes) {
     if (nodes[key].type === "IndexNode") {
@@ -76,7 +69,7 @@ let testandValidate = function (query, isUnique, insertMoreDocs, insertIndexBefo
       assertEqual(usedIndex.name, (isPrimary ? "primary" : idxName));
       assertEqual(usedIndex.fields.length, 1);
       assertEqual(usedIndex.fields[0], (isPrimary ? "_key" : "value"));
-      assertEqual(usedIndex.selectivityEstimate, selectivity);
+      assertTrue(Math.abs(usedIndex.selectivityEstimate - selectivity) < tolerance);
     }
   }
 };
@@ -1601,11 +1594,7 @@ function PersistentIndexSelectivityTestSuite () {
     setUp: function () {
       internal.db._drop(cn);
       let c = internal.db._create(cn);
-      let docs = [];
-      for (let i = 0; i < 10; ++i) {
-        docs.push({value: i});
-      }
-      c.insert(docs);
+      c.insert({value: 100000});
     },
 
     tearDown: function () {
@@ -1613,120 +1602,145 @@ function PersistentIndexSelectivityTestSuite () {
     },
 
     testUniqueSimple: function () {
-      testandValidate(query1, true, false, false, false, false, 1);
+      testAndValidate(query1, true, false, 0, false, false, 1);
     },
 
     testUniqueSimple2: function () {
-      testandValidate(query2, true, false, false, false, false, 1);
+      testAndValidate(query2, true, false, 0, false, false, 1);
     },
 
     testNonUniqueSimple: function () {
-      testandValidate(query1, false, false, false, false, false, 1);
+      testAndValidate(query1, false, false, 0, false, false, 1);
     },
 
     testNonUniqueSimple2: function () {
-      testandValidate(query2, false, false, false, false, false, 1);
+      testAndValidate(query2, false, false, 0, false, false, 1);
     },
 
     testUniqueSimpleManyDocs: function () {
-      if (isCluster) {
-        return;
-      }
-      testandValidate(query1, true, true, true, false, false, 1);
+      testAndValidate(query1, true, true, 10000, false, false, 1);
     },
 
     testUniqueSimpleManyDocs2: function () {
-      if (isCluster) {
-        return;
-      }
-      testandValidate(query2, true, true, true, false, false, 1);
+      testAndValidate(query2, true, true, 10000, false, false, 1);
+    },
+
+    testUniqueSimpleManyDocs3: function () {
+      testAndValidate(query1, true, true, 50, false, false, 1);
+    },
+
+    testUniqueSimpleManyDocs4: function () {
+      testAndValidate(query2, true, true, 50, false, false, 1);
+    },
+
+    testUniqueSimpleManyDocs5: function () {
+      testAndValidate(query1, true, true, 50000, false, false, 1);
+    },
+
+    testUniqueSimpleManyDocs6: function () {
+      testAndValidate(query2, true, true, 50000, false, false, 1);
     },
 
     testNonUniqueSimpleManyDocs: function () {
-      if (isCluster) {
-        return;
-      }
-      testandValidate(query1, false, true, true, false, false, 1);
+      testAndValidate(query1, false, true, 10000, false, false, 1);
     },
 
     testNonUniqueSimpleManyDocs2: function () {
-      if (isCluster) {
-        return;
-      }
-      testandValidate(query2, false, true, true, false, false, 1);
+      testAndValidate(query2, false, true, 10000, false, false, 1);
     },
 
-    // in the tests below, even thouh the selectivity for the persistent index is very low, it would still be chosen, because
+    testNonUniqueSimpleManyDocs3: function () {
+      testAndValidate(query1, false, true, 50, false, false, 1);
+    },
+
+    testNonUniqueSimpleManyDocs4: function () {
+      testAndValidate(query2, false, true, 50, false, false, 1);
+    },
+
+    testNonUniqueSimpleManyDocs5: function () {
+      testAndValidate(query1, false, true, 50000, false, false, 1);
+    },
+
+    testNonUniqueSimpleManyDocs6: function () {
+      testAndValidate(query2, false, true, 50000, false, false, 1);
+    },
+
+    // in the tests below, even though the selectivity for the persistent index is very low, it would still be chosen, because
     // the cost would still be smaller than the cost of the primary index because, as it doesn't cover the FILTER,
     // it gets at least the default cost of the FILTER which will outnumber the cost for the persistent index
-    testNonUniqueManyDocsIndexLowSelectivityInsertBefore: function () {
-      if (isCluster) {
-        return;
-      }
-      testandValidate(query1, false, true, true, true, false, (10/10010));
+    testNonUniqueManyDocsIndexLowerSelectivityChoosePersistent: function () {
+      insertMoreDocs(9, false);
+      const numDocs = 1000;
+      testAndValidate(query1, false, true, numDocs, true, false, (10/(numDocs + 10)));
     },
 
-    testNonUniqueManyDocsIndexLowSelectivityInsertBefore2: function () {
-      if (isCluster) {
-        return;
-      }
-      testandValidate(query2, false, true, true, true, false, (10/10010));
+    testNonUniqueManyDocsIndexLowerSelectivityChoosePersistent2: function () {
+      insertMoreDocs(9, false);
+      const numDocs = 1000;
+      testAndValidate(query2, false, true, numDocs, true, false, (10/(numDocs + 10)));
     },
 
-    testNonUniqueManyDocsIndexLowSelectivityInsertAfter: function () {
-      if (isCluster) {
-        return;
-      }
-      testandValidate(query1, false, true, false, true, false, (10/10010));
+    testNonUniqueManyDocsIndexLowerSelectivityChoosePersistent3: function () {
+      insertMoreDocs(9, false);
+      const numDocs = 50;
+      testAndValidate(query1, false, true, numDocs, true, false, (10/(numDocs + 10)));
     },
 
-    testNonUniqueManyDocsIndexLowSelectivityInsertAfter2: function () {
-      if (isCluster) {
-        return;
-      }
-      testandValidate(query2, false, true, false, true, false, (10/10010));
+    testNonUniqueManyDocsIndexLowerSelectivityChoosePersistent4: function () {
+      insertMoreDocs(9, false);
+      const numDocs = 50;
+      testAndValidate(query2, false, true, numDocs, true, false, (10/(numDocs + 10)));
     },
+
+    testNonUniqueManyDocsIndexLowerSelectivityChoosePersistent5: function () {
+      insertMoreDocs(10000, false);
+      const numDocs = 50000;
+      testAndValidate(query1, false, true, numDocs, true, false, (10001/(numDocs + 10001)));
+    },
+
+    testNonUniqueManyDocsIndexLowerSelectivityChoosePersistent6: function () {
+      insertMoreDocs(10000, false);
+      const numDocs = 50000;
+      testAndValidate(query2, false, true, numDocs, true, false, (10001/(numDocs + 10001)));
+    },
+
+
+    testNonUniqueManyDocsIndexLowSelectivityChooseOther: function () {
+      const numDocs = 10000;
+      testAndValidate(query1, false, true, numDocs, true, true, 1);
+    },
+
+    testNonUniqueManyDocsIndexLowSelectivityChooseOther2: function () {
+      const numDocs = 10000;
+      testAndValidate(query2, false, true, numDocs, true, true, 1);
+    },
+
+    testNonUniqueManyDocsIndexLowSelectivityChooseOther3: function () {
+      const numDocs = 50;
+      testAndValidate(query1, false, true, numDocs, true, true, 1);
+    },
+
+    testNonUniqueManyDocsIndexLowSelectivityChooseOther4: function () {
+      const numDocs = 50;
+      testAndValidate(query2, false, true, numDocs, true, true, 1);
+    },
+
+    testNonUniqueManyDocsIndexLowSelectivityChooseOther5: function () {
+      const numDocs = 50000;
+      testAndValidate(query1, false, true, numDocs, true, true, 1);
+    },
+
+    testNonUniqueManyDocsIndexLowSelectivityChooseOther6: function () {
+      const numDocs = 50000;
+      testAndValidate(query2, false, true, numDocs, true, true, 1);
+    },
+
   };
 }
-
-function PersistentIndexSelectivityChooseOtherIndexTestSuite () {
-  return {
-    setUp: function () {
-      internal.db._drop(cn);
-      let c = internal.db._create(cn);
-      let docs = [];
-      for (let i = 0; i < 100; ++i) {
-        docs.push({value: 2});
-      }
-      docs.push({value: 1});
-      c.insert(docs);
-      c.ensureIndex({type: "persistent", name: idxName, unique: false, fields: ["value"]});
-
-    },
-
-    tearDown: function () {
-      internal.db._drop(cn);
-    },
-
-    // because of the selectivity estimate, the primary index will be chosen
-    testNonUniqueSimpleChooseOtherIndex: function () {
-      testandValidate(query1, false, false, false, false, true, 1);
-    },
-
-    testNonUniqueSimpleChooseOtherIndex2: function () {
-      testandValidate(query2, false, false, false, false, true, 1);
-    },
-
-  };
-}
-
 
 jsunity.run(PersistentIndexTestSuite);
 jsunity.run(PersistentIndexMultipleIndexesTestSuite);
 jsunity.run(PersistentIndexOverlappingSuite);
-if (!isCluster) {
-  jsunity.run(PersistentIndexSelectivityTestSuite);
-  jsunity.run(PersistentIndexSelectivityChooseOtherIndexTestSuite);
-}
+jsunity.run(PersistentIndexSelectivityTestSuite);
 
 return jsunity.done();
