@@ -314,6 +314,29 @@ memory consumption of this cache. You can reduce the memory usage of the column
 cache in cluster deployments by only using the cache for leader shards, see the
 `--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
+@RESTBODYPARAM{optimizeTopK,array,optional,string}
+This option only applies if you use the inverted index in a `search-alias` Views.
+
+An array of strings defining sort expressions that you want to optimize.
+This is also known as _WAND optimization_.
+
+If you query a View with the `SEARCH` operation in combination with a
+`SORT` and `LIMIT` operation, search results can be retrieved faster if the
+`SORT` expression matches one of the optimized expressions.
+
+Only sorting by highest rank is supported, that is, sorting by the result
+of a scoring function in descending order (`DESC`). Use `@doc` in the expression
+where you would normally pass the document variable emitted by the `SEARCH`
+operation to the scoring function.
+
+You can define up tp 64 expressions per View.
+
+Example: `["BM25(@doc) DESC", "TFIDF(@doc, true) DESC"]`
+
+Default: `[]`
+
+This property is available in the Enterprise Edition only.
+
 @RESTBODYPARAM{analyzer,string,optional,string}
 The name of an Analyzer to use by default. This Analyzer is applied to the
 values of the indexed fields for which you don't define Analyzers explicitly.
