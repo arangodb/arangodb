@@ -1054,10 +1054,8 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
                              std::string const& name) {
     if (auto iter = filesByShard.find(shard); iter == filesByShard.end()) {
       std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
-      std::string escapedName =
-          escapedCollectionName(name, collectionInfo.get("parameters"));
       auto file =
-          _directory->writableFile(escapedName + "_" + hexString + ".data.json",
+          _directory->writableFile(name + "_" + hexString + ".data.json",
                                    true /*overwrite*/, 0, true /*gzipOk*/);
       return filesByShard[shard] =
                  std::shared_ptr<ManagedDirectory::File>(file.release());
