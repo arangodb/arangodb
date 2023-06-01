@@ -75,6 +75,9 @@ RocksDBDumpContext::RocksDBDumpContext(
   for (size_t i = 0; i < _parallelism; i++) {
     _threads.emplace_back([&, i, shards,
                            guard = BoundedChannelProducerGuard(_channel)] {
+      // Instead of producing junk data we should actually start reading the
+      // shards in parallel.
+
       for (auto const& shard : shards) {
         auto batch = std::make_unique<Batch>();
         batch->shard = shard;
@@ -129,7 +132,6 @@ std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
     std::uint64_t batchId, std::optional<std::uint64_t> lastBatch) {
   std::unique_lock guard(_mutex);
   if (lastBatch.has_value()) {
-    LOG_DEVEL << "removing batch " << *lastBatch;
     _batches.erase(*lastBatch);
   }
 
@@ -137,7 +139,6 @@ std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
   // TODO detect if we blocked during pop or during push
   auto batch = _channel.pop();
   if (batch == nullptr) {
-    LOG_DEVEL << "exhausted, next batch would be " << batchId;
     // no batches left
     return nullptr;
   }
@@ -149,6 +150,5 @@ std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  LOG_DEVEL << "received new batch with id " << batchId;
   return iter->second;
 }
