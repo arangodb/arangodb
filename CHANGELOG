@@ -3,10 +3,6 @@ devel
 
 * FE-211: Allow admins to edit gravatar email.
 
-* In batched query results, when executing requests for 
-  `/_api/cursor/<cursorId>/<batchId>`, removed the restriction that the user 
-  would only be able to fetch the next batch using the next batch id in 
-
 * APM-671: index selectivity estimates (cuckoo estimator) memory tracking.
   This adds a new metric "arangodb_internal_index_estimates_memory" that
   reports the total memory usage of all index selectivity estimates combined.
