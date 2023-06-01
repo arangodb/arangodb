@@ -123,7 +123,7 @@ struct BucketState {
   void clear() noexcept;
 
  private:
-  std::atomic<std::uint16_t> _state;
+  std::atomic<FlagType> _state;
 };
 
 // ensure that state is exactly the size of uint16_t
