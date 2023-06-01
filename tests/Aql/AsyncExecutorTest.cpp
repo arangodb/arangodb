@@ -46,8 +46,6 @@ TEST_F(AsyncExecutorTest, sleepingBeauty) {
   auto registerInfos = RegisterInfos(RegIdSet{}, RegIdSet{}, 1, 1,
                                      RegIdFlatSet{}, RegIdFlatSetStack{{0}});
 
-  TRI_AddFailurePointDebugging("AsyncExecutor::SleepWhenWaiting");
-
   auto testHelper = makeExecutorTestHelper();
   testHelper
       .addDependency<AsyncExecutor>(registerInfos, {}, ExecutionNode::ASYNC)
