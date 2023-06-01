@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global CryptoJS, _, arangoHelper, Backbone, window, $ */
+/* global CryptoJS, frontendConfig, _, arangoHelper, Backbone, window, $ */
 
 (function () {
   'use strict';
@@ -332,7 +332,7 @@
         userObj.active = status;
 
         return userObj;
-      }
+      };
 
       var userObj = generateUserObj(user, name, img, status);
 
