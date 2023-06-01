@@ -43,8 +43,10 @@ TEST_F(TimeStampTransformerTest, transforms_min) {
   auto target = std::string{};
   auto result = transformer.toSerialized(TimeStamp::min(), target);
 
-  EXPECT_TRUE(result.ok());
-  EXPECT_EQ(date::format("%FT%TZ", TimeStamp::min()), target);
+  ASSERT_TRUE(result.ok()) << result.error();
+  ASSERT_EQ(
+      date::format("%FT%TZ", floor<std::chrono::seconds>(TimeStamp::min())),
+      target);
 }
 
 TEST_F(TimeStampTransformerTest, transforms_now) {
@@ -53,8 +55,8 @@ TEST_F(TimeStampTransformerTest, transforms_now) {
   auto target = std::string{};
   auto result = transformer.toSerialized(now, target);
 
-  EXPECT_TRUE(result.ok());
-  EXPECT_EQ(date::format("%FT%TZ", now), target);
+  ASSERT_TRUE(result.ok()) << result.error();
+  ASSERT_EQ(date::format("%FT%TZ", floor<std::chrono::seconds>(now)), target);
 }
 
 TEST_F(TimeStampTransformerTest, transforms_back) {
@@ -66,9 +68,8 @@ TEST_F(TimeStampTransformerTest, transforms_back) {
   auto target = std::chrono::system_clock::time_point{};
   auto result = transformer.fromSerialized(testinput, target);
 
-  EXPECT_EQ(target, testoutput);
-
-  EXPECT_TRUE(result.ok());
+  ASSERT_TRUE(result.ok()) << result.error();
+  ASSERT_EQ(target, testoutput);
 }
 
 TEST_F(TimeStampTransformerTest, parse_fails) {
@@ -76,10 +77,10 @@ TEST_F(TimeStampTransformerTest, parse_fails) {
   auto target = std::chrono::system_clock::time_point{};
   auto result = transformer.fromSerialized(testinput, target);
 
+  ASSERT_FALSE(result.ok()) << result.error();
   ASSERT_EQ(result.error(),
             "failed to parse timestamp `2021-11-11 __:??:11` using format "
             "string `%FT%TZ`");
-  EXPECT_FALSE(result.ok());
 }
 
 namespace {
@@ -106,19 +107,19 @@ TEST_F(TimeStampTransformerTest, struct_with_timestamp_serializes) {
 
   auto res = inspection::serializeWithErrorT(input);
 
-  ASSERT_TRUE(res.ok());
+  ASSERT_TRUE(res.ok()) << res.error().error();
   ASSERT_EQ(res.get().toJson(),
-            R"json({"timeStamp":"2021-11-11T11:11:11.000000000Z"})json");
+            R"json({"timeStamp":"2021-11-11T11:11:11Z"})json");
 }
 
 TEST_F(TimeStampTransformerTest, struct_with_timestamp_deserializes) {
   using namespace std::chrono;
 
-  auto input = R"({"timeStamp":"1900-01-01T11:11:11.000000000Z"})"_vpack;
+  auto input = R"({"timeStamp":"1900-01-01T11:11:11Z"})"_vpack;
 
   auto res = inspection::deserializeWithErrorT<IContainATimeStamp>(input);
 
-  ASSERT_TRUE(res.ok());
+  ASSERT_TRUE(res.ok()) << res.error().error();
   ASSERT_EQ(res.get(),
             IContainATimeStamp{.stamp = std::chrono::sys_days{1900y / 1 / 1} +
                                         11h + 11min + 11s});
@@ -134,11 +135,11 @@ TEST_F(TimeStampTransformerTest, transformer_is_left_inverse) {
 
   auto serResult = transformer.toSerialized(test, serialized);
 
-  EXPECT_TRUE(serResult.ok());
-  EXPECT_EQ(date::format("2021-01-27T11:17:19.000000000Z", test), serialized);
+  ASSERT_TRUE(serResult.ok()) << serResult.error();
+  ASSERT_EQ(date::format("2021-01-27T11:17:19Z", test), serialized);
 
   auto deserResult = transformer.fromSerialized(serialized, deserialized);
 
-  EXPECT_TRUE(deserResult.ok());
-  EXPECT_EQ(test, deserialized);
+  ASSERT_TRUE(deserResult.ok()) << deserResult.error();
+  ASSERT_EQ(test, deserialized);
 }

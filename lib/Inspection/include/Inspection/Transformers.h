@@ -39,7 +39,8 @@ struct TimeStampTransformer {
   static constexpr std::string_view formatString = "%FT%TZ";
   auto toSerialized(clock::time_point source, std::string& target) const
       -> inspection::Status {
-    target = date::format(formatString.data(), source);
+    target =
+        date::format(formatString.data(), floor<std::chrono::seconds>(source));
     return {};
   }
   auto fromSerialized(std::string const& source,
