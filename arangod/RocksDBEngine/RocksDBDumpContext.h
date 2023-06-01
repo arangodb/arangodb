@@ -38,6 +38,7 @@ namespace arangodb {
 class CollectionGuard;
 class DatabaseFeature;
 class DatabaseGuard;
+class LogicalCollection;
 class RocksDBEngine;
 
 class RocksDBDumpContext {
@@ -81,6 +82,11 @@ class RocksDBDumpContext {
   void extendLifetime() noexcept;
 
  private:
+  // get a collection/shard by name. will throw if the collection/shard was not
+  // initially registered. the collection object is guaranteed to stay valid as
+  // long as the context exists.
+  LogicalCollection& collection(std::string const& name) const;
+
   RocksDBEngine& _engine;
 
   // these parameters will not change during the lifetime of the object.
