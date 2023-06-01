@@ -209,7 +209,20 @@ void RestDumpHandler::handleCommandDumpNext() {
   // TODO: check that database is the same
   // std::string dbName = _request->databaseName();
 
-  LOG_DEVEL << "REQUESTING DUMP FETCH, ID: " << id;
+  auto batchId = _request->parsedValue<uint64_t>("batchId");
+  if (!batchId.has_value()) {
+    generateError(TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+
+  auto lastBatch = _request->parsedValue<uint64_t>("lastBatch");
+
+  LOG_DEVEL << "REQUESTING DUMP FETCH, ID: " << id << " BATCH: " << *batchId
+            << " DONE: "
+            << (lastBatch.has_value() ? std::to_string(*lastBatch)
+                                      : std::string{"none"});
+  // For now there is nothing to transfer
+  generateOk(rest::ResponseCode::NO_CONTENT, VPackSlice::noneSlice());
 }
 
 void RestDumpHandler::handleCommandDumpFinished() {
@@ -222,4 +235,5 @@ void RestDumpHandler::handleCommandDumpFinished() {
   auto const& id = _request->suffixes()[0];
 
   LOG_DEVEL << "REQUESTING DUMP END, ID: " << id;
+  generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
 }

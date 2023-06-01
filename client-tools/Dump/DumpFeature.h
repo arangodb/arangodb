@@ -149,7 +149,7 @@ class DumpFeature final : public ArangoDumpFeature {
 
   struct ParallelDumpServer : public DumpJob {
     struct ShardInfo {
-      std::shared_ptr<ManagedDirectory::File> const file;
+      std::shared_ptr<ManagedDirectory::File> file;
     };
 
     ParallelDumpServer(ManagedDirectory&, DumpFeature&, ClientManager&,
@@ -164,11 +164,14 @@ class DumpFeature final : public ArangoDumpFeature {
         httpclient::SimpleHttpClient&, std::uint64_t batchId,
         std::optional<std::uint64_t> lastBatch);
 
+    void createDumpContext(httpclient::SimpleHttpClient& client);
+    void finishDumpContext(httpclient::SimpleHttpClient& client);
+
     ClientManager& clientManager;
     std::unordered_map<std::string, ShardInfo> const shards;
     std::string const server;
     std::atomic<std::uint64_t> _batchCounter{0};
-    std::uint64_t _dumpId;
+    std::string dumpId;
   };
 
   ClientTaskQueue<DumpJob>& taskQueue();
