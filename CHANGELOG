@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-1396: Restricted followers from attempting to send telemetrics data to 
+  the endpoint on active failover mode.
+
 * Updated arangosync to v2.18.0-preview-1.
 
 * APM-671: index selectivity estimates (cuckoo estimator) memory tracking.
