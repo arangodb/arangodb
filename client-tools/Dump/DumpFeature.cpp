@@ -54,7 +54,7 @@
 #include "Ssl/SslInterface.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/ManagedDirectory.h"
-#include "Utils/BoundedQueue.h"
+#include "Basics/BoundedChannel.h"
 
 namespace {
 

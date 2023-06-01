@@ -41,7 +41,7 @@ struct BoundedChannel {
   // TODO indicate if popping blocked
   std::unique_ptr<T> pop() noexcept {
     std::unique_lock guard(_mutex);
-    while (!_stopped) {
+    while (!_stopped || _consumeIndex < _produceIndex) {
       if (_consumeIndex < _produceIndex) {
         // there is something to eat
         auto ours = std::move(_queue[_consumeIndex++ % _queue.size()]);
