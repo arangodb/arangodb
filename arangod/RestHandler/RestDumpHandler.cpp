@@ -63,7 +63,7 @@ RestStatus RestDumpHandler::execute() {
   if (type == rest::RequestType::DELETE_REQ) {
     if (len == 1) {
       // end a dump
-      handleCommandDumpEnd();
+      handleCommandDumpFinished();
     } else {
       generateError(
           Result(TRI_ERROR_BAD_PARAMETER, "expecting DELETE /_api/dump/<id>"));
@@ -212,7 +212,7 @@ void RestDumpHandler::handleCommandDumpNext() {
   LOG_DEVEL << "REQUESTING DUMP FETCH, ID: " << id;
 }
 
-void RestDumpHandler::handleCommandDumpEnd() {
+void RestDumpHandler::handleCommandDumpFinished() {
   // TODO: check permissions
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
