@@ -81,6 +81,12 @@ class DumpFeature final : public ArangoDumpFeature {
     bool progress{true};
     bool useGzip{true};
     bool useEnvelope{false};
+
+    bool useExperimentalDump{false};
+    std::size_t dbserverWorkerThreads{5};
+    std::size_t dbserverPrefetchBatches{5};
+    std::size_t localWriterThreads{5};
+    std::size_t localNetworkThreads{4};
   };
 
   /// @brief Stores stats about the overall dump progress
@@ -106,7 +112,6 @@ class DumpFeature final : public ArangoDumpFeature {
     Stats& stats;
     VPackSlice collectionInfo;
     std::string collectionName;
-    std::string collectionType;
   };
 
   /// @brief stores all necessary data to dump a single collection.
@@ -134,14 +139,36 @@ class DumpFeature final : public ArangoDumpFeature {
                  std::string const& server,
                  std::shared_ptr<ManagedDirectory::File> file);
 
-    ~DumpShardJob();
-
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
     VPackSlice const collectionInfo;
     std::string const shardName;
     std::string const server;
     std::shared_ptr<ManagedDirectory::File> file;
+  };
+
+  struct ParallelDumpServer : public DumpJob {
+    struct ShardInfo {
+      std::shared_ptr<ManagedDirectory::File> const file;
+    };
+
+    ParallelDumpServer(ManagedDirectory&, DumpFeature&, ClientManager&,
+                       Options const& options, maskings::Maskings* maskings,
+                       Stats& stats,
+                       std::unordered_map<std::string, ShardInfo> shards,
+                       std::string server);
+
+    Result run(httpclient::SimpleHttpClient&) override;
+
+    std::unique_ptr<httpclient::SimpleHttpResult> receiveNextBatch(
+        httpclient::SimpleHttpClient&, std::uint64_t batchId,
+        std::optional<std::uint64_t> lastBatch);
+
+    ClientManager& clientManager;
+    std::unordered_map<std::string, ShardInfo> const shards;
+    std::string const server;
+    std::atomic<std::uint64_t> _batchCounter{0};
+    std::uint64_t _dumpId;
   };
 
   ClientTaskQueue<DumpJob>& taskQueue();
