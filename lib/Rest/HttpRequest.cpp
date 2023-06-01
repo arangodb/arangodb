@@ -915,7 +915,8 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
       TRI_ASSERT(_validatedPayload);
       return VPackSlice(_vpackBuilder->slice());
     }
-    return VPackSlice::noneSlice();  // no body
+    // no body
+    // fallthrough intentional
   } else if (_contentType == ContentType::VPACK) {
     if (!_payload.empty()) {
       if (!_validatedPayload) {
@@ -926,9 +927,10 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
       }
       TRI_ASSERT(_validatedPayload);
       return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));
-    } else {
-      return VPackSlice::noneSlice();
     }
+    // no body
+    // fallthrough intentional
   }
+
   return VPackSlice::noneSlice();
 }

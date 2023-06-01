@@ -242,6 +242,10 @@ class TraversalNode : public virtual GraphNode {
                       unsigned flags) const override final;
 
  private:
+  // validates collections in OPTIONS against contents of named graph (GRAPH
+  // attribute). throws if invalid collections are used.
+  void validateCollections() const;
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
 #endif
