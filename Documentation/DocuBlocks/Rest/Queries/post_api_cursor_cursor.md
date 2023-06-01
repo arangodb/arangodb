@@ -1,7 +1,7 @@
 
 @startDocuBlock post_api_cursor_cursor
 
-@RESTHEADER{POST /_api/cursor/{cursor-identifier}, Read the next batch from a cursor, modifyQueryCursorPost, getNextAqlQueryCursorBatch}
+@RESTHEADER{POST /_api/cursor/{cursor-identifier}, Read the next batch from a cursor, getNextAqlQueryCursorBatch}
 
 @RESTURLPARAMETERS
 

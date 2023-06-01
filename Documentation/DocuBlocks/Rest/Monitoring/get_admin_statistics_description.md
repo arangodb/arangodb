@@ -1,7 +1,7 @@
 
 @startDocuBlock get_admin_statistics_description
 
-@RESTHEADER{GET /_admin/statistics-description, Get statistics description, getStatisticsDescription}
+@RESTHEADER{GET /_admin/statistics-description, Get the statistics description, getStatisticsDescription}
 
 @HINTS
 {% hint 'warning' %}

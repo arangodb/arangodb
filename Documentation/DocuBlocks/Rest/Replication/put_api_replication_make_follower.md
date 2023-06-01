@@ -3,6 +3,19 @@
 
 @RESTHEADER{PUT /_api/replication/make-follower, Turn a server into a follower of another, makeReplicationFollower}
 
+@HINTS
+{% hint 'warning' %}
+Calling this endpoint will synchronize data from the collections found on the
+remote leader to the local ArangoDB database. All data in the local collections
+will be purged and replaced with data from the leader. Use with caution!
+{% endhint %}
+
+{% hint 'info' %}
+This command may take a long time to complete and return. This is because it
+will first do a full data synchronization with the leader, which will take time
+roughly proportional to the amount of data.
+{% endhint %}
+
 @RESTBODYPARAM{endpoint,string,required,string}
 the leader endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
 
@@ -109,8 +122,10 @@ replication
 problems only.
 
 @RESTDESCRIPTION
-Starts a full data synchronization from a remote endpoint into the local ArangoDB
-database and afterwards starts the continuous replication.
+Changes the role to a follower and starts a full data synchronization from a
+remote endpoint into the local ArangoDB database and afterwards starts the
+continuous replication.
+
 The operation works on a per-database level.
 
 All local database data will be removed prior to the synchronization.
@@ -209,19 +224,6 @@ values are only meaningful when compared to each other. Higher tick values mean
 "later in time" than lower tick values.
 
 **Note**: this endpoint is not supported on a Coordinator in a cluster.
-
-@HINTS
-{% hint 'warning' %}
-Calling this endpoint will synchronize data from the collections found on the
-remote leader to the local ArangoDB database. All data in the local collections
-will be purged and replaced with data from the leader. Use with caution!
-{% endhint %}
-
-{% hint 'info' %}
-This command may take a long time to complete and return. This is because it
-will first do a full data synchronization with the leader, which will take time
-roughly proportional to the amount of data.
-{% endhint %}
 
 @RESTRETURNCODES
 

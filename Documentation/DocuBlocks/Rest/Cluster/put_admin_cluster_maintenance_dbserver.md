@@ -1,7 +1,7 @@
 
 @startDocuBlock put_admin_cluster_maintenance_dbserver
 
-@RESTHEADER{PUT /_admin/cluster/maintenance/{DB-Server-ID}, Set the DB-Server maintenance mode, setDbserverMaintenance}
+@RESTHEADER{PUT /_admin/cluster/maintenance/{DB-Server-ID}, Set the maintenance status of a DB-Server, setDbserverMaintenance}
 
 @RESTDESCRIPTION
 Enable or disable the maintenance mode of a DB-Server.

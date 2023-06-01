@@ -1,6 +1,6 @@
 @startDocuBlock get_api_user_user_database
 
-@RESTHEADER{GET /_api/user/{user}/database/, List a user's accessible databases, listUserDatabases},
+@RESTHEADER{GET /_api/user/{user}/database/, List a user's accessible databases, listUserDatabases}
 
 @RESTURLPARAMETERS
 

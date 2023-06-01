@@ -1,6 +1,6 @@
 @startDocuBlock patch_api_user_user
 
-@RESTHEADER{PATCH /_api/user/{user}, Modify a user, updateUserData}
+@RESTHEADER{PATCH /_api/user/{user}, Update a user, updateUserData}
 
 @RESTURLPARAMETERS
 
@@ -19,7 +19,7 @@ to store graph viewer settings and saved queries. Should not be set or
 modified by end users, as custom attributes will not be preserved.
 
 @RESTDESCRIPTION
-Partially updates the data of an existing user. You need server access level
+Partially modifies the data of an existing user. You need server access level
 *Administrate* in order to execute this REST call. Additionally, users can
 change their own data.
 
