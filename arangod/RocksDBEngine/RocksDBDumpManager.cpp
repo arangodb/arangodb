@@ -89,7 +89,9 @@ RocksDBDumpContextGuard RocksDBDumpManager::find(std::string const& id,
                                    "insufficient permissions");
   }
 
-  return RocksDBDumpContextGuard(*this, context);
+  context->extendLifetime();
+
+  return RocksDBDumpContextGuard(*this, std::move(context));
 }
 
 void RocksDBDumpManager::remove(std::string const& id,
