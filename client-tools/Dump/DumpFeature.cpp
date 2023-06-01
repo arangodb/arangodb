@@ -1419,9 +1419,68 @@ void DumpFeature::start() {
   }
 }
 
+void DumpFeature::ParallelDumpServer::createDumpContext(
+    httpclient::SimpleHttpClient& client) {
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder ob(&builder);
+    builder.add("batchSize", VPackValue(options.maxChunkSize));
+    builder.add("prefetchCount", VPackValue(options.dbserverPrefetchBatches));
+    builder.add("parallelism", VPackValue(options.dbserverWorkerThreads));
+    {
+      VPackArrayBuilder ab(&builder, "shards");
+      for (auto const& [shard, info] : shards) {
+        builder.add(VPackValue(shard));
+      }
+    }
+  }
+
+  auto bodystr = builder.toJson();
+
+  auto url = basics::StringUtils::concatT("_api/dump/start?dbserver=", server);
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
+      client.request(arangodb::rest::RequestType::POST, url, bodystr.c_str(),
+                     bodystr.size(), {}));
+
+  auto check = ::arangodb::HttpResponseChecker::check(client.getErrorMessage(),
+                                                      response.get());
+  if (check.fail()) {
+    LOG_TOPIC("bdecf", FATAL, Logger::DUMP)
+        << "failed to create dump context on server " << server << ": "
+        << check.errorMessage();
+    FATAL_ERROR_EXIT();
+  }
+
+  bool headerExtracted;
+  _dumpId = response->getHeaderField("x-arango-dump-id", headerExtracted);
+  if (!headerExtracted) {
+    LOG_TOPIC("d7a76", FATAL, Logger::DUMP)
+        << "dump create response did not contain any dump id for server "
+        << server << " body: " << response->getBody();
+    FATAL_ERROR_EXIT();
+  }
+}
+
+void DumpFeature::ParallelDumpServer::finishDumpContext(
+    httpclient::SimpleHttpClient& client) {
+  auto url =
+      basics::StringUtils::concatT("_api/dump/", _dumpId, "?dbserver=", server);
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
+      client.request(arangodb::rest::RequestType::DELETE_REQ, url, nullptr, 0,
+                     {}));
+  auto check = ::arangodb::HttpResponseChecker::check(client.getErrorMessage(),
+                                                      response.get());
+  if (check.fail()) {
+    LOG_TOPIC("bdecf", ERR, Logger::DUMP)
+        << "failed to finish dump context on server " << server << ": "
+        << check.errorMessage();
+  }
+}
+
 Result DumpFeature::ParallelDumpServer::run(
     httpclient::SimpleHttpClient& client) {
   // create context on dbserver
+  createDumpContext(client);
 
   // create a bounded queue
   BoundedChannel<arangodb::httpclient::SimpleHttpResult> queue(
@@ -1469,6 +1528,7 @@ Result DumpFeature::ParallelDumpServer::run(
         if (iter == shards.end()) {
           LOG_TOPIC("adc98", FATAL, Logger::DUMP)
               << "Unknown shard " << shardId;
+          FATAL_ERROR_EXIT();
         }
 
         arangodb::Result result =
@@ -1488,6 +1548,7 @@ Result DumpFeature::ParallelDumpServer::run(
   threads.clear();
 
   // remove dump context from server
+  finishDumpContext(client);
 
   return Result{};
 }
@@ -1507,16 +1568,15 @@ std::unique_ptr<httpclient::SimpleHttpResult>
 DumpFeature::ParallelDumpServer::receiveNextBatch(
     httpclient::SimpleHttpClient& client, std::uint64_t batchId,
     std::optional<std::uint64_t> lastBatch) {
-  std::string url =
-      basics::StringUtils::concatT("_api/dump/next?batchId=", batchId,
-                                   "&dbserver=", server, "&dumpId=", _dumpId);
+  std::string url = basics::StringUtils::concatT(
+      "_api/dump/next/", _dumpId, "?batchId=", batchId, "&dbserver=", server);
   if (lastBatch) {
     url += "&lastBatch=" + std::to_string(*lastBatch);
   }
 
   while (true) {
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-        client.request(arangodb::rest::RequestType::GET, url, nullptr, 0, {}));
+        client.request(arangodb::rest::RequestType::POST, url, nullptr, 0, {}));
     auto check = ::arangodb::HttpResponseChecker::check(
         client.getErrorMessage(), response.get());
     if (check.fail()) {
@@ -1533,10 +1593,10 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
             << "Unrecoverable network/http error";
         FATAL_ERROR_EXIT();
       }
-    } else {
-      // TODO check if request is last request
-      return response;
+    } else if (response->getHttpReturnCode() == 204) {
+      return nullptr;
     }
+    return response;
   }
 }
 
