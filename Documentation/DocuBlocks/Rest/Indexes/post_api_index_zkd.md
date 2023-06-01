@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_index_zkd
-@brief creates a multi-dimensional index
 
-@RESTHEADER{POST /_api/index#zkd, Create multi-dimensional index, createIndexZkd}
+@RESTHEADER{POST /_api/index#zkd, Create a multi-dimensional index, createIndexZkd}
 
 @RESTQUERYPARAMETERS
 
@@ -10,7 +9,7 @@
 The collection name.
 
 @RESTBODYPARAM{type,string,required,string}
-must be equal to *"zkd"*.
+must be equal to `"zkd"`.
 
 @RESTBODYPARAM{name,string,optional,string}
 An easy-to-remember name for the index to look it up or refer to it in index hints.
@@ -22,18 +21,18 @@ collection, e.g. `idx_832910498`.
 an array of attribute names used for each dimension. Array expansions are not allowed.
 
 @RESTBODYPARAM{unique,boolean,optional,}
-if *true*, then create a unique index.
+if `true`, then create a unique index.
 
 @RESTBODYPARAM{inBackground,boolean,optional,}
-The optional attribute **inBackground** can be set to *true* to create the index
+You can set this option to `true` to create the index
 in the background, which will not write-lock the underlying collection for
-as long as if the index is built in the foreground. The default value is *false*.
+as long as if the index is built in the foreground. The default value is `false`.
 
 @RESTBODYPARAM{fieldValueTypes,string,required,string}
-must be equal to *"double"*. Currently only doubles are supported as values.
+must be equal to `"double"`. Currently only doubles are supported as values.
 
 @RESTDESCRIPTION
-Creates a multi-dimensional index for the collection *collection-name*, if
+Creates a multi-dimensional index for the collection `collection-name`, if
 it does not already exist. The call expects an object containing the index
 details.
 
@@ -48,7 +47,7 @@ If the index does not already exist and could be created, then a *HTTP 201*
 is returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404* is returned.
+If the `collection-name` is unknown, then a *HTTP 404* is returned.
 
 @RESTRETURNCODE{400}
 If the index definition is invalid, then a *HTTP 400* is returned.

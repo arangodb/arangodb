@@ -1,5 +1,4 @@
 @startDocuBlock delete_api_user_user
-@brief delete a user permanently.
 
 @RESTHEADER{DELETE /_api/user/{user}, Remove a user, deleteUser}
 

@@ -19,11 +19,11 @@ You need *Administrate* permissions for the server access level in order to
 execute this REST call.
 
 The call will return a JSON object with the per-database access
-privileges for the specified user. The *result* object will contain
+privileges for the specified user. The `result` object will contain
 the databases names as object keys, and the associated privileges
 for the database as values.
 
-In case you specified *full*, the result will contain the permissions
+In case you specified `full`, the result will contain the permissions
 for the databases as well as the permissions for the collections.
 
 @RESTRETURNCODES
@@ -35,7 +35,7 @@ Returned if the list of available databases can be returned.
 If the access privileges are not right etc.
 
 @RESTRETURNCODE{401}
-Returned if you have *No access* database access level to the *_system*
+Returned if you have *No access* database access level to the `_system`
 database.
 
 @RESTRETURNCODE{403}
