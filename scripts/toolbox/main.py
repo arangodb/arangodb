@@ -9,7 +9,9 @@ import modules.ArangoDBStarter as ArangoDBStarter
 def main():
     args = ArgumentParser.arguments()
     process = ArangoDBStarter.start(args, cfg)
-    TestExecutor.start(args, cfg)
+    testProcess = TestExecutor.start(args, cfg)
+    testProcess.wait()
+    print("=> All tests finished")
     ArangoDBStarter.stop(process)
 
 

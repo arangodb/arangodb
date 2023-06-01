@@ -18,7 +18,6 @@ def start(args, cfg):
     if args.mode == "cluster":
         print("Starting ArangoDB in cluster mode")
     elif args.mode == "single":
-        print("Starting ArangoDB in single mode, logfile: " + cfg.arangodb["startupParameters"]["log.file"])
         parameters = [cfg.arangodb["executable"]]
         for key, value in cfg.arangodb["startupParameters"].items():
             parameters.append("--" + key + "=" + value)
@@ -28,13 +27,16 @@ def start(args, cfg):
             for key, value in additionalStartupParameters.items():
                 parameters.append("--" + key + "=" + value)
 
-        process = subprocess.Popen(parameters)
+        process = subprocess.Popen(parameters, stdout=subprocess.DEVNULL)
         time.sleep(5)  # TODO: wait for process to be started up properly
+        print(
+            "Started ArangoDB in single mode, logfile: " + cfg.arangodb["startupParameters"]["log.file"] + ", port: " +
+            cfg.arangodb["port"] + " (silently!)")
         return process
     else:
         print("Invalid mode")
 
 
 def stop(process):
-    print("Stopping ArangoDB")
+    print("Stopping ArangoDB...")
     process.kill()
