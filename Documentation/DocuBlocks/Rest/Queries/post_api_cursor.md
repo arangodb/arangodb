@@ -42,6 +42,7 @@ respect to the `ttl`. The cursor will be removed on the server automatically
 after the specified amount of time. This is useful to ensure garbage collection
 of cursors that are not fully fetched by clients. If not set, a server-defined
 value will be used (default: 30 seconds).
+The time-to-live is renewed upon every access to the cursor.
 
 @RESTBODYPARAM{cache,boolean,optional,}
 flag to determine whether the AQL query results cache
@@ -221,6 +222,24 @@ is stopped.
 @RESTSTRUCT{maxRuntime,post_api_cursor_opts,number,optional,double}
 The query has to be executed within the given runtime or it is killed.
 The value is specified in seconds. The default value is `0.0` (no timeout).
+
+@RESTSTRUCT{maxDNFConditionMembers,post_api_cursor_opts,integer,optional,int64}
+A threshold for the maximum number of `OR` sub-nodes in the internal
+representation of an AQL `FILTER` condition.
+
+Yon can use this option to limit the computation time and memory usage when
+converting complex AQL `FILTER` conditions into the internal DNF
+(disjunctive normal form) format. `FILTER` conditions with a lot of logical
+branches (`AND`, `OR`, `NOT`) can take a large amount of processing time and
+memory. This query option limits the computation time and memory usage for
+such conditions.
+
+Once the threshold value is reached during the DNF conversion of a `FILTER`
+condition, the conversion is aborted, and the query continues with a simplified
+internal representation of the condition, which **cannot be used for index lookups**.
+
+You can set the threshold globally instead of per query with the
+`--query.max-dnf-condition-members` startup option.
 
 @RESTSTRUCT{maxTransactionSize,post_api_cursor_opts,integer,optional,int64}
 The transaction size limit in bytes.
@@ -413,6 +432,7 @@ The duration of the different query execution phases in seconds.
 @RESTSTRUCT{loading collections,post_api_cursor_extra_profile,number,required,}
 @RESTSTRUCT{instantiating plan,post_api_cursor_extra_profile,number,required,}
 @RESTSTRUCT{optimizing plan,post_api_cursor_extra_profile,number,required,}
+@RESTSTRUCT{instantiating executors,post_api_cursor_extra_profile,number,required,}
 @RESTSTRUCT{executing,post_api_cursor_extra_profile,number,required,}
 @RESTSTRUCT{finalizing,post_api_cursor_extra_profile,number,required,}
 
@@ -454,13 +474,10 @@ cache, the `extra` return attribute will not contain any `stats` sub-attribute
 and no `profile` sub-attribute.
 
 @RESTRETURNCODE{400}
-is returned if the JSON representation is malformed or the query specification is
-missing from the request.
+is returned if the JSON representation is malformed, the query specification is
+missing from the request, or if the query is invalid.
 
-If the JSON representation is malformed or the query specification is
-missing from the request, the server will respond with *HTTP 400*.
-
-The body of the response will contain a JSON object with additional error
+The body of the response contains a JSON object with additional error
 details. The object has the following attributes:
 
 @RESTREPLYBODY{error,boolean,required,}

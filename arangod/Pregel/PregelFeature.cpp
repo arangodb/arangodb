@@ -122,6 +122,25 @@ auto PregelRunUser::authorized(ExecContext const& userContext) const -> bool {
   return name == userContext.user();
 }
 
+Result PregelFeature::persistExecution(TRI_vocbase_t& vocbase,
+                                       ExecutionNumber en) {
+  statuswriter::CollectionStatusWriter cWriter{vocbase, en};
+  VPackBuilder stateBuilder;
+  // TODO: Here we should also write the Coordinator's ServerID into the
+  // collection
+  auto storeResult = cWriter.createResult(stateBuilder.slice());
+  if (storeResult.ok()) {
+    LOG_TOPIC("a63f1", INFO, Logger::PREGEL) << fmt::format(
+        "[job {}] Stored result into: {}", en, StaticStrings::PregelCollection);
+    return {};
+  } else {
+    LOG_TOPIC("063f2", WARN, Logger::PREGEL)
+        << fmt::format("[job {}] Could not store result into: {}", en,
+                       StaticStrings::PregelCollection);
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
 ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
                                                        PregelOptions options) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
@@ -181,6 +200,11 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   auto graphSerdeConfig = maybeGraphSerdeConfig.get();
 
   auto en = createExecutionNumber();
+
+  auto persistResult = persistExecution(vocbase, en);
+  if (!persistResult.ok()) {
+    return persistResult;
+  }
 
   auto executionSpecifications = ExecutionSpecifications{
       .executionNumber = en,
@@ -487,15 +511,26 @@ void PregelFeature::start() {
 void PregelFeature::beginShutdown() {
   TRI_ASSERT(isStopping());
 
-  std::lock_guard guard{_mutex};
+  // Copy the _conductors and _workers maps here, because in the case of a
+  // single server there is a lock order inversion.  This is because the
+  // conductor code directly calls back into the feature while holding the
+  // _callbackMutex.  At the same time there is code that calls into the feature
+  // trying to acquire _mutex while holding _callbackMutex.
+  //
+  // This code will go away as soon as the actor code is used.
+  std::unique_lock guard{_mutex};
   _gcHandle.reset();
 
+  auto cs = _conductors;
+  auto ws = _workers;
+  guard.unlock();
+
   // cancel all conductors and workers
-  for (auto& it : _conductors) {
+  for (auto& it : cs) {
     it.second.conductor->_shutdown = true;
     it.second.conductor->cancel();
   }
-  for (auto it : _workers) {
+  for (auto it : ws) {
     it.second.second->cancelGlobalStep(VPackSlice());
   }
 }
