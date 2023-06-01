@@ -28,7 +28,6 @@
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RequestLane.h"
-#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -199,11 +198,6 @@ void RestDumpHandler::handleCommandDumpStart() {
     }
   }
 
-  LOG_DEVEL << "REQUESTING DUMP FOR DB: " << database << ", USER: " << user
-            << ", BATCHSIZE: " << batchSize
-            << ", PREFETCHCOUNT: " << prefetchCount
-            << ", PARALLELISM: " << parallelism << ", SHARDS: " << shards;
-
   auto& engine =
       server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   auto* manager = engine.dumpManager();
@@ -233,17 +227,10 @@ void RestDumpHandler::handleCommandDumpNext() {
 
   auto lastBatch = _request->parsedValue<uint64_t>("lastBatch");
 
-  LOG_DEVEL << "REQUESTING DUMP FETCH, ID: " << id << " BATCH: " << *batchId
-            << " DONE: "
-            << (lastBatch.has_value() ? std::to_string(*lastBatch)
-                                      : std::string{"none"});
-
   auto& engine =
       server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   auto* manager = engine.dumpManager();
   auto guard = manager->find(id, database, user);
-
-  LOG_DEVEL << "FOUND CONTEXT. ALL GOOD";
 
   // For now there is nothing to transfer
   generateOk(rest::ResponseCode::NO_CONTENT, VPackSlice::noneSlice());
@@ -259,8 +246,6 @@ void RestDumpHandler::handleCommandDumpFinished() {
 
   std::string database = _request->databaseName();
   std::string user = _request->user();
-
-  LOG_DEVEL << "REQUESTING DUMP END, ID: " << id;
 
   auto& engine =
       server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
