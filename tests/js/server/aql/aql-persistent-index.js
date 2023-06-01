@@ -60,8 +60,10 @@ let testAndValidate = function (query, isUnique, moreDocs, numDocs, sameValue, i
   internal.db[cn].ensureIndex({type: "persistent", name: idxName, unique: isUnique, fields: ["value"]});
 
   const nodes = AQL_EXPLAIN(query).plan.nodes;
+  let foundIdxNode = false;
   for (const key in nodes) {
     if (nodes[key].type === "IndexNode") {
+      foundIdxNode = true;
       const indexNode = nodes[key];
       assertEqual(indexNode.indexes.length, 1);
       const usedIndex = indexNode.indexes[0];
@@ -72,6 +74,7 @@ let testAndValidate = function (query, isUnique, moreDocs, numDocs, sameValue, i
       assertTrue(Math.abs(usedIndex.selectivityEstimate - selectivity) < tolerance);
     }
   }
+  assertTrue(foundIdxNode);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
