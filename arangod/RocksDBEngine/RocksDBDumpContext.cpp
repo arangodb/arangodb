@@ -25,6 +25,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Utils/CollectionGuard.h"
@@ -49,7 +50,8 @@ RocksDBDumpContext::RocksDBDumpContext(
       _ttl(ttl),
       _user(user),
       _database(database),
-      _expires(TRI_microtime() + _ttl) {
+      _expires(TRI_microtime() + _ttl),
+      _channel(prefetchCount) {
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
   // database is there. creating this guard will throw if the database cannot be
@@ -68,10 +70,27 @@ RocksDBDumpContext::RocksDBDumpContext(
   // acquire RocksDB snapshot
   _snapshot =
       std::make_shared<rocksdb::ManagedSnapshot>(_engine.db()->GetRootDB());
+
+  // start all the threads
+  for (size_t i = 0; i < _parallelism; i++) {
+    _threads.emplace_back([&, i, shards,
+                           guard = BoundedChannelProducerGuard(_channel)] {
+      for (auto const& shard : shards) {
+        auto batch = std::make_unique<Batch>();
+        batch->shard = shard;
+        batch->content =
+            basics::StringUtils::concatT("thread #", i, " shard ", shard, "\n");
+        _channel.push(std::move(batch));
+      }
+    });
+  }
 }
 
 // will automatically delete the RocksDB snapshot and all guards
-RocksDBDumpContext::~RocksDBDumpContext() = default;
+RocksDBDumpContext::~RocksDBDumpContext() {
+  _channel.stop();
+  _threads.clear();
+}
 
 std::string const& RocksDBDumpContext::id() const noexcept { return _id; }
 
@@ -104,4 +123,32 @@ LogicalCollection& RocksDBDumpContext::collection(
   }
 
   return *((*it).second->collection());
+}
+
+std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
+    std::uint64_t batchId, std::optional<std::uint64_t> lastBatch) {
+  std::unique_lock guard(_mutex);
+  if (lastBatch.has_value()) {
+    LOG_DEVEL << "removing batch " << *lastBatch;
+    _batches.erase(*lastBatch);
+  }
+
+  // get the next batch from the channel
+  // TODO detect if we blocked during pop or during push
+  auto batch = _channel.pop();
+  if (batch == nullptr) {
+    LOG_DEVEL << "exhausted, next batch would be " << batchId;
+    // no batches left
+    return nullptr;
+  }
+
+  auto [iter, inserted] =
+      _batches.try_emplace(batchId, std::shared_ptr<Batch>(batch.release()));
+  if (!inserted) {
+    LOG_TOPIC("72486", ERR, Logger::DUMP) << "duplicate batch id " << batchId;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  LOG_DEVEL << "received new batch with id " << batchId;
+  return iter->second;
 }

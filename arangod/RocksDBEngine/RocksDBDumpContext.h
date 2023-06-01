@@ -29,6 +29,10 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <optional>
+#include <thread>
+
+#include "Basics/BoundedChannel.h"
 
 namespace rocksdb {
 class ManagedSnapshot;
@@ -81,6 +85,19 @@ class RocksDBDumpContext {
   // it in _expires.
   void extendLifetime() noexcept;
 
+  // Contains the data for a batch
+  struct Batch {
+    std::uint64_t batchId;
+    std::string content;
+    std::string shard;
+  };
+
+  // Returns the next batch and assigned it batchId. If lastBatch is not nullopt
+  // frees the batch with the given id. This function might block, if no batch
+  // is available. It returns nullptr is there is no batch left.
+  std::shared_ptr<Batch> next(std::uint64_t batchId,
+                              std::optional<std::uint64_t> lastBatch);
+
  private:
   // get a collection/shard by name. will throw if the collection/shard was not
   // initially registered. the collection object is guaranteed to stay valid as
@@ -124,6 +141,20 @@ class RocksDBDumpContext {
   // the RocksDB snapshot that can be used concurrently by all operations that
   // use this context.
   std::shared_ptr<rocksdb::ManagedSnapshot> _snapshot;
+
+  std::mutex _mutex;
+
+  // this contains all the alive batches. We have to keep batches until they
+  // are explicitly released.
+  std::unordered_map<std::uint64_t, std::shared_ptr<Batch>> _batches;
+
+  // this channel is used to exchange batches between the worker threads
+  // and the actual rest handler.
+  BoundedChannel<Batch> _channel;
+
+  // This is a temporary solution for the thread pool. Later we want to use
+  // the scheduler to better control the resource usage.
+  std::vector<std::jthread> _threads;
 };
 
 }  // namespace arangodb
