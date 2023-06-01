@@ -16,7 +16,7 @@ def start(args, cfg):
             pass
 
     if args.mode == "cluster":
-        print("Starting ArangoDB in cluster mode")
+        print("TODO: Not yet implemented <Starting ArangoDB in cluster mode>")
     elif args.mode == "single":
         parameters = [cfg.arangodb["executable"]]
         for key, value in cfg.arangodb["startupParameters"].items():
