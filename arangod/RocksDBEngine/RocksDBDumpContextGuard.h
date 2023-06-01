@@ -23,33 +23,27 @@
 
 #pragma once
 
-#include "Basics/Result.h"
-#include "Basics/ResultT.h"
-#include "RestHandler/RestVocbaseBaseHandler.h"
-
-#include <string>
-#include <utility>
+#include <memory>
 
 namespace arangodb {
+class RocksDBDumpContext;
+class RocksDBDumpManager;
 
-class RestDumpHandler : public RestVocbaseBaseHandler {
+class RocksDBDumpContextGuard {
  public:
-  RestDumpHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RocksDBDumpContextGuard(RocksDBDumpManager& manager,
+                          std::shared_ptr<RocksDBDumpContext> ctx);
 
-  char const* name() const override final { return "RestDumpHandler"; }
+  RocksDBDumpContextGuard(RocksDBDumpContextGuard&& other) noexcept;
 
-  RequestLane lane() const override final;
+  ~RocksDBDumpContextGuard();
 
-  RestStatus execute() override;
-
- protected:
-  ResultT<std::pair<std::string, bool>> forwardingTarget() override final;
+  RocksDBDumpContext* operator->();
 
  private:
-  void handleCommandDumpStart();
+  // TODO: _manager is currently unused. maybe remove it?
+  [[maybe_unused]] RocksDBDumpManager& _manager;
 
-  void handleCommandDumpNext();
-
-  void handleCommandDumpFinished();
+  std::shared_ptr<RocksDBDumpContext> _ctx;
 };
 }  // namespace arangodb
