@@ -23,6 +23,7 @@
 
 #include "RocksDBDumpContext.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -93,4 +94,14 @@ bool RocksDBDumpContext::canAccess(std::string const& database,
 
 void RocksDBDumpContext::extendLifetime() noexcept {
   _expires.fetch_add(_ttl, std::memory_order_relaxed);
+}
+
+LogicalCollection& RocksDBDumpContext::collection(
+    std::string const& name) const {
+  auto it = _collectionGuards.find(name);
+  if (it == _collectionGuards.end()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
+  return *((*it).second->collection());
 }

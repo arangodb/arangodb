@@ -44,10 +44,14 @@ class RocksDBDumpManager {
 
   ~RocksDBDumpManager();
 
+  // create a new context. a unique id is assigned automatically.
+  // the context can later be accessed by passing the context's id
+  // into find(), together with the same database name and user name
+  // that were used when creating the context.
   RocksDBDumpContextGuard createContext(uint64_t batchSize,
                                         uint64_t prefetchCount,
                                         uint64_t parallelism,
-                                        std::vector<std::string> shards,
+                                        std::vector<std::string> const& shards,
                                         double ttl, std::string const& user,
                                         std::string const& database);
 
