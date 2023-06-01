@@ -73,6 +73,8 @@ RocksDBDumpContextGuard RocksDBDumpManager::createContext(
                                    "unable to insert dump context");
   }
 
+  TRI_ASSERT(_contexts.at(context->id()) != nullptr);
+
   return RocksDBDumpContextGuard(*this, std::move(context));
 }
 
@@ -90,7 +92,8 @@ RocksDBDumpContextGuard RocksDBDumpManager::find(std::string const& id,
                                    "requested dump context not found");
   }
 
-  auto& context = (*it).second;
+  auto context = (*it).second;
+  TRI_ASSERT(context != nullptr);
   if (!context->canAccess(database, user)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient permissions");
