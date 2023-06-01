@@ -46,7 +46,7 @@ RocksDBDumpManager::~RocksDBDumpManager() {
 
 RocksDBDumpContextGuard RocksDBDumpManager::createContext(
     uint64_t batchSize, uint64_t prefetchCount, uint64_t parallelism,
-    std::vector<std::string> shards, double ttl, std::string const& user,
+    std::vector<std::string> const& shards, double ttl, std::string const& user,
     std::string const& database) {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
