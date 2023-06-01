@@ -29,6 +29,9 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RequestLane.h"
 #include "Logger/LogMacros.h"
+#include "RocksDBEngine/RocksDBDumpManager.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 
 #include <velocypack/Iterator.h>
@@ -44,6 +47,7 @@ namespace {
 constexpr uint64_t defaultBatchSize = 16 * 1024;
 constexpr uint64_t defaultPrefetchCount = 2;
 constexpr uint64_t defaultParallelism = 2;
+constexpr double defaultTtl = 600.0;
 }  // namespace
 
 RestDumpHandler::RestDumpHandler(ArangodServer& server, GeneralRequest* request,
@@ -143,7 +147,7 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
 }
 
 void RestDumpHandler::handleCommandDumpStart() {
-  std::string dbName = _request->databaseName();
+  std::string database = _request->databaseName();
   std::string user = _request->user();
 
   // TODO: check permissions
@@ -177,6 +181,12 @@ void RestDumpHandler::handleCommandDumpStart() {
     }
     return ::defaultParallelism;
   }();
+  double ttl = [&body]() {
+    if (auto s = body.get("ttl"); s.isNumber()) {
+      return s.getNumber<double>();
+    }
+    return ::defaultTtl;
+  }();
 
   std::vector<std::string> shards;
   if (auto s = body.get("shards"); !s.isArray()) {
@@ -189,29 +199,35 @@ void RestDumpHandler::handleCommandDumpStart() {
     }
   }
 
-  LOG_DEVEL << "REQUESTING DUMP FOR DB: " << dbName << ", USER: " << user
+  LOG_DEVEL << "REQUESTING DUMP FOR DB: " << database << ", USER: " << user
             << ", BATCHSIZE: " << batchSize
             << ", PREFETCHCOUNT: " << prefetchCount
             << ", PARALLELISM: " << parallelism << ", SHARDS: " << shards;
+
+  auto& engine =
+      server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  auto* manager = engine.dumpManager();
+  auto guard = manager->createContext(batchSize, prefetchCount, parallelism,
+                                      std::move(shards), ttl, user, database);
+
   resetResponse(rest::ResponseCode::NO_CONTENT);
-  _response->setHeaderNC("x-arango-dump-id", "123");
+  _response->setHeaderNC("x-arango-dump-id", guard->id());
 }
 
 void RestDumpHandler::handleCommandDumpNext() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  // TODO: check permissions
   auto const& suffixes = _request->suffixes();
   // checked before
   TRI_ASSERT(suffixes.size() == 2);
   auto const& id = _request->suffixes()[1];
 
-  // TODO: check that database is the same
-  // std::string dbName = _request->databaseName();
+  std::string database = _request->databaseName();
+  std::string user = _request->user();
 
   auto batchId = _request->parsedValue<uint64_t>("batchId");
   if (!batchId.has_value()) {
-    generateError(TRI_ERROR_BAD_PARAMETER);
+    generateError(Result(TRI_ERROR_BAD_PARAMETER, "expecting 'batchId'"));
     return;
   }
 
@@ -221,12 +237,19 @@ void RestDumpHandler::handleCommandDumpNext() {
             << " DONE: "
             << (lastBatch.has_value() ? std::to_string(*lastBatch)
                                       : std::string{"none"});
+
+  auto& engine =
+      server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  auto* manager = engine.dumpManager();
+  auto guard = manager->find(id, database, user);
+
+  LOG_DEVEL << "FOUND CONTEXT. ALL GOOD";
+
   // For now there is nothing to transfer
   generateOk(rest::ResponseCode::NO_CONTENT, VPackSlice::noneSlice());
 }
 
 void RestDumpHandler::handleCommandDumpFinished() {
-  // TODO: check permissions
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   auto const& suffixes = _request->suffixes();
@@ -234,6 +257,16 @@ void RestDumpHandler::handleCommandDumpFinished() {
   TRI_ASSERT(suffixes.size() == 1);
   auto const& id = _request->suffixes()[0];
 
+  std::string database = _request->databaseName();
+  std::string user = _request->user();
+
   LOG_DEVEL << "REQUESTING DUMP END, ID: " << id;
+
+  auto& engine =
+      server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  auto* manager = engine.dumpManager();
+  // will throw if dump context is not found or cannot be accessed
+  manager->remove(id, database, user);
+
   generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
 }
