@@ -26,23 +26,34 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
-#include <optional>
-#include <thread>
 
 #include "Basics/BoundedChannel.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "Utils/CollectionGuard.h"
+#include "Utils/CollectionNameResolver.h"
+
+#include <rocksdb/slice.h>
 
 namespace rocksdb {
+class Iterator;
 class ManagedSnapshot;
 }  // namespace rocksdb
 
 namespace arangodb {
+namespace velocypack {
+struct CustomTypeHandler;
+}
+
 class CollectionGuard;
 class DatabaseFeature;
 class DatabaseGuard;
 class LogicalCollection;
+class RocksDBCollection;
 class RocksDBEngine;
 
 class RocksDBDumpContext {
@@ -92,6 +103,43 @@ class RocksDBDumpContext {
     std::string shard;
   };
 
+  struct CollectionInfo {
+    // note: can throw during creation if the collection/shard cannot be found.
+    CollectionInfo(TRI_vocbase_t& vocbase, std::string const& name);
+    ~CollectionInfo();
+
+    CollectionInfo(CollectionInfo const&) = delete;
+    CollectionInfo& operator=(CollectionInfo const&) = delete;
+
+    CollectionGuard guard;
+    RocksDBCollection const* rcoll;
+    RocksDBKeyBounds const bounds;
+    rocksdb::Slice const upper;
+  };
+
+  struct WorkItem {
+    std::shared_ptr<CollectionInfo> collection;
+    uint64_t lowerBound = 0;
+    uint64_t upperBound = UINT64_MAX;
+
+    bool empty() const noexcept {
+      return collection == nullptr && lowerBound == 0 &&
+             upperBound == UINT64_MAX;
+    }
+  };
+
+  void handleWorkItem(WorkItem const& workItem);
+
+  class WorkItems {
+   public:
+    void push(WorkItem item);
+    WorkItem pop();
+
+   private:
+    std::mutex _lock;
+    std::vector<WorkItem> _work;
+  };
+
   // Returns the next batch and assigned it batchId. If lastBatch is not nullopt
   // frees the batch with the given id. This function might block, if no batch
   // is available. It returns nullptr is there is no batch left.
@@ -99,10 +147,9 @@ class RocksDBDumpContext {
                               std::optional<std::uint64_t> lastBatch);
 
  private:
-  // get a collection/shard by name. will throw if the collection/shard was not
-  // initially registered. the collection object is guaranteed to stay valid as
-  // long as the context exists.
-  LogicalCollection& collection(std::string const& name) const;
+  // build a rocksdb::Iterator for a collection/shard
+  std::unique_ptr<rocksdb::Iterator> buildIterator(
+      CollectionInfo const& ci) const;
 
   RocksDBEngine& _engine;
 
@@ -113,7 +160,7 @@ class RocksDBDumpContext {
 
   [[maybe_unused]] uint64_t const _batchSize;
   [[maybe_unused]] uint64_t const _prefetchCount;
-  [[maybe_unused]] uint64_t const _parallelism;
+  uint64_t const _parallelism;
 
   // time-to-live value for this context. will be extended automatically
   // whenever the context is accessed.
@@ -132,15 +179,29 @@ class RocksDBDumpContext {
   // be static.
   std::unique_ptr<DatabaseGuard> _databaseGuard;
 
-  // guard objects that project the underlying collections/shards from being
-  // deleted while the dump is ongoing. will be populated in the constructor and
-  // then be static
-  std::unordered_map<std::string, std::unique_ptr<CollectionGuard>>
-      _collectionGuards;
+  // collection access objects that project the underlying collections/shards
+  // from being deleted while the dump is ongoing. will be populated in the
+  // constructor and then be static.
+  // will also hold additional useful information about the collection/shard.
+  std::unordered_map<std::string, std::shared_ptr<CollectionInfo>> _collections;
+
+  // resolver, used to translate numeric collection ids to string during
+  // dumping
+  std::unique_ptr<CollectionNameResolver> _resolver;
+
+  // custom type handler for translating numeric collection ids in
+  // velocypack "custom" types into collection name strings
+  std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
   // the RocksDB snapshot that can be used concurrently by all operations that
   // use this context.
   std::shared_ptr<rocksdb::ManagedSnapshot> _snapshot;
+
+  // items of work still to be processed.
+  // initially, we insert one item per shard that covers the full key range
+  // for the shard. later, additional smaller work items may be pushed for
+  // the shards.
+  WorkItems _workItems;
 
   std::mutex _mutex;
 

@@ -27,15 +27,48 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "Utils/CollectionGuard.h"
+#include "Transaction/Context.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <rocksdb/db.h>
+#include <rocksdb/iterator.h>
 #include <rocksdb/snapshot.h>
 #include <rocksdb/utilities/transaction_db.h>
 
+#include <velocypack/Dumper.h>
+#include <velocypack/Options.h>
+#include <velocypack/Sink.h>
+#include <velocypack/Slice.h>
+
 using namespace arangodb;
+
+RocksDBDumpContext::CollectionInfo::CollectionInfo(TRI_vocbase_t& vocbase,
+                                                   std::string const& name)
+    : guard(&vocbase, name),
+      rcoll(static_cast<RocksDBCollection const*>(
+          guard.collection()->getPhysical())),
+      bounds(RocksDBKeyBounds::CollectionDocuments(rcoll->objectId())),
+      upper(bounds.end()) {}
+
+RocksDBDumpContext::CollectionInfo::~CollectionInfo() = default;
+
+void RocksDBDumpContext::WorkItems::push(RocksDBDumpContext::WorkItem item) {
+  std::unique_lock guard(_lock);
+  _work.push_back(std::move(item));
+}
+
+RocksDBDumpContext::WorkItem RocksDBDumpContext::WorkItems::pop() {
+  std::unique_lock guard(_lock);
+  if (_work.empty()) {
+    return WorkItem{};
+  }
+  WorkItem top = std::move(_work.back());
+  _work.pop_back();
+  return top;
+}
 
 RocksDBDumpContext::RocksDBDumpContext(
     RocksDBEngine& engine, DatabaseFeature& databaseFeature, std::string id,
@@ -58,34 +91,54 @@ RocksDBDumpContext::RocksDBDumpContext(
   // found.
   _databaseGuard = std::make_unique<DatabaseGuard>(databaseFeature, database);
 
-  // these CollectionGuards will protect the collection/shard objects from being
-  // deleted while the context is in use. that we we only have to ensure once
-  // that the collections are there. creating the guards will throw if any of
-  // the collections/shards cannot be found.
+  TRI_vocbase_t& vocbase = _databaseGuard->database();
+
+  // build CollectionInfo objects for each collection/shard.
+  // the guard objects inside will protect the collection/shard objects from
+  // being deleted while the context is in use. that we we only have to ensure
+  // once that the collections are there. creating the guards will throw if any
+  // of the collections/shards cannot be found.
   for (auto const& it : shards) {
-    _collectionGuards.emplace(
-        it, std::make_unique<CollectionGuard>(&_databaseGuard->database(), it));
+    auto ci = std::make_shared<CollectionInfo>(vocbase, it);
+
+    _collections.emplace(it, ci);
+
+    // schedule a work item for each collection/shard, range is from min key
+    // to max key initially.
+    _workItems.push({std::move(ci), 0, UINT64_MAX});
   }
+
+  _resolver = std::make_unique<CollectionNameResolver>(vocbase);
+
+  // create a custom type handler for translating numeric collection ids in
+  // velocypack "custom" types into collection name strings
+  _customTypeHandler =
+      transaction::Context::createCustomTypeHandler(vocbase, *_resolver);
 
   // acquire RocksDB snapshot
   _snapshot =
       std::make_shared<rocksdb::ManagedSnapshot>(_engine.db()->GetRootDB());
+  TRI_ASSERT(_snapshot->snapshot() != nullptr);
 
   // start all the threads
   for (size_t i = 0; i < _parallelism; i++) {
-    _threads.emplace_back([&, i, shards,
-                           guard = BoundedChannelProducerGuard(_channel)] {
-      // Instead of producing junk data we should actually start reading the
-      // shards in parallel.
+    _threads.emplace_back(
+        [&, shards, guard = BoundedChannelProducerGuard(_channel)] {
+          // poor man's queue processing...
+          while (true) {
+            auto workItem = _workItems.pop();
+            if (workItem.empty()) {
+              // work item is empty. exit thread.
 
-      for (auto const& shard : shards) {
-        auto batch = std::make_unique<Batch>();
-        batch->shard = shard;
-        batch->content =
-            basics::StringUtils::concatT("thread #", i, " shard ", shard, "\n");
-        _channel.push(std::move(batch));
-      }
-    });
+              // TODO: this must be fixed later if handling a work item can
+              // produce additional work items. otherwise we may exit the
+              // threads prematurely
+              break;
+            }
+
+            handleWorkItem(workItem);
+          }
+        });
   }
 }
 
@@ -118,16 +171,6 @@ void RocksDBDumpContext::extendLifetime() noexcept {
   _expires.fetch_add(_ttl, std::memory_order_relaxed);
 }
 
-LogicalCollection& RocksDBDumpContext::collection(
-    std::string const& name) const {
-  auto it = _collectionGuards.find(name);
-  if (it == _collectionGuards.end()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  }
-
-  return *((*it).second->collection());
-}
-
 std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
     std::uint64_t batchId, std::optional<std::uint64_t> lastBatch) {
   std::unique_lock guard(_mutex);
@@ -146,9 +189,98 @@ std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
   auto [iter, inserted] =
       _batches.try_emplace(batchId, std::shared_ptr<Batch>(batch.release()));
   if (!inserted) {
-    LOG_TOPIC("72486", ERR, Logger::DUMP) << "duplicate batch id " << batchId;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+    LOG_TOPIC("72486", WARN, Logger::DUMP) << "duplicate batch id " << batchId;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "duplicate batch id");
   }
 
   return iter->second;
+}
+
+void RocksDBDumpContext::handleWorkItem(WorkItem const& item) {
+  TRI_ASSERT(!item.empty());
+
+  CollectionInfo const& ci = *item.collection;
+
+  // TODO: item's bounds are not honored here.
+  // instead, the full collection is dumped
+  LOG_TOPIC("98dfe", DEBUG, Logger::DUMP)
+      << "handling dump work item for collection '"
+      << ci.guard.collection()->name() << "', lower bound: " << item.lowerBound
+      << ", upper bound: " << item.upperBound;
+
+  std::unique_ptr<Batch> batch;
+
+  velocypack::Options options;
+  options.customTypeHandler = _customTypeHandler.get();
+
+  // create a StringSink that initially points to no buffer.
+  // don't use the sink until it points to an actual buffer!
+  velocypack::StringSink sink(nullptr);
+  velocypack::Dumper dumper(&sink, &options);
+
+  auto it = buildIterator(ci);
+  TRI_ASSERT(it != nullptr);
+
+  uint64_t docsProduced = 0;
+  uint64_t batchesProduced = 0;
+
+  for (it->Seek(item.collection->bounds.start()); it->Valid(); it->Next()) {
+    TRI_ASSERT(it->key().compare(ci.upper) < 0);
+
+    ++docsProduced;
+
+    if (batch == nullptr) {
+      batch = std::make_unique<Batch>();
+      batch->shard = ci.guard.collection()->name();
+      // make sink point into the string of the current batch
+      sink.setBuffer(&batch->content);
+    }
+
+    TRI_ASSERT(sink.getBuffer() != nullptr);
+    dumper.dump(velocypack::Slice(
+        reinterpret_cast<uint8_t const*>(it->value().data())));
+    // always add a newline after each document, as we must produce
+    // JSONL output format
+    sink.push_back('\n');
+
+    if (batch->content.size() >= _batchSize) {
+      ++batchesProduced;
+      _channel.push(std::move(batch));
+      TRI_ASSERT(batch == nullptr);
+    }
+  }
+
+  if (batch != nullptr) {
+    // push remainder out
+    ++batchesProduced;
+    _channel.push(std::move(batch));
+  }
+
+  LOG_TOPIC("49016", DEBUG, Logger::DUMP)
+      << "dumped collection '" << ci.guard.collection()->name()
+      << "', docs produced: " << docsProduced
+      << ", batched produced: " << batchesProduced;
+}
+
+std::unique_ptr<rocksdb::Iterator> RocksDBDumpContext::buildIterator(
+    CollectionInfo const& ci) const {
+  rocksdb::ReadOptions ro(/*cksum*/ false, /*cache*/ false);
+
+  TRI_ASSERT(_snapshot != nullptr);
+  ro.snapshot = _snapshot->snapshot();
+  ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &ci.upper;
+
+  rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
+  std::unique_ptr<rocksdb::Iterator> iterator(
+      _engine.db()->GetRootDB()->NewIterator(ro, cf));
+
+  if (iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "unable to create RocksDB iterator for collection");
+  }
+
+  return iterator;
 }
