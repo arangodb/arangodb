@@ -210,6 +210,8 @@ void RestDumpHandler::handleCommandDumpNext() {
   // std::string dbName = _request->databaseName();
 
   LOG_DEVEL << "REQUESTING DUMP FETCH, ID: " << id;
+  // For now there is nothing to transfer
+  generateOk(rest::ResponseCode::NO_CONTENT, VPackSlice::noneSlice());
 }
 
 void RestDumpHandler::handleCommandDumpEnd() {
@@ -222,4 +224,5 @@ void RestDumpHandler::handleCommandDumpEnd() {
   auto const& id = _request->suffixes()[0];
 
   LOG_DEVEL << "REQUESTING DUMP END, ID: " << id;
+  generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
 }
