@@ -1,6 +1,9 @@
 devel
 -----
 
+* OASIS-25262: Fixed undefined behavior in IN lookup in unique indexes when the
+  lookup array had to be rebuilt in memory.
+
 * BTS-1396: Restricted followers from attempting to send telemetrics data to 
   the endpoint on active failover mode.
 
