@@ -1578,7 +1578,7 @@ Result DumpFeature::ParallelDumpServer::run(
           bool headerExtracted;
           auto str = response->getHeaderField("x-arango-dump-block-counts",
                                               headerExtracted);
-          int64_t first, second;
+          int64_t first{0}, second{0};
           auto res =
               std::from_chars(str.c_str(), str.c_str() + str.size(), first);
           std::from_chars(res.ptr + 1, str.c_str() + str.size(), second);
