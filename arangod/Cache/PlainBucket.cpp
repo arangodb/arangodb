@@ -173,11 +173,13 @@ void PlainBucket::clear() noexcept {
   TRI_ASSERT(isLocked());
   _state.clear();  // "clear" will keep the lock!
 
+  _slotsUsed = 0;
   for (std::size_t i = 0; i < kSlotsData; ++i) {
     _cachedHashes[i] = 0;
+  }
+  for (std::size_t i = 0; i < kSlotsData; ++i) {
     _cachedData[i] = nullptr;
   }
-  _slotsUsed = 0;
   checkInvariants();
 
   _state.unlock();
