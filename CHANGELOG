@@ -1,6 +1,10 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* APM-766, SEARCH-479: Reduce memory overhead for ArangoSearch removes.
+
+* Improve precision for ArangoSearch GEO_IN_RANGE function.
+
 * Updated ArangoDB Starter to 0.15.8.
 
 * OASIS-25262: Fixed undefined behavior in IN lookup in unique indexes when the

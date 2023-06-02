@@ -29,83 +29,59 @@
 #include "utils/hash_utils.hpp"
 #include "utils/numeric_utils.hpp"
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
+#ifdef USE_ENTERPRISE
 irs::doc_id_t getRemovalBoundary(irs::SubReader const&, irs::doc_id_t, bool);
-#ifndef USE_ENTERPRISE
-IRS_FORCE_INLINE irs::doc_id_t getRemovalBoundary(irs::SubReader const&,
-                                                  irs::doc_id_t doc, bool) {
-  return doc;
-}
 #endif
 
-PrimaryKeyFilter::PrimaryKeyFilter(LocalDocumentId value, bool nested) noexcept
-    : _pk{DocumentPrimaryKey::encode(value)}, _nested{nested} {}
-
-irs::doc_iterator::ptr PrimaryKeyFilter::execute(
-    irs::ExecutionContext const& ctx) const {
-  // re-execution of a fiter is not expected to ever
-  // occur without a call to prepare(...)
-  TRI_ASSERT(!irs::doc_limits::valid(_pkIterator.value()));
-  auto& segment = ctx.segment;
-
-  auto* pkField = segment.field(DocumentPrimaryKey::PK());
-
-  if (IRS_UNLIKELY(!pkField)) {
-    // no such field
-    return irs::doc_iterator::empty();
+template<bool Nested>
+bool PrimaryKeysFilter<Nested>::next() {
+  if constexpr (Nested) {
+    if (IRS_UNLIKELY(_doc.value != _last_doc)) {
+      TRI_ASSERT(_doc.value < _last_doc);
+      ++_doc.value;
+      return true;
+    }
   }
+  while (true) {
+    if (IRS_UNLIKELY(_pos == _pks.size())) {
+      _doc.value = irs::doc_limits::eof();
+      if (IRS_UNLIKELY(_pks.empty())) {
+        _pks = {};
+      }
+      return false;
+    }
+    auto& pk = _pks[_pos];
 
-  auto const pkRef =
-      irs::numeric_utils::numeric_traits<LocalDocumentId::BaseType>::raw_ref(
-          _pk);
+    // TODO(MBkkt) In theory we can optimize it and read multiple pk at once
+    auto const pkRef =
+        irs::numeric_utils::numeric_traits<LocalDocumentId::BaseType>::raw_ref(
+            pk);
+    auto doc = irs::doc_limits::eof();
+    _pkField->read_documents(pkRef, {&doc, 1});
+    if (irs::doc_limits::eof(doc) || _segment->docs_mask()->contains(doc)) {
+      ++_pos;
+      continue;
+    }
 
-  irs::doc_id_t doc{irs::doc_limits::eof()};
-  pkField->read_documents(pkRef, {&doc, 1});
+    // pk iterator is one-shot
+    pk = _pks.back();
+    _pks.pop_back();
 
-  if (irs::doc_limits::eof(doc) || segment.docs_mask()->contains(doc)) {
-    // no such term
-    return irs::doc_iterator::empty();
+#ifdef USE_ENTERPRISE  // TODO(MBkkt) Make getRemovalBoundary<Nested>(...)?
+    _doc.value = getRemovalBoundary(*_segment, doc, Nested);
+#else
+    _doc.value = doc;
+#endif
+    if constexpr (Nested) {
+      _last_doc = doc;
+    }
+    return true;
   }
-
-  _pkIterator.reset(getRemovalBoundary(segment, doc, _nested), doc);
-
-  return irs::memory::to_managed<irs::doc_iterator>(_pkIterator);
 }
 
-size_t PrimaryKeyFilter::hash() const noexcept {
-  size_t seed = 0;
+template class PrimaryKeysFilter<true>;
+template class PrimaryKeysFilter<false>;
 
-  irs::hash_combine(seed, filter::hash());
-  irs::hash_combine(seed, _pk);
-
-  return seed;
-}
-
-irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
-    irs::IndexReader const& /*index*/, irs::Scorers const& /*ord*/,
-    irs::score_t /*boost*/, irs::attribute_provider const* /*ctx*/) const {
-  // optimization, since during regular runtime should have at most 1 identical
-  // primary key in the entire datastore
-  if (!irs::doc_limits::valid(_pkIterator.value())) {
-    return irs::memory::to_managed<irs::filter::prepared const>(*this);
-  }
-
-  // already processed
-  return irs::filter::prepared::empty();
-}
-
-bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
-  return filter::equals(rhs) &&
-         _pk == basics::downCast<PrimaryKeyFilter>(rhs)._pk;
-}
-
-irs::filter::prepared::ptr PrimaryKeyFilterContainer::prepare(
-    irs::IndexReader const& rdr, irs::Scorers const& ord, irs::score_t boost,
-    irs::attribute_provider const* ctx) const {
-  return irs::empty().prepare(rdr, ord, boost, ctx);
-}
-
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch
