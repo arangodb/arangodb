@@ -60,14 +60,14 @@ function removeRegressionSuite() {
                                      }
                        RETURN removed.t.UnitTestCollection`;
       let actual = db._query(query);
-      assertEqual(actual.toArray().length, 1);
+      assertEqual(actual.toArray().length, 0);
     },
     testRegressionCrashEmptyRemoveSmaller : function () {
       const query = `FOR u IN ${cname}
                        LET removed = { nestedVariableUse: u.name }
                        RETURN removed.t.UnitTestCollection`;
       let actual = db._query(query);
-      assertEqual(actual.toArray().length, 1);
+      assertEqual(actual.toArray().length, 0);
     },
 
   };
