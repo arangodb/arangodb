@@ -81,7 +81,7 @@ struct BoundedChannel {
     return std::make_pair(nullptr, blocked);
   }
 
-  // First value is true if the value was pushed. Otherwise false, which means
+  // First value is false if the value was pushed. Otherwise true, which means
   // the channel is stopped. Workers should terminate. The second value is true
   // if pushing blocked.
   [[nodiscard]] std::pair<bool, bool> push(std::unique_ptr<T> item) {
@@ -92,13 +92,13 @@ struct BoundedChannel {
         // there is space to put something in
         _queue[_produceIndex++ % _queue.size()] = std::move(item);
         _writeCv.notify_one();
-        return std::make_pair(true, blocked);
+        return std::make_pair(false, blocked);
       } else {
         blocked = true;
         _readCv.wait(guard);
       }
     }
-    return std::make_pair(false, blocked);
+    return std::make_pair(true, blocked);
   }
 
   std::mutex _mutex;
