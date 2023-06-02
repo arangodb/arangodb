@@ -200,10 +200,11 @@ void PlainBucket::moveSlotToFront(std::size_t slot) noexcept {
   std::uint32_t hash = _cachedHashes[slot];
   CachedValue* value = _cachedData[slot];
   // move slot to front
-  for (; slot >= 1; slot--) {
+  while (slot != 0) {
     TRI_ASSERT(_cachedData[slot - 1] != nullptr);
     _cachedHashes[slot] = _cachedHashes[slot - 1];
     _cachedData[slot] = _cachedData[slot - 1];
+    --slot;
   }
   TRI_ASSERT(slot == 0);
   _cachedHashes[0] = hash;
