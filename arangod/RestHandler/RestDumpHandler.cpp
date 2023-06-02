@@ -233,6 +233,7 @@ void RestDumpHandler::handleCommandDumpNext() {
   auto guard = manager->find(id, database, user);
 
   auto batch = guard->next(*batchId, lastBatch);
+  auto counts = guard->getBlockCounts();
 
   if (batch == nullptr) {
     // all batches have been received
@@ -241,6 +242,9 @@ void RestDumpHandler::handleCommandDumpNext() {
 
   // output the batch value
   _response->setHeaderNC("x-arango-dump-shard-id", batch->shard);
+  _response->setHeaderNC(
+      "x-arango-dump-block-counts",
+      basics::StringUtils::concatT(counts.first, " ", counts.second));
   _response->setContentType(rest::ContentType::DUMP);
   _response->addRawPayload(batch->content);
   _response->setGenerateBody(true);
