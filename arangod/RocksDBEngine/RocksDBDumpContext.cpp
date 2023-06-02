@@ -74,7 +74,7 @@ RocksDBDumpContext::WorkItem RocksDBDumpContext::WorkItems::pop() {
     }
 
     ++_waitingWorkers;
-    if (_waitingWorkers == _numWorker) {
+    if (_waitingWorkers == _numWorkers) {
       // everything is done
       _completed = true;
       _cv.notify_all();
@@ -88,7 +88,24 @@ RocksDBDumpContext::WorkItem RocksDBDumpContext::WorkItems::pop() {
   return {};
 }
 
-RocksDBDumpContext::WorkItems::WorkItems(size_t worker) : _numWorker(worker) {}
+void RocksDBDumpContext::WorkItems::setError(Result res) {
+  TRI_ASSERT(res.fail());
+
+  std::unique_lock guard(_lock);
+  if (_result.ok()) {
+    // only track first error, but don't clobber an existing error
+    _result = std::move(res);
+  }
+  _completed = true;
+  _cv.notify_all();
+}
+
+Result RocksDBDumpContext::WorkItems::result() const {
+  std::unique_lock guard(_lock);
+  return _result;
+}
+
+RocksDBDumpContext::WorkItems::WorkItems(size_t worker) : _numWorkers(worker) {}
 
 RocksDBDumpContext::RocksDBDumpContext(
     RocksDBEngine& engine, DatabaseFeature& databaseFeature, std::string id,
@@ -166,14 +183,21 @@ RocksDBDumpContext::RocksDBDumpContext(
   for (size_t i = 0; i < _parallelism; i++) {
     _threads.emplace_back(
         [&, shards, guard = BoundedChannelProducerGuard(_channel)] {
-          while (true) {
-            // will block until all workers wait, i.e. no work is left
-            auto workItem = _workItems.pop();
-            if (workItem.empty()) {
-              break;
-            }
+          try {
+            while (true) {
+              // will block until all workers wait, i.e. no work is left
+              auto workItem = _workItems.pop();
+              if (workItem.empty()) {
+                break;
+              }
 
-            handleWorkItem(std::move(workItem));
+              handleWorkItem(std::move(workItem));
+            }
+          } catch (basics::Exception const& ex) {
+            _workItems.setError(Result(ex.code(), ex.what()));
+          } catch (std::exception const& ex) {
+            // must not let exceptions escape from the thread's lambda
+            _workItems.setError(Result(TRI_ERROR_INTERNAL, ex.what()));
           }
         });
   }
@@ -213,6 +237,14 @@ std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
   std::unique_lock guard(_mutex);
   if (lastBatch.has_value()) {
     _batches.erase(*lastBatch);
+  }
+
+  // check if an error occurred in any of the threads.
+  Result res = _workItems.result();
+  if (res.fail()) {
+    // if yes, simply return this error from now on.
+    // this will lead to the clients aborting.
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   if (auto it = _batches.find(batchId); it != _batches.end()) {
