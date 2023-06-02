@@ -1,6 +1,8 @@
 devel
 -----
 
+* BTS-1435: fixed invalid AQL optimization and added a safeguard.
+
 * Updated ArangoDB Starter to 0.15.8.
 
 * OASIS-25262: Fixed undefined behavior in IN lookup in unique indexes when the
