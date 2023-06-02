@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+# ArangoDB based configuration parameters
 arangodb = {
     "host": "localhost",
     "port": "8529",
@@ -17,6 +18,7 @@ arangodb = {
     "executable": "../../build/bin/arangod"
 }
 
+# ArangoDB Feed tool based configuration parameters
 feed = {
     "endpoints": "http://" + arangodb["host"] + ":" + arangodb["port"],
     "jsonOutputFile": "work/feed.json",
