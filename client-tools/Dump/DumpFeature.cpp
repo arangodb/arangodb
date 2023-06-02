@@ -1705,6 +1705,7 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
       if (check.is(TRI_ERROR_CLUSTER_TIMEOUT) ||
           check.is(TRI_ERROR_HTTP_GATEWAY_TIMEOUT)) {
         // retry
+        continue;
       } else {
         LOG_TOPIC("5cb01", FATAL, Logger::DUMP)
             << "Unrecoverable network/http error: " << check.errorMessage();
