@@ -10,5 +10,5 @@ def start(args, cfg):
       normal insert database=xyz collection=c parallelism=10  batchSize=5000 size=128000K documentSize=128
     ]'''
     process = Feed.start(cfg, operations)
-    print('--> Started test: "RocksDBCacheSizeTest". Output file is: "' + cfg.feed["jsonOutputFile"] + '"')
+    print('--> Started test: "RocksDBCacheSizeTest". Output file is: "' + cfg["feed"]["jsonOutputFile"] + '"')
     return process

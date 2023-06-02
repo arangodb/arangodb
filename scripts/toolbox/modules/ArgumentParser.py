@@ -8,4 +8,5 @@ def arguments():
                         help="Initialize the database or not")
     parser.add_argument('--startupParameters', type=str, required=False,
                         help="Additional startup parameters for ArangoDB, format: JSON object string")
+    parser.add_argument('--workDir', type=str, required=False, help="Working directory for ArangoDB")
     return parser.parse_args()
