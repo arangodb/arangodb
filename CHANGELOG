@@ -8,6 +8,8 @@ devel
   in a query, it might end up not being chosen because the default sort cost 
   would be minimum 100 because of the former hardcoded value.
 
+* Updated arangosync to v2.18.0-preview-2.
+
 * BTS-1396: Restricted followers from attempting to send telemetrics data to 
   the endpoint on active failover mode.
 
