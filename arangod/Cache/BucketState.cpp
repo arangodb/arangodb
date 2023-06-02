@@ -45,7 +45,7 @@ BucketState& BucketState::operator=(BucketState const& other) noexcept {
 }
 
 bool BucketState::isLocked() const noexcept {
-  return (_state.load() & static_cast<FlagType>(Flag::locked)) > 0;
+  return (_state.load() & static_cast<FlagType>(Flag::locked)) != 0;
 }
 
 bool BucketState::lock(std::uint64_t maxTries) noexcept {
@@ -81,7 +81,8 @@ void BucketState::unlock() noexcept {
 
 bool BucketState::isSet(BucketState::Flag flag) const noexcept {
   TRI_ASSERT(isLocked());
-  return static_cast<FlagType>(_state.load() & static_cast<FlagType>(flag)) > 0;
+  return static_cast<FlagType>(_state.load() & static_cast<FlagType>(flag)) !=
+         0;
 }
 
 void BucketState::toggleFlag(BucketState::Flag flag) noexcept {

@@ -203,14 +203,19 @@ void PlainBucket::moveSlotToFront(std::size_t slot) noexcept {
     _cachedHashes[slot] = _cachedHashes[slot - 1];
     _cachedData[slot] = _cachedData[slot - 1];
   }
-  _cachedHashes[slot] = hash;
-  _cachedData[slot] = value;
+  TRI_ASSERT(slot == 0);
+  _cachedHashes[0] = hash;
+  _cachedData[0] = value;
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void PlainBucket::checkInvariants() const noexcept {
 #if 1
-  // check code can be disabled when it takes too long during testing.
+  // this invariants check is intentionally here, so it is executed
+  // during testing. if it turns out to be too slow, if can be disabled
+  // or removed.
+  // it is not compiled in non-maintainer mode, so it does not affect
+  // the performance of release builds.
   TRI_ASSERT(_slotsUsed <= kSlotsData);
   for (std::size_t slot = 0; slot < kSlotsData; ++slot) {
     if (slot < _slotsUsed) {
