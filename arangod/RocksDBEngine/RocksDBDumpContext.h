@@ -33,6 +33,7 @@
 #include <vector>
 
 #include "Basics/BoundedChannel.h"
+#include "Basics/Result.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
@@ -137,13 +138,17 @@ class RocksDBDumpContext {
     void push(WorkItem item);
     WorkItem pop();
 
+    void setError(Result res);
+    Result result() const;
+
    private:
-    std::mutex _lock;
+    std::mutex mutable _lock;
     std::condition_variable _cv;
     std::vector<WorkItem> _work;
     bool _completed{false};
     size_t _waitingWorkers{0};
-    std::size_t const _numWorker;
+    std::size_t const _numWorkers;
+    Result _result;
   };
 
   // Returns the next batch and assigned it batchId. If lastBatch is not nullopt
