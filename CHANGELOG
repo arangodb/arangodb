@@ -1,6 +1,8 @@
 v3.9.11 (XXXX-X-XX)
 --------------------
 
+* Updated OpenSSL to 1.1.1u.
+
 * Updated ArangoDB Starter to 0.15.8.
 
 * Add a startup parameter `--rclone.argument` which can be utilised to enable
