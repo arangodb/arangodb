@@ -231,15 +231,17 @@ void TransactionalBucket::evict(CachedValue* value) noexcept {
 void TransactionalBucket::clear() noexcept {
   TRI_ASSERT(isLocked());
   _state.clear();  // "clear" will keep the lock!
+  _slotsUsed = 0;
   for (std::size_t slot = 0; slot < kSlotsBanish; ++slot) {
     _banishHashes[slot] = 0;
   }
   _banishTerm = 0;
   for (std::size_t slot = 0; slot < kSlotsData; ++slot) {
     _cachedHashes[slot] = 0;
+  }
+  for (std::size_t slot = 0; slot < kSlotsData; ++slot) {
     _cachedData[slot] = nullptr;
   }
-  _slotsUsed = 0;
   checkInvariants();
 
   _state.unlock();
