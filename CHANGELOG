@@ -1,6 +1,8 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-1435.
+
 * Updated ArangoDB Starter to 0.15.8.
 
 * FE-211: Allow admins to edit gravatar email.
