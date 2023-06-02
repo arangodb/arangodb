@@ -1,6 +1,9 @@
 devel
 -----
 
+* OASIS-25262: Fixed undefined behavior in IN lookup in unique indexes when the
+  lookup array had to be rebuilt in memory.
+
 * BTS-846: Relaxed setup cost for calculation of default sort cost. There was 
   a hardcoded value of 100 being added to the sort cost that would be dominant
   when there was a small amount of documents in the collection. Even if an 
