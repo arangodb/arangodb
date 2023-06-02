@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import tests.RocksDBCacheSizeTest as RocksDBCacheSizeTest
+from tests import RocksDBCacheSizeTest
 
 
 def start(args, cfg):
