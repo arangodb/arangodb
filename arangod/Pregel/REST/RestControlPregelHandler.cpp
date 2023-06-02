@@ -31,7 +31,6 @@
 #include "Inspection/VPackWithErrorT.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/Conductor/Messages.h"
-#include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/REST/RestOptions.h"
 #include "Pregel/StatusWriter/CollectionStatusWriter.h"
@@ -182,6 +181,7 @@ auto extractPregelOptions(VPackSlice body) -> ResultT<pregel::PregelOptions> {
   // }
   // return std::move(restOptions).get().options();
 }
+
 }  // namespace
 
 void RestControlPregelHandler::startExecution() {
@@ -214,48 +214,36 @@ void RestControlPregelHandler::startExecution() {
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
-void RestControlPregelHandler::handleGetRequest() {
-  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-
-  if (suffixes.empty()) {
+RestControlPregelHandler::RequestParse
+RestControlPregelHandler::parseRequestSuffixes(
+    std::vector<std::string> const& suffixes) {
+  if (suffixes.empty() or
+      (suffixes.at(0) == "history" and suffixes.size() == 1)) {
     pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
-    return handlePregelHistoryResult(cWriter.readAllNonExpiredResults());
+    return All{};
   }
 
-  if (suffixes.size() == 1 && suffixes.at(0) != "history") {
-    if (suffixes[0].empty()) {
-      generateError(
-          rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-          "superfluous parameter, expecting /_api/control_pregel[/<id>]");
-      return;
+  // Here suffixes.size() > 0
+  auto executionNumberString = [&]() -> std::optional<std::string> {
+    if (suffixes.at(0) == "history" && suffixes.size() == 2) {
+      return suffixes.at(1);
     }
-    auto executionNumber = arangodb::pregel::ExecutionNumber{
-        arangodb::basics::StringUtils::uint64(suffixes[0])};
-    pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
-                                                         executionNumber};
-    return handlePregelHistoryResult(cWriter.readResult(), true);
-  } else if (suffixes.size() <= 2 && suffixes.at(0) == "history") {
-    if (_pregel.isStopping()) {
-      return handlePregelHistoryResult({Result(TRI_ERROR_SHUTTING_DOWN)});
-    }
-
     if (suffixes.size() == 1) {
-      // Read all pregel history entries
-      pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
-      return handlePregelHistoryResult(cWriter.readAllResults());
+      return suffixes.at(0);
+    }
+    return std::nullopt;
+  }();
+
+  if (executionNumberString.has_value()) {
+    auto maybeNumber = basics::StringUtils::try_uint64(*executionNumberString);
+
+    if (maybeNumber.ok()) {
+      return pregel::ExecutionNumber{maybeNumber.get()};
     } else {
-      // Read single history entry
-      auto executionNumber = arangodb::pregel::ExecutionNumber{
-          arangodb::basics::StringUtils::uint64(suffixes.at(1))};
-      pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
-                                                           executionNumber};
-      return handlePregelHistoryResult(cWriter.readResult(), true);
+      return maybeNumber.result();
     }
   }
-
-  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                "expecting one of the resources /_api/control_pregel[/<id>] or "
-                "/_api/control_pregel/history[/<id>]");
+  return Result{TRI_ERROR_BAD_PARAMETER};
 }
 
 void RestControlPregelHandler::handlePregelHistoryResult(
@@ -308,47 +296,63 @@ void RestControlPregelHandler::handlePregelHistoryResult(
   }
 }
 
+void RestControlPregelHandler::handleGetRequest() {
+  if (_pregel.isStopping()) {
+    return handlePregelHistoryResult({Result(TRI_ERROR_SHUTTING_DOWN)});
+  }
+
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  auto parse = parseRequestSuffixes(suffixes);
+
+  if (std::holds_alternative<All>(parse)) {
+    pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
+    return handlePregelHistoryResult(cWriter.readAllNonExpiredResults());
+  }
+  if (std::holds_alternative<pregel::ExecutionNumber>(parse)) {
+    pregel::statuswriter::CollectionStatusWriter cWriter{
+        _vocbase, std::get<pregel::ExecutionNumber>(parse)};
+    return handlePregelHistoryResult(cWriter.readResult(), true);
+  }
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                "expecting one of the resources /_api/control_pregel[/<id>] or "
+                "/_api/control_pregel/history[/<id>]");
+}
+
 void RestControlPregelHandler::handleDeleteRequest() {
   if (_pregel.isStopping()) {
     return handlePregelHistoryResult({Result(TRI_ERROR_SHUTTING_DOWN)});
   }
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  auto parse = parseRequestSuffixes(suffixes);
 
-  if (suffixes.size() >= 1 && suffixes.at(0) == "history") {
-    if (suffixes.size() == 1) {
-      // Delete all pregel history entries
+  if (suffixes.size() >= 1 and suffixes.at(0) == "history") {
+    if (std::holds_alternative<All>(parse)) {
       pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
       return handlePregelHistoryResult(cWriter.deleteAllResults());
-    } else {
-      // Delete single history entry
-      auto executionNumber = arangodb::pregel::ExecutionNumber{
-          arangodb::basics::StringUtils::uint64(suffixes.at(1))};
-      pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
-                                                           executionNumber};
+    }
+
+    if (std::holds_alternative<pregel::ExecutionNumber>(parse)) {
+      pregel::statuswriter::CollectionStatusWriter cWriter{
+          _vocbase, std::get<pregel::ExecutionNumber>(parse)};
       return handlePregelHistoryResult(cWriter.deleteResult());
     }
   }
 
-  if ((suffixes.size() != 1) || suffixes[0].empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "bad parameter, expecting /_api/control_pregel/<id> or "
-                  "/_api/control_pregel/history[/<id>]");
-    return;
+  if (std::holds_alternative<pregel::ExecutionNumber>(parse)) {
+    auto canceled = _pregel.cancel(std::get<pregel::ExecutionNumber>(parse));
+    if (canceled.fail()) {
+      generateError(rest::ResponseCode::NOT_FOUND, canceled.errorNumber(),
+                    canceled.errorMessage());
+      return;
+    }
+    VPackBuilder builder;
+    builder.add(VPackValue(""));
+    generateResult(rest::ResponseCode::OK, builder.slice());
   }
 
-  auto executionNumber = arangodb::pregel::ExecutionNumber{
-      arangodb::basics::StringUtils::uint64(suffixes[0])};
-
-  auto canceled = _pregel.cancel(executionNumber);
-  if (canceled.fail()) {
-    generateError(rest::ResponseCode::NOT_FOUND, canceled.errorNumber(),
-                  canceled.errorMessage());
-    return;
-  }
-
-  VPackBuilder builder;
-  builder.add(VPackValue(""));
-  generateResult(rest::ResponseCode::OK, builder.slice());
+  generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                "bad parameter, expecting /_api/control_pregel/<id> or "
+                "/_api/control_pregel/history[/<id>]");
 }
 
 }  // namespace arangodb

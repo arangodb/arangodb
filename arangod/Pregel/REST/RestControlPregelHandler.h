@@ -24,6 +24,7 @@
 #pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Pregel/ExecutionNumber.h"
 
 namespace arangodb {
 
@@ -44,6 +45,11 @@ class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
 
  private:
   void startExecution();
+
+  struct All {};
+  using RequestParse = std::variant<Result, pregel::ExecutionNumber, All>;
+
+  RequestParse parseRequestSuffixes(std::vector<std::string> const& suffixes);
 
   // Handled GET requests for APIs:
   // - /_api/control_pregel[/<id>]
