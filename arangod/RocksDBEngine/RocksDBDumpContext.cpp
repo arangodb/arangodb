@@ -51,6 +51,7 @@ RocksDBDumpContext::CollectionInfo::CollectionInfo(TRI_vocbase_t& vocbase,
       rcoll(static_cast<RocksDBCollection const*>(
           guard.collection()->getPhysical())),
       bounds(RocksDBKeyBounds::CollectionDocuments(rcoll->objectId())),
+      lower(bounds.start()),
       upper(bounds.end()) {}
 
 RocksDBDumpContext::CollectionInfo::~CollectionInfo() = default;
@@ -128,18 +129,30 @@ RocksDBDumpContext::RocksDBDumpContext(
 
     _collections.emplace(it, ci);
 
+    // full key range for LocalDocumentId values
+    uint64_t min = 0;
     uint64_t max = UINT64_MAX;
     {
+      // determine actual key range
       auto rocksIt = buildIterator(*ci);
-      rocksIt->SeekForPrev(ci->upper);
+      // check effective lower bound key.
+      rocksIt->Seek(ci->lower);
       if (rocksIt->Valid()) {
-        max = RocksDBKey::documentId(rocksIt->key()).id() + 1;
+        min = RocksDBKey::documentId(rocksIt->key()).id();
+
+        // check effective upper bound key.
+        rocksIt->SeekForPrev(ci->upper);
+        if (rocksIt->Valid()) {
+          // only push a work item if the collection/shard actually contains
+          // documents. no need to push a work item if there is no data
+          TRI_ASSERT(rocksIt->key().compare(ci->upper) < 0);
+          max = RocksDBKey::documentId(rocksIt->key()).id() + 1;
+
+          TRI_ASSERT(min < max);
+          _workItems.push({std::move(ci), min, max});
+        }
       }
     }
-
-    // schedule a work item for each collection/shard, range is from min key
-    // to max key initially.
-    _workItems.push({std::move(ci), 0, max});
   }
 
   _resolver = std::make_unique<CollectionNameResolver>(vocbase);
@@ -230,6 +243,7 @@ std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
 
 void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   TRI_ASSERT(!item.empty());
+  TRI_ASSERT(item.lowerBound < item.upperBound);
 
   CollectionInfo const& ci = *item.collection;
 
@@ -293,7 +307,7 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
       }
       if (stopped) {
         LOG_TOPIC("09878", DEBUG, Logger::DUMP)
-            << "worker thread exists, channel stopped";
+            << "worker thread exits, channel stopped";
         break;
       }
       TRI_ASSERT(batch == nullptr);
@@ -307,6 +321,7 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
         auto mid = current / 2 + item.upperBound / 2;
         TRI_ASSERT(mid > current);
         // create a work item starting from mid
+        TRI_ASSERT(mid < item.upperBound);
         WorkItem newItem{item.collection, mid, item.upperBound};
         _workItems.push(std::move(newItem));
         // make mid the new upper bound
