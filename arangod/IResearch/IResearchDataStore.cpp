@@ -221,11 +221,6 @@ auto makeAfterCommitCallback(void* key) {
     }
     // TODO FIXME find a better way to look up a ViewState
     auto& ctx = basics::downCast<IResearchTrxState>(*prev);
-    if (!ctx._removals.empty()) {
-      auto filter =
-          std::make_shared<PrimaryKeyFilterContainer>(std::move(ctx._removals));
-      ctx._ctx.Remove<false>(std::move(filter));
-    }
     if constexpr (WasCreated) {
       auto const lastOperationTick = state.lastOperationTick();
       ctx._ctx.Commit(lastOperationTick);
@@ -319,38 +314,6 @@ Result insertDocument(IResearchDataStore const& dataStore,
   Field::setPkValue(const_cast<Field&>(field), docPk);
   doc.template Insert<irs::Action::INDEX | irs::Action::STORE>(field);
   return {};
-}
-
-std::string toString(irs::DirectoryReader const& reader, bool isNew, IndexId id,
-                     uint64_t tickLow, uint64_t tickHigh) {
-  auto const& meta = reader.Meta();
-  std::string_view const newOrExisting{isNew ? "new" : "existing"};
-
-  return absl::StrCat("Successfully opened data store reader for the ",
-                      newOrExisting, " ArangoSearchIndex '", id.id(),
-                      "', snapshot '", meta.filename, "', docs count '",
-                      reader.docs_count(), "', live docs count '",
-                      reader.live_docs_count(), "', number of segments '",
-                      meta.index_meta.segments.size(), "', recovery tick low '",
-                      tickLow, "' and recovery tick high '", tickHigh, "'");
-}
-
-template<bool WasCreated>
-auto makeAfterCommitCallback(void* key) {
-  return [key](TransactionState& state) {
-    auto prev = state.cookie(key, nullptr);  // extract existing cookie
-    if (!prev) {
-      return;
-    }
-    // TODO FIXME find a better way to look up a ViewState
-    auto& ctx = basics::downCast<IResearchTrxState>(*prev);
-    if constexpr (WasCreated) {
-      auto const lastOperationTick = state.lastOperationTick();
-      ctx._ctx.Commit(lastOperationTick);
-    } else {
-      ctx._ctx.Commit();
-    }
-  };
 }
 
 static std::atomic_bool kHasClusterMetrics{false};
