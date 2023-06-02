@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.8.
+
 * OASIS-25262: Fixed undefined behavior in IN lookup in unique indexes when the
   lookup array had to be rebuilt in memory.
 
