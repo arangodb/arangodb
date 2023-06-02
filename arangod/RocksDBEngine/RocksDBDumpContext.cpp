@@ -142,7 +142,7 @@ RocksDBDumpContext::RocksDBDumpContext(
 
         // check effective upper bound key.
         rocksIt->SeekForPrev(ci->upper);
-        if (rocksIt->Valid()) {
+        if (rocksIt->Valid() && rocksIt->key().compare(ci->lower) >= 0) {
           // only push a work item if the collection/shard actually contains
           // documents. no need to push a work item if there is no data
           TRI_ASSERT(rocksIt->key().compare(ci->upper) < 0);
