@@ -1,6 +1,9 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* Use libunwind in jemalloc profiling to make it available with libmusl
+  and static binaries.
+
 * FE-211: Allow admins to edit gravatar email.
 
 * BTS-1255: Fix sporadic memory usage accounting underflows in in-memory cache
