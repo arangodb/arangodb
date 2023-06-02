@@ -1,6 +1,8 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.15.8.
+
 * FE-211: Allow admins to edit gravatar email.
 
 * BTS-1255: Fix sporadic memory usage accounting underflows in in-memory cache
