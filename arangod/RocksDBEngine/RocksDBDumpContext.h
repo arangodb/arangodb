@@ -165,8 +165,8 @@ class RocksDBDumpContext {
   // context id
   std::string const _id;
 
-  [[maybe_unused]] uint64_t const _batchSize;
-  [[maybe_unused]] uint64_t const _prefetchCount;
+  uint64_t const _batchSize;
+  uint64_t const _prefetchCount;
   uint64_t const _parallelism;
 
   // time-to-live value for this context. will be extended automatically
