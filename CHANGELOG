@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.18.0-preview-2.
+
 * BTS-1396: Restricted followers from attempting to send telemetrics data to 
   the endpoint on active failover mode.
 
