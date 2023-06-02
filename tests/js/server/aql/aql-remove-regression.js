@@ -50,18 +50,26 @@ function removeRegressionSuite() {
     testRegressionCrashEmptyRemove : function () {
       const query = `FOR u IN ${cname}
                        REMOVE u IN ${cname}
-                     LET removed = { _key: "UnitTestCollection/",
-                                     value: 1,
-                                     sortValue: 1,
-                                     nestedObject: {
-                                       "name": u.name,
-                                       "isActive": u.status == "active"
+                       LET removed = { _key: "UnitTestCollection/",
+                                       value: 1,
+                                       sortValue: 1,
+                                       nestedObject: {
+                                         "name": u.name,
+                                         "isActive": u.status == "active"
+                                       }
                                      }
-                                   }
-                     RETURN removed.t.UnitTestCollection`;
+                       RETURN removed.t.UnitTestCollection`;
       let actual = db._query(query);
       assertEqual(actual.toArray().length, 1);
     },
+    testRegressionCrashEmptyRemoveSmaller : function () {
+      const query = `FOR u IN ${cname}
+                       LET removed = { nestedVariableUse: u.name }
+                       RETURN removed.t.UnitTestCollection`;
+      let actual = db._query(query);
+      assertEqual(actual.toArray().length, 1);
+    },
+
   };
 }
 
