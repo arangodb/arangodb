@@ -1,6 +1,9 @@
 devel
 -----
 
+* Use libunwind in jemalloc profiling to make it available with libmusl
+  and static binaries.
+
 * BTS-1396: Restricted followers from attempting to send telemetrics data to 
   the endpoint on active failover mode.
 
