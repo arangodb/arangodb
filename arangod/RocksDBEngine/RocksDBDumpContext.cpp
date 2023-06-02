@@ -58,17 +58,36 @@ RocksDBDumpContext::CollectionInfo::~CollectionInfo() = default;
 void RocksDBDumpContext::WorkItems::push(RocksDBDumpContext::WorkItem item) {
   std::unique_lock guard(_lock);
   _work.push_back(std::move(item));
+  if (_waitingWorkers > 0) {
+    _cv.notify_one();
+  }
 }
 
 RocksDBDumpContext::WorkItem RocksDBDumpContext::WorkItems::pop() {
   std::unique_lock guard(_lock);
-  if (_work.empty()) {
-    return WorkItem{};
+  while (!_completed) {
+    if (!_work.empty()) {
+      WorkItem top = std::move(_work.back());
+      _work.pop_back();
+      return top;
+    }
+
+    ++_waitingWorkers;
+    if (_waitingWorkers == _numWorker) {
+      // everything is done
+      _completed = true;
+      _cv.notify_all();
+      break;
+    } else {
+      _cv.wait(guard);
+      --_waitingWorkers;
+    }
   }
-  WorkItem top = std::move(_work.back());
-  _work.pop_back();
-  return top;
+
+  return {};
 }
+
+RocksDBDumpContext::WorkItems::WorkItems(size_t worker) : _numWorker(worker) {}
 
 RocksDBDumpContext::RocksDBDumpContext(
     RocksDBEngine& engine, DatabaseFeature& databaseFeature, std::string id,
@@ -84,6 +103,7 @@ RocksDBDumpContext::RocksDBDumpContext(
       _user(user),
       _database(database),
       _expires(TRI_microtime() + _ttl),
+      _workItems(parallelism),
       _channel(prefetchCount) {
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
@@ -92,6 +112,11 @@ RocksDBDumpContext::RocksDBDumpContext(
   _databaseGuard = std::make_unique<DatabaseGuard>(databaseFeature, database);
 
   TRI_vocbase_t& vocbase = _databaseGuard->database();
+
+  // acquire RocksDB snapshot
+  _snapshot =
+      std::make_shared<rocksdb::ManagedSnapshot>(_engine.db()->GetRootDB());
+  TRI_ASSERT(_snapshot->snapshot() != nullptr);
 
   // build CollectionInfo objects for each collection/shard.
   // the guard objects inside will protect the collection/shard objects from
@@ -103,9 +128,18 @@ RocksDBDumpContext::RocksDBDumpContext(
 
     _collections.emplace(it, ci);
 
+    uint64_t max = UINT64_MAX;
+    {
+      auto rocksIt = buildIterator(*ci);
+      rocksIt->SeekForPrev(ci->upper);
+      if (rocksIt->Valid()) {
+        max = RocksDBKey::documentId(rocksIt->key()).id() + 1;
+      }
+    }
+
     // schedule a work item for each collection/shard, range is from min key
     // to max key initially.
-    _workItems.push({std::move(ci), 0, UINT64_MAX});
+    _workItems.push({std::move(ci), 0, max});
   }
 
   _resolver = std::make_unique<CollectionNameResolver>(vocbase);
@@ -115,28 +149,18 @@ RocksDBDumpContext::RocksDBDumpContext(
   _customTypeHandler =
       transaction::Context::createCustomTypeHandler(vocbase, *_resolver);
 
-  // acquire RocksDB snapshot
-  _snapshot =
-      std::make_shared<rocksdb::ManagedSnapshot>(_engine.db()->GetRootDB());
-  TRI_ASSERT(_snapshot->snapshot() != nullptr);
-
   // start all the threads
   for (size_t i = 0; i < _parallelism; i++) {
     _threads.emplace_back(
         [&, shards, guard = BoundedChannelProducerGuard(_channel)] {
-          // poor man's queue processing...
           while (true) {
+            // will block until all workers wait, i.e. no work is left
             auto workItem = _workItems.pop();
             if (workItem.empty()) {
-              // work item is empty. exit thread.
-
-              // TODO: this must be fixed later if handling a work item can
-              // produce additional work items. otherwise we may exit the
-              // threads prematurely
               break;
             }
 
-            handleWorkItem(workItem);
+            handleWorkItem(std::move(workItem));
           }
         });
   }
@@ -204,7 +228,7 @@ std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
   return iter->second;
 }
 
-void RocksDBDumpContext::handleWorkItem(WorkItem const& item) {
+void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   TRI_ASSERT(!item.empty());
 
   CollectionInfo const& ci = *item.collection;
@@ -216,6 +240,13 @@ void RocksDBDumpContext::handleWorkItem(WorkItem const& item) {
       << ci.guard.collection()->name() << "', lower bound: " << item.lowerBound
       << ", upper bound: " << item.upperBound;
 
+  RocksDBKey lowerBound;
+  lowerBound.constructDocument(ci.rcoll->objectId(),
+                               LocalDocumentId{item.lowerBound});
+  RocksDBKey upperBound;
+  upperBound.constructDocument(ci.rcoll->objectId(),
+                               LocalDocumentId{item.upperBound});
+
   std::unique_ptr<Batch> batch;
 
   velocypack::Options options;
@@ -225,15 +256,19 @@ void RocksDBDumpContext::handleWorkItem(WorkItem const& item) {
   // don't use the sink until it points to an actual buffer!
   velocypack::StringSink sink(nullptr);
   velocypack::Dumper dumper(&sink, &options);
-
   auto it = buildIterator(ci);
   TRI_ASSERT(it != nullptr);
 
   uint64_t docsProduced = 0;
   uint64_t batchesProduced = 0;
 
-  for (it->Seek(item.collection->bounds.start()); it->Valid(); it->Next()) {
+  for (it->Seek(lowerBound.string()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(ci.upper) < 0);
+
+    // check if we have reached our current end position
+    if (it->key().compare(upperBound.string()) >= 0) {
+      break;
+    }
 
     ++docsProduced;
 
@@ -263,6 +298,22 @@ void RocksDBDumpContext::handleWorkItem(WorkItem const& item) {
       }
       TRI_ASSERT(batch == nullptr);
       ++batchesProduced;
+
+      // we have produced a batch, cut the interval in half
+      auto current = RocksDBKey::documentId(it->key()).id();
+      TRI_ASSERT(current < item.upperBound);
+      if (item.upperBound - current > 5000) {
+        // split in half
+        auto mid = current / 2 + item.upperBound / 2;
+        TRI_ASSERT(mid > current);
+        // create a work item starting from mid
+        WorkItem newItem{item.collection, mid, item.upperBound};
+        _workItems.push(std::move(newItem));
+        // make mid the new upper bound
+        upperBound.constructDocument(ci.rcoll->objectId(),
+                                     LocalDocumentId{mid});
+        item.upperBound = mid;
+      }
     }
   }
 

@@ -128,16 +128,21 @@ class RocksDBDumpContext {
     }
   };
 
-  void handleWorkItem(WorkItem const& workItem);
+  void handleWorkItem(WorkItem workItem);
 
   class WorkItems {
    public:
+    explicit WorkItems(size_t numWorker);
     void push(WorkItem item);
     WorkItem pop();
 
    private:
     std::mutex _lock;
+    std::condition_variable _cv;
     std::vector<WorkItem> _work;
+    bool _completed{false};
+    size_t _waitingWorkers{0};
+    std::size_t const _numWorker;
   };
 
   // Returns the next batch and assigned it batchId. If lastBatch is not nullopt
