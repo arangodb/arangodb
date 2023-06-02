@@ -1,6 +1,26 @@
 devel
 -----
 
+* BTS-846: Relaxed setup cost for calculation of default sort cost. There was 
+  a hardcoded value of 100 being added to the sort cost that would be dominant
+  when there was a small amount of documents in the collection. Even if an 
+  index would be the best candidate, if it doesn't cover a sort node present
+  in a query, it might end up not being chosen because the default sort cost 
+  would be minimum 100 because of the former hardcoded value.
+
+* Updated arangosync to v2.18.0-preview-2.
+
+* BTS-1396: Restricted followers from attempting to send telemetrics data to 
+  the endpoint on active failover mode.
+
+* Updated arangosync to v2.18.0-preview-1.
+
+* APM-671: index selectivity estimates (cuckoo estimator) memory tracking.
+  This adds a new metric "arangodb_internal_index_estimates_memory" that
+  reports the total memory usage of all index selectivity estimates combined.
+  The metric includes memory used for buffering index write operations that
+  still have to applied.
+
 * APM-663: revision tree memory tracking.
   Tracking memory used for buffered updates to all revision trees in a new
   metric `arangodb_revision_tree_buffered_memory_usage`.
