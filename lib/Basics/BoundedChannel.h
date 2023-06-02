@@ -61,36 +61,44 @@ struct BoundedChannel {
     _readCv.notify_all();
   }
 
-  // TODO indicate if popping blocked
-  std::unique_ptr<T> pop() noexcept {
+  // Pops an item from the queue. If the channel is stopped, returns nullptr.
+  // Second value is true, if the pop call blocked.
+  std::pair<std::unique_ptr<T>, bool> pop() noexcept {
     std::unique_lock guard(_mutex);
+    bool blocked = false;
     while (!_stopped || _consumeIndex < _produceIndex) {
       if (_consumeIndex < _produceIndex) {
         // there is something to eat
         auto ours = std::move(_queue[_consumeIndex++ % _queue.size()]);
         // notify any pending producers
         _readCv.notify_one();
-        return ours;
+        return std::make_pair(std::move(ours), blocked);
       } else {
+        blocked = true;
         _writeCv.wait(guard);
       }
     }
-    return nullptr;
+    return std::make_pair(nullptr, blocked);
   }
 
-  // TODO indicate if pushing blocked
-  void push(std::unique_ptr<T> item) {
+  // First value is true if the value was pushed. Otherwise false, which means
+  // the channel is stopped. Workers should terminate. The second value is true
+  // if pushing blocked.
+  [[nodiscard]] std::pair<bool, bool> push(std::unique_ptr<T> item) {
     std::unique_lock guard(_mutex);
+    bool blocked = false;
     while (!_stopped) {
       if (_produceIndex < _queue.size() + _consumeIndex) {
         // there is space to put something in
         _queue[_produceIndex++ % _queue.size()] = std::move(item);
         _writeCv.notify_one();
-        return;
+        return std::make_pair(true, blocked);
       } else {
+        blocked = true;
         _readCv.wait(guard);
       }
     }
+    return std::make_pair(false, blocked);
   }
 
   std::mutex _mutex;

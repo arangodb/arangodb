@@ -146,6 +146,8 @@ class RocksDBDumpContext {
   std::shared_ptr<Batch> next(std::uint64_t batchId,
                               std::optional<std::uint64_t> lastBatch);
 
+  std::pair<int64_t, int64_t> getBlockCounts() noexcept;
+
  private:
   // build a rocksdb::Iterator for a collection/shard
   std::unique_ptr<rocksdb::Iterator> buildIterator(
@@ -216,6 +218,11 @@ class RocksDBDumpContext {
   // This is a temporary solution for the thread pool. Later we want to use
   // the scheduler to better control the resource usage.
   std::vector<std::jthread> _threads;
+
+  // These counters are incremented whenever an operation in the queue blocked.
+  // We report them via the rest handler to arangodump where they are used
+  // to produce error messages.
+  std::atomic<int64_t> _blockCounterPop, _blockCounterPush;
 };
 
 }  // namespace arangodb

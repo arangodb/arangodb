@@ -173,6 +173,18 @@ class DumpFeature final : public ArangoDumpFeature {
     std::string const server;
     std::atomic<std::uint64_t> _batchCounter{0};
     std::string dumpId;
+
+    enum BlockAt {
+      kBlockAtPopWrite = 0,
+      kBlockAtPushWrite = 1,
+      kBlockAtPopBatch = 2,
+      kBlockAtPushBatch = 3,
+    };
+
+    void countBlocker(BlockAt where, int64_t c = 1);
+    void printBlockStats();
+
+    std::atomic<std::size_t> blockCounter[4];
   };
 
   ClientTaskQueue<DumpJob>& taskQueue();
