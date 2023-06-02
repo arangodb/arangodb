@@ -1,6 +1,8 @@
 v3.9.11 (XXXX-X-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.15.8.
+
 * Add a startup parameter `--rclone.argument` which can be utilised to enable
   debugging with logfiles in hot backup RClone upload operations:
   `--rclone.argument=--log-level=DEBUG`
