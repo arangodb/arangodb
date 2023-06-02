@@ -1150,6 +1150,15 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
         TRI_ASSERT(servers.isArray());
         auto serverStr = servers.at(0).copyString();
         auto shardStr = shard.copyString();
+
+        if (!_options.shards.empty()) {
+          // dump is restricted to specific shards
+          if (std::find(_options.shards.begin(), _options.shards.end(),
+                        shardStr) == _options.shards.end()) {
+            // do not dump this shard, as it is not in the include list
+            continue;
+          }
+        }
         shardsByServer[serverStr][shardStr].file =
             getFileForShard(shardStr, collectionInfo, name);
       }
