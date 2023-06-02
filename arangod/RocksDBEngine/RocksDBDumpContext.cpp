@@ -178,6 +178,10 @@ std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
     _batches.erase(*lastBatch);
   }
 
+  if (auto it = _batches.find(batchId); it != _batches.end()) {
+    return it->second;
+  }
+
   // get the next batch from the channel
   // TODO detect if we blocked during pop or during push
   auto [batch, blocked] = _channel.pop();
