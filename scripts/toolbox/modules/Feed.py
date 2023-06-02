@@ -9,7 +9,7 @@ def start(cfg, operations):
     with open(fileName, "w") as textFile:
         textFile.write(operations)
 
-    parameters = ["go", "run", "main.go", "--execute", "../../" + fileName, "--jsonOutputFile",
+    parameters = ["go", "run", "main.go", "--execute", "../" + fileName, "--jsonOutputFile",
                   "../../" + cfg.feed["jsonOutputFile"]]
-    process = subprocess.Popen(parameters, cwd="submodules/feed", stdout=subprocess.DEVNULL)
+    process = subprocess.Popen(parameters, cwd="feed", stdout=subprocess.DEVNULL)
     return process

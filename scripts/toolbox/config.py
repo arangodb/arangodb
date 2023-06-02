@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+globals = {
+    "workDir": "work"
+}
+
 # ArangoDB based configuration parameters
 arangodb = {
     "host": "localhost",
@@ -8,9 +12,9 @@ arangodb = {
     "passwd": "",
     "startupParameters": {
         "server.authentication": "false",
-        "log.file": "work/arangodb.log",
-        "working-directory": "work",
-        "database.directory": "work/database",
+        "log.file": globals["workDir"] + "/arangodb.log",
+        "working-directory": globals["workDir"],
+        "database.directory": globals["workDir"] + "/database",
         "javascript.app-path": "../../js/apps",
         "javascript.module-directory": "../../enterprise/js",
         "javascript.startup-directory": "../../js"
@@ -21,7 +25,7 @@ arangodb = {
 # ArangoDB Feed tool based configuration parameters
 feed = {
     "endpoints": "http://" + arangodb["host"] + ":" + arangodb["port"],
-    "jsonOutputFile": "work/feed.json",
+    "jsonOutputFile": globals["workDir"] + "/feed.json",
     "password": arangodb["passwd"],
     "user": arangodb["user"]
 }
