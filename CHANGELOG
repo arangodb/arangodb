@@ -1,6 +1,8 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-1435.
+
 * Updated ArangoDB Starter to 0.15.8.
 
 * OASIS-25262: Fixed undefined behavior in IN lookup in unique indexes when the
