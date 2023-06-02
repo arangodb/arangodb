@@ -206,7 +206,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
                       Args&&... args) {
     if constexpr (Arg::isInlineType) {
       if (this->self().template shouldTryType<typename Arg::Type>(type)) {
-        typename Arg::Type v;
+        typename Arg::Type v{};
         auto res = this->apply(v);
         if (res.ok()) {
           variant.value = std::move(v);
@@ -379,7 +379,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
                   "All inline types must be listed at the beginning of the "
                   "alternatives list");
     if (arg.tag == tag) {
-      typename Arg::Type v;
+      typename Arg::Type v{};
       auto res = parse(v);
       if (res.ok()) {
         result = v;
@@ -403,7 +403,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
     return this->self().doProcessObject(
         [&](std::string_view key, ValueType value) -> Status {
           auto ff = this->make(value);
-          typename T::mapped_type val;
+          typename T::mapped_type val{};
           if (auto res = process(ff, val); !res.ok()) {
             return {std::move(res), "'" + std::string(key) + "'",
                     Status::ArrayTag{}};
@@ -419,7 +419,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
     std::size_t idx = 0;
     return this->self().doProcessList([&](auto value) -> Status {
       auto ff = this->self().make(value);
-      typename T::value_type val;
+      typename T::value_type val{};
       if (auto res = process(ff, val); !res.ok()) {
         return {std::move(res), std::to_string(idx), Status::ArrayTag{}};
       }
