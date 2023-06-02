@@ -1,7 +1,11 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
-* Fixed BTS-1435.
+* BTS-1435: fixed invalid AQL optimization and added a safeguard.
+
+* APM-766, SEARCH-479: Reduce memory overhead for ArangoSearch removes.
+
+* Improve precision for ArangoSearch GEO_IN_RANGE function.
 
 * Updated ArangoDB Starter to 0.15.8.
 
