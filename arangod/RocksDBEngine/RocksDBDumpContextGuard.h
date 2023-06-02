@@ -42,7 +42,7 @@ class RocksDBDumpContextGuard {
 
  private:
   // TODO: _manager is currently unused. maybe remove it?
-  [[maybe_unused]] RocksDBDumpManager& _manager;
+  RocksDBDumpManager& _manager;
 
   std::shared_ptr<RocksDBDumpContext> _ctx;
 };
