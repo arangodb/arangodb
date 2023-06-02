@@ -68,17 +68,17 @@ Finding PlainCache<Hasher>::find(void const* key, std::uint32_t keySize) {
 }
 
 template<typename Hasher>
-Result PlainCache<Hasher>::insert(CachedValue* value) {
+::ErrorCode PlainCache<Hasher>::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
   bool maybeMigrate = false;
   Table::BucketHash hash{Hasher::hashKey(value->key(), value->keySize())};
 
-  Result status;
+  ::ErrorCode status = TRI_ERROR_NO_ERROR;
   Table* source;
   {
     Table::BucketLocker guard;
     std::tie(status, guard) = getBucket(hash, Cache::triesFast);
-    if (status.fail()) {
+    if (status != TRI_ERROR_NO_ERROR) {
       return status;
     }
 
@@ -93,7 +93,7 @@ Result PlainCache<Hasher>::insert(CachedValue* value) {
       candidate = bucket.evictionCandidate();
       if (candidate == nullptr) {
         allowed = false;
-        status.reset(TRI_ERROR_ARANGO_BUSY);
+        status = TRI_ERROR_ARANGO_BUSY;
       }
     }
 
@@ -111,7 +111,7 @@ Result PlainCache<Hasher>::insert(CachedValue* value) {
       if (allowed) {
         bool eviction = false;
         if (candidate != nullptr) {
-          bucket.evict(candidate, true);
+          bucket.evict(candidate);
           if (!Hasher::sameKey(candidate->key(), candidate->keySize(),
                                value->key(), value->keySize())) {
             eviction = true;
@@ -125,7 +125,7 @@ Result PlainCache<Hasher>::insert(CachedValue* value) {
         maybeMigrate |= reportInsert(eviction);
       } else {
         requestGrow();  // let function do the hard work
-        status.reset(TRI_ERROR_RESOURCE_LIMIT);
+        status = TRI_ERROR_RESOURCE_LIMIT;
       }
     }
   }
@@ -140,17 +140,17 @@ Result PlainCache<Hasher>::insert(CachedValue* value) {
 }
 
 template<typename Hasher>
-Result PlainCache<Hasher>::remove(void const* key, std::uint32_t keySize) {
+::ErrorCode PlainCache<Hasher>::remove(void const* key, std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
   Table::BucketHash hash{Hasher::hashKey(key, keySize)};
 
-  Result status;
+  ::ErrorCode status = TRI_ERROR_NO_ERROR;
   Table* source;
   {
     Table::BucketLocker guard;
     std::tie(status, guard) = getBucket(hash, Cache::triesSlow);
-    if (status.fail()) {
+    if (status != TRI_ERROR_NO_ERROR) {
       return status;
     }
     PlainBucket& bucket = guard.bucket<PlainBucket>();
@@ -182,8 +182,8 @@ Result PlainCache<Hasher>::remove(void const* key, std::uint32_t keySize) {
 }
 
 template<typename Hasher>
-Result PlainCache<Hasher>::banish(void const* key, std::uint32_t keySize) {
-  return {TRI_ERROR_NOT_IMPLEMENTED};
+::ErrorCode PlainCache<Hasher>::banish(void const* key, std::uint32_t keySize) {
+  return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
 /// @brief returns the hasher name
@@ -211,7 +211,7 @@ PlainCache<Hasher>::PlainCache(Cache::ConstructionGuard /*guard*/,
                                bool enableWindowedStats)
     : Cache(manager, id, std::move(metadata), std::move(table),
             enableWindowedStats, PlainCache::bucketClearer,
-            PlainBucket::slotsData) {}
+            PlainBucket::kSlotsData) {}
 
 template<typename Hasher>
 PlainCache<Hasher>::~PlainCache() {
@@ -254,13 +254,8 @@ bool PlainCache<Hasher>::freeMemoryWhile(
 
     PlainBucket& bucket = guard.template bucket<PlainBucket>();
     // evict LRU freeable value if exists
-    CachedValue* candidate = bucket.evictionCandidate();
-
-    std::uint64_t reclaimed = 0;
-    if (candidate != nullptr) {
-      reclaimed = candidate->size();
-      bucket.evict(candidate);
-      freeValue(candidate);
+    std::uint64_t reclaimed = bucket.evictCandidate();
+    if (reclaimed > 0) {
       maybeMigrate |= guard.source()->slotEmptied();
     }
 
@@ -296,22 +291,20 @@ void PlainCache<Hasher>::migrateBucket(void* sourcePtr,
     std::uint64_t totalSize = 0;
     std::uint64_t filled = 0;
     std::uint64_t emptied = 0;
-    for (std::size_t j = 0; j < PlainBucket::slotsData; j++) {
-      std::size_t k = PlainBucket::slotsData - (j + 1);
-      if (source._cachedHashes[k] != 0) {
-        std::uint32_t hash = source._cachedHashes[k];
-        CachedValue* value = source._cachedData[k];
+
+    std::size_t slot = source._slotsUsed;
+    while (slot-- > 0) {
+      if (source._cachedData[slot] != nullptr) {
+        std::uint32_t hash = source._cachedHashes[slot];
+        CachedValue* value = source._cachedData[slot];
 
         auto targetBucket =
             static_cast<PlainBucket*>(targets->fetchBucket(hash));
         bool haveSpace = true;
         if (targetBucket->isFull()) {
-          CachedValue* candidate = targetBucket->evictionCandidate();
-          if (candidate != nullptr) {
-            targetBucket->evict(candidate, true);
-            std::uint64_t size = candidate->size();
-            freeValue(candidate);
-            totalSize += size;
+          std::uint64_t reclaimed = targetBucket->evictCandidate();
+          if (reclaimed > 0) {
+            totalSize += reclaimed;
             ++emptied;
           } else {
             haveSpace = false;
@@ -326,8 +319,10 @@ void PlainCache<Hasher>::migrateBucket(void* sourcePtr,
           totalSize += size;
         }
 
-        source._cachedHashes[k] = 0;
-        source._cachedData[k] = nullptr;
+        source._cachedHashes[slot] = 0;
+        source._cachedData[slot] = nullptr;
+        TRI_ASSERT(source._slotsUsed > 0);
+        --source._slotsUsed;
       }
     }
     reclaimMemory(totalSize);
@@ -367,7 +362,7 @@ Table::BucketClearer PlainCache<Hasher>::bucketClearer(Metadata* metadata) {
   return [metadata](void* ptr) -> void {
     auto bucket = static_cast<PlainBucket*>(ptr);
     bucket->lock(Cache::triesGuarantee);
-    for (std::size_t j = 0; j < PlainBucket::slotsData; j++) {
+    for (std::size_t j = 0; j < PlainBucket::kSlotsData; j++) {
       if (bucket->_cachedData[j] != nullptr) {
         std::uint64_t size = bucket->_cachedData[j]->size();
         freeValue(bucket->_cachedData[j]);
