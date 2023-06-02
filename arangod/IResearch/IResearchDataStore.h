@@ -78,7 +78,6 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   ~IResearchTrxState() final {
     // TODO(MBkkt) Make Abort in ~Transaction()
     _ctx.Abort();
-    TRI_ASSERT(_removals.empty());
   }
 
   void remove(LocalDocumentId value) { _removals->emplace(value); }
