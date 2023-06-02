@@ -32,8 +32,6 @@ python3 main.py --mode=single --init=true --startupParameters='{"rocksdb.block-c
     * `config.py`: The configuration file for the toolbox.
     * `modules`: Contains the python scripts for the toolbox (e.g. start ArangoDB, run the Feed tool).
       * All separated into its own module.
-    * `submodules`: Git Sub-repositories
-      * `submodules/feed`: ArangoDB Feed submodule.
     * `tests`: Contains the tests for the toolbox.
     * `work`: Will be the output folder for everything the toolbox does.
     * `README.md`: This file.
