@@ -804,6 +804,7 @@ void DumpFeature::collectOptions(
                   "Enable experimental dump behavior.",
                   new BooleanParameter(&_options.useExperimentalDump),
                   arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
   options
@@ -887,7 +888,13 @@ void DumpFeature::validateOptions(
     _options.threadCount = clamped;
   }
 
-  // TODO add validation for experimental stuff
+  if (_options.useExperimentalDump && _options.useEnvelope) {
+    LOG_TOPIC("e088c", FATAL, arangodb::Logger::DUMP)
+        << "cannot use --use-experimental-dump and --envelope at the same time";
+    FATAL_ERROR_EXIT();
+  }
+
+  // TODO add validation more for experimental stuff
 }
 
 // dump data from cluster via a coordinator
@@ -1695,12 +1702,12 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
           << "': " << check.errorMessage();
 
       // TODO complete this list!
-      if (check.errorNumber() == TRI_ERROR_CLUSTER_TIMEOUT ||
-          check.errorNumber() == TRI_ERROR_HTTP_GATEWAY_TIMEOUT) {
+      if (check.is(TRI_ERROR_CLUSTER_TIMEOUT) ||
+          check.is(TRI_ERROR_HTTP_GATEWAY_TIMEOUT)) {
         // retry
       } else {
         LOG_TOPIC("5cb01", FATAL, Logger::DUMP)
-            << "Unrecoverable network/http error";
+            << "Unrecoverable network/http error: " << check.errorMessage();
         FATAL_ERROR_EXIT();
       }
     } else if (response->getHttpReturnCode() == 204) {
