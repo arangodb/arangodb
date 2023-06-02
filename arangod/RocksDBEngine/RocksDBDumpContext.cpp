@@ -245,16 +245,17 @@ void RocksDBDumpContext::handleWorkItem(WorkItem const& item) {
     sink.push_back('\n');
 
     if (batch->content.size() >= _batchSize) {
-      ++batchesProduced;
       _channel.push(std::move(batch));
       TRI_ASSERT(batch == nullptr);
+      ++batchesProduced;
     }
   }
 
   if (batch != nullptr) {
     // push remainder out
-    ++batchesProduced;
+    TRI_ASSERT(!batch->content.empty());
     _channel.push(std::move(batch));
+    ++batchesProduced;
   }
 
   LOG_TOPIC("49016", DEBUG, Logger::DUMP)
