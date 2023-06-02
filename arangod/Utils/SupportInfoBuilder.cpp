@@ -241,9 +241,10 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 
   bool const isActiveFailover =
       server.getFeature<ReplicationFeature>().isActiveFailoverEnabled();
-  bool fanout =
-      (ServerState::instance()->isCoordinator() || isActiveFailover) &&
-      !isLocal;
+  bool isReadOnly = ServerState::instance()->readOnly();
+  bool fanout = (ServerState::instance()->isCoordinator() ||
+                 (isActiveFailover && (!isTelemetricsReq || !isReadOnly))) &&
+                !isLocal;
 
   result.openObject();
 
@@ -307,6 +308,9 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       if (isActiveFailover) {
         TRI_ASSERT(!ServerState::instance()->isCoordinator());
         result.add("type", VPackValue("active_failover"));
+        if (isTelemetricsReq) {
+          result.add("active_failover_leader", VPackValue(!isReadOnly));
+        }
       } else {
         TRI_ASSERT(ServerState::instance()->isCoordinator());
         result.add("type", VPackValue("cluster"));
