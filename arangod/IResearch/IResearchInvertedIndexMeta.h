@@ -173,6 +173,8 @@ struct IResearchInvertedIndexMetaIndexingContext {
 
   Features const& features() const noexcept { return _features; }
 
+  bool hasNested() const noexcept { return _hasNested; }
+
   absl::flat_hash_map<std::string_view,
                       IResearchInvertedIndexMetaIndexingContext>
       _fields;

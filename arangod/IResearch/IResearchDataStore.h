@@ -64,20 +64,23 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   // prevent data-store deallocation (lock @ AsyncSelf)
   LinkLock _linkLock;  // should be first field to destroy last
   irs::IndexWriter::Transaction _ctx;
-  PrimaryKeyFilterContainer _removals;  // list of document removals
+  std::shared_ptr<PrimaryKeysFilterBase> _removals;
 
-  IResearchTrxState(LinkLock&& linkLock, irs::IndexWriter& writer) noexcept
-      : _linkLock{std::move(linkLock)}, _ctx{writer.GetBatch()} {}
+  IResearchTrxState(LinkLock&& linkLock, irs::IndexWriter& writer,
+                    bool nested) noexcept
+      : _linkLock{std::move(linkLock)},
+        _ctx{writer.GetBatch()},
+        _removals{nested ? std::static_pointer_cast<PrimaryKeysFilterBase>(
+                               std::make_shared<PrimaryKeysFilter<true>>())
+                         : std::static_pointer_cast<PrimaryKeysFilterBase>(
+                               std::make_shared<PrimaryKeysFilter<false>>())} {}
 
   ~IResearchTrxState() final {
-    _removals.clear();
+    // TODO(MBkkt) Make Abort in ~Transaction()
     _ctx.Abort();
-    TRI_ASSERT(_removals.empty());
   }
 
-  void remove(LocalDocumentId const& value, bool nested) {
-    _ctx.Remove(_removals.emplace(value, nested));
-  }
+  void remove(LocalDocumentId value) { _removals->emplace(value); }
 };
 
 void clusterCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
