@@ -2828,7 +2828,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     {
       auto ctx = store.writer->GetBatch();
       auto filters =
-          std::make_shared<rangodb::iresearch::PrimaryKeysFilter<false>>();
+          std::make_shared<arangodb::iresearch::PrimaryKeysFilter<false>>();
       filters.emplace(arangodb::LocalDocumentId(rid));
       ctx.Remove(std::move(filters));
       auto doc = ctx.Insert();
@@ -2930,7 +2930,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     {
       auto ctx = store.writer->GetBatch();
       auto filters =
-          std::make_shared<rangodb::iresearch::PrimaryKeysFilter<false>>();
+          std::make_shared<arangodb::iresearch::PrimaryKeysFilter<false>>();
       filters.emplace(arangodb::LocalDocumentId(rid));
       ctx.Remove(std::move(filters));
       auto doc = ctx.Insert();
