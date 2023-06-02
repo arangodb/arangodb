@@ -1,3 +1,0 @@
-[submodule "submodules/feed"]
-        path = submodules/feed
-        url = git@github.com:arangodb/feed.git
