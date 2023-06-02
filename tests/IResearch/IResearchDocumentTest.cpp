@@ -2827,8 +2827,10 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     // remove + insert document
     {
       auto ctx = store.writer->GetBatch();
-      ctx.Remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(
-          arangodb::LocalDocumentId(rid), false));
+      auto filters =
+          std::make_shared<rangodb::iresearch::PrimaryKeysFilter<false>>();
+      filters.emplace(arangodb::LocalDocumentId(rid));
+      ctx.Remove(std::move(filters));
       auto doc = ctx.Insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
       EXPECT_TRUE(doc.Insert<irs::Action::INDEX | irs::Action::STORE>(field));
@@ -2873,17 +2875,13 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       EXPECT_TRUE(ridSlice.isNumber<uint64_t>());
 
       auto rid = ridSlice.getNumber<uint64_t>();
-      arangodb::iresearch::PrimaryKeyFilterContainer filters;
+      arangodb::iresearch::PrimaryKeysFilter<false> filters;
       EXPECT_TRUE(filters.empty());
-      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
+      filters.emplace(arangodb::LocalDocumentId(rid));
       EXPECT_FALSE(filters.empty());
 
-      auto prepared = filter.prepare(*store.reader);
+      auto prepared = static_cast<irs::filter&>(filters).prepare(*store.reader);
       ASSERT_TRUE(prepared);
-      EXPECT_EQ(prepared, filter.prepare(*store.reader));  // same object
-      EXPECT_TRUE((&filter ==
-                   dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
-                       prepared.get())));  // same object
 
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);
@@ -2931,8 +2929,10 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     // remove + insert document
     {
       auto ctx = store.writer->GetBatch();
-      ctx.Remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(
-          arangodb::LocalDocumentId(rid), false));
+      auto filters =
+          std::make_shared<rangodb::iresearch::PrimaryKeysFilter<false>>();
+      filters.emplace(arangodb::LocalDocumentId(rid));
+      ctx.Remove(std::move(filters));
       auto doc = ctx.Insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
       EXPECT_TRUE(doc.Insert<irs::Action::INDEX | irs::Action::STORE>(field));
@@ -2977,17 +2977,13 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       EXPECT_TRUE(ridSlice.isNumber<uint64_t>());
 
       auto rid = ridSlice.getNumber<uint64_t>();
-      arangodb::iresearch::PrimaryKeyFilterContainer filters;
+      arangodb::iresearch::PrimaryKeysFilter<false> filters;
       EXPECT_TRUE(filters.empty());
-      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
+      filters.emplace(arangodb::LocalDocumentId(rid));
       EXPECT_FALSE(filters.empty());
 
-      auto prepared = filter.prepare(*store.reader);
+      auto prepared = static_cast<irs::filter&>(filters).prepare(*store.reader);
       ASSERT_TRUE(prepared);
-      EXPECT_EQ(prepared, filter.prepare(*store.reader));  // same object
-      EXPECT_TRUE((&filter ==
-                   dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
-                       prepared.get())));  // same object
 
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);
