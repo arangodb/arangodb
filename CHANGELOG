@@ -1,6 +1,9 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* Use libunwind in jemalloc profiling to make it available with libmusl
+  and static binaries.
+
 * Invalid keys are now reported as individual errors for batch insert operations
   and no longer abort the whole batch.
 
