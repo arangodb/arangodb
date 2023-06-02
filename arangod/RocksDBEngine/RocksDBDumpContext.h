@@ -137,6 +137,7 @@ class RocksDBDumpContext {
     explicit WorkItems(size_t numWorker);
     void push(WorkItem item);
     WorkItem pop();
+    void stop();
 
     void setError(Result res);
     Result result() const;

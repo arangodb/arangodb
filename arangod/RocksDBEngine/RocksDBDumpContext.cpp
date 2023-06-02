@@ -107,6 +107,12 @@ Result RocksDBDumpContext::WorkItems::result() const {
 
 RocksDBDumpContext::WorkItems::WorkItems(size_t worker) : _numWorkers(worker) {}
 
+void RocksDBDumpContext::WorkItems::stop() {
+  std::unique_lock guard(_lock);
+  _completed = true;
+  _cv.notify_all();
+}
+
 RocksDBDumpContext::RocksDBDumpContext(
     RocksDBEngine& engine, DatabaseFeature& databaseFeature, std::string id,
     uint64_t batchSize, uint64_t prefetchCount, uint64_t parallelism,
@@ -205,6 +211,7 @@ RocksDBDumpContext::RocksDBDumpContext(
 
 // will automatically delete the RocksDB snapshot and all guards
 RocksDBDumpContext::~RocksDBDumpContext() {
+  _workItems.stop();
   _channel.stop();
   _threads.clear();
 }
