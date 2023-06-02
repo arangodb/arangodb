@@ -1,6 +1,9 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* OASIS-25262: Fixed undefined behavior in IN lookup in unique indexes when the
+  lookup array had to be rebuilt in memory.
+
 * Invalid keys are now reported as individual errors for batch insert operations
   and no longer abort the whole batch.
 
