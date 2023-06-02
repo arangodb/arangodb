@@ -114,6 +114,7 @@ class RocksDBDumpContext {
     CollectionGuard guard;
     RocksDBCollection const* rcoll;
     RocksDBKeyBounds const bounds;
+    rocksdb::Slice const lower;
     rocksdb::Slice const upper;
   };
 
