@@ -184,7 +184,7 @@ class DumpFeature final : public ArangoDumpFeature {
     void countBlocker(BlockAt where, int64_t c = 1);
     void printBlockStats();
 
-    std::atomic<std::size_t> blockCounter[4];
+    std::atomic<std::int64_t> blockCounter[4];
   };
 
   ClientTaskQueue<DumpJob>& taskQueue();

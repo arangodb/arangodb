@@ -1491,9 +1491,7 @@ Result DumpFeature::ParallelDumpServer::run(
           LOG_TOPIC("b3cf8", DEBUG, Logger::DUMP)
               << "network thread stopped by stopped channel";
         }
-        if (blocked) {
-          countBlocker(kBlockAtPushWrite);
-        }
+        countBlocker(kBlockAtPushWrite, blocked ? 1 : -1);
         lastBatchId = batchId;
       }
       LOG_TOPIC("ac308", DEBUG, Logger::DUMP)
@@ -1509,9 +1507,7 @@ Result DumpFeature::ParallelDumpServer::run(
         if (response == nullptr) {
           break;
         }
-        if (blocked) {
-          countBlocker(kBlockAtPopWrite);
-        }
+        countBlocker(kBlockAtPopWrite, blocked ? 1 : -1);
         // Decode which shard this is from header field
         arangodb::basics::StringBuffer const& body = response->getBody();
         bool headerExtracted;
@@ -1610,6 +1606,10 @@ void DumpFeature::ParallelDumpServer::ParallelDumpServer::countBlocker(
           << "when dumping data from server " << server
           << " system blocking at " << locations[where];
     }
+  }
+  if (actual + c < 0) {
+    actual += c;
+    blockCounter[where].compare_exchange_strong(actual, 0);
   }
 }
 

@@ -128,7 +128,7 @@ RocksDBDumpContext::RocksDBDumpContext(
       _database(database),
       _expires(TRI_microtime() + _ttl),
       _workItems(parallelism),
-      _channel(prefetchCount) {
+      _channel(_prefetchCount) {
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
   // database is there. creating this guard will throw if the database cannot be
@@ -259,11 +259,8 @@ std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
   }
 
   // get the next batch from the channel
-  // TODO detect if we blocked during pop or during push
   auto [batch, blocked] = _channel.pop();
-  if (blocked) {
-    ++_blockCounterPop;
-  }
+  _blockCounterPop.fetch_add(blocked ? 1 : -1);
   if (batch == nullptr) {
     // no batches left
     return nullptr;
@@ -341,9 +338,7 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
 
     if (batch->content.size() >= _batchSize) {
       auto [stopped, blocked] = _channel.push(std::move(batch));
-      if (blocked) {
-        ++_blockCounterPush;
-      }
+      _blockCounterPush.fetch_add(blocked ? 1 : -1);
       if (stopped) {
         LOG_TOPIC("09878", DEBUG, Logger::DUMP)
             << "worker thread exits, channel stopped";
