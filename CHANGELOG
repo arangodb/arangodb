@@ -1,6 +1,8 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to v2.18.0.
+
 * Updated OpenSSL to 1.1.1u.
 
 * BTS-1435: fixed invalid AQL optimization and added a safeguard.
@@ -138,8 +140,6 @@ v3.10.7 (XXXX-XX-XX)
 * Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 
 * Fix MDS-1070 Update iresearch submodule.
-
-* Updated arangosync to v2.17.0.
 
 * FE-243: add support for geo_s2 analyzer.
 
