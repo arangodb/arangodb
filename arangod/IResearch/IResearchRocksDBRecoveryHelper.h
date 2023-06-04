@@ -50,71 +50,81 @@ class DatabaseFeature;
 class RocksDBEngine;
 
 namespace iresearch {
+class IResearchRocksDBInvertedIndex;
+class IResearchRocksDBLink;
 
 // recovery helper that replays/buffers all operations for links/indexes
 // found during recovery
 class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
  public:
   explicit IResearchRocksDBRecoveryHelper(
-      ArangodServer&, std::span<std::string const> skipRecoveryItems);
+      ArangodServer& server, std::span<std::string const> skipRecoveryItems);
 
   void prepare() final;
   void unprepare() noexcept final {
-    _skipExisted = {};
-    _cookies = {};
+    *this = {};  // release all data
   }
 
   void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
              const rocksdb::Slice& value, rocksdb::SequenceNumber tick) final;
 
   void DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
-                rocksdb::SequenceNumber tick) final {
-    handleDeleteCF(column_family_id, key, tick);
-  }
+                rocksdb::SequenceNumber tick) final;
 
   void SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
                       rocksdb::SequenceNumber tick) final {
-    handleDeleteCF(column_family_id, key, tick);
+    DeleteCF(column_family_id, key, tick);
   }
 
   void LogData(const rocksdb::Slice& blob, rocksdb::SequenceNumber tick) final;
 
-  bool wasSkipped(IndexId id) const noexcept final {
-    return _skippedIndexes.contains(id);
-  }
-
  private:
-  void handleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
-                      rocksdb::SequenceNumber tick);
+  IResearchRocksDBRecoveryHelper() = default;
 
-  using LinkContainer =
-      containers::SmallVector<std::pair<std::shared_ptr<arangodb::Index>, bool>,
-                              8>;
+  template<bool NeedExists, typename Func>
+  void applyCF(uint32_t column_family_id, rocksdb::Slice key,
+               rocksdb::SequenceNumber tick, Func&& func);
+  void skipAll(uint64_t objectId, rocksdb::SequenceNumber tick);
 
-  bool lookupLinks(LinkContainer& result,
-                   arangodb::LogicalCollection& coll) const;
+  static constexpr auto kMaxSize = std::numeric_limits<uint16_t>::max();
 
-  ArangodServer& _server;
-  DatabaseFeature* _dbFeature{};
+  struct Range {
+    uint16_t begin{};
+    uint16_t end{};
+
+    bool empty() const noexcept { return begin == end; }
+  };
+
+  struct Ranges {
+    Range indexes;
+    Range links;
+
+    bool empty() const noexcept { return indexes.empty() && links.empty(); }
+  };
+
+  Ranges getRanges(uint64_t objectId);
+  Ranges makeRanges(uint64_t objectId);
+  std::shared_ptr<LogicalCollection> lookupCollection(uint64_t objectId);
+
+  template<bool Force>
+  void clear() noexcept;
+
+  ArangodServer* _server{};
   RocksDBEngine* _engine{};
+  DatabaseFeature* _dbFeature{};
   uint32_t _documentCF{};
 
   // skip recovery of all links/indexes
-  bool _skipAllItems;
-
+  bool _skipAllItems{false};
   // skip recovery of dedicated links/indexes
   // maps from collection name => index ids / index names
-  containers::FlatHashMap<std::string, containers::FlatHashSet<std::string>>
+  containers::FlatHashMap<std::string_view,
+                          containers::FlatHashSet<std::string_view>>
       _skipRecoveryItems;
 
-  containers::FlatHashSet<IndexId> _skippedIndexes;
-
-  // It's field because we want to reuse it memory during recovery
-  containers::FlatHashSet<IndexId> _skipExisted;
-
-  // Snapshots for links at state prior to recovery.
-  // Used to decide if insert should be replayed
-  containers::FlatHashMap<void const*, IResearchDataStore::Snapshot> _cookies;
+  containers::FlatHashMap<uint64_t, Ranges> _ranges;
+  std::vector<IResearchRocksDBInvertedIndex*> _indexes;
+  std::vector<IResearchRocksDBLink*> _links;
 };
 
 }  // namespace iresearch
