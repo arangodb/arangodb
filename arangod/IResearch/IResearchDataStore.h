@@ -435,6 +435,9 @@ class IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
 #endif
+
+  void recoveryCommit(uint64_t tick);
+
  protected:
   enum class DataStoreError : uint8_t {
     // data store has no issues

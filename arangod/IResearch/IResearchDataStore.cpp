@@ -1418,12 +1418,8 @@ Result IResearchDataStore::initDataStore(
         }
 
         // Make last batch Commit if necessary
-        if (auto& removes = linkLock->_recoveryRemoves; removes != nullptr) {
-          if (!removes->empty()) {
-            linkLock->_recoveryTrx.Remove(std::move(removes));
-          }
-          removes.reset();
-          linkLock->_recoveryTrx.Commit(recoveryTick);
+        if (linkLock->_recoveryRemoves != nullptr) {
+          linkLock->recoveryCommit(recoveryTick);
         }
 
         // register flush subscription
@@ -1836,6 +1832,15 @@ std::tuple<uint64_t, uint64_t, uint64_t> IResearchDataStore::avgTime() const {
 }
 
 #endif
+
+void IResearchDataStore::recoveryCommit(uint64_t tick) {
+  TRI_ASSERT(_recoveryRemoves);
+  if (!_recoveryRemoves->empty()) {
+    _recoveryTrx.Remove(std::move(_recoveryRemoves));
+  }
+  _recoveryRemoves.reset();
+  _recoveryTrx.Commit(tick);
+}
 
 void IResearchDataStore::initClusterMetrics() const {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
