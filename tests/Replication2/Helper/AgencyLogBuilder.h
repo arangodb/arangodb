@@ -166,6 +166,8 @@ struct AgencyLogBuilder {
       if (_log.plan.has_value()) {
         _log.current->supervision->assumedWriteConcern =
             _log.plan->participantsConfig.config.effectiveWriteConcern;
+        _log.current->supervision->assumedWaitForSync =
+            _log.plan->participantsConfig.config.waitForSync;
       }
     }
     return _log.current.value();
