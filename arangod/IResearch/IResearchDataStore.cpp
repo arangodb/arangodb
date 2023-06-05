@@ -1069,6 +1069,8 @@ void IResearchDataStore::shutdownDataStore() noexcept {
         << "caught something while removeMetrics arangosearch data store '"
         << index().id().id() << "'";
   }
+  _recoveryRemoves.reset();
+  _recoveryTrx.Abort();
   _dataStore.resetDataStore();
 }
 
