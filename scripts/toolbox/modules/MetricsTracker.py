@@ -14,12 +14,13 @@ import warnings
 
 
 class MetricsTracker:
-    def __init__(self, cfg, metrics=None):
-        if metrics is None:
-            metrics = []
+    def __init__(self, cfg, metricsNames=None):
+        if metricsNames is None:
+            self.metricsNames = []
+        else:
+            self.metricsNames = metricsNames
 
         self.daemon = None
-        self.metrics = metrics
         self.interval = cfg["metrics"]["interval"]
         self.endpoint = cfg["metrics"]["endpoint"]
         self.workDir = cfg["globals"]["workDir"]
@@ -27,11 +28,22 @@ class MetricsTracker:
         self.store = []  # used to store the metrics
         self.timestamps = []  # used to store the timestamps
 
-    def addMetric(self, metric):
-        self.metrics.append(metric)
+    def addSpecificMetric(self, metric):
+        self.metricsNames.append(metric)
 
-    def addMetrics(self, metrics):
-        self.metrics.extend(metrics)
+    def addSpecificMetrics(self, metrics):
+        self.metricsNames.extend(metrics)
+
+    def filterMetric(self, actualMetricName):
+        print(self.metricsNames)
+        if len(self.metricsNames) > 0:
+            for filterName in self.metricsNames:
+                if filterName in actualMetricName:
+                    return False
+        else:
+            return True
+
+        return True
 
     def getMetric(self, store):
         timestamp = time.time()
@@ -40,6 +52,10 @@ class MetricsTracker:
             metrics = requests.get(self.endpoint).text
             for family in text_string_to_metric_families(metrics):
                 for sample in family.samples:
+                    # Check Filters
+                    if self.filterMetric(sample.name):
+                        continue
+
                     timedSample = Sample(sample.name, sample.labels, sample.value, timestamp)
                     store.append(timedSample)
         except Exception as e:
@@ -79,6 +95,7 @@ class MetricsTracker:
                        title=metric)
                 ax.grid()
                 fig.savefig(pngFileName)
+                plt.close()
 
     def metricsToFile(self, jsonFile, fileName):
         convertedDict = {}

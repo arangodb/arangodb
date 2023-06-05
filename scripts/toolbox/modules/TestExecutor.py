@@ -6,7 +6,7 @@ from modules import MetricsTracker
 
 def start(args, cfg):
     if (args.devFlag):
-        mt = MetricsTracker.MetricsTracker(cfg, [])
+        mt = MetricsTracker.MetricsTracker(cfg, ["rocksdb"])
         mt.start()
         RocksDBCacheSizeTest.start(args, cfg).wait()
         mt.stopAndWrite("RocksDBCacheSizeTest")
