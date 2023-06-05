@@ -1,4 +1,3 @@
-set -x
 docker build -t arangodb/build-alpine-x86_64:latest --file arangodb-build.Dockerfile .
 
 GCC_VERSION=$(docker run --rm -it arangodb/build-alpine-x86_64:latest g++ "--version" | grep -Po " \K\d+\.\d+(?=\.\d+ )")
@@ -12,4 +11,5 @@ IMAGE_TAG=${OS_VERSION}-gcc${GCC_VERSION}-openssl${OPENSSL_VERSION}
 echo "Taging image as \"${IMAGE_TAG}\""
 docker tag arangodb/build-alpine-x86_64:latest arangodb/build-alpine-x86_64:${IMAGE_TAG}
 
-docker push arangodb/build-alpine-x86_64:${IMAGE_TAG}
+echo "To push the image please run:"
+echo "  docker push arangodb/build-alpine-x86_64:${IMAGE_TAG}"
