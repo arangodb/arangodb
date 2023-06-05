@@ -10,8 +10,8 @@ def main():
     args = ArgumentParser.arguments()
     calculatedConfig = cfg.CalculatedConfig(args).getConfig()
     process = ArangoDBStarter.start(args, calculatedConfig)
-    testProcess = TestExecutor.start(args, calculatedConfig)
-    testProcess.wait()
+    TestExecutor.start(args, calculatedConfig)
+
     print("=> All tests finished")
     ArangoDBStarter.stop(process)
 
