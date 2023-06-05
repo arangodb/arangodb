@@ -30,12 +30,26 @@ feed = {
     "user": arangodb["user"]
 }
 
+# ArangoDB Metrics based configuration parameters
+metrics = {
+    "interval": 1,
+    "endpoint": "http://" + arangodb["host"] + ":" + arangodb["port"] + "/_admin/metrics"
+}
+
 
 class CalculatedConfig:
     def __init__(self, args):
         self.arangodb = arangodb
         self.feed = feed
         self.globals = globals
+        self.metrics = metrics
+
+        if args.host and args.port:
+            self.arangodb["port"] = args.port
+            self.arangodb["host"] = args.host
+            self.arangodb["startupParameters"]["server.endpoint"] = "tcp://" + args.host + ":" + args.port
+            self.feed["endpoints"] = "http://" + args.host + ":" + self.arangodb["port"]
+            self.metrics["endpoint"] = "http://" + args.host + ":" + self.arangodb["port"] + "/_admin/metrics"
 
         # TODO: This can be done better, but for now it works
         if args.workDir:
@@ -49,7 +63,8 @@ class CalculatedConfig:
         return {
             "arangodb": self.arangodb,
             "feed": self.feed,
-            "globals": self.globals
+            "globals": self.globals,
+            "metrics": self.metrics
         }
 
     def getArangoDB(self):
@@ -60,3 +75,6 @@ class CalculatedConfig:
 
     def getGlobals(self):
         return self.globals
+
+    def getMetrics(self):
+        return self.metrics
