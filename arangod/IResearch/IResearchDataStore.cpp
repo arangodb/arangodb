@@ -1504,7 +1504,6 @@ void IResearchDataStore::properties(LinkLock linkLock,
 }
 
 IResearchTrxState* IResearchDataStore::getContext(TransactionState& state) {
-  TRI_ASSERT(!isOutOfSync());
   void const* key = this;
   auto* context = basics::downCast<IResearchTrxState>(state.cookie(key));
   if (ADB_LIKELY(context)) {
