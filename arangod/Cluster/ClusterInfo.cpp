@@ -7227,6 +7227,8 @@ void ClusterInfo::shutdownSyncers() {
   if (_curSyncer != nullptr) {
     _curSyncer->beginShutdown();
   }
+
+  drainSyncers();
 }
 
 void ClusterInfo::waitForSyncersToStop() {
