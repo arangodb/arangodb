@@ -1,0 +1,4 @@
+prometheus_client
+requests
+numpy
+matplotlib
