@@ -23,8 +23,6 @@
 
 #include "ExecutionState.h"
 
-#include "Assertions/ProdAssert.h"
-
 #include <ostream>
 
 namespace arangodb::aql {
@@ -38,7 +36,7 @@ auto toStringView(ExecutionState state) -> std::string_view {
     case ExecutionState::WAITING:
       return "WAITING";
   }
-  ADB_PROD_ASSERT(false)
+  LOG_TOPIC("3ad03", FATAL, arangodb::Logger::FIXME)
       << "Unhandled state "
       << static_cast<std::underlying_type_t<decltype(state)>>(state);
   std::abort();
@@ -50,7 +48,7 @@ auto toStringView(ExecutorState state) -> std::string_view {
     case ExecutorState::HASMORE:
       return "HASMORE";
   }
-  ADB_PROD_ASSERT(false)
+  LOG_TOPIC("ae66d", FATAL, arangodb::Logger::FIXME)
       << "Unhandled state "
       << static_cast<std::underlying_type_t<decltype(state)>>(state);
   std::abort();
