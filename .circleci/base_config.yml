@@ -4,6 +4,9 @@ parameters:
   enterprise-branch:
     type: string
     default: ""
+  dockerize:
+    type: boolean
+    default: true
 
 
 commands:
@@ -255,6 +258,33 @@ jobs:
       - store_test_results:
           path: ./test-results/
 
+  create-docker-image:
+    machine:
+      image: ubuntu-2004:current
+      docker_layer_caching: true 
+    resource_class: medium
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Create archive of compiled instance
+          command: | 
+              ## Enterprise archive not supported yet
+              mkdir archive
+              tar -czf archive/install.tar.gz build/ scripts/ js/ etc/ utils/ 
+      - run:
+          name: Create docker image from install.tar.gz
+          command: |
+            cp archive/install.tar.gz scripts/build/
+            cd scripts/build
+            image_name=$(echo ${CIRCLE_BRANCH##*/})
+            docker build -t $image_name:<< pipeline.id >> --target arangodb-tar-starter -f tar-to-docker.Dockerfile .
+            mkdir /tmp/artifacts
+            docker save $image_name:<< pipeline.id >> > /tmp/artifacts/$image_name:<< pipeline.id >>.tar.gz
+
+      - store_artifacts:
+          path: /tmp/artifacts
+
 workflows:
   lint:
     jobs:
@@ -279,6 +309,14 @@ workflows:
           preset: community-pr
           edition: x64-community
           enterprise: false
+      - approve-for-docker-image:
+          type: approval
+          requires:
+            - build-ce
+      - create-docker-image:
+          requires:
+            - approve-for-docker-image
+
   enterprise-pr:
     jobs:
       - compile-linux:
