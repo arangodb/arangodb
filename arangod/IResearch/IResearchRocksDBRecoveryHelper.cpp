@@ -82,11 +82,9 @@ IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
       _skipRecoveryItems = {};
       break;
     }
-    auto parts = absl::StrSplit(item, '/');
-    auto parts_it = parts.begin();
-    auto it = _skipRecoveryItems.try_emplace(*parts_it);
-    ++parts_it;
-    it.first->second.emplace(*parts_it);
+    std::pair<std::string_view, std::string_view> parts =
+        absl::StrSplit(item, '/');
+    _skipRecoveryItems[parts.first].emplace(parts.second);
   }
 }
 
@@ -293,7 +291,7 @@ IResearchRocksDBRecoveryHelper::makeRanges(uint64_t objectId) {
   TRI_ASSERT(!_skipAllItems);
   auto collection = lookupCollection(objectId);
   if (!collection) {
-    // TODO(MBkkt) it was ok in old implementation
+    // TODO(MBkkt) it was ok in the old implementation
     // but I don't know why, for me it looks like assert
     return {};
   }
