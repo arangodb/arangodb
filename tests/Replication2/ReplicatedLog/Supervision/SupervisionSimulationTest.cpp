@@ -59,7 +59,8 @@ struct ReplicatedLogSupervisionSimulationTest
       -> AgencyState {
     return AgencyState{.replicatedLog = log,
                        .health = std::move(health),
-                       .logLeaderWriteConcern = std::nullopt};
+                       .logLeaderWriteConcern = std::nullopt,
+                       .logLeaderWaitForSync = std::nullopt};
   }
 };
 
@@ -135,6 +136,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
 
   auto allTests = model_checker::combined{
       MC_ALWAYS(mcpreds::isAssumedWaitForSyncFalse()),
+      MC_ALWAYS(
+          mcpreds::isAssumedWaitForSyncLessThanWaitForSyncUsedForCommit()),
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
   };
   using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
@@ -438,7 +441,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
   //  std::cout << result.stats << std::endl;
 }
 
-TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_wait_for_sync) {
+TEST_F(ReplicatedLogSupervisionSimulationTest,
+       check_log_change_wait_for_sync_false) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
@@ -488,7 +492,75 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_wait_for_sync) {
       MC_ALWAYS(
           mcpreds::
               isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern()),
-      MC_EVENTUALLY_ALWAYS(mcpreds::isPlannedWriteConcern(false)),
+      MC_ALWAYS(
+          mcpreds::isAssumedWaitForSyncLessThanWaitForSyncUsedForCommit()),
+      MC_EVENTUALLY_ALWAYS(mcpreds::isPlannedWaitForSync(false)),
+      MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth())};
+  // Unfortunately the deterministic checker takes too long
+  // using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+  //                                          AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::RandomEnumerator,
+                                            AgencyState, AgencyTransition>;
+  auto result = Engine::run(driver, allTests, initState,
+                            {.iterations = 2000, .seed = this->seed(ADB_HERE)});
+  EXPECT_FALSE(result.failed) << *result.failed;
+  // std::cout << result.stats << std::endl;
+}
+
+TEST_F(ReplicatedLogSupervisionSimulationTest,
+       check_log_change_wait_for_sync_true) {
+  AgencyLogBuilder log;
+  log.setTargetConfig(LogTargetConfig(2, 2, false))
+      .setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags);
+
+  log.setPlanParticipant("A", defaultFlags)
+      .setPlanParticipant("B", defaultFlags)
+      .setPlanParticipant("C", defaultFlags);
+
+  log.setPlanLeader("A");
+  log.establishLeadership();
+
+  log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+  log.setSnapshotTrue("A").setSnapshotTrue("B").setSnapshotTrue("C");
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "D", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "E", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  auto initState = makeAgencyState(log.get(), std::move(health));
+
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{},          KillLeaderActor{},
+      DBServerActor{"A"},          DBServerActor{"B"},
+      DBServerActor{"C"},          DBServerActor{"D"},
+      AddServerActor{"D"},         SetWriteConcernActor{1},
+      SetSoftWriteConcernActor{3}, SetWaitForSyncActor{true}};
+
+  auto allTests = model_checker::combined{
+      MC_ALWAYS(
+          mcpreds::isAssumedWriteConcernLessThanWriteConcernUsedForCommit()),
+      MC_ALWAYS(
+          mcpreds::
+              isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern()),
+      MC_ALWAYS(
+          mcpreds::isAssumedWaitForSyncLessThanWaitForSyncUsedForCommit()),
+      MC_EVENTUALLY_ALWAYS(mcpreds::isPlannedWaitForSync(true)),
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth())};
   // Unfortunately the deterministic checker takes too long
   // using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,

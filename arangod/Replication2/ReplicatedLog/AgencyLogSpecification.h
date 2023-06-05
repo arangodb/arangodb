@@ -320,7 +320,7 @@ struct LogCurrentSupervision {
   // first effectiveWriteConcern that is calculated on creation
   // of the log.
   size_t assumedWriteConcern{1};
-  bool assumedWaitForSync{true};
+  bool assumedWaitForSync{false};
   std::optional<uint64_t> targetVersion;
   std::optional<StatusReport> statusReport;
   std::optional<clock::time_point> lastTimeModified;
@@ -348,7 +348,7 @@ struct LogCurrent {
         -> bool = default;
   };
 
-  // Will be nullopt until a leader has been assumed leadership
+  // Will be nullopt until a leader has assumed leadership
   std::optional<Leader> leader;
 
   // Temporary hack until Actions are de-serializable.

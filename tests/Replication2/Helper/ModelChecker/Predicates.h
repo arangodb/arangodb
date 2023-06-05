@@ -169,12 +169,12 @@ static inline auto isAssumedWriteConcernLessThanWriteConcernUsedForCommit() {
   });
 }
 
-static inline auto isPlannedWriteConcern(bool concern) {
+static inline auto isPlannedWaitForSync(bool waitForSync) {
   return MC_BOOL_PRED(global, {
     AgencyState const& state = global.state;
     if (state.replicatedLog && state.replicatedLog->plan) {
       return state.replicatedLog->plan->participantsConfig.config.waitForSync ==
-             concern;
+             waitForSync;
     }
     return false;
   });
@@ -191,6 +191,24 @@ static inline auto isAssumedWaitForSyncFalse() {
     // This is intentional as it's ok for current to not exist, and we
     // want to make sure that assumedWaitForSync is never *set* to *true*
     return true;
+  });
+}
+
+static inline auto isAssumedWaitForSyncLessThanWaitForSyncUsedForCommit() {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+
+    if (not state.logLeaderWaitForSync) {
+      return true;
+    }
+
+    if (state.replicatedLog and state.replicatedLog->plan and
+        state.replicatedLog->current and
+        state.replicatedLog->current->supervision) {
+      return state.replicatedLog->current->supervision->assumedWaitForSync <=
+             *state.logLeaderWaitForSync;
+    }
+    return false;
   });
 }
 

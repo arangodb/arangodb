@@ -878,9 +878,10 @@ auto checkConfigChanged(SupervisionContext& ctx, Log const& log,
 
   // Wait for sync
   if (target.config.waitForSync != plan.participantsConfig.config.waitForSync) {
-    // FIXME: assumedWaitForSync does not change here.
     ctx.createAction<UpdateWaitForSyncAction>(
-        target.config.waitForSync, current.supervision->assumedWaitForSync);
+        target.config.waitForSync,
+        std::min(target.config.waitForSync,
+                 current.supervision->assumedWaitForSync));
     return;
   }
 }
@@ -903,8 +904,7 @@ auto checkConfigCommitted(SupervisionContext& ctx, Log const& log) -> void {
   }
 
   if (plan.participantsConfig.generation ==
-      current.leader->committedParticipantsConfig->generation)
-
+      current.leader->committedParticipantsConfig->generation) {
     if (plan.participantsConfig.config.effectiveWriteConcern !=
         current.supervision->assumedWriteConcern) {
       // update assumedWriteConcern
@@ -912,10 +912,11 @@ auto checkConfigCommitted(SupervisionContext& ctx, Log const& log) -> void {
           plan.participantsConfig.config.effectiveWriteConcern);
     }
 
-  if (plan.participantsConfig.config.waitForSync !=
-      current.supervision->assumedWaitForSync) {
-    ctx.createAction<SetAssumedWaitForSyncAction>(
-        plan.participantsConfig.config.waitForSync);
+    if (plan.participantsConfig.config.waitForSync !=
+        current.supervision->assumedWaitForSync) {
+      ctx.createAction<SetAssumedWaitForSyncAction>(
+          plan.participantsConfig.config.waitForSync);
+    }
   }
 }
 
