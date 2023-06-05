@@ -1645,7 +1645,7 @@ void IResearchDataStore::recoveryInsert(uint64_t recoveryTick,
   try {
     std::ignore = insertDocument<FieldIteratorType>(*this, _recoveryTrx, doc,
                                                     documentId, meta);
-  } catch (std::bad_alloc const& e) {
+  } catch (std::bad_alloc const&) {
     throw;
   } catch (...) {
   }
