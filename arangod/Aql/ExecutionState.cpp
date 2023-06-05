@@ -23,6 +23,8 @@
 
 #include "ExecutionState.h"
 
+#include "Logger/LogMacros.h"
+
 #include <ostream>
 
 namespace arangodb::aql {
