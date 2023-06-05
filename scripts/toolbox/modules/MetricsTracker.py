@@ -7,6 +7,7 @@ import requests
 import os
 import json
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 from prometheus_client.samples import Sample
 import warnings
@@ -63,25 +64,16 @@ class MetricsTracker:
                 continue
             else:
                 pngFileName = fileName + "-" + metric + ".png"
-                print("=============")
-                print("Name:" + metric)
-                print("Values:" + str(dictData[metric]["values"]))
                 plotValues = []
                 for value in dictData[metric]["values"]:
-                    print("Value to append: " + str(value[1]))
                     plotValues.append(value[1])  # value without timestamp
 
-                print("plotValues:")
-                print(plotValues)
                 # Metrics to file as plot data
-
                 fig, ax = plt.subplots()
-                print("timestamps:")
-                print(self.timestamps)
                 t = self.timestamps
-                print("converted:")
-                print(t)
                 s = np.array(plotValues)
+                fmt = ticker.FuncFormatter(lambda x, pos: time.strftime('%H:%M:%S', time.gmtime(x)))
+                ax.xaxis.set_major_formatter(fmt)
                 ax.plot(t, s)
                 ax.set(xlabel='time (s)', ylabel='probably bytes (check docu)',
                        title=metric)
