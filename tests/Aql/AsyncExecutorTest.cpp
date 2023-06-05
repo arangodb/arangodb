@@ -70,6 +70,11 @@ TEST_F(AsyncExecutorTest, sleepingBeauty) {
   testHelper.setWakeupCallback(wakeupHandler);
   testHelper.prepareInput();
 
+  // The postAsyncExecuteCallback is called _after_ the AsyncNode has called
+  // execute() on its dependency, but _before_ the results of that call is
+  // stored.  So the node is still "inProgress".  By making sure all tasks and
+  // wakeups are processed before leaving the callback, we simulate the thread
+  // being slow.
   asyncBlock0->setPostAsyncExecuteCallback([&] {
     while (!scheduler.queueEmpty()) {
       scheduler.runOnce();
