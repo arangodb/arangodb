@@ -1,8 +1,7 @@
-To build a new docker image please use the following command (assuming this folder as your working directory):
-`docker build -t arangodb/build-alpine-x86_64:<alpine-version>-gcc<gcc-version>-openssl<openssl-version> --file arangodb-build.Dockerfile .`
+We want images to be tagged based on the version of the base images as well was the versions of the most important components.
+For example `arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.1`
+That image is based on Alpine 3.16 and has gcc 11.2 and OpenSSL 3.1.1 installed.
 
-For example:
-`docker build -t arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl1.1.1t --file arangodb-build.Dockerfile .`
+To automate and simplify this the build-image.sh script creates the image with the `latest` tag and afterwards automatically
+determines the relevant version numbers, tags the image accordingly and pushes to image to docker hub.
 
-After build we can push the new image to docker hub (assuming you have the necessary permissions):
-`docker push arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl1.1.1t`
