@@ -589,8 +589,8 @@ void SupervisedScheduler::runSupervisor() {
       _metricsNumAwakeThreads.operator=(numAwake);
       _metricsNumWorkingThreads.operator=(numWorking);
       _metricsNumWorkerThreads.operator=(numWorkers);
-      _metricsStackMemoryWorkerThreads.operator=(numWorkers *
-                                                 approxWorkerStackSize);
+      _metricsStackMemoryWorkerThreads.operator=(
+          numWorkers* approxWorkerStackSize);
       roundCount = 0;
     }
 
