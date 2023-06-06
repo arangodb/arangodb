@@ -32,8 +32,6 @@ const console = require('console');
 const request = require("@arangodb/request");
 const expect = require('chai').expect;
 const errors = require('@arangodb').errors;
-const suspendExternal = internal.suspendExternal;
-const continueExternal = internal.continueExternal;
 
 // name of environment variable
 const PATH = 'PROMTOOL_PATH';
@@ -181,10 +179,9 @@ function promtoolClusterSuite() {
   if (!internal.env.hasOwnProperty('INSTANCEINFO')) {
     throw new Error('env.INSTANCEINFO was not set by caller!');
   }
-  const instanceManager = JSON.parse(internal.env.INSTANCEINFO);
-  let dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
-  let agents = instanceManager.arangods.filter(arangod => arangod.instanceRole === "agent");
-  let coordinators = instanceManager.arangods.filter(arangod => arangod.instanceRole === "coordinator");
+  let dbServers = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
+  let agents = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "agent");
+  let coordinators = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "coordinator");
 
   return {
     testMetricsOnDbServers: function () {
@@ -225,8 +222,7 @@ function promtoolClusterSuite() {
       //query metrics from coordinator, supplying id of a server, that is shut down
       let dbServer = dbServers[0];
       let serverId = getServerId(dbServer);
-      assertTrue(suspendExternal(dbServer.pid));
-      dbServer.suspended = true;
+      assertTrue(dbServer.suspend());
       try {
         let metricsUrl = metricsUrlPath + "?serverId=" + serverId;
         let res = arango.GET_RAW(metricsUrl);
@@ -237,10 +233,9 @@ function promtoolClusterSuite() {
         //        expect(body.errorNum).to.equal(errors.ERROR_CLUSTER_CONNECTION_LOST.code);
       } finally {
         let clusterHealthOk = false;
-        assertTrue(continueExternal(dbServer.pid));
+        assertTrue(dbServer.resume());
         for (let i = 0; i < 60; i++) {
           if (checkThatServerIsResponsive(dbServer)) {
-            delete dbServer.suspended;
             break;
           }
           internal.sleep(1);
