@@ -122,7 +122,7 @@ void IResearchRocksDBRecoveryHelper::applyCF(uint32_t column_family_id,
 
   auto const objectId = RocksDBKey::objectId(key);
 
-  auto ranges = getRanges(objectId);
+  auto& ranges = getRanges(objectId);
   if (ranges.empty()) {
     return;
   }
@@ -183,13 +183,13 @@ void IResearchRocksDBRecoveryHelper::applyCF(uint32_t column_family_id,
   if (!indexes_needed &&
       ranges.indexes.end >= static_cast<uint16_t>(_indexes.size())) {
     _indexes.resize(ranges.indexes.begin);
-    _ranges[objectId].indexes = {};
+    ranges.indexes = {};
   }
 
   if (!links_needed &&
       ranges.links.end >= static_cast<uint16_t>(_links.size())) {
     _links.resize(ranges.links.begin);
-    _ranges[objectId].links = {};
+    ranges.links = {};
   }
 }
 
@@ -267,7 +267,7 @@ IResearchRocksDBRecoveryHelper::lookupCollection(uint64_t objectId) {
   return vocbase ? vocbase->lookupCollection(collectionId) : nullptr;
 }
 
-IResearchRocksDBRecoveryHelper::Ranges
+IResearchRocksDBRecoveryHelper::Ranges&
 IResearchRocksDBRecoveryHelper::getRanges(uint64_t objectId) {
   auto [it, emplaced] = _ranges.try_emplace(objectId);
   if (!emplaced) {

@@ -102,7 +102,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
     bool empty() const noexcept { return indexes.empty() && links.empty(); }
   };
 
-  Ranges getRanges(uint64_t objectId);
+  Ranges& getRanges(uint64_t objectId);
   Ranges makeRanges(uint64_t objectId);
   std::shared_ptr<LogicalCollection> lookupCollection(uint64_t objectId);
 
