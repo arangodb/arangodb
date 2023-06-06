@@ -1016,12 +1016,7 @@ TEST_F(StateManagerTest_FakeState, follower_acquire_snapshot) {
   }
 
   EXPECT_TRUE(state->acquire.wasTriggered());
-  // TODO This check should be enabled after
-  //      https://arangodb.atlassian.net/browse/CINFRA-725
-  //      is solved:
-  //      EXPECT_FALSE(state->apply.wasTriggered());
-  //      Accordingly, the following line should be removed:
-  state->apply.resolveWithAndReset(Result());
+  EXPECT_FALSE(state->apply.wasTriggered());
 
   // Respond that the snapshot transfer has failed
   state->acquire.resolveWithAndReset(Result(TRI_ERROR_FAILED));

@@ -334,7 +334,9 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
 
-  current.supervision.emplace(LogCurrentSupervision{});
+  auto currentSupervision = LogCurrentSupervision{};
+  currentSupervision.assumedWaitForSync = true;
+  current.supervision.emplace(currentSupervision);
   current.supervision->assumedWriteConcern = 3;
   for (auto const& [id, _] : participantsFlags) {
     current.localState[id].term = LogTerm{1};
@@ -407,7 +409,9 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_missing_snapshot) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
 
-  current.supervision.emplace(LogCurrentSupervision{});
+  auto currentSupervision = LogCurrentSupervision{};
+  currentSupervision.assumedWaitForSync = true;
+  current.supervision.emplace(currentSupervision);
   current.supervision->assumedWriteConcern = 3;
   for (auto const& [id, _] : participantsFlags) {
     current.localState[id].term = LogTerm{1};
@@ -632,7 +636,9 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
                          .committedParticipantsConfig = participantsConfig,
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
-  current.supervision.emplace(LogCurrentSupervision{});
+  auto currentSupervision = LogCurrentSupervision{};
+  currentSupervision.assumedWaitForSync = true;
+  current.supervision.emplace(currentSupervision);
   current.supervision->assumedWriteConcern = 3;
   for (auto const& [id, _] : participantsFlags) {
     current.localState[id].state = LocalStateMachineStatus::kOperational;

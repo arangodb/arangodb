@@ -36,6 +36,7 @@ struct AgencyState {
   // agency's state; it is currently the simplest way to persist informatioon
   // for predicates to access;
   std::optional<size_t> logLeaderWriteConcern;
+  std::optional<bool> logLeaderWaitForSync;
 
   friend std::size_t hash_value(AgencyState const& s) {
     std::size_t seed = 0;
@@ -68,6 +69,10 @@ struct AgencyState {
     }
     if (state.logLeaderWriteConcern) {
       os << "logLeaderWriteConcern: " << *state.logLeaderWriteConcern
+         << std::endl;
+    }
+    if (state.logLeaderWaitForSync) {
+      os << "logLeaderWaitForSync: " << *state.logLeaderWaitForSync
          << std::endl;
     }
     {

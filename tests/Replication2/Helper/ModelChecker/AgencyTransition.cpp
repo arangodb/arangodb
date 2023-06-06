@@ -150,6 +150,8 @@ void DBServerCommitConfigAction::apply(AgencyState& agency) const {
 
   agency.logLeaderWriteConcern = agency.replicatedLog->plan->participantsConfig
                                      .config.effectiveWriteConcern;
+  agency.logLeaderWaitForSync =
+      agency.replicatedLog->plan->participantsConfig.config.waitForSync;
 }
 
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream& {
