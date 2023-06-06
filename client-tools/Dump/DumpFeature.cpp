@@ -1115,23 +1115,30 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       std::unordered_map<std::string, ParallelDumpServer::ShardInfo>>
       shardsByServer;
 
-  std::unordered_map<std::string, std::shared_ptr<ManagedDirectory::File>>
+  std::unordered_map<std::string,
+                     std::vector<std::shared_ptr<ManagedDirectory::File>>>
       filesByName;
 
-  auto getFileForShard = [&](std::string const& shard,
-                             VPackSlice collectionInfo,
-                             std::string const& name) {
+  auto getFilesForCollection = [&](VPackSlice collectionInfo,
+                                   std::string const& name) {
     std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
     std::string escapedName =
         escapedCollectionName(name, collectionInfo.get("parameters"));
 
     std::string filename = escapedName + "_" + hexString + ".data.json";
     if (auto it = filesByName.find(filename); it == filesByName.end()) {
-      auto file =
-          _directory->writableFile(escapedName + "_" + hexString + ".data.json",
-                                   true /*overwrite*/, 0, true /*gzipOk*/);
-      return filesByName[std::move(filename)] =
-                 std::shared_ptr<ManagedDirectory::File>(file.release());
+      std::vector<std::shared_ptr<ManagedDirectory::File>> files;
+
+      for (size_t i = 0; i < _options.localWriterThreads; i++) {
+        auto file =
+            _directory->writableFile(escapedName + "_" + hexString + "." +
+                                         std::to_string(i) + ".data.json",
+                                     true /*overwrite*/, 0, true /*gzipOk*/);
+        files.emplace_back(
+            std::shared_ptr<ManagedDirectory::File>(file.release()));
+      }
+
+      return filesByName[std::move(filename)] = files;
     } else {
       return (*it).second;
     }
@@ -1159,8 +1166,8 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
             continue;
           }
         }
-        shardsByServer[serverStr][shardStr].file =
-            getFileForShard(shardStr, collectionInfo, name);
+        shardsByServer[serverStr][shardStr].files =
+            getFilesForCollection(collectionInfo, name);
       }
     }
 
@@ -1567,7 +1574,7 @@ Result DumpFeature::ParallelDumpServer::run(
 
   // start k writer threads
   for (size_t i = 0; i < options.localWriterThreads; i++) {
-    threads.emplace_back([&] {
+    threads.emplace_back([&, i] {
       while (true) {
         auto [response, blocked] = queue.pop();
         if (response == nullptr) {
@@ -1607,11 +1614,8 @@ Result DumpFeature::ParallelDumpServer::run(
           FATAL_ERROR_EXIT();
         }
 
-        // must acquire mutex here because otherwise multiple threads
-        // could write to the same file concurrently
-        std::unique_lock guard(iter->second.writeMutex);
         arangodb::Result result =
-            dumpJsonObjects(*this, *iter->second.file, body);
+            dumpJsonObjects(*this, *iter->second.files[i], body);
 
         if (result.fail()) {
           LOG_TOPIC("77881", FATAL, Logger::DUMP)
