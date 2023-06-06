@@ -57,9 +57,9 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   void recoveryInsert(uint64_t tick, LocalDocumentId documentId,
                       VPackSlice doc) {
-    return IResearchDataStore::recoveryInsert<FieldIterator<FieldMeta>,
-                                              IResearchLinkMeta>(
-        tick, documentId, doc, meta());
+    IResearchDataStore::recoveryInsert<FieldIterator<FieldMeta>,
+                                       IResearchLinkMeta>(tick, documentId, doc,
+                                                          meta());
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,

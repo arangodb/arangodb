@@ -68,9 +68,9 @@ class IResearchLinkMock final : public Index, public IResearchLink {
 
   void recoveryInsert(uint64_t tick, LocalDocumentId documentId,
                       velocypack::Slice doc) {
-    return IResearchDataStore::recoveryInsert<FieldIterator<FieldMeta>,
-                                              IResearchLinkMeta>(
-        tick, documentId, doc, meta());
+    IResearchDataStore::recoveryInsert<FieldIterator<FieldMeta>,
+                                       IResearchLinkMeta>(tick, documentId, doc,
+                                                          meta());
   }
 
   Result remove(transaction::Methods& trx, LocalDocumentId documentId);
