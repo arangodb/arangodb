@@ -127,8 +127,6 @@ void IResearchRocksDBRecoveryHelper::applyCF(uint32_t column_family_id,
     return;
   }
 
-  irs::Finally cleanup = [&]() noexcept { clear<false>(); };
-
   auto const documentId = RocksDBKey::documentId(key);
 
   std::optional<decltype(_skipRecoveryItems.end())> skipIt;
@@ -220,16 +218,10 @@ void IResearchRocksDBRecoveryHelper::LogData(rocksdb::Slice const& blob,
   auto const type = RocksDBLogValue::type(blob);
 
   switch (type) {
-    case RocksDBLogType::DatabaseCreate:
-    case RocksDBLogType::CollectionCreate:
-      // TODO(MBkkt) Do we really need clear for these?
-    case RocksDBLogType::DatabaseDrop:
-    case RocksDBLogType::CollectionDrop:
-    case RocksDBLogType::IndexCreate:
-    case RocksDBLogType::IndexDrop:
-      // TODO(MBkkt) Clear only necessary entries
-      clear<true>();
-      break;
+    case RocksDBLogType::IndexCreate: {
+      auto const objectId = RocksDBLogValue::objectId(blob);
+      _ranges.erase(objectId);
+    } break;
     case RocksDBLogType::CollectionTruncate: {
       // TODO(MBkkt) Truncate could recover index from OutOfSync state
       auto const objectId = RocksDBLogValue::objectId(blob);
@@ -238,8 +230,6 @@ void IResearchRocksDBRecoveryHelper::LogData(rocksdb::Slice const& blob,
       if (ranges.empty()) {
         return;
       }
-
-      irs::Finally cleanup = [&]() noexcept { clear<false>(); };
 
       auto apply = [&](auto range, auto& values) {
         if (range.empty()) {
@@ -295,6 +285,8 @@ IResearchRocksDBRecoveryHelper::makeRanges(uint64_t objectId) {
     // but I don't know why, for me it looks like assert
     return {};
   }
+
+  clear<false>();
 
   auto const indexesBegin = _indexes.size();
   auto const linksBegin = _links.size();
