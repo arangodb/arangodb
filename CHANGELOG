@@ -1,6 +1,31 @@
 devel
 -----
 
+* Upgraded OpenSSL to 3.1.1.
+
+* BTS-1435: fixed invalid AQL optimization and added a safeguard.
+
+* APM-766, SEARCH-479: Reduce memory overhead for ArangoSearch removes.
+
+* Improve precision for ArangoSearch GEO_IN_RANGE function.
+
+* Updated ArangoDB Starter to 0.15.8.
+
+* OASIS-25262: Fixed undefined behavior in IN lookup in unique indexes when the
+  lookup array had to be rebuilt in memory.
+
+* BTS-846: Relaxed setup cost for calculation of default sort cost. There was 
+  a hardcoded value of 100 being added to the sort cost that would be dominant
+  when there was a small amount of documents in the collection. Even if an 
+  index would be the best candidate, if it doesn't cover a sort node present
+  in a query, it might end up not being chosen because the default sort cost 
+  would be minimum 100 because of the former hardcoded value.
+
+* Updated arangosync to v2.18.0-preview-2.
+
+* BTS-1396: Restricted followers from attempting to send telemetrics data to 
+  the endpoint on active failover mode.
+
 * Updated arangosync to v2.18.0-preview-1.
 
 * APM-671: index selectivity estimates (cuckoo estimator) memory tracking.
