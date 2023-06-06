@@ -149,8 +149,7 @@ class DumpFeature final : public ArangoDumpFeature {
 
   struct ParallelDumpServer : public DumpJob {
     struct ShardInfo {
-      std::mutex mutable writeMutex;
-      std::shared_ptr<ManagedDirectory::File> file;
+      std::vector<std::shared_ptr<ManagedDirectory::File>> files;
     };
 
     ParallelDumpServer(ManagedDirectory&, DumpFeature&, ClientManager&,
