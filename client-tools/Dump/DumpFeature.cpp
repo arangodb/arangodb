@@ -1537,7 +1537,9 @@ Result DumpFeature::ParallelDumpServer::run(
           LOG_TOPIC("b3cf8", DEBUG, Logger::DUMP)
               << "network thread stopped by stopped channel";
         }
-        countBlocker(kBlockAtPushWrite, blocked ? 1 : -1);
+        if (blocked) {
+          countBlocker(kLocalQueue, -1);
+        }
         lastBatchId = batchId;
       }
       LOG_TOPIC("ac308", DEBUG, Logger::DUMP)
@@ -1563,8 +1565,6 @@ Result DumpFeature::ParallelDumpServer::run(
           }
 
           auto file = fileProvider->getFile(it2->second.collectionName);
-          LOG_DEVEL << "open file for collection " << it2->second.collectionName
-                    << " shard " << shardId;
           filesByShard.emplace(shardId, file);
           return file;
         }
@@ -1575,7 +1575,9 @@ Result DumpFeature::ParallelDumpServer::run(
         if (response == nullptr) {
           break;
         }
-        countBlocker(kBlockAtPopWrite, blocked ? 1 : -1);
+        if (blocked) {
+          countBlocker(kLocalQueue, 1);
+        }
         // Decode which shard this is from header field
         arangodb::basics::StringBuffer const& body = response->getBody();
         bool headerExtracted;
@@ -1588,19 +1590,17 @@ Result DumpFeature::ParallelDumpServer::run(
         }
 
         // update block counts from remote servers
-        auto counts = [&, &response = response] {
+        auto count = [&, &response = response]() -> int64_t {
           bool headerExtracted;
           auto str = response->getHeaderField("x-arango-dump-block-counts",
                                               headerExtracted);
-          int64_t first{0}, second{0};
-          auto res =
-              std::from_chars(str.c_str(), str.c_str() + str.size(), first);
-          std::from_chars(res.ptr + 1, str.c_str() + str.size(), second);
-          return std::make_pair(first, second);
+          if (!headerExtracted) {
+            return 0;
+          }
+          return basics::StringUtils::int64(str);
         }();
 
-        countBlocker(kBlockAtPopBatch, counts.first);
-        countBlocker(kBlockAtPushBatch, counts.second);
+        countBlocker(kRemoteQueue, count);
 
         auto file = getFileForShard(shardId);
         arangodb::Result result = dumpJsonObjects(*this, *file, body);
@@ -1628,19 +1628,17 @@ Result DumpFeature::ParallelDumpServer::run(
 
 void DumpFeature::ParallelDumpServer::ParallelDumpServer::printBlockStats() {
   const char* locations[] = {
-      "writer threads",
-      "network threads",
-      "dbserver get batch",
-      "dbserver put batch",
+      "writer threads (+) / network threads (-)",
+      "dbserver worker put batch (+) / rest handler get batch (-)",
   };
 
   std::string msg;
-  for (size_t i = 0; i < 4; i++) {
+  for (size_t i = 0; i < 2; i++) {
     if (i > 0) {
       msg += ", ";
     }
     msg += locations[i];
-    msg += "=";
+    msg += " = ";
     msg += std::to_string(blockCounter[i]);
   }
 
@@ -1657,17 +1655,20 @@ void DumpFeature::ParallelDumpServer::ParallelDumpServer::countBlocker(
       "dbserver put batch - consider increasing the number of network threads",
   };
   /* clang-format on */
+  const char* msg = nullptr;
   auto actual = blockCounter[where].fetch_add(c);
-  if (actual > 100) {
-    if (blockCounter[where].compare_exchange_strong(actual, actual - 100)) {
-      LOG_TOPIC("3cc53", INFO, Logger::DUMP)
-          << "when dumping data from server " << server
-          << " system blocking at " << locations[where];
-    }
+  if (actual == 100) {
+    msg = locations[2 * where];
+    blockCounter[where].fetch_sub(100);
+  } else if (actual == -100) {
+    msg = locations[2 * where + 1];
+    blockCounter[where].fetch_add(100);
   }
-  if (actual + c < 0) {
-    actual += c;
-    blockCounter[where].compare_exchange_strong(actual, 0);
+
+  if (msg) {
+    LOG_TOPIC("3cc53", INFO, Logger::DUMP)
+        << "when dumping data from server " << server << " system blocking at "
+        << msg;
   }
 }
 
