@@ -216,7 +216,8 @@ void IResearchRocksDBRecoveryHelper::LogData(rocksdb::Slice const& blob,
   auto const type = RocksDBLogValue::type(blob);
 
   switch (type) {
-    case RocksDBLogType::IndexCreate: {
+    case RocksDBLogType::IndexCreate:
+    case RocksDBLogType::IndexDrop: {
       // TODO(MBkkt) More granular cache invalidation
       clear<true>();
     } break;
