@@ -41,7 +41,7 @@ workflows:
   setup:
     when:
       or:
-        - equal: [ api, << pipeline.trigger_source >> ]
-        - equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
+        - equal: [api, << pipeline.trigger_source >>]
+        - equal: [scheduled_pipeline, << pipeline.trigger_source >>]
     jobs:
       - setup

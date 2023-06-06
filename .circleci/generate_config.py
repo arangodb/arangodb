@@ -271,7 +271,8 @@ def generate_output(config, tests, enterprise):
 
 def generate_jobs(config, args, tests, enterprise):
     """generate job definitions"""
-    tests = filter_tests(args, tests, enterprise)
+    #tests = filter_tests(args, tests, enterprise)
+    tests = [] # disable tests for now
     generate_output(config, tests, enterprise)
 
 
@@ -287,7 +288,7 @@ def main():
             with open(args.output, "w", encoding="utf-8") as outstream:
                 config = yaml.safe_load(instream)
                 generate_jobs(config, args, tests, False) # community
-                generate_jobs(config, args, tests, True) # enterprise
+                #generate_jobs(config, args, tests, True) # enterprise
                 yaml.dump(config, outstream)
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)

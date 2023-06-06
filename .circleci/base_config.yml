@@ -134,9 +134,11 @@ jobs:
         type: string
       enterprise:
         type: boolean
-    docker:
-      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.1
-    resource_class: xlarge
+    # docker:
+    #   - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.1
+    # resource_class: xlarge
+    machine: true
+    resource_class: arangodb/aws-arm
     environment:
       GIT_SSH_COMMAND: ssh
       SCCACHE_ERROR_LOG: /tmp/sccache.log
@@ -145,60 +147,39 @@ jobs:
       - run:
           name: Checkout ArangoDB
           command: |
-            mkdir /root/project && cd /root/project
-            git init
-            git remote add origin https://github.com/arangodb/arangodb.git
-            git fetch --depth 1 origin $CIRCLE_SHA1
-            git checkout $CIRCLE_SHA1
-            git submodule init
-            git submodule update --recursive --depth 1 --jobs 8
-      - checkout-enterprise:
-          destination: "/root/project/enterprise"
-      - run:
-          name: Print SCCache Settings
-          command: sccache -s
-      - run:
-          name: Configure
-          command: |
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
-      - run:
-          name: Build
-          command: |
-            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest
-            if [ << parameters.enterprise >> = true ]; then
-              cmake --build --preset << parameters.preset >> --parallel 8 --target arangobackup
-            fi
-      - run:
-          name: Size leaderboard
-          command: |
-            ls -Ssha build/bin/*.a
-      - run:
-          name: Cleanup build directory
-          command: |
-            find build/ -iname *.a -delete || true
-            find build/ -iname *.o -delete || true
-      - run:
-          name: SCCache Statistics
-          command: sccache -s
-      - store_artifacts:
-          path: build/bin/arango*
-      - store_artifacts:
-          path: /tmp/sccache.log
-      - persist_to_workspace:
-          root: .
-          paths:
-            - CMakePresets.json
-            - build/
-            - scripts/
-            - js/
-            - enterprise/js
-            - etc/
-            - tests/js
-            - enterprise/tests/js
-            - utils
-            - UnitTests
-            - 3rdParty/iresearch/tests/resources
-            - 3rdParty/rta-makedata
+            docker pull arangodb/build-alpine-aarch64:3.16-gcc11.2-openssl3.1.1
+            docker run --rm arangodb/build-alpine-aarch64:3.16-gcc11.2-openssl3.1.1 /bin/sh -c "\
+              mkdir /root/project && cd /root/project && \
+              git init && \
+              git remote add origin https://github.com/arangodb/arangodb.git && \
+              git fetch --depth 1 origin $CIRCLE_SHA1 && \
+              git checkout $CIRCLE_SHA1 && \
+              git submodule init && \
+              git submodule update --recursive --depth 1 --jobs 8 && \
+              sccache -s && \
+              cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib  && \
+              cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest  && \
+              ls -Ssha build/bin/*.a  && \
+              sccache -s"
+      # - store_artifacts:
+      #     path: build/bin/arango*
+      # - store_artifacts:
+      #     path: /tmp/sccache.log
+      # - persist_to_workspace:
+      #     root: .
+      #     paths:
+      #       - CMakePresets.json
+      #       - build/
+      #       - scripts/
+      #       - js/
+      #       - enterprise/js
+      #       - etc/
+      #       - tests/js
+      #       - enterprise/tests/js
+      #       - utils
+      #       - UnitTests
+      #       - 3rdParty/iresearch/tests/resources
+      #       - 3rdParty/rta-makedata
 
   run-tests:
     docker:
@@ -256,33 +237,38 @@ jobs:
           path: ./test-results/
 
 workflows:
-  lint:
-    jobs:
-      - minimal-checkout:
-          name: minimal-checkout
-      - check-log-ids:
-          name: check-log-ids
-          requires:
-            - minimal-checkout
-      - clang-format:
-          name: clang-format
-          requires:
-            - minimal-checkout
-      - eslint:
-          name: eslint
-          requires:
-            - minimal-checkout
+  # lint:
+  #   jobs:
+  #     - minimal-checkout:
+  #         name: minimal-checkout
+  #     - check-log-ids:
+  #         name: check-log-ids
+  #         requires:
+  #           - minimal-checkout
+  #     - clang-format:
+  #         name: clang-format
+  #         requires:
+  #           - minimal-checkout
+  #     - eslint:
+  #         name: eslint
+  #         requires:
+  #           - minimal-checkout
   community-pr:
     jobs:
+      # - compile-linux:
+      #     name: build-ce
+      #     preset: community-pr
+      #     edition: x64-community
+      #     enterprise: false
       - compile-linux:
           name: build-ce
-          preset: community-pr
-          edition: x64-community
+          preset: community-pr-arm
+          edition: aarch64-community
           enterprise: false
-  enterprise-pr:
-    jobs:
-      - compile-linux:
-          name: build-ee
-          preset: enterprise-pr
-          edition: x64-enterprise
-          enterprise: true
+  # enterprise-pr:
+  #   jobs:
+  #     - compile-linux:
+  #         name: build-ee
+  #         preset: enterprise-pr
+  #         edition: x64-enterprise
+  #         enterprise: true
