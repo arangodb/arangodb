@@ -36,6 +36,8 @@ class PrimaryKeysFilterBase : public irs::filter,
                               public irs::filter::prepared,
                               public irs::doc_iterator {
  public:
+  void clear() noexcept { return _pks.clear(); }
+
   void emplace(LocalDocumentId value) {
     _pks.emplace_back(DocumentPrimaryKey::encode(value));
   }
@@ -107,5 +109,13 @@ class PrimaryKeysFilter final : public PrimaryKeysFilterBase {
  private:
   bool next() final;
 };
+
+inline std::shared_ptr<PrimaryKeysFilterBase> makePrimaryKeysFilter(
+    bool nested) {
+  if (nested) {
+    return std::make_shared<PrimaryKeysFilter<true>>();
+  }
+  return std::make_shared<PrimaryKeysFilter<false>>();
+}
 
 }  // namespace arangodb::iresearch
