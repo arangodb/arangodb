@@ -1053,33 +1053,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       std::unordered_map<std::string, ParallelDumpServer::ShardInfo>>
       shardsByServer;
 
-  std::unordered_map<std::string,
-                     std::vector<std::shared_ptr<ManagedDirectory::File>>>
-      filesByName;
-
-
-  auto getFilesForCollection = [&](VPackSlice collectionInfo,
-                                   std::string const& name) {
-
-    std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
-    std::string filename = name + "_" + hexString + ".data.json";
-    if (auto it = filesByName.find(filename); it == filesByName.end()) {
-      std::vector<std::shared_ptr<ManagedDirectory::File>> files;
-
-      for (size_t i = 0; i < _options.localWriterThreads; i++) {
-        auto file =
-            _directory->writableFile(name + "_" + hexString + "." +
-                                         std::to_string(i) + ".data.json",
-                                     true /*overwrite*/, 0, true /*gzipOk*/);
-        files.emplace_back(
-            std::shared_ptr<ManagedDirectory::File>(file.release()));
-      }
-
-      return filesByName[std::move(filename)] = files;
-    } else {
-      return (*it).second;
-    }
-  };
+  std::shared_ptr<DumpFileProvider> fileProvider;
 
   for (auto const& [name, collectionInfo] : restrictList) {
     if (collectionInfo.isNone()) {
@@ -1103,8 +1077,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
             continue;
           }
         }
-        shardsByServer[serverStr][shardStr].files =
-            getFilesForCollection(collectionInfo, name);
+        shardsByServer[serverStr][shardStr].collectionName = name;
       }
     }
 
@@ -1117,11 +1090,13 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
 
   if (_options.useExperimentalDump) {
     // now start jobs for each dbserver
+    fileProvider =
+        std::make_shared<DumpFileProvider>(*_directory, restrictList);
 
     for (auto& [dbserver, shards] : shardsByServer) {
       auto job = std::make_unique<ParallelDumpServer>(
           *_directory, *this, _clientManager, _options, _maskings.get(), _stats,
-          std::move(shards), dbserver);
+          fileProvider, std::move(shards), dbserver);
       _clientTaskQueue.queueJob(std::move(job));
     }
   }
@@ -1509,7 +1484,29 @@ Result DumpFeature::ParallelDumpServer::run(
 
   // start k writer threads
   for (size_t i = 0; i < options.localWriterThreads; i++) {
-    threads.emplace_back([&, i] {
+    threads.emplace_back([&] {
+      std::unordered_map<std::string, std::shared_ptr<ManagedDirectory::File>>
+          filesByShard;
+
+      auto const getFileForShard = [&](std::string const& shardId) {
+        if (auto it = filesByShard.find(shardId); it != filesByShard.end()) {
+          return it->second;
+        } else {
+          auto it2 = shards.find(shardId);
+          if (it2 == shards.end()) {
+            LOG_TOPIC("cd43f", FATAL, Logger::DUMP)
+                << "server returned an unexpected shard " << shardId;
+            FATAL_ERROR_EXIT();
+          }
+
+          auto file = fileProvider->getFile(it2->second.collectionName);
+          LOG_DEVEL << "open file for collection " << it2->second.collectionName
+                    << " shard " << shardId;
+          filesByShard.emplace(shardId, file);
+          return file;
+        }
+      };
+
       while (true) {
         auto [response, blocked] = queue.pop();
         if (response == nullptr) {
@@ -1542,15 +1539,8 @@ Result DumpFeature::ParallelDumpServer::run(
         countBlocker(kBlockAtPopBatch, counts.first);
         countBlocker(kBlockAtPushBatch, counts.second);
 
-        auto iter = shards.find(shardId);
-        if (iter == shards.end()) {
-          LOG_TOPIC("adc98", FATAL, Logger::DUMP)
-              << "Unknown shard " << shardId;
-          FATAL_ERROR_EXIT();
-        }
-
-        arangodb::Result result =
-            dumpJsonObjects(*this, *iter->second.files[i], body);
+        auto file = getFileForShard(shardId);
+        arangodb::Result result = dumpJsonObjects(*this, *file, body);
 
         if (result.fail()) {
           LOG_TOPIC("77881", FATAL, Logger::DUMP)
@@ -1622,10 +1612,12 @@ DumpFeature::ParallelDumpServer::ParallelDumpServer(
     ManagedDirectory& directory, DumpFeature& feature,
     ClientManager& clientManager, const DumpFeature::Options& options,
     maskings::Maskings* maskings, DumpFeature::Stats& stats,
+    std::shared_ptr<DumpFileProvider> fileProvider,
     std::unordered_map<std::string, ShardInfo> shards, std::string server)
     : DumpJob(directory, feature, options, maskings, stats,
               VPackSlice::noneSlice()),
       clientManager(clientManager),
+      fileProvider(std::move(fileProvider)),
       shards(std::move(shards)),
       server(std::move(server)) {}
 
@@ -1664,6 +1656,26 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
     }
     return response;
   }
+}
+
+DumpFeature::DumpFileProvider::DumpFileProvider(
+    ManagedDirectory& directory,
+    std::map<std::string, arangodb::velocypack::Slice>& collectionInfo)
+    : _directory(directory), collectionInfo(collectionInfo) {}
+
+std::shared_ptr<ManagedDirectory::File> DumpFeature::DumpFileProvider::getFile(
+    std::string const& name) {
+  std::unique_lock guard(_mutex);
+
+  std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
+
+  auto cnt = _counts[name]++;
+
+  std::string filename =
+      name + "_" + hexString + "." + std::to_string(cnt) + ".data.json";
+  auto file =
+      _directory.writableFile(filename, true /*overwrite*/, 0, true /*gzipOk*/);
+  return file;
 }
 
 }  // namespace arangodb
