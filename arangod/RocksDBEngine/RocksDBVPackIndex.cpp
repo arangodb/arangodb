@@ -275,6 +275,7 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
 
     _searchValues.clear();
     _searchValues.add(rewriteBuilder->slice());
+    _current = velocypack::ArrayIterator(_searchValues.slice());
   }
 
   void adjustIterator() {
