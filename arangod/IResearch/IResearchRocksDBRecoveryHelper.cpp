@@ -101,7 +101,7 @@ void IResearchRocksDBRecoveryHelper::prepare() {
 template<bool Force>
 void IResearchRocksDBRecoveryHelper::clear() noexcept {
   if constexpr (!Force) {
-    if (_indexes.size() < kMaxSize || _links.size() < kMaxSize ||
+    if (_indexes.size() < kMaxSize && _links.size() < kMaxSize &&
         _ranges.size() < kMaxSize) {
       return;
     }
