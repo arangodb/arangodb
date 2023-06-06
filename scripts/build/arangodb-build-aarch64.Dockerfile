@@ -1,7 +1,7 @@
 FROM alpine:3.16
 MAINTAINER hackers@arangodb.com
 
-ARG ARCH "x86_64"
+ARG ARCH "aarch64"
 
 RUN apk --no-cache add bison flex make cmake g++ git linux-headers python3 curl clang lld bash gdb libexecinfo-dev libexecinfo libexecinfo-static openssh sccache groff nodejs npm
 
@@ -12,7 +12,7 @@ RUN [ "/tools/install-openssl.sh", "3.0", ".8" ]
 ENV OPENSSL_ROOT_DIR=/opt/openssl-3.0
 
 COPY install-openldap.sh /tools/
-RUN [ "/tools/install-openldap.sh", "3.0.8" , "lib64" ]
+RUN [ "/tools/install-openldap.sh", "3.0.8" , "lib" ]
 RUN apk --no-cache del perl
 
 RUN ln /usr/bin/sccache /usr/local/bin/gcc && \

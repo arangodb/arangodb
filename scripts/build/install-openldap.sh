@@ -1,10 +1,11 @@
 #!/bin/sh
-set -e
+#set -e
 
 export OPENSSLVERSION=$1
 test -n "$OPENSSLVERSION"
 export OPENSSLPATH=`echo $OPENSSLVERSION | sed 's/\([a-zA-Z]$\|\.[0-9]$\)//g'`
 
+echo "Test"
 # Compile openldap library:
 export OPENLDAPVERSION=2.6.4
 cd /tmp
@@ -13,7 +14,7 @@ tar xzf openldap-$OPENLDAPVERSION.tgz
 cd openldap-$OPENLDAPVERSION
 # cp -a /tools/config.* ./build
 CPPFLAGS=-I/opt/openssl-$OPENSSLPATH/include \
-LDFLAGS=-L/opt/openssl-$OPENSSLPATH/lib64 \
+LDFLAGS=-L/opt/openssl-$OPENSSLPATH/$2 \
   ./configure --prefix=/opt/openssl-$OPENSSLPATH --with-threads --with-tls=openssl --enable-static --disable-shared
 make depend && make -j `nrpoc`
 make install
