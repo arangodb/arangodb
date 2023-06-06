@@ -27,6 +27,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -109,6 +110,10 @@ RestStatus RestUploadHandler::execute() {
 
   b.add(VPackValue(VPackValueType::Object));
   b.add("filename", VPackValue(fullName));
+  if (ServerState::instance()->isClusterRole()) {
+    b.add(StaticStrings::AttrCoordinatorId,
+          VPackValue(ServerState::instance()->getId()));
+  }
   b.close();
 
   VPackSlice s = b.slice();

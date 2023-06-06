@@ -216,7 +216,7 @@ function dropFollowersElCheapoSuite() {
       // coordinator otherwise we do not see the follower information.
 
       switchConnectionToCoordinator(collInfo);
-      waitForShardsInSync(cn, 60);
+      waitForShardsInSync(cn, 60, 1);
 
       switchConnectionToLeader(collInfo);
       let count = _.sumBy(collInfo.shards, s => db._collection(s).count());
@@ -292,7 +292,7 @@ function dropFollowersElCheapoSuite() {
       // coordinator otherwise we do not see the follower information.
 
       switchConnectionToCoordinator(collInfo);
-      waitForShardsInSync(cn, 60);
+      waitForShardsInSync(cn, 60, 1);
 
       switchConnectionToLeader(collInfo);
       let count = _.sumBy(collInfo.shards, s => db._collection(s).count());

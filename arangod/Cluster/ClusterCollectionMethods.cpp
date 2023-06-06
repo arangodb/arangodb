@@ -168,6 +168,13 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     }
     std::vector<ServerID> availableServers = ci.getCurrentDBServers();
 
+    TRI_IF_FAILURE("allShardsOnSameServer") {
+      std::sort(availableServers.begin(), availableServers.end());
+      while (availableServers.size() > 1) {
+        availableServers.pop_back();
+      }
+    }
+
     auto buildingTransaction = writer.prepareStartBuildingTransaction(
         databaseName, planVersion.get(), availableServers);
     if (buildingTransaction.fail()) {
