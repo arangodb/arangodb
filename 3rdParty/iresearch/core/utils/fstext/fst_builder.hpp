@@ -135,7 +135,7 @@ class fst_builder : util::noncopyable {
       auto& last_out = p.arcs.back().out;
 
       if (last_out != weight_t::One()) {
-        auto prefix = fst::Plus(last_out, out);
+        auto prefix = fst::Plus(last_out, output);
         const auto suffix = fst::DivideLeft(last_out, prefix);
 
         for (arc& a : s.arcs) {
