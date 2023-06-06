@@ -54,7 +54,7 @@
     let defaultAnalyzer = null;
 
     function createDefaultAnalyzer() {
-      defaultAnalyzer = analyzers.save("geo_json", analyzerType, analyzerDefinition, ["frequency", "norm", "position"]);
+      defaultAnalyzer = analyzers.save("geo_json", analyzerType, analyzerDefinition, []);
     }
 
     function makePolyInside(lon, lat) {
