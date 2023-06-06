@@ -5043,6 +5043,11 @@ static void JS_SuspendExternal(
 #else
   pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
 #endif
+  if (pid._pid == 0) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to suspend the invoking process!");
+  }
 
   // return the result
   if (TRI_SuspendExternalProcess(pid)) {
