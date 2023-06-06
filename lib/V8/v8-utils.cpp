@@ -5116,8 +5116,7 @@ static void JS_SuspendExternal(
 #endif
   if (pid._pid == 0) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN,
-        "not allowed to suspend the invoking process!");
+        TRI_ERROR_FORBIDDEN, "not allowed to suspend the invoking process!");
   }
 
   // return the result
