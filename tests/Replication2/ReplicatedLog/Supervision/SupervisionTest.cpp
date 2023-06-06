@@ -86,9 +86,9 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
       {"A",
        {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
       {"B",
-       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(2)}},
       {"C",
-       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(3)}},
   };
 
   auto health = ParticipantsHealth{._health{
@@ -110,11 +110,15 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
   // TODO: FIXME<< campaign;
 
-  auto expectedElectible = std::set<ParticipantId>{"A", "B", "C"};
-  auto electible = std::set<ParticipantId>{};
-  std::copy(std::begin(campaign.electibleLeaderSet),
-            std::end(campaign.electibleLeaderSet),
-            std::inserter(electible, std::begin(electible)));
+  auto expectedElectible = std::map<ParticipantId, RebootId>{
+      {"A", RebootId(1)}, {"B", RebootId(2)}, {"C", RebootId(3)}};
+  auto electible = std::map<ParticipantId, RebootId>{};
+  std::transform(std::begin(campaign.electibleLeaderSet),
+                 std::end(campaign.electibleLeaderSet),
+                 std::inserter(electible, std::begin(electible)),
+                 [](auto&& server) {
+                   return std::pair(server.serverId, server.rebootId);
+                 });
   EXPECT_EQ(electible, expectedElectible);
 }
 
@@ -123,9 +127,9 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
       {"A",
        {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
       {"B",
-       {LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+       {LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(2)}},
       {"C",
-       {LogTerm{2}, TermIndexPair{LogTerm{2}, LogIndex{1}}, true, RebootId(1)}},
+       {LogTerm{2}, TermIndexPair{LogTerm{2}, LogIndex{1}}, true, RebootId(3)}},
   };
 
   auto health = ParticipantsHealth{._health{
@@ -145,11 +149,15 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
   EXPECT_EQ(campaign.participantsAvailable, 1U);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{2}, LogIndex{1}}));
 
-  auto expectedElectible = std::set<ParticipantId>{"C"};
-  auto electible = std::set<ParticipantId>{};
-  std::copy(std::begin(campaign.electibleLeaderSet),
-            std::end(campaign.electibleLeaderSet),
-            std::inserter(electible, std::begin(electible)));
+  auto expectedElectible =
+      std::map<ParticipantId, RebootId>{{"C", RebootId(3)}};
+  auto electible = std::map<ParticipantId, RebootId>{};
+  std::transform(std::begin(campaign.electibleLeaderSet),
+                 std::end(campaign.electibleLeaderSet),
+                 std::inserter(electible, std::begin(electible)),
+                 [](auto&& server) {
+                   return std::pair(server.serverId, server.rebootId);
+                 });
   EXPECT_EQ(electible, expectedElectible);
 }
 
@@ -161,9 +169,9 @@ TEST_F(LeaderElectionCampaignTest,
       {"A",
        {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{3}}, true, RebootId(1)}},
       {"B",
-       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(2)}},
       {"C",
-       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(3)}},
   };
 
   auto health = ParticipantsHealth{._health{
@@ -182,11 +190,15 @@ TEST_F(LeaderElectionCampaignTest,
   EXPECT_EQ(campaign.participantsAvailable, 2U);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
 
-  auto expectedElectible = std::set<ParticipantId>{"B", "C"};
-  auto electible = std::set<ParticipantId>{};
-  std::copy(std::begin(campaign.electibleLeaderSet),
-            std::end(campaign.electibleLeaderSet),
-            std::inserter(electible, std::begin(electible)));
+  auto expectedElectible =
+      std::map<ParticipantId, RebootId>{{"B", RebootId(2)}, {"C", RebootId(3)}};
+  auto electible = std::map<ParticipantId, RebootId>{};
+  std::transform(std::begin(campaign.electibleLeaderSet),
+                 std::end(campaign.electibleLeaderSet),
+                 std::inserter(electible, std::begin(electible)),
+                 [](auto&& server) {
+                   return std::pair(server.serverId, server.rebootId);
+                 });
   EXPECT_EQ(electible, expectedElectible);
 }
 

@@ -355,15 +355,18 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
     auto const& newLeader =
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
 
+    TRI_ASSERT(current.supervision->assumedWriteConcern <=
+               plan.participantsConfig.config.effectiveWriteConcern);
+
     auto effectiveWriteConcern =
         computeEffectiveWriteConcern(log.target.config, current, plan, health);
+    auto assumedWriteConcern = std::min(
+        current.supervision->assumedWriteConcern, effectiveWriteConcern);
+    TRI_ASSERT(assumedWriteConcern <= effectiveWriteConcern);
 
     ctx.reportStatus<LogCurrentSupervision::LeaderElectionSuccess>(election);
-    ctx.createAction<LeaderElectionAction>(
-        newLeader, effectiveWriteConcern,
-        std::min(current.supervision->assumedWriteConcern,
-                 effectiveWriteConcern),
-        election);
+    ctx.createAction<LeaderElectionAction>(newLeader, effectiveWriteConcern,
+                                           assumedWriteConcern, election);
     return;
 
   } else {
