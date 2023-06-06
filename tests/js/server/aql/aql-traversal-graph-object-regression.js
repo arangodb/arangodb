@@ -145,6 +145,25 @@ function pathTraversalObjectRegressionSuite() {
                                      '@links': edgeCollectionName});
       assertEqual(actual.toArray(), [{name: "Gerald", cond: true}]);
     },
+
+    // This tests a regression occurred in ArangoDB 3.11 reported by a
+    // user in the GitHub Issue #19175.
+    testTraversalConditionFilterNormalizationRegression: function () {
+      // The rule `-optimize-traversals` is the villain. At least at this point
+      // we're running into issues.
+      const query = `
+        LET filter0 = (FOR m0 IN [] FILTER "" IN m0.kinds RETURN m0)
+        LET m1 = (
+          FOR v in filter0 FOR z IN 0..1 OUTBOUND v ${edgeCollectionName}
+          COLLECT x = v WITH COUNT INTO counter1
+          FILTER counter1 == 0
+          RETURN x
+        )
+        FOR result in m1 RETURN UNSET(result, ["flat"])
+      `;
+      let actual = db._query(query);
+      assertEqual(actual.toArray(), []);
+    }
   };
 }
 
