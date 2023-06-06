@@ -126,16 +126,6 @@ class SupervisedScheduler final : public Scheduler {
     bool start();
   };
 
-  struct WorkItem final {
-    fu2::unique_function<void()> _handler;
-
-    explicit WorkItem(fu2::unique_function<void()>&& handler)
-        : _handler(std::move(handler)) {}
-    ~WorkItem() = default;
-
-    void operator()() { _handler(); }
-  };
-
   std::unique_ptr<WorkItemBase> getWork(std::shared_ptr<WorkerState>& state);
   void startOneThread();
   void stopOneThread();

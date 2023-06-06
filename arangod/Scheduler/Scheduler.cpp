@@ -42,6 +42,7 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/SharedPRNGFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
@@ -84,6 +85,10 @@ DECLARE_GAUGE(
     "Total number of ongoing RestHandlers coming from the low prio queue");
 DECLARE_GAUGE(arangodb_scheduler_low_prio_queue_last_dequeue_time, uint64_t,
               "Last recorded dequeue time for a low priority queue item [ms]");
+DECLARE_GAUGE(arangodb_scheduler_stack_memory, uint64_t,
+              "Approximate stack memory usage of worker threads");
+DECLARE_GAUGE(arangodb_scheduler_queue_memory, int64_t,
+              "Number of bytes allocated for tasks in the scheduler queue");
 
 Scheduler::Scheduler(ArangodServer& server)
     : _server(server),
@@ -99,7 +104,12 @@ Scheduler::Scheduler(ArangodServer& server)
               arangodb_scheduler_ongoing_low_prio{})),
       _metricsLastLowPriorityDequeueTime(
           _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_low_prio_queue_last_dequeue_time{})) {
+              arangodb_scheduler_low_prio_queue_last_dequeue_time{})),
+      _metricsStackMemoryWorkerThreads(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_scheduler_stack_memory{})),
+      _schedulerQueueMemory(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_scheduler_queue_memory{})) {
   // Move this into the Feature and then move it else where
 }
 
@@ -108,6 +118,14 @@ Scheduler::~Scheduler() = default;
 bool Scheduler::start() {
   _cronThread.reset(new SchedulerCronThread(_server, *this));
   return _cronThread->start();
+}
+
+void Scheduler::trackQueueItemSize(std::int64_t x) noexcept {
+  _schedulerQueueMemory += x;
+}
+
+void Scheduler::schedulerJobMemoryAccounting(std::int64_t x) noexcept {
+  SchedulerFeature::SCHEDULER->trackQueueItemSize(x);
 }
 
 void Scheduler::shutdown() {
@@ -224,8 +242,16 @@ uint64_t Scheduler::getLastLowPriorityDequeueTime() const noexcept {
 }
 
 void Scheduler::setLastLowPriorityDequeueTime(uint64_t time) noexcept {
-  // update only probabilistically, in order to reduce contention on the gauge
-  if ((_sharedPRNG.rand() & 7) == 0) {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  bool setDequeueTime = false;
+  TRI_IF_FAILURE("Scheduler::alwaysSetDequeueTime") { setDequeueTime = true; }
+#else
+  constexpr bool setDequeueTime = false;
+#endif
+
+  // update only probabilistically, in order to reduce contention on the
+  // gauge
+  if (setDequeueTime || (_sharedPRNG.rand() & 7) == 0) {
     _metricsLastLowPriorityDequeueTime.operator=(time);
   }
 }

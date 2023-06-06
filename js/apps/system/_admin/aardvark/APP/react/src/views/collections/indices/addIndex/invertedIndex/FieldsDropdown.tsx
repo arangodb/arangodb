@@ -13,16 +13,20 @@ const MultiValueLabel = (
   props: MultiValueGenericProps<OptionType> & {
     fieldName: string;
     fieldIndex: number;
+    isBasicField?: boolean;
   }
 ) => {
   const { setCurrentFieldData, currentFieldData } = useInvertedIndexContext();
-  const { fieldName, fieldIndex, ...rest } = props;
+  const { fieldName, fieldIndex, isBasicField, ...rest } = props;
   const isSelected =
     currentFieldData?.fieldIndex === fieldIndex &&
     currentFieldData.fieldName === fieldName;
   return (
     <Box
       onClick={() => {
+        if (isBasicField) {
+          return;
+        }
         const fieldData = {
           fieldValue: props.data.value,
           fieldName,
@@ -30,8 +34,8 @@ const MultiValueLabel = (
         };
         setCurrentFieldData(fieldData);
       }}
-      textDecoration="underline"
-      cursor="pointer"
+      textDecoration={isBasicField ? "" : "underline"}
+      cursor={isBasicField ? "" : "pointer"}
       backgroundColor={isSelected ? "blue.100" : undefined}
     >
       <components.MultiValueLabel {...rest} />
@@ -43,6 +47,9 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
   const { setCurrentFieldData } = useInvertedIndexContext();
   const dropdownValue =
     formikField.value?.map(data => {
+      if (typeof data === "string") {
+        return { label: data, value: data };
+      }
       return { label: data.name || "", value: data.name || "" };
     }) || [];
   return (
@@ -66,8 +73,13 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
                   const index = formikField.value?.findIndex(
                     fieldObj => fieldObj.name === props.data.value
                   );
+                  // if it follows the basic field type, we don't want to allow clicking
+                  const isBasicField = formikField.value.some(
+                    value => typeof value === "string"
+                  );
                   return (
                     <MultiValueLabel
+                      isBasicField={isBasicField}
                       fieldName={field.name}
                       fieldIndex={index}
                       {...props}
@@ -99,7 +111,11 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
               }}
               value={dropdownValue}
             />
-            {field.tooltip ? <IndexInfoTooltip label={field.tooltip} /> : <Spacer />}
+            {field.tooltip ? (
+              <IndexInfoTooltip label={field.tooltip} />
+            ) : (
+              <Spacer />
+            )}
           </Box>
         );
       }}

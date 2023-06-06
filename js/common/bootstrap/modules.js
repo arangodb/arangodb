@@ -76,9 +76,14 @@
   delete global.MODULES_PATH;
 
   function internalModuleStat (path) {
-    if (fs.isDirectory(path)) return 1;
-    else if (fs.isFile(path)) return 0;
-    else return -1;
+    try {
+      if (fs.isDirectory(path)) {
+        return 1;
+      } else if (fs.isFile(path)) {
+        return 0;
+      }
+    } catch (err) {}
+    return -1;
   }
 
   // If obj.hasOwnProperty has been overridden, then calling
@@ -255,7 +260,9 @@
     // For each path
     for (var i = 0, PL = paths.length; i < PL; i++) {
       // Don't search further if path doesn't exist
-      if (paths[i] && internalModuleStat(path._makeLong(paths[i])) < 1) continue;
+      if (paths[i] && internalModuleStat(path._makeLong(paths[i])) < 1) {
+        continue;
+      }
       var basePath = path.resolve(paths[i], request);
       var filename;
 
@@ -317,12 +324,24 @@
       inRoot = from.indexOf(root) === 0;
     }
 
-    for (var tip = parts.length - 1; tip >= 0; tip--) {
+    for (let tip = parts.length - 1; tip >= 0; tip--) {
       // don't search in .../node_modules/node_modules
-      if (parts[tip] === 'node_modules') continue;
-      var dir = parts.slice(0, tip + 1).concat('node_modules').join(path.sep);
-      if (inRoot && dir.indexOf(root) !== 0) break;
-      paths.push(dir);
+      if (parts[tip] === 'node_modules') {
+        continue;
+      }
+      try {
+        // note: the try...catch is here to debug the following error case:
+        //   JavaScript exception in file 'common/bootstrap/modules.js' at 323,41: TypeError: parts.slice(...).concat is not a function
+        // once we have an understanding of it, the try...catch can be removed again.
+        let dir = parts.slice(0, tip + 1).concat('node_modules').join(path.sep);
+        if (inRoot && dir.indexOf(root) !== 0) {
+          break;
+        }
+        paths.push(dir);
+      } catch (err) {
+        console.error("unable to slice parts", { parts, paths, sep: path.sep, tip, inRoot, root });
+        throw err;
+      }
     }
 
     return paths;

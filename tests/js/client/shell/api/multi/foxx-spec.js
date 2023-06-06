@@ -2,7 +2,7 @@
 'use strict';
 
 const expect = require('chai').expect;
-var utils = require('@arangodb/foxx/manager-utils');
+const utils = require('@arangodb/foxx/manager-utils');
 const FoxxManager = require('@arangodb/foxx/manager');
 const request = require('@arangodb/request');
 const util = require('@arangodb/util');
@@ -15,7 +15,8 @@ const arango = require('@arangodb').arango;
 const errors = arangodb.errors;
 const db = arangodb.db;
 const aql = arangodb.aql;
-var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
+const _ = require("lodash");
+const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 const isVst = arango.getEndpoint().match('^vst://') !== null;
 
 function loadFoxxIntoZip(path) {
@@ -269,8 +270,117 @@ describe('FoxxApi commit', function () {
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'gzip'});
     expect(result).to.have.property('parsedBody');
-
   });
+  
+  it('should deliver compressed files according to accept-encoding, async API', function() {
+    let proxy = (url, headers) => {
+      let newHeaders = _.clone(headers);
+      newHeaders["x-arango-async"] = "store";
+
+      let result = arango.GET_RAW(url, newHeaders);
+      expect(result.code).to.equal(202);
+      let resHeaders = result.headers;
+      expect(resHeaders).to.have.property('x-arango-async-id');
+      let id = resHeaders['x-arango-async-id'];
+
+      let tries = 60;
+      while (--tries > 0) {
+        result = arango.PUT_RAW('/_api/job/' + id, headers);
+        if (result.headers.hasOwnProperty("x-arango-async-id")) {
+          return result;
+        }
+        internal.sleep(0.5); 
+      }
+
+      throw "did not get expected result";
+    };
+
+    let result;
+
+    result = proxy('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'identity'});
+    expect(result.body).to.contain('doctype');
+
+    result = proxy('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'deflate'});
+    expect(result.body).to.contain('doctype');
+
+    result = proxy('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'gzip'});
+    expect(result.body).to.contain('doctype');
+    expect(result).to.have.property('body');
+    expect(result.body).to.be.a('string');
+
+    result = proxy('/_db/_system/_admin/aardvark/index.html', {});
+    expect(result.body).to.contain('doctype');
+
+    result = proxy('/_api/version', {'accept-encoding': 'identity'});
+    expect(result).to.have.property('parsedBody');
+
+    result = proxy('/_api/version', {'accept-encoding': 'deflate'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
+
+    result = proxy('/_api/version', {'accept-encoding': 'gzip'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
+
+    result = proxy('/test/encode-object-deflate', {'accept-encoding': 'deflate'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
+
+    result = proxy('/test/encode-array-deflate', {'accept-encoding': 'deflate'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
+    
+    result = proxy('/test/encode-object-gzip', {'accept-encoding': 'gzip'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
+
+    result = proxy('/test/encode-array-gzip', {'accept-encoding': 'gzip'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
+
+    if (!isVst) {
+      // doesn't work with vst..
+      proxy('/test/encode-array-base64encode', {'accept-encoding': 'base64'});
+
+      proxy('/test/encode-object-base64encode', {'accept-encoding': 'base64'});
+    }
+
+    result = proxy('/_api/version', {'accept-encoding': 'deflate'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
+
+    result = proxy('/_api/version', {'accept-encoding': 'gzip'});
+    expect(result).to.have.property('parsedBody');
+  });
+
   it('should fix missing checksum', function () {
     db._query(aql`
       FOR service IN _apps

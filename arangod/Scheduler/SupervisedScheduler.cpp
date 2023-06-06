@@ -175,6 +175,11 @@ DECLARE_GAUGE(arangodb_scheduler_num_working_threads, uint64_t,
               "Number of working threads");
 DECLARE_GAUGE(arangodb_scheduler_num_worker_threads, uint64_t,
               "Number of worker threads");
+DECLARE_GAUGE(
+    arangodb_scheduler_ongoing_low_prio, uint64_t,
+    "Total number of ongoing RestHandlers coming from the low prio queue");
+DECLARE_COUNTER(arangodb_scheduler_handler_tasks_created_total,
+                "Number of scheduler tasks created");
 DECLARE_COUNTER(arangodb_scheduler_queue_full_failures_total,
                 "Tasks dropped and not added to internal queue");
 DECLARE_GAUGE(arangodb_scheduler_queue_length, uint64_t,
@@ -466,6 +471,8 @@ void SupervisedScheduler::shutdown() {
   }
 }
 
+constexpr uint64_t approxWorkerStackSize = 4'000'000;  // 4 MB
+
 void SupervisedScheduler::runWorker() {
   uint64_t id;
 
@@ -582,6 +589,8 @@ void SupervisedScheduler::runSupervisor() {
       _metricsNumAwakeThreads.operator=(numAwake);
       _metricsNumWorkingThreads.operator=(numWorking);
       _metricsNumWorkerThreads.operator=(numWorkers);
+      _metricsStackMemoryWorkerThreads.operator=(numWorkers *
+                                                 approxWorkerStackSize);
       roundCount = 0;
     }
 
