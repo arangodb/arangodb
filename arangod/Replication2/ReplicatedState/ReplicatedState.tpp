@@ -594,6 +594,9 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
                   rttGuard.fire();
                   promise.setTry(std::move(tryResult));
                 });
+      } else {
+        promise.setException(replicated_log::ParticipantResignedException(
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
       }
     });
 
