@@ -46,7 +46,6 @@ function testSuite() {
       }
       let p = arango.GET_RAW("/_admin/status?memory=true");
       assertEqual(200, p.code);
-      print(p);
       assertEqual("heap_v2/", p.body.slice(0, 8));
     }
   };
