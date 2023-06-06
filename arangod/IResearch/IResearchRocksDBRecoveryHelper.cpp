@@ -217,8 +217,8 @@ void IResearchRocksDBRecoveryHelper::LogData(rocksdb::Slice const& blob,
 
   switch (type) {
     case RocksDBLogType::IndexCreate: {
-      auto const objectId = RocksDBLogValue::objectId(blob);
-      _ranges.erase(objectId);
+      // TODO(MBkkt) More granular cache invalidation
+      clear<true>();
     } break;
     case RocksDBLogType::CollectionTruncate: {
       // TODO(MBkkt) Truncate could recover index from OutOfSync state
