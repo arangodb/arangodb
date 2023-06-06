@@ -1590,7 +1590,7 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
   }
 
   auto insertImpl = [&, this](irs::IndexWriter::Transaction& ctx) -> Result {
-    auto messege = [&](auto&&... args) {
+    auto message = [&](auto&&... args) {
       return MakeMessage("While inserting document caught exception", index(),
                          state, documentId,
                          std::forward<decltype(args)>(args)...);
@@ -1599,11 +1599,11 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
       return insertDocument<FieldIteratorType>(*this, ctx, doc, documentId,
                                                meta);
     } catch (basics::Exception const& e) {
-      return {e.code(), messege(", ", e.what())};
+      return {e.code(), message(", ", e.what())};
     } catch (std::exception const& e) {
-      return {TRI_ERROR_INTERNAL, messege(", ", e.what())};
+      return {TRI_ERROR_INTERNAL, message(", ", e.what())};
     } catch (...) {
-      return {TRI_ERROR_INTERNAL, messege()};
+      return {TRI_ERROR_INTERNAL, message()};
     }
   };
 
