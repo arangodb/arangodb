@@ -383,7 +383,7 @@
       this.checkUser();
 
       this.init.then(() => ReactDOM.render(React.createElement(window.GraphV2ReactView),
-        document.getElementById('content'))
+        document.getElementById('content-react'))
       );
     },
 
