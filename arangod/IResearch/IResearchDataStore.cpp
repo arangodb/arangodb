@@ -221,11 +221,6 @@ auto makeAfterCommitCallback(void* key) {
     }
     // TODO FIXME find a better way to look up a ViewState
     auto& ctx = basics::downCast<IResearchTrxState>(*prev);
-    if (!ctx._removals.empty()) {
-      auto filter =
-          std::make_shared<PrimaryKeyFilterContainer>(std::move(ctx._removals));
-      ctx._ctx.Remove<false>(std::move(filter));
-    }
     if constexpr (WasCreated) {
       auto const lastOperationTick = state.lastOperationTick();
       ctx._ctx.Commit(lastOperationTick);
@@ -639,6 +634,11 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
     }
     // TODO FIXME find a better way to look up a ViewState
     auto& ctx = basics::downCast<IResearchTrxState>(*prev);
+    TRI_ASSERT(ctx._removals != nullptr);
+    if (!ctx._removals->empty()) {
+      ctx._ctx.Remove(std::move(ctx._removals));
+    }
+    ctx._removals.reset();
     ctx._ctx.RegisterFlush();
   };
   _afterCommitCallback = makeAfterCommitCallback<false>(this);
@@ -1527,8 +1527,8 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
 
     TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
-    auto ptr = std::make_unique<IResearchTrxState>(std::move(linkLock),
-                                                   *(_dataStore._writer));
+    auto ptr = std::make_unique<IResearchTrxState>(
+        std::move(linkLock), *(_dataStore._writer), nested);
 
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
@@ -1550,7 +1550,7 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
   // all all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    ctx->remove(documentId, nested);
+    ctx->remove(documentId);
 
     return {TRI_ERROR_NO_ERROR};
   } catch (basics::Exception const& e) {
@@ -1699,19 +1699,8 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
     }
 
     TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
-
-    // FIXME try to preserve optimization
-    //    // optimization for single-document insert-only transactions
-    //    if (trx.isSingleOperationTransaction() // only for single-docuemnt
-    //    transactions
-    //        && !_dataStore._inRecovery) {
-    //      auto ctx = _dataStore._writer->documents();
-    //
-    //      return insertImpl(ctx);
-    //    }
-
-    auto ptr = std::make_unique<IResearchTrxState>(std::move(linkLock),
-                                                   *(_dataStore._writer));
+    auto ptr = std::make_unique<IResearchTrxState>(
+        std::move(linkLock), *(_dataStore._writer), meta.hasNested());
 
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
