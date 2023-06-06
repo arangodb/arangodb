@@ -48,12 +48,11 @@ class RocksDBDumpManager {
   // the context can later be accessed by passing the context's id
   // into find(), together with the same database name and user name
   // that were used when creating the context.
-  RocksDBDumpContextGuard createContext(uint64_t batchSize,
-                                        uint64_t prefetchCount,
-                                        uint64_t parallelism,
-                                        std::vector<std::string> const& shards,
-                                        double ttl, std::string const& user,
-                                        std::string const& database);
+  RocksDBDumpContextGuard createContext(
+      uint64_t batchSize, uint64_t prefetchCount, uint64_t parallelism,
+      std::vector<std::string> const& shards, double ttl,
+      std::string const& user, std::string const& database,
+      std::unordered_map<std::string, std::vector<std::string>> projections);
 
   // look up context by id. must provide the same database name and
   // user name as when creating the context. otherwise a "forbidden"

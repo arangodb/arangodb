@@ -66,7 +66,9 @@ class RocksDBDumpContext {
                      std::string id, uint64_t batchSize, uint64_t prefetchCount,
                      uint64_t parallelism,
                      std::vector<std::string> const& shards, double ttl,
-                     std::string const& user, std::string const& database);
+                     std::string const& user, std::string const& database,
+                     std::unordered_map<std::string, std::vector<std::string>>
+                         projections = {});
 
   ~RocksDBDumpContext();
 
@@ -235,6 +237,8 @@ class RocksDBDumpContext {
   // We report them via the rest handler to arangodump where they are used
   // to produce error messages.
   std::atomic<int64_t> _blockCounterPop, _blockCounterPush;
+
+  std::unordered_map<std::string, std::vector<std::string>> const _projections;
 };
 
 }  // namespace arangodb

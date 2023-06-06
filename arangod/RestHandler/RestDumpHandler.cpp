@@ -198,11 +198,39 @@ void RestDumpHandler::handleCommandDumpStart() {
     }
   }
 
+  std::unordered_map<std::string, std::vector<std::string>> projections;
+  if (auto s = body.get("projections"); s.isObject()) {
+    for (auto [key, value] : VPackObjectIterator(s)) {
+      if (!value.isArray()) {
+        generateError(Result(TRI_ERROR_BAD_PARAMETER,
+                             "invalid 'projections' value in request"));
+        return;
+      }
+
+      std::vector<std::string> path;
+      for (auto const& element : VPackArrayIterator(value)) {
+        if (!element.isString()) {
+          generateError(Result(TRI_ERROR_BAD_PARAMETER,
+                               "invalid 'projections' value in request"));
+          return;
+        }
+        path.emplace_back(element.copyString());
+      }
+
+      projections.emplace(key.copyString(), std::move(path));
+    }
+  } else if (!s.isNone()) {
+    generateError(Result(TRI_ERROR_BAD_PARAMETER,
+                         "invalid 'projections' value in request"));
+    return;
+  }
+
   auto& engine =
       server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   auto* manager = engine.dumpManager();
   auto guard = manager->createContext(batchSize, prefetchCount, parallelism,
-                                      std::move(shards), ttl, user, database);
+                                      std::move(shards), ttl, user, database,
+                                      std::move(projections));
 
   resetResponse(rest::ResponseCode::NO_CONTENT);
   _response->setHeaderNC("x-arango-dump-id", guard->id());

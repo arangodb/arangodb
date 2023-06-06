@@ -117,7 +117,8 @@ RocksDBDumpContext::RocksDBDumpContext(
     RocksDBEngine& engine, DatabaseFeature& databaseFeature, std::string id,
     uint64_t batchSize, uint64_t prefetchCount, uint64_t parallelism,
     std::vector<std::string> const& shards, double ttl, std::string const& user,
-    std::string const& database)
+    std::string const& database,
+    std::unordered_map<std::string, std::vector<std::string>> projections)
     : _engine(engine),
       _id(std::move(id)),
       _batchSize(batchSize),
@@ -128,7 +129,8 @@ RocksDBDumpContext::RocksDBDumpContext(
       _database(database),
       _expires(TRI_microtime() + _ttl),
       _workItems(parallelism),
-      _channel(prefetchCount) {
+      _channel(prefetchCount),
+      _projections(std::move(projections)) {
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
   // database is there. creating this guard will throw if the database cannot be
@@ -277,6 +279,23 @@ std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
   return iter->second;
 }
 
+namespace {
+void computeProjection(
+    std::unordered_map<std::string, std::vector<std::string>> const&
+        projections,
+    VPackSlice slice, VPackBuilder& out) {
+  out.clear();
+  VPackObjectBuilder ob(&out);
+  for (auto const& [key, path] : projections) {
+    TRI_ASSERT(!path.empty());
+    auto value = slice.get(path);
+    if (!value.isNone()) {
+      out.add(key, slice.get(path));
+    }
+  }
+}
+}  // namespace
+
 void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   TRI_ASSERT(!item.empty());
   TRI_ASSERT(item.lowerBound < item.upperBound);
@@ -312,6 +331,8 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   uint64_t docsProduced = 0;
   uint64_t batchesProduced = 0;
 
+  VPackBuilder projectionBuilder;
+
   for (it->Seek(lowerBound.string()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(ci.upper) < 0);
 
@@ -330,8 +351,18 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
     }
 
     TRI_ASSERT(sink.getBuffer() != nullptr);
-    dumper.dump(velocypack::Slice(
-        reinterpret_cast<uint8_t const*>(it->value().data())));
+
+    VPackSlice documentSlice =
+        velocypack::Slice(reinterpret_cast<uint8_t const*>(it->value().data()));
+    VPackSlice dumpedSlice;
+    if (_projections.empty()) {
+      dumpedSlice = documentSlice;
+    } else {
+      computeProjection(_projections, documentSlice, projectionBuilder);
+      dumpedSlice = projectionBuilder.slice();
+    }
+
+    dumper.dump(dumpedSlice);
     // always add a newline after each document, as we must produce
     // JSONL output format
     sink.push_back('\n');

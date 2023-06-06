@@ -47,7 +47,8 @@ RocksDBDumpManager::~RocksDBDumpManager() {
 RocksDBDumpContextGuard RocksDBDumpManager::createContext(
     uint64_t batchSize, uint64_t prefetchCount, uint64_t parallelism,
     std::vector<std::string> const& shards, double ttl, std::string const& user,
-    std::string const& database) {
+    std::string const& database,
+    std::unordered_map<std::string, std::vector<std::string>> projections) {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
 
@@ -56,7 +57,7 @@ RocksDBDumpContextGuard RocksDBDumpManager::createContext(
   auto context = std::make_shared<RocksDBDumpContext>(
       _engine, _engine.server().getFeature<DatabaseFeature>(), generateId(),
       batchSize, prefetchCount, parallelism, std::move(shards), ttl, user,
-      database);
+      database, projections);
 
   std::lock_guard mutexLocker{_lock};
 
