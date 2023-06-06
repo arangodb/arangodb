@@ -248,7 +248,8 @@ TEST_F(AppendEntriesFollowerTest, append_entries_trigger_snapshot) {
   auto follower = makeFollowerManager();
   methods->releaseIndex(LogIndex{50});  // allow compaction upto 50
 
-  EXPECT_CALL(*stateHandle, updateCommitIndex(LogIndex{240})).Times(1);
+  // updateCommitIndex must not be called without a snapshot
+  EXPECT_CALL(*stateHandle, updateCommitIndex).Times(0);
   EXPECT_CALL(*stateHandle, acquireSnapshot("leader", testing::_, 1)).Times(1);
 
   {

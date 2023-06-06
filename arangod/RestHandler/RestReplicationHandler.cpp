@@ -2492,10 +2492,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
 
   auto col = _vocbase.lookupCollection(shardSlice.stringView());
-  if (col == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  "did not find collection");
+  if (col == nullptr || col->deleted()) {
+    generateError(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
     return;
   }
 
@@ -2870,22 +2868,13 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   TransactionId id = ExtractReadlockId(idSlice);
   auto col = _vocbase.lookupCollection(collection.stringView());
 
-  if (col == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  "did not find collection");
+  if (col == nullptr || col->deleted()) {
+    generateError(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
     return;
   }
 
   // 0.0 means using the default timeout (whatever that is)
   double ttl = VelocyPackHelper::getNumericValue(ttlSlice, 0.0);
-
-  if (col->deleted()) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
-                  "collection not loaded");
-    return;
-  }
 
   // This is an optional parameter, it may not be set (backwards compatible)
   // If it is not set it will default to a hard-lock, otherwise we do a

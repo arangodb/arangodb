@@ -333,6 +333,18 @@ RocksDBCollection::~RocksDBCollection() {
   }
 }
 
+void RocksDBCollection::deferDropCollection(
+    std::function<bool(LogicalCollection&)> const& cb) {
+  RocksDBMetaCollection::deferDropCollection(cb);
+
+  if (useCache()) {
+    try {
+      destroyCache();
+    } catch (...) {
+    }
+  }
+}
+
 Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
   _cacheEnabled = _cacheManager != nullptr && !_logicalCollection.system() &&
                   !_logicalCollection.isAStub() &&
@@ -1920,9 +1932,9 @@ void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
     while (!banished) {
       auto status = _cache->banish(k.buffer()->data(),
                                    static_cast<uint32_t>(k.buffer()->size()));
-      if (status.ok()) {
+      if (status == TRI_ERROR_NO_ERROR) {
         banished = true;
-      } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
+      } else if (status == TRI_ERROR_SHUTTING_DOWN) {
         destroyCache();
         break;
       }

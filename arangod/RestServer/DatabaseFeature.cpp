@@ -52,6 +52,7 @@
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -224,6 +225,17 @@ void DatabaseManagerThread::run() {
             vocbase->replicationClients().garbageCollect(now);
           }
         }
+
+        // unfortunately the FileDescriptorsFeature can only be used
+        // if the following ifdef applies
+#ifdef TRI_HAVE_GETRLIMIT
+        // update metric for the number of open file descriptors.
+        // technically this does not belong here, but there is no other
+        // ideal place for this
+        FileDescriptorsFeature& fds =
+            server().getFeature<FileDescriptorsFeature>();
+        fds.countOpenFilesIfNeeded();
+#endif
       }
     } catch (...) {
     }
@@ -248,15 +260,23 @@ void DatabaseFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("database", "database options");
 
+  auto static const allowedReplicationVersions = [] {
+    auto result = std::unordered_set<std::string>();
+    for (auto const& version : replication::allowedVersions) {
+      result.emplace(replication::versionToString(version));
+    }
+    return result;
+  }();
+
   options
       ->addOption("--database.default-replication-version",
                   "default replication version, can be overwritten "
                   "when creating a new database, possible values: 1, 2",
-                  new replication::ReplicationVersionParameter(
-                      &_defaultReplicationVersion),
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_defaultReplicationVersion, allowedReplicationVersions),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(31200);
 
   options->addOption(
       "--database.wait-for-sync",

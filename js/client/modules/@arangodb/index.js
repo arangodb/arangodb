@@ -121,10 +121,10 @@ exports.plainServerVersion = function () {
     if (devel !== null) {
       version = devel[1] + '.0';
     } else {
-      devel = version.match(/(.*)((milestone|alpha|beta|devel|rc)[0-9]*)$/);
+      devel = version.match(/(.*)(-(milestone|alpha|beta|devel|rc)[0-9]*)$/);
 
       if (devel !== null) {
-        version = devel[1] + '0';
+        version = devel[1];
       }
     }
 

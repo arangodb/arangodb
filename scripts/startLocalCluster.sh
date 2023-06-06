@@ -174,6 +174,12 @@ EOM
           --database.auto-upgrade true \
           2>&1 | tee cluster/$PORT.stdout
     fi
+
+    # ignore version mismatch between database directory and executable.
+    # this allows us to switch executable versions easier without having
+    # to run --database.auto-upgrade first.
+    AGENCY_OPTIONS="$AGENCY_OPTIONS --database.check-version false --database.upgrade-check false"
+
     $ARANGOD $AGENCY_OPTIONS \
         2>&1 | tee cluster/$PORT.stdout &
 done
@@ -236,6 +242,8 @@ start() {
       --server.descriptors-minimum 0
       --javascript.allow-admin-execute true
       --http.trusted-origin all
+      --database.check-version false
+      --database.upgrade-check false
       $REPLICATION_VERSION_PARAM
 EOM
 
@@ -245,6 +253,12 @@ EOM
           --database.auto-upgrade true \
           2>&1 | tee cluster/$PORT.stdout
     fi
+
+    # ignore version mismatch between database directory and executable.
+    # this allows us to switch executable versions easier without having
+    # to run --database.auto-upgrade first.
+    SERVER_OPTIONS="$SERVER_OPTIONS --database.check-version false --database.upgrade-check false"
+
     $CMD $SERVER_OPTIONS \
         2>&1 | tee cluster/$PORT.stdout &
 }

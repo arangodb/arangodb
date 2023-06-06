@@ -374,7 +374,7 @@ void LeaderStateManager<S>::recoverEntries() {
           auto guard = self->_guardedData.getLockedGuard();
           guard->_leaderState->onRecoveryCompleted();
           guard->_recoveryCompleted = true;
-          LOG_CTX("1b3de", INFO, self->_loggerContext) << "recovery completed";
+          LOG_CTX("1b246", INFO, self->_loggerContext) << "recovery completed";
         }
       });
 }

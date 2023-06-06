@@ -513,7 +513,7 @@ function BaseChaosSuite(testOpts) {
       print(Date() + " Finished load test; Clearing failurepoints");
       clearAllFailurePoints();
       print(Date() + " Waiting for shards to get in sync");
-      waitForShardsInSync(cn);
+      waitForShardsInSync(cn, 300, db[cn].properties().replicationFactor - 1);
       print(Date() + " checking consistency");
       checkCollectionConsistency(cn);
       let viewCounts = [];

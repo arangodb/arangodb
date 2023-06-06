@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <variant>
 #include <vector>
 
 namespace arangodb::cache {
@@ -66,6 +67,14 @@ class Table : public std::enable_shared_from_this<Table> {
                 "Expected sizeof(GenericBucket) == BUCKET_SIZE.");
 
  public:
+  struct BucketHash {
+    std::uint32_t value;
+  };
+  struct BucketId {
+    std::size_t value;
+  };
+  using HashOrId = std::variant<BucketHash, BucketId>;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Helper class for RAII-style bucket locking
   //////////////////////////////////////////////////////////////////////////////
@@ -163,7 +172,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// table for the bucket returned as the first member.
   //////////////////////////////////////////////////////////////////////////////
   BucketLocker fetchAndLockBucket(
-      std::uint32_t hash,
+      Table::HashOrId bucket,
       std::uint64_t maxTries = std::numeric_limits<std::uint64_t>::max());
 
   //////////////////////////////////////////////////////////////////////////////
