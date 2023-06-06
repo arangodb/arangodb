@@ -147,14 +147,28 @@ class DumpFeature final : public ArangoDumpFeature {
     std::shared_ptr<ManagedDirectory::File> file;
   };
 
+  struct DumpFileProvider {
+    explicit DumpFileProvider(
+        ManagedDirectory& directory,
+        std::map<std::string, arangodb::velocypack::Slice>& collectionInfo);
+    std::shared_ptr<ManagedDirectory::File> getFile(
+        std::string const& collection);
+
+   private:
+    std::mutex _mutex;
+    std::unordered_map<std::string, std::size_t> _counts;
+    ManagedDirectory& _directory;
+    std::map<std::string, arangodb::velocypack::Slice>& collectionInfo;
+  };
+
   struct ParallelDumpServer : public DumpJob {
     struct ShardInfo {
-      std::vector<std::shared_ptr<ManagedDirectory::File>> files;
+      std::string collectionName;
     };
 
     ParallelDumpServer(ManagedDirectory&, DumpFeature&, ClientManager&,
                        Options const& options, maskings::Maskings* maskings,
-                       Stats& stats,
+                       Stats& stats, std::shared_ptr<DumpFileProvider>,
                        std::unordered_map<std::string, ShardInfo> shards,
                        std::string server);
 
@@ -168,6 +182,7 @@ class DumpFeature final : public ArangoDumpFeature {
     void finishDumpContext(httpclient::SimpleHttpClient& client);
 
     ClientManager& clientManager;
+    std::shared_ptr<DumpFileProvider> const fileProvider;
     std::unordered_map<std::string, ShardInfo> const shards;
     std::string const server;
     std::atomic<std::uint64_t> _batchCounter{0};
