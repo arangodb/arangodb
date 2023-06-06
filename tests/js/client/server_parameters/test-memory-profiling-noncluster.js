@@ -38,10 +38,10 @@ function testSuite() {
   return {
     testMemoryProfile: function() {
       let v = arango.GET("/_api/version?details=true");
-      if (v.details.jemalloc != "true" || 
-          v.details.libunwind != "true" || 
-          v.details["memory-profiler"] != "true") {
-        print("Skipping memory profiler test...");
+      if (v.details.jemalloc !== "true" || 
+          v.details.libunwind !== "true" || 
+          v.details["memory-profiler"] !== "true") {
+        console.warn("Skipping memory profiler test...");
         return;
       }
       let p = arango.GET_RAW("/_admin/status?memory=true");
