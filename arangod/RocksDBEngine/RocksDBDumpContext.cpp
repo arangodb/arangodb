@@ -260,7 +260,9 @@ std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
 
   // get the next batch from the channel
   auto [batch, blocked] = _channel.pop();
-  _blockCounterPop.fetch_add(blocked ? 1 : -1);
+  if (blocked) {
+    _blockCounter.fetch_add(1);
+  }
   if (batch == nullptr) {
     // no batches left
     return nullptr;
@@ -338,7 +340,9 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
 
     if (batch->content.size() >= _batchSize) {
       auto [stopped, blocked] = _channel.push(std::move(batch));
-      _blockCounterPush.fetch_add(blocked ? 1 : -1);
+      if (blocked) {
+        _blockCounter.fetch_sub(1);
+      }
       if (stopped) {
         LOG_TOPIC("09878", DEBUG, Logger::DUMP)
             << "worker thread exits, channel stopped";
@@ -402,7 +406,6 @@ std::unique_ptr<rocksdb::Iterator> RocksDBDumpContext::buildIterator(
   return iterator;
 }
 
-std::pair<int64_t, int64_t> RocksDBDumpContext::getBlockCounts() noexcept {
-  return std::make_pair(_blockCounterPop.exchange(0),
-                        _blockCounterPush.exchange(0));
+int64_t RocksDBDumpContext::getBlockCounts() noexcept {
+  return _blockCounter.exchange(0);
 }
