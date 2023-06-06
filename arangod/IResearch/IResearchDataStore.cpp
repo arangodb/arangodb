@@ -1691,6 +1691,7 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
   if (trx != nullptr) {
+    TRI_ASSERT(_recoveryRemoves == nullptr);
     auto* key = this;
 
     auto& state = *(trx->state());

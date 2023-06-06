@@ -169,7 +169,7 @@ arangodb::iresearch::FieldMeta const* findMeta(
   return meta != context->_fields.end() ? &meta->second : context;
 }
 
-bool inObjectFiltered(std::string& buffer,
+bool inObjectFiltered(std::string& buffer, size_t buffer_hash,
                       arangodb::iresearch::FieldMeta const*& context,
                       arangodb::iresearch::IteratorValue const& value) {
   std::string_view key;

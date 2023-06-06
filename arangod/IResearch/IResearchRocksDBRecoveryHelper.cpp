@@ -98,6 +98,18 @@ void IResearchRocksDBRecoveryHelper::prepare() {
                     ->GetID();
 }
 
+template<typename Impl>
+bool IResearchRocksDBRecoveryHelper::skip(Impl& impl) {
+  TRI_ASSERT(!impl.isOutOfSync());
+  if (_skipAllItems) {
+    return true;
+  }
+  auto it = _skipRecoveryItems.find(impl.collection().name());
+  return it != _skipRecoveryItems.end() &&
+         (it->second.contains(impl.name()) ||
+          it->second.contains(absl::AlphaNum{impl.id().id()}.Piece()));
+}
+
 template<bool Force>
 void IResearchRocksDBRecoveryHelper::clear() noexcept {
   if constexpr (!Force) {
@@ -128,20 +140,6 @@ void IResearchRocksDBRecoveryHelper::applyCF(uint32_t column_family_id,
   }
 
   auto const documentId = RocksDBKey::documentId(key);
-
-  std::optional<decltype(_skipRecoveryItems.end())> skipIt;
-  auto skip = [&](auto& impl) {
-    TRI_ASSERT(!impl.isOutOfSync());
-    if (_skipAllItems) {
-      return true;
-    }
-    if (ADB_UNLIKELY(!skipIt)) {
-      skipIt = _skipRecoveryItems.find(impl.collection().name());
-    }
-    return *skipIt != _skipRecoveryItems.end() &&
-           ((**skipIt).second.contains(impl.name()) ||
-            (**skipIt).second.contains(absl::AlphaNum{impl.id().id()}.Piece()));
-  };
 
   auto apply = [&](auto range, auto& values, bool& needed) {
     if (range.empty()) {
@@ -245,7 +243,12 @@ void IResearchRocksDBRecoveryHelper::LogData(rocksdb::Slice const& blob,
           if (tick <= (**it).recoveryTickLow()) {
             continue;
           }
-          (**it).afterTruncate(tick, nullptr);
+          if (!skip(**it)) {
+            (**it).afterTruncate(tick, nullptr);
+          } else {
+            (**it).setOutOfSync();
+            *it = nullptr;
+          }
         }
       };
 

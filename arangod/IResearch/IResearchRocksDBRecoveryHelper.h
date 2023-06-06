@@ -84,7 +84,6 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
   template<bool NeedExists, typename Func>
   void applyCF(uint32_t column_family_id, rocksdb::Slice key,
                rocksdb::SequenceNumber tick, Func&& func);
-  void skipAll(uint64_t objectId, rocksdb::SequenceNumber tick);
 
   static constexpr auto kMaxSize = std::numeric_limits<uint16_t>::max();
 
@@ -105,6 +104,9 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
   Ranges& getRanges(uint64_t objectId);
   Ranges makeRanges(uint64_t objectId);
   std::shared_ptr<LogicalCollection> lookupCollection(uint64_t objectId);
+
+  template<typename Impl>
+  bool skip(Impl& impl);
 
   template<bool Force>
   void clear() noexcept;
