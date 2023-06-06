@@ -62,315 +62,267 @@
 #include "VocBase/vocbase.h"
 #include "Basics/DownCast.h"
 
-namespace arangodb::transaction {
+#include <absl/strings/str_cat.h>
+#include <absl/strings/str_split.h>
+
+namespace arangodb {
+namespace transaction {
+
 class Context;
-}
 
-namespace {
-
-std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
-    arangodb::DatabaseFeature& db, arangodb::RocksDBEngine& engine,
-    uint64_t objectId) {
-  auto pair = engine.mapObjectToCollection(objectId);
-  auto vocbase = db.useDatabase(pair.first);
-
-  return vocbase ? vocbase->lookupCollection(pair.second) : nullptr;
-}
-
-}  // namespace
-
-namespace arangodb::iresearch {
+}  // namespace transaction
+namespace iresearch {
 
 IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
     ArangodServer& server, std::span<std::string const> skipRecoveryItems)
-    : _server(server), _skipAllItems(false) {
+    : _server{&server} {
   for (auto const& item : skipRecoveryItems) {
     if (item == "all") {
       _skipAllItems = true;
-      _skipRecoveryItems.clear();
+      _skipRecoveryItems = {};
       break;
     }
-
-    auto parts = basics::StringUtils::split(item, '/');
-    TRI_ASSERT(parts.size() == 2);
-    // look for collection part
-    auto it = _skipRecoveryItems.find(parts[0]);
-    if (it == _skipRecoveryItems.end()) {
-      // collection not found, insert new set into map with the index id/name
-      _skipRecoveryItems.emplace(
-          parts[0], containers::FlatHashSet<std::string>{parts[1]});
-    } else {
-      // collection found. append index/name to existing set
-      it->second.emplace(parts[1]);
-    }
+    std::pair<std::string_view, std::string_view> parts =
+        absl::StrSplit(item, '/');
+    _skipRecoveryItems[parts.first].emplace(parts.second);
   }
 }
 
 void IResearchRocksDBRecoveryHelper::prepare() {
-  _dbFeature = &_server.getFeature<DatabaseFeature>();
+  TRI_ASSERT(_server);
   _engine =
-      &_server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+      &_server->getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  _dbFeature = &_server->getFeature<DatabaseFeature>();
   _documentCF = RocksDBColumnFamilyManager::get(
                     RocksDBColumnFamilyManager::Family::Documents)
                     ->GetID();
 }
 
-void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
-                                           const rocksdb::Slice& key,
-                                           const rocksdb::Slice& value,
-                                           rocksdb::SequenceNumber tick) {
+template<typename Impl>
+bool IResearchRocksDBRecoveryHelper::skip(Impl& impl) {
+  TRI_ASSERT(!impl.isOutOfSync());
+  if (_skipAllItems) {
+    return true;
+  }
+  auto it = _skipRecoveryItems.find(impl.collection().name());
+  return it != _skipRecoveryItems.end() &&
+         (it->second.contains(impl.name()) ||
+          it->second.contains(absl::AlphaNum{impl.id().id()}.Piece()));
+}
+
+template<bool Force>
+void IResearchRocksDBRecoveryHelper::clear() noexcept {
+  if constexpr (!Force) {
+    if (_indexes.size() < kMaxSize && _links.size() < kMaxSize &&
+        _ranges.size() < kMaxSize) {
+      return;
+    }
+  }
+  _ranges.clear();
+  _indexes.clear();
+  _links.clear();
+}
+
+template<bool Exists, typename Func>
+void IResearchRocksDBRecoveryHelper::applyCF(uint32_t column_family_id,
+                                             rocksdb::Slice key,
+                                             rocksdb::SequenceNumber tick,
+                                             Func&& func) {
   if (column_family_id != _documentCF) {
     return;
   }
 
-  auto coll =
-      lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
+  auto const objectId = RocksDBKey::objectId(key);
 
-  if (coll == nullptr) {
+  auto& ranges = getRanges(objectId);
+  if (ranges.empty()) {
     return;
   }
 
-  LinkContainer links;
-  auto mustReplay = lookupLinks(links, *coll);
+  auto const documentId = RocksDBKey::documentId(key);
 
-  if (links.empty()) {
-    // no links found. nothing to do
-    TRI_ASSERT(!mustReplay);
-    return;
-  }
-
-  if (!mustReplay) {
-    // links found, but the recovery for all of them will be skipped.
-    // so we need to mark all the links as out-of-sync
-    for (auto const& link : links) {
-      TRI_ASSERT(link.second);
-      _skippedIndexes.emplace(link.first->id());
+  auto apply = [&](auto range, auto& values, bool& needed) {
+    if (range.empty()) {
+      return;
     }
-    return;
-  }
-
-  auto docId = RocksDBKey::documentId(key);
-  auto doc = RocksDBValue::data(value);
-
-  transaction::StandaloneContext ctx(coll->vocbase());
-  _skipExisted.clear();
-  mustReplay = false;
-  for (auto const& link : links) {
-    if (link.second) {  // link excluded from recovery
-      _skippedIndexes.emplace(link.first->id());
-      continue;
-    }
-    auto apply = [&](auto& impl) {
-      if (tick > impl.recoveryTickHigh()) {
-        mustReplay = true;
-        return;
+    auto begin = values.begin();
+    auto it = begin + range.begin;
+    auto end = range.end != kMaxSize ? begin + range.end : values.end();
+    for (; it != end; ++it) {
+      if (*it == nullptr) {
+        continue;
       }
-      auto snapshotCookie = _cookies.lazy_emplace(
-          link.first.get(),
-          [&](auto const& ctor) { ctor(link.first.get(), impl.snapshot()); });
-      if (impl.exists(snapshotCookie->second, docId, impl.meta().hasNested(),
-                      &tick)) {
-        _skipExisted.emplace(link.first->id());
-      } else {
-        mustReplay = true;
+      if (tick <= (**it).recoveryTickLow()) {
+        needed = true;
+        continue;
       }
-    };
-    if (link.first->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
-      auto& impl =
-          basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first));
-      apply(impl);
-    } else {
-      TRI_ASSERT(link.first->type() ==
-                 Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK);
-      auto& impl = basics::downCast<IResearchRocksDBLink>(*(link.first));
-      apply(impl);
-    }
-  }
-  if (!mustReplay) {
-    return;
-  }
-
-  SingleCollectionTransaction trx(
-      std::shared_ptr<transaction::Context>(
-          std::shared_ptr<transaction::Context>(), &ctx),
-      *coll, AccessMode::Type::WRITE);
-
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  for (auto const& link : links) {
-    if (!link.second && !_skipExisted.contains(link.first->id())) {
-      if (link.first->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-        basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first))
-            .insertInRecovery(trx, docId, doc, tick);
-      } else {
-        TRI_ASSERT(link.first->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
-        basics::downCast<IResearchRocksDBLink>(*(link.first))
-            .insertInRecovery(trx, docId, doc, tick);
-      }
-    }
-  }
-
-  res = trx.commit();
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-}
-
-// common implementation for DeleteCF / SingleDeleteCF
-void IResearchRocksDBRecoveryHelper::handleDeleteCF(
-    uint32_t column_family_id, const rocksdb::Slice& key,
-    rocksdb::SequenceNumber tick) {
-  if (column_family_id != _documentCF) {
-    return;
-  }
-
-  auto coll =
-      lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
-
-  if (coll == nullptr) {
-    return;
-  }
-
-  LinkContainer links;
-  auto mustReplay = lookupLinks(links, *coll);
-
-  if (links.empty()) {
-    // no links found. nothing to do
-    TRI_ASSERT(!mustReplay);
-    return;
-  }
-
-  if (!mustReplay) {
-    // links found, but the recovery for all of them will be skipped.
-    // so we need to mark all the links as out of sync
-    for (auto const& link : links) {
-      TRI_ASSERT(link.second);
-      _skippedIndexes.emplace(link.first->id());
-    }
-    return;
-  }
-
-  auto docId = RocksDBKey::documentId(key);
-
-  transaction::StandaloneContext ctx(coll->vocbase());
-
-  SingleCollectionTransaction trx(
-      std::shared_ptr<transaction::Context>(
-          std::shared_ptr<transaction::Context>(), &ctx),
-      *coll, AccessMode::Type::WRITE);
-
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  for (auto const& link : links) {
-    if (link.second) {
-      // link excluded from recovery
-      _skippedIndexes.emplace(link.first->id());
-    } else {
-      // link participates in recovery
-      if (link.first->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-        auto& impl =
-            basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first));
-        impl.removeInRecovery(trx, docId, tick);
-      } else {
-        TRI_ASSERT(link.first->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
-        auto& impl = basics::downCast<IResearchRocksDBLink>(*(link.first));
-        impl.removeInRecovery(trx, docId, tick);
-      }
-    }
-  }
-
-  res = trx.commit();
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-}
-
-void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob,
-                                             rocksdb::SequenceNumber tick) {
-  RocksDBLogType const type = RocksDBLogValue::type(blob);
-
-  switch (type) {
-    case RocksDBLogType::IndexCreate: {
-      // Intentional NOOP. Index is committed upon creation.
-      // So if this marker was written  - index was persisted already.
-      break;
-    }
-    case RocksDBLogType::CollectionTruncate: {
-      TRI_ASSERT(_dbFeature);
-      TRI_ASSERT(_engine);
-      uint64_t objectId = RocksDBLogValue::objectId(blob);
-      auto coll = lookupCollection(*_dbFeature, *_engine, objectId);
-
-      if (coll == nullptr) {
-        return;
-      }
-
-      LinkContainer links;
-      auto mustReplay = lookupLinks(links, *coll);
-
-      if (links.empty()) {
-        // no links found. nothing to do
-        TRI_ASSERT(!mustReplay);
-        return;
-      }
-
-      for (auto const& link : links) {
-        if (link.second) {
-          _skippedIndexes.emplace(link.first->id());
-        } else {
-          link.first->afterTruncate(tick, nullptr);
+      if constexpr (Exists) {
+        if (tick <= (**it).recoveryTickHigh() && (**it).exists(documentId)) {
+          needed = true;
+          continue;
         }
       }
-      break;
+      if (!skip(**it)) {
+        func(**it, documentId);
+        needed = true;
+      } else {
+        (**it).setOutOfSync();
+        *it = nullptr;
+      }
     }
+  };
+
+  bool indexes_needed = false;
+  apply(ranges.indexes, _indexes, indexes_needed);
+
+  bool links_needed = false;
+  apply(ranges.links, _links, links_needed);
+
+  if (!indexes_needed &&
+      ranges.indexes.end >= static_cast<uint16_t>(_indexes.size())) {
+    _indexes.resize(ranges.indexes.begin);
+    ranges.indexes = {};
+  }
+
+  if (!links_needed &&
+      ranges.links.end >= static_cast<uint16_t>(_links.size())) {
+    _links.resize(ranges.links.begin);
+    ranges.links = {};
+  }
+}
+
+void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
+                                           rocksdb::Slice const& key,
+                                           rocksdb::Slice const& value,
+                                           rocksdb::SequenceNumber tick) {
+  return applyCF<true>(column_family_id, key, tick,
+                       [&](auto& impl, LocalDocumentId documentId) {
+                         auto doc = RocksDBValue::data(value);
+                         impl.recoveryInsert(tick, documentId, doc);
+                       });
+}
+
+void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
+                                              rocksdb::Slice const& key,
+                                              rocksdb::SequenceNumber tick) {
+  return applyCF<false>(column_family_id, key, tick,
+                        [&](auto& impl, LocalDocumentId documentId) {
+                          impl.recoveryRemove(documentId);
+                        });
+}
+
+void IResearchRocksDBRecoveryHelper::LogData(rocksdb::Slice const& blob,
+                                             rocksdb::SequenceNumber tick) {
+  auto const type = RocksDBLogValue::type(blob);
+
+  switch (type) {
+    case RocksDBLogType::IndexCreate:
+    case RocksDBLogType::IndexDrop: {
+      // TODO(MBkkt) More granular cache invalidation
+      clear<true>();
+    } break;
+    case RocksDBLogType::CollectionTruncate: {
+      // TODO(MBkkt) Truncate could recover index from OutOfSync state
+      auto const objectId = RocksDBLogValue::objectId(blob);
+
+      auto ranges = getRanges(objectId);
+      if (ranges.empty()) {
+        return;
+      }
+
+      auto apply = [&](auto range, auto& values) {
+        if (range.empty()) {
+          return;
+        }
+        auto begin = values.begin();
+        auto it = begin + range.begin;
+        auto end = range.end != kMaxSize ? begin + range.end : values.end();
+        for (; it != end; ++it) {
+          if (*it == nullptr) {
+            continue;
+          }
+          if (tick <= (**it).recoveryTickLow()) {
+            continue;
+          }
+          if (!skip(**it)) {
+            (**it).afterTruncate(tick, nullptr);
+          } else {
+            (**it).setOutOfSync();
+            *it = nullptr;
+          }
+        }
+      };
+
+      apply(ranges.indexes, _indexes);
+      apply(ranges.links, _links);
+    } break;
     default:
       break;  // shut up the compiler
   }
 }
 
-bool IResearchRocksDBRecoveryHelper::lookupLinks(
-    LinkContainer& result, LogicalCollection& coll) const {
-  TRI_ASSERT(result.empty());
+std::shared_ptr<LogicalCollection>
+IResearchRocksDBRecoveryHelper::lookupCollection(uint64_t objectId) {
+  TRI_ASSERT(_engine);
+  TRI_ASSERT(_dbFeature);
+  auto const [databaseName, collectionId] =
+      _engine->mapObjectToCollection(objectId);
+  auto vocbase = _dbFeature->useDatabase(databaseName);
+  return vocbase ? vocbase->lookupCollection(collectionId) : nullptr;
+}
 
-  bool mustReplay = false;
+IResearchRocksDBRecoveryHelper::Ranges&
+IResearchRocksDBRecoveryHelper::getRanges(uint64_t objectId) {
+  auto [it, emplaced] = _ranges.try_emplace(objectId);
+  if (!emplaced) {
+    return it->second;
+  }
+  return it->second = makeRanges(objectId);
+}
 
-  auto indexes = coll.getIndexes();
+IResearchRocksDBRecoveryHelper::Ranges
+IResearchRocksDBRecoveryHelper::makeRanges(uint64_t objectId) {
+  TRI_ASSERT(!_skipAllItems);
+  auto collection = lookupCollection(objectId);
+  if (!collection) {
+    // TODO(MBkkt) it was ok in the old implementation
+    // but I don't know why, for me it looks like assert
+    return {};
+  }
 
-  // filter out non iresearch links
-  const auto it = std::remove_if(
-      indexes.begin(), indexes.end(), [](std::shared_ptr<Index> const& idx) {
-        return idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK &&
-               idx->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX;
-      });
-  indexes.erase(it, indexes.end());
+  clear<false>();
 
-  result.reserve(indexes.size());
-  for (auto& index : indexes) {
-    bool mustFail = _skipAllItems;
-    if (!mustFail && !_skipRecoveryItems.empty()) {
-      if (auto it = _skipRecoveryItems.find(coll.name());
-          it != _skipRecoveryItems.end()) {
-        mustFail = it->second.contains(index->name()) ||
-                   it->second.contains(std::to_string(index->id().id()));
-      }
+  auto const indexesBegin = _indexes.size();
+  auto const linksBegin = _links.size();
+  TRI_ASSERT(indexesBegin < kMaxSize);
+  TRI_ASSERT(linksBegin < kMaxSize);
+
+  auto add = [&](auto& values, auto& value) {
+    if (!value.isOutOfSync()) {
+      values.push_back(&value);
     }
-    result.emplace_back(std::make_pair(std::move(index), mustFail));
-    if (!mustFail) {
-      mustReplay = true;
+  };
+
+  for (auto&& index : collection->getIndexes()) {
+    TRI_ASSERT(index != nullptr);
+    if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+      add(_indexes, basics::downCast<IResearchRocksDBInvertedIndex>(*index));
+    } else if (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      add(_links, basics::downCast<IResearchRocksDBLink>(*index));
     }
   }
 
-  return mustReplay;
+  auto const indexesEnd = _indexes.size();
+  auto const linksEnd = _links.size();
+
+  return {.indexes = {.begin = static_cast<uint16_t>(indexesBegin),
+                      .end = indexesEnd < kMaxSize
+                                 ? static_cast<uint16_t>(indexesEnd)
+                                 : kMaxSize},
+          .links = {.begin = static_cast<uint16_t>(linksBegin),
+                    .end = linksEnd < kMaxSize ? static_cast<uint16_t>(linksEnd)
+                                               : kMaxSize}};
 }
 
-}  // namespace arangodb::iresearch
+}  // namespace iresearch
+}  // namespace arangodb

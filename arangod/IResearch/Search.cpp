@@ -555,14 +555,6 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
   return r;
 }
 
-void Search::open() {
-  // if (ServerState::instance()->isSingleServer()) {
-  //   auto& engine =
-  //       vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  //   _inRecovery.store(engine.inRecovery(), std::memory_order_seq_cst);
-  // }
-}
-
 bool Search::visitCollections(CollectionVisitor const& visitor) const {
   std::shared_lock lock{_mutex};
   for (auto& [cid, handles] : _indexes) {

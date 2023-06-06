@@ -1057,8 +1057,7 @@ TEST_F(IResearchLinkTest, test_write) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE(
-        (l->remove(trx, arangodb::LocalDocumentId(2), false, nullptr).ok()));
+    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2)).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }
@@ -2347,16 +2346,13 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
 
   double remove(uint64_t begin, uint64_t end) {
     auto* l = getLink();
-    {
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-          kEmpty, kEmpty, arangodb::transaction::Options());
-      EXPECT_TRUE(trx.begin().ok());
-      for (; begin != end; ++begin) {
-        EXPECT_TRUE(
-            l->remove(trx, arangodb::LocalDocumentId(begin), false, nullptr)
-                .ok());
-      }
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
+        kEmpty, kEmpty, arangodb::transaction::Options());
+    EXPECT_TRUE(trx.begin().ok());
+    for (; begin != end; ++begin) {
+      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin)).ok());
+    }
 
       EXPECT_TRUE(trx.commit().ok());
     }
