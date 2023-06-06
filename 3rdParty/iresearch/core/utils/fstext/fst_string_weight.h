@@ -473,7 +473,7 @@ inline std::istream& operator>>(
 // For binary strings that's impossible to use
 // Zero() or NoWeight() as they may interfere
 // with real values
-inline irs::bytes_view PlusImpl(irs::bytes_view lhs, irs::bytes_view rhs) {
+inline irs::bytes_ref PlusImpl(irs::bytes_ref lhs, irs::bytes_ref rhs) {
   const auto* plhs = &lhs;
   const auto* prhs = &rhs;
 
@@ -489,18 +489,18 @@ inline irs::bytes_view PlusImpl(irs::bytes_view lhs, irs::bytes_view rhs) {
   return {prhs->data(), static_cast<size_t>(pair.first - prhs->data())};
 }
 
-inline irs::bytes_view Plus(const StringLeftWeight<irs::byte_type>& lhs,
+inline irs::bytes_ref Plus(const StringLeftWeight<irs::byte_type>& lhs,
                             const StringLeftWeight<irs::byte_type>& rhs) {
   return PlusImpl(lhs, rhs);
 }
 
-inline irs::bytes_view Plus(irs::bytes_view lhs,
+inline irs::bytes_ref Plus(irs::bytes_ref lhs,
                             const StringLeftWeight<irs::byte_type>& rhs) {
   return PlusImpl(lhs, rhs);
 }
 
-inline irs::bytes_view Plus(const StringLeftWeight<irs::byte_type>& lhs,
-                            irs::bytes_view rhs) {
+inline irs::bytes_ref Plus(const StringLeftWeight<irs::byte_type>& lhs,
+                            irs::bytes_ref rhs) {
   return PlusImpl(lhs, rhs);
 }
 
