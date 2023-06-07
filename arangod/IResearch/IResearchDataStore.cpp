@@ -1083,7 +1083,7 @@ void IResearchDataStore::markOutOfSyncUnsafe() {
   TRI_ASSERT(_asyncFeature != nullptr);
   TRI_ASSERT(_engine != nullptr);
   _asyncFeature->trackOutOfSyncLink();
-  _engine->changeCollection(collection().vocbase(), collection());
+  _engine->changeCollection(collection().vocbase(), collection(), true);
 }
 
 bool IResearchDataStore::isOutOfSync() const noexcept {
