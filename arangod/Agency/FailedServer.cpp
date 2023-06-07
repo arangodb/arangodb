@@ -147,7 +147,7 @@ bool FailedServer::start(bool& aborts) {
     if (_jb == nullptr) {
       auto const& toDoJob = _snapshot.hasAsNode(toDoPrefix + _jobId);
       if (toDoJob) {
-        toDoJob.value().get().toBuilder(todo);
+        toDoJob->toBuilder(todo);
       } else {
         LOG_TOPIC("729c3", INFO, Logger::SUPERVISION)
             << "Failed to get key " << toDoPrefix << _jobId
@@ -168,10 +168,8 @@ bool FailedServer::start(bool& aborts) {
       VPackObjectBuilder oper(transactions.get());
       // Add pending
 
-      auto const& databaseProperties =
-          _snapshot.hasAsChildren(planDBPrefix).value().get();
-      auto const& databases =
-          _snapshot.hasAsChildren(planColPrefix).value().get();
+      auto const& databaseProperties = *_snapshot.hasAsChildren(planDBPrefix);
+      auto const& databases = *_snapshot.hasAsChildren(planColPrefix);
 
       size_t sub = 0;
 
@@ -187,8 +185,7 @@ bool FailedServer::start(bool& aborts) {
           auto const& replicationFactorPair =
               collection.hasAsNode(StaticStrings::ReplicationFactor);
           if (replicationFactorPair) {
-            VPackSlice const replicationFactor =
-                replicationFactorPair.value().get().slice();
+            VPackSlice const replicationFactor = replicationFactorPair->slice();
             uint64_t number = 1;
             bool isSatellite = false;
 
@@ -218,8 +215,7 @@ bool FailedServer::start(bool& aborts) {
               continue;  // we only deal with the master
             }
 
-            for (auto const& shard :
-                 collection.hasAsChildren("shards").value().get()) {
+            for (auto const& shard : *collection.hasAsChildren("shards")) {
               size_t pos = 0;
 
               for (VPackSlice it : VPackArrayIterator(shard.second->slice())) {
@@ -385,10 +381,8 @@ JOB_STATUS FailedServer::status() {
 
   std::shared_ptr<Builder> deleteTodos;
 
-  Node::Children const& todos =
-      _snapshot.hasAsChildren(toDoPrefix).value().get();
-  Node::Children const& pends =
-      _snapshot.hasAsChildren(pendingPrefix).value().get();
+  Node::Children const& todos = *_snapshot.hasAsChildren(toDoPrefix);
+  Node::Children const& pends = *_snapshot.hasAsChildren(pendingPrefix);
   bool hasOpenChildTasks = false;
 
   for (auto const& subJob : todos) {
