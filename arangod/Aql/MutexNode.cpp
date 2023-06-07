@@ -50,6 +50,8 @@ MutexNode::MutexNode(ExecutionPlan* plan,
 
 ExecutionNode::NodeType MutexNode::getType() const { return MUTEX; }
 
+size_t MutexNode::getMemoryUsedBytes() const { return sizeof(decltype(*this)); }
+
 ExecutionNode* MutexNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
   auto clone = cloneHelper(std::make_unique<MutexNode>(plan, _id),

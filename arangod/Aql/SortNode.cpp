@@ -238,3 +238,5 @@ SortNode::SorterType SortNode::sorterType() const {
   return (!isStable() && _limit > 0) ? SorterType::ConstrainedHeap
                                      : SorterType::Standard;
 }
+
+size_t SortNode::getMemoryUsedBytes() const { return sizeof(decltype(*this)); }

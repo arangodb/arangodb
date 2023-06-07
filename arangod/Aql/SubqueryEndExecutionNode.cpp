@@ -168,3 +168,7 @@ bool SubqueryEndNode::isModificationNode() const {
   TRI_ASSERT(false);
   return false;
 }
+
+size_t SubqueryEndNode::getMemoryUsedBytes() const {
+  return sizeof(decltype(*this));
+}

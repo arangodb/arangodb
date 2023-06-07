@@ -1119,8 +1119,9 @@ ExecutionNode* ExecutionPlan::registerNode(
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   {
-    ResourceUsageScope scope(_ast->query().resourceMonitor(),
-                             _trackMemoryUsage ? sizeof(ExecutionNode) : 0);
+    ResourceUsageScope scope(
+        _ast->query().resourceMonitor(),
+        _trackMemoryUsage ? node->getMemoryUsedBytes() : 0);
 
     auto emplaced =
         _ids.try_emplace(node->id(), node.get()).second;  // take ownership

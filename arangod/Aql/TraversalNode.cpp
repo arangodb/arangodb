@@ -1455,3 +1455,7 @@ void TraversalNode::validateCollections() const {
     }
   }
 }
+
+size_t TraversalNode::getMemoryUsedBytes() const {
+  return sizeof(decltype(*this));
+}

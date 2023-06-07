@@ -101,5 +101,9 @@ bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
   return ExecutionNode::isEqualTo(other);
 }
 
+size_t SubqueryStartNode::getMemoryUsedBytes() const {
+  return sizeof(decltype(*this));
+}
+
 }  // namespace aql
 }  // namespace arangodb
