@@ -2346,42 +2346,41 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
 
   double remove(uint64_t begin, uint64_t end) {
     auto* l = getLink();
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-        kEmpty, kEmpty, arangodb::transaction::Options());
-    EXPECT_TRUE(trx.begin().ok());
-    for (; begin != end; ++begin) {
-      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin)).ok());
+    {
+      arangodb::transaction::Methods trx(
+          arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
+          kEmpty, kEmpty, arangodb::transaction::Options());
+      EXPECT_TRUE(trx.begin().ok());
+      for (; begin != end; ++begin) {
+        EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin)).ok());
+      }
+
+      EXPECT_TRUE(trx.commit().ok());
     }
-
-    EXPECT_TRUE(trx.commit().ok());
+    auto start = std::chrono::steady_clock::now();
+    EXPECT_TRUE(l->commit().ok());
+    return std::chrono::duration<double, std::milli>(
+               std::chrono::steady_clock::now() - start)
+        .count();
   }
-  auto start = std::chrono::steady_clock::now();
-  EXPECT_TRUE(l->commit().ok());
-  return std::chrono::duration<double, std::milli>(
-             std::chrono::steady_clock::now() - start)
-      .count();
-}
 
-std::tuple<uint64_t, uint64_t>
-numFiles() {
-  uint64_t numFiles{0};
-  uint64_t indexSize{0};
-  auto visitor = [&](irs::path_char_t const* filename) -> bool {
-    ++numFiles;
-    auto pathParts = irs::file_utils::path_parts(filename);
-    std::filesystem::path absPath = _dirPath;
-    absPath /= pathParts.basename;
-    uint64_t currSize = 0;
-    irs::file_utils::byte_size(currSize, absPath.c_str());
-    indexSize += currSize;
-    return true;
-  };
-  irs::file_utils::visit_directory(_dirPath.c_str(), visitor, false);
-  return {numFiles, indexSize};
-}
-}
-;
+  std::tuple<uint64_t, uint64_t> numFiles() {
+    uint64_t numFiles{0};
+    uint64_t indexSize{0};
+    auto visitor = [&](irs::path_char_t const* filename) -> bool {
+      ++numFiles;
+      auto pathParts = irs::file_utils::path_parts(filename);
+      std::filesystem::path absPath = _dirPath;
+      absPath /= pathParts.basename;
+      uint64_t currSize = 0;
+      irs::file_utils::byte_size(currSize, absPath.c_str());
+      indexSize += currSize;
+      return true;
+    };
+    irs::file_utils::visit_directory(_dirPath.c_str(), visitor, false);
+    return {numFiles, indexSize};
+  }
+};
 
 TEST_F(IResearchLinkMetricsTest, TimeCommit) {
   _cleanupIntervalStep = 1;
