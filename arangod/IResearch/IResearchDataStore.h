@@ -71,10 +71,7 @@ struct IResearchTrxState final : public TransactionState::Cookie {
                     bool nested) noexcept
       : _linkLock{std::move(linkLock)},
         _ctx{writer.GetBatch()},
-        _removals{nested ? std::static_pointer_cast<PrimaryKeysFilterBase>(
-                               std::make_shared<PrimaryKeysFilter<true>>())
-                         : std::static_pointer_cast<PrimaryKeysFilterBase>(
-                               std::make_shared<PrimaryKeysFilter<false>>())} {}
+        _removals{makePrimaryKeysFilter(nested)} {}
 
   ~IResearchTrxState() final {
     // TODO(MBkkt) Make Abort in ~Transaction()
@@ -199,19 +196,22 @@ class IResearchDataStore {
   [[nodiscard]] virtual AnalyzerPool::ptr findAnalyzer(
       AnalyzerPool const& analyzer) const = 0;
 
-  auto recoveryTickHigh() const noexcept {
+  uint64_t recoveryTickLow() const noexcept {
+    return _dataStore._recoveryTickLow;
+  }
+  uint64_t recoveryTickHigh() const noexcept {
     return _dataStore._recoveryTickHigh;
   }
 
-  bool exists(Snapshot const& snapshot, LocalDocumentId documentId,
-              uint64_t const* recoveryTick) const;
+  IResearchTrxState* getContext(TransactionState& state);
+  bool exists(LocalDocumentId documentId) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                bool nested, uint64_t const* recoveryTick);
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId);
+  void recoveryRemove(LocalDocumentId documentId);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert an ArangoDB document into an iResearch View using '_meta'
@@ -220,8 +220,10 @@ class IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   template<typename FieldIteratorType, typename MetaType>
   Result insert(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc, MetaType const& meta,
-                uint64_t const* recoveryTick);
+                velocypack::Slice doc, MetaType const& meta);
+  template<typename FieldIteratorType, typename MetaType>
+  void recoveryInsert(uint64_t tick, LocalDocumentId documentId,
+                      velocypack::Slice doc, MetaType const& meta);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update runtine data processing properties
@@ -255,6 +257,7 @@ class IResearchDataStore {
   /// sync before.
   //////////////////////////////////////////////////////////////////////////////
   bool setOutOfSync() noexcept;
+  void markOutOfSyncUnsafe();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the data store is out of sync (i.e. has incomplete
@@ -311,8 +314,6 @@ class IResearchDataStore {
     // the tick at which data store was recovered
     uint64_t _recoveryTickLow{0};
     uint64_t _recoveryTickHigh{0};
-    // data store is in recovery
-    std::atomic_bool _inRecovery{false};
     explicit operator bool() const noexcept { return _directory && _writer; }
 
     void resetDataStore() noexcept {
@@ -434,6 +435,9 @@ class IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
 #endif
+
+  void recoveryCommit(uint64_t tick);
+
  protected:
   enum class DataStoreError : uint8_t {
     // data store has no issues
@@ -485,11 +489,10 @@ class IResearchDataStore {
   // the iresearch data store, protected by _asyncSelf->mutex()
   DataStore _dataStore;
 
-  // data store error state
-  std::atomic<DataStoreError> _error;
-
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
+  // data store error state
+  std::atomic<DataStoreError> _error{DataStoreError::kNoError};
   bool _hasNestedFields{false};
   bool _isCreation{true};
 #ifdef USE_ENTERPRISE
@@ -505,6 +508,8 @@ class IResearchDataStore {
   std::mutex _commitMutex;
 
   // for insert(...)/remove(...)
+  irs::IndexWriter::Transaction _recoveryTrx;
+  std::shared_ptr<PrimaryKeysFilterBase> _recoveryRemoves;
   TransactionState::BeforeCommitCallback _beforeCommitCallback;
   TransactionState::AfterCommitCallback _afterCommitCallback;
 
