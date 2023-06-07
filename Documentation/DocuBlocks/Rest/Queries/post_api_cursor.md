@@ -111,8 +111,8 @@ There is also a server configuration option `--query.fail-on-warning` for settin
 default value for *failOnWarning* so it does not need to be set on a per-query level.
 
 @RESTSTRUCT{allowRetry,post_api_cursor_opts,boolean,optional,}
-Set this option to `true` to make it possible to retry fetching the latest batch
-from a cursor.
+Set this option to `true` to make it possible to retry
+fetching the latest batch from a cursor. The default is `false`.
 
 If retrieving a result batch fails because of a connection issue, you can ask
 for that batch again using the `POST /_api/cursor/<cursor-id>/<batch-id>`
@@ -121,8 +121,27 @@ with every batch. Every result response except the last one also includes a
 `nextBatchId` attribute, indicating the ID of the batch after the current.
 You can remember and use this batch ID should retrieving the next batch fail.
 
-You can only request the latest batch again. Earlier batches are not kept on the
-server-side.
+You can only request the latest batch again (or the next batch).
+Earlier batches are not kept on the server-side.
+Requesting a batch again does not advance the cursor.
+
+You can also call this endpoint with the next batch identifier, i.e. the value
+returned in the `nextBatchId` attribute of a previous request. This advances the
+cursor and returns the results of the next batch. This is only supported if there
+are more results in the cursor (i.e. `hasMore` is `true` in the latest batch).
+
+From v3.11.1 onward, you may use the `POST /_api/cursor/<cursor-id>/<batch-id>`
+endpoint even if the `allowRetry` attribute is `false` to fetch the next batch,
+but you cannot request a batch again unless you set it to `true`.
+
+To allow refetching of the very last batch of the query, the server cannot
+automatically delete the cursor. After the first attempt of fetching the last
+batch, the server would normally delete the cursor to free up resources. As you
+might need to reattempt the fetch, it needs to keep the final batch when the
+`allowRetry` option is enabled. Once you successfully received the last batch,
+you should call the `DELETE /_api/cursor/<cursor-id>` endpoint so that the
+server doesn't unnecessarily keep the batch until the cursor times out
+(`ttl` query option).
 
 @RESTSTRUCT{stream,post_api_cursor_opts,boolean,optional,}
 Can be enabled to execute the query lazily. If set to *true*, then the query is

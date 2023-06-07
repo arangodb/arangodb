@@ -27,6 +27,10 @@ You can also call this endpoint with the next batch identifier, i.e. the value
 returned in the `nextBatchId` attribute of a previous request. This advances the
 cursor and returns the results of the next batch.
 
+From v3.11.1 onward, you may use this endpoint even if the `allowRetry`
+attribute is `false` to fetch the next batch, but you cannot request a batch
+again unless you set it to `true`.
+
 Note that it is only supported to query the last returned batch identifier or
 the directly following batch identifier. The latter is only supported if there
 are more results in the cursor (i.e. `hasMore` is `true` in the latest batch).
