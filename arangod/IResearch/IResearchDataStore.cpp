@@ -1358,7 +1358,8 @@ Result IResearchDataStore::initDataStore(
   }
 
   return dbFeature.registerPostRecoveryCallback(  // register callback
-      [asyncSelf = _asyncSelf, asyncFeature = _asyncFeature]() -> Result {
+      [asyncSelf = _asyncSelf, asyncFeature = _asyncFeature,
+       pathExists]() -> Result {
         auto linkLock = asyncSelf->lock();
         // ensure link does not get deallocated before callback finishes
 
