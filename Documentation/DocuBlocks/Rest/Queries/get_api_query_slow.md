@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_query_slow
-@brief returns a list of slow running AQL queries
 
-@RESTHEADER{GET /_api/query/slow, Returns the list of slow AQL queries, listSlowAqlQueries}
+@RESTHEADER{GET /_api/query/slow, List the slow AQL queries, listSlowAqlQueries}
 
 @RESTDESCRIPTION
 Returns an array containing the last AQL queries that are finished and
@@ -14,29 +13,29 @@ a query as *slow* can be adjusted by setting the query tracking property
 
 Each query is a JSON object with the following attributes:
 
-- *id*: the query's id
+- `id`: the query's id
 
-- *database*: the name of the database the query runs in
+- `database`: the name of the database the query runs in
 
-- *user*: the name of the user that started the query
+- `user`: the name of the user that started the query
 
-- *query*: the query string (potentially truncated)
+- `query`: the query string (potentially truncated)
 
-- *bindVars*: the bind parameter values used by the query
+- `bindVars`: the bind parameter values used by the query
 
-- *started*: the date and time when the query was started
+- `started`: the date and time when the query was started
 
-- *runTime*: the query's total run time
+- `runTime`: the query's total run time
 
-- *state*: the query's current execution state (will always be "finished"
+- `state`: the query's current execution state (will always be "finished"
   for the list of slow queries)
 
-- *stream*: whether or not the query uses a streaming cursor
+- `stream`: whether or not the query uses a streaming cursor
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{all,boolean,optional}
-If set to *true*, will return the slow queries from all databases, not just
+If set to `true`, will return the slow queries from all databases, not just
 the selected one.
 Using the parameter is only allowed in the system database and with superuser
 privileges.
@@ -50,7 +49,7 @@ Is returned when the list of queries can be retrieved successfully.
 The server will respond with *HTTP 400* in case of a malformed request,
 
 @RESTRETURNCODE{403}
-*HTTP 403* is returned in case the *all* parameter was used, but the request
+*HTTP 403* is returned in case the `all` parameter was used, but the request
 was made in a different database than _system, or by an non-privileged user.
 
 @endDocuBlock
