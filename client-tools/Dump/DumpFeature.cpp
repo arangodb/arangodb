@@ -1603,7 +1603,7 @@ void DumpFeature::ParallelDumpServer::ParallelDumpServer::countBlocker(
   }
 
   if (msg) {
-    LOG_TOPIC("3cc53", INFO, Logger::DUMP)
+    LOG_TOPIC("3cc53", DEBUG, Logger::DUMP)
         << "when dumping data from server " << server << " system blocking at "
         << msg;
   }
@@ -1676,6 +1676,13 @@ std::shared_ptr<ManagedDirectory::File> DumpFeature::DumpFileProvider::getFile(
       name + "_" + hexString + "." + std::to_string(cnt) + ".data.json";
   auto file =
       _directory.writableFile(filename, true /*overwrite*/, 0, true /*gzipOk*/);
+  if (file == nullptr || file->status().fail()) {
+    LOG_TOPIC("40543", FATAL, Logger::DUMP)
+        << "Failed to open file " << filename
+        << " for writing: " << file->status().errorMessage();
+    FATAL_ERROR_EXIT();
+  }
+
   return file;
 }
 
