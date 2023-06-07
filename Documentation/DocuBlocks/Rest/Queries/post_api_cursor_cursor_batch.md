@@ -54,7 +54,7 @@ If the cursor and the batch identifier are omitted, the server responds with
 @RESTREPLYBODY{error,boolean,required,}
 A flag to indicate that an error occurred (`false` in this case).
 
-@RESTREPLYBODY{code,integer,required,integer}
+@RESTREPLYBODY{code,integer,required,int64}
 The HTTP status code.
 
 @RESTREPLYBODY{errorNum,integer,required,int64}
