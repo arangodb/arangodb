@@ -1584,8 +1584,8 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
   }
 
   auto insertImpl = [&, this](irs::IndexWriter::Transaction& ctx) -> Result {
-    auto message = [&](auto&&... args) {
-      return MakeMessage("While inserting document caught exception", index(),
+    auto message = [&, this](auto&&... args) {
+      return MakeMessage("While inserting document caught exception", *this,
                          state, documentId,
                          std::forward<decltype(args)>(args)...);
     };
