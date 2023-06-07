@@ -220,7 +220,8 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
 }
 
 ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
-                                               VPackSlice const& slice) {
+                                               velocypack::Slice slice) {
+  TRI_ASSERT(slice.get("typeID").isNumber()) << slice.toJson();
   int nodeTypeID = slice.get("typeID").getNumericValue<int>();
   validateType(nodeTypeID);
 
@@ -413,7 +414,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
 }
 
 /// @brief create an ExecutionNode from VPackSlice
-ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
+ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
     : _id(slice.get("id").getNumericValue<size_t>()),
       _depth(slice.get("depth").getNumericValue<unsigned int>()),
       _varUsageValid(true),

@@ -240,7 +240,7 @@ ExecutionNode* getCalcNode(ExecutionNode* node) {
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ bool AqlAnalyzer::normalize_vpack(irs::string_ref args,
+/*static*/ bool AqlAnalyzer::normalize_vpack(std::string_view args,
                                              std::string& out) {
   auto const slice = arangodb::iresearch::slice(args);
   VPackBuilder builder;
@@ -252,9 +252,9 @@ namespace iresearch {
   return false;
 }
 
-/*static*/ bool AqlAnalyzer::normalize_json(irs::string_ref args,
+/*static*/ bool AqlAnalyzer::normalize_json(std::string_view args,
                                             std::string& out) {
-  auto src = VPackParser::fromJson(args.c_str(), args.size());
+  auto src = VPackParser::fromJson(args.data(), args.size());
   VPackBuilder builder;
   if (normalize_slice(src->slice(), builder)) {
     out = builder.toString();
@@ -264,14 +264,14 @@ namespace iresearch {
 }
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_vpack(
-    irs::string_ref args) {
+    std::string_view args) {
   auto const slice = arangodb::iresearch::slice(args);
   return make_slice(slice);
 }
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(
-    irs::string_ref args) {
-  auto builder = VPackParser::fromJson(args.c_str(), args.size());
+    std::string_view args) {
+  auto builder = VPackParser::fromJson(args.data(), args.size());
   return make_slice(builder->slice());
 }
 
@@ -326,8 +326,7 @@ bool AqlAnalyzer::isOptimized() const {
 #endif
 
 AqlAnalyzer::AqlAnalyzer(Options const& options)
-    : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
-      _options(options),
+    : _options(options),
       _query(arangodb::aql::StandaloneCalculation::buildQueryContext(
           arangodb::DatabaseFeature::getCalculationVocbase())),
       _itemBlockManager(_query->resourceMonitor(),
@@ -365,7 +364,7 @@ bool AqlAnalyzer::next() {
                 _valueBuffer = aql::functions::ToString(
                     &ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isString());
-                std::get<2>(_attrs).value = irs::ref_cast<irs::byte_type>(
+                std::get<2>(_attrs).value = irs::ViewCast<irs::byte_type>(
                     _valueBuffer.slice().stringView());
               }
               break;
@@ -406,7 +405,7 @@ bool AqlAnalyzer::next() {
                   << "Unexpected AqlAnalyzer return type "
                   << static_cast<std::underlying_type_t<AnalyzerValueType>>(
                          _options.returnType);
-              std::get<2>(_attrs).value = irs::bytes_ref::EMPTY;
+              std::get<2>(_attrs).value = irs::kEmptyStringView<irs::byte_type>;
               _valueBuffer = AqlValue();
               std::get<3>(_attrs).value = _valueBuffer.slice();
           }
@@ -445,7 +444,7 @@ bool AqlAnalyzer::next() {
   return false;
 }
 
-bool AqlAnalyzer::reset(irs::string_ref field) noexcept {
+bool AqlAnalyzer::reset(std::string_view field) noexcept {
   try {
     if (!_plan) {  // lazy initialization
       // important to hold a copy here as parser accepts reference!
@@ -463,8 +462,8 @@ bool AqlAnalyzer::reset(irs::string_ref field) noexcept {
               TRI_ASSERT(node->getStringView() == CALCULATION_PARAMETER_NAME);
               // FIXME: move to computed value once here could be not only
               // strings
-              auto newNode = ast->createNodeValueMutableString(field.c_str(),
-                                                               field.size());
+              auto newNode =
+                  ast->createNodeValueMutableString(field.data(), field.size());
               // finally note that the node was created from a bind parameter
               newNode->setFlag(FLAG_BIND_PARAMETER);
               newNode->setFlag(
@@ -509,7 +508,7 @@ bool AqlAnalyzer::reset(irs::string_ref field) noexcept {
     }
 
     for (auto node : _bindedNodes) {
-      node->setStringValue(field.c_str(), field.size());
+      node->setStringValue(field.data(), field.size());
     }
 
     _resultRowIdx = 0;

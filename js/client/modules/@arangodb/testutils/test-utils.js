@@ -201,6 +201,16 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
   if (options.failed) {
     return options.failed.hasOwnProperty(testname);
   }
+
+  if (options.skipN !== false) {
+    if (options.skipN > 0) {
+      options.skipN -= 1;
+    }
+    if (options.skipN > 0) {
+      whichFilter.filter = `skipN: last test skip ${options.skipN}.`;
+      return false;
+    }
+  }
   return true;
 }
 
@@ -259,12 +269,15 @@ function doOnePathInner (path) {
     }).sort();
 }
 
-function scanTestPaths (paths, options) {
+function scanTestPaths (paths, options, fun) {
   // add Enterprise Edition tests
   if (isEnterprise()) {
     paths = paths.concat(paths.map(function(p) {
       return 'enterprise/' + p;
     }));
+  }
+  if (fun === undefined) {
+    fun = function() {return true;};
   }
 
   let allTestCases = [];
@@ -276,6 +289,10 @@ function scanTestPaths (paths, options) {
   let allFiltered = [];
   let filteredTestCases = _.filter(allTestCases,
                                    function (p) {
+                                     if (!fun(p)) {
+                                       allFiltered.push(p + " Filtered by: custom filter");
+                                       return false;
+                                     }
                                      let whichFilter = {};
                                      let rc = filterTestcaseByOptions(p, options, whichFilter);
                                      if (!rc) {
@@ -288,7 +305,7 @@ function scanTestPaths (paths, options) {
     return [];
   }
 
-  return allTestCases;
+  return filteredTestCases;
 }
 
 

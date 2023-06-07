@@ -34,7 +34,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace arangodb::tests {
 namespace {

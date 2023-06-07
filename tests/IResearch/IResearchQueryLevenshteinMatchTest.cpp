@@ -35,7 +35,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace arangodb::tests {
 namespace {
@@ -57,7 +56,7 @@ class QueryLevenhsteinMatch : public QueryTest {
     ASSERT_TRUE(collection);
     // insert some data
     {
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("levenshtein_sequential.json");
 
@@ -953,11 +952,11 @@ class QueryLevenhsteinMatchView : public QueryLevenhsteinMatch {
 
       auto viewDefinitionTemplate = R"({
       "links": {
-        "testCollection1": { "includeAllFields": true, "version": %u }
+        "testCollection1": { "includeAllFields": true, "version": $0 }
       }
     })";
 
-      auto viewDefinition = irs::string_utils::to_string(
+      auto viewDefinition = absl::Substitute(
           viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
 
       auto updateJson = VPackParser::fromJson(viewDefinition);

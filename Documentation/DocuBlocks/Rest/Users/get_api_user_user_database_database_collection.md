@@ -1,7 +1,6 @@
 @startDocuBlock get_api_user_user_database_database_collection
-@brief Get the collection access level
 
-@RESTHEADER{GET /_api/user/{user}/database/{dbname}/{collection}, Get the specific collection access level, getUserCollectionPermissions}
+@RESTHEADER{GET /_api/user/{user}/database/{dbname}/{collection}, Get a user's collection access level, getUserCollectionPermissions}
 
 @RESTURLPARAMETERS
 
@@ -26,7 +25,7 @@ Returned if the access level can be returned
 If the access privileges are not right etc.
 
 @RESTRETURNCODE{401}
-Returned if you have *No access* database access level to the *_system*
+Returned if you have *No access* database access level to the `_system`
 database.
 
 @RESTRETURNCODE{403}

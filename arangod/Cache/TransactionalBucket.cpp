@@ -104,7 +104,7 @@ CachedValue* TransactionalBucket::find(std::uint32_t hash, void const* key,
 void TransactionalBucket::insert(std::uint32_t hash,
                                  CachedValue* value) noexcept {
   TRI_ASSERT(isLocked());
-  TRI_ASSERT(!isBanished(hash));  // checks needs to be done outside
+  TRI_ASSERT(!isBanished(hash));  // check needs to be done outside
 
   for (std::size_t i = 0; i < slotsData; i++) {
     if (_cachedData[i] == nullptr) {
@@ -193,7 +193,7 @@ bool TransactionalBucket::isBanished(std::uint32_t hash) const noexcept {
   return banished;
 }
 
-std::uint64_t TransactionalBucket::evictCandidate() noexcept {
+std::uint64_t TransactionalBucket::evictCandidate(bool moveToFront) noexcept {
   TRI_ASSERT(isLocked());
   for (std::size_t i = 0; i < slotsData; i++) {
     std::size_t slot = slotsData - (i + 1);
@@ -206,7 +206,13 @@ std::uint64_t TransactionalBucket::evictCandidate() noexcept {
       delete _cachedData[slot];
       _cachedHashes[slot] = 0;
       _cachedData[slot] = nullptr;
-      moveSlot(slot, true);
+      if (moveToFront) {
+        if (slot != 0) {
+          moveSlot(slot, /*moveToFront*/ true);
+        }
+      } else {
+        moveSlot(slot, /*moveToFront*/ false);
+      }
       return size;
     }
   }

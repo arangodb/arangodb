@@ -1,15 +1,14 @@
 
 @startDocuBlock get_api_version
-@brief returns the server version number
 
-@RESTHEADER{GET /_api/version, Return server version, getVersion}
+@RESTHEADER{GET /_api/version, Get the server version, getVersion}
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{details,boolean,optional}
-If set to *true*, the response will contain a *details* attribute with
+If set to `true`, the response will contain a `details` attribute with
 additional information about included components and their versions. The
-attribute names and internals of the *details* object may vary depending on
+attribute names and internals of the `details` object may vary depending on
 platform and ArangoDB version.
 
 @RESTDESCRIPTION
@@ -22,23 +21,23 @@ with the following attributes:
 is returned in all cases.
 
 @RESTREPLYBODY{server,string,required,string}
-will always contain *arango*
+will always contain `arango`
 
 @RESTREPLYBODY{version,string,required,string}
 the server version string. The string has the format
-"*major*.*minor*.*sub*". *major* and *minor* will be numeric, and *sub*
+`major.minor.sub`. `major` and `minor` will be numeric, and `sub`
 may contain a number or a textual version.
 
 @RESTREPLYBODY{details,object,optional,version_details_struct}
 an optional JSON object with additional details. This is
-returned only if the *details* query parameter is set to *true* in the
+returned only if the `details` query parameter is set to `true` in the
 request.
 
 @RESTSTRUCT{architecture,version_details_struct,string,optional,}
-The CPU architecture, i.e. *64bit*
+The CPU architecture, i.e. `64bit`
 
 @RESTSTRUCT{arm,version_details_struct,string,optional,}
-*false* - this is not running on an ARM cpu
+`false` - this is not running on an ARM cpu
 
 @RESTSTRUCT{asan,version_details_struct,string,optional,}
 has this been compiled with the asan address sanitizer turned on? (should be false)
@@ -65,19 +64,19 @@ which compiler did we use
 C++ standards version
 
 @RESTSTRUCT{debug,version_details_struct,string,optional,}
-*false* for production binaries
+`false` for production binaries
 
 @RESTSTRUCT{endianness,version_details_struct,string,optional,}
-currently only *little* is supported
+currently only `little` is supported
 
 @RESTSTRUCT{failure-tests,version_details_struct,string,optional,}
-*false* for production binaries (the facility to invoke fatal errors is disabled)
+`false` for production binaries (the facility to invoke fatal errors is disabled)
 
 @RESTSTRUCT{fd-client-event-handler,version_details_struct,string,optional,}
-which method do we use to handle fd-sets, *poll* should be here on linux.
+which method do we use to handle fd-sets, `poll` should be here on linux.
 
 @RESTSTRUCT{fd-setsize,version_details_struct,string,optional,}
-if not *poll* the fd setsize is valid for the maximum number of file descriptors
+if not `poll` the fd setsize is valid for the maximum number of file descriptors
 
 @RESTSTRUCT{full-version-string,version_details_struct,string,optional,}
 The full version string
@@ -86,19 +85,19 @@ The full version string
 Which version of ICU do we bundle
 
 @RESTSTRUCT{jemalloc,version_details_struct,string,optional,}
-*true* if we use jemalloc
+`true` if we use jemalloc
 
 @RESTSTRUCT{maintainer-mode,version_details_struct,string,optional,}
-*false* if this is a production binary
+`false` if this is a production binary
 
 @RESTSTRUCT{openssl-version,version_details_struct,string,optional,}
 which openssl version do we link?
 
 @RESTSTRUCT{platform,version_details_struct,string,optional,}
-the host os - *linux*, *windows* or *darwin*
+the host os - `linux`, `windows` or `darwin`
 
 @RESTSTRUCT{reactor-type,version_details_struct,string,optional,}
-*epoll* TODO
+`epoll`
 
 @RESTSTRUCT{rocksdb-version,version_details_struct,string,optional,}
 the rocksdb version this release bundles
@@ -107,10 +106,10 @@ the rocksdb version this release bundles
 the ArangoDB release version
 
 @RESTSTRUCT{sizeof int,version_details_struct,string,optional,}
-number of bytes for *integers*
+number of bytes for integers
 
 @RESTSTRUCT{sizeof void*,version_details_struct,string,optional,}
-number of bytes for *void pointers*
+number of bytes for void pointers
 
 @RESTSTRUCT{sse42,version_details_struct,string,optional,}
 do we have a SSE 4.2 enabled cpu?
@@ -128,7 +127,7 @@ the version of the used velocypack implementation
 the version of the bundled zlib
 
 @RESTSTRUCT{mode,version_details_struct,string,optional,}
-the mode we're running as - one of [*server*, *console*, *script*]
+The mode arangod runs in. Possible values: `server`, `console`, `script`
 
 @RESTSTRUCT{host,version_details_struct,string,optional,}
 the host ID

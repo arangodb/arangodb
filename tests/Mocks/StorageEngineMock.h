@@ -193,6 +193,8 @@ class TransactionCollectionMock : public arangodb::TransactionCollection {
   arangodb::Result doUnlock(arangodb::AccessMode::Type type) override;
 };
 
+class StorageEngineMock;
+
 class TransactionStateMock : public arangodb::TransactionState {
  public:
   static std::atomic_size_t abortTransactionCount;
@@ -200,7 +202,8 @@ class TransactionStateMock : public arangodb::TransactionState {
   static std::atomic_size_t commitTransactionCount;
 
   TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
-                       arangodb::transaction::Options const& options);
+                       arangodb::transaction::Options const& options,
+                       StorageEngineMock& engine);
   virtual arangodb::Result abortTransaction(
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(
@@ -209,8 +212,10 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result performIntermediateCommitIfRequired(
       arangodb::DataSourceId cid) override;
+  void incrementInsert() noexcept { ++_numInserts; }
+  void incrementRemove() noexcept { ++_numRemoves; }
   [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept final {
-    return 0;
+    return _numInserts + _numRemoves;
   }
   virtual uint64_t numCommits() const override;
   virtual bool hasFailedOperations() const override;
@@ -219,6 +224,11 @@ class TransactionStateMock : public arangodb::TransactionState {
   std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
       arangodb::DataSourceId cid,
       arangodb::AccessMode::Type accessType) override;
+
+ private:
+  uint64_t _numInserts{0};
+  uint64_t _numRemoves{0};
+  StorageEngineMock& _engine;
 };
 
 class StorageEngineMock : public arangodb::StorageEngine {
@@ -340,7 +350,9 @@ class StorageEngineMock : public arangodb::StorageEngine {
   buildInvertedIndexMock(arangodb::IndexId id,
                          arangodb::LogicalCollection& collection,
                          VPackSlice const& info);
+  void incrementTick(uint64_t tick) { _engineTick.fetch_add(tick); }
 
  private:
   TRI_voc_tick_t _releasedTick;
+  std::atomic_uint64_t _engineTick{100};
 };

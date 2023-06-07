@@ -43,7 +43,8 @@ function RequestSuite () {
     testVersionVpackJson: versionVpackJson,
     testVersionJsonVpack: versionJsonVpack,
     testVersionVpackVpack: versionVpackVpack,
-    testEchoVpackVpack: echoVpackVpack
+    testEchoVpackVpack: echoVpackVpack,
+    testEchoVpackVpack2: echoVpackVpack2
   };
 };
 
@@ -156,6 +157,21 @@ function echoVpackVpack () {
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
   var replyBody = VPACK_TO_V8(res.body);
   expect(replyBody.requestBody).to.be.a('string');
+};
+
+function echoVpackVpack2 () {
+  var path = '/_admin/echo';
+  var headers = {
+    'content-type': 'application/x-velocypack',
+    'accept'      : 'application/x-velocypack'
+  };
+
+  var res = arango.GET_RAW(path, headers);
+
+  expect(res.body).to.be.a('SlowBuffer');
+  expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
+  var replyBody = VPACK_TO_V8(res.body);
+  expect(replyBody.requestBody).to.be.undefined;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

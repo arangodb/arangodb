@@ -101,7 +101,7 @@ set(ARANGODB_VERSION_MINOR "10")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "6")
+  set(ARANGODB_VERSION_PATCH "7")
   set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -751,10 +751,12 @@ if (NOT WINDOWS)
   if (USE_SSE4_2)
     set(ARANGODB_SSE42_FLAGS "-msse4.2")
   endif ()
-
-  set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
+else()
+  # sandy-bridge is our minimal requrement,
+  # so AVX should be available
+  set(Vc_ARCHITECTURE_FLAGS "/arch:AVX")
 endif ()
-
+set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 
 ################################################################################
