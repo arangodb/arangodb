@@ -1315,6 +1315,14 @@ void DumpFeature::start() {
     }
   }
 
+  if (!_options.clusterMode) {
+    if (_options.useExperimentalDump) {
+      LOG_TOPIC("7a01a", WARN, Logger::DUMP)
+          << "parallel dumping only supported in cluster mode";
+      _options.useExperimentalDump = false;
+    }
+  }
+
   // set up threads and workers
   _clientTaskQueue.spawnWorkers(_clientManager, _options.threadCount);
 
