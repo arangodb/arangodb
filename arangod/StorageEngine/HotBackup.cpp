@@ -100,7 +100,7 @@ arangodb::Result HotBackup::executeCoordinator(std::string const& command,
     return hotBackupCoordinator(feature, payload, report);
   } else if (command == "lock" || command == "unlock") {
     // forward to dbserver part
-    executeDBServer(command, payload, report);
+    return executeDBServer(command, payload, report);
   } else if (command == "restore") {
     return hotRestoreCoordinator(feature, payload, report);
   } else if (command == "delete") {
