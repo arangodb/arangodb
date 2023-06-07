@@ -112,6 +112,7 @@ dump_multiple -- --dumpAgencyOnError true
 dump_no_envelope -- --dumpAgencyOnError true
 dump_mixed_cluster_single -- --dumpAgencyOnError true
 dump_mixed_single_cluster -- --dumpAgencyOnError true
+dump_parallel -- --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes parallelity=1 priority=2000 -- --dumpAgencyOnError true 
 
