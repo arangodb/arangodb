@@ -74,7 +74,7 @@ ReconfigureReplicatedLog::ReconfigureReplicatedLog(Node const& snapshot,
     _database = tmp_database.value();
     _logId = replication2::LogId{tmp_logId.value()};
     _operations =
-        deserialize<std::vector<ReconfigureOperation>>(tmp_operations->get());
+        deserialize<std::vector<ReconfigureOperation>>(*tmp_operations);
     _expectedVersion = tmp_expectedVersion.value_or(0);
     _undoSetLeader = tmp_undoSetLeader;
   } else {

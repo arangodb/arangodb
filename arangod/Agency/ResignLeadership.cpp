@@ -76,8 +76,8 @@ JOB_STATUS ResignLeadership::status() {
     return _status;
   }
 
-  auto const& todos = _snapshot.hasAsChildren(toDoPrefix).value().get();
-  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).value().get();
+  auto const& todos = *_snapshot.hasAsChildren(toDoPrefix);
+  auto const& pends = *_snapshot.hasAsChildren(pendingPrefix);
   size_t found = 0;
 
   for (auto const& subJob : todos) {
@@ -105,8 +105,7 @@ JOB_STATUS ResignLeadership::status() {
     return PENDING;
   }
 
-  Node::Children const& failed =
-      _snapshot.hasAsChildren(failedPrefix).value().get();
+  Node::Children const& failed = *_snapshot.hasAsChildren(failedPrefix);
   size_t failedFound = 0;
   for (auto const& subJob : failed) {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
@@ -232,7 +231,7 @@ bool ResignLeadership::start(bool& aborts) {
   VPackBuilder cleanedServersBuilder;
   auto const& cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
   if (cleanedServersNode) {
-    cleanedServersNode->get().toBuilder(cleanedServersBuilder);
+    cleanedServersNode->toBuilder(cleanedServersBuilder);
   } else {
     // ignore this check
     cleanedServersBuilder.clear();
@@ -255,7 +254,7 @@ bool ResignLeadership::start(bool& aborts) {
   if (_snapshot.has(failedServersPrefix)) {
     auto const& failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
     if (failedServersNode) {
-      failedServersNode->get().toBuilder(failedServersBuilder);
+      failedServersNode->toBuilder(failedServersBuilder);
     } else {
       // ignore this check
       failedServersBuilder.clear();
@@ -373,9 +372,9 @@ void ResignLeadership::scheduleJobsR2(std::shared_ptr<Builder>& trx,
                                       DatabaseID const& database, size_t& sub) {
   auto replicatedLogsPath =
       basics::StringUtils::concatT("/Target/ReplicatedLogs/", database);
-  auto logs = _snapshot.hasAsChildren(replicatedLogsPath).value().get();
+  auto logs = _snapshot.hasAsChildren(replicatedLogsPath);
 
-  for (auto const& [logIdString, logNode] : logs) {
+  for (auto const& [logIdString, logNode] : *logs) {
     auto logTarget = deserialize<replication2::agency::LogTarget>(*logNode);
     auto logPlan = readLogPlan(_snapshot, database, logTarget.id);
 
@@ -414,9 +413,8 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   std::vector<std::string> servers = availableServers(_snapshot);
 
   Node::Children const& databaseProperties =
-      _snapshot.hasAsChildren(planDBPrefix).value().get();
-  Node::Children const& databases =
-      _snapshot.hasAsChildren(planColPrefix).value().get();
+      *_snapshot.hasAsChildren(planDBPrefix);
+  Node::Children const& databases = *_snapshot.hasAsChildren(planColPrefix);
   size_t sub = 0;
 
   for (auto const& database : databases) {
@@ -434,8 +432,7 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         continue;
       }
 
-      for (auto const& shard :
-           collection.hasAsChildren("shards").value().get()) {
+      for (auto const& shard : *collection.hasAsChildren("shards")) {
         // Only shards, which are affected
         int found = -1;
         int count = 0;
@@ -512,10 +509,8 @@ arangodb::Result ResignLeadership::abort(std::string const& reason) {
   }
 
   // Abort all our subjobs:
-  Node::Children const& todos =
-      _snapshot.hasAsChildren(toDoPrefix).value().get();
-  Node::Children const& pends =
-      _snapshot.hasAsChildren(pendingPrefix).value().get();
+  Node::Children const& todos = *_snapshot.hasAsChildren(toDoPrefix);
+  Node::Children const& pends = *_snapshot.hasAsChildren(pendingPrefix);
 
   std::string moveShardAbortReason = "resign leadership aborted: " + reason;
 
