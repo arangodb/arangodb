@@ -96,18 +96,18 @@ jobs:
       - run:
           name: Store diff
           command: |
+            mkdir -p /tmp/clang_format_outcome
             git status
             git -C enterprise status
-            git diff --exit-code > /tmp/clang_format_outcome.txt
+            git diff --exit-code > /tmp/clang_format_outcome/community.diff
             community=$?
-            git -C enterprise diff --exit-code > /tmp/clang_format_outcome_enterprise.txt
+            git -C enterprise diff --exit-code > /tmp/clang_format_outcome/enterprise.diff
             enterprise=$?
             if [ "$community" -ne "0" ] || [ "$enterprise" -ne "0" ]; then
               exit 1
             fi
       - store_artifacts:
-          path: /tmp/clang_format_outcome.txt
-          path: /tmp/clang_format_outcome_enterprise.txt
+          path: /tmp/clang_format_outcome
 
   eslint:
     docker:
