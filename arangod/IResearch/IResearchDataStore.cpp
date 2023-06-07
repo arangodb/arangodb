@@ -1071,7 +1071,7 @@ bool IResearchDataStore::setOutOfSync() noexcept {
   auto error = _error.load(std::memory_order_relaxed);
   return error == DataStoreError::kNoError &&
          _error.compare_exchange_strong(error, DataStoreError::kOutOfSync,
-                                        std::memory_order_relaxed,
+                                        std::memory_order_acq_rel,
                                         std::memory_order_relaxed);
 }
 
@@ -1583,11 +1583,12 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
     return {};
   }
 
-  if (_asyncFeature->failQueriesOnOutOfSync() && isOutOfSync()) {
-    return {};
-  }
-
   auto insertImpl = [&, this](irs::IndexWriter::Transaction& ctx) -> Result {
+    auto message = [&](auto&&... args) {
+      return MakeMessage("While inserting document caught exception", index(),
+                         state, documentId,
+                         std::forward<decltype(args)>(args)...);
+    };
     try {
       return insertDocument<FieldIteratorType>(*this, ctx, doc, documentId,
                                                meta);
@@ -1600,27 +1601,20 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
     }
   };
 
-  TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
-    if (!state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-      return {TRI_ERROR_DEBUG};
-    }
-  }
-
-  if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+  if (ADB_UNLIKELY(state.hasHint(transaction::Hints::Hint::INDEX_CREATION))) {
     auto linkLock = _asyncSelf->lock();
     if (ADB_UNLIKELY(!linkLock)) {
       return {TRI_ERROR_INTERNAL};
     }
     auto ctx = _dataStore._writer->GetBatch();
-    auto res = insertImpl(ctx);
-    if (!res.ok()) {
+    if (auto r = insertImpl(ctx); ADB_UNLIKELY(!r.ok())) {
       ctx.Abort();
-      return res;
+      return r;
     }
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
       return {TRI_ERROR_DEBUG};
     }
-    return res;
+    return {};
   }
 
   TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
