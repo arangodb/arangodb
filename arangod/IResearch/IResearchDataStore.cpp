@@ -1385,14 +1385,14 @@ Result IResearchDataStore::initDataStore(
         bool isOutOfSync = linkLock->isOutOfSync();
         if (isOutOfSync) {
           LOG_TOPIC("2721a", WARN, iresearch::TOPIC)
-              << "Marking ArangoSearch index '" << id.id()
+              << "marking ArangoSearch index '" << id.id()
               << "' as out of sync, consider to drop and re-create the index "
                  "in order to synchronize it";
 
         } else if (dataStore._recoveryTickHigh > recoveryTick) {
           LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
               << "ArangoSearch index '" << id.id() << "' is recovered at tick '"
-              << dataStore._recoveryTickLow
+              << dataStore._recoveryTickHigh
               << "' greater than storage engine tick '"
               << linkLock->_engine->recoveryTick()
               << "', it seems WAL tail was lost and index is out of sync with "
@@ -1543,21 +1543,10 @@ void IResearchDataStore::recoveryRemove(LocalDocumentId documentId) {
   _recoveryRemoves->emplace(documentId);
 }
 
-bool IResearchDataStore::exists(IResearchDataStore::Snapshot const& snapshot,
-                                LocalDocumentId documentId,
-                                TRI_voc_tick_t const* recoveryTick) const {
-  if (recoveryTick == nullptr) {
-    // skip recovery check
-  } else if (*recoveryTick <= _dataStore._recoveryTickLow) {
-    LOG_TOPIC("6e128", TRACE, TOPIC)
-        << "skipping 'exists', operation tick '" << *recoveryTick
-        << "', recovery tick low '" << _dataStore._recoveryTickLow << "'";
-
-    return true;
-  } else if (*recoveryTick > _dataStore._recoveryTickHigh) {
-    LOG_TOPIC("6e129", TRACE, TOPIC)
-        << "skipping 'exists', operation tick '" << *recoveryTick
-        << "', recovery tick high '" << _dataStore._recoveryTickHigh << "'";
+bool IResearchDataStore::exists(LocalDocumentId documentId) const {
+  auto snapshot = this->snapshot();
+  auto& reader = snapshot.getDirectoryReader();
+  if (ADB_UNLIKELY(!reader)) {
     return false;
   }
 
