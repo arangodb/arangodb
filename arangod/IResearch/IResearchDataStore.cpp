@@ -1810,15 +1810,6 @@ IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe() const {
   Stats stats;
   stats.numSegments = reader->size();
   stats.numDocs = reader->docs_count();
-#ifdef USE_ENTERPRISE
-  if (_hasNestedFields) {
-    stats.numPrimaryDocs = getPrimaryDocsCount(reader);
-  } else {
-    stats.numPrimaryDocs = stats.numDocs;
-  }
-#else
-  stats.numPrimaryDocs = stats.numDocs;
-#endif
   stats.numLiveDocs = reader->live_docs_count();
   stats.numFiles = 1;  // +1 for segments file
   for (auto const& segment : reader->Meta().index_meta.segments) {
