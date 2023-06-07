@@ -9,7 +9,7 @@ export const AnalyzersViewWrap = () => {
   useDisableNavBar();
   useGlobalStyleReset();
   return (
-    <ChakraCustomProvider>
+    <ChakraCustomProvider overrideNonReact>
       <AnalyzersProvider>
         <AnalyzersView />
       </AnalyzersProvider>

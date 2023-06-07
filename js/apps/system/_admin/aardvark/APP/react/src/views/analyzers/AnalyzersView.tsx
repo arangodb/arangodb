@@ -8,7 +8,7 @@ import { AnalyzersToolbar } from "./AnalyzersToolbar";
 export const AnalyzersView = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   return (
-    <Box padding="4">
+    <Box padding="4" width="100%">
       <Stack direction="row" marginBottom="4" alignItems="center">
         <Heading size="lg">Analyzers</Heading>
         <Button

@@ -16,6 +16,7 @@ import { Modal } from "../../components/modal";
 import { getCurrentDB } from "../../utils/arangoClient";
 import { useAnalyzersContext } from "./AnalyzersContext";
 import { TYPE_TO_LABEL_MAP } from "./AnalyzersHelpers";
+import { FiltersList, FilterType } from "./FiltersList";
 import { FilterTable } from "./FilterTable";
 import { ViewAnalyzerModal } from "./ViewAnalyzerModal";
 
@@ -31,10 +32,12 @@ const TABLE_COLUMNS = [
     }
   }),
   columnHelper.accessor("name", {
-    header: "Name"
+    header: "Name",
+    id: "name"
   }),
   columnHelper.accessor("type", {
     header: "Type",
+    id: "type",
     cell: info => {
       return TYPE_TO_LABEL_MAP[info.cell.getValue()] || info.cell.getValue();
     }
@@ -47,6 +50,27 @@ const TABLE_COLUMNS = [
     }
   })
 ];
+
+const TABLE_FILTERS = TABLE_COLUMNS.map(column => {
+  if (column.id === "actions") {
+    return null;
+  }
+  if (column.id === "db") {
+    return {
+      id: column.id,
+      header: column.header,
+      filterType: "single-select",
+      getValue: (value: string) => {
+        return value.includes("::") ? value.split("::")[0] : "_system";
+      }
+    };
+  }
+  return {
+    id: column.id,
+    header: column.header,
+    filterType: "single-select"
+  };
+}).filter(Boolean) as FilterType[];
 
 const RowActions = ({ row }: { row: Row<AnalyzerDescription> }) => {
   const { setViewAnalyzerName } = useAnalyzersContext();
@@ -118,6 +142,7 @@ const DeleteAnalyzerModal = ({
     </Modal>
   );
 };
+
 export const AnalyzersTable = () => {
   const { analyzers, showSystemAnalyzers } = useAnalyzersContext();
   const newAnalyzers = useMemo(() => {
@@ -137,7 +162,11 @@ export const AnalyzersTable = () => {
         columns={TABLE_COLUMNS}
         data={newAnalyzers || []}
         emptyStateMessage="No analyzers found"
-      />
+      >
+        {({ table }) => {
+          return <FiltersList filters={TABLE_FILTERS} table={table} />;
+        }}
+      </FilterTable>
       <ViewAnalyzerModal />
     </>
   );
