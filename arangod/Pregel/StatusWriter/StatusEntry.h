@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,29 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Aql/Query.h"
+#include "Pregel/DatabaseTypes.h"
+#include "Pregel/ExecutionNumber.h"
+#include "Pregel/Utils.h"
 
-namespace arangodb::tests::mocks {
+namespace arangodb::pregel {
 
-struct MockQuery final : aql::Query {
-  MockQuery(std::shared_ptr<transaction::Context> const& ctx,
-            aql::QueryString const& queryString)
-      : aql::Query{ctx, queryString, nullptr, {}, nullptr} {}
-
-  ~MockQuery() final {
-    // Destroy this query, otherwise it's still
-    // accessible while the query is being destructed,
-    // which can result in a data race on the vptr
-    destroy();
-  }
-
-  transaction::Methods& trxForOptimization() final {
-    // original version contains an assertion
-    return *_trx;
-  }
+struct PregelCollectionEntry {
+  ServerID serverId;
+  ExecutionNumber executionNumber;
 };
-}  // namespace arangodb::tests::mocks
+
+template<typename Inspector>
+auto inspect(Inspector& f, PregelCollectionEntry& x) {
+  return f.object(x).fields(
+      f.field("serverId", x.serverId),
+      f.field(Utils::executionNumberKey, x.executionNumber));
+}
+
+}  // namespace arangodb::pregel
