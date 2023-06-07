@@ -316,20 +316,6 @@ Result insertDocument(IResearchDataStore const& dataStore,
   return {};
 }
 
-std::string toString(irs::DirectoryReader const& reader, bool isNew, IndexId id,
-                     uint64_t tickLow, uint64_t tickHigh) {
-  auto const& meta = reader.Meta();
-  std::string_view const newOrExisting{isNew ? "new" : "existing"};
-
-  return absl::StrCat("Successfully opened data store reader for the ",
-                      newOrExisting, " ArangoSearchIndex '", id.id(),
-                      "', snapshot '", meta.filename, "', docs count '",
-                      reader.docs_count(), "', live docs count '",
-                      reader.live_docs_count(), "', number of segments '",
-                      meta.index_meta.segments.size(), "', recovery tick low '",
-                      tickLow, "' and recovery tick high '", tickHigh, "'");
-}
-
 std::string MakeMessage(std::string_view begin, IResearchDataStore const& index,
                         TransactionState& state, LocalDocumentId documentId,
                         auto&&... args) {
