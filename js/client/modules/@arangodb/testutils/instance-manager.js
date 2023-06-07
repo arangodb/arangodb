@@ -662,7 +662,7 @@ class instanceManager {
       print(ex, ex.stack);
       print(RESET);
       this.cleanup = false;
-      return this._forceTerminate(ex.message + " during health check: " + moreReason);
+      return this._forceTerminate("Abort during Health Check SUT netstat gathering " + moreReason);
     }
     if (this.options.activefailover &&
         this.hasOwnProperty('authOpts') &&
