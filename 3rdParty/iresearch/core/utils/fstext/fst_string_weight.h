@@ -485,8 +485,8 @@ inline irs::bytes_ref PlusImpl(irs::bytes_ref lhs, irs::bytes_ref rhs) {
   }
 
   auto pair =
-    std::mismatch(prhs->data(), prhs->data() + prhs->size(), plhs->data());
-  return {prhs->data(), static_cast<size_t>(pair.first - prhs->data())};
+    std::mismatch(prhs->c_str(), prhs->c_str() + prhs->size(), plhs->c_str());
+  return {prhs->c_str(), static_cast<size_t>(pair.first - prhs->c_str())};
 }
 
 inline irs::bytes_ref Plus(const StringLeftWeight<irs::byte_type>& lhs,
