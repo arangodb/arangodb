@@ -56,9 +56,12 @@ workflows:
           definitions: "tests/test-definitions.txt"
   setup-rlog:
     when:
-      matches:
-        pattern: /^(bug-fix|feature|chore)\/cinfra-.*$/
-        value: << pipeline.git.branch >>
+      and:
+        - matches:
+            pattern: /^(bug-fix|feature|chore)\/cinfra-.*$/
+            value: << pipeline.git.branch >>
+        - not:
+            equal: [ api, << pipeline.trigger_source >> ]
     jobs:
       - setup:
           name: Prepare CINFRA test set
