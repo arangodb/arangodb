@@ -1,7 +1,7 @@
 @RESTSTRUCT{error,post_api_cursor_result,boolean,required,}
 A flag to indicate that an error occurred (`false` in this case).
 
-@RESTSTRUCT{code,post_api_cursor_result,integer,required,integer}
+@RESTSTRUCT{code,post_api_cursor_result,integer,required,int64}
 The HTTP status code.
 
 @RESTSTRUCT{result,post_api_cursor_result,array,optional,}
