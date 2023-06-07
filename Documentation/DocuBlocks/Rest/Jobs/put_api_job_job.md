@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_job_job
-@brief fetches a job result and removes it from the queue
 
-@RESTHEADER{PUT /_api/job/{job-id}, Return result of an async job, getJobResult}
+@RESTHEADER{PUT /_api/job/{job-id}, Get the results of an async job, getJobResult}
 
 @RESTURLPARAMETERS
 
@@ -10,7 +9,7 @@
 The async job id.
 
 @RESTDESCRIPTION
-Returns the result of an async job identified by job-id. If the async job
+Returns the result of an async job identified by `job-id`. If the async job
 result is present on the server, the result will be removed from the list of
 result. That means this method can be called for each job-id once.
 The method will return the original job result's headers and body, plus the

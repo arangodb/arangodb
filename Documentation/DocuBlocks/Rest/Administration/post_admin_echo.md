@@ -1,8 +1,7 @@
 
 @startDocuBlock post_admin_echo
-@brief Send back what was sent in, headers, post body etc.
 
-@RESTHEADER{POST /_admin/echo, Return current request, echoRequest}
+@RESTHEADER{POST /_admin/echo, Echo a request, echoRequest}
 
 @RESTALLBODYPARAM{body,string,required}
 The request body can be of any type and is simply forwarded.

@@ -1,10 +1,9 @@
 @startDocuBlock post_admin_backup_restore
-@brief restores from a local backup
 
-@RESTHEADER{POST /_admin/backup/restore, Restore backup, restoreBackup}
+@RESTHEADER{POST /_admin/backup/restore, Restore a backup, restoreBackup}
 
 @RESTDESCRIPTION
-Restores a consistent backup from a
+Restores a consistent local backup from a
 snapshot in time, with a given id. The backup snapshot must reside on
 the ArangoDB service locally.
 

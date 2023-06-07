@@ -1,7 +1,6 @@
 @startDocuBlock get_admin_cluster_rebalance
-@brief Computes the current cluster imbalance.
 
-@RESTHEADER{GET /_admin/cluster/rebalance, Compute the current cluster imbalance, getClusterImbalance}
+@RESTHEADER{GET /_admin/cluster/rebalance, Get the current cluster imbalance, getClusterImbalance}
 
 @RESTDESCRIPTION
 Computes the current cluster imbalance and returns the result. 
