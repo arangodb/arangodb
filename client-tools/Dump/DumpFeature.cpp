@@ -808,6 +808,15 @@ void DumpFeature::collectOptions(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
   options
+      ->addOption(
+          "--split-files",
+          "Split a collection in multiple files to increase throughput.",
+          new BooleanParameter(&_options.splitFiles),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Experimental,
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31200);
+  options
       ->addOption("--dbserver-worker-threads",
                   "Number of worker threads on each dbserver.",
                   new UInt64Parameter(&_options.dbserverWorkerThreads),
@@ -891,6 +900,13 @@ void DumpFeature::validateOptions(
   if (_options.useExperimentalDump && _options.useEnvelope) {
     LOG_TOPIC("e088c", FATAL, arangodb::Logger::DUMP)
         << "cannot use --use-experimental-dump and --envelope at the same time";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_options.splitFiles && !_options.useExperimentalDump) {
+    LOG_TOPIC("b0cbe", FATAL, Logger::DUMP)
+        << "--split-files is only available when using "
+           "--use-experimental-dump.";
     FATAL_ERROR_EXIT();
   }
 
@@ -1151,8 +1167,8 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
 
   if (_options.useExperimentalDump) {
     // now start jobs for each dbserver
-    fileProvider =
-        std::make_shared<DumpFileProvider>(*_directory, restrictList);
+    fileProvider = std::make_shared<DumpFileProvider>(*_directory, restrictList,
+                                                      _options.splitFiles);
 
     for (auto& [dbserver, shards] : shardsByServer) {
       auto job = std::make_unique<ParallelDumpServer>(
@@ -1724,32 +1740,60 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
 
 DumpFeature::DumpFileProvider::DumpFileProvider(
     ManagedDirectory& directory,
-    std::map<std::string, arangodb::velocypack::Slice>& collectionInfo)
-    : _directory(directory), collectionInfo(collectionInfo) {}
+    std::map<std::string, arangodb::velocypack::Slice>& collectionInfo,
+    bool splitFiles)
+    : _splitFiles(splitFiles),
+      _directory(directory),
+      _collectionInfo(collectionInfo) {
+  if (!_splitFiles) {
+    for (auto const& [name, info] : collectionInfo) {
+      std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
+      std::string escapedName =
+          escapedCollectionName(name, info.get("parameters"));
+
+      std::string filename = escapedName + "_" + hexString + ".data.json";
+      auto file = _directory.writableFile(filename, true /*overwrite*/, 0,
+                                          true /*gzipOk*/);
+      if (file == nullptr || file->status().fail()) {
+        LOG_TOPIC("40543", FATAL, Logger::DUMP)
+            << "Failed to open file " << filename
+            << " for writing: " << file->status().errorMessage();
+        FATAL_ERROR_EXIT();
+      }
+      auto shared = std::shared_ptr<ManagedDirectory::File>(file.release());
+      _filesByCollection.emplace(name, CollectionFiles{0, shared});
+    }
+  }
+}
 
 std::shared_ptr<ManagedDirectory::File> DumpFeature::DumpFileProvider::getFile(
     std::string const& name) {
   std::unique_lock guard(_mutex);
 
-  auto info = collectionInfo.at(name);
+  auto info = _collectionInfo.at(name);
 
   std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
   std::string escapedName = escapedCollectionName(name, info.get("parameters"));
 
-  auto cnt = _counts[name]++;
+  if (_splitFiles) {
+    auto cnt = _filesByCollection[name].count++;
+    std::string filename = escapedName + "_" + hexString + "." +
+                           std::to_string(cnt) + ".data.json";
+    auto file = _directory.writableFile(filename, true /*overwrite*/, 0,
+                                        true /*gzipOk*/);
+    if (file == nullptr || file->status().fail()) {
+      LOG_TOPIC("40543", FATAL, Logger::DUMP)
+          << "Failed to open file " << filename
+          << " for writing: " << file->status().errorMessage();
+      FATAL_ERROR_EXIT();
+    }
 
-  std::string filename =
-      escapedName + "_" + hexString + "." + std::to_string(cnt) + ".data.json";
-  auto file =
-      _directory.writableFile(filename, true /*overwrite*/, 0, true /*gzipOk*/);
-  if (file == nullptr || file->status().fail()) {
-    LOG_TOPIC("40543", FATAL, Logger::DUMP)
-        << "Failed to open file " << filename
-        << " for writing: " << file->status().errorMessage();
-    FATAL_ERROR_EXIT();
+    return file;
+  } else {
+    auto& fileInfo = _filesByCollection[name];
+    TRI_ASSERT(fileInfo.file != nullptr);
+    return fileInfo.file;
   }
-
-  return file;
 }
 
 }  // namespace arangodb
