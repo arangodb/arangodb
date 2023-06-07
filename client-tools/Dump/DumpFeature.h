@@ -83,6 +83,7 @@ class DumpFeature final : public ArangoDumpFeature {
     bool useEnvelope{false};
 
     bool useExperimentalDump{false};
+    bool splitFiles{false};
     std::size_t dbserverWorkerThreads{5};
     std::size_t dbserverPrefetchBatches{5};
     std::size_t localWriterThreads{5};
@@ -150,15 +151,22 @@ class DumpFeature final : public ArangoDumpFeature {
   struct DumpFileProvider {
     explicit DumpFileProvider(
         ManagedDirectory& directory,
-        std::map<std::string, arangodb::velocypack::Slice>& collectionInfo);
+        std::map<std::string, arangodb::velocypack::Slice>& collectionInfo,
+        bool splitFiles);
     std::shared_ptr<ManagedDirectory::File> getFile(
         std::string const& collection);
 
    private:
+    struct CollectionFiles {
+      std::size_t count{0};
+      std::shared_ptr<ManagedDirectory::File> file;
+    };
+
+    bool const _splitFiles;
     std::mutex _mutex;
-    std::unordered_map<std::string, std::size_t> _counts;
+    std::unordered_map<std::string, CollectionFiles> _filesByCollection;
     ManagedDirectory& _directory;
-    [[maybe_unused]] std::map<std::string, arangodb::velocypack::Slice>& collectionInfo;
+    [[maybe_unused]] std::map<std::string, arangodb::velocypack::Slice>& _collectionInfo;
   };
 
   struct ParallelDumpServer : public DumpJob {
