@@ -501,8 +501,10 @@ ExecutionPlan::~ExecutionPlan() {
     // only track memory usage here and access ast/query if we are allowed to do
     // so. this can be inherently unsafe from within the gtest unit tests, so it
     // is protected by an option here
-    _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() *
-                                                        sizeof(ExecutionNode));
+    for (auto const& [id, node] : _ids) {
+      _ast->query().resourceMonitor().decreaseMemoryUsage(
+          node->getMemoryUsedBytes());
+    }
   }
 
   for (auto& x : _ids) {
