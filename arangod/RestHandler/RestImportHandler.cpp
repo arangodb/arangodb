@@ -162,7 +162,8 @@ std::string RestImportHandler::buildParseError(size_t i,
     if (part.size() > 255) {
       // UTF-8 chars in string will be escaped so we can truncate it at any
       // point
-      part = part.substr(0, 255) + "...";
+      part.resize(255);
+      part += "...";
     }
 
     return positionize(i) +
@@ -188,7 +189,8 @@ ErrorCode RestImportHandler::handleSingleDocument(
     if (part.size() > 255) {
       // UTF-8 chars in string will be escaped so we can truncate it at any
       // point
-      part = part.substr(0, 255) + "...";
+      part.resize(255);
+      part += "...";
     }
 
     std::string errorMsg =
@@ -265,7 +267,8 @@ ErrorCode RestImportHandler::handleSingleDocument(
     if (part.size() > 255) {
       // UTF-8 chars in string will be escaped so we can truncate it at any
       // point
-      part = part.substr(0, 255) + "...";
+      part.resize(255);
+      part += "...";
     }
 
     std::string errorMsg =
