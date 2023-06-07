@@ -2001,9 +2001,7 @@ LimitNode::LimitNode(ExecutionPlan* plan, ExecutionNodeId id, size_t offset,
 
 ExecutionNode::NodeType LimitNode::getType() const { return LIMIT; }
 
-size_t LimitNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t LimitNode::getMemoryUsedBytes() const { return sizeof(decltype(*this)); }
 
 ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
@@ -2861,9 +2859,7 @@ AsyncNode::AsyncNode(ExecutionPlan* plan,
 
 ExecutionNode::NodeType AsyncNode::getType() const { return ASYNC; }
 
-size_t AsyncNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t AsyncNode::getMemoryUsedBytes() const { return sizeof(decltype(*this)); }
 
 ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
