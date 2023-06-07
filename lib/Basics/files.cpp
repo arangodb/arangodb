@@ -1583,12 +1583,12 @@ std::string TRI_GetAbsolutePath(std::string const& fileName,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TRI_BinaryName(char const* argv0) {
-  auto result = std::string_view(argv0);
-  if (result.ends_with(".exe")) {
-    result.remove_suffix(4);
+  auto result = TRI_Basename(argv0);
+  if (result.size() > 4 && result.ends_with(".exe")) {
+    result.resize(result.size() - 4);
   }
 
-  return std::string{result};
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
