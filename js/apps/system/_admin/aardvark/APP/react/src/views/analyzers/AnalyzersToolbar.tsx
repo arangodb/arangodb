@@ -13,7 +13,7 @@ export const AnalyzersToolbar = () => {
         }}
         isChecked={showSystemAnalyzers}
       >
-        Show system analyzers
+        Show built-in analyzers
       </Checkbox>
     </Box>
   );
