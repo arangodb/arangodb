@@ -397,10 +397,10 @@ auto LeaderStateManager<S>::GuardedData::recoverEntries() {
           std::move(logIter));
   MeasureTimeGuard timeGuard(_metrics.replicatedStateRecoverEntriesRtt);
   return _leaderState->recoverEntries(std::move(deserializedIter))
-                 .then([guard = std::move(timeGuard)](auto&& res) mutable {
-                   guard.fire();
-                   return std::move(res.get());
-                 });
+      .then([guard = std::move(timeGuard)](auto&& res) mutable {
+        guard.fire();
+        return std::move(res.get());
+      });
 }
 
 template<typename S>
