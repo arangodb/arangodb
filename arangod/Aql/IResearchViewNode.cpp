@@ -195,7 +195,7 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
   if (!optionsSlice.isObject()) {
     return false;
   }
-  {                               // forceSync
+  {  // forceSync
     auto const optionSlice = optionsSlice.get("waitForSync");
     if (!optionSlice.isNone()) {  // 'waitForSync' is optional
       if (!optionSlice.isBool()) {
@@ -242,7 +242,7 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
       options.restrictSources = true;
     }
   }
-  {                                          // noMaterialization
+  {  // noMaterialization
     auto const noMaterializationSlice = optionsSlice.get("noMaterialization");
     if (!noMaterializationSlice.isNone()) {  // 'noMaterialization' is optional
       if (!noMaterializationSlice.isBool()) {
@@ -251,7 +251,7 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
       options.noMaterialization = noMaterializationSlice.getBool();
     }
   }
-  {                                         // countApproximate
+  {  // countApproximate
     auto const countApproximateSlice = optionsSlice.get("countApproximate");
     if (!countApproximateSlice.isNone()) {  // 'countApproximate' is optional
       if (!countApproximateSlice.isString()) {
@@ -907,7 +907,7 @@ void addViewValuesVar(VPackBuilder& nodes, std::string& fieldName,
   nodes.add(NODE_VIEW_VALUES_VAR_NAME,
             VPackValue(fieldVar.var->name));  // for explainer.js
   nodes.add(NODE_VIEW_VALUES_VAR_FIELD,
-            VPackValue(fieldName));           // for explainer.js
+            VPackValue(fieldName));  // for explainer.js
 }
 
 void extractViewValuesVar(aql::VariableGenerator const* vars,
