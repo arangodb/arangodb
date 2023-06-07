@@ -25,7 +25,7 @@ import {
 } from "@tanstack/react-table";
 import * as React from "react";
 
-export type FilterTableProps<Data extends object> = {
+type ReactTableProps<Data extends object> = {
   data: Data[];
   initialSorting?: SortingState;
   columns: ColumnDef<Data, any>[];
@@ -33,13 +33,13 @@ export type FilterTableProps<Data extends object> = {
   children?: ({ table }: { table: TableType<Data> }) => React.ReactNode;
 };
 
-export function FilterTable<Data extends object>({
+export function ReactTable<Data extends object>({
   data,
   columns,
   initialSorting = [],
   emptyStateMessage = "No data found.",
   children
-}: FilterTableProps<Data>) {
+}: ReactTableProps<Data>) {
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []

@@ -17,7 +17,7 @@ import { getCurrentDB } from "../../utils/arangoClient";
 import { useAnalyzersContext } from "./AnalyzersContext";
 import { TYPE_TO_LABEL_MAP } from "./AnalyzersHelpers";
 import { FiltersList, FilterType } from "./FiltersList";
-import { FilterTable } from "./FilterTable";
+import { ReactTable } from "../../components/table/ReactTable";
 import { ViewAnalyzerModal } from "./ViewAnalyzerModal";
 
 const columnHelper = createColumnHelper<AnalyzerDescription>();
@@ -57,8 +57,7 @@ const TABLE_FILTERS = TABLE_COLUMNS.map(column => {
   }
   if (column.id === "db") {
     return {
-      id: column.id,
-      header: column.header,
+      ...column,
       filterType: "single-select",
       getValue: (value: string) => {
         return value.includes("::") ? value.split("::")[0] : "_system";
@@ -66,12 +65,10 @@ const TABLE_FILTERS = TABLE_COLUMNS.map(column => {
     };
   }
   return {
-    id: column.id,
-    header: column.header,
+    ...column,
     filterType: "single-select"
   };
 }).filter(Boolean) as FilterType[];
-
 const RowActions = ({ row }: { row: Row<AnalyzerDescription> }) => {
   const { setViewAnalyzerName } = useAnalyzersContext();
   const { isOpen: showDeleteModal, onClose, onOpen } = useDisclosure();
@@ -152,7 +149,7 @@ export const AnalyzersTable = () => {
   }, [analyzers, showSystemAnalyzers]);
   return (
     <>
-      <FilterTable
+      <ReactTable
         initialSorting={[
           {
             id: "name",
@@ -166,7 +163,7 @@ export const AnalyzersTable = () => {
         {({ table }) => {
           return <FiltersList filters={TABLE_FILTERS} table={table} />;
         }}
-      </FilterTable>
+      </ReactTable>
       <ViewAnalyzerModal />
     </>
   );
