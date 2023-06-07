@@ -1313,11 +1313,11 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
       if (config.nodeLabel) {
         var nodeLabelArr = config.nodeLabel.trim().split(" ");
         // in case multiple node labels are given
-        if(nodeLabelArr.length > 1) {
+        if (nodeLabelArr.length > 1) {
           _.each(nodeLabelArr, function (attr) {
 
             var attrVal = getAttributeByKey(node, attr);
-            if(attrVal !== undefined) {
+            if (attrVal !== undefined) {
               if (typeof attrVal === 'string') {
                 tooltipText += attr + ": " + attrVal + "\n";
               } else {
@@ -1334,7 +1334,7 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
           // in case of multiple node labels just display the first one in the graph
           // and the others in the tooltip
           var firstAttrVal = getAttributeByKey(node, nodeLabelArr[0]);
-          if(firstAttrVal !== undefined) {
+          if (firstAttrVal !== undefined) {
             if (typeof firstAttrVal === 'string') {
               label = nodeLabelArr[0] + ": " + truncate(firstAttrVal, 16) + " ...";
             } else {
@@ -1346,7 +1346,7 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
         } else {
           // in case of single node attribute given
           var singleAttrVal = getAttributeByKey(node, nodeLabelArr[0]);
-          if(singleAttrVal !== undefined) {
+          if (singleAttrVal !== undefined) {
             if (typeof singleAttrVal === 'string') {
               label = nodeLabelArr[0] + ": " + truncate(singleAttrVal, 16);
               tooltipText = nodeLabelArr[0] + ": " + singleAttrVal;
