@@ -363,6 +363,7 @@ void Worker<V, E, M>::_startProcessing() {
           return processor.result();
         }));
   }
+  // cppcheck-suppress accessMoved
   futures::collectAll(std::move(futures))
       .thenFinal([self, this](auto&& tryResults) {
         // TODO: exception handling
