@@ -256,21 +256,21 @@ struct NodeLoadInspectorImpl
     }
 
     auto node = _node->get(variant.valueField);
-    if (!node.has_value()) {
+    if (!node) {
       return {"Variant value field \"" + std::string(variant.valueField) +
               "\" is missing"};
     }
-    data = &node->get();
+    data = node;
     return {};
   }
 
   Status loadTypeField(std::string_view fieldName, std::string_view& result) {
     auto v = _node->get(fieldName);
-    if (!v.has_value()) {
+    if (!v) {
       return {"Variant type field \"" + std::string(fieldName) +
               "\" is missing"};
     }
-    auto val = v->get().getStringView();
+    auto val = v->getStringView();
     if (!val.has_value()) {
       return {"Variant type field \"" + std::string(fieldName) +
               "\" must be a string"};

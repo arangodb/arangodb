@@ -177,10 +177,12 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 /// that call sites only create Query objects using the `create` factory
 /// method
 Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
-             std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options)
+             std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
+             Query::SchedulerT* scheduler)
     : Query(0, ctx, std::move(queryString), std::move(bindParameters),
             std::move(options),
-            std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
+            std::make_shared<SharedQueryState>(ctx->vocbase().server(),
+                                               scheduler)) {}
 
 Query::~Query() {
   if (_planSliceCopy != nullptr) {
@@ -247,16 +249,17 @@ void Query::destroy() {
 /// ensure that Query objects are always created using shared_ptrs.
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
-    std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options) {
+    std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options,
+    Query::SchedulerT* scheduler) {
   TRI_ASSERT(ctx != nullptr);
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : Query {
     MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
                     QueryString queryString,
                     std::shared_ptr<velocypack::Builder> bindParameters,
-                    QueryOptions options)
+                    QueryOptions options, Query::SchedulerT* scheduler)
         : Query{std::move(ctx), std::move(queryString),
-                std::move(bindParameters), std::move(options)} {}
+                std::move(bindParameters), std::move(options), scheduler} {}
 
     ~MakeSharedQuery() final {
       // Destroy this query, otherwise it's still
@@ -268,7 +271,7 @@ std::shared_ptr<Query> Query::create(
   TRI_ASSERT(ctx != nullptr);
   return std::make_shared<MakeSharedQuery>(
       std::move(ctx), std::move(queryString), std::move(bindParameters),
-      std::move(options));
+      std::move(options), scheduler);
 }
 
 /// @brief return the user that started the query

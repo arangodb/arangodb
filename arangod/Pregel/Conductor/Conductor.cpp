@@ -557,7 +557,6 @@ bool Conductor::canBeGarbageCollected() const {
 
   if (guard.owns_lock()) {
     if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
-        _state == ExecutionState::FATAL_ERROR ||
         _state == ExecutionState::FATAL_ERROR) {
       return (_expires != std::chrono::system_clock::time_point{} &&
               _expires <= std::chrono::system_clock::now());
@@ -649,7 +648,6 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
       result.add(VPackValue(gssTime.elapsedSeconds().count()));
     }
   }
-  _masterContext->_aggregators->serializeValues(result);
   _statistics.serializeValues(result);
   if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
@@ -657,6 +655,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   }
   result.add("parallelism", VPackValue(_specifications.parallelism));
   if (_masterContext) {
+    _masterContext->_aggregators->serializeValues(result);
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
   }
@@ -721,7 +720,6 @@ void Conductor::persistPregelState(ExecutionState state) {
         builder.add(VPackValue(gssTime.elapsedSeconds().count()));
       }
     }
-    _masterContext->_aggregators->serializeValues(builder);
     _statistics.serializeValues(builder);
     if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
       builder.add("vertexCount", VPackValue(_totalVerticesCount));
@@ -729,6 +727,7 @@ void Conductor::persistPregelState(ExecutionState state) {
     }
     builder.add("parallelism", VPackValue(_specifications.parallelism));
     if (_masterContext) {
+      _masterContext->_aggregators->serializeValues(builder);
       VPackObjectBuilder ob(&builder, "masterContext");
       _masterContext->serializeValues(builder);
     }
