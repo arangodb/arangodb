@@ -1576,8 +1576,7 @@ bool IResearchDataStore::exists(LocalDocumentId documentId) const {
 template<typename FieldIteratorType, typename MetaType>
 Result IResearchDataStore::insert(transaction::Methods& trx,
                                   LocalDocumentId documentId,
-                                  velocypack::Slice doc, MetaType const& meta,
-                                  uint64_t const* recoveryTick) {
+                                  velocypack::Slice doc, MetaType const& meta) {
   TRI_ASSERT(trx.state());
   auto& state = *trx.state();
   if (ADB_UNLIKELY(failQueriesOnOutOfSync() && isOutOfSync())) {
