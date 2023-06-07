@@ -1459,7 +1459,7 @@ void DumpFeature::ParallelDumpServer::finishDumpContext(
   auto check = ::arangodb::HttpResponseChecker::check(client.getErrorMessage(),
                                                       response.get());
   if (check.fail()) {
-    LOG_TOPIC("bdecf", ERR, Logger::DUMP)
+    LOG_TOPIC("bdedf", ERR, Logger::DUMP)
         << "failed to finish dump context on server " << server << ": "
         << check.errorMessage();
   }
@@ -1662,7 +1662,7 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
     auto check = ::arangodb::HttpResponseChecker::check(
         client.getErrorMessage(), response.get());
     if (check.fail()) {
-      LOG_TOPIC("ac972", ERR, arangodb::Logger::DUMP)
+      LOG_TOPIC("ad972", ERR, arangodb::Logger::DUMP)
           << "An error occurred while dumping from server '" << server
           << "': " << check.errorMessage();
 
@@ -1722,7 +1722,7 @@ std::shared_ptr<ManagedDirectory::File> DumpFeature::DumpFileProvider::getFile(
     auto file = _directory.writableFile(filename, true /*overwrite*/, 0,
                                         true /*gzipOk*/);
     if (file == nullptr || file->status().fail()) {
-      LOG_TOPIC("40543", FATAL, Logger::DUMP)
+      LOG_TOPIC("43543", FATAL, Logger::DUMP)
           << "Failed to open file " << filename
           << " for writing: " << file->status().errorMessage();
       FATAL_ERROR_EXIT();
