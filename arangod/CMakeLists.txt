@@ -1202,6 +1202,7 @@ endif ()
 
 if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc_build)
+  target_link_libraries(arangod ${JEMALLOC_LIB})
 endif ()
 
 foreach(TARGET
