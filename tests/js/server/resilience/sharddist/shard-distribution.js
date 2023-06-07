@@ -32,6 +32,7 @@ const internal = require('internal');
 const colName = "UnitTestDistributionTest";
 const _ = require("lodash");
 const wait = require("internal").wait;
+const waitFor = require("@arangodb/testutils/replicated-logs-helper").waitFor;
 const request = require('@arangodb/request');
 const endpointToURL = require("@arangodb/cluster").endpointToURL;
 const coordinatorName = "Coordinator0001";
@@ -102,16 +103,30 @@ function ShardDistributionTest({replVersion}) {
   const compareDistributions = function () {
     const all = request.get(coordinator.url + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
     const dist = JSON.parse(all.body).results;
-    const orig = dist[colName].Current;
-    const fol = dist[followCollection].Current;
-    const origShards = Object.keys(orig).sort(sortShardsNumericly);
-    const folShards = Object.keys(fol).sort(sortShardsNumericly);
+
+    const origPlan = dist[colName].Plan;
+    const folPlan = dist[followCollection].Plan;
+    expect(Object.keys(origPlan)).to.have.length.of(Object.keys(folPlan).length);
+
+    const origCur = dist[colName].Current;
+    const folCur = dist[followCollection].Current;
+    const origShards = Object.keys(origCur).sort(sortShardsNumericly);
+    const folShards = Object.keys(folCur).sort(sortShardsNumericly);
+    // For replication2, shards are reported to Current as they are created.
+    // We have to wait until all shards are created before we can compare the distributions.
+    waitFor(() => {
+      if (origShards.length !== folShards.length) {
+        return Error("Shard count does not match: " + origShards.length + " vs " + folShards.length);
+      }
+      return true;
+    });
+
     // Now we have all shard names sorted in alphabetical ordering.
     // It needs to be guaranteed that leader + follower of each shard in this ordering is identical.
     expect(origShards).to.have.length.of(folShards.length);
     for (let i = 0; i < origShards.length; ++i) {
-      const oneOrigShard = orig[origShards[i]];
-      const oneFolShard = fol[folShards[i]];
+      const oneOrigShard = origCur[origShards[i]];
+      const oneFolShard = folCur[folShards[i]];
       // Leader has to be identical
       expect(oneOrigShard.leader).to.equal(oneFolShard.leader);
       // Follower Order does not matter, but needs to be the same servers
