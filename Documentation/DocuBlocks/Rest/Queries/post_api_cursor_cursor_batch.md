@@ -47,36 +47,7 @@ The time-to-live for the cursor is renewed by this API call.
 @RESTRETURNCODE{200}
 The server responds with *HTTP 200* in case of success.
 
-@RESTREPLYBODY{error,boolean,required,}
-A flag to indicate that an error occurred (`false` in this case).
-
-@RESTREPLYBODY{code,integer,required,integer}
-The HTTP status code.
-
-@RESTREPLYBODY{result,array,optional,}
-An array of result documents for the current batch.
-
-@RESTREPLYBODY{hasMore,boolean,required,}
-A boolean indicator whether there are more results available for the cursor on
-the server. `false` if this is the last batch.
-
-Note that even if `hasMore` returns `true`, the next call might still return no
-documents. If, however, `hasMore` is `false`, then the cursor is exhausted.
-Once the `hasMore` attribute has a value of `false`, the client can stop.
-
-@RESTREPLYBODY{count,integer,optional,int64}
-The total number of result documents available (only
-available if the query was executed with the `count` attribute set).
-
-@RESTREPLYBODY{id,string,optional,string}
-The ID of the cursor for fetching more result batches.
-
-@RESTREPLYBODY{extra,object,optional,}
-An optional JSON object with extra information about the query result. It can
-have the attributes `stats`, `warnings`, `plan`, and `profile` with nested
-objects, like the initial cursor response. Every batch can include `warnings`.
-The other attributes are only delivered as part of the last batch in case of a
-cursor with the `stream` option enabled.
+@RESTREPLYBODY{,object,required,post_api_cursor_result}
 
 @RESTRETURNCODE{400}
 If the cursor and the batch identifier are omitted, the server responds with
