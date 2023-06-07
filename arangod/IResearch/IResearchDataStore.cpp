@@ -330,24 +330,6 @@ std::string toString(irs::DirectoryReader const& reader, bool isNew, IndexId id,
                       tickLow, "' and recovery tick high '", tickHigh, "'");
 }
 
-template<bool WasCreated>
-auto makeAfterCommitCallback(void* key) {
-  return [key](TransactionState& state) {
-    auto prev = state.cookie(key, nullptr);  // extract existing cookie
-    if (!prev) {
-      return;
-    }
-    // TODO FIXME find a better way to look up a ViewState
-    auto& ctx = basics::downCast<IResearchTrxState>(*prev);
-    if constexpr (WasCreated) {
-      auto const lastOperationTick = state.lastOperationTick();
-      ctx._ctx.Commit(lastOperationTick);
-    } else {
-      ctx._ctx.Commit();
-    }
-  };
-}
-
 std::string MakeMessage(std::string_view begin, IResearchDataStore const& index,
                         TransactionState& state, LocalDocumentId documentId,
                         auto&&... args) {
