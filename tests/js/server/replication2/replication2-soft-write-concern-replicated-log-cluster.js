@@ -29,10 +29,8 @@ const arangodb = require("@arangodb");
 const _ = require('lodash');
 const db = arangodb.db;
 const helper = require("@arangodb/testutils/replicated-logs-helper");
-const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const {
   waitFor,
-  registerAgencyTestBegin, registerAgencyTestEnd,
   waitForReplicatedLogAvailable,
 } = helper;
 
@@ -46,46 +44,8 @@ const replicatedLogSuite = function () {
     waitForSync: false,
   };
 
-  const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} = (function () {
-    let previousDatabase, databaseExisted = true;
-    let stoppedServers = {};
-    return {
-      setUpAll: function () {
-        previousDatabase = db._name();
-        if (!_.includes(db._databases(), database)) {
-          db._createDatabase(database);
-          databaseExisted = false;
-        }
-        db._useDatabase(database);
-      },
-
-      tearDownAll: function () {
-        db._useDatabase(previousDatabase);
-        if (!databaseExisted) {
-          db._dropDatabase(database);
-        }
-      },
-      stopServer: function (serverId) {
-        if (stoppedServers[serverId] !== undefined) {
-          throw Error(`${serverId} already stopped`);
-        }
-        helper.stopServer(serverId);
-        stoppedServers[serverId] = true;
-      },
-      continueServer: function (serverId) {
-        if (stoppedServers[serverId] === undefined) {
-          throw Error(`${serverId} not stopped`);
-        }
-        helper.continueServer(serverId);
-        delete stoppedServers[serverId];
-      },
-      resumeAll: function () {
-        Object.keys(stoppedServers).forEach(function (key) {
-          continueServer(key);
-        });
-      }
-    };
-  }());
+  const {setUpAll, tearDownAll, stopServerWait, continueServerWait, setUp, tearDown} =
+    helper.testHelperFunctions(database, {replicationVersion: "2"});
 
   const createReplicatedLogAndWaitForLeader = function (database) {
     return helper.createReplicatedLog(database, targetConfig);
@@ -93,14 +53,8 @@ const replicatedLogSuite = function () {
 
   return {
     setUpAll, tearDownAll,
-    setUp: registerAgencyTestBegin,
-    tearDown: function (test) {
-      resumeAll();
-      waitFor(lpreds.allServersHealthy());
-      registerAgencyTestEnd(test);
-    },
+    setUp, tearDown,
 
-    // Temporarily disabled until effectiveWriteConcern is implemented.
     testParticipantFailedOnInsert: function () {
       const {logId, followers} = createReplicatedLogAndWaitForLeader(database);
       waitForReplicatedLogAvailable(logId);
@@ -110,12 +64,12 @@ const replicatedLogSuite = function () {
       assertEqual(quorum.result.quorum.quorum.length, 3);
 
       // now stop one server
-      stopServer(followers[0]);
+      stopServerWait(followers[0]);
 
       quorum = log.insert({foo: "bar"});
       assertEqual(quorum.result.quorum.quorum.length, 2);
 
-      continueServer(followers[0]);
+      continueServerWait(followers[0]);
 
       waitFor(function () {
         quorum = log.insert({foo: "bar"});
