@@ -156,6 +156,7 @@ jobs:
               git checkout $CIRCLE_SHA1 && \
               git submodule init && \
               git submodule update --recursive --depth 1 --jobs 8 && \
+              export SCCACHE_S3_KEY_PREFIX=aarch64
               sccache -s && \
               cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib  && \
               cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest  && \
