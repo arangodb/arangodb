@@ -101,8 +101,8 @@ void IResearchRocksDBRecoveryHelper::prepare() {
 template<typename Impl>
 bool IResearchRocksDBRecoveryHelper::skip(Impl& impl) {
   TRI_ASSERT(!impl.isOutOfSync());
-  if (_skipAllItems) {
-    return true;
+  if (ADB_LIKELY(_skipRecoveryItems.empty())) {
+    return _skipAllItems;
   }
   auto it = _skipRecoveryItems.find(impl.Index::collection().name());
   return it != _skipRecoveryItems.end() &&

@@ -871,6 +871,7 @@ Result IResearchDataStore::commitUnsafeImpl(
       commitLock.lock();
     }
     auto const lastTickBeforeCommit = _engine->currentTick();
+    TRI_IF_FAILURE("ArangoSearch::DisableMoveTickInCommit") { return {}; }
     TRI_ASSERT(_lastCommittedTick <= lastTickBeforeCommit);
     absl::Cleanup commitGuard = [&, last = _lastCommittedTick]() noexcept {
       _lastCommittedTick = last;
