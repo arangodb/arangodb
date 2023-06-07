@@ -1,3 +1,6 @@
+#!/bin/bash
+set -e
+
 docker build -t arangodb/build-alpine-x86_64:latest --file arangodb-build.Dockerfile .
 
 GCC_VERSION=$(docker run --rm -it arangodb/build-alpine-x86_64:latest g++ "--version" | grep -Po " \K\d+\.\d+(?=\.\d+ )")

@@ -233,6 +233,11 @@ def create_test_job(test, cluster, edition):
     if not test["size"] in ["small", "medium", "medium+", "large", "xlarge"]:
         raise Exception("Invalid resource class size " + test["size"])
 
+    if test["size"] in ["large", "xlarge"]:
+        test["size"] = "xlarge"
+    else:
+        test["size"] = "large"
+
     result = {
         "name": f"test-{edition}-{'cluster' if cluster else 'single'}-{suite_name}",
         "suiteName": suite_name,
@@ -271,8 +276,7 @@ def generate_output(config, tests, enterprise):
 
 def generate_jobs(config, args, tests, enterprise):
     """generate job definitions"""
-    #tests = filter_tests(args, tests, enterprise)
-    tests = [] # disable tests for now
+    tests = filter_tests(args, tests, enterprise)
     generate_output(config, tests, enterprise)
 
 

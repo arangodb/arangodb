@@ -126,7 +126,7 @@ jobs:
           command: |
             utils/eslint.sh
 
-  compile-linux:
+  compile-linux-aarch64:
     parameters:
       preset:
         type: string
@@ -134,9 +134,6 @@ jobs:
         type: string
       enterprise:
         type: boolean
-    # docker:
-    #   - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.1
-    # resource_class: xlarge
     machine: true
     resource_class: arangodb/aws-arm
     environment:
@@ -147,44 +144,92 @@ jobs:
       - run:
           name: Checkout ArangoDB
           command: |
-            docker pull arangodb/build-alpine-aarch64:3.16-gcc11.2-openssl3.1.1
-            docker run --rm arangodb/build-alpine-aarch64:3.16-gcc11.2-openssl3.1.1 /bin/sh -c "\
-              mkdir /root/project && cd /root/project && \
-              git init && \
-              git remote add origin https://github.com/arangodb/arangodb.git && \
-              git fetch --depth 1 origin $CIRCLE_SHA1 && \
-              git checkout $CIRCLE_SHA1 && \
-              git submodule init && \
-              git submodule update --recursive --depth 1 --jobs 8 && \
-              export SCCACHE_S3_KEY_PREFIX=aarch64
-              sccache -s && \
-              cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib  && \
-              cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest  && \
-              ls -Ssha build/bin/*.a  && \
-              sccache -s"
+            mkdir project && cd project
+            git init --initial-branch devel
+            git remote add origin https://github.com/arangodb/arangodb.git
+            git fetch --depth 1 origin $CIRCLE_SHA1
+            git checkout $CIRCLE_SHA1
+            git submodule init
+            git submodule update --recursive --depth 1 --jobs 8
+      - run:
+          name: Print SCCache Settings
+          command: |
+            rm $SCCACHE_ERROR_LOG -f
+            touch $SCCACHE_ERROR_LOG
+            docker run --rm \
+              -v $SCCACHE_ERROR_LOG:$SCCACHE_ERROR_LOG \
+              -e SCCACHE_ERROR_LOG \
+              -e SCCACHE_LOG \
+              -e AWS_ACCESS_KEY_ID \
+              -e AWS_SECRET_ACCESS_KEY \
+              -e SCCACHE_BUCKET \
+              arangodb/build-alpine-aarch64:3.16-gcc11.2-openssl3.1.1 sccache -s
+      - run:
+          name: Configure
+          command: |
+            docker run --rm \
+              -v $SCCACHE_ERROR_LOG:$SCCACHE_ERROR_LOG \
+              -v `pwd`/project:/root/project \
+              -e SCCACHE_ERROR_LOG \
+              -e SCCACHE_LOG \
+              -e AWS_ACCESS_KEY_ID \
+              -e AWS_SECRET_ACCESS_KEY \
+              -e SCCACHE_BUCKET \
+              -w /root/project \
+              arangodb/build-alpine-aarch64:3.16-gcc11.2-openssl3.1.1 \
+              /bin/sh -c "cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=\$OPENSSL_ROOT_DIR/lib"
+      - run:
+          name: Build
+          command: |
+            docker run --rm \
+              -v $SCCACHE_ERROR_LOG:$SCCACHE_ERROR_LOG \
+              -v ./project:/root/project \
+              -e SCCACHE_ERROR_LOG \
+              -e SCCACHE_LOG \
+              -e AWS_ACCESS_KEY_ID \
+              -e AWS_SECRET_ACCESS_KEY \
+              -e SCCACHE_BUCKET \
+              -e SCCACHE_S3_KEY_PREFIX=aarch64 \
+              -w /root/project \
+              arangodb/build-alpine-aarch64:3.16-gcc11.2-openssl3.1.1 \
+              /bin/sh -c "cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest && sccache -s"
+            # if [ << parameters.enterprise >> = true ]; then
+            #   cmake --build --preset << parameters.preset >> --parallel 8 --target arangobackup
+            # fi
+      - run:
+          name: Size leaderboard
+          command: |
+            ls -Ssha project/build/bin/*.a
+      - run:
+          name: Cleanup build directory
+          command: |
+            find project/build/ -iname *.a -delete || true
+            find project/build/ -iname *.o -delete || true
       # - store_artifacts:
       #     path: build/bin/arango*
-      # - store_artifacts:
-      #     path: /tmp/sccache.log
-      # - persist_to_workspace:
-      #     root: .
-      #     paths:
-      #       - CMakePresets.json
-      #       - build/
-      #       - scripts/
-      #       - js/
-      #       - enterprise/js
-      #       - etc/
-      #       - tests/js
-      #       - enterprise/tests/js
-      #       - utils
-      #       - UnitTests
-      #       - 3rdParty/iresearch/tests/resources
-      #       - 3rdParty/rta-makedata
+      - store_artifacts:
+          path: /tmp/sccache.log
+      - persist_to_workspace:
+          root: ./project
+          paths:
+            - CMakePresets.json
+            - build/
+            - scripts/
+            - js/
+            - enterprise/js
+            - etc/
+            - tests/js
+            - enterprise/tests/js
+            - utils
+            - UnitTests
+            - 3rdParty/iresearch/tests/resources
+            - 3rdParty/rta-makedata
 
   run-tests:
-    docker:
-      - image: cimg/python:3.11.1
+    machine:
+      image: ubuntu-2004:202101-01
+    # docker:
+    #   - image: cimg/python:3.11.1
     parameters:
       suiteName:
         type: string
@@ -200,7 +245,8 @@ jobs:
         default: 1
       cluster:
         type: boolean
-    resource_class: << parameters.size >>
+    #resource_class: << parameters.size >>
+    resource_class: arm.<< parameters.size >>
     parallelism: << parameters.buckets >>
     steps:
       - attach_workspace:
@@ -211,10 +257,9 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            pip install psutil py7zr
+            pip3 install psutil py7zr
             sudo apt update
-            sudo apt install 7zip
-            sudo apt install gdb
+            sudo apt install p7zip gdb
       - run:
           name: Run << parameters.suiteName >> tests
           command: |
@@ -261,7 +306,7 @@ workflows:
       #     preset: community-pr
       #     edition: x64-community
       #     enterprise: false
-      - compile-linux:
+      - compile-linux-aarch64:
           name: build-ce
           preset: community-pr-arm
           edition: aarch64-community
