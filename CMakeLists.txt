@@ -761,6 +761,9 @@ option(USE_JEMALLOC_PROF "use jemalloc profiler" ON)
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+else ()
+  # Must not compile in profiling stuff if we are not using JEMALLOC
+  set(USE_JEMALLOC_PROF OFF)
 endif ()
 
 if (USE_JEMALLOC_PROF)
