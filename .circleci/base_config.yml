@@ -96,14 +96,17 @@ jobs:
       - run:
           name: Store diff
           command: |
-            mkdir -p /tmp/clang_format_outcome
-            git status
-            git -C enterprise status
-            git diff --exit-code > /tmp/clang_format_outcome/community.diff
-            community=$?
-            git -C enterprise diff --exit-code > /tmp/clang_format_outcome/enterprise.diff
-            enterprise=$?
-            if [ "$community" -ne "0" ] || [ "$enterprise" -ne "0" ]; then
+            OUTCOME_BASE="/tmp/clang_format_outcome"
+            OUTCOME_COMMUNITY=$OUTCOME_BASE/community.diff
+            OUTCOME_ENTERPRISE=$OUTCOME_BASE/enterprise.diff
+            mkdir -p $OUTCOME_BASE
+            if [ -n "$(git status --porcelain)" ] ; then
+                git diff | tee $OUTCOME_COMMUNITY
+            fi
+            if [ -n "$(git -C enterprise status --porcelain)" ] ; then
+                git -C enterprise diff | tee $OUTCOME_ENTERPRISE
+            fi
+            if [ -f "$OUTCOME_COMMUNITY" ] || [ -f "$OUTCOME_ENTERPRISE" ]; then
               exit 1
             fi
       - store_artifacts:
