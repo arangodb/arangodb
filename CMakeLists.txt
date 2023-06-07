@@ -913,7 +913,7 @@ endfunction()
 # JEMALLOC
 # ------------------------------------------------------------------------------
 
-option(USE_JEMALLOC_PROF "use jemalloc profiler" OFF)
+option(USE_JEMALLOC_PROF "use jemalloc profiler" ON)
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
