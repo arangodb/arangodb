@@ -90,8 +90,12 @@ auto agency::operator<<(std::ostream& os, LogPlanSpecification const& term)
 
 LogCurrentLocalState::LogCurrentLocalState(LogTerm term,
                                            TermIndexPair spearhead,
-                                           bool snapshot) noexcept
-    : term(term), spearhead(spearhead), snapshotAvailable(snapshot) {}
+                                           bool snapshot,
+                                           RebootId rebootId) noexcept
+    : term(term),
+      spearhead(spearhead),
+      snapshotAvailable(snapshot),
+      rebootId(rebootId) {}
 
 auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept
     -> std::string_view {

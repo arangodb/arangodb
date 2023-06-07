@@ -46,46 +46,50 @@ using namespace arangodb::test;
 struct LeaderElectionCampaignTest : ::testing::Test {};
 TEST_F(LeaderElectionCampaignTest, test_computeReason) {
   {
-    auto r =
-        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true),
-                      true, false, LogTerm{1});
+    auto r = computeReason(
+        LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true, RebootId(1)),
+        true, false, LogTerm{1});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::OK);
   }
 
   {
-    auto r =
-        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true),
-                      false, false, LogTerm{1});
+    auto r = computeReason(
+        LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true, RebootId(1)),
+        false, false, LogTerm{1});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD);
   }
 
   {
-    auto r =
-        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true),
-                      true, false, LogTerm{3});
+    auto r = computeReason(
+        LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true, RebootId(1)),
+        true, false, LogTerm{3});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
   }
 
   {
-    auto r =
-        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true),
-                      true, true, LogTerm{3});
+    auto r = computeReason(
+        LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true, RebootId(1)),
+        true, true, LogTerm{3});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED);
   }
 
   {
-    auto r =
-        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, false),
-                      true, false, LogTerm{1});
+    auto r = computeReason(
+        LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, false, RebootId(1)),
+        true, false, LogTerm{1});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::SNAPSHOT_MISSING);
   }
 }
 
 TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
   auto localStates = LogCurrentLocalStates{
-      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
-      {"B", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
-      {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}}};
+      {"A",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+      {"B",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(2)}},
+      {"C",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(3)}},
+  };
 
   auto health = ParticipantsHealth{._health{
       {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
@@ -106,19 +110,27 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
   // TODO: FIXME<< campaign;
 
-  auto expectedElectible = std::set<ParticipantId>{"A", "B", "C"};
-  auto electible = std::set<ParticipantId>{};
-  std::copy(std::begin(campaign.electibleLeaderSet),
-            std::end(campaign.electibleLeaderSet),
-            std::inserter(electible, std::begin(electible)));
+  auto expectedElectible = std::map<ParticipantId, RebootId>{
+      {"A", RebootId(1)}, {"B", RebootId(2)}, {"C", RebootId(3)}};
+  auto electible = std::map<ParticipantId, RebootId>{};
+  std::transform(std::begin(campaign.electibleLeaderSet),
+                 std::end(campaign.electibleLeaderSet),
+                 std::inserter(electible, std::begin(electible)),
+                 [](auto&& server) {
+                   return std::pair(server.serverId, server.rebootId);
+                 });
   EXPECT_EQ(electible, expectedElectible);
 }
 
 TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
   auto localStates = LogCurrentLocalStates{
-      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
-      {"B", {LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
-      {"C", {LogTerm{2}, TermIndexPair{LogTerm{2}, LogIndex{1}}, true}}};
+      {"A",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+      {"B",
+       {LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(2)}},
+      {"C",
+       {LogTerm{2}, TermIndexPair{LogTerm{2}, LogIndex{1}}, true, RebootId(3)}},
+  };
 
   auto health = ParticipantsHealth{._health{
       {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = false}},
@@ -137,11 +149,15 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
   EXPECT_EQ(campaign.participantsAvailable, 1U);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{2}, LogIndex{1}}));
 
-  auto expectedElectible = std::set<ParticipantId>{"C"};
-  auto electible = std::set<ParticipantId>{};
-  std::copy(std::begin(campaign.electibleLeaderSet),
-            std::end(campaign.electibleLeaderSet),
-            std::inserter(electible, std::begin(electible)));
+  auto expectedElectible =
+      std::map<ParticipantId, RebootId>{{"C", RebootId(3)}};
+  auto electible = std::map<ParticipantId, RebootId>{};
+  std::transform(std::begin(campaign.electibleLeaderSet),
+                 std::end(campaign.electibleLeaderSet),
+                 std::inserter(electible, std::begin(electible)),
+                 [](auto&& server) {
+                   return std::pair(server.serverId, server.rebootId);
+                 });
   EXPECT_EQ(electible, expectedElectible);
 }
 
@@ -150,9 +166,13 @@ TEST_F(LeaderElectionCampaignTest,
   // all servers have reported, but A has the longest log. However,
   // it is not in plan and should therefore not be elected.
   auto localStates = LogCurrentLocalStates{
-      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{3}}, true}},
-      {"B", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
-      {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}}};
+      {"A",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{3}}, true, RebootId(1)}},
+      {"B",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(2)}},
+      {"C",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(3)}},
+  };
 
   auto health = ParticipantsHealth{._health{
       {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
@@ -170,11 +190,15 @@ TEST_F(LeaderElectionCampaignTest,
   EXPECT_EQ(campaign.participantsAvailable, 2U);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
 
-  auto expectedElectible = std::set<ParticipantId>{"B", "C"};
-  auto electible = std::set<ParticipantId>{};
-  std::copy(std::begin(campaign.electibleLeaderSet),
-            std::end(campaign.electibleLeaderSet),
-            std::inserter(electible, std::begin(electible)));
+  auto expectedElectible =
+      std::map<ParticipantId, RebootId>{{"B", RebootId(2)}, {"C", RebootId(3)}};
+  auto electible = std::map<ParticipantId, RebootId>{};
+  std::transform(std::begin(campaign.electibleLeaderSet),
+                 std::end(campaign.electibleLeaderSet),
+                 std::inserter(electible, std::begin(electible)),
+                 [](auto&& server) {
+                   return std::pair(server.serverId, server.rebootId);
+                 });
   EXPECT_EQ(electible, expectedElectible);
 }
 
@@ -716,14 +740,19 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
   current.localState = {
-      {"A", LogCurrentLocalState(
-                LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)), true)},
-      {"B", LogCurrentLocalState(
-                LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)), true)},
-      {"C", LogCurrentLocalState(
-                LogTerm(2), TermIndexPair(LogTerm(3), LogIndex(44)), true)},
-      {"D", LogCurrentLocalState(
-                LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)), true)}};
+      {"A",
+       LogCurrentLocalState(LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)),
+                            true, RebootId(1))},
+      {"B",
+       LogCurrentLocalState(LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)),
+                            true, RebootId(1))},
+      {"C",
+       LogCurrentLocalState(LogTerm(2), TermIndexPair(LogTerm(3), LogIndex(44)),
+                            true, RebootId(1))},
+      {"D",
+       LogCurrentLocalState(LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)),
+                            true, RebootId(1))},
+  };
   current.supervision.emplace(LogCurrentSupervision{});
   current.localState["A"].snapshotAvailable = true;
   current.localState["B"].snapshotAvailable = true;

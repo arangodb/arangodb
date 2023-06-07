@@ -174,9 +174,11 @@ struct LogCurrentLocalState {
   TermIndexPair spearhead{};
   bool snapshotAvailable{false};
   replicated_log::LocalStateMachineStatus state;
+  RebootId rebootId = RebootId(0);
 
   LogCurrentLocalState() = default;
-  LogCurrentLocalState(LogTerm, TermIndexPair, bool) noexcept;
+  LogCurrentLocalState(LogTerm, TermIndexPair, bool,
+                       RebootId rebootId) noexcept;
   friend auto operator==(LogCurrentLocalState const& s,
                          LogCurrentLocalState const& s2) noexcept
       -> bool = default;
@@ -200,7 +202,7 @@ struct LogCurrentSupervisionElection {
   std::size_t participantsRequired{};
   std::size_t participantsAvailable{};
   std::unordered_map<ParticipantId, ErrorCode> detail;
-  std::vector<ParticipantId> electibleLeaderSet;
+  std::vector<ServerInstanceReference> electibleLeaderSet;
 
   friend auto operator==(LogCurrentSupervisionElection const&,
                          LogCurrentSupervisionElection const&) noexcept -> bool;

@@ -259,13 +259,15 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
     election.detail.emplace(participant, reason);
 
     if (reason == LogCurrentSupervisionElection::ErrorCode::OK) {
+      TRI_ASSERT(maybeStatus.has_value());
       election.participantsAvailable += 1;
 
       if (maybeStatus->spearhead >= election.bestTermIndex) {
         if (maybeStatus->spearhead != election.bestTermIndex) {
           election.electibleLeaderSet.clear();
         }
-        election.electibleLeaderSet.push_back(participant);
+        election.electibleLeaderSet.emplace_back(participant,
+                                                 maybeStatus->rebootId);
         election.bestTermIndex = maybeStatus->spearhead;
       }
     }
@@ -352,26 +354,21 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
     auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
     auto const& newLeader =
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
-    auto const& newLeaderRebootId = health.getRebootId(newLeader);
+
+    TRI_ASSERT(current.supervision->assumedWriteConcern <=
+               plan.participantsConfig.config.effectiveWriteConcern);
 
     auto effectiveWriteConcern =
         computeEffectiveWriteConcern(log.target.config, current, plan, health);
+    auto assumedWriteConcern = std::min(
+        current.supervision->assumedWriteConcern, effectiveWriteConcern);
+    TRI_ASSERT(assumedWriteConcern <= effectiveWriteConcern);
 
-    if (newLeaderRebootId.has_value()) {
-      ctx.reportStatus<LogCurrentSupervision::LeaderElectionSuccess>(election);
-      ctx.createAction<LeaderElectionAction>(
-          ServerInstanceReference(newLeader, *newLeaderRebootId),
-          effectiveWriteConcern,
-          std::min(current.supervision->assumedWriteConcern,
-                   effectiveWriteConcern),
-          election);
-      return;
-    } else {
-      // TODO: better error
-      //       return LeaderElectionImpossibleAction();
-      //      ctx.reportStatus
-      return;
-    }
+    ctx.reportStatus<LogCurrentSupervision::LeaderElectionSuccess>(election);
+    ctx.createAction<LeaderElectionAction>(newLeader, effectiveWriteConcern,
+                                           assumedWriteConcern, election);
+    return;
+
   } else {
     // Not enough participants were available to form a quorum, so
     // we can't elect a leader

@@ -1410,7 +1410,8 @@ static VPackBuilder assembleLocalDatabaseInfo(
 
 static auto reportCurrentReplicatedLogLocal(
     replication2::replicated_log::QuickLogStatus const& status,
-    replication2::agency::LogCurrentLocalState const* currentLocal)
+    RebootId const rebootId,
+    replication2::agency::LogCurrentLocalState const* const currentLocal)
     -> std::optional<replication2::agency::LogCurrentLocalState> {
   // Check if there is term locally (i.e. in status)
   if (auto localTerm = status.getCurrentTerm(); localTerm.has_value()) {
@@ -1441,6 +1442,7 @@ static auto reportCurrentReplicatedLogLocal(
       localState.spearhead = localStats->spearHead;
       localState.snapshotAvailable = status.snapshotAvailable;
       localState.state = status.localState;
+      localState.rebootId = rebootId;
       return localState;
     }
   }
@@ -1579,11 +1581,11 @@ static void writeUpdateReplicatedLogLocal(
 }
 
 static void reportCurrentReplicatedLog(
-    VPackBuilder& report,
-    replication2::replicated_log::QuickLogStatus const& status, VPackSlice cur,
-    replication2::LogId id, std::string const& dbName,
-    std::string const& serverId) {
+    VPackBuilder& report, replication2::maintenance::LogStatus const& logStatus,
+    VPackSlice cur, replication2::LogId id, std::string const& dbName) {
   using namespace replication2::agency;
+  auto const& status = logStatus.status;
+  auto const& serverId = logStatus.server.serverId;
   auto logContext =
       LoggerContext{Logger::MAINTENANCE}.with<logContextKeyLogId>(id);
   auto localTerm = status.getCurrentTerm();
@@ -1619,7 +1621,8 @@ static void reportCurrentReplicatedLog(
       return nullptr;
     });
 
-    if (auto result = reportCurrentReplicatedLogLocal(status, localState);
+    if (auto result = reportCurrentReplicatedLogLocal(
+            status, logStatus.server.rebootId, localState);
         result.has_value()) {
       writeUpdateReplicatedLogLocal(report, id, dbName, serverId, *localTerm,
                                     *result);
@@ -2032,8 +2035,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       if (auto logsIter = localLogs.find(dbName);
           logsIter != std::end(localLogs)) {
         for (auto const& [id, status] : logsIter->second) {
-          reportCurrentReplicatedLog(report, status.status, cur, id, dbName,
-                                     serverId);
+          reportCurrentReplicatedLog(report, status, cur, id, dbName);
         }
       }
     } catch (std::exception const& ex) {
