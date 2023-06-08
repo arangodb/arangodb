@@ -101,25 +101,36 @@ function ShardDistributionTest({replVersion}) {
   };
 
   const compareDistributions = function () {
-    const all = request.get(coordinator.url + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
-    const dist = JSON.parse(all.body).results;
+    let all = request.get(coordinator.url + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
+    let dist = JSON.parse(all.body).results;
 
     const origPlan = dist[colName].Plan;
     const folPlan = dist[followCollection].Plan;
     expect(Object.keys(origPlan)).to.have.length.of(Object.keys(folPlan).length);
 
-    const origCur = dist[colName].Current;
-    const folCur = dist[followCollection].Current;
-    const origShards = Object.keys(origCur).sort(sortShardsNumericly);
-    const folShards = Object.keys(folCur).sort(sortShardsNumericly);
-    // For replication2, shards are reported to Current as they are created.
-    // We have to wait until all shards are created before we can compare the distributions.
-    waitFor(() => {
-      if (origShards.length !== folShards.length) {
-        return Error("Shard count does not match: " + origShards.length + " vs " + folShards.length);
-      }
-      return true;
-    });
+    let origCur = dist[colName].Current;
+    let folCur = dist[followCollection].Current;
+    let origShards = Object.keys(origCur).sort(sortShardsNumericly);
+    let folShards = Object.keys(folCur).sort(sortShardsNumericly);
+
+    if (replVersion === "2" && origShards.length !== folShards.length) {
+      // For replication2, shards are reported to Current as they are created.
+      // We have to wait until all shards are created before we can compare the distributions.
+      waitFor(() => {
+        all = request.get(coordinator.url + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
+        dist = JSON.parse(all.body).results;
+
+        origCur = dist[colName].Current;
+        folCur = dist[followCollection].Current;
+        origShards = Object.keys(origCur).sort(sortShardsNumericly);
+        folShards = Object.keys(folCur).sort(sortShardsNumericly);
+
+        if (origShards.length !== folShards.length) {
+          return Error("Shard count does not match: " + origShards.length + " vs " + folShards.length);
+        }
+        return true;
+      }, 100);
+    }
 
     // Now we have all shard names sorted in alphabetical ordering.
     // It needs to be guaranteed that leader + follower of each shard in this ordering is identical.
