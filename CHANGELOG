@@ -3,6 +3,18 @@ v3.10.7 (XXXX-XX-XX)
 
 * FE-20: fix UI placeholder format for locale when creating analyzers.
 
+* Updated arangosync to v2.18.0.
+
+* Updated OpenSSL to 1.1.1u.
+
+* BTS-1435: fixed invalid AQL optimization and added a safeguard.
+
+* APM-766, SEARCH-479: Reduce memory overhead for ArangoSearch removes.
+
+* Improve precision for ArangoSearch GEO_IN_RANGE function.
+
+* Updated ArangoDB Starter to 0.15.8.
+
 * FE-211: Allow admins to edit gravatar email.
 
 * BTS-1255: Fix sporadic memory usage accounting underflows in in-memory cache
@@ -130,8 +142,6 @@ v3.10.7 (XXXX-XX-XX)
 * Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 
 * Fix MDS-1070 Update iresearch submodule.
-
-* Updated arangosync to v2.17.0.
 
 * FE-243: add support for geo_s2 analyzer.
 

@@ -1,14 +1,13 @@
 @startDocuBlock get_api_view
-@brief returns all Views
 
 @RESTHEADER{GET /_api/view, List all Views, listViews}
 
 @RESTDESCRIPTION
 Returns an object containing a listing of all Views in a database, regardless
 of their type. It is an array of objects with the following attributes:
-- *id*
-- *name*
-- *type*
+- `id`
+- `name`
+- `type`
 
 @RESTRETURNCODES
 
