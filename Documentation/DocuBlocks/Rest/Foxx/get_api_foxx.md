@@ -1,22 +1,21 @@
 @startDocuBlock get_api_foxx
-@brief list installed services
 
-@RESTHEADER{GET /_api/foxx, List installed services, listFoxxServices}
+@RESTHEADER{GET /_api/foxx, List the installed services, listFoxxServices}
 
 @RESTDESCRIPTION
 Fetches a list of services installed in the current database.
 
 Returns a list of objects with the following attributes:
 
-- *mount*: the mount path of the service
-- *development*: *true* if the service is running in development mode
-- *legacy*: *true* if the service is running in 2.8 legacy compatibility mode
-- *provides*: the service manifest's *provides* value or an empty object
+- `mount`: the mount path of the service
+- `development`: `true` if the service is running in development mode
+- `legacy`: `true` if the service is running in 2.8 legacy compatibility mode
+- `provides`: the service manifest's `provides` value or an empty object
 
 Additionally the object may contain the following attributes if they have been set on the manifest:
 
-- *name*: a string identifying the service type
-- *version*: a semver-compatible version string
+- `name`: a string identifying the service type
+- `version`: a semver-compatible version string
 
 @RESTQUERYPARAMETERS
 

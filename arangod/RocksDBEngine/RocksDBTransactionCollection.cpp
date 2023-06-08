@@ -63,6 +63,7 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() {
   try {
+    // cppcheck-suppress virtualCallInConstructor
     releaseUsage();
   } catch (...) {
   }
