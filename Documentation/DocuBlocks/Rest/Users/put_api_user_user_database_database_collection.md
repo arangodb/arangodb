@@ -1,7 +1,6 @@
 @startDocuBlock put_api_user_user_database_database_collection
-@brief Set the collection access level.
 
-@RESTHEADER{PUT /_api/user/{user}/database/{dbname}/{collection}, Set the collection access level, setUserCollectionPermissions}
+@RESTHEADER{PUT /_api/user/{user}/database/{dbname}/{collection}, Set a user's collection access level, setUserCollectionPermissions}
 
 @RESTBODYPARAM{grant,string,required,string}
 Use "rw" to set the collection level access to *Read/Write*.
@@ -22,8 +21,8 @@ The name of the database.
 The name of the collection.
 
 @RESTDESCRIPTION
-Sets the collection access level for the *collection* in the database *dbname*
-for user *user*. You need the *Administrate* server access level in order to
+Sets the collection access level for the `collection` in the database `dbname`
+for user `user`. You need the *Administrate* server access level in order to
 execute this REST call.
 
 @RESTRETURNCODES
@@ -36,7 +35,7 @@ If the JSON representation is malformed or mandatory data is missing
 from the request.
 
 @RESTRETURNCODE{401}
-Returned if you have *No access* database access level to the *_system*
+Returned if you have *No access* database access level to the `_system`
 database.
 
 @RESTRETURNCODE{403}

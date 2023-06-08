@@ -233,7 +233,7 @@ auto ReplicatedStateManager<S>::resign() && -> std::unique_ptr<CoreType> {
                  guard->_currentManager);
   // we should be unconfigured already
   TRI_ASSERT(methods == nullptr);
-  // cppcheck-suppress returnStdMoveLocal ; core is not a local variable
+  // cppcheck-suppress returnStdMoveLocal
   return std::move(core);
 }
 
