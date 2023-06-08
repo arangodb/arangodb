@@ -397,12 +397,11 @@ auto LeaderStateManager<S>::GuardedData::recoverEntries() {
       std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
           std::move(logIter));
   MeasureTimeGuard timeGuard(_metrics.replicatedStateRecoverEntriesRtt);
-  auto fut = _leaderState->recoverEntries(std::move(deserializedIter))
-                 .then([guard = std::move(timeGuard)](auto&& res) mutable {
-                   guard.fire();
-                   return std::move(res.get());
-                 });
-  return fut;
+  return _leaderState->recoverEntries(std::move(deserializedIter))
+      .then([guard = std::move(timeGuard)](auto&& res) mutable {
+        guard.fire();
+        return std::move(res.get());
+      });
 }
 
 template<typename S>

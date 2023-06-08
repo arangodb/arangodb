@@ -245,7 +245,7 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
   NetworkFeature& nf = server.getFeature<NetworkFeature>();
   nf.sendRequest(
       *pool, options, endpoint, std::move(req),
-      [p(std::move(p)), pool, &options, endpoint](
+      [pack(std::move(p)), pool, &options, endpoint](
           fuerte::Error err, std::unique_ptr<fuerte::Request> req,
           std::unique_ptr<fuerte::Response> res, bool isFromPool) mutable {
         TRI_ASSERT(req != nullptr || err == fuerte::Error::ConnectionCanceled);
@@ -254,29 +254,29 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
                            err == fuerte::Error::WriteError)) {
           // retry under certain conditions
           // cppcheck-suppress accessMoved
-          actuallySendRequest(std::move(p), pool, options, endpoint,
+          actuallySendRequest(std::move(pack), pool, options, endpoint,
                               std::move(req));
           return;
         }
 
         auto* sch = SchedulerFeature::SCHEDULER;
         // cppcheck-suppress accessMoved
-        if (p->skipScheduler || sch == nullptr) {
-          p->promise.setValue(network::Response{
-              std::move(p->dest), err, std::move(req), std::move(res)});
+        if (pack->skipScheduler || sch == nullptr) {
+          pack->promise.setValue(network::Response{
+              std::move(pack->dest), err, std::move(req), std::move(res)});
           return;
         }
 
-        p->tmp_err = err;
-        p->tmp_res = std::move(res);
-        p->tmp_req = std::move(req);
+        pack->tmp_err = err;
+        pack->tmp_res = std::move(res);
+        pack->tmp_req = std::move(req);
 
-        TRI_ASSERT(p->tmp_req != nullptr);
+        TRI_ASSERT(pack->tmp_req != nullptr);
 
-        sch->queue(p->continuationLane, [p]() mutable {
-          p->promise.setValue(Response{std::move(p->dest), p->tmp_err,
-                                       std::move(p->tmp_req),
-                                       std::move(p->tmp_res)});
+        sch->queue(pack->continuationLane, [pack]() mutable {
+          pack->promise.setValue(Response{std::move(pack->dest), pack->tmp_err,
+                                          std::move(pack->tmp_req),
+                                          std::move(pack->tmp_res)});
         });
       });
 }
