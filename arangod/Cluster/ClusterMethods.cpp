@@ -1419,6 +1419,7 @@ futures::Future<metrics::LeaderResponse> metricsFromLeader(
   headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJsonNoEncoding);
   auto options = network::RequestOptions{}
                      .param("type", metrics::kCDJson)
+                     // cppcheck-suppress accessMoved
                      .param("MetricsServerId", std::move(serverId))
                      .param("MetricsRebootId", std::to_string(rebootId))
                      .param("MetricsVersion", std::to_string(version));

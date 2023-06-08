@@ -819,6 +819,7 @@ void Agent::sendAppendEntriesRPC() {
           std::make_shared<AgentCallback>(this, followerId, highest, toLog);
       network::sendRequest(
           cp, _config.poolAt(followerId), fuerte::RestVerb::Post,
+          // cppcheck-suppress accessMoved
           "/_api/agency_priv/appendEntries", std::move(buffer), reqOpts)
           .thenValue([=](network::Response r) { ac->operator()(r); });
 
@@ -905,6 +906,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
 
   double now = TRI_microtime();
   network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post,
+                       // cppcheck-suppress accessMoved
                        "/_api/agency_priv/appendEntries", std::move(buffer),
                        reqOpts)
       .thenValue([=](network::Response r) { ac->operator()(r); });

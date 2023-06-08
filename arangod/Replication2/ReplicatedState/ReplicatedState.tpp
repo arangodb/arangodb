@@ -306,7 +306,7 @@ auto StreamProxy<S, Interface, ILogMethodsT>::release(LogIndex index) -> void {
 template<typename S, template<typename> typename Interface,
          ValidStreamLogMethods ILogMethodsT>
 void StreamProxy<S, Interface, ILogMethodsT>::throwResignedException() {
-  static constexpr auto errorCode = ([]() consteval->ErrorCode {
+  static constexpr auto errorCode = ([]() consteval -> ErrorCode {
     if constexpr (std::is_same_v<ILogMethodsT,
                                  replicated_log::IReplicatedLogLeaderMethods>) {
       return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
@@ -387,12 +387,11 @@ auto LeaderStateManager<S>::GuardedData::recoverEntries() {
           std::move(logIter));
   MeasureTimeGuard timeGuard(*_metrics.replicatedStateRecoverEntriesRtt);
   // cppcheck-suppress accessMoved ; deserializedIter is only accessed once
-  auto fut = _leaderState->recoverEntries(std::move(deserializedIter))
-                 .then([guard = std::move(timeGuard)](auto&& res) mutable {
-                   guard.fire();
-                   return std::move(res.get());
-                 });
-  return fut;
+  return _leaderState->recoverEntries(std::move(deserializedIter))
+      .then([guard = std::move(timeGuard)](auto&& res) mutable {
+        guard.fire();
+        return std::move(res.get());
+      });
 }
 
 template<typename S>

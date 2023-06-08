@@ -252,6 +252,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         // we are still in the same term.
         auto currentCommitIndex = request.leaderCommit;
         auto currentLITK = request.lowestIndexToKeep;
+        // cppcheck-suppress accessMoved
         follower->_impl->appendEntries(std::move(request))
             .thenFinal(
                 [weakParentLog = req->_parentLog, followerWeak = req->_follower,
