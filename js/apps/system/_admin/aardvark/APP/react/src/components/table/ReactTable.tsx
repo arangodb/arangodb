@@ -1,11 +1,13 @@
 import { TriangleDownIcon, TriangleUpIcon } from "@chakra-ui/icons";
 import {
   Box,
+  Flex,
   Stack,
   Table,
   TableContainer,
   Tbody,
   Td,
+  Text,
   Th,
   Thead,
   Tr
@@ -19,6 +21,7 @@ import {
   getFacetedUniqueValues,
   getFilteredRowModel,
   getSortedRowModel,
+  Header,
   Row,
   SortingState,
   Table as TableType,
@@ -76,28 +79,7 @@ export function ReactTable<Data extends object>({
             {table.getHeaderGroups().map(headerGroup => (
               <Tr key={headerGroup.id}>
                 {headerGroup.headers.map(header => {
-                  return (
-                    <Th
-                      key={header.id}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      <Box as="span" display="flex">
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                        <Box as="span" paddingLeft="2">
-                          {header.column.getIsSorted() ? (
-                            header.column.getIsSorted() === "desc" ? (
-                              <TriangleDownIcon aria-label="sorted descending" />
-                            ) : (
-                              <TriangleUpIcon aria-label="sorted ascending" />
-                            )
-                          ) : null}
-                        </Box>
-                      </Box>
-                    </Th>
-                  );
+                  return <SortableTh<Data> header={header} />;
                 })}
               </Tr>
             ))}
@@ -105,29 +87,7 @@ export function ReactTable<Data extends object>({
           <Tbody>
             {rows.length > 0 ? (
               rows.map(row => (
-                <Tr
-                  key={row.id}
-                  onClick={() => onRowSelect?.(row)}
-                  _hover={
-                    onRowSelect
-                      ? {
-                          cursor: "pointer",
-                          backgroundColor: "gray.50"
-                        }
-                      : {}
-                  }
-                >
-                  {row.getVisibleCells().map(cell => {
-                    return (
-                      <Td key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </Td>
-                    );
-                  })}
-                </Tr>
+                <SelectableTr<Data> row={row} onRowSelect={onRowSelect} />
               ))
             ) : (
               <Box padding="4">{emptyStateMessage}</Box>
@@ -138,3 +98,80 @@ export function ReactTable<Data extends object>({
     </Stack>
   );
 }
+
+const SortableTh = <Data extends object>({
+  header
+}: {
+  header: Header<Data, unknown>;
+}) => {
+  const canSort = header.column.getCanSort();
+  return (
+    <Th
+      key={header.id}
+      onClick={header.column.getToggleSortingHandler()}
+      _hover={
+        canSort
+          ? {
+              cursor: "pointer"
+            }
+          : {}
+      }
+    >
+      <Box display="flex" alignItems="center">
+        <Text>
+          {flexRender(header.column.columnDef.header, header.getContext())}
+        </Text>
+        {canSort && (
+          <Flex marginLeft="2" height={3} width={3}>
+            {header.column.getIsSorted() ? (
+              header.column.getIsSorted() === "desc" ? (
+                <TriangleDownIcon
+                  width={3}
+                  height={3}
+                  aria-label="sorted descending"
+                />
+              ) : (
+                <TriangleUpIcon
+                  width={3}
+                  height={3}
+                  aria-label="sorted ascending"
+                />
+              )
+            ) : null}
+          </Flex>
+        )}
+      </Box>
+    </Th>
+  );
+};
+
+const SelectableTr = <Data extends object>({
+  row,
+  onRowSelect
+}: {
+  row: Row<Data>;
+  onRowSelect: ((row: Row<Data>) => void) | undefined;
+}) => {
+  return (
+    <Tr
+      key={row.id}
+      onClick={() => onRowSelect?.(row)}
+      _hover={
+        onRowSelect
+          ? {
+              cursor: "pointer",
+              backgroundColor: "gray.50"
+            }
+          : {}
+      }
+    >
+      {row.getVisibleCells().map(cell => {
+        return (
+          <Td key={cell.id}>
+            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          </Td>
+        );
+      })}
+    </Tr>
+  );
+};
