@@ -23,6 +23,7 @@
       'replication/applier/:endpoint/:database': 'applier',
       'collections': 'collections',
       'analyzers': 'analyzers',
+      'analyzers/:name': 'analyzers',
       'new': 'newCollection',
       'login': 'login',
       'collection/:colid/documents/:pageid': 'documents',

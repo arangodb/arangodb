@@ -19,6 +19,7 @@ import {
   getFacetedUniqueValues,
   getFilteredRowModel,
   getSortedRowModel,
+  Row,
   SortingState,
   Table as TableType,
   useReactTable
@@ -30,6 +31,7 @@ type ReactTableProps<Data extends object> = {
   initialSorting?: SortingState;
   columns: ColumnDef<Data, any>[];
   emptyStateMessage?: string;
+  onRowSelect?: (row: Row<Data>) => void;
   children?: ({ table }: { table: TableType<Data> }) => React.ReactNode;
 };
 
@@ -38,6 +40,7 @@ export function ReactTable<Data extends object>({
   columns,
   initialSorting = [],
   emptyStateMessage = "No data found.",
+  onRowSelect,
   children
 }: ReactTableProps<Data>) {
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting);
@@ -68,12 +71,7 @@ export function ReactTable<Data extends object>({
         borderColor="gray.200"
         backgroundColor="white"
       >
-        <Table
-          whiteSpace="normal"
-          size="sm"
-          variant="striped"
-          colorScheme="gray"
-        >
+        <Table whiteSpace="normal" size="sm" colorScheme="gray">
           <Thead>
             {table.getHeaderGroups().map(headerGroup => (
               <Tr key={headerGroup.id}>
@@ -107,7 +105,18 @@ export function ReactTable<Data extends object>({
           <Tbody>
             {rows.length > 0 ? (
               rows.map(row => (
-                <Tr key={row.id}>
+                <Tr
+                  key={row.id}
+                  onClick={() => onRowSelect?.(row)}
+                  _hover={
+                    onRowSelect
+                      ? {
+                          cursor: "pointer",
+                          backgroundColor: "gray.50"
+                        }
+                      : {}
+                  }
+                >
                   {row.getVisibleCells().map(cell => {
                     return (
                       <Td key={cell.id}>

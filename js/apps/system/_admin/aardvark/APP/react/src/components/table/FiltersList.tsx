@@ -14,7 +14,7 @@ import {
 } from "@chakra-ui/react";
 import { Column, Table as TableType } from "@tanstack/react-table";
 import * as React from "react";
-import SingleSelect from "../../components/select/SingleSelect";
+import SingleSelect from "../select/SingleSelect";
 
 const HeaderFilter = <Data extends object>({
   filter,
