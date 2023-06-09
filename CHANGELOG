@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.18.1-preview-1.
+
 * BTS-1325: AQL: Fixed a possible deadlock with multiple parallel traversals.
 
 * Upgraded OpenSSL to 3.1.1.
