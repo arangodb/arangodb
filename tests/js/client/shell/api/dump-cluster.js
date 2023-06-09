@@ -33,13 +33,13 @@ const jsunity = require("jsunity");
 
 const database = "DumpTestDatabase";
 const collectionNameA = "A";
-const collectionNameB = "B";
+//const collectionNameB = "B";
 
 function fillCollection(col, num) {
   let documents = [];
   for (let i = 0; i < num; i++) {
     documents.push({value: i});
-    if (documents.length == 1000) {
+    if (documents.length === 1000) {
       col.save(documents);
       documents = [];
     }
@@ -92,7 +92,7 @@ function createContext(server, options) {
     read: function* () {
       for (let batchId = 0; ; batchId++) {
         const response = apiNext(server, id, batchId, batchId > 0 ? batchId - 1 : undefined);
-        if (response.code == 204) {
+        if (response.code === 204) {
           break;
         }
         assertEqual(response.code, 200);
