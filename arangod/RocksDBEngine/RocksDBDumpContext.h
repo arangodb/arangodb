@@ -57,15 +57,21 @@ class LogicalCollection;
 class RocksDBCollection;
 class RocksDBEngine;
 
+struct RocksDBDumpContextOptions {
+  uint64_t batchSize;
+  uint64_t prefetchCount;
+  uint64_t parallelism;
+  std::vector<std::string> shards;
+  double ttl;
+};
+
 class RocksDBDumpContext {
  public:
   RocksDBDumpContext(RocksDBDumpContext const&) = delete;
   RocksDBDumpContext& operator=(RocksDBDumpContext const&) = delete;
 
   RocksDBDumpContext(RocksDBEngine& engine, DatabaseFeature& databaseFeature,
-                     std::string id, uint64_t batchSize, uint64_t prefetchCount,
-                     uint64_t parallelism,
-                     std::vector<std::string> const& shards, double ttl,
+                     std::string id, RocksDBDumpContextOptions options,
                      std::string const& user, std::string const& database);
 
   ~RocksDBDumpContext();
@@ -171,16 +177,10 @@ class RocksDBDumpContext {
 
   // context id
   std::string const _id;
-
-  uint64_t const _batchSize;
-  uint64_t const _prefetchCount;
-  uint64_t const _parallelism;
-
-  // time-to-live value for this context. will be extended automatically
-  // whenever the context is accessed.
-  double const _ttl;
   std::string const _user;
   std::string const _database;
+
+  RocksDBDumpContextOptions const _options;
 
   // timestamp when this context expires and will be removed by the manager.
   // will be extended whenever the context is leased from the manager and
