@@ -54,7 +54,6 @@
       'cluster': 'cluster',
       'nodes': 'nodes',
       'shards': 'shards',
-      'rebalanceShards': 'rebalanceShards',
       'maintenance': 'maintenance',
       'distribution': 'distribution',
       'node/:name': 'node',
@@ -476,32 +475,6 @@
       });
     },
 
-    rebalanceShards: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (this.isCluster === false || isCurrentCoordinator === false || this.maxNumberOfMoveShards === 0) {
-          this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', { trigger: true });
-          return;
-        }
-        // this below is for when Rebalance Shards tab is not clickable, but user enters it through its URL
-        else if (this.userCollection.authOptions.ro) { // if user can't edit the database,
-          // it goes back to the Overview page
-          this.routes[''] = 'nodes';
-          this.navigate('#nodes', { trigger: true });
-          return;
-        }
-        if (this.rebalanceShardsView) {
-          this.rebalanceShardsView.remove();
-        }
-        this.rebalanceShardsView = new window.RebalanceShardsView({
-          maxNumberOfMoveShards: this.maxNumberOfMoveShards
-        });
-        this.rebalanceShardsView.render();
-      });
-    },
-
     distribution: function () {
       this.checkUser();
 
@@ -520,7 +493,10 @@
         if (this.shardDistributionView) {
           this.shardDistributionView.remove();
         }
-        this.shardDistributionView = new window.ShardDistributionView({});
+        this.shardDistributionView = new window.ShardDistributionView({
+          maxNumberOfMoveShards: this.maxNumberOfMoveShards,
+          readOnly: this.userCollection.authOptions.ro
+        });
         this.shardDistributionView.render();
       });
     },

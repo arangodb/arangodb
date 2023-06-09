@@ -9,12 +9,18 @@
     hash: '#distribution',
     template: templateEngine.createTemplate('shardDistributionView.ejs'),
     interval: 10000,
+    maxNumberOfMoveShards: undefined,
+    readOnly: true,
 
-    events: {},
+    events: {
+      'click #rebalanceShardsBtn': 'rebalanceShards'
+    },
 
     initialize: function (options) {
       var self = this;
       clearInterval(this.intervalFunction);
+      this.maxNumberOfMoveShards = options.maxNumberOfMoveShards;
+      this.readOnly = options.readOnly;
 
       if (window.App.isCluster) {
         // start polling with interval
@@ -38,7 +44,10 @@
     render: function (navi) {
       if (window.location.hash === this.hash) {
         // pre-render without data (placeholders)
-        this.$el.html(this.template.render({}));
+        this.$el.html(this.template.render({
+          maxNumberOfMoveShards: this.maxNumberOfMoveShards,
+          readOnly: this.readOnly,
+        }));
 
         this.fetchOverallStatistics();
 
@@ -46,6 +55,29 @@
           arangoHelper.buildClusterSubNav('Distribution');
         }
       }
+    },
+
+    rebalanceShards: function () {
+      $.ajax({
+        type: 'POST',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_admin/cluster/rebalanceShards'),
+        contentType: 'application/json',
+        processData: false,
+        data: JSON.stringify({}),
+        async: true,
+        success: function (data) {
+          if (data.result.operations === 0) {
+            arangoHelper.arangoNotification('No move shards operations were scheduled.');
+          } else {
+            arangoHelper.arangoNotification('Started rebalance process. Scheduled ' + data.result.operations + ' shards move operation(s).');
+          }
+        },
+        error: function () {
+          arangoHelper.arangoError('Could not start rebalance process.');
+        }
+      });
+      window.modalView.hide();
     },
 
     rerenderOverallValues: function (data) {
