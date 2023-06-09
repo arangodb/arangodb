@@ -1,7 +1,6 @@
 @startDocuBlock get_api_view_view
-@brief returns a View
 
-@RESTHEADER{GET /_api/view/{view-name}, Return information about a View, getView}
+@RESTHEADER{GET /_api/view/{view-name}, Get information about a View, getView}
 
 @RESTURLPARAMETERS
 
@@ -10,14 +9,14 @@ The name of the View.
 
 @RESTDESCRIPTION
 The result is an object briefly describing the View with the following attributes:
-- *id*: The identifier of the View
-- *name*: The name of the View
-- *type*: The type of the View as string
+- `id`: The identifier of the View
+- `name`: The name of the View
+- `type`: The type of the View as string
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{404}
-If the *view-name* is unknown, then a *HTTP 404* is returned.
+If the `view-name` is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 
