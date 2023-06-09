@@ -461,10 +461,6 @@
           this.navigate('#dashboard', { trigger: true });
           return;
         }
-        // TODO re-enable React View, for now use old view:
-        // ReactDOM.render(React.createElement(window.ShardsReactView),
-        //   document.getElementById('content'));
-        // Below code needs to be removed then again.
         if (this.shardsView) {
           this.shardsView.remove();
         }
