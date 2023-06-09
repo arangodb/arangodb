@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_replication_revisions_tree
-@brief rebuilds the Merkle tree associated with the collection
 
-@RESTHEADER{POST /_api/replication/revisions/tree, Rebuild Merkle tree for a collection,rebuildReplicationRevisionTree}
+@RESTHEADER{POST /_api/replication/revisions/tree, Rebuild the replication revision tree,rebuildReplicationRevisionTree}
 
 @HINTS
 {% hint 'warning' %}
@@ -16,7 +15,7 @@ created in ArangoDB v3.8.0 or later.
 The name or id of the collection to query.
 
 @RESTDESCRIPTION
-Rebuilds the Merkle tree for the collection.
+Rebuilds the Merkle tree for a collection.
 
 If successful, there will be no return body.
 

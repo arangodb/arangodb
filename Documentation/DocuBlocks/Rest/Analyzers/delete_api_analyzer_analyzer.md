@@ -1,5 +1,4 @@
 @startDocuBlock delete_api_analyzer_analyzer
-@brief removes an Analyzer configuration
 
 @RESTHEADER{DELETE /_api/analyzer/{analyzer-name}, Remove an Analyzer, deleteAnalyzer}
 
@@ -12,15 +11,15 @@ The name of the Analyzer to remove.
 
 @RESTQUERYPARAM{force,boolean,optional}
 The Analyzer configuration should be removed even if it is in-use.
-The default value is *false*.
+The default value is `false`.
 
 @RESTDESCRIPTION
-Removes an Analyzer configuration identified by *analyzer-name*.
+Removes an Analyzer configuration identified by `analyzer-name`.
 
 If the Analyzer definition was successfully dropped, an object is returned with
 the following attributes:
-- *error*: *false*
-- *name*: The name of the removed Analyzer
+- `error`: `false`
+- `name`: The name of the removed Analyzer
 
 @RESTRETURNCODES
 
@@ -28,7 +27,7 @@ the following attributes:
 The Analyzer configuration was removed successfully.
 
 @RESTRETURNCODE{400}
-The *analyzer-name* was not supplied or another request parameter was not
+The `analyzer-name` was not supplied or another request parameter was not
 valid.
 
 @RESTRETURNCODE{403}
@@ -38,12 +37,12 @@ The user does not have permission to remove this Analyzer configuration.
 Such an Analyzer configuration does not exist.
 
 @RESTRETURNCODE{409}
-The specified Analyzer configuration is still in use and *force* was omitted or
-*false* specified.
+The specified Analyzer configuration is still in use and `force` was omitted or
+`false` specified.
 
 @EXAMPLES
 
-Removing without *force*:
+Removing without `force`:
 
 @EXAMPLE_ARANGOSH_RUN{RestAnalyzerDelete}
   var analyzers = require("@arangodb/analyzers");
@@ -60,7 +59,7 @@ console.error(JSON.stringify(response));
   logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Removing with *force*:
+Removing with `force`:
 
 @EXAMPLE_ARANGOSH_RUN{RestAnalyzerDeleteForce}
   var analyzers = require("@arangodb/analyzers");

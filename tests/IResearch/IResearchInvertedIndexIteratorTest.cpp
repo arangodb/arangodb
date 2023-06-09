@@ -156,7 +156,7 @@ class IResearchInvertedIndexIteratorTestBase
                                 arangodb::iresearch::
                                     IResearchInvertedIndexMetaIndexingContext>(
                            trx, doc->first, doc->second->slice(),
-                           *_index->meta()._indexingContext, nullptr)
+                           *_index->meta()._indexingContext)
                        .ok();
         EXPECT_TRUE(res);
         ++doc;
@@ -176,7 +176,7 @@ class IResearchInvertedIndexIteratorTestBase
                               arangodb::iresearch::
                                   IResearchInvertedIndexMetaIndexingContext>(
                          trx, doc->first, doc->second->slice(),
-                         *_index->meta()._indexingContext, nullptr)
+                         *_index->meta()._indexingContext)
                      .ok();
       EXPECT_TRUE(res);
       ++doc;

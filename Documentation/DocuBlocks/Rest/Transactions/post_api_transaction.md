@@ -1,16 +1,15 @@
 
 @startDocuBlock post_api_transaction
-@brief execute a server-side transaction
 
-@RESTHEADER{POST /_api/transaction, Execute transaction, executeJavaScriptTransaction}
+@RESTHEADER{POST /_api/transaction, Execute a JavaScript Transaction, executeJavaScriptTransaction}
 
 @RESTBODYPARAM{collections,string,required,string}
-*collections* must be a JSON object that can have one or all sub-attributes
-*read*, *write* or *exclusive*, each being an array of collection names or a
+`collections` must be a JSON object that can have one or all sub-attributes
+`read`, `write` or `exclusive`, each being an array of collection names or a
 single collection name as string. Collections that will be written to in the
-transaction must be declared with the *write* or *exclusive* attribute or it
+transaction must be declared with the `write` or `exclusive` attribute or it
 will fail, whereas non-declared collections from which is solely read will be
-added lazily. The optional sub-attribute *allowImplicit* can be set to *false*
+added lazily. The optional sub-attribute `allowImplicit` can be set to `false`
 to let transactions fail in case of undeclared collections for reading.
 Collections for reading should be fully declared if possible, to avoid
 deadlocks.
@@ -19,9 +18,9 @@ deadlocks.
 the actual transaction operations to be executed, in the
 form of stringified JavaScript code. The code will be executed on server
 side, with late binding. It is thus critical that the code specified in
-*action* properly sets up all the variables it needs.
-If the code specified in *action* ends with a return statement, the
-value returned will also be returned by the REST API in the *result*
+`action` properly sets up all the variables it needs.
+If the code specified in `action` ends with a return statement, the
+value returned will also be returned by the REST API in the `result`
 attribute if the transaction committed successfully.
 
 @RESTBODYPARAM{waitForSync,boolean,optional,}
@@ -35,11 +34,11 @@ Allow reading from undeclared collections.
 an optional numeric value that can be used to set a
 timeout in seconds for waiting on collection locks. This option is only
 meaningful when using exclusive locks. If not specified, a default value of
-900 seconds will be used. Setting *lockTimeout* to *0* will make ArangoDB
+900 seconds will be used. Setting `lockTimeout` to `0` will make ArangoDB
 not time out waiting for a lock.
 
 @RESTBODYPARAM{params,string,optional,string}
-optional arguments passed to *action*.
+optional arguments passed to `action`.
 
 @RESTBODYPARAM{maxTransactionSize,integer,optional,int64}
 Transaction size limit in bytes.
@@ -49,17 +48,17 @@ The transaction description must be passed in the body of the POST request.
 
 If the transaction is fully executed and committed on the server,
 *HTTP 200* will be returned. Additionally, the return value of the
-code defined in *action* will be returned in the *result* attribute.
+code defined in `action` will be returned in the `result` attribute.
 
 For successfully committed transactions, the returned JSON object has the
 following properties:
 
-- *error*: boolean flag to indicate if an error occurred (*false*
+- `error`: boolean flag to indicate if an error occurred (`false`
   in this case)
 
-- *code*: the HTTP status code
+- `code`: the HTTP status code
 
-- *result*: the return value of the transaction
+- `result`: the return value of the transaction
 
 If the transaction specification is either missing or malformed, the server
 will respond with *HTTP 400*.
@@ -67,16 +66,16 @@ will respond with *HTTP 400*.
 The body of the response will then contain a JSON object with additional error
 details. The object has the following attributes:
 
-- *error*: boolean flag to indicate that an error occurred (*true* in this case)
+- `error`: boolean flag to indicate that an error occurred (`true` in this case)
 
-- *code*: the HTTP status code
+- `code`: the HTTP status code
 
-- *errorNum*: the server error number
+- `errorNum`: the server error number
 
-- *errorMessage*: a descriptive error message
+- `errorMessage`: a descriptive error message
 
 If a transaction fails to commit, either by an exception thrown in the
-*action* code, or by an internal error, the server will respond with
+`action` code, or by an internal error, the server will respond with
 an error.
 Any other errors will be returned with any of the return codes
 *HTTP 400*, *HTTP 409*, or *HTTP 500*.
