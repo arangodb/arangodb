@@ -229,7 +229,7 @@ class RocksDBDumpContext {
 
   // Thread pool for dumping. Having our own threads is much easier: we can let
   // them block.
-  std::vector<std::jthread> _threads;
+  std::vector<std::thread> _threads;
 
   // Counts +1 for a block on the pop side and -1 for a block on the push side.
   std::atomic<int64_t> _blockCounter{0};

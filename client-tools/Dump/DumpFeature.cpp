@@ -1537,7 +1537,7 @@ Result DumpFeature::ParallelDumpServer::run(
   createDumpContext(client);
 
   // start n network threads
-  std::vector<std::jthread> threads;
+  std::vector<std::thread> threads;
   for (size_t i = 0; i < options.localNetworkThreads; i++) {
     threads.emplace_back([&, i, guard = BoundedChannelProducerGuard{queue}] {
       runNetworkThread(i);
@@ -1550,6 +1550,9 @@ Result DumpFeature::ParallelDumpServer::run(
   }
 
   // on our way out, we wait for all threads to join
+  for (auto& thrd : threads) {
+    thrd.join();
+  }
   threads.clear();
 
   // remove dump context from server

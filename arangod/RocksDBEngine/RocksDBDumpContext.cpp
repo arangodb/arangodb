@@ -211,6 +211,11 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
 RocksDBDumpContext::~RocksDBDumpContext() {
   _workItems.stop();
   _channel.stop();
+
+  // join all worker threads
+  for (auto& thrd : _threads) {
+    thrd.join();
+  }
   _threads.clear();
 }
 
