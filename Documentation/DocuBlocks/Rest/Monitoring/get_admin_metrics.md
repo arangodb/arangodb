@@ -1,14 +1,13 @@
 
 @startDocuBlock get_admin_metrics
-@brief return the current instance metrics
 
-@RESTHEADER{GET /_admin/metrics, Read the metrics, getMetrics}
+@RESTHEADER{GET /_admin/metrics, Get the metrics (deprecated), getMetrics}
 
 @HINTS
 {% hint 'warning' %}
 This endpoint should no longer be used. It is deprecated from version 3.8.0 on.
-Use `/_admin/metrics/v2` instead, which provides the data exposed by this API
-and a lot more.
+Use `/_admin/metrics/v2` instead. From version 3.10.0 onward, `/_admin/metrics`
+returns the same metrics as `/_admin/metrics/v2`.
 {% endhint %}
 
 @RESTQUERYPARAMETERS
