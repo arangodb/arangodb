@@ -1,7 +1,6 @@
 @startDocuBlock put_api_user_user
-@brief Replace an existing user.
 
-@RESTHEADER{PUT /_api/user/{user}, Replace User, replaceUserData}
+@RESTHEADER{PUT /_api/user/{user}, Replace a user, replaceUserData}
 
 @RESTURLPARAMETERS
 

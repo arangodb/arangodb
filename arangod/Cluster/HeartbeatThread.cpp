@@ -362,7 +362,7 @@ void HeartbeatThread::run() {
       runSingleServer();
     }
   } else if (ServerState::instance()->isAgent(role)) {
-    runAgent();
+    // do nothing
   } else {
     LOG_TOPIC("8291e", ERR, Logger::HEARTBEAT)
         << "invalid role setup found when starting HeartbeatThread";
@@ -1192,28 +1192,6 @@ void HeartbeatThread::runCoordinator() {
           << "Got an unknown exception in coordinator heartbeat";
     }
     LOG_TOPIC("f5627", DEBUG, Logger::HEARTBEAT) << "Heart beating.";
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat main loop, agent version
-////////////////////////////////////////////////////////////////////////////////
-
-void HeartbeatThread::runAgent() {
-  // simple loop to post dead threads every hour, no other tasks today
-  while (!isStopping()) {
-    try {
-      std::unique_lock locker{_condition.mutex};
-      if (!isStopping()) {
-        _condition.cv.wait_for(locker, std::chrono::hours{1});
-      }
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("e6761", ERR, Logger::HEARTBEAT)
-          << "Got an exception in agent heartbeat: " << ex.what();
-    } catch (...) {
-      LOG_TOPIC("e1dbc", ERR, Logger::HEARTBEAT)
-          << "Got an unknown exception in agent heartbeat";
-    }
   }
 }
 
