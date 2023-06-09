@@ -1,7 +1,6 @@
 @startDocuBlock get_api_cluster_endpoints
-@brief This API call returns information about all Coordinator endpoints (cluster only).
 
-@RESTHEADER{GET /_api/cluster/endpoints, Get information about all Coordinator endpoints, listClusterEndpoints}
+@RESTHEADER{GET /_api/cluster/endpoints, List all Coordinator endpoints, listClusterEndpoints}
 
 @RESTDESCRIPTION
 Returns an object with an attribute `endpoints`, which contains an
@@ -17,7 +16,7 @@ cluster mode. In case of an error the `error` attribute is set to
 is returned when everything went well.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate whether an error occurred (*true* in this case)
+boolean flag to indicate whether an error occurred (`true` in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code - 200

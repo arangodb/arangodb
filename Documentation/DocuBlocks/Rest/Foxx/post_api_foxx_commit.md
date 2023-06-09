@@ -1,7 +1,6 @@
 @startDocuBlock post_api_foxx_commit
-@brief commit local service state
 
-@RESTHEADER{POST /_api/foxx/commit, Commit local service state, commitFoxxServiceState}
+@RESTHEADER{POST /_api/foxx/commit, Commit the local service state, commitFoxxServiceState}
 
 @RESTDESCRIPTION
 Commits the local service state of the Coordinator to the database.

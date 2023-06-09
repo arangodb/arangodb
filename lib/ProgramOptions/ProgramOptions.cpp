@@ -606,7 +606,7 @@ Option& ProgramOptions::getOption(std::string const& name) {
   size_t const pos = stripped.find(',');
   if (pos != std::string::npos) {
     // remove shorthand
-    stripped = stripped.substr(0, pos);
+    stripped.resize(pos);
   }
   auto parts = Option::splitName(stripped);
   auto it = _sections.find(parts.first);
