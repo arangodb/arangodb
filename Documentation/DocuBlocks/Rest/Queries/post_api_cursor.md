@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_cursor
-@brief create a cursor and return the first results
 
-@RESTHEADER{POST /_api/cursor, Create cursor, createAqlQueryCursor}
+@RESTHEADER{POST /_api/cursor, Create a cursor, createAqlQueryCursor}
 
 @RESTHEADERPARAMETERS
 
@@ -31,8 +30,8 @@ is only returned when requested.
 @RESTBODYPARAM{batchSize,integer,optional,int64}
 maximum number of result documents to be transferred from
 the server to the client in one roundtrip. If this attribute is
-not set, a server-controlled default value will be used. A *batchSize* value of
-*0* is disallowed.
+not set, a server-controlled default value will be used. A `batchSize` value of
+`0` is disallowed.
 
 @RESTBODYPARAM{ttl,integer,optional,int64}
 The time-to-live for the cursor (in seconds). If the result set is small enough
@@ -45,14 +44,14 @@ value will be used (default: 30 seconds).
 
 @RESTBODYPARAM{cache,boolean,optional,}
 flag to determine whether the AQL query results cache
-shall be used. If set to *false*, then any query cache lookup will be skipped
-for the query. If set to *true*, it will lead to the query cache being checked
-for the query if the query cache mode is either *on* or *demand*.
+shall be used. If set to `false`, then any query cache lookup will be skipped
+for the query. If set to `true`, it will lead to the query cache being checked
+for the query if the query cache mode is either `on` or `demand`.
 
 @RESTBODYPARAM{memoryLimit,integer,optional,int64}
 the maximum number of memory (measured in bytes) that the query is allowed to
 use. If set, then the query will fail with error "resource limit exceeded" in
-case it allocates too much memory. A value of *0* indicates that there is no
+case it allocates too much memory. A value of `0` indicates that there is no
 memory limit.
 
 @RESTBODYPARAM{bindVars,object,optional,}
@@ -65,25 +64,25 @@ attribute name. For example: `"bindVars": { "var": 42, "@coll": "products" }`.
 key/value object with extra options for the query.
 
 @RESTSTRUCT{fullCount,post_api_cursor_opts,boolean,optional,}
-if set to *true* and the query contains a *LIMIT* clause, then the
-result will have an *extra* attribute with the sub-attributes *stats*
-and *fullCount*, `{ ... , "extra": { "stats": { "fullCount": 123 } } }`.
-The *fullCount* attribute will contain the number of documents in the result before the
+if set to `true` and the query contains a `LIMIT` clause, then the
+result will have an `extra` attribute with the sub-attributes `stats`
+and `fullCount`, `{ ... , "extra": { "stats": { "fullCount": 123 } } }`.
+The `fullCount` attribute will contain the number of documents in the result before the
 last top-level LIMIT in the query was applied. It can be used to count the number of
 documents that match certain filter criteria, but only return a subset of them, in one go.
 It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting the option
 will disable a few LIMIT optimizations and may lead to more documents being processed,
-and thus make queries run longer. Note that the *fullCount* attribute may only
+and thus make queries run longer. Note that the `fullCount` attribute may only
 be present in the result if the query has a top-level LIMIT clause and the LIMIT
 clause is actually used in the query.
 
 @RESTSTRUCT{fillBlockCache,post_api_cursor_opts,boolean,optional,}
-if set to *true* or not specified, this will make the query store the data it 
+if set to `true` or not specified, this will make the query store the data it 
 reads via the RocksDB storage engine in the RocksDB block cache. This is usually 
-the desired behavior. The option can be set to *false* for queries that are
+the desired behavior. The option can be set to `false` for queries that are
 known to either read a lot of data which would thrash the block cache, or for queries
 that read data which are known to be outside of the hot set. By setting the option
-to *false*, data read by the query will not make it into the RocksDB block cache if
+to `false`, data read by the query will not make it into the RocksDB block cache if
 not already in there, thus leaving more room for the actual hot set.
 
 @RESTSTRUCT{maxNumberOfPlans,post_api_cursor_opts,integer,optional,int64}
@@ -103,16 +102,16 @@ a query will return is limited to 10 by default, but that number can be increase
 or decreased by setting this attribute.
 
 @RESTSTRUCT{failOnWarning,post_api_cursor_opts,boolean,optional,}
-When set to *true*, the query will throw an exception and abort instead of producing
+When set to `true`, the query will throw an exception and abort instead of producing
 a warning. This option should be used during development to catch potential issues
-early. When the attribute is set to *false*, warnings will not be propagated to
+early. When the attribute is set to `false`, warnings will not be propagated to
 exceptions and will be returned with the query result.
 There is also a server configuration option `--query.fail-on-warning` for setting the
-default value for *failOnWarning* so it does not need to be set on a per-query level.
+default value for `failOnWarning` so it does not need to be set on a per-query level.
 
 @RESTSTRUCT{allowRetry,post_api_cursor_opts,boolean,optional,}
-Set this option to `true` to make it possible to retry fetching the latest batch
-from a cursor.
+Set this option to `true` to make it possible to retry
+fetching the latest batch from a cursor. The default is `false`.
 
 If retrieving a result batch fails because of a connection issue, you can ask
 for that batch again using the `POST /_api/cursor/<cursor-id>/<batch-id>`
@@ -121,11 +120,30 @@ with every batch. Every result response except the last one also includes a
 `nextBatchId` attribute, indicating the ID of the batch after the current.
 You can remember and use this batch ID should retrieving the next batch fail.
 
-You can only request the latest batch again. Earlier batches are not kept on the
-server-side.
+You can only request the latest batch again (or the next batch).
+Earlier batches are not kept on the server-side.
+Requesting a batch again does not advance the cursor.
+
+You can also call this endpoint with the next batch identifier, i.e. the value
+returned in the `nextBatchId` attribute of a previous request. This advances the
+cursor and returns the results of the next batch. This is only supported if there
+are more results in the cursor (i.e. `hasMore` is `true` in the latest batch).
+
+From v3.11.1 onward, you may use the `POST /_api/cursor/<cursor-id>/<batch-id>`
+endpoint even if the `allowRetry` attribute is `false` to fetch the next batch,
+but you cannot request a batch again unless you set it to `true`.
+
+To allow refetching of the very last batch of the query, the server cannot
+automatically delete the cursor. After the first attempt of fetching the last
+batch, the server would normally delete the cursor to free up resources. As you
+might need to reattempt the fetch, it needs to keep the final batch when the
+`allowRetry` option is enabled. Once you successfully received the last batch,
+you should call the `DELETE /_api/cursor/<cursor-id>` endpoint so that the
+server doesn't unnecessarily keep the batch until the cursor times out
+(`ttl` query option).
 
 @RESTSTRUCT{stream,post_api_cursor_opts,boolean,optional,}
-Can be enabled to execute the query lazily. If set to *true*, then the query is
+Can be enabled to execute the query lazily. If set to `true`, then the query is
 executed as long as necessary to produce up to `batchSize` results. These
 results are returned immediately and the query is suspended until the client
 asks for the next batch (if there are more results). Depending on the query
@@ -151,7 +169,7 @@ Remarks:
 - Query statistics, profiling data and warnings are delivered as part of the
   last batch.
 
-If the `stream` option is *false* (default), then the complete result of the
+If the `stream` option is `false` (default), then the complete result of the
 query is calculated before any of it is returned to the client. The server
 stores the full result in memory (on the contacted Coordinator if in a cluster).
 All other resources are freed immediately (locks, RocksDB snapshots). The query
@@ -274,6 +292,10 @@ officially committed on the leader.
 This feature is only available in the Enterprise Edition.
 
 @RESTDESCRIPTION
+Submits an AQL query for execution in the current database. The server returns
+a result batch and may indicate that further batches need to be fetched using
+a cursor identifier.
+
 The query details include the query string plus optional query options and
 bind parameters. These values need to be passed in a JSON representation in
 the body of the POST request.
@@ -286,33 +308,43 @@ is returned if the result set can be created by the server.
 @RESTREPLYBODY{error,boolean,required,}
 A flag to indicate that an error occurred (`false` in this case).
 
-@RESTREPLYBODY{code,integer,required,integer}
+@RESTREPLYBODY{code,integer,required,int64}
 The HTTP status code.
 
 @RESTREPLYBODY{result,array,optional,}
-An array of result documents (might be empty if query has no results).
+An array of result documents for the current batch
+(might be empty if the query has no results).
 
 @RESTREPLYBODY{hasMore,boolean,required,}
 A boolean indicator whether there are more results
 available for the cursor on the server.
+
+Note that even if `hasMore` returns `true`, the next call might still return no
+documents. Once `hasMore` is `false`, the cursor is exhausted and the client
+can stop asking for more results.
 
 @RESTREPLYBODY{count,integer,optional,int64}
 The total number of result documents available (only
 available if the query was executed with the `count` attribute set).
 
 @RESTREPLYBODY{id,string,optional,string}
-The ID of a temporary cursor created on the server for fetching more result batches.
+The ID of the cursor for fetching more result batches.
 
 @RESTREPLYBODY{nextBatchId,string,optional,string}
-Only set if the `allowRetry` query option is enabled.
+Only set if the `allowRetry` query option is enabled in v3.11.0.
+From v3.11.1 onward, this attribute is always set, except in the last batch.
 
 The ID of the batch after the current one. The first batch has an ID of `1` and
 the value is incremented by 1 with every batch. You can remember and use this
 batch ID should retrieving the next batch fail. Use the
 `POST /_api/cursor/<cursor-id>/<batch-id>` endpoint to ask for the batch again.
+You can also request the next batch.
 
 @RESTREPLYBODY{extra,object,optional,post_api_cursor_extra}
 An optional JSON object with extra information about the query result.
+
+Only delivered as part of the first batch, or the last batch in case of a cursor
+with the `stream` option enabled.
 
 @RESTSTRUCT{warnings,post_api_cursor_extra,array,required,post_api_cursor_extra_warnings}
 A list of query warnings.
@@ -480,7 +512,7 @@ The body of the response contains a JSON object with additional error
 details. The object has the following attributes:
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate that an error occurred (*true* in this case)
+boolean flag to indicate that an error occurred (`true` in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
@@ -654,7 +686,7 @@ modified documents
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Execute a data-modification query with option *ignoreErrors*
+Execute a data-modification query with option `ignoreErrors`
 
 @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteIgnore}
     var cn = "products";

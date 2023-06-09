@@ -1,13 +1,12 @@
 
 @startDocuBlock get_api_document_collection_key
-@brief reads a single document
 
-@RESTHEADER{GET /_api/document/{collection}/{key},Read document,getDocument}
+@RESTHEADER{GET /_api/document/{collection}/{key},Get a document,getDocument}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{collection,string,required}
-Name of the *collection* from which the document is to be read.
+Name of the collection from which the document is to be read.
 
 @RESTURLPARAM{key,string,required}
 The document key.
@@ -16,13 +15,13 @@ The document key.
 
 @RESTHEADERPARAM{If-None-Match,string,optional}
 If the "If-None-Match" header is given, then it must contain exactly one
-Etag. The document is returned, if it has a different revision than the
-given Etag. Otherwise an *HTTP 304* is returned.
+ETag. The document is returned, if it has a different revision than the
+given ETag. Otherwise an *HTTP 304* is returned.
 
 @RESTHEADERPARAM{If-Match,string,optional}
 If the "If-Match" header is given, then it must contain exactly one
-Etag. The document is returned, if it has the same revision as the
-given Etag. Otherwise a *HTTP 412* is returned.
+ETag. The document is returned, if it has the same revision as the
+given ETag. Otherwise a *HTTP 412* is returned.
 
 @RESTHEADERPARAM{x-arango-allow-dirty-read,boolean,optional}
 Set this header to `true` to allow the Coordinator to ask any shard replica for
@@ -37,10 +36,11 @@ To make this operation a part of a Stream Transaction, set this header to the
 transaction ID returned by the `POST /_api/transaction/begin` call.
 
 @RESTDESCRIPTION
-Returns the document identified by *document-id*. The returned
-document contains three special attributes: *_id* containing the document
-identifier, *_key* containing key which uniquely identifies a document
-in a given collection and *_rev* containing the revision.
+Returns the document identified by the collection name and document key.
+The returned document contains three special attributes:
+- `_id` containing the document identifier
+- `_key` containing key which uniquely identifies a document in a given collection
+- `_rev` containing the revision
 
 @RESTRETURNCODES
 
@@ -57,8 +57,8 @@ is returned if the document or collection was not found
 @RESTRETURNCODE{412}
 is returned if an "If-Match" header is given and the found
 document has a different version. The response will also contain the found
-document's current revision in the *_rev* attribute. Additionally, the
-attributes *_id* and *_key* will be returned.
+document's current revision in the `_rev` attribute. Additionally, the
+attributes `_id` and `_key` will be returned.
 
 @EXAMPLES
 
@@ -80,7 +80,7 @@ Use a document identifier:
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Use a document identifier and an Etag:
+Use a document identifier and an ETag:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentIfNoneMatch}
     var cn = "products";

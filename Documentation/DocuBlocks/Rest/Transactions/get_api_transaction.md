@@ -1,18 +1,17 @@
 
 @startDocuBlock get_api_transaction
-@brief Return the currently running server-side transactions
 
-@RESTHEADER{GET /_api/transaction, Get currently running transactions, listStreamTransactions}
+@RESTHEADER{GET /_api/transaction, List the running Stream Transactions, listStreamTransactions}
 
 @RESTDESCRIPTION
-The result is an object with the attribute *transactions*, which contains
+The result is an object with the `transactions` attribute, which contains
 an array of transactions.
 In a cluster the array will contain the transactions from all Coordinators.
 
 Each array entry contains an object with the following attributes:
 
-- *id*: the transaction's id
-- *state*: the transaction's status
+- `id`: the transaction's id
+- `state`: the transaction's status
 
 @RESTRETURNCODES
 
