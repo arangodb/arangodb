@@ -611,7 +611,6 @@ function getClusterStrings(options) {
 function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
   print(CYAN + which + ' tests...' + RESET);
 
-  dumpOptions.useParallelDump = true;
   const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
   if (!helper.startFirstInstance()) {
     helper.destructor(false);
