@@ -162,47 +162,46 @@ void RestDumpHandler::handleCommandDumpStart() {
     return;
   }
 
-  uint64_t batchSize = [&body]() {
+  RocksDBDumpContextOptions opts;
+  opts.batchSize = [&body]() {
     if (auto s = body.get("batchSize"); s.isNumber()) {
       return s.getNumber<uint64_t>();
     }
     return ::defaultBatchSize;
   }();
-  uint64_t prefetchCount = [&body]() {
+  opts.prefetchCount = [&body]() {
     if (auto s = body.get("prefetchCount"); s.isNumber()) {
       return s.getNumber<uint64_t>();
     }
     return ::defaultPrefetchCount;
   }();
-  uint64_t parallelism = [&body]() {
+  opts.parallelism = [&body]() {
     if (auto s = body.get("parallelism"); s.isNumber()) {
       return s.getNumber<uint64_t>();
     }
     return ::defaultParallelism;
   }();
-  double ttl = [&body]() {
+  opts.ttl = [&body]() {
     if (auto s = body.get("ttl"); s.isNumber()) {
       return s.getNumber<double>();
     }
     return ::defaultTtl;
   }();
 
-  std::vector<std::string> shards;
   if (auto s = body.get("shards"); !s.isArray()) {
     generateError(
         Result(TRI_ERROR_BAD_PARAMETER, "invalid 'shards' value in request"));
     return;
   } else {
     for (auto it : VPackArrayIterator(s)) {
-      shards.emplace_back(it.copyString());
+      opts.shards.emplace_back(it.copyString());
     }
   }
 
   auto& engine =
       server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   auto* manager = engine.dumpManager();
-  auto guard = manager->createContext(batchSize, prefetchCount, parallelism,
-                                      std::move(shards), ttl, user, database);
+  auto guard = manager->createContext(std::move(opts), user, database);
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC("x-arango-dump-id", guard->id());

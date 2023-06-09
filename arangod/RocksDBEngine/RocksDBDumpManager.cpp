@@ -45,8 +45,7 @@ RocksDBDumpManager::~RocksDBDumpManager() {
 }
 
 RocksDBDumpContextGuard RocksDBDumpManager::createContext(
-    uint64_t batchSize, uint64_t prefetchCount, uint64_t parallelism,
-    std::vector<std::string> const& shards, double ttl, std::string const& user,
+    RocksDBDumpContextOptions opts, std::string const& user,
     std::string const& database) {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
@@ -55,8 +54,7 @@ RocksDBDumpContextGuard RocksDBDumpManager::createContext(
   // no harm is done, and no resources will be leaked.
   auto context = std::make_shared<RocksDBDumpContext>(
       _engine, _engine.server().getFeature<DatabaseFeature>(), generateId(),
-      batchSize, prefetchCount, parallelism, std::move(shards), ttl, user,
-      database);
+      std::move(opts), user, database);
 
   std::lock_guard mutexLocker{_lock};
 

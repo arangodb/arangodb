@@ -84,10 +84,10 @@ class DumpFeature final : public ArangoDumpFeature {
 
     bool useExperimentalDump{false};
     bool splitFiles{false};
-    std::size_t dbserverWorkerThreads{5};
-    std::size_t dbserverPrefetchBatches{5};
-    std::size_t localWriterThreads{5};
-    std::size_t localNetworkThreads{4};
+    std::uint64_t dbserverWorkerThreads{5};
+    std::uint64_t dbserverPrefetchBatches{5};
+    std::uint64_t localWriterThreads{5};
+    std::uint64_t localNetworkThreads{4};
   };
 
   /// @brief Stores stats about the overall dump progress
