@@ -32,6 +32,7 @@
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
 #include "Utils/ManagedDirectory.h"
+#include "Basics/BoundedChannel.h"
 
 #include <memory>
 #include <mutex>
@@ -186,6 +187,9 @@ class DumpFeature final : public ArangoDumpFeature {
         httpclient::SimpleHttpClient&, std::uint64_t batchId,
         std::optional<std::uint64_t> lastBatch);
 
+    void runNetworkThread(size_t threadId) noexcept;
+    void runWriterThread() noexcept;
+
     void createDumpContext(httpclient::SimpleHttpClient& client);
     void finishDumpContext(httpclient::SimpleHttpClient& client);
 
@@ -195,6 +199,7 @@ class DumpFeature final : public ArangoDumpFeature {
     std::string const server;
     std::atomic<std::uint64_t> _batchCounter{0};
     std::string dumpId;
+    BoundedChannel<arangodb::httpclient::SimpleHttpResult> queue;
 
     enum BlockAt { kLocalQueue = 0, kRemoteQueue = 1 };
 

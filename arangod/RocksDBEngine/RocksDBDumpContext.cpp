@@ -43,6 +43,8 @@
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 
+#include <utility>
+
 using namespace arangodb;
 
 RocksDBDumpContext::CollectionInfo::CollectionInfo(TRI_vocbase_t& vocbase,
@@ -117,12 +119,11 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
                                        DatabaseFeature& databaseFeature,
                                        std::string id,
                                        RocksDBDumpContextOptions options,
-                                       std::string const& user,
-                                       std::string const& database)
+                                       std::string user, std::string database)
     : _engine(engine),
       _id(std::move(id)),
-      _user(user),
-      _database(database),
+      _user(std::move(user)),
+      _database(std::move(database)),
       _options(std::move(options)),
       _expires(TRI_microtime() + _options.ttl),
       _workItems(_options.parallelism),
@@ -131,7 +132,7 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
   // while the context is in use. that way we only have to ensure once that the
   // database is there. creating this guard will throw if the database cannot be
   // found.
-  _databaseGuard = std::make_unique<DatabaseGuard>(databaseFeature, database);
+  _databaseGuard = std::make_unique<DatabaseGuard>(databaseFeature, _database);
 
   TRI_vocbase_t& vocbase = _databaseGuard->database();
 
@@ -236,9 +237,9 @@ void RocksDBDumpContext::extendLifetime() noexcept {
   _expires.fetch_add(_options.ttl, std::memory_order_relaxed);
 }
 
-std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
+std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(
     std::uint64_t batchId, std::optional<std::uint64_t> lastBatch) {
-  std::unique_lock guard(_mutex);
+  std::unique_lock guard(_batchesMutex);
   if (lastBatch.has_value()) {
     _batches.erase(*lastBatch);
   }
@@ -282,8 +283,6 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
 
   CollectionInfo const& ci = *item.collection;
 
-  // TODO: item's bounds are not honored here.
-  // instead, the full collection is dumped
   LOG_TOPIC("98dfe", DEBUG, Logger::DUMP)
       << "handling dump work item for collection '"
       << ci.guard.collection()->name() << "', lower bound: " << item.lowerBound
