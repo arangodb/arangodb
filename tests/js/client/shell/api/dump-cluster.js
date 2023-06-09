@@ -88,9 +88,10 @@ function createContext(server, options) {
   const id = response.headers["x-arango-dump-id"];
 
   return {
+    id,
     read: function* () {
-      for(let batchId = 0;; batchId++) {
-        const response = apiNext(server, id, batchId, batchId > 0 ? batchId-1 : undefined);
+      for (let batchId = 0; ; batchId++) {
+        const response = apiNext(server, id, batchId, batchId > 0 ? batchId - 1 : undefined);
         if (response.code == 204) {
           break;
         }
@@ -102,14 +103,12 @@ function createContext(server, options) {
         assertNotEqual(options.shards.indexOf(shard), -1);
 
         const jsonl = response.body.toString().split("\n");
-
         for (const line of jsonl) {
           if (line.length === 0) {
             continue;
           }
           yield [JSON.parse(line), shard];
         }
-
       }
     },
     drop: function () {
@@ -171,7 +170,39 @@ function DumpAPI() {
       for (let i = 0; i < 10000; i++) {
         assertEqual(docs[i].value, i);
       }
-    }
+    },
+
+    testBatchRetry: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server]});
+
+      let response1 = apiNext(server, ctx.id, 0);
+      assertEqual(response1.code, 200);
+
+      let response2 = apiNext(server, ctx.id, 0);
+      assertEqual(response2.code, 200);
+      // it should be the same batch
+      assertEqual(response1.body, response2.body);
+      ctx.drop();
+    },
+
+    testBatchUnknownContext: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+
+      let response1 = apiNext(server, "DOES-NOT-EXIST", 0);
+      assertEqual(response1.code, 404);
+    },
+
+    testContextTTL: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server], ttl: 1});
+      internal.sleep(10);
+      let response = apiNext(server, ctx.id, 0);
+      assertEqual(response.code, 404);
+    },
   };
 }
 
