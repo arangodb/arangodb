@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_collection_collection_load
-@brief loads a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/load, Load collection, loadCollection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/load, Load a collection, loadCollection}
 
 @HINTS
 {% hint 'warning' %}
@@ -27,38 +26,38 @@ load a collection into memory.
 
 The request body object might optionally contain the following attribute:
 
-- *count*: If set, this controls whether the return value should include
-  the number of documents in the collection. Setting *count* to
-  *false* may speed up loading a collection. The default value for
-  *count* is *true*.
+- `count`: If set, this controls whether the return value should include
+  the number of documents in the collection. Setting `count` to
+  `false` may speed up loading a collection. The default value for
+  `count` is `true`.
 
 A call to this API returns an object with the following attributes for
 compatibility reasons:
 
-- *id*: The identifier of the collection.
+- `id`: The identifier of the collection.
 
-- *name*: The name of the collection.
+- `name`: The name of the collection.
 
-- *count*: The number of documents inside the collection. This is only
-  returned if the *count* input parameters is set to *true* or has
+- `count`: The number of documents inside the collection. This is only
+  returned if the `count` input parameters is set to `true` or has
   not been specified.
 
-- *status*: The status of the collection as number.
+- `status`: The status of the collection as number.
 
-- *type*: The collection type. Valid types are:
+- `type`: The collection type. Valid types are:
   - 2: document collection
   - 3: edge collection
 
-- *isSystem*: If *true* then the collection is a system collection.
+- `isSystem`: If `true` then the collection is a system collection.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *collection-name* is missing, then a *HTTP 400* is
+If the `collection-name` is missing, then a *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404*
+If the `collection-name` is unknown, then a *HTTP 404*
 is returned.
 
 @EXAMPLES

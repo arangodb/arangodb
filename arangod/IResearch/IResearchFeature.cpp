@@ -1312,14 +1312,6 @@ std::pair<size_t, size_t> IResearchFeature::limits(ThreadGroup id) const {
   return _async->get(id).limits();
 }
 
-bool IResearchFeature::linkSkippedDuringRecovery(
-    arangodb::IndexId id) const noexcept {
-  if (_recoveryHelper != nullptr) {
-    return _recoveryHelper->wasSkipped(id);
-  }
-  return false;
-}
-
 void IResearchFeature::trackOutOfSyncLink() noexcept { ++_outOfSyncLinks; }
 
 void IResearchFeature::untrackOutOfSyncLink() noexcept {
