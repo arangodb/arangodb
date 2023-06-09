@@ -1,6 +1,10 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* SEARCH-480: Speedup ArangoSearch recovery.
+
+* SEARCH-476: Fix bug in fst builder.
+
 * BTS-1325: AQL: Fixed a possible deadlock with multiple parallel traversals.
 
 * Updated arangosync to v2.18.0.
