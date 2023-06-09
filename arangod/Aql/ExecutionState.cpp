@@ -23,35 +23,45 @@
 
 #include "ExecutionState.h"
 
+#include "Logger/LogMacros.h"
+
 #include <ostream>
 
 namespace arangodb::aql {
 
-std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
+auto toStringView(ExecutionState state) -> std::string_view {
   switch (state) {
     case ExecutionState::DONE:
-      ostream << "DONE";
-      break;
+      return "DONE";
     case ExecutionState::HASMORE:
-      ostream << "HASMORE";
-      break;
+      return "HASMORE";
     case ExecutionState::WAITING:
-      ostream << "WAITING";
-      break;
+      return "WAITING";
   }
-  return ostream;
+  LOG_TOPIC("3ad03", FATAL, arangodb::Logger::FIXME)
+      << "Unhandled state "
+      << static_cast<std::underlying_type_t<decltype(state)>>(state);
+  std::abort();
+}
+auto toStringView(ExecutorState state) -> std::string_view {
+  switch (state) {
+    case ExecutorState::DONE:
+      return "DONE";
+    case ExecutorState::HASMORE:
+      return "HASMORE";
+  }
+  LOG_TOPIC("ae66d", FATAL, arangodb::Logger::FIXME)
+      << "Unhandled state "
+      << static_cast<std::underlying_type_t<decltype(state)>>(state);
+  std::abort();
+}
+
+std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
+  return ostream << toStringView(state);
 }
 
 std::ostream& operator<<(std::ostream& ostream, ExecutorState state) {
-  switch (state) {
-    case ExecutorState::DONE:
-      ostream << "DONE";
-      break;
-    case ExecutorState::HASMORE:
-      ostream << "HASMORE";
-      break;
-  }
-  return ostream;
+  return ostream << toStringView(state);
 }
 
 }  // namespace arangodb::aql
