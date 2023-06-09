@@ -473,30 +473,35 @@ inline std::istream& operator>>(
 // For binary strings that's impossible to use
 // Zero() or NoWeight() as they may interfere
 // with real values
-inline irs::bytes_ref Plus(
-    const StringLeftWeight<irs::byte_type>& lhs,
-    const StringLeftWeight<irs::byte_type>& rhs) {
-  typedef irs::bytes_ref Weight;
-
+inline irs::bytes_ref PlusImpl(irs::bytes_ref lhs, irs::bytes_ref rhs) {
   const auto* plhs = &lhs;
   const auto* prhs = &rhs;
 
-  if (rhs.Size() > lhs.Size()) {
+  if (rhs.size() > lhs.size()) {
     // enusre that 'prhs' is shorter than 'plhs'
     // The behavior is undefined if the second range is shorter than the first range.
     // (http://en.cppreference.com/w/cpp/algorithm/mismatch)
     std::swap(plhs, prhs);
   }
 
-  assert(prhs->Size() <= plhs->Size());
+  auto pair =
+    std::mismatch(prhs->c_str(), prhs->c_str() + prhs->size(), plhs->c_str());
+  return {prhs->c_str(), static_cast<size_t>(pair.first - prhs->c_str())};
+}
 
-  return Weight(
-    prhs->c_str(),
-    std::distance(
-      prhs->c_str(),
-      std::mismatch(prhs->c_str(), (prhs->c_str() + prhs->Size()), plhs->c_str()).first
-    )
-  );
+inline irs::bytes_ref Plus(const StringLeftWeight<irs::byte_type>& lhs,
+                            const StringLeftWeight<irs::byte_type>& rhs) {
+  return PlusImpl(lhs, rhs);
+}
+
+inline irs::bytes_ref Plus(irs::bytes_ref lhs,
+                            const StringLeftWeight<irs::byte_type>& rhs) {
+  return PlusImpl(lhs, rhs);
+}
+
+inline irs::bytes_ref Plus(const StringLeftWeight<irs::byte_type>& lhs,
+                            irs::bytes_ref rhs) {
+  return PlusImpl(lhs, rhs);
 }
 
 // For binary strings that's impossible to use
