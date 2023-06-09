@@ -31,10 +31,9 @@
 
 namespace arangodb {
 
-// TODO there will be people crying because this is not ideal. Like calling
-//  notify, while holding the mutex. I don't care right now and probably not
-//  in the future. This is used in IO heavy workloads, where the latency impact
-//  can't even be measured.
+// This implementation is fine for io heavy workloads but might not be
+// sufficient for computational expensive operations with a lot of concurrent
+// push/pop operations.
 template<typename T>
 struct BoundedChannel {
   explicit BoundedChannel(std::size_t queueSize) : _queue(queueSize) {}
