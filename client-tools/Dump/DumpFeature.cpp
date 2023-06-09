@@ -1627,6 +1627,7 @@ Result DumpFeature::ParallelDumpServer::run(
         countBlocker(kRemoteQueue, count);
 
         auto file = getFileForShard(shardId);
+        collectionName = shards.at(shardId).collectionName;
         arangodb::Result result = dumpJsonObjects(*this, *file, body);
 
         if (result.fail()) {
