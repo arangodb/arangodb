@@ -240,7 +240,7 @@ void RestDumpHandler::handleCommandDumpNext() {
   }
 
   // output the batch value
-  _response->setHeaderNC("x-arango-dump-shard-id", batch->shard);
+  _response->setHeaderNC("x-arango-dump-shard-id", std::string{batch->shard});
   _response->setHeaderNC("x-arango-dump-block-counts", std::to_string(counts));
   _response->setContentType(rest::ContentType::DUMP);
   _response->addRawPayload(batch->content);

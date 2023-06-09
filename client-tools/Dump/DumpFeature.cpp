@@ -1473,108 +1473,17 @@ Result DumpFeature::ParallelDumpServer::run(
   // create context on dbserver
   createDumpContext(client);
 
-  // create a bounded queue
-  BoundedChannel<arangodb::httpclient::SimpleHttpResult> queue(
-      options.localWriterThreads);
-
   // start n network threads
   std::vector<std::jthread> threads;
   for (size_t i = 0; i < options.localNetworkThreads; i++) {
     threads.emplace_back([&, i, guard = BoundedChannelProducerGuard{queue}] {
-      std::unique_ptr<httpclient::SimpleHttpClient> client;
-      clientManager.getConnectedClient(client, /* force */ true, false, false,
-                                       true, i);
-      std::uint64_t batchId;
-      std::optional<std::uint64_t> lastBatchId;
-      while (true) {
-        batchId = _batchCounter.fetch_add(1);
-        auto response = receiveNextBatch(*client, batchId, lastBatchId);
-        if (response == nullptr) {
-          break;
-        }
-        ++stats.totalBatches;
-        auto [stopped, blocked] = queue.push(std::move(response));
-        if (stopped) {
-          LOG_TOPIC("b3cf8", DEBUG, Logger::DUMP)
-              << "network thread stopped by stopped channel";
-        }
-        if (blocked) {
-          countBlocker(kLocalQueue, -1);
-        }
-        lastBatchId = batchId;
-      }
-      LOG_TOPIC("ac308", DEBUG, Logger::DUMP)
-          << "dbserver " << server << " exhausted";
+      runNetworkThread(i);
     });
   }
 
   // start k writer threads
   for (size_t i = 0; i < options.localWriterThreads; i++) {
-    threads.emplace_back([&] {
-      std::unordered_map<std::string, std::shared_ptr<ManagedDirectory::File>>
-          filesByShard;
-
-      auto const getFileForShard = [&](std::string const& shardId) {
-        if (auto it = filesByShard.find(shardId); it != filesByShard.end()) {
-          return it->second;
-        } else {
-          auto it2 = shards.find(shardId);
-          if (it2 == shards.end()) {
-            LOG_TOPIC("cd43f", FATAL, Logger::DUMP)
-                << "server returned an unexpected shard " << shardId;
-            FATAL_ERROR_EXIT();
-          }
-
-          auto file = fileProvider->getFile(it2->second.collectionName);
-          filesByShard.emplace(shardId, file);
-          return file;
-        }
-      };
-
-      while (true) {
-        auto [response, blocked] = queue.pop();
-        if (response == nullptr) {
-          break;
-        }
-        if (blocked) {
-          countBlocker(kLocalQueue, 1);
-        }
-        // Decode which shard this is from header field
-        arangodb::basics::StringBuffer const& body = response->getBody();
-        bool headerExtracted;
-        auto shardId =
-            response->getHeaderField("x-arango-dump-shard-id", headerExtracted);
-        if (!headerExtracted) {
-          LOG_TOPIC("14cbf", FATAL, Logger::DUMP)
-              << "Missing header field x-arango-dump-shard-id";
-          FATAL_ERROR_EXIT();
-        }
-
-        // update block counts from remote servers
-        auto count = [&, &response = response]() -> int64_t {
-          bool headerExtracted;
-          auto str = response->getHeaderField("x-arango-dump-block-counts",
-                                              headerExtracted);
-          if (!headerExtracted) {
-            return 0;
-          }
-          return basics::StringUtils::int64(str);
-        }();
-
-        countBlocker(kRemoteQueue, count);
-
-        auto file = getFileForShard(shardId);
-        collectionName = shards.at(shardId).collectionName;
-        arangodb::Result result = dumpJsonObjects(*this, *file, body);
-
-        if (result.fail()) {
-          LOG_TOPIC("77881", FATAL, Logger::DUMP)
-              << "Failed to write data: " << result.errorMessage();
-          FATAL_ERROR_EXIT();
-        }
-      }
-      LOG_TOPIC("18eb0", DEBUG, Logger::DUMP) << "Worker completed";
-    });
+    threads.emplace_back(&ParallelDumpServer::runWriterThread, this);
   }
 
   // on our way out, we wait for all threads to join
@@ -1645,7 +1554,8 @@ DumpFeature::ParallelDumpServer::ParallelDumpServer(
       clientManager(clientManager),
       fileProvider(std::move(fileProvider)),
       shards(std::move(shards)),
-      server(std::move(server)) {}
+      server(std::move(server)),
+      queue(options.localWriterThreads) {}
 
 std::unique_ptr<httpclient::SimpleHttpResult>
 DumpFeature::ParallelDumpServer::receiveNextBatch(
@@ -1684,6 +1594,100 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
   }
 }
 
+void DumpFeature::ParallelDumpServer::runNetworkThread(
+    size_t threadId) noexcept {
+  std::unique_ptr<httpclient::SimpleHttpClient> client;
+  clientManager.getConnectedClient(client, /* force */ true, false, false, true,
+                                   threadId);
+  std::uint64_t batchId;
+  std::optional<std::uint64_t> lastBatchId;
+  while (true) {
+    batchId = _batchCounter.fetch_add(1);
+    auto response = receiveNextBatch(*client, batchId, lastBatchId);
+    if (response == nullptr) {
+      break;
+    }
+    ++stats.totalBatches;
+    auto [stopped, blocked] = queue.push(std::move(response));
+    if (stopped) {
+      LOG_TOPIC("b3cf8", DEBUG, Logger::DUMP)
+          << "network thread stopped by stopped channel";
+    }
+    if (blocked) {
+      countBlocker(kLocalQueue, -1);
+    }
+    lastBatchId = batchId;
+  }
+  LOG_TOPIC("ac308", DEBUG, Logger::DUMP)
+      << "dbserver " << server << " exhausted";
+}
+
+void DumpFeature::ParallelDumpServer::runWriterThread() noexcept {
+  std::unordered_map<std::string, std::shared_ptr<ManagedDirectory::File>>
+      filesByShard;
+
+  auto const getFileForShard = [&](std::string const& shardId) {
+    if (auto it = filesByShard.find(shardId); it != filesByShard.end()) {
+      return it->second;
+    } else {
+      auto it2 = shards.find(shardId);
+      if (it2 == shards.end()) {
+        LOG_TOPIC("cd43f", FATAL, Logger::DUMP)
+            << "server returned an unexpected shard " << shardId;
+        FATAL_ERROR_EXIT();
+      }
+
+      auto file = fileProvider->getFile(it2->second.collectionName);
+      filesByShard.emplace(shardId, file);
+      return file;
+    }
+  };
+
+  while (true) {
+    auto [response, blocked] = queue.pop();
+    if (response == nullptr) {
+      break;
+    }
+    if (blocked) {
+      countBlocker(kLocalQueue, 1);
+    }
+    // Decode which shard this is from header field
+    arangodb::basics::StringBuffer const& body = response->getBody();
+    bool headerExtracted;
+    auto shardId =
+        response->getHeaderField("x-arango-dump-shard-id", headerExtracted);
+    if (!headerExtracted) {
+      LOG_TOPIC("14cbf", FATAL, Logger::DUMP)
+          << "Missing header field x-arango-dump-shard-id";
+      FATAL_ERROR_EXIT();
+    }
+
+    // update block counts from remote servers
+    auto count = [&, &response = response]() -> int64_t {
+      bool headerExtracted;
+      auto str = response->getHeaderField("x-arango-dump-block-counts",
+                                          headerExtracted);
+      if (!headerExtracted) {
+        return 0;
+      }
+      return basics::StringUtils::int64(str);
+    }();
+
+    countBlocker(kRemoteQueue, count);
+
+    auto file = getFileForShard(shardId);
+    collectionName = shards.at(shardId).collectionName;
+    arangodb::Result result = dumpJsonObjects(*this, *file, body);
+
+    if (result.fail()) {
+      LOG_TOPIC("77881", FATAL, Logger::DUMP)
+          << "Failed to write data: " << result.errorMessage();
+      FATAL_ERROR_EXIT();
+    }
+  }
+  LOG_TOPIC("18eb0", DEBUG, Logger::DUMP) << "Worker completed";
+}
+
 DumpFeature::DumpFileProvider::DumpFileProvider(
     ManagedDirectory& directory,
     std::map<std::string, arangodb::velocypack::Slice>& collectionInfo,
@@ -1692,6 +1696,9 @@ DumpFeature::DumpFileProvider::DumpFileProvider(
       _directory(directory),
       _collectionInfo(collectionInfo) {
   if (!_splitFiles) {
+    // If we don't split files, i.e. arangorestore compatibility mode, we have
+    // to create a file for each collection, even if it is empty. Otherwise,
+    // arangorestore complains.
     for (auto const& [name, info] : collectionInfo) {
       std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
 

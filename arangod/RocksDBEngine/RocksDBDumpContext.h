@@ -72,7 +72,7 @@ class RocksDBDumpContext {
 
   RocksDBDumpContext(RocksDBEngine& engine, DatabaseFeature& databaseFeature,
                      std::string id, RocksDBDumpContextOptions options,
-                     std::string const& user, std::string const& database);
+                     std::string user, std::string database);
 
   ~RocksDBDumpContext();
 
@@ -105,9 +105,8 @@ class RocksDBDumpContext {
 
   // Contains the data for a batch
   struct Batch {
-    std::uint64_t batchId;
+    std::string_view shard;
     std::string content;
-    std::string shard;
   };
 
   struct CollectionInfo {
@@ -161,8 +160,8 @@ class RocksDBDumpContext {
   // Returns the next batch and assigned it batchId. If lastBatch is not nullopt
   // frees the batch with the given id. This function might block, if no batch
   // is available. It returns nullptr is there is no batch left.
-  std::shared_ptr<Batch> next(std::uint64_t batchId,
-                              std::optional<std::uint64_t> lastBatch);
+  std::shared_ptr<Batch const> next(std::uint64_t batchId,
+                                    std::optional<std::uint64_t> lastBatch);
 
   int64_t getBlockCounts() noexcept;
 
@@ -201,7 +200,7 @@ class RocksDBDumpContext {
 
   // resolver, used to translate numeric collection ids to string during
   // dumping
-  std::unique_ptr<CollectionNameResolver> _resolver;
+  std::unique_ptr<CollectionNameResolver const> _resolver;
 
   // custom type handler for translating numeric collection ids in
   // velocypack "custom" types into collection name strings
@@ -217,7 +216,8 @@ class RocksDBDumpContext {
   // the shards.
   WorkItems _workItems;
 
-  std::mutex _mutex;
+  // Used to serializes access to _batches.
+  std::mutex _batchesMutex;
 
   // this contains all the alive batches. We have to keep batches until they
   // are explicitly released.
@@ -227,8 +227,8 @@ class RocksDBDumpContext {
   // and the actual rest handler.
   BoundedChannel<Batch> _channel;
 
-  // This is a temporary solution for the thread pool. Later we want to use
-  // the scheduler to better control the resource usage.
+  // Thread pool for dumping. Having our own threads is much easier: we can let
+  // them block.
   std::vector<std::jthread> _threads;
 
   // Counts +1 for a block on the pop side and -1 for a block on the push side.
