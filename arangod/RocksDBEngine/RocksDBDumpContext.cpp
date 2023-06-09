@@ -113,22 +113,20 @@ void RocksDBDumpContext::WorkItems::stop() {
   _cv.notify_all();
 }
 
-RocksDBDumpContext::RocksDBDumpContext(
-    RocksDBEngine& engine, DatabaseFeature& databaseFeature, std::string id,
-    uint64_t batchSize, uint64_t prefetchCount, uint64_t parallelism,
-    std::vector<std::string> const& shards, double ttl, std::string const& user,
-    std::string const& database)
+RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
+                                       DatabaseFeature& databaseFeature,
+                                       std::string id,
+                                       RocksDBDumpContextOptions options,
+                                       std::string const& user,
+                                       std::string const& database)
     : _engine(engine),
       _id(std::move(id)),
-      _batchSize(batchSize),
-      _prefetchCount(prefetchCount),
-      _parallelism(parallelism),
-      _ttl(ttl),
       _user(user),
       _database(database),
-      _expires(TRI_microtime() + _ttl),
-      _workItems(parallelism),
-      _channel(_prefetchCount) {
+      _options(std::move(options)),
+      _expires(TRI_microtime() + _options.ttl),
+      _workItems(_options.parallelism),
+      _channel(_options.prefetchCount) {
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
   // database is there. creating this guard will throw if the database cannot be
@@ -147,7 +145,7 @@ RocksDBDumpContext::RocksDBDumpContext(
   // being deleted while the context is in use. that we we only have to ensure
   // once that the collections are there. creating the guards will throw if any
   // of the collections/shards cannot be found.
-  for (auto const& it : shards) {
+  for (auto const& it : _options.shards) {
     auto ci = std::make_shared<CollectionInfo>(vocbase, it);
 
     _collections.emplace(it, ci);
@@ -186,26 +184,25 @@ RocksDBDumpContext::RocksDBDumpContext(
       transaction::Context::createCustomTypeHandler(vocbase, *_resolver);
 
   // start all the threads
-  for (size_t i = 0; i < _parallelism; i++) {
-    _threads.emplace_back(
-        [&, shards, guard = BoundedChannelProducerGuard(_channel)] {
-          try {
-            while (true) {
-              // will block until all workers wait, i.e. no work is left
-              auto workItem = _workItems.pop();
-              if (workItem.empty()) {
-                break;
-              }
-
-              handleWorkItem(std::move(workItem));
-            }
-          } catch (basics::Exception const& ex) {
-            _workItems.setError(Result(ex.code(), ex.what()));
-          } catch (std::exception const& ex) {
-            // must not let exceptions escape from the thread's lambda
-            _workItems.setError(Result(TRI_ERROR_INTERNAL, ex.what()));
+  for (size_t i = 0; i < _options.parallelism; i++) {
+    _threads.emplace_back([&, guard = BoundedChannelProducerGuard(_channel)] {
+      try {
+        while (true) {
+          // will block until all workers wait, i.e. no work is left
+          auto workItem = _workItems.pop();
+          if (workItem.empty()) {
+            break;
           }
-        });
+
+          handleWorkItem(std::move(workItem));
+        }
+      } catch (basics::Exception const& ex) {
+        _workItems.setError(Result(ex.code(), ex.what()));
+      } catch (std::exception const& ex) {
+        // must not let exceptions escape from the thread's lambda
+        _workItems.setError(Result(TRI_ERROR_INTERNAL, ex.what()));
+      }
+    });
   }
 }
 
@@ -224,7 +221,7 @@ std::string const& RocksDBDumpContext::database() const noexcept {
 
 std::string const& RocksDBDumpContext::user() const noexcept { return _user; }
 
-double RocksDBDumpContext::ttl() const noexcept { return _ttl; }
+double RocksDBDumpContext::ttl() const noexcept { return _options.ttl; }
 
 double RocksDBDumpContext::expires() const noexcept {
   return _expires.load(std::memory_order_relaxed);
@@ -236,7 +233,7 @@ bool RocksDBDumpContext::canAccess(std::string const& database,
 }
 
 void RocksDBDumpContext::extendLifetime() noexcept {
-  _expires.fetch_add(_ttl, std::memory_order_relaxed);
+  _expires.fetch_add(_options.ttl, std::memory_order_relaxed);
 }
 
 std::shared_ptr<RocksDBDumpContext::Batch> RocksDBDumpContext::next(
@@ -338,7 +335,7 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
     // JSONL output format
     sink.push_back('\n');
 
-    if (batch->content.size() >= _batchSize) {
+    if (batch->content.size() >= _options.batchSize) {
       auto [stopped, blocked] = _channel.push(std::move(batch));
       if (blocked) {
         _blockCounter.fetch_sub(1);
