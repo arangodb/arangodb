@@ -694,6 +694,88 @@ function VPackIndexRearmingSuite (unique) {
   };
 }
 
+function VPackIndexInRearmingSuite (unique) {
+  const cn = "UnitTestsCollection";
+  const n = 100;
+
+  return {
+    setUpAll : function () {
+      db._drop(cn);
+      let c = db._create(cn);
+
+      let docs = [];
+      for (let i = 0; i < n; ++i) {
+        docs.push({ value1: String(i).padStart(3, "0") });
+      }
+      c.insert(docs);
+      c.ensureIndex({ type: "persistent", fields: ["value1"], name: "UnitTestsIndex", unique });
+    },
+    
+    tearDownAll : function () {
+      db._drop(cn);
+    },
+    
+    testVPackLookupBySingleAttributeUsingInLongLists : function () {
+      for (let i = 1; i < 60; i += 1) {
+        const values = [];
+        for (let j = 0; j < i; ++j) {
+          values.push(String(j).padStart(3, "0"));
+        }
+        const q = `LET values = @values FOR doc IN ${cn} FILTER doc.value1 IN values RETURN doc`;
+
+        const opts = {};
+
+        let nodes = AQL_EXPLAIN(q, {values}, opts).plan.nodes;
+        let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
+        assertEqual(1, indexNodes.length);
+        assertEqual(1, indexNodes[0].indexes.length);
+        assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
+
+        let qr = db._query(q, {values}, opts);
+        let stats = qr.getExtra().stats;
+        assertEqual(1, stats.cursorsCreated);
+        assertEqual(0, stats.cursorsRearmed);
+        let results = qr.toArray();
+        assertEqual(i, results.length);
+
+        for (let j = 0; j < i; ++j) {
+          let doc = results[j];
+          assertEqual(String(j).padStart(3, "0"), doc.value1);
+        }
+      }
+    },
+    
+    testVPackLookupBySingleAttributeUsingInLongListsRearm : function () {
+      const q = `FOR i IN 1..60 LET values = (FOR j IN 0..(i - 1) RETURN CONCAT(SUBSTRING('000', 0, 3 - LENGTH(TO_STRING(j))), j)) FOR doc IN ${cn} FILTER doc.value1 IN values RETURN doc`;
+
+      const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
+
+      let nodes = AQL_EXPLAIN(q, null, opts).plan.nodes;
+      let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
+      assertEqual(1, indexNodes.length);
+      assertEqual(1, indexNodes[0].indexes.length);
+      assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
+
+      let qr = db._query(q, null, opts);
+      let stats = qr.getExtra().stats;
+      assertEqual(1, stats.cursorsCreated);
+      assertEqual(59, stats.cursorsRearmed);
+      let results = qr.toArray();
+      // 1830 = 1 + 2 + 3 + 4 + 5 ... + 60
+      assertEqual(1830, results.length);
+
+      let it = 0;
+      for (let i = 1; i <= 60; ++i) {
+        for (let j = 0; j < i; ++j) {
+          let doc = results[it++];
+          assertEqual(String(j).padStart(3, "0"), doc.value1);
+        }
+      }
+    },
+    
+  };
+}
+
 function VPackIndexUniqueSuite() {
   'use strict';
   let suite = {};
@@ -708,9 +790,25 @@ function VPackIndexNonUniqueSuite() {
   return suite;
 }
 
+function VPackIndexInUniqueSuite() {
+  'use strict';
+  let suite = {};
+  deriveTestSuite(VPackIndexInRearmingSuite(/*unique*/ true), suite, '_in_unique');
+  return suite;
+}
+
+function VPackIndexInNonUniqueSuite() {
+  'use strict';
+  let suite = {};
+  deriveTestSuite(VPackIndexInRearmingSuite(/*unique*/ false), suite, '_in_nonUnique');
+  return suite;
+}
+
 jsunity.run(PrimaryIndexSuite);
 jsunity.run(EdgeIndexSuite);
 jsunity.run(VPackIndexUniqueSuite);
 jsunity.run(VPackIndexNonUniqueSuite);
+jsunity.run(VPackIndexInUniqueSuite);
+jsunity.run(VPackIndexInNonUniqueSuite);
 
 return jsunity.done();

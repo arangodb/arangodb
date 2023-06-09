@@ -1,7 +1,6 @@
 @startDocuBlock get_api_edges_collection
-@brief get edges
 
-@RESTHEADER{GET /_api/edges/{collection-id}, Read in- or outbound edges, getVertexEdges}
+@RESTHEADER{GET /_api/edges/{collection-id}, Get inbound and outbound edges, getVertexEdges}
 
 @RESTURLPARAMETERS
 
@@ -14,7 +13,7 @@ The id of the collection.
 The id of the start vertex.
 
 @RESTQUERYPARAM{direction,string,optional}
-Selects *in* or *out* direction for edges. If not set, any edges are
+Selects `in` or `out` direction for edges. If not set, any edges are
 returned.
 
 @RESTHEADERPARAMETERS
@@ -25,7 +24,7 @@ the data, not only the shard leader. This may result in "dirty reads".
 
 @RESTDESCRIPTION
 Returns an array of edges starting or ending in the vertex identified by
-*vertex*.
+`vertex`.
 
 @RESTRETURNCODES
 

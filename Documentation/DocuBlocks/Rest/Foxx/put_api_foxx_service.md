@@ -1,7 +1,6 @@
 @startDocuBlock put_api_foxx_service
-@brief replace a service
 
-@RESTHEADER{PUT /_api/foxx/service, Replace service, replaceFoxxService}
+@RESTHEADER{PUT /_api/foxx/service, Replace a service, replaceFoxxService}
 
 @RESTDESCRIPTION
 Removes the service at the given mount path from the database and file system.
@@ -20,19 +19,19 @@ The request body can be any of the following formats:
 
 A service definition is an object or form with the following properties or fields:
 
-- *configuration*: a JSON object describing configuration values
-- *dependencies*: a JSON object describing dependency settings
-- *source*: a fully qualified URL or an absolute path on the server's file system
+- `configuration`: a JSON object describing configuration values
+- `dependencies`: a JSON object describing dependency settings
+- `source`: a fully qualified URL or an absolute path on the server's file system
 
-When using multipart data, the *source* field can also alternatively be a file field
+When using multipart data, the `source` field can also alternatively be a file field
 containing either a zip bundle or a standalone JavaScript file.
 
 When using a standalone JavaScript file the given file will be executed
 to define our service's HTTP endpoints. It is the same which would be defined
 in the field `main` of the service manifest.
 
-If *source* is a URL, the URL must be reachable from the server.
-If *source* is a file system path, the path will be resolved on the server.
+If `source` is a URL, the URL must be reachable from the server.
+If `source` is a file system path, the path will be resolved on the server.
 In either case the path or URL is expected to resolve to a zip bundle,
 JavaScript file or (in case of a file system path) directory.
 

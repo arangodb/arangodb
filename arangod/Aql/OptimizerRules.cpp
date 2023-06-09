@@ -2403,8 +2403,9 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
   }
 
   auto p = plan.get();
+  bool changed = false;
 
-  auto visitor = [p](AstNode* node) {
+  auto visitor = [&changed, p](AstNode* node) {
     again:
       if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         auto const* accessed = node->getMemberUnchecked(0);
@@ -2457,6 +2458,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
           // attribute not found
           if (!isDynamic) {
+            changed = true;
             return p->getAst()->createNodeValueNull();
           }
         }
@@ -2530,6 +2532,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
           // attribute not found
           if (!isDynamic) {
+            changed = true;
             return p->getAst()->createNodeValueNull();
           }
         } else if (accessed->type == NODE_TYPE_ARRAY) {
@@ -2543,6 +2546,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
                 valid);
             if (!valid) {
               // invalid index
+              changed = true;
               return p->getAst()->createNodeValueNull();
             }
           } else {
@@ -2569,6 +2573,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           }
 
           // index out of bounds
+          changed = true;
           return p->getAst()->createNodeValueNull();
         }
       }
@@ -2591,8 +2596,12 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
     AstNode* root = nn->expression()->nodeForModification();
 
     if (root != nullptr) {
+      // the changed variable is captured by reference by the lambda that
+      // traverses the Ast and may modify it. if it performs a modification,
+      // it will set changed=true
+      changed = false;
       AstNode* simplified = plan->getAst()->traverseAndModify(root, visitor);
-      if (simplified != root) {
+      if (simplified != root || changed) {
         nn->expression()->replaceNode(simplified);
         nn->expression()->invalidateAfterReplacements();
         modified = true;
