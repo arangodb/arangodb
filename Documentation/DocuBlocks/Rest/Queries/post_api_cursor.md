@@ -110,8 +110,8 @@ There is also a server configuration option `--query.fail-on-warning` for settin
 default value for `failOnWarning` so it does not need to be set on a per-query level.
 
 @RESTSTRUCT{allowRetry,post_api_cursor_opts,boolean,optional,}
-Set this option to `true` to make it possible to retry fetching the latest batch
-from a cursor.
+Set this option to `true` to make it possible to retry
+fetching the latest batch from a cursor. The default is `false`.
 
 If retrieving a result batch fails because of a connection issue, you can ask
 for that batch again using the `POST /_api/cursor/<cursor-id>/<batch-id>`
@@ -120,8 +120,27 @@ with every batch. Every result response except the last one also includes a
 `nextBatchId` attribute, indicating the ID of the batch after the current.
 You can remember and use this batch ID should retrieving the next batch fail.
 
-You can only request the latest batch again. Earlier batches are not kept on the
-server-side.
+You can only request the latest batch again (or the next batch).
+Earlier batches are not kept on the server-side.
+Requesting a batch again does not advance the cursor.
+
+You can also call this endpoint with the next batch identifier, i.e. the value
+returned in the `nextBatchId` attribute of a previous request. This advances the
+cursor and returns the results of the next batch. This is only supported if there
+are more results in the cursor (i.e. `hasMore` is `true` in the latest batch).
+
+From v3.11.1 onward, you may use the `POST /_api/cursor/<cursor-id>/<batch-id>`
+endpoint even if the `allowRetry` attribute is `false` to fetch the next batch,
+but you cannot request a batch again unless you set it to `true`.
+
+To allow refetching of the very last batch of the query, the server cannot
+automatically delete the cursor. After the first attempt of fetching the last
+batch, the server would normally delete the cursor to free up resources. As you
+might need to reattempt the fetch, it needs to keep the final batch when the
+`allowRetry` option is enabled. Once you successfully received the last batch,
+you should call the `DELETE /_api/cursor/<cursor-id>` endpoint so that the
+server doesn't unnecessarily keep the batch until the cursor times out
+(`ttl` query option).
 
 @RESTSTRUCT{stream,post_api_cursor_opts,boolean,optional,}
 Can be enabled to execute the query lazily. If set to `true`, then the query is
@@ -289,33 +308,43 @@ is returned if the result set can be created by the server.
 @RESTREPLYBODY{error,boolean,required,}
 A flag to indicate that an error occurred (`false` in this case).
 
-@RESTREPLYBODY{code,integer,required,integer}
+@RESTREPLYBODY{code,integer,required,int64}
 The HTTP status code.
 
 @RESTREPLYBODY{result,array,optional,}
-An array of result documents (might be empty if query has no results).
+An array of result documents for the current batch
+(might be empty if the query has no results).
 
 @RESTREPLYBODY{hasMore,boolean,required,}
 A boolean indicator whether there are more results
 available for the cursor on the server.
+
+Note that even if `hasMore` returns `true`, the next call might still return no
+documents. Once `hasMore` is `false`, the cursor is exhausted and the client
+can stop asking for more results.
 
 @RESTREPLYBODY{count,integer,optional,int64}
 The total number of result documents available (only
 available if the query was executed with the `count` attribute set).
 
 @RESTREPLYBODY{id,string,optional,string}
-The ID of a temporary cursor created on the server for fetching more result batches.
+The ID of the cursor for fetching more result batches.
 
 @RESTREPLYBODY{nextBatchId,string,optional,string}
-Only set if the `allowRetry` query option is enabled.
+Only set if the `allowRetry` query option is enabled in v3.11.0.
+From v3.11.1 onward, this attribute is always set, except in the last batch.
 
 The ID of the batch after the current one. The first batch has an ID of `1` and
 the value is incremented by 1 with every batch. You can remember and use this
 batch ID should retrieving the next batch fail. Use the
 `POST /_api/cursor/<cursor-id>/<batch-id>` endpoint to ask for the batch again.
+You can also request the next batch.
 
 @RESTREPLYBODY{extra,object,optional,post_api_cursor_extra}
 An optional JSON object with extra information about the query result.
+
+Only delivered as part of the first batch, or the last batch in case of a cursor
+with the `stream` option enabled.
 
 @RESTSTRUCT{warnings,post_api_cursor_extra,array,required,post_api_cursor_extra_warnings}
 A list of query warnings.
