@@ -204,7 +204,7 @@ void RestDumpHandler::handleCommandDumpStart() {
   auto guard = manager->createContext(batchSize, prefetchCount, parallelism,
                                       std::move(shards), ttl, user, database);
 
-  resetResponse(rest::ResponseCode::NO_CONTENT);
+  resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC("x-arango-dump-id", guard->id());
 }
 
