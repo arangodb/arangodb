@@ -12,14 +12,14 @@ export const AnalyzersViewWrap = () => {
   useGlobalStyleReset();
   return (
     <ChakraCustomProvider overrideNonReact>
-      <HashRouter basename="/analyzers" hashType={"noslash"}>
+      <HashRouter basename="/" hashType={"noslash"}>
         <Switch>
-          <Route path="/" exact>
+          <Route path="/analyzers" exact>
             <AnalyzersProvider>
               <AnalyzersView />
             </AnalyzersProvider>
           </Route>
-          <Route path="/:analyzerName">
+          <Route path="/analyzers/:analyzerName">
             <AnalyzersProvider isFormDisabled>
               <SingleAnalyzerView />
             </AnalyzersProvider>

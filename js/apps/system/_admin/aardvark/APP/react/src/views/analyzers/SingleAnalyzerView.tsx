@@ -26,7 +26,7 @@ export const SingleAnalyzerView = () => {
           size="sm"
           icon={<ArrowBackIcon width="24px" height="24px" />}
           onClick={() => {
-            history.push("/");
+            history.push("/analyzers");
           }}
         />
         <Heading marginLeft="2" as="h1" size="lg">
@@ -60,7 +60,7 @@ export const SingleAnalyzerView = () => {
         <DeleteAnalyzerModal
           analyzer={currentAnalyzer}
           onSuccess={() => {
-            history.push("/");
+            history.push("/analyzers");
           }}
           onClose={() => {
             setShowDeleteModal(false);

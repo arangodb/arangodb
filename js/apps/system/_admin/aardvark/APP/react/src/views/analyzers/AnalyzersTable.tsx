@@ -19,7 +19,7 @@ const TABLE_COLUMNS = [
       return (
         <Link
           as={RouterLink}
-          to={`/${cellValue}`}
+          to={`/analyzers/${cellValue}`}
           textDecoration="underline"
           color="blue.500"
           _hover={{
@@ -85,7 +85,7 @@ export const AnalyzersTable = () => {
         data={newAnalyzers || []}
         emptyStateMessage="No analyzers found"
         onRowSelect={row => {
-          history.push(`/${row.original.name}`);
+          history.push(`/analyzers/${row.original.name}`);
         }}
       >
         {({ table }) => {
