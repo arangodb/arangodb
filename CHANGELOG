@@ -4,7 +4,7 @@ v3.9.12 (XXXX-X-XX)
 * SEARCH-476: Fix bug in fst builder.
 
 
-v3.9.11 (XXXX-X-XX)
+v3.9.11 (2023-06-04)
 --------------------
 
 * Updated arangosync to v2.18.0.
