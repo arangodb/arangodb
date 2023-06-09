@@ -165,7 +165,7 @@ void RocksDBDumpManager::garbageCollect(bool force) {
   }
 }
 
-void RocksDBDumpManager::beginShutdown() { garbageCollect(false); }
+void RocksDBDumpManager::beginShutdown() { garbageCollect(true); }
 
 std::string RocksDBDumpManager::generateId() {
   // rationale: we use a HLC value here, because it is guaranteed to
