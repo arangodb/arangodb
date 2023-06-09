@@ -133,8 +133,6 @@ class IResearchFeature final : public ArangodFeature {
                                      int> = 0>
   IndexTypeFactory& factory();
 
-  bool linkSkippedDuringRecovery(arangodb::IndexId id) const noexcept;
-
   void trackOutOfSyncLink() noexcept;
   void untrackOutOfSyncLink() noexcept;
 

@@ -60,9 +60,9 @@ bool PrimaryKeysFilter<Nested>::next() {
     auto const pkRef =
         irs::numeric_utils::numeric_traits<LocalDocumentId::BaseType>::raw_ref(
             pk);
-    auto doc = irs::doc_limits::eof();
+    auto doc = irs::doc_limits::invalid();
     _pkField->read_documents(pkRef, {&doc, 1});
-    if (irs::doc_limits::eof(doc) || _segment->docs_mask()->contains(doc)) {
+    if (!irs::doc_limits::valid(doc) || _segment->docs_mask()->contains(doc)) {
       ++_pos;
       continue;
     }
