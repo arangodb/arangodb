@@ -1,12 +1,13 @@
-import { Link } from "@chakra-ui/react";
+import { Link, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { AnalyzerDescription } from "arangojs/analyzer";
 import React, { useMemo } from "react";
 import { Link as RouterLink, useHistory } from "react-router-dom";
+import { FiltersList, FilterType } from "../../components/table/FiltersList";
 import { ReactTable } from "../../components/table/ReactTable";
+import { useSortableReactTable } from "../../components/table/useSortableReactTable";
 import { useAnalyzersContext } from "./AnalyzersContext";
 import { TYPE_TO_LABEL_MAP } from "./AnalyzersHelpers";
-import { FiltersList, FilterType } from "../../components/table/FiltersList";
 
 const columnHelper = createColumnHelper<AnalyzerDescription>();
 
@@ -67,31 +68,34 @@ const TABLE_FILTERS = TABLE_COLUMNS.map(column => {
 export const AnalyzersTable = () => {
   const { analyzers, showSystemAnalyzers } = useAnalyzersContext();
   const newAnalyzers = useMemo(() => {
-    return analyzers?.filter(
-      analyzer => analyzer.name.includes("::") || showSystemAnalyzers
+    return analyzers?.filter(analyzer =>
+      showSystemAnalyzers ? true : analyzer.name.includes("::")
     );
   }, [analyzers, showSystemAnalyzers]);
+  const tableInstance = useSortableReactTable<AnalyzerDescription>({
+    data: newAnalyzers || [],
+    columns: TABLE_COLUMNS,
+    initialSorting: [
+      {
+        id: "name",
+        desc: false
+      }
+    ]
+  });
   const history = useHistory();
   return (
-    <>
-      <ReactTable
-        initialSorting={[
-          {
-            id: "name",
-            desc: false
-          }
-        ]}
-        columns={TABLE_COLUMNS}
-        data={newAnalyzers || []}
+    <Stack>
+      <FiltersList<AnalyzerDescription>
+        filters={TABLE_FILTERS}
+        table={tableInstance}
+      />
+      <ReactTable<AnalyzerDescription>
+        table={tableInstance}
         emptyStateMessage="No analyzers found"
         onRowSelect={row => {
           history.push(`/analyzers/${row.original.name}`);
         }}
-      >
-        {({ table }) => {
-          return <FiltersList filters={TABLE_FILTERS} table={table} />;
-        }}
-      </ReactTable>
-    </>
+      />
+    </Stack>
   );
 };

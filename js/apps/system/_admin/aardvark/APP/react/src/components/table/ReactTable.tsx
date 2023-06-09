@@ -13,62 +13,30 @@ import {
   Tr
 } from "@chakra-ui/react";
 import {
-  ColumnDef,
-  ColumnFiltersState,
   flexRender,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getSortedRowModel,
   Header,
   Row,
-  SortingState,
-  Table as TableType,
-  useReactTable
+  Table as TableType
 } from "@tanstack/react-table";
 import * as React from "react";
 
 type ReactTableProps<Data extends object> = {
-  data: Data[];
-  initialSorting?: SortingState;
-  columns: ColumnDef<Data, any>[];
+  table: TableType<Data>;
   emptyStateMessage?: string;
   onRowSelect?: (row: Row<Data>) => void;
-  children?: ({ table }: { table: TableType<Data> }) => React.ReactNode;
+  children?: React.ReactNode;
 };
 
 export function ReactTable<Data extends object>({
-  data,
-  columns,
-  initialSorting = [],
   emptyStateMessage = "No data found.",
   onRowSelect,
-  children
+  children,
+  table
 }: ReactTableProps<Data>) {
-  const [sorting, setSorting] = React.useState<SortingState>(initialSorting);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
-  const table = useReactTable({
-    columns,
-    data,
-    getCoreRowModel: getCoreRowModel(),
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-    getFacetedRowModel: getFacetedRowModel(),
-    state: {
-      sorting,
-      columnFilters
-    },
-    onColumnFiltersChange: setColumnFilters
-  });
   const rows = table.getRowModel().rows;
   return (
     <Stack>
-      {children && children({ table })}
+      {children}
       <TableContainer
         border="1px solid"
         borderColor="gray.200"
