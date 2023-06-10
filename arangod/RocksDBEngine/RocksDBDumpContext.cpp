@@ -239,7 +239,8 @@ bool RocksDBDumpContext::canAccess(std::string const& database,
 }
 
 void RocksDBDumpContext::extendLifetime() noexcept {
-  _expires.fetch_add(_options.ttl, std::memory_order_relaxed);
+  auto const now = TRI_microtime();
+  _expires.store(now + _options.ttl);
 }
 
 std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(
