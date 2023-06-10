@@ -1,12 +1,11 @@
 @startDocuBlock get_api_view_view_properties_arangosearch
-@brief reads the properties of the specified View
 
-@RESTHEADER{GET /_api/view/{view-name}/properties, Read properties of a View, getViewProperties}
+@RESTHEADER{GET /_api/view/{view-name}/properties, Get the properties of a View, getViewProperties}
 
 @RESTURLPARAMETERS
 
 @RESTDESCRIPTION
-Returns an object containing the definition of the View identified by *view-name*.
+Returns an object containing the definition of the View identified by `view-name`.
 
 @RESTURLPARAM{view-name,string,required}
 The name of the View.
@@ -18,10 +17,10 @@ View type dependent properties.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *view-name* is missing, then a *HTTP 400* is returned.
+If the `view-name` is missing, then a *HTTP 400* is returned.
 
 @RESTRETURNCODE{404}
-If the *view-name* is unknown, then a *HTTP 404* is returned.
+If the `view-name` is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 

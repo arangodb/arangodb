@@ -96,10 +96,21 @@ jobs:
       - run:
           name: Store diff
           command: |
-            git status
-            git diff --exit-code > /tmp/clang_format_outcome.txt
+            OUTCOME_BASE="/tmp/clang_format_outcome"
+            OUTCOME_COMMUNITY=$OUTCOME_BASE/community.diff
+            OUTCOME_ENTERPRISE=$OUTCOME_BASE/enterprise.diff
+            mkdir -p $OUTCOME_BASE
+            if [ -n "$(git status --porcelain)" ] ; then
+                git diff | tee $OUTCOME_COMMUNITY
+            fi
+            if [ -n "$(git -C enterprise status --porcelain)" ] ; then
+                git -C enterprise diff | tee $OUTCOME_ENTERPRISE
+            fi
+            if [ -f "$OUTCOME_COMMUNITY" ] || [ -f "$OUTCOME_ENTERPRISE" ]; then
+              exit 1
+            fi
       - store_artifacts:
-          path: /tmp/clang_format_outcome.txt
+          path: /tmp/clang_format_outcome
 
   eslint:
     docker:
@@ -127,7 +138,7 @@ jobs:
       enterprise:
         type: boolean
     docker:
-      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.0.8
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.1
     resource_class: xlarge
     environment:
       GIT_SSH_COMMAND: ssh

@@ -649,8 +649,7 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
 
   for (size_t i = s; i < e; ++i) {
     // only for debugging purposes
-    ADB_PROD_ASSERT(i < _log.size()) << [this, sNow = s, eNow = e, start,
-                                         end]() {
+    TRI_ASSERT(i < _log.size()) << [this, sNow = s, eNow = e, start, end]() {
       std::stringstream s;
       s << "log size: " << _log.size() << ", start: " << sNow
         << ", end: " << eNow << ", cur: " << _cur << ", orig start: " << start
@@ -705,7 +704,7 @@ log_t State::atNoLock(index_t index) const {
   }
 
   auto pos = index - _cur;
-  if (pos > _log.size()) {
+  if (pos >= _log.size()) {
     std::string excMessage =
         std::string(
             "Access beyond the end of the log deque: (last, requested): (") +

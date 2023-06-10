@@ -72,10 +72,8 @@ JOB_STATUS CleanOutServer::status() {
     return _status;
   }
 
-  Node::Children const& todos =
-      _snapshot.hasAsChildren(toDoPrefix).value().get();
-  Node::Children const& pends =
-      _snapshot.hasAsChildren(pendingPrefix).value().get();
+  Node::Children const& todos = *_snapshot.hasAsChildren(toDoPrefix);
+  Node::Children const& pends = *_snapshot.hasAsChildren(pendingPrefix);
   size_t found = 0;
 
   for (auto const& subJob : todos) {
@@ -94,8 +92,7 @@ JOB_STATUS CleanOutServer::status() {
     return considerCancellation() ? FAILED : PENDING;
   }
 
-  Node::Children const& failed =
-      _snapshot.hasAsChildren(failedPrefix).value().get();
+  Node::Children const& failed = *_snapshot.hasAsChildren(failedPrefix);
   size_t failedFound = 0;
   for (auto const& subJob : failed) {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
@@ -233,7 +230,7 @@ bool CleanOutServer::start(bool& aborts) {
   VPackBuilder cleanedServersBuilder;
   auto const& cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
   if (cleanedServersNode) {
-    cleanedServersNode->get().toBuilder(cleanedServersBuilder);
+    cleanedServersNode->toBuilder(cleanedServersBuilder);
   } else {
     // ignore this check
     cleanedServersBuilder.clear();
@@ -256,7 +253,7 @@ bool CleanOutServer::start(bool& aborts) {
   if (_snapshot.has(failedServersPrefix)) {
     auto const& failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
     if (failedServersNode) {
-      failedServersNode->get().toBuilder(failedServersBuilder);
+      failedServersNode->toBuilder(failedServersBuilder);
     } else {
       // ignore this check
       failedServersBuilder.clear();
@@ -351,9 +348,8 @@ bool CleanOutServer::start(bool& aborts) {
                                   Supervision::HEALTH_STATUS_GOOD);
       addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(*pending, cleanedPrefix, cleanedServers);
-      addPreconditionUnchanged(
-          *pending, planVersion,
-          _snapshot.get(planVersion).value().get().slice());
+      addPreconditionUnchanged(*pending, planVersion,
+                               _snapshot.get(planVersion)->slice());
     }
   }  // array for transaction done
 
@@ -377,9 +373,8 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   std::vector<std::string> servers = availableServers(_snapshot);
 
   Node::Children const& databaseProperties =
-      _snapshot.hasAsChildren(planDBPrefix).value().get();
-  Node::Children const& databases =
-      _snapshot.hasAsChildren(planColPrefix).value().get();
+      *_snapshot.hasAsChildren(planDBPrefix);
+  Node::Children const& databases = *_snapshot.hasAsChildren(planColPrefix);
   size_t sub = 0;
 
   for (auto const& database : databases) {
@@ -393,8 +388,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         continue;
       }
 
-      for (auto const& shard :
-           collection.hasAsChildren("shards").value().get()) {
+      for (auto const& shard : *collection.hasAsChildren("shards")) {
         // Only shards, which are affected
         int found = -1;
         if (!isRepl2) {
@@ -507,7 +501,7 @@ bool CleanOutServer::checkFeasibility() {
   std::vector<std::string> tooLargeCollections;
   std::vector<uint64_t> tooLargeFactors;
   Node::Children const& databases =
-      _snapshot.hasAsChildren("/Plan/Collections").value().get();
+      *_snapshot.hasAsChildren("/Plan/Collections");
   for (auto const& database : databases) {
     for (auto const& collptr : database.second->children()) {
       try {
@@ -564,10 +558,8 @@ arangodb::Result CleanOutServer::abort(std::string const& reason) {
   }
 
   // Abort all our subjobs:
-  Node::Children const& todos =
-      _snapshot.hasAsChildren(toDoPrefix).value().get();
-  Node::Children const& pends =
-      _snapshot.hasAsChildren(pendingPrefix).value().get();
+  Node::Children const& todos = *_snapshot.hasAsChildren(toDoPrefix);
+  Node::Children const& pends = *_snapshot.hasAsChildren(pendingPrefix);
 
   std::string childAbortReason = "parent job aborted - reason: " + reason;
 

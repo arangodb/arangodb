@@ -1,7 +1,6 @@
 @startDocuBlock patch_api_view_view_properties_arangosearch
-@brief partially changes properties of an `arangosearch` View
 
-@RESTHEADER{PATCH /_api/view/{view-name}/properties, Partially changes properties of an arangosearch View, updateViewProperties}
+@RESTHEADER{PATCH /_api/view/{view-name}/properties, Update the properties of an arangosearch View, updateViewProperties}
 
 @RESTURLPARAMETERS
 
@@ -114,21 +113,21 @@ Sub-properties:
   - `minScore` (number, _optional_): (default: 0)
 
 @RESTDESCRIPTION
-Changes the properties of a View by updating the specified attributes.
+Partially changes the properties of a View by updating the specified attributes.
 
 On success an object with the following attributes is returned:
-- *id*: The identifier of the View
-- *name*: The name of the View
-- *type*: The View type
+- `id`: The identifier of the View
+- `name`: The name of the View
+- `type`: The View type
 - all additional `arangosearch` View implementation-specific properties
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *view-name* is missing, then a *HTTP 400* is returned.
+If the `view-name` is missing, then a *HTTP 400* is returned.
 
 @RESTRETURNCODE{404}
-If the *view-name* is unknown, then a *HTTP 404* is returned.
+If the `view-name` is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 

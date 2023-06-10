@@ -1,6 +1,5 @@
 
 @startDocuBlock put_admin_cluster_rebalance
-@brief Computes and executes a set of move shard operations to improve balance.
 
 @RESTHEADER{PUT /_admin/cluster/rebalance, Compute and execute a set of move shard operations to improve balance, startClusterRebalance}
 

@@ -1,7 +1,6 @@
 @startDocuBlock patch_api_view_view_properties_searchalias
-@brief Partially changes properties of a `search-alias` View
 
-@RESTHEADER{PATCH /_api/view/{view-name}/properties#searchalias, Partially changes properties of a search-alias View, updateViewPropertiesSearchAlias}
+@RESTHEADER{PATCH /_api/view/{view-name}/properties#searchalias, Update the properties of a search-alias View, updateViewPropertiesSearchAlias}
 
 @RESTURLPARAMETERS
 
@@ -49,10 +48,10 @@ The name of a collection.
 The name of an inverted index of the `collection`.
 
 @RESTRETURNCODE{400}
-If the *view-name* is missing, then a *HTTP 400* is returned.
+If the `view-name` is missing, then a *HTTP 400* is returned.
 
 @RESTRETURNCODE{404}
-If the *view-name* is unknown, then a *HTTP 404* is returned.
+If the `view-name` is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 
