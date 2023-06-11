@@ -113,7 +113,7 @@ AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
 
     case ATTRIBUTE_ACCESS: {
       TRI_ASSERT(_accessor != nullptr);
-      auto resolver = ctx->trx().resolver();
+      auto resolver = ctx->resolver();
       TRI_ASSERT(resolver != nullptr);
       return _accessor->get(*resolver, ctx, mustDestroy);
     }
@@ -524,7 +524,7 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
   AqlValue result =
       executeSimpleExpression(ctx, member, localMustDestroy, false);
   AqlValueGuard guard(result, localMustDestroy);
-  auto* resolver = ctx.trx().resolver();
+  auto* resolver = ctx.resolver();
   TRI_ASSERT(resolver != nullptr);
 
   return result.get(*resolver,
@@ -1972,4 +1972,8 @@ std::string Expression::typeString() {
   }
   TRI_ASSERT(false);
   return "unknown";
+}
+
+CollectionNameResolver const* ExpressionContext::resolver() {
+  return trx().resolver();
 }

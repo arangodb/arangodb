@@ -32,6 +32,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/ComputedValues.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -52,6 +53,58 @@ constexpr double defaultTtl = 600.0;
 RestDumpHandler::RestDumpHandler(ArangodServer& server, GeneralRequest* request,
                                  GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
+
+struct DumpExpressionContext : ComputedValuesExpressionContext {
+  DumpExpressionContext(transaction::Methods& trx,
+                        LogicalCollection& collection, TRI_vocbase_t& vocbase)
+      : ComputedValuesExpressionContext(trx, collection),
+        _resolver(std::make_unique<CollectionNameResolver>(vocbase)) {}
+
+  CollectionNameResolver const* resolver() override { return _resolver.get(); }
+
+  std::unique_ptr<CollectionNameResolver> _resolver;
+};
+
+struct ComputedValueProjection : DumpProjection {
+  explicit ComputedValueProjection(ComputedValues::ComputedValue& cv,
+                                   transaction::Methods* mthds,
+                                   LogicalCollection* col,
+                                   TRI_vocbase_t& vocbase)
+      : ctx(*mthds, *col, vocbase), cv(cv) {
+    ctx.failOnWarning(cv.failOnWarning());
+    // update "name" value for each computation (for errors/warnings)
+    ctx.setName(cv.name());
+  }
+  bool operator()(VPackSlice input, VPackBuilder& output,
+                  velocypack::Options const* vopts) override {
+    // inject document into temporary variable (@doc)
+    ctx.setVariable(cv.tempVariable(), input);
+    // if "computeAttribute" throws, then the operation is
+    // intentionally aborted here. caller has to catch the
+    // exception
+    cv.computeValue(ctx, output, vopts);
+    // discard documents that produce null values
+    return !output.slice().isNull();
+  }
+
+  DumpExpressionContext ctx;
+  ComputedValues::ComputedValue& cv;
+};
+
+struct ComputedValueDumpProjectionFactory : DumpProjectionFactory {
+  ComputedValueDumpProjectionFactory(TRI_vocbase_t& voc,
+                                     std::string_view expression)
+      : voc(voc),
+        cv(voc, "projection", expression, arangodb::ComputeValuesOn::kNever,
+           false, false, true) {}
+
+  std::unique_ptr<DumpProjection> createProjection() override {
+    return std::make_unique<ComputedValueProjection>(cv, nullptr, nullptr, voc);
+  }
+
+  TRI_vocbase_t& voc;
+  ComputedValues::ComputedValue cv;
+};
 
 // main function that dispatches the different routes and commands
 RestStatus RestDumpHandler::execute() {
@@ -197,6 +250,18 @@ void RestDumpHandler::handleCommandDumpStart() {
       opts.shards.emplace_back(it.copyString());
     }
   }
+
+  opts.projection = [&]() -> std::unique_ptr<DumpProjectionFactory> {
+    if (auto s = body.get("projection"); s.isString()) {
+      return std::make_unique<ComputedValueDumpProjectionFactory>(
+          _vocbase, s.stringView());
+    } else if (!s.isNone()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "projection should be a string");
+    } else {
+      return nullptr;
+    }
+  }();
 
   auto& engine =
       server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();

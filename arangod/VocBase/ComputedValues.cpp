@@ -310,6 +310,17 @@ void ComputedValues::ComputedValue::computeAttribute(
   output.add(_name, materializer.slice(result, false));
 }
 
+void ComputedValues::ComputedValue::computeValue(
+    aql::ExpressionContext& ctx, velocypack::Builder& output,
+    velocypack::Options const* vopts) const {
+  TRI_ASSERT(_expression != nullptr);
+
+  bool mustDestroy;
+  aql::AqlValue result = _expression->execute(&ctx, mustDestroy);
+  aql::AqlValueGuard guard(result, mustDestroy);
+  result.toVelocyPack(vopts, output, true, true);
+}
+
 ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
                                std::span<std::string const> shardKeys,
                                velocypack::Slice params) {
@@ -394,7 +405,7 @@ void ComputedValues::mergeComputedAttributes(
     if (cv.overwrite() || !keysWritten.contains(cv.name())) {
       // update "failOnWarning" flag for each computation
       cvec.failOnWarning(cv.failOnWarning());
-      // update "name" vlaue for each computation (for errors/warnings)
+      // update "name" value for each computation (for errors/warnings)
       cvec.setName(cv.name());
       // inject document into temporary variable (@doc)
       cvec.setVariable(cv.tempVariable(), input);

@@ -186,7 +186,12 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
 
   // start all the threads
   for (size_t i = 0; i < _options.parallelism; i++) {
-    _threads.emplace_back([&, guard = BoundedChannelProducerGuard(_channel)] {
+    std::unique_ptr<DumpProjection> projection = nullptr;
+    if (_options.projection) {
+      projection = _options.projection->createProjection();
+    }
+    _threads.emplace_back([&, guard = BoundedChannelProducerGuard(_channel),
+                           projection = std::move(projection)] {
       try {
         while (true) {
           // will block until all workers wait, i.e. no work is left
@@ -195,7 +200,7 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
             break;
           }
 
-          handleWorkItem(std::move(workItem));
+          handleWorkItem(std::move(workItem), projection.get());
         }
       } catch (basics::Exception const& ex) {
         _workItems.setError(Result(ex.code(), ex.what()));
@@ -283,7 +288,8 @@ std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(
   return iter->second;
 }
 
-void RocksDBDumpContext::handleWorkItem(WorkItem item) {
+void RocksDBDumpContext::handleWorkItem(WorkItem item,
+                                        DumpProjection* projection) {
   TRI_ASSERT(!item.empty());
   TRI_ASSERT(item.lowerBound < item.upperBound);
 
@@ -313,8 +319,11 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   auto it = buildIterator(ci);
   TRI_ASSERT(it != nullptr);
 
+  uint64_t docsScanned = 0;
   uint64_t docsProduced = 0;
   uint64_t batchesProduced = 0;
+
+  VPackBuilder builder;
 
   for (it->Seek(lowerBound.string()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(ci.upper) < 0);
@@ -324,7 +333,7 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
       break;
     }
 
-    ++docsProduced;
+    ++docsScanned;
 
     if (batch == nullptr) {
       batch = std::make_unique<Batch>();
@@ -333,9 +342,29 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
       sink.setBuffer(&batch->content);
     }
 
+    VPackSlice dumpedSlice = [&] {
+      auto onDisk = velocypack::Slice(
+          reinterpret_cast<uint8_t const*>(it->value().data()));
+      if (projection) {
+        builder.clear();
+        auto keep = projection->operator()(onDisk, builder, &options);
+        if (!keep) {
+          return VPackSlice::noneSlice();
+        }
+        return builder.slice();
+      } else {
+        return onDisk;
+      }
+    }();
+
+    if (dumpedSlice.isNone()) {
+      continue;
+    }
+
+    ++docsProduced;
+
     TRI_ASSERT(sink.getBuffer() != nullptr);
-    dumper.dump(velocypack::Slice(
-        reinterpret_cast<uint8_t const*>(it->value().data())));
+    dumper.dump(dumpedSlice);
     // always add a newline after each document, as we must produce
     // JSONL output format
     sink.push_back('\n');

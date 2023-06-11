@@ -32,6 +32,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 struct ValidatorBase;
+class CollectionNameResolver;
 namespace transaction {
 class Methods;
 }
@@ -67,6 +68,7 @@ class ExpressionContext {
 
   virtual TRI_vocbase_t& vocbase() const = 0;
   virtual transaction::Methods& trx() const = 0;
+  virtual CollectionNameResolver const* resolver();
   virtual bool killed() const = 0;
 
   // register a temporary variable in the ExpressionContext. the
@@ -79,5 +81,6 @@ class ExpressionContext {
   // unregister a temporary variable from the ExpressionContext.
   virtual void clearVariable(Variable const* variable) noexcept = 0;
 };
+
 }  // namespace aql
 }  // namespace arangodb

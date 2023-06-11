@@ -57,12 +57,24 @@ class LogicalCollection;
 class RocksDBCollection;
 class RocksDBEngine;
 
+struct DumpProjection {
+  virtual ~DumpProjection() = default;
+  virtual bool operator()(VPackSlice, VPackBuilder&,
+                          velocypack::Options const*) = 0;
+};
+
+struct DumpProjectionFactory {
+  virtual ~DumpProjectionFactory() = default;
+  virtual std::unique_ptr<DumpProjection> createProjection() = 0;
+};
+
 struct RocksDBDumpContextOptions {
   uint64_t batchSize;
   uint64_t prefetchCount;
   uint64_t parallelism;
   std::vector<std::string> shards;
   double ttl;
+  std::unique_ptr<DumpProjectionFactory> projection;
 };
 
 class RocksDBDumpContext {
@@ -135,7 +147,7 @@ class RocksDBDumpContext {
     }
   };
 
-  void handleWorkItem(WorkItem workItem);
+  void handleWorkItem(WorkItem workItem, DumpProjection*);
 
   class WorkItems {
    public:

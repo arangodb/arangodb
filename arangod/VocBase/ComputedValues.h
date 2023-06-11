@@ -69,7 +69,7 @@ enum class ComputeValuesOn : uint8_t {
 };
 
 // expression context used for calculating computed values inside
-class ComputedValuesExpressionContext final : public aql::ExpressionContext {
+class ComputedValuesExpressionContext : public aql::ExpressionContext {
  public:
   explicit ComputedValuesExpressionContext(transaction::Methods& trx,
                                            LogicalCollection& collection);
@@ -127,6 +127,7 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
 };
 
 class ComputedValues {
+ public:
   class ComputedValue {
    public:
     ComputedValue(TRI_vocbase_t& vocbase, std::string_view name,
@@ -142,6 +143,8 @@ class ComputedValues {
     void toVelocyPack(velocypack::Builder&) const;
     void computeAttribute(aql::ExpressionContext& ctx, velocypack::Slice input,
                           velocypack::Builder& output) const;
+    void computeValue(aql::ExpressionContext& ctx, velocypack::Builder& output,
+                      velocypack::Options const* vopts) const;
     std::string_view name() const noexcept;
     bool overwrite() const noexcept;
     bool failOnWarning() const noexcept;
@@ -166,7 +169,6 @@ class ComputedValues {
     aql::AstNode* _rootNode;
   };
 
- public:
   explicit ComputedValues(TRI_vocbase_t& vocbase,
                           std::span<std::string const> shardKeys,
                           velocypack::Slice params);
