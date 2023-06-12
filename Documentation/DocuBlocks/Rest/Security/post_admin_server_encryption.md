@@ -1,11 +1,10 @@
 
 @startDocuBlock post_admin_server_encryption
-@brief Rotate encryption at rest key
 
-@RESTHEADER{POST /_admin/server/encryption, Rotate the encryption at rest keystore, rotateEncryptionAtRestKey}
+@RESTHEADER{POST /_admin/server/encryption, Rotate the encryption at rest key, rotateEncryptionAtRestKey}
 
 @RESTDESCRIPTION
-Change the user supplied encryption at rest key by sending a request without
+Change the user-supplied encryption at rest key by sending a request without
 payload to this endpoint. The file supplied via `--rocksdb.encryption-keyfolder`
 will be reloaded and the internal encryption key will be re-encrypted with the
 new user key.
@@ -21,7 +20,7 @@ The API returns HTTP 404 in case encryption key rotation is disabled.
 This API will return HTTP 200 if everything is ok
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate whether an error occurred (*false* in this case)
+boolean flag to indicate whether an error occurred (`false` in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code - 200 in this case

@@ -1,11 +1,10 @@
 
 @startDocuBlock get_admin_time
-@brief Get the current time of the system
 
-@RESTHEADER{GET /_admin/time, Return system time, getTime}
+@RESTHEADER{GET /_admin/time, Get the system time, getTime}
 
 @RESTDESCRIPTION
-The call returns an object with the attribute *time*. This contains the
+The call returns an object with the `time` attribute. This contains the
 current system time as a Unix timestamp with microsecond precision.
 
 @RESTRETURNCODES
@@ -14,7 +13,7 @@ current system time as a Unix timestamp with microsecond precision.
 Time was returned successfully.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate whether an error occurred (*false* in this case)
+boolean flag to indicate whether an error occurred (`false` in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
