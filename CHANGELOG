@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-211: Allow admins to edit gravatar email.
+
 * Use libunwind in jemalloc profiling to make it available with libmusl
   and static binaries.
 
