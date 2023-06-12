@@ -192,6 +192,7 @@ function randomTestSuite() {
       let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: ttl });
       assertTrue(typeof pid === "string");
 
+      pregelTestHelpers.waitUntilRunStart(pid);
       let stats = pregel.status(pid);
       assertTrue(stats.hasOwnProperty('id'));
       assertEqual(stats.id, pid);
