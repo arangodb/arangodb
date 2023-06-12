@@ -159,7 +159,7 @@ class RocksDBDumpContext {
 
   // Returns the next batch and assigned it batchId. If lastBatch is not nullopt
   // frees the batch with the given id. This function might block, if no batch
-  // is available. It returns nullptr is there is no batch left.
+  // is available. It returns nullptr if there is no batch left.
   std::shared_ptr<Batch const> next(std::uint64_t batchId,
                                     std::optional<std::uint64_t> lastBatch);
 
@@ -192,7 +192,7 @@ class RocksDBDumpContext {
   // be static.
   std::unique_ptr<DatabaseGuard> _databaseGuard;
 
-  // collection access objects that project the underlying collections/shards
+  // collection access objects that protect the underlying collections/shards
   // from being deleted while the dump is ongoing. will be populated in the
   // constructor and then be static.
   // will also hold additional useful information about the collection/shard.
