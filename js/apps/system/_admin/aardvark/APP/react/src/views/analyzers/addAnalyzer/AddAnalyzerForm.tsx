@@ -1,4 +1,4 @@
-import { InfoIcon } from "@chakra-ui/icons";
+import { ExternalLinkIcon } from "@chakra-ui/icons";
 import {
   Divider,
   Flex,
@@ -56,12 +56,15 @@ export const AddAnalyzerForm = ({
               }}
             />
             <Link
+              spacing="1"
+              as={Stack}
+              direction="row"
               marginLeft="2"
               marginBottom="2"
               target="_blank"
-              href={`https://www.arangodb.com/docs/devel/analyzers.html#${analyzerTypeValue}`}
+              href={`https://www.arangodb.com/docs/stable/analyzers.html#${analyzerTypeValue}`}
             >
-              <InfoIcon />
+              <Text>Docs</Text> <ExternalLinkIcon />
             </Link>
           </Flex>
         </Grid>
