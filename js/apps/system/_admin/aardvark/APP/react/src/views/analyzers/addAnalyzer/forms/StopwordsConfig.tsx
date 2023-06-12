@@ -1,8 +1,8 @@
 import { Grid } from "@chakra-ui/react";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../components/form/CreatableMultiSelectControl";
-import { SwitchControl } from "../../../components/form/SwitchControl";
-import { useAnalyzersContext } from "../AnalyzersContext";
+import { CreatableMultiSelectControl } from "../../../../components/form/CreatableMultiSelectControl";
+import { SwitchControl } from "../../../../components/form/SwitchControl";
+import { useAnalyzersContext } from "../../AnalyzersContext";
 
 export const StopwordsConfig = ({
   basePropertiesPath

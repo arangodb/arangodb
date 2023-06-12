@@ -1,6 +1,6 @@
 import { Divider, Stack, Text } from "@chakra-ui/react";
 import React from "react";
-import { AnalyzerTypes } from "./Analyzer.types";
+import { AnalyzerTypes } from "../Analyzer.types";
 import { AqlConfig } from "./forms/AqlConfig";
 import { ClassificationConfig } from "./forms/ClassificationConfig";
 import { CollationConfig } from "./forms/CollationConfig";

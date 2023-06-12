@@ -7,11 +7,11 @@ import {
 import { Box, Button, Grid, IconButton, Stack, Text } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import { SelectControl } from "../../../components/form/SelectControl";
-import { TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
-import { PipelineStates } from "../Analyzer.types";
+import { SelectControl } from "../../../../components/form/SelectControl";
+import { TYPE_TO_LABEL_MAP } from "../../AnalyzersHelpers";
+import { PipelineStates } from "../../Analyzer.types";
 import { AnalyzerTypeForm } from "../AnalyzerTypeForm";
-import { useAnalyzersContext } from "../AnalyzersContext";
+import { useAnalyzersContext } from "../../AnalyzersContext";
 
 const ANALYZER_TYPE_OPTIONS = TYPE_TO_LABEL_MAP
   ? (Object.keys(TYPE_TO_LABEL_MAP)

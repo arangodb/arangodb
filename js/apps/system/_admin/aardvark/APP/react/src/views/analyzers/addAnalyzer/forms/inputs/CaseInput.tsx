@@ -1,6 +1,6 @@
 import React from "react";
-import { SelectControl } from "../../../../components/form/SelectControl";
-import { useAnalyzersContext } from "../../AnalyzersContext";
+import { SelectControl } from "../../../../../components/form/SelectControl";
+import { useAnalyzersContext } from "../../../AnalyzersContext";
 
 export const CaseInput = ({
   basePropertiesPath

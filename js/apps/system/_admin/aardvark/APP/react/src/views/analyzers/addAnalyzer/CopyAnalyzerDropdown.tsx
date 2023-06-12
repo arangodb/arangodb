@@ -3,9 +3,9 @@ import { Box, Button, Stack } from "@chakra-ui/react";
 import { AnalyzerDescription } from "arangojs/analyzer";
 import { useFormikContext } from "formik";
 import React from "react";
-import SingleSelect from "../../components/select/SingleSelect";
-import { AnalyzerState } from "./Analyzer.types";
-import { useAnalyzersContext } from "./AnalyzersContext";
+import SingleSelect from "../../../components/select/SingleSelect";
+import { AnalyzerState } from "../Analyzer.types";
+import { useAnalyzersContext } from "../AnalyzersContext";
 
 export const CopyAnalyzerDropdown = () => {
   const { analyzers } = useAnalyzersContext();

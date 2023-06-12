@@ -1,10 +1,10 @@
 import { Grid } from "@chakra-ui/react";
 import React from "react";
-import { InputControl } from "../../../components/form/InputControl";
-import { SelectControl } from "../../../components/form/SelectControl";
-import { SwitchControl } from "../../../components/form/SwitchControl";
-import { TextareaControl } from "../../../components/form/TextareaControl";
-import { useAnalyzersContext } from "../AnalyzersContext";
+import { InputControl } from "../../../../components/form/InputControl";
+import { SelectControl } from "../../../../components/form/SelectControl";
+import { SwitchControl } from "../../../../components/form/SwitchControl";
+import { TextareaControl } from "../../../../components/form/TextareaControl";
+import { useAnalyzersContext } from "../../AnalyzersContext";
 
 export const AqlConfig = ({
   basePropertiesPath

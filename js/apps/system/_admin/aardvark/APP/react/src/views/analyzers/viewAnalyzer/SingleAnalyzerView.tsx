@@ -2,9 +2,9 @@ import { ArrowBackIcon, DeleteIcon } from "@chakra-ui/icons";
 import { Button, Flex, Heading, IconButton, Stack } from "@chakra-ui/react";
 import React from "react";
 import { useHistory, useRouteMatch } from "react-router-dom";
-import { ControlledJSONEditor } from "../../components/jsonEditor/ControlledJSONEditor";
+import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { AnalyzerInfo } from "./AnalyzerInfo";
-import { useAnalyzersContext } from "./AnalyzersContext";
+import { useAnalyzersContext } from "../AnalyzersContext";
 import { DeleteAnalyzerModal } from "./DeleteAnalyzerModal";
 
 export const SingleAnalyzerView = () => {

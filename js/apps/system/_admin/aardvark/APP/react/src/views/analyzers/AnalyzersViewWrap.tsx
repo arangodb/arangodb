@@ -5,7 +5,7 @@ import { useDisableNavBar } from "../../utils/useDisableNavBar";
 import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
 import { AnalyzersProvider } from "./AnalyzersContext";
 import { AnalyzersView } from "./AnalyzersView";
-import { SingleAnalyzerView } from "./SingleAnalyzerView";
+import { SingleAnalyzerView } from "./viewAnalyzer/SingleAnalyzerView";
 
 export const AnalyzersViewWrap = () => {
   useDisableNavBar();

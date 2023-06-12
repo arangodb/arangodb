@@ -9,8 +9,8 @@ import {
   ModalBody,
   ModalFooter,
   ModalHeader
-} from "../../components/modal";
-import { getCurrentDB } from "../../utils/arangoClient";
+} from "../../../components/modal";
+import { getCurrentDB } from "../../../utils/arangoClient";
 import { AddAnalyzerForm } from "./AddAnalyzerForm";
 import { AnalyzerJSONForm } from "./AnalyzerJSONForm";
 import { CopyAnalyzerDropdown } from "./CopyAnalyzerDropdown";

@@ -1,13 +1,13 @@
 import { Divider, Grid, Stack, Switch, Text } from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
-import { InputControl } from "../../components/form/InputControl";
-import { SelectControl } from "../../components/form/SelectControl";
-import { TYPE_TO_LABEL_MAP } from "./AnalyzersHelpers";
-import { AnalyzerTypes } from "./Analyzer.types";
+import { InputControl } from "../../../components/form/InputControl";
+import { SelectControl } from "../../../components/form/SelectControl";
+import { TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
+import { AnalyzerTypes } from "../Analyzer.types";
 import { AnalyzerTypeForm } from "./AnalyzerTypeForm";
-import { useReinitializeForm } from "./useReinitializeForm";
-import { useAnalyzersContext } from "./AnalyzersContext";
+import { useReinitializeForm } from "../useReinitializeForm";
+import { useAnalyzersContext } from "../AnalyzersContext";
 
 const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP).map(type => {
   return {

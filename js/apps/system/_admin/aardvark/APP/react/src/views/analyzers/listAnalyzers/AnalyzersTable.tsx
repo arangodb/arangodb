@@ -3,11 +3,11 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { AnalyzerDescription } from "arangojs/analyzer";
 import React, { useMemo } from "react";
 import { Link as RouterLink, useHistory } from "react-router-dom";
-import { FiltersList, FilterType } from "../../components/table/FiltersList";
-import { ReactTable } from "../../components/table/ReactTable";
-import { useSortableReactTable } from "../../components/table/useSortableReactTable";
-import { useAnalyzersContext } from "./AnalyzersContext";
-import { TYPE_TO_LABEL_MAP } from "./AnalyzersHelpers";
+import { FiltersList, FilterType } from "../../../components/table/FiltersList";
+import { ReactTable } from "../../../components/table/ReactTable";
+import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
+import { useAnalyzersContext } from "../AnalyzersContext";
+import { TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
 
 const columnHelper = createColumnHelper<AnalyzerDescription>();
 

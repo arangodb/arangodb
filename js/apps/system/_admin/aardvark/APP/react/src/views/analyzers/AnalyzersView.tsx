@@ -1,8 +1,8 @@
 import { AddIcon } from "@chakra-ui/icons";
 import { Box, Button, Heading, Stack, useDisclosure } from "@chakra-ui/react";
 import React from "react";
-import { AddAnalyzerModal } from "./AddAnalyzerModal";
-import { AnalyzersTable } from "./AnalyzersTable";
+import { AddAnalyzerModal } from "./addAnalyzer/AddAnalyzerModal";
+import { AnalyzersTable } from "./listAnalyzers/AnalyzersTable";
 import { AnalyzersToolbar } from "./AnalyzersToolbar";
 
 export const AnalyzersView = () => {

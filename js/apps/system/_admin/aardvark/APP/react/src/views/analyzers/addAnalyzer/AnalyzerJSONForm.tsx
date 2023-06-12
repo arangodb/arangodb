@@ -1,6 +1,6 @@
 import { useFormikContext } from "formik";
 import React from "react";
-import { ControlledJSONEditor } from "../../components/jsonEditor/ControlledJSONEditor";
+import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 
 export const AnalyzerJSONForm = () => {
   const { values } = useFormikContext();

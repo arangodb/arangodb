@@ -1,6 +1,6 @@
 import React from "react";
-import { SwitchControl } from "../../../../components/form/SwitchControl";
-import { useAnalyzersContext } from "../../AnalyzersContext";
+import { SwitchControl } from "../../../../../components/form/SwitchControl";
+import { useAnalyzersContext } from "../../../AnalyzersContext";
 
 export const AccentInput = ({
   basePropertiesPath

@@ -1,7 +1,7 @@
 import React from "react";
-import { InputControl } from "../../../../components/form/InputControl";
-import { SwitchControl } from "../../../../components/form/SwitchControl";
-import { useAnalyzersContext } from "../../AnalyzersContext";
+import { InputControl } from "../../../../../components/form/InputControl";
+import { SwitchControl } from "../../../../../components/form/SwitchControl";
+import { useAnalyzersContext } from "../../../AnalyzersContext";
 
 export const NGramInputs = ({
   basePath = "properties"

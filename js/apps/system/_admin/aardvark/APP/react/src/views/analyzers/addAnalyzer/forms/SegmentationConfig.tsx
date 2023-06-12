@@ -1,7 +1,7 @@
 import { Grid } from "@chakra-ui/react";
 import React from "react";
-import { SelectControl } from "../../../components/form/SelectControl";
-import { useAnalyzersContext } from "../AnalyzersContext";
+import { SelectControl } from "../../../../components/form/SelectControl";
+import { useAnalyzersContext } from "../../AnalyzersContext";
 import { CaseInput } from "./inputs/CaseInput";
 
 export const SegmentationConfig = ({

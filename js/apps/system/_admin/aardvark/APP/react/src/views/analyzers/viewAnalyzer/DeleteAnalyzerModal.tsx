@@ -8,8 +8,8 @@ import {
 import { AnalyzerDescription } from "arangojs/analyzer";
 import React from "react";
 import { mutate } from "swr";
-import { Modal } from "../../components/modal";
-import { getCurrentDB } from "../../utils/arangoClient";
+import { Modal } from "../../../components/modal";
+import { getCurrentDB } from "../../../utils/arangoClient";
 
 export const DeleteAnalyzerModal = ({
   analyzer,

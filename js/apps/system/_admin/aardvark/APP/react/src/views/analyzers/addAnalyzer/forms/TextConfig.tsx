@@ -1,9 +1,9 @@
 import { Grid, Text } from "@chakra-ui/react";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../components/form/CreatableMultiSelectControl";
-import { InputControl } from "../../../components/form/InputControl";
-import { SwitchControl } from "../../../components/form/SwitchControl";
-import { useAnalyzersContext } from "../AnalyzersContext";
+import { CreatableMultiSelectControl } from "../../../../components/form/CreatableMultiSelectControl";
+import { InputControl } from "../../../../components/form/InputControl";
+import { SwitchControl } from "../../../../components/form/SwitchControl";
+import { useAnalyzersContext } from "../../AnalyzersContext";
 import { AccentInput } from "./inputs/AccentInput";
 import { CaseInput } from "./inputs/CaseInput";
 import { LocaleInput } from "./inputs/LocaleInput";
