@@ -137,8 +137,6 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
 
       ExecContext& exec =
           *static_cast<ExecContext*>(_request->requestContext());
-      LOG_DEVEL << "exec user = " << exec.user()
-                << " req user = " << _request->user();
       if (auto s = body.get("shards"); !s.isArray()) {
         return Result(
             TRI_ERROR_BAD_PARAMETER,
