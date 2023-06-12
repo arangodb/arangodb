@@ -17,6 +17,11 @@ export const SingleAnalyzerView = () => {
   if (!currentAnalyzer) {
     return null;
   }
+  const isBuiltIn = !currentAnalyzer.name.includes("::");
+  const currentDbName = window.frontendConfig.db;
+  const isSameDb = currentAnalyzer.name.split("::")[0] === currentDbName;
+  const showDeleteButton = !isBuiltIn && isSameDb;
+
   return (
     <Stack padding="6" width="100%" height="calc(100vh - 120px)">
       <Flex direction="row" alignItems="center">
@@ -32,17 +37,19 @@ export const SingleAnalyzerView = () => {
         <Heading marginLeft="2" as="h1" size="lg">
           Analyzer: {params.analyzerName}
         </Heading>
-        <Button
-          size="xs"
-          marginLeft="auto"
-          leftIcon={<DeleteIcon />}
-          colorScheme="red"
-          onClick={() => {
-            setShowDeleteModal(true);
-          }}
-        >
-          Delete
-        </Button>
+        {showDeleteButton && (
+          <Button
+            size="xs"
+            marginLeft="auto"
+            leftIcon={<DeleteIcon />}
+            colorScheme="red"
+            onClick={() => {
+              setShowDeleteModal(true);
+            }}
+          >
+            Delete
+          </Button>
+        )}
       </Flex>
       <AnalyzerInfo analyzer={currentAnalyzer} />
       <ControlledJSONEditor
