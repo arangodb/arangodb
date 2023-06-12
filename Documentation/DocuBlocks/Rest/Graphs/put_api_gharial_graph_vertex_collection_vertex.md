@@ -1,5 +1,4 @@
 @startDocuBlock put_api_gharial_graph_vertex_collection_vertex
-@brief replaces an existing vertex
 
 @RESTHEADER{PUT /_api/gharial/{graph}/vertex/{collection}/{vertex}, Replace a vertex, replaceVertex}
 
@@ -15,7 +14,7 @@ The name of the graph.
 The name of the vertex collection the vertex belongs to.
 
 @RESTURLPARAM{vertex,string,required}
-The *_key* attribute of the vertex.
+The `_key` attribute of the vertex.
 
 @RESTQUERYPARAMETERS
 
@@ -36,9 +35,9 @@ be returned within the response object.
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{if-match,string,optional}
-If the "If-Match" header is given, then it must contain exactly one Etag. The document is updated,
-if it has the same revision as the given Etag. Otherwise a HTTP 412 is returned. As an alternative
-you can supply the Etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one ETag. The document is updated,
+if it has the same revision as the given ETag. Otherwise a HTTP 412 is returned. As an alternative
+you can supply the ETag in an attribute rev in the URL.
 
 @RESTALLBODYPARAM{vertex,object,required}
 The body has to be the JSON object to be stored.

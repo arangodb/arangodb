@@ -165,7 +165,7 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
                                                   &item, sizeof(std::uint64_t));
       TRI_ASSERT(value != nullptr);
       auto status = caches[cacheIndex]->insert(value);
-      if (status.fail()) {
+      if (status != TRI_ERROR_NO_ERROR) {
         delete value;
       }
     }
@@ -199,7 +199,7 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
             &item, sizeof(std::uint64_t), &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = caches[cacheIndex]->insert(value);
-        if (status.fail()) {
+        if (status != TRI_ERROR_NO_ERROR) {
           delete value;
         }
       } else {  // lookup something

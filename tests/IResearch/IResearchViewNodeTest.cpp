@@ -108,7 +108,7 @@ class IResearchViewNodeTest
 struct MockQuery final : arangodb::aql::Query {
   MockQuery(std::shared_ptr<arangodb::transaction::Context> const& ctx,
             arangodb::aql::QueryString const& queryString)
-      : arangodb::aql::Query{ctx, queryString, nullptr, {}} {}
+      : arangodb::aql::Query{ctx, queryString, nullptr, {}, nullptr} {}
 
   ~MockQuery() final {
     // Destroy this query, otherwise it's still

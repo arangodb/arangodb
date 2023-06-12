@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_collection_collection_compact
-@brief compact collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/compact, Compact the data of a collection, compactCollection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/compact, Compact a collection, compactCollection}
 
 @RESTDESCRIPTION
 Compacts the data of a collection in order to reclaim disk space.

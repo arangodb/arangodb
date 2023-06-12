@@ -7219,14 +7219,14 @@ void ClusterInfo::drainSyncers() {
 }
 
 void ClusterInfo::shutdownSyncers() {
-  drainSyncers();
-
   if (_planSyncer != nullptr) {
     _planSyncer->beginShutdown();
   }
   if (_curSyncer != nullptr) {
     _curSyncer->beginShutdown();
   }
+
+  drainSyncers();
 }
 
 void ClusterInfo::waitForSyncersToStop() {
@@ -7411,6 +7411,11 @@ futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(
   if (raftIndex <= _currentIndex) {
     return futures::makeFuture(arangodb::Result());
   }
+
+  if (_curSyncer == nullptr || _curSyncer->isStopping()) {
+    return _syncerShutdownCode;
+  }
+
   // intentionally don't release _storeLock here until we have inserted the
   // promise
   std::lock_guard w(_waitCurrentLock);
@@ -7424,6 +7429,11 @@ futures::Future<arangodb::Result> ClusterInfo::waitForCurrentVersion(
   if (currentVersion <= _currentVersion) {
     return futures::makeFuture(arangodb::Result());
   }
+
+  if (_curSyncer == nullptr || _curSyncer->isStopping()) {
+    return _syncerShutdownCode;
+  }
+
   // intentionally don't release _storeLock here until we have inserted the
   // promise
   std::lock_guard w(_waitCurrentVersionLock);
@@ -7438,6 +7448,10 @@ futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
     return futures::makeFuture(arangodb::Result());
   }
 
+  if (_planSyncer == nullptr || _planSyncer->isStopping()) {
+    return _syncerShutdownCode;
+  }
+
   // intentionally don't release _storeLock here until we have inserted the
   // promise
   std::lock_guard w(_waitPlanLock);
@@ -7449,6 +7463,10 @@ futures::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
   READ_LOCKER(readLocker, _planProt.lock);
   if (planVersion <= _planVersion) {
     return futures::makeFuture(arangodb::Result());
+  }
+
+  if (_planSyncer == nullptr || _planSyncer->isStopping()) {
+    return _syncerShutdownCode;
   }
 
   // intentionally don't release _storeLock here until we have inserted the

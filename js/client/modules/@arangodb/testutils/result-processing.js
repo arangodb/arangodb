@@ -285,7 +285,7 @@ function saveToJunitXML(options, results) {
           message: ((results.crashed)? "SUT crashed: \n": "SUT was aborted: \n") +results.crashreport
         }
       },
-      staus: false,
+      status: false,
       failed: 1,
     };
   }
@@ -306,10 +306,8 @@ function saveToJunitXML(options, results) {
       state.seenTestCases = false;
       state.xml = buildXml();
       state.xmlName = prefix + state.testRunName + '__' + makePathGeneric(testSuiteName).join('_');
-      let msg = "";
       let errors = 0;
       if (!testSuite.status && testSuite.hasOwnProperty('message')) {
-        msg = testSuite.message;
         errors = 1;
       }
       let elm = {
@@ -349,8 +347,8 @@ function saveToJunitXML(options, results) {
         state.xml.elem('/testcase');
       } else if (!state.seenTestCases) {
         const elem = addOptionalDuration({ name: 'all_tests_in_' + state.xmlName }, testSuite);
-        if (testSuite.failed !== 0 || testSuite.failed !== undefined) {
-          elem['failures'] = testSuite.failures;
+        if (testSuite.failed !== 0 && testSuite.failed !== undefined) {
+          elem['failures'] = testSuite.failed;
         } 
         state.xml.elem('testcase', elem, true);
       }
@@ -1105,6 +1103,36 @@ function getFailedTestCases(options) {
   }
 }
 
+function getGTestResults(fileName, defaultResults) {
+  let results = defaultResults;
+  if (!fs.exists(fileName)) {
+    defaultResults.failed += 1;
+    print(RED + "No testresult file found at: " + fileName + RESET);
+    return defaultResults;
+  }
+  let gTestResults = JSON.parse(fs.read(fileName));
+  results.failed = gTestResults.failures + gTestResults.errors;
+  results.status = (gTestResults.errors === 0) && (gTestResults.failures === 0);
+  gTestResults.testsuites.forEach(function (testSuite) {
+    results[testSuite.name] = {
+      failed: testSuite.failures + testSuite.errors,
+      status: (testSuite.failures + testSuite.errors) === 0,
+      duration: parseFloat(testSuite.time) * 1000 // gtest writes sec, internally we have ms
+    };
+    if (testSuite.failures !== 0) {
+      const message = testSuite.testsuite.flatMap(
+        suite => {
+          if (suite.hasOwnProperty('failures')) {
+            return suite.failures.map(fail => fail.failure).join("\n");
+          }
+          return [];
+        }).join("\n");
+      results[testSuite.name].message = message;
+    }
+  });
+  return results;
+}
+
 exports.gatherStatus = gatherStatus;
 exports.gatherFailed = gatherFailed;
 exports.yamlDumpResults = yamlDumpResults;
@@ -1113,6 +1141,7 @@ exports.dumpAllResults = dumpAllResults;
 exports.writeDefaultReports = writeDefaultReports;
 exports.writeReports = writeReports;
 exports.getFailedTestCases = getFailedTestCases;
+exports.getGTestResults = getGTestResults;
 
 exports.analyze = {
   unitTestPrettyPrintResults: unitTestPrettyPrintResults,

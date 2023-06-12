@@ -32,6 +32,8 @@ if (WINDOWS)
 endif ()
 
 add_library(arango_tests_basics OBJECT
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.h
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
@@ -78,6 +80,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/StoreTestAPI.cpp
   Agency/SupervisionTest.cpp
   Agency/TransactionBuilderTests.cpp
+  Aql/AsyncExecutorTest.cpp
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
   Aql/AqlHelper.cpp
@@ -317,6 +320,13 @@ target_link_libraries(arangodbtests
 
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
+endif ()
+
+if (USE_JEMALLOC)
+  target_link_libraries(arangodbtests ${JEMALLOC_LIB})
+  if (USE_JEMALLOC_PROF AND USE_LIBUNWIND)
+    target_link_libraries(arangodbtests ${LIBUNWIND_LIB})
+  endif ()
 endif ()
 
 target_include_directories(arangodbtests PRIVATE

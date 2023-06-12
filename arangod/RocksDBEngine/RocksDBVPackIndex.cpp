@@ -275,6 +275,7 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
 
     _searchValues.clear();
     _searchValues.add(rewriteBuilder->slice());
+    _current = velocypack::ArrayIterator(_searchValues.slice());
   }
 
   void adjustIterator() {
@@ -1213,6 +1214,11 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
     // We activate the estimator for all non unique-indexes.
     // And only on single servers and DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
+        &collection.vocbase()
+             .server()
+             .getFeature<EngineSelectorFeature>()
+             .engine<RocksDBEngine>()
+             .indexEstimatorMemoryUsageMetric(),
         RocksDBIndex::ESTIMATOR_SIZE);
   }
 
@@ -2715,6 +2721,16 @@ void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
     _estimator->bufferTruncate(tick);
   }
   RocksDBIndex::afterTruncate(tick, trx);
+}
+
+Result RocksDBVPackIndex::drop() {
+  Result res = RocksDBIndex::drop();
+
+  if (res.ok() && _estimator != nullptr) {
+    _estimator->drain();
+  }
+
+  return res;
 }
 
 std::shared_ptr<cache::Cache> RocksDBVPackIndex::makeCache() const {
