@@ -41,6 +41,7 @@ class StorageEngineMock;
 namespace arangodb {
 
 class LogicalCollection;
+class Scheduler;
 
 namespace network {
 class ConnectionPool;
