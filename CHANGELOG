@@ -1,6 +1,8 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* FE-285: Fix query download - use post request for query.
+
 * SEARCH-480: Speedup ArangoSearch recovery.
 
 * SEARCH-476: Fix bug in fst builder.
