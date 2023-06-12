@@ -39,6 +39,7 @@ RocksDBDumpContextGuard::RocksDBDumpContextGuard(
     RocksDBDumpContextGuard&& other) noexcept
     : _manager(other._manager), _ctx(std::move(other._ctx)) {
   TRI_ASSERT(_ctx != nullptr);
+  _ctx->extendLifetime();
 }
 
 RocksDBDumpContextGuard::~RocksDBDumpContextGuard() {
