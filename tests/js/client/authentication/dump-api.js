@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual */
+/*global assertTrue, assertEqual, assertNotUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the authentication
