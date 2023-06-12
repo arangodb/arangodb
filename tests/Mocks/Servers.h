@@ -178,6 +178,11 @@ class MockAqlServer
       bool activateTracing = false, std::string queryString = "",
       std::function<void(arangodb::aql::Query&)> runBeforePrepare =
           [](arangodb::aql::Query&) {}) const;
+  std::shared_ptr<arangodb::aql::Query> createFakeQuery(
+      Scheduler* scheduler, bool activateTracing = false,
+      std::string queryString = "",
+      std::function<void(arangodb::aql::Query&)> runBeforePrepare =
+          [](arangodb::aql::Query&) {}) const;
 };
 
 /// @brief a server with features added that allow to execute RestHandler

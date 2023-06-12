@@ -109,7 +109,7 @@ rta_makedata cluster
 
 importing,export name=import_export parallelity=5 size=small cluster -- --dumpAgencyOnError true
 importing,export name=import_export parallelity=3 size=small single -- --dumpAgencyOnError true
-hot_backup enterprise !windows -- --dumpAgencyOnError true
+hot_backup enterprise !windows size=medium -- --dumpAgencyOnError true
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=2 buckets=3 single -- --dumpAgencyOnError true

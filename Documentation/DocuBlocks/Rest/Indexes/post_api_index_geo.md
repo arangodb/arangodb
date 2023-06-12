@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_index_geo
-@brief creates a geo index
 
-@RESTHEADER{POST /_api/index#geo, Create geo-spatial index, createIndexGeo}
+@RESTHEADER{POST /_api/index#geo, Create a geo-spatial index, createIndexGeo}
 
 @RESTQUERYPARAMETERS
 
@@ -42,7 +41,7 @@ followed by latitude. This corresponds to the format described in
 http://geojson.org/geojson-spec.html#positions
 
 @RESTBODYPARAM{inBackground,boolean,optional,}
-The optional attribute **inBackground** can be set to `true` to create the index
+You can set this option to `true` to create the index
 in the background, which will not write-lock the underlying collection for
 as long as if the index is built in the foreground. The default value is `false`.
 

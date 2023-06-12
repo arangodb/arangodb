@@ -1,6 +1,5 @@
 
 @startDocuBlock post_api_import
-@brief imports documents from JSON
 
 @RESTHEADER{POST /_api/import,Import JSON data as documents, importData}
 

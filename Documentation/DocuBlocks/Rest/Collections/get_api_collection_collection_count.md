@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_collection_collection_count
-@brief Counts the documents in a collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}/count, Return number of documents in a collection, getCollectionCount}
+@RESTHEADER{GET /_api/collection/{collection-name}/count, Get the document count of a collection, getCollectionCount}
 
 @HINTS
 {% hint 'warning' %}
@@ -16,19 +15,18 @@ You should reference them via their names instead.
 The name of the collection.
 
 @RESTDESCRIPTION
-In addition to the above, the result also contains the number of documents.
-**Note** that this will always load the collection into memory.
+Get the number of documents in a collection.
 
-- *count*: The number of documents inside the collection.
+- `count`: The number of documents stored in the specified collection.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *collection-name* is missing, then a *HTTP 400* is
+If the `collection-name` is missing, then a *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404*
+If the `collection-name` is unknown, then a *HTTP 404*
 is returned.
 
 @EXAMPLES
