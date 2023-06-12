@@ -1,5 +1,4 @@
 @startDocuBlock put_api_view_view_rename
-@brief renames a View
 
 @RESTHEADER{PUT /_api/view/{view-name}/rename, Rename a View, renameView}
 
@@ -10,22 +9,22 @@ The name of the View to rename.
 
 @RESTDESCRIPTION
 Renames a View. Expects an object with the attribute(s)
-- *name*: The new name
+- `name`: The new name
 
 It returns an object with the attributes
-- *id*: The identifier of the View.
-- *name*: The new name of the View.
-- *type*: The View type.
+- `id`: The identifier of the View.
+- `name`: The new name of the View.
+- `type`: The View type.
 
 **Note**: This method is not available in a cluster.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *view-name* is missing, then a *HTTP 400* is returned.
+If the `view-name` is missing, then a *HTTP 400* is returned.
 
 @RESTRETURNCODE{404}
-If the *view-name* is unknown, then a *HTTP 404* is returned.
+If the `view-name` is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 

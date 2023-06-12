@@ -613,7 +613,7 @@ std::pair<index_t, index_t> State::determineLogBounds(
 
   // start must be greater than or equal to the lowest index
   // and smaller than or equal to the largest index
-  if (start < _log[0].index) {
+  if (start < _log.front().index) {
     start = _log.front().index;
   } else if (start > _log.back().index) {
     start = _log.back().index;
@@ -646,7 +646,20 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
   }
 
   auto [s, e] = determineLogBounds(start, end);
+
   for (size_t i = s; i < e; ++i) {
+    // only for debugging purposes
+    TRI_ASSERT(i < _log.size()) << [this, sNow = s, eNow = e, start, end]() {
+      std::stringstream s;
+      s << "log size: " << _log.size() << ", start: " << sNow
+        << ", end: " << eNow << ", cur: " << _cur << ", orig start: " << start
+        << ", orig end: " << end << ", log entry indexes:";
+      for (auto const& it : _log) {
+        s << " " << it.index;
+      }
+      return s.str();
+    }();
+
     entries.push_back(_log[i]);
   }
 
@@ -691,7 +704,7 @@ log_t State::atNoLock(index_t index) const {
   }
 
   auto pos = index - _cur;
-  if (pos > _log.size()) {
+  if (pos >= _log.size()) {
     std::string excMessage =
         std::string(
             "Access beyond the end of the log deque: (last, requested): (") +

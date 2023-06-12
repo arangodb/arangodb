@@ -1,6 +1,5 @@
 
 @startDocuBlock post_api_query
-@brief parse an AQL query and return information about it
 
 @RESTHEADER{POST /_api/query, Parse an AQL query, parseAqlQuery}
 
@@ -17,11 +16,11 @@ passed to the server via an HTTP POST request.
 @RESTRETURNCODE{200}
 If the query is valid, the server will respond with *HTTP 200* and
 return the names of the bind parameters it found in the query (if any) in
-the *bindVars* attribute of the response. It will also return an array
-of the collections used in the query in the *collections* attribute.
-If a query can be parsed successfully, the *ast* attribute of the returned
+the `bindVars` attribute of the response. It will also return an array
+of the collections used in the query in the `collections` attribute.
+If a query can be parsed successfully, the `ast` attribute of the returned
 JSON will contain the abstract syntax tree representation of the query.
-The format of the *ast* is subject to change in future versions of
+The format of the `ast` is subject to change in future versions of
 ArangoDB, but it can be used to inspect how ArangoDB interprets a given
 query. Note that the abstract syntax tree will be returned without any
 optimizations applied to it.

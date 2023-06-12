@@ -569,6 +569,11 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
   if (!ServerState::instance()->isCoordinator() && !collection.isAStub()) {
     // We activate the estimator only on DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
+        &collection.vocbase()
+             .server()
+             .getFeature<EngineSelectorFeature>()
+             .engine<RocksDBEngine>()
+             .indexEstimatorMemoryUsageMetric(),
         RocksDBIndex::ESTIMATOR_SIZE);
   }
   // edge indexes are always created with ID 1 or 2
@@ -1039,6 +1044,16 @@ void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick,
     _estimator->bufferTruncate(tick);
   }
   RocksDBIndex::afterTruncate(tick, trx);
+}
+
+Result RocksDBEdgeIndex::drop() {
+  Result res = RocksDBIndex::drop();
+
+  if (res.ok() && _estimator != nullptr) {
+    _estimator->drain();
+  }
+
+  return res;
 }
 
 RocksDBCuckooIndexEstimatorType* RocksDBEdgeIndex::estimator() {

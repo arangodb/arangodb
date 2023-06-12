@@ -145,7 +145,7 @@ bool AddFollower::start(bool&) {
     return false;
   }
   Node const& collection =
-      _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection)->get();
+      *_snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");

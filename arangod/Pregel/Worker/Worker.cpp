@@ -110,16 +110,22 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
 
   if (_messageCombiner) {
     _readCache =
-        new CombiningInCache<M>(_config->localPregelShardIDs(),
+        new CombiningInCache<M>(_config->graphSerdeConfig().localPregelShardIDs(
+                                    ServerState::instance()->getId()),
                                 _messageFormat.get(), _messageCombiner.get());
     _writeCache =
-        new CombiningInCache<M>(_config->localPregelShardIDs(),
+        new CombiningInCache<M>(_config->graphSerdeConfig().localPregelShardIDs(
+                                    ServerState::instance()->getId()),
                                 _messageFormat.get(), _messageCombiner.get());
   } else {
-    _readCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
-                                     _messageFormat.get());
-    _writeCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
-                                      _messageFormat.get());
+    _readCache =
+        new ArrayInCache<M>(_config->graphSerdeConfig().localPregelShardIDs(
+                                ServerState::instance()->getId()),
+                            _messageFormat.get());
+    _writeCache =
+        new ArrayInCache<M>(_config->graphSerdeConfig().localPregelShardIDs(
+                                ServerState::instance()->getId()),
+                            _messageFormat.get());
   }
 }
 
@@ -264,11 +270,11 @@ void Worker<V, E, M>::startGlobalStep(RunGlobalSuperStep const& data) {
     }
     LOG_PREGEL("d5e44", DEBUG) << fmt::format("Starting GSS: {}", data);
 
-    _workerContext->_writeAggregators->resetValues();
-    _workerContext->_readAggregators->setAggregatedValues(
-        data.aggregators.slice());
     // execute context
     if (_workerContext) {
+      _workerContext->_writeAggregators->resetValues();
+      _workerContext->_readAggregators->setAggregatedValues(
+          data.aggregators.slice());
       _workerContext->_vertexCount = data.vertexCount;
       _workerContext->_edgeCount = data.edgeCount;
       _workerContext->preGlobalSuperstep(data.gss);
@@ -306,11 +312,12 @@ void Worker<V, E, M>::_startProcessing() {
   for (auto futureN = size_t{0}; futureN < _config->parallelism(); ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
         RequestLane::INTERNAL_LOW, [self, this, quiverIdx, futureN]() {
-          LOG_PREGEL("ee2ac", DEBUG)
-              << fmt::format("Starting vertex processor number {}", futureN);
-          auto processor =
-              VertexProcessor<V, E, M>(_config, _algorithm, _workerContext,
-                                       _messageCombiner, _messageFormat);
+          LOG_PREGEL("ee2ac", DEBUG) << fmt::format(
+              "Starting vertex processor number {} with batch size", futureN,
+              _messageBatchSize);
+          auto processor = VertexProcessor<V, E, M>(
+              _config, _algorithm, _workerContext, _messageCombiner,
+              _messageFormat, _messageBatchSize);
 
           while (true) {
             auto myCurrentQuiver = quiverIdx->fetch_add(1);
@@ -356,6 +363,7 @@ void Worker<V, E, M>::_startProcessing() {
           return processor.result();
         }));
   }
+  // cppcheck-suppress accessMoved
   futures::collectAll(std::move(futures))
       .thenFinal([self, this](auto&& tryResults) {
         // TODO: exception handling
@@ -463,7 +471,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
       auto storer = std::make_shared<GraphStorer<V, E>>(
           _config->executionNumber(), *_config->vocbase(),
           _config->parallelism(), _algorithm->inputFormat(),
-          _config->globalShardIDs(),
+          _config->graphSerdeConfig(),
           OldStoringUpdate{.fn = std::move(_makeStatusCallback())});
       _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
       storer->store(_magazine).thenFinal(

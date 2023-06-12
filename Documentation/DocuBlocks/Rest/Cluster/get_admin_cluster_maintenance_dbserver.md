@@ -1,8 +1,7 @@
 
 @startDocuBlock get_admin_cluster_maintenance_dbserver
-@brief Check what the maintenance status of a DB-Server is
 
-@RESTHEADER{GET /_admin/cluster/maintenance/{DB-Server-ID}, Query the maintenance status of a DB-Server, getDbserverMaintenance}
+@RESTHEADER{GET /_admin/cluster/maintenance/{DB-Server-ID}, Get the maintenance status of a DB-Server, getDbserverMaintenance}
 
 @RESTDESCRIPTION
 Check whether the specified DB-Server is in maintenance mode and until when.

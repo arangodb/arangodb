@@ -179,7 +179,7 @@ function transactionReplication2Recovery() {
         fail('Insert was expected to fail due to transaction abort.');
       } catch (ex) {
         logContents = replicatedLogsHelper.dumpShardLog(shardId);
-        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, ex.errorNum,
+        assertEqual(internal.errors.ERROR_TRANSACTION_ABORTED.code, ex.errorNum,
           `Log ${logId} contents ${JSON.stringify(logContents)}.`);
       }
 
