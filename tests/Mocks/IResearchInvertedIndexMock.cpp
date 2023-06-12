@@ -141,8 +141,7 @@ Result IResearchInvertedIndexMock::insert(transaction::Methods& trx,
   IResearchInvertedIndexMetaIndexingContext ctx(&this->meta());
   return IResearchDataStore::insert<
       FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
-      IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc, ctx,
-                                                 nullptr);
+      IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc, ctx);
 }
 
 AnalyzerPool::ptr IResearchInvertedIndexMock::findAnalyzer(

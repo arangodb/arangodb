@@ -1,7 +1,6 @@
 @startDocuBlock patch_api_foxx_configuration
-@brief update configuration options
 
-@RESTHEADER{PATCH /_api/foxx/configuration, Update configuration options, updateFoxxConfiguration}
+@RESTHEADER{PATCH /_api/foxx/configuration, Update the configuration options, updateFoxxConfiguration}
 
 @RESTDESCRIPTION
 Replaces the given service's configuration.

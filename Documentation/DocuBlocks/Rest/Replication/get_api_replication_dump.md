@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_replication_dump
-@brief returns the whole content of one collection
 
-@RESTHEADER{GET /_api/replication/dump, Return data of a collection, getReplicationDump}
+@RESTHEADER{GET /_api/replication/dump, Get a replication dump, getReplicationDump}
 
 @RESTQUERYPARAMETERS
 
@@ -16,37 +15,37 @@ Approximate maximum size of the returned result.
 The id of the snapshot to use
 
 @RESTDESCRIPTION
-Returns the data from the collection for the requested range.
+Returns the data from a collection for the requested range.
 
 
-The *chunkSize* query parameter can be used to control the size of the result.
-It must be specified in bytes. The *chunkSize* value will only be honored
-approximately. Otherwise a too low *chunkSize* value could cause the server
+The `chunkSize` query parameter can be used to control the size of the result.
+It must be specified in bytes. The `chunkSize` value will only be honored
+approximately. Otherwise a too low `chunkSize` value could cause the server
 to not be able to put just one entry into the result and return it.
-Therefore, the *chunkSize* value will only be consulted after an entry has
+Therefore, the `chunkSize` value will only be consulted after an entry has
 been written into the result. If the result size is then greater than
-*chunkSize*, the server will respond with as many entries as there are
-in the response already. If the result size is still less than *chunkSize*,
+`chunkSize`, the server will respond with as many entries as there are
+in the response already. If the result size is still less than `chunkSize`,
 the server will try to return more data if there's more data left to return.
 
-If *chunkSize* is not specified, some server-side default value will be used.
+If `chunkSize` is not specified, some server-side default value will be used.
 
-The *Content-Type* of the result is *application/x-arango-dump*. This is an
+The `Content-Type` of the result is `application/x-arango-dump`. This is an
 easy-to-process format, with all entries going onto separate lines in the
 response body.
 
 Each line itself is a JSON object, with at least the following attributes:
 
-- *tick*: the operation's tick attribute
+- `tick`: the operation's tick attribute
 
-- *key*: the key of the document/edge or the key used in the deletion operation
+- `key`: the key of the document/edge or the key used in the deletion operation
 
-- *rev*: the revision id of the document/edge or the deletion operation
+- `rev`: the revision id of the document/edge or the deletion operation
 
-- *data*: the actual document/edge data for types 2300 and 2301. The full
+- `data`: the actual document/edge data for types 2300 and 2301. The full
   document/edge data will be returned even for updates.
 
-- *type*: the type of entry. Possible values for *type* are:
+- `type`: the type of entry. Possible values for `type` are:
 
   - 2300: document insertion/update
 

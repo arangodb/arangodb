@@ -140,20 +140,12 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     return IResearchInvertedIndex::specializeCondition(trx, node, reference);
   }
 
-  Result insertInRecovery(transaction::Methods& trx,
-                          LocalDocumentId const& documentId, VPackSlice doc,
-                          rocksdb::SequenceNumber tick) {
-    return IResearchDataStore::insert<
+  void recoveryInsert(uint64_t tick, LocalDocumentId documentId,
+                      VPackSlice doc) {
+    IResearchDataStore::recoveryInsert<
         FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
-        IResearchInvertedIndexMetaIndexingContext>(
-        trx, documentId, doc, *meta()._indexingContext, &tick);
-  }
-
-  Result removeInRecovery(transaction::Methods& trx,
-                          LocalDocumentId const& documentId,
-                          rocksdb::SequenceNumber tick) {
-    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
-                                      &tick);
+        IResearchInvertedIndexMetaIndexingContext>(tick, documentId, doc,
+                                                   *meta()._indexingContext);
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
@@ -162,15 +154,14 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
                 bool /*performChecks*/) override {
     return IResearchDataStore::insert<
         FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
-        IResearchInvertedIndexMetaIndexingContext>(
-        trx, documentId, doc, *meta()._indexingContext, nullptr);
+        IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc,
+                                                   *meta()._indexingContext);
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
                 LocalDocumentId const& documentId, VPackSlice,
-                OperationOptions const& /*options*/) override {
-    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
-                                      nullptr);
+                OperationOptions const& /*options*/) final {
+    return IResearchDataStore::remove(trx, documentId);
   }
 
  private:

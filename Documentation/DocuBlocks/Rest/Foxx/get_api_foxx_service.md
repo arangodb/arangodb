@@ -1,23 +1,22 @@
 @startDocuBlock get_api_foxx_service
-@brief service metadata
 
-@RESTHEADER{GET /_api/foxx/service, Service description, getFoxxServiceDescription}
+@RESTHEADER{GET /_api/foxx/service, Get the service description, getFoxxServiceDescription}
 
 @RESTDESCRIPTION
 Fetches detailed information for the service at the given mount path.
 
 Returns an object with the following attributes:
 
-- *mount*: the mount path of the service
-- *path*: the local file system path of the service
-- *development*: *true* if the service is running in development mode
-- *legacy*: *true* if the service is running in 2.8 legacy compatibility mode
-- *manifest*: the normalized JSON manifest of the service
+- `mount`: the mount path of the service
+- `path`: the local file system path of the service
+- `development`: `true` if the service is running in development mode
+- `legacy`: `true` if the service is running in 2.8 legacy compatibility mode
+- `manifest`: the normalized JSON manifest of the service
 
 Additionally the object may contain the following attributes if they have been set on the manifest:
 
-- *name*: a string identifying the service type
-- *version*: a semver-compatible version string
+- `name`: a string identifying the service type
+- `version`: a semver-compatible version string
 
 @RESTQUERYPARAMETERS
 
