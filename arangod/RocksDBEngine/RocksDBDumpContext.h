@@ -157,7 +157,7 @@ class RocksDBDumpContext {
     Result _result;
   };
 
-  // Returns the next batch and assigned it batchId. If lastBatch is not nullopt
+  // Returns the next batch and assigns its batchId. If lastBatch is not nullopt
   // frees the batch with the given id. This function might block, if no batch
   // is available. It returns nullptr if there is no batch left.
   std::shared_ptr<Batch const> next(std::uint64_t batchId,
