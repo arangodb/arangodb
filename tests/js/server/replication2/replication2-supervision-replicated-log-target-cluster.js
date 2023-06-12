@@ -298,7 +298,7 @@ const replicatedLogSuite = function () {
         const election = current.supervision.StatusReport[0].detail.election;
         assertEqual(election.term, term + 1);
         assertEqual(election.participantsRequired, 2);
-        assertEqual(election.participantsAvailable, 1);
+        assertEqual(election.participantsVoting, 1);
         const detail = election.details;
         assertEqual(detail[leader].code, 1);
         assertEqual(detail[followers[0]].code, 1);

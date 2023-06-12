@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include <variant>
 
 #include <fmt/core.h>
@@ -34,6 +35,8 @@
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
+#include "Replication2/Mocks/MockOracle.h"
+
 #include "Inspection/VPack.h"
 #include "velocypack/Parser.h"
 
@@ -43,7 +46,10 @@ using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::test;
 
-struct LeaderElectionCampaignTest : ::testing::Test {};
+struct LeaderElectionCampaignTest : ::testing::Test {
+  CleanOracle defaultCleanOracle{};
+};
+
 TEST_F(LeaderElectionCampaignTest, test_computeReason) {
   {
     auto r = computeReason(
@@ -103,13 +109,12 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
           {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
           {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}}};
 
-  auto campaign =
-      runElectionCampaign(localStates, config, health, LogTerm{1}, true, {});
+  auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1},
+                                      true, defaultCleanOracle);
 
-  EXPECT_EQ(campaign.participantsAvailable, 3U);  // TODO: Fixme
-                                                  // << campaign;
-  EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
-  // TODO: FIXME<< campaign;
+  EXPECT_EQ(campaign.participantsVoting, 3U) << campaign;
+  EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}))
+      << campaign;
 
   auto expectedElectible = std::map<ParticipantId, RebootId>{
       {"A", RebootId(1)}, {"B", RebootId(2)}, {"C", RebootId(3)}};
@@ -145,10 +150,10 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
           {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
           {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}}};
 
-  auto campaign =
-      runElectionCampaign(localStates, config, health, LogTerm{2}, true, {});
+  auto campaign = runElectionCampaign(localStates, config, health, LogTerm{2},
+                                      true, defaultCleanOracle);
 
-  EXPECT_EQ(campaign.participantsAvailable, 1U);
+  EXPECT_EQ(campaign.participantsVoting, 1U);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{2}, LogIndex{1}}));
 
   auto expectedElectible =
@@ -187,14 +192,201 @@ TEST_F(LeaderElectionCampaignTest,
           {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
           {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}}};
 
-  auto campaign =
-      runElectionCampaign(localStates, config, health, LogTerm{1}, true, {});
+  auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1},
+                                      true, defaultCleanOracle);
 
-  EXPECT_EQ(campaign.participantsAvailable, 2U);
+  EXPECT_EQ(campaign.participantsVoting, 2U);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
 
   auto expectedElectible =
       std::map<ParticipantId, RebootId>{{"B", RebootId(2)}, {"C", RebootId(3)}};
+  auto electible = std::map<ParticipantId, RebootId>{};
+  std::transform(std::begin(campaign.electibleLeaderSet),
+                 std::end(campaign.electibleLeaderSet),
+                 std::inserter(electible, std::begin(electible)),
+                 [](auto&& server) {
+                   return std::pair(server.serverId, server.rebootId);
+                 });
+  EXPECT_EQ(electible, expectedElectible);
+}
+
+TEST_F(LeaderElectionCampaignTest,
+       test_runElectionCampaign_noneClean_allParticipantsAttending) {
+  // No participant is clean, but all are attending, so all can vote.
+  auto localStates = LogCurrentLocalStates{
+      {"A",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+      {"B",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(2)}},
+      {"C",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(3)}},
+  };
+
+  auto health = ParticipantsHealth{._health{
+      {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+      {"B", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+      {"C", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+  }};
+
+  auto config = ParticipantsConfig{
+      .generation = 0,
+      .participants = {
+          {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      }};
+
+  auto mrProper = tests::MockCleanOracle{};
+  EXPECT_CALL(mrProper, serverIsCleanWfsFalse)
+      .Times(3)
+      .WillRepeatedly([](auto const& participant) { return false; });
+
+  auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1},
+                                      false, mrProper);
+
+  EXPECT_EQ(campaign.participantsVoting, 3U) << campaign;
+  EXPECT_EQ(campaign.participantsAttending, 3U) << campaign;
+  EXPECT_TRUE(campaign.allParticipantsAttending) << campaign;
+  EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}))
+      << campaign;
+
+  auto expectedElectible = std::map<ParticipantId, RebootId>{
+      {"A", RebootId(1)}, {"B", RebootId(2)}, {"C", RebootId(3)}};
+  auto electible = std::map<ParticipantId, RebootId>{};
+  std::transform(std::begin(campaign.electibleLeaderSet),
+                 std::end(campaign.electibleLeaderSet),
+                 std::inserter(electible, std::begin(electible)),
+                 [](auto&& server) {
+                   return std::pair(server.serverId, server.rebootId);
+                 });
+  EXPECT_EQ(electible, expectedElectible);
+}
+
+TEST_F(LeaderElectionCampaignTest,
+       test_runElectionCampaign_oneDirty_oneMissing) {
+  // B is dirty, C is missing, which means only A may vote.
+  auto localStates = LogCurrentLocalStates{
+      {"A",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+      {"B",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(2)}},
+      {"C",
+       {LogTerm{0}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(3)}},
+  };
+
+  auto health = ParticipantsHealth{._health{
+      {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+      {"B", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+      {"C", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+  }};
+
+  auto config = ParticipantsConfig{
+      .generation = 0,
+      .participants = {
+          {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      }};
+
+  auto mrProper = tests::MockCleanOracle{};
+  EXPECT_CALL(mrProper, serverIsCleanWfsFalse)
+      .Times(2)
+      .WillRepeatedly([](auto const& participant) {
+        if (participant.serverId == "A") {
+          EXPECT_EQ(participant.rebootId, RebootId(1));
+          return true;
+        } else if (participant.serverId == "B") {
+          EXPECT_EQ(participant.rebootId, RebootId(2));
+          return false;
+        } else {
+          // shouldn't be called with C
+          EXPECT_TRUE(false)
+              << "Unexpected call with participant " << participant;
+          return false;
+        }
+      });
+
+  auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1},
+                                      false, mrProper);
+
+  EXPECT_EQ(campaign.participantsVoting, 1U) << campaign;
+  EXPECT_EQ(campaign.participantsAttending, 2U) << campaign;
+  EXPECT_FALSE(campaign.allParticipantsAttending) << campaign;
+  EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}))
+      << campaign;
+
+  auto expectedElectible = std::map<ParticipantId, RebootId>{
+      {"A", RebootId(1)},
+      {"B", RebootId(2)},
+  };
+  auto electible = std::map<ParticipantId, RebootId>{};
+  std::transform(std::begin(campaign.electibleLeaderSet),
+                 std::end(campaign.electibleLeaderSet),
+                 std::inserter(electible, std::begin(electible)),
+                 [](auto&& server) {
+                   return std::pair(server.serverId, server.rebootId);
+                 });
+  EXPECT_EQ(electible, expectedElectible);
+}
+
+TEST_F(LeaderElectionCampaignTest,
+       test_runElectionCampaign_dirty_is_electible) {
+  // D is missing, A is dirty, but with the most recent spearhead. B, C, D
+  // should be allowed to vote, and they should elect A.
+  auto localStates = LogCurrentLocalStates{
+      {"A",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{2}}, true, RebootId(7)}},
+      {"B",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+      {"C",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+      {"D",
+       {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+      {"E",
+       {LogTerm{0}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true, RebootId(1)}},
+  };
+
+  auto health = ParticipantsHealth{._health{
+      {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+      {"B", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+      {"C", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+      {"D", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+      {"E", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+  }};
+
+  auto config = ParticipantsConfig{
+      .generation = 0,
+      .participants = {
+          {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"D", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"E", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      }};
+
+  auto mrProper = tests::MockCleanOracle{};
+  EXPECT_CALL(mrProper, serverIsCleanWfsFalse)
+      .Times(4)
+      .WillRepeatedly([](auto const& participant) {
+        if (participant.serverId == "A") {
+          return false;
+        } else {
+          return true;
+        }
+      });
+
+  auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1},
+                                      false, mrProper);
+
+  EXPECT_EQ(campaign.participantsVoting, 3U) << campaign;
+  EXPECT_EQ(campaign.participantsAttending, 4U) << campaign;
+  EXPECT_FALSE(campaign.allParticipantsAttending) << campaign;
+  EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{2}}))
+      << campaign;
+
+  auto expectedElectible = std::map<ParticipantId, RebootId>{
+      {"A", RebootId(7)},
+  };
   auto electible = std::map<ParticipantId, RebootId>{};
   std::transform(std::begin(campaign.electibleLeaderSet),
                  std::end(campaign.electibleLeaderSet),

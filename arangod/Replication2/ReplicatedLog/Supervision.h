@@ -62,15 +62,21 @@ auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
     -> LogCurrentSupervisionElection::ErrorCode;
 
 struct CleanOracle {
-  TEST_VIRTUAL auto serverIsClean(ServerInstanceReference,
-                                  bool const assumedWaitForSync) -> bool;
   TEST_VIRTUAL ~CleanOracle() = default;
+
+  auto serverIsClean(ServerInstanceReference const& participant,
+                     bool assumedWaitForSync) -> bool;
+
+ protected:
+  // Implementation of serverIsClean for waitForSync=false
+  TEST_VIRTUAL auto serverIsCleanWfsFalse(ServerInstanceReference const&)
+      -> bool;
 };
 
 auto runElectionCampaign(LogCurrentLocalStates const& participantId,
                          ParticipantsConfig const& participantsConfig,
                          ParticipantsHealth const& health, LogTerm term,
-                         bool assumedWaitForSync, CleanOracle)
+                         bool assumedWaitForSync, CleanOracle&)
     -> LogCurrentSupervisionElection;
 
 auto getParticipantsAcceptableAsLeaders(

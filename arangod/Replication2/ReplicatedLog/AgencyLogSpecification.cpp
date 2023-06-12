@@ -33,6 +33,8 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include <fmt/ranges.h>
+
 #include <velocypack/Iterator.h>
 
 #include <type_traits>
@@ -97,6 +99,31 @@ LogCurrentLocalState::LogCurrentLocalState(LogTerm term,
       snapshotAvailable(snapshot),
       rebootId(rebootId) {}
 
+auto agency::operator<<(std::ostream& ostream,
+                        LogCurrentSupervisionElection const& el)
+    -> std::ostream& {
+  using namespace fmt::literals;
+  ostream << fmt::format(
+      "Election {{ "
+      "term: {term}, "
+      "bestTermIndex: {bestTerm}:{bestIndex}, "
+      "participantsRequired: {participantsRequired}, "
+      "participantsVoting: {participantsVoting}, "
+      "electibleLeaderSet: {electibleLeaderSet}, "
+      "allParticipantsAttending: {allParticipantsAttending}, "
+      "detail: {detail} "
+      "}}",
+      "term"_a = el.term.value, "bestTerm"_a = el.bestTermIndex.term.value,
+      "bestIndex"_a = el.bestTermIndex.index.value,
+      "participantsRequired"_a = el.participantsRequired,
+      "participantsVoting"_a = el.participantsVoting,
+      "electibleLeaderSet"_a = el.electibleLeaderSet,
+      "allParticipantsAttending"_a = el.allParticipantsAttending,
+      "detail"_a = el.detail);
+
+  return ostream;
+}
+
 auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept
     -> std::string_view {
   switch (ec) {
@@ -121,7 +148,7 @@ auto agency::operator==(const LogCurrentSupervisionElection& left,
                         const LogCurrentSupervisionElection& right) noexcept
     -> bool {
   return left.term == right.term &&
-         left.participantsAvailable == right.participantsAvailable &&
+         left.participantsVoting == right.participantsVoting &&
          left.participantsRequired == right.participantsRequired &&
          left.detail == right.detail;
 }

@@ -239,21 +239,28 @@ auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
 // For waitForSync=true, all servers are always clean.
 // False negatives may inhibit leader election and thus stall the log, until
 // either all servers report back or the unclean server(s) are replaced.
-auto CleanOracle::serverIsClean(ServerInstanceReference,
-                                const bool assumedWaitForSync) -> bool {
-  // Trivial implementation.
-  // It is exact for waitForSync=true.
-  // It is safe for waitForSync=false, but maximally pessimistic.
+auto CleanOracle::serverIsClean(ServerInstanceReference const& participant,
+                                bool const assumedWaitForSync) -> bool {
+  if (assumedWaitForSync) {
+    return true;
+  } else {
+    return serverIsCleanWfsFalse(participant);
+  }
+}
+
+auto CleanOracle::serverIsCleanWfsFalse(ServerInstanceReference const&)
+    -> bool {
+  // Trivial implementation. It is safe, but maximally pessimistic.
   // To be improved later: see
-  //   https://arangodb.atlassian.net/wiki/spaces/CInfra/pages/2061369370/Concept+Conservative+leader+election
-  //   for details.
-  return assumedWaitForSync;
+  // https://arangodb.atlassian.net/wiki/spaces/CInfra/pages/2061369370/Concept+Conservative+leader+election
+  // for details.
+  return false;
 }
 
 auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsConfig const& participantsConfig,
                          ParticipantsHealth const& health, LogTerm const term,
-                         bool const assumedWaitForSync, CleanOracle mrProper)
+                         bool const assumedWaitForSync, CleanOracle& mrProper)
     -> LogCurrentSupervisionElection {
   auto election = LogCurrentSupervisionElection();
   election.term = term;
@@ -267,6 +274,17 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
     }
   };
 
+  auto const participantsAttending = std::size_t(
+      std::count_if(participantsConfig.participants.begin(),
+                    participantsConfig.participants.end(), [&](auto const& it) {
+                      auto const& participantId = it.first;
+                      if (auto status = getMaybeStatus(participantId); status) {
+                        return status->term == term;
+                      } else {
+                        return false;
+                      }
+                    }));
+
   bool const allParticipantsAttendingElection =
       std::all_of(participantsConfig.participants.begin(),
                   participantsConfig.participants.end(), [&](auto const& it) {
@@ -277,6 +295,11 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
                       return false;
                     }
                   });
+  TRI_ASSERT(
+      (participantsAttending == participantsConfig.participants.size()) ==
+      allParticipantsAttendingElection);
+  election.allParticipantsAttending = allParticipantsAttendingElection;
+  election.participantsAttending = participantsAttending;
 
   for (auto const& [participant, flags] : participantsConfig.participants) {
     auto const excluded = not flags.allowedAsLeader;
@@ -300,8 +323,10 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
       // TODO It might be nice to log a warning in case an election can _only_
       //      take place because all participants are attending, indicating
       //      possible data loss due to waitForSync=false.
+      //      But currently, we don't have all necessary information in one
+      //      place.
       if (isClean || allParticipantsAttendingElection) {
-        election.participantsAvailable += 1;
+        election.participantsVoting += 1;
       }
 
       if (maybeStatus->spearhead >= election.bestTermIndex) {
@@ -377,9 +402,10 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
       current.supervision->assumedWriteConcern;
 
   // Find the participants that are healthy and that have the best LogTerm
+  auto cleanOracle = CleanOracle{};
   auto election = runElectionCampaign(
       current.localState, plan.participantsConfig, health, currentTerm.term,
-      current.supervision->assumedWaitForSync, CleanOracle{});
+      current.supervision->assumedWaitForSync, cleanOracle);
   election.participantsRequired = requiredNumberOfOKParticipants;
 
   auto const numElectible = election.electibleLeaderSet.size();
@@ -392,8 +418,8 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
     return;
   }
 
-  if (election.participantsAvailable >= requiredNumberOfOKParticipants) {
-    // We randomly elect on of the electible leaders
+  if (election.participantsVoting >= requiredNumberOfOKParticipants) {
+    // We randomly elect one of the electible leaders
     auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
     auto const& newLeader =
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
