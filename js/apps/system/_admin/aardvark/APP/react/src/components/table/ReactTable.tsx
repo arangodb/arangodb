@@ -38,7 +38,7 @@ export function ReactTable<Data extends object>({
     <Stack>
       {children}
       <TableContainer
-        border="1px solid"
+        borderY="1px solid"
         borderColor="gray.200"
         backgroundColor="white"
       >
