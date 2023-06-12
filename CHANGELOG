@@ -1,6 +1,8 @@
 v3.11.1 (XXXX-XX-XX)
 --------------------
 
+* FE-240: disable JSON editor when viewing inverted index.
+
 * SEARCH-480: Speedup ArangoSearch recovery.
 
 * SEARCH-476: Fix bug in fst builder.
