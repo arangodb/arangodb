@@ -1,6 +1,8 @@
 v3.10.7 (XXXX-XX-XX)
 --------------------
 
+* FE-287: fix number validation for replicationFactor and writeConcern.
+
 * Add a startup parameter `--rclone.argument` which can be utilised to enable
   debugging with logfiles in hot backup RClone upload operacions:
   `--rclone.argument=--log-level=DEBUG`
