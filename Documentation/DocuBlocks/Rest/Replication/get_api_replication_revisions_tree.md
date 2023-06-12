@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_replication_revisions_tree
-@brief retrieves the Merkle tree associated with the collection
 
-@RESTHEADER{GET /_api/replication/revisions/tree, Return Merkle tree for a collection,getReplicationRevisionTree}
+@RESTHEADER{GET /_api/replication/revisions/tree, Get the replication revision tree,getReplicationRevisionTree}
 
 @HINTS
 {% hint 'warning' %}
@@ -19,7 +18,7 @@ The name or id of the collection to query.
 The id of the snapshot to use
 
 @RESTDESCRIPTION
-Returns the Merkle tree from the collection.
+Returns the Merkle tree associated with the specified collection.
 
 The result will be JSON/VelocyPack in the following format:
 ```

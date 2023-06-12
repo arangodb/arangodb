@@ -39,6 +39,8 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
+#include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "Pregel/StatusWriter/StatusEntry.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
 
@@ -52,7 +54,6 @@
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -69,7 +70,7 @@ using namespace arangodb::basics;
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
-      << "[job " << _specifications.executionNumber.value << "] "
+      << "[ExecutionNumber " << _specifications.executionNumber.value << "] "
 
 const char* arangodb::pregel::ExecutionStateNames[9] = {
     "none", "loading", "running", "storing", "done", "canceled", "fatal error"};
@@ -556,7 +557,6 @@ bool Conductor::canBeGarbageCollected() const {
 
   if (guard.owns_lock()) {
     if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
-        _state == ExecutionState::FATAL_ERROR ||
         _state == ExecutionState::FATAL_ERROR) {
       return (_expires != std::chrono::system_clock::time_point{} &&
               _expires <= std::chrono::system_clock::now());
@@ -648,7 +648,6 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
       result.add(VPackValue(gssTime.elapsedSeconds().count()));
     }
   }
-  _masterContext->_aggregators->serializeValues(result);
   _statistics.serializeValues(result);
   if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
@@ -656,6 +655,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   }
   result.add("parallelism", VPackValue(_specifications.parallelism));
   if (_masterContext) {
+    _masterContext->_aggregators->serializeValues(result);
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
   }
@@ -720,7 +720,6 @@ void Conductor::persistPregelState(ExecutionState state) {
         builder.add(VPackValue(gssTime.elapsedSeconds().count()));
       }
     }
-    _masterContext->_aggregators->serializeValues(builder);
     _statistics.serializeValues(builder);
     if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
       builder.add("vertexCount", VPackValue(_totalVerticesCount));
@@ -728,6 +727,7 @@ void Conductor::persistPregelState(ExecutionState state) {
     }
     builder.add("parallelism", VPackValue(_specifications.parallelism));
     if (_masterContext) {
+      _masterContext->_aggregators->serializeValues(builder);
       VPackObjectBuilder ob(&builder, "masterContext");
       _masterContext->serializeValues(builder);
     }
@@ -737,37 +737,29 @@ void Conductor::persistPregelState(ExecutionState state) {
     serialize(builder, conductorStatus);
   };
 
-  if (_state == ExecutionState::DONE) {
-    // TODO: What I wanted to do here is to just use the already available
-    // toVelocyPack() method. This fails currently because of the lock:
-    // "[void arangodb::Mutex::lock()]: _holder != Thread::currentThreadId()"
-    // Therefore, for now - do it manually. Let's clean this up ASAP.
-    // this->toVelocyPack(stateBuilder);
-    // After this works, we can remove all of that code below (same scope).
-    // Including those lambda helper methods.
-
-    stateBuilder.openObject();  // opens main builder
-    addMinimalOutputToBuilder(stateBuilder);
-    addAdditionalOutputToBuilder(stateBuilder);
-    stateBuilder.close();  // closes main builder
-  } else {
-    // minimalistic update during runs or errors (cancel, fatal)
-    // TODO: We should introduce an inspector here as well.
-    stateBuilder.openObject();  // opens main builder
-    addMinimalOutputToBuilder(stateBuilder);
-    stateBuilder.close();  // closes main builder
-  }
+  // TODO: What I wanted to do here is to just use the already available
+  // toVelocyPack() method. This fails currently because of the lock:
+  // "[void arangodb::Mutex::lock()]: _holder != Thread::currentThreadId()"
+  // Therefore, for now - do it manually. Let's clean this up ASAP.
+  // this->toVelocyPack(stateBuilder);
+  // After this works, we can remove all of that code below (same scope).
+  // Including those lambda helper methods.
+  stateBuilder.openObject();  // opens main builder
+  addMinimalOutputToBuilder(stateBuilder);
+  addAdditionalOutputToBuilder(stateBuilder);
+  stateBuilder.close();  // closes main builder
 
   TRI_ASSERT(state != ExecutionState::DEFAULT);
   auto updateResult = cWriter.updateResult(stateBuilder.slice());
   if (updateResult.ok()) {
-    LOG_PREGEL("07323", INFO)
-        << "Updated state into: \"" << StaticStrings::PregelCollection
-        << "\" collection for PID: " << executionNumber();
+    LOG_PREGEL("07323", INFO) << fmt::format(
+        "Updated state in \"{}\" collection", StaticStrings::PregelCollection);
   } else {
-    LOG_PREGEL("0ffa4", INFO)
-        << "Could not store result into: \"" << StaticStrings::PregelCollection
-        << "\" collection for PID: " << executionNumber();
+    LOG_PREGEL("0ffa4", INFO) << fmt::format(
+        "Could not store state {} in \"{}\" collection, error message: "
+        "{}",
+        stateBuilder.slice().toJson(), StaticStrings::PregelCollection,
+        updateResult.errorMessage());
   }
 }
 

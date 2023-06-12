@@ -248,6 +248,7 @@ auto ReplicatedStateManager<S>::resign() && -> std::unique_ptr<CoreType> {
                  guard->_currentManager);
   // we should be unconfigured already
   TRI_ASSERT(methods == nullptr);
+  // cppcheck-suppress returnStdMoveLocal
   return std::move(core);
 }
 
@@ -396,12 +397,11 @@ auto LeaderStateManager<S>::GuardedData::recoverEntries() {
       std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
           std::move(logIter));
   MeasureTimeGuard timeGuard(_metrics.replicatedStateRecoverEntriesRtt);
-  auto fut = _leaderState->recoverEntries(std::move(deserializedIter))
-                 .then([guard = std::move(timeGuard)](auto&& res) mutable {
-                   guard.fire();
-                   return std::move(res.get());
-                 });
-  return fut;
+  return _leaderState->recoverEntries(std::move(deserializedIter))
+      .then([guard = std::move(timeGuard)](auto&& res) mutable {
+        guard.fire();
+        return std::move(res.get());
+      });
 }
 
 template<typename S>

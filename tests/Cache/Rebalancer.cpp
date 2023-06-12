@@ -119,7 +119,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
                                                   &item, sizeof(std::uint64_t));
       TRI_ASSERT(value != nullptr);
       auto status = caches[cacheIndex]->insert(value);
-      if (status.fail()) {
+      if (status != TRI_ERROR_NO_ERROR) {
         delete value;
       }
     }
@@ -153,7 +153,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
             &item, sizeof(std::uint64_t), &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = caches[cacheIndex]->insert(value);
-        if (status.fail()) {
+        if (status != TRI_ERROR_NO_ERROR) {
           delete value;
         }
       } else {  // lookup something
@@ -252,7 +252,7 @@ TEST(CacheRebalancerTest,
                                                   &item, sizeof(std::uint64_t));
       TRI_ASSERT(value != nullptr);
       auto status = caches[cacheIndex]->insert(value);
-      if (status.fail()) {
+      if (status != TRI_ERROR_NO_ERROR) {
         delete value;
       }
     }
@@ -290,7 +290,7 @@ TEST(CacheRebalancerTest,
             &item, sizeof(std::uint64_t), &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = caches[cacheIndex]->insert(value);
-        if (status.fail()) {
+        if (status != TRI_ERROR_NO_ERROR) {
           delete value;
         }
       } else if (r >= 80) {  // banish something

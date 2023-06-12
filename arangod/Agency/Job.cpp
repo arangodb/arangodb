@@ -388,7 +388,7 @@ std::string Job::randomIdleAvailableServer(
 
   // Only take good servers as valid server.
   try {
-    for (auto const& srv : snap.hasAsChildren(healthPrefix).value().get()) {
+    for (auto const& srv : *snap.hasAsChildren(healthPrefix)) {
       // ignore excluded servers
       if (std::find(std::begin(exclude), std::end(exclude), srv.first) !=
           std::end(exclude)) {
@@ -460,8 +460,7 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
                          status.value() == Supervision::HEALTH_STATUS_BAD)) {
             ++count;
             // check is server is maintenance mode, if so, consider as good
-          } else if (maintenanceSet.has_value() &&
-                     maintenanceSet->get().contains(serverStr)) {
+          } else if (maintenanceSet && maintenanceSet->contains(serverStr)) {
             ++count;
           }
         }
@@ -515,7 +514,7 @@ bool Job::isInServerList(Node const& snap, std::string const& prefix,
   } else {  // an object
     auto const& children = snap.hasAsChildren(prefix);
     if (children) {
-      for (auto const& srv : children->get()) {
+      for (auto const& srv : *children) {
         if (srv.first == server) {
           found = true;
           break;
@@ -531,8 +530,7 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   std::vector<std::string> ret;
 
   // Get servers from plan
-  Node::Children const& dbservers =
-      snapshot.hasAsChildren(plannedServers).value().get();
+  Node::Children const& dbservers = *snapshot.hasAsChildren(plannedServers);
   for (auto const& srv : dbservers) {
     ret.push_back(srv.first);
   }
@@ -550,7 +548,7 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
     } else {
       auto const& children = snapshot.hasAsChildren(prefix);
       if (children) {
-        for (auto const& srv : children->get()) {
+        for (auto const& srv : *children) {
           ret.erase(std::remove(ret.begin(), ret.end(), srv.first), ret.end());
         }
       }
@@ -569,7 +567,7 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
 std::vector<std::string> Job::healthyServers(
     arangodb::consensus::Node const& snapshot) {
   std::vector<std::string> ret;
-  for (auto const& srv : snapshot.get(healthPrefix).value().get().children()) {
+  for (auto const& srv : snapshot.get(healthPrefix)->children()) {
     auto healthState = srv.second->hasAsString("Status");
     if (healthState && healthState.value() == Supervision::HEALTH_STATUS_GOOD) {
       ret.emplace_back(srv.first);
@@ -618,12 +616,12 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot,
   std::string databasePath = planColPrefix + database,
               planPath = databasePath + "/" + collection + "/shards";
 
-  auto myshards = sortedShardList(snapshot.hasAsNode(planPath).value());
+  auto myshards = sortedShardList(*snapshot.hasAsNode(planPath));
   auto steps = std::distance(
       myshards.begin(), std::find(myshards.begin(), myshards.end(), shard));
 
   for (auto const& colptr :
-       snapshot.hasAsChildren(databasePath).value().get()) {  // collections
+       *snapshot.hasAsChildren(databasePath)) {  // collections
 
     auto const& col = *colptr.second;
     auto const& otherCollection = colptr.first;
@@ -633,8 +631,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot,
                                             // logging of missing
         col.hasAsSlice("distributeShardsLike").value().stringView() ==
             collection) {
-      auto const& theirshards =
-          sortedShardList(col.hasAsNode("shards").value().get());
+      auto const& theirshards = sortedShardList(*col.hasAsNode("shards"));
       if (theirshards.size() > 0) {  // do not care about virtual collections
         if (theirshards.size() == myshards.size()) {
           ret.emplace_back(otherCollection, theirshards[steps]);
@@ -662,7 +659,7 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
   auto nclones = cs.size();               // #clones
   std::unordered_map<std::string, bool> good;
 
-  for (auto const& i : snap.hasAsChildren(healthPrefix).value().get()) {
+  for (auto const& i : *snap.hasAsChildren(healthPrefix)) {
     good[i.first] = ((*i.second).hasAsString("Status").value() ==
                      Supervision::HEALTH_STATUS_GOOD);
   }
@@ -815,8 +812,7 @@ std::unordered_set<std::string> Job::findAllFailoverCandidates(
 }
 
 std::string Job::uuidLookup(std::string const& shortID) {
-  for (auto const& uuid :
-       _snapshot.hasAsChildren(mapUniqueToShortID).value().get()) {
+  for (auto const& uuid : *_snapshot.hasAsChildren(mapUniqueToShortID)) {
     if ((*uuid.second).hasAsString("ShortName").value() == shortID) {
       return uuid.first;
     }
@@ -837,10 +833,10 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
     return false;
   }
   auto const& job = snapshot.hasAsNode(pendingPrefix + jobId);
-  if (!job || !job->get().has("type")) {
+  if (!job || !job->has("type")) {
     return false;
   }
-  auto const& tmp_type = job->get().hasAsString("type");
+  auto const& tmp_type = job->hasAsString("type");
   if (!tmp_type) {
     return false;
   }
@@ -1114,7 +1110,7 @@ auto Job::isReplication2Database(std::string_view database) -> bool {
   if (!dbs) {
     return false;
   }
-  return isReplicationTwoDB(dbs->get(), std::string{database});
+  return isReplicationTwoDB(*dbs, std::string{database});
 }
 
 bool Job::isServerLeaderForState(const Node& snap, std::string const& db,
@@ -1151,12 +1147,12 @@ std::optional<arangodb::replication2::agency::LogTarget> Job::readStateTarget(
   using namespace arangodb::cluster::paths::aliases;
   auto targetPath = target()->replicatedLogs()->database(db)->log(stateId);
   auto targetNode = snap.get(targetPath);
-  if (not targetNode.has_value()) {
+  if (not targetNode) {
     return std::nullopt;
   }
   auto target =
       velocypack::deserialize<arangodb::replication2::agency::LogTarget>(
-          targetNode->get().toBuilder().slice());
+          targetNode->toBuilder().slice());
   return target;
 }
 
@@ -1165,12 +1161,12 @@ Job::readLogPlan(Node const& snap, std::string const& db,
                  replication2::LogId stateId) {
   auto planPath = "/Plan/ReplicatedLogs/" + db + "/" + to_string(stateId);
   auto planNode = snap.get(planPath);
-  if (not planNode.has_value()) {
+  if (not planNode) {
     return std::nullopt;
   }
   auto plan = velocypack::deserialize<
       arangodb::replication2::agency::LogPlanSpecification>(
-      planNode->get().toBuilder().slice());
+      planNode->toBuilder().slice());
   return plan;
 }
 
@@ -1183,7 +1179,7 @@ std::string Job::findOtherHealthyParticipant(Node const& snap,
     return {};
   }
   std::unordered_map<std::string, bool> good;
-  for (const auto& i : snap.hasAsChildren(healthPrefix).value().get()) {
+  for (const auto& i : *snap.hasAsChildren(healthPrefix)) {
     good[i.first] = ((*i.second).hasAsString("Status").value() ==
                      Supervision::HEALTH_STATUS_GOOD);
   }

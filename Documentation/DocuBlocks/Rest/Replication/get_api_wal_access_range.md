@@ -1,19 +1,18 @@
 
 @startDocuBlock get_api_wal_access_range
-@brief returns the tick ranges available in the write-ahead-log
 
-@RESTHEADER{GET /_api/wal/range, Return tick ranges available in the operations of WAL, getWalRange}
+@RESTHEADER{GET /_api/wal/range, Get the tick ranges available in the WAL, getWalRange}
 
 @RESTDESCRIPTION
-Returns the currently available ranges of tick values for all WAL files.
-The tick values can be used to determine if certain
+Returns the currently available ranges of tick values for all Write-Ahead Log
+(WAL) files. The tick values can be used to determine if certain
 data (identified by tick value) are still available for replication.
 
 The body of the response contains a JSON object.
-* *tickMin*: minimum tick available
-* *tickMax*: maximum tick available
-* *time*: the server time as string in format "YYYY-MM-DDTHH:MM:SSZ"
-* *server*: An object with fields *version* and *serverId*
+- `tickMin`: minimum tick available
+- `tickMax`: maximum tick available
+- `time`: the server time as string in format `YYYY-MM-DDTHH:MM:SSZ`
+- `server`: An object with fields `version` and `serverId`
 
 @RESTRETURNCODES
 
