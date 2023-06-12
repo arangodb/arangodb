@@ -1,5 +1,4 @@
 @startDocuBlock get_api_gharial_graph_edge_collection_edge
-@brief fetch an edge
 
 @RESTHEADER{GET /_api/gharial/{graph}/edge/{collection}/{edge}, Get an edge, getEdge}
 
@@ -15,7 +14,7 @@ The name of the graph.
 The name of the edge collection the edge belongs to.
 
 @RESTURLPARAM{edge,string,required}
-The *_key* attribute of the edge.
+The `_key` attribute of the edge.
 
 @RESTQUERYPARAMETERS
 
@@ -28,13 +27,13 @@ Also see if-match header as an alternative to this.
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{if-match,string,optional}
-If the "If-Match" header is given, then it must contain exactly one Etag. The document is returned,
-if it has the same revision as the given Etag. Otherwise a HTTP 412 is returned. As an alternative
-you can supply the Etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one ETag. The document is returned,
+if it has the same revision as the given ETag. Otherwise a HTTP 412 is returned. As an alternative
+you can supply the ETag in an attribute rev in the URL.
 
 @RESTHEADERPARAM{if-none-match,string,optional}
-If the "If-None-Match" header is given, then it must contain exactly one Etag. The document is returned,
-only if it has a different revision as the given Etag. Otherwise a HTTP 304 is returned.
+If the "If-None-Match" header is given, then it must contain exactly one ETag. The document is returned,
+only if it has a different revision as the given ETag. Otherwise a HTTP 304 is returned.
 
 @RESTRETURNCODES
 

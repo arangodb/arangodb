@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_collection_collection_revision
-@brief Retrieve the collections revision id
 
-@RESTHEADER{GET /_api/collection/{collection-name}/revision, Return collection revision id, getCollectionRevision}
+@RESTHEADER{GET /_api/collection/{collection-name}/revision, Get the collection revision ID, getCollectionRevision}
 
 @HINTS
 {% hint 'warning' %}
@@ -20,16 +19,16 @@ The response will contain the collection's latest used revision id.
 The revision id is a server-generated string that clients can use to 
 check whether data in a collection has changed since the last revision check.
 
-- *revision*: The collection revision id as a string.
+- `revision`: The collection revision id as a string.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *collection-name* is missing, then a *HTTP 400* is
+If the `collection-name` is missing, then a *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404*
+If the `collection-name` is unknown, then a *HTTP 404*
 is returned.
 
 @EXAMPLES
