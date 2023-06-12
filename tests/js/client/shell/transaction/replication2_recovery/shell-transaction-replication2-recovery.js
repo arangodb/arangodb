@@ -73,7 +73,9 @@ function transactionReplication2Recovery() {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      c = db._create(cn, { "numberOfShards": 1, "writeConcern": WC, "replicationFactor": 3 });
+      // TODO Set waitForSync to false after https://arangodb.atlassian.net/browse/CINFRA-755 is finished.
+      //      This is tracked in https://arangodb.atlassian.net/browse/CINFRA-783.
+      c = db._create(cn, { "numberOfShards": 1, "writeConcern": WC, "replicationFactor": 3, waitForSync: true });
       shards = c.shards();
       shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
       logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
