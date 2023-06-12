@@ -167,7 +167,6 @@ class DumpFeature final : public ArangoDumpFeature {
     std::mutex _mutex;
     std::unordered_map<std::string, CollectionFiles> _filesByCollection;
     ManagedDirectory& _directory;
-    [[maybe_unused]] std::map<std::string, arangodb::velocypack::Slice>& _collectionInfo;
   };
 
   struct ParallelDumpServer : public DumpJob {
