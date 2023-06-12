@@ -1,8 +1,20 @@
 
 @startDocuBlock put_api_replication_make_follower
-@brief Changes role to follower
 
-@RESTHEADER{PUT /_api/replication/make-follower, Turn the server into a follower of another, makeReplicationFollower}
+@RESTHEADER{PUT /_api/replication/make-follower, Turn a server into a follower of another, makeReplicationFollower}
+
+@HINTS
+{% hint 'warning' %}
+Calling this endpoint will synchronize data from the collections found on the
+remote leader to the local ArangoDB database. All data in the local collections
+will be purged and replaced with data from the leader. Use with caution!
+{% endhint %}
+
+{% hint 'info' %}
+This command may take a long time to complete and return. This is because it
+will first do a full data synchronization with the leader, which will take time
+roughly proportional to the amount of data.
+{% endhint %}
 
 @RESTBODYPARAM{endpoint,string,required,string}
 the leader endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
@@ -22,12 +34,12 @@ whether or not system collection operations will be applied
 
 @RESTBODYPARAM{restrictType,string,optional,string}
 an optional string value for collection filtering. When
-specified, the allowed values are *include* or *exclude*.
+specified, the allowed values are `include` or `exclude`.
 
 @RESTBODYPARAM{restrictCollections,array,optional,string}
-an optional array of collections for use with *restrictType*.
-If *restrictType* is *include*, only the specified collections
-will be synchronized. If *restrictType* is *exclude*, all but the specified
+an optional array of collections for use with `restrictType`.
+If `restrictType` is `include`, only the specified collections
+will be synchronized. If `restrictType` is `exclude`, all but the specified
 collections will be synchronized.
 
 @RESTBODYPARAM{maxConnectRetries,integer,optional,int64}
@@ -56,8 +68,8 @@ or when the replication is started and no tick value can be found.
 
 @RESTBODYPARAM{autoResyncRetries,integer,optional,int64}
 number of resynchronization retries that will be performed in a row when
-automatic resynchronization is enabled and kicks in. Setting this to *0* will
-effectively disable *autoResync*. Setting it to some other value will limit
+automatic resynchronization is enabled and kicks in. Setting this to `0` will
+effectively disable `autoResync`. Setting it to some other value will limit
 the number of retries that are performed. This helps preventing endless retries
 in case resynchronizations always fail.
 
@@ -66,15 +78,15 @@ the maximum wait time (in seconds) that the initial synchronization will
 wait for a response from the leader when fetching initial collection data.
 This wait time can be used to control after what time the initial synchronization
 will give up waiting for a response and fail. This value is relevant even
-for continuous replication when *autoResync* is set to *true* because this
+for continuous replication when `autoResync` is set to `true` because this
 may re-start the initial synchronization when the leader cannot provide
 log data the follower requires.
-This value will be ignored if set to *0*.
+This value will be ignored if set to `0`.
 
 @RESTBODYPARAM{connectionRetryWaitTime,integer,optional,int64}
 the time (in seconds) that the applier will intentionally idle before
 it retries connecting to the leader in case of connection problems.
-This value will be ignored if set to *0*.
+This value will be ignored if set to `0`.
 
 @RESTBODYPARAM{idleMinWaitTime,integer,optional,int64}
 the minimum wait time (in seconds) that the applier will intentionally idle
@@ -82,7 +94,7 @@ before fetching more log data from the leader in case the leader has
 already sent all its log data. This wait time can be used to control the
 frequency with which the replication applier sends HTTP log fetch requests
 to the leader in case there is no write activity on the leader.
-This value will be ignored if set to *0*.
+This value will be ignored if set to `0`.
 
 @RESTBODYPARAM{idleMaxWaitTime,integer,optional,int64}
 the maximum wait time (in seconds) that the applier will intentionally idle
@@ -92,26 +104,28 @@ that resulted in no more log data. This wait time can be used to control the
 maximum frequency with which the replication applier sends HTTP log fetch
 requests to the leader in case there is no write activity on the leader for
 longer periods. This configuration value will only be used if the option
-*adaptivePolling* is set to *true*.
-This value will be ignored if set to *0*.
+`adaptivePolling` is set to `true`.
+This value will be ignored if set to `0`.
 
 @RESTBODYPARAM{requireFromPresent,boolean,optional,}
-if set to *true*, then the replication applier will check
+if set to `true`, then the replication applier will check
 at start of its continuous replication if the start tick from the dump phase
 is still present on the leader. If not, then there would be data loss. If
-*requireFromPresent* is *true*, the replication applier will abort with an
-appropriate error message. If set to *false*, then the replication applier will
+`requireFromPresent` is `true`, the replication applier will abort with an
+appropriate error message. If set to `false`, then the replication applier will
 still start, and ignore the data loss.
 
 @RESTBODYPARAM{verbose,boolean,optional,}
-if set to *true*, then a log line will be emitted for all operations
+if set to `true`, then a log line will be emitted for all operations
 performed by the replication applier. This should be used for debugging
 replication
 problems only.
 
 @RESTDESCRIPTION
-Starts a full data synchronization from a remote endpoint into the local ArangoDB
-database and afterwards starts the continuous replication.
+Changes the role to a follower and starts a full data synchronization from a
+remote endpoint into the local ArangoDB database and afterwards starts the
+continuous replication.
+
 The operation works on a per-database level.
 
 All local database data will be removed prior to the synchronization.
@@ -119,14 +133,14 @@ All local database data will be removed prior to the synchronization.
 In case of success, the body of the response is a JSON object with the following
 attributes:
 
-- *state*: a JSON object with the following sub-attributes:
+- `state`: a JSON object with the following sub-attributes:
 
-  - *running*: whether or not the applier is active and running
+  - `running`: whether or not the applier is active and running
 
-  - *lastAppliedContinuousTick*: the last tick value from the continuous
+  - `lastAppliedContinuousTick`: the last tick value from the continuous
     replication log the applier has applied.
 
-  - *lastProcessedContinuousTick*: the last tick value from the continuous
+  - `lastProcessedContinuousTick`: the last tick value from the continuous
     replication log the applier has processed.
 
     Regularly, the last applied and last processed tick values should be
@@ -136,10 +150,10 @@ attributes:
     until the applier encounters the *transaction commit* log event for the
     transaction.
 
-  - *lastAvailableContinuousTick*: the last tick value the remote server can
+  - `lastAvailableContinuousTick`: the last tick value the remote server can
     provide.
 
-  - *ticksBehind*: this attribute will be present only if the applier is currently
+  - `ticksBehind`: this attribute will be present only if the applier is currently
     running. It will provide the number of log ticks between what the applier
     has applied/seen and the last log tick value provided by the remote server.
     If this value is zero, then both servers are in sync. If this is non-zero,
@@ -160,66 +174,56 @@ attributes:
     configuration. So the reported value may exaggerate the reality a bit for
     some scenarios.
 
-  - *time*: the time on the applier server.
+  - `time`: the time on the applier server.
 
-  - *totalRequests*: the total number of requests the applier has made to the
+  - `totalRequests`: the total number of requests the applier has made to the
     endpoint.
 
-  - *totalFailedConnects*: the total number of failed connection attempts the
+  - `totalFailedConnects`: the total number of failed connection attempts the
     applier has made.
 
-  - *totalEvents*: the total number of log events the applier has processed.
+  - `totalEvents`: the total number of log events the applier has processed.
 
-  - *totalOperationsExcluded*: the total number of log events excluded because
-    of *restrictCollections*.
+  - `totalOperationsExcluded`: the total number of log events excluded because
+    of `restrictCollections`.
 
-  - *progress*: a JSON object with details about the replication applier progress.
+  - `progress`: a JSON object with details about the replication applier progress.
     It contains the following sub-attributes if there is progress to report:
 
-    - *message*: a textual description of the progress
+    - `message`: a textual description of the progress
 
-    - *time*: the date and time the progress was logged
+    - `time`: the date and time the progress was logged
 
-    - *failedConnects*: the current number of failed connection attempts
+    - `failedConnects`: the current number of failed connection attempts
 
-  - *lastError*: a JSON object with details about the last error that happened on
+  - `lastError`: a JSON object with details about the last error that happened on
     the applier. It contains the following sub-attributes if there was an error:
 
-    - *errorNum*: a numerical error code
+    - `errorNum`: a numerical error code
 
-    - *errorMessage*: a textual error description
+    - `errorMessage`: a textual error description
 
-    - *time*: the date and time the error occurred
+    - `time`: the date and time the error occurred
 
-    In case no error has occurred, *lastError* will be empty.
+    In case no error has occurred, `lastError` will be empty.
 
-- *server*: a JSON object with the following sub-attributes:
+- `server`: a JSON object with the following sub-attributes:
 
-  - *version*: the applier server's version
+  - `version`: the applier server's version
 
-  - *serverId*: the applier server's id
+  - `serverId`: the applier server's id
 
-- *endpoint*: the endpoint the applier is connected to (if applier is
+- `endpoint`: the endpoint the applier is connected to (if applier is
   active) or will connect to (if applier is currently inactive)
 
-- *database*: the name of the database the applier is connected to (if applier is
+- `database`: the name of the database the applier is connected to (if applier is
   active) or will connect to (if applier is currently inactive)
 
 Please note that all "tick" values returned do not have a specific unit. Tick
 values are only meaningful when compared to each other. Higher tick values mean
 "later in time" than lower tick values.
 
-WARNING: calling this method will synchronize data from the collections found
-on the remote leader to the local ArangoDB database. All data in the local
-collections will be purged and replaced with data from the leader.
-
-Use with caution!
-
-Please also keep in mind that this command may take a long time to complete
-and return. This is because it will first do a full data synchronization with
-the leader, which will take time roughly proportional to the amount of data.
-
-**Note**: this method is not supported on a Coordinator in a cluster.
+**Note**: this endpoint is not supported on a Coordinator in a cluster.
 
 @RESTRETURNCODES
 

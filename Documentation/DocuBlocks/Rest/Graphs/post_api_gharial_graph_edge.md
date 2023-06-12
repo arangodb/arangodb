@@ -1,13 +1,12 @@
 @startDocuBlock post_api_gharial_graph_edge
-@brief Add a new edge definition to the graph
 
-@RESTHEADER{POST /_api/gharial/{graph}/edge, Add edge definition, createEdgeDefinition}
+@RESTHEADER{POST /_api/gharial/{graph}/edge, Add an edge definition, createEdgeDefinition}
 
 @RESTDESCRIPTION
 Adds an additional edge definition to the graph.
 
-This edge definition has to contain a *collection* and an array of
-each *from* and *to* vertex collections.  An edge definition can only
+This edge definition has to contain a `collection` and an array of
+each `from` and `to` vertex collections.  An edge definition can only
 be added if this definition is either not used in any other graph, or
 it is used with exactly the same definition. It is not possible to
 store a definition "e" from "v1" to "v2" in the one graph, and "e"

@@ -1,7 +1,6 @@
 @startDocuBlock delete_api_user_user_database_database_collection
-@brief Clear the collection access level, revert back to the default access level
 
-@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}/{collection}, Clear the collection access level, deleteUserCollectionPermissions}
+@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}/{collection}, Clear a user's collection access level, deleteUserCollectionPermissions}
 
 @RESTURLPARAMETERS
 
@@ -15,11 +14,13 @@ The name of the database.
 The name of the collection.
 
 @RESTDESCRIPTION
-Clears the collection access level for the collection *collection* in the
-database *dbname* of user *user*.  As consequence the default collection
+Clears the collection access level for the collection `collection` in the
+database `dbname` of user `user`. As consequence, the default collection
 access level is used. If there is no defined default collection access level,
-it defaults to *No access*.  You need permissions to the *_system* database in
-order to execute this REST call.
+it defaults to *No access*. 
+
+You need write permissions (*Administrate* access level) for the `_system`
+database in order to execute this REST call.
 
 @RESTRETURNCODES
 

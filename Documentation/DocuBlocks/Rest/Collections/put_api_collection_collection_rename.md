@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_collection_collection_rename
-@brief renames a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/rename, Rename collection, renameCollection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/rename, Rename a collection, renameCollection}
 
 @HINTS
 {% hint 'warning' %}
@@ -18,21 +17,21 @@ The name of the collection to rename.
 @RESTDESCRIPTION
 Renames a collection. Expects an object with the attribute(s)
 
-- *name*: The new name.
+- `name`: The new name.
 
 It returns an object with the attributes
 
-- *id*: The identifier of the collection.
+- `id`: The identifier of the collection.
 
-- *name*: The new name of the collection.
+- `name`: The new name of the collection.
 
-- *status*: The status of the collection as number.
+- `status`: The status of the collection as number.
 
-- *type*: The collection type. Valid types are:
+- `type`: The collection type. Valid types are:
   - 2: document collection
   - 3: edges collection
 
-- *isSystem*: If *true* then the collection is a system collection.
+- `isSystem`: If `true` then the collection is a system collection.
 
 If renaming the collection succeeds, then the collection is also renamed in
 all graph definitions inside the `_graphs` collection in the current database.
@@ -42,11 +41,11 @@ all graph definitions inside the `_graphs` collection in the current database.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *collection-name* is missing, then a *HTTP 400* is
+If the `collection-name` is missing, then a *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404*
+If the `collection-name` is unknown, then a *HTTP 404*
 is returned.
 @EXAMPLES
 
