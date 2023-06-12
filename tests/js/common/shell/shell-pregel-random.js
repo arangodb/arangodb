@@ -183,7 +183,7 @@ function randomTestSuite() {
     testCancelWithStringId: function () {
       let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false });
       assertTrue(typeof pid === "string");
-      pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
+      pregelTestHelpers.waitUntilRunStart(pid);
       checkCancel(pid);
     },
 
