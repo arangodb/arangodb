@@ -1,4 +1,4 @@
-import { TriangleDownIcon, TriangleUpIcon } from "@chakra-ui/icons";
+import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 import {
   Box,
   Flex,
@@ -87,32 +87,55 @@ const SortableTh = <Data extends object>({
             }
           : {}
       }
+      role="group"
     >
       <Box display="flex" alignItems="center">
         <Text>
           {flexRender(header.column.columnDef.header, header.getContext())}
         </Text>
-        {canSort && (
-          <Flex marginLeft="2" height={3} width={3}>
-            {header.column.getIsSorted() ? (
-              header.column.getIsSorted() === "desc" ? (
-                <TriangleDownIcon
-                  width={3}
-                  height={3}
-                  aria-label="sorted descending"
-                />
-              ) : (
-                <TriangleUpIcon
-                  width={3}
-                  height={3}
-                  aria-label="sorted ascending"
-                />
-              )
-            ) : null}
-          </Flex>
-        )}
+        {canSort && <SortIcon sortedDirection={header.column.getIsSorted()} />}
       </Box>
     </Th>
+  );
+};
+
+const SortIcon = ({
+  sortedDirection
+}: {
+  sortedDirection: "desc" | "asc" | false;
+}) => {
+  const isSorted = sortedDirection !== false;
+  const isAscending = sortedDirection === "asc";
+  const upIconColor = sortedDirection === "asc" ? "black" : "inherit";
+  const downIconColor = sortedDirection === "desc" ? "black" : "inherit";
+  return (
+    <Flex
+      marginLeft="1"
+      _groupHover={{
+        color: "gray.600"
+      }}
+      color="gray.400"
+      transition="color 0.3s ease"
+      direction="column"
+    >
+      <Box
+        display={isAscending || !isSorted ? "block" : "none"}
+        color={upIconColor}
+        as={ChevronUpIcon}
+        width="4"
+        height="4"
+        aria-label="sorted descending"
+      />
+      <Box
+        display={!isAscending || !isSorted ? "block" : "none"}
+        color={downIconColor}
+        as={ChevronDownIcon}
+        marginTop={!isSorted ? "-2" : "0"}
+        width="4"
+        height="4"
+        aria-label="sorted ascending"
+      />
+    </Flex>
   );
 };
 
