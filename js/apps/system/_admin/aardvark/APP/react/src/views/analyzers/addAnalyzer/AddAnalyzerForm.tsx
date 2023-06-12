@@ -1,13 +1,22 @@
-import { Divider, Grid, Stack, Switch, Text } from "@chakra-ui/react";
+import { InfoIcon } from "@chakra-ui/icons";
+import {
+  Divider,
+  Flex,
+  Grid,
+  Link,
+  Stack,
+  Switch,
+  Text
+} from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
 import { InputControl } from "../../../components/form/InputControl";
 import { SelectControl } from "../../../components/form/SelectControl";
-import { TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
 import { AnalyzerTypes } from "../Analyzer.types";
-import { AnalyzerTypeForm } from "./AnalyzerTypeForm";
-import { useReinitializeForm } from "../useReinitializeForm";
 import { useAnalyzersContext } from "../AnalyzersContext";
+import { TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
+import { useReinitializeForm } from "../useReinitializeForm";
+import { AnalyzerTypeForm } from "./AnalyzerTypeForm";
 
 const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP).map(type => {
   return {
@@ -24,27 +33,37 @@ export const AddAnalyzerForm = ({
   useReinitializeForm();
   const [analyzerTypeField] = useField<AnalyzerTypes>("type");
   const { isFormDisabled: isDisabled } = useAnalyzersContext();
-
+  const analyzerTypeValue = analyzerTypeField.value;
   return (
     <Grid templateColumns={"1fr 1fr"} gap="6">
       <Stack>
         <Text fontSize="lg">Basic</Text>
         <Divider />
-        <Grid templateColumns={"1fr 1fr"} columnGap="4">
+        <Grid templateColumns={"1fr 1fr"} columnGap="4" alignItems="start">
           <InputControl
             ref={initialFocusRef}
             isDisabled={isDisabled}
             name="name"
             label="Analyzer name"
           />
-          <SelectControl
-            isDisabled={isDisabled}
-            name="type"
-            label="Analyzer type"
-            selectProps={{
-              options: ANALYZER_TYPE_OPTIONS
-            }}
-          />
+          <Flex alignItems="flex-end">
+            <SelectControl
+              isDisabled={isDisabled}
+              name="type"
+              label="Analyzer type"
+              selectProps={{
+                options: ANALYZER_TYPE_OPTIONS
+              }}
+            />
+            <Link
+              marginLeft="2"
+              marginBottom="2"
+              target="_blank"
+              href={`https://www.arangodb.com/docs/devel/analyzers.html#${analyzerTypeValue}`}
+            >
+              <InfoIcon />
+            </Link>
+          </Flex>
         </Grid>
       </Stack>
       <Stack>
@@ -56,7 +75,7 @@ export const AddAnalyzerForm = ({
           <FeatureSwitch name="position" />
         </Grid>
       </Stack>
-      <AnalyzerTypeForm analyzerType={analyzerTypeField.value} />
+      <AnalyzerTypeForm analyzerType={analyzerTypeValue} />
     </Grid>
   );
 };
