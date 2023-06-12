@@ -25,7 +25,6 @@
 #include <iosfwd>
 #include "Agency/AgencyPaths.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/types.h"
