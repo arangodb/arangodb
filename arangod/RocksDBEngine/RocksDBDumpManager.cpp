@@ -39,10 +39,7 @@ using namespace arangodb;
 RocksDBDumpManager::RocksDBDumpManager(RocksDBEngine& engine)
     : _engine(engine) {}
 
-RocksDBDumpManager::~RocksDBDumpManager() {
-  std::lock_guard mutexLocker{_lock};
-  _contexts.clear();
-}
+RocksDBDumpManager::~RocksDBDumpManager() { _contexts.clear(); }
 
 RocksDBDumpContextGuard RocksDBDumpManager::createContext(
     RocksDBDumpContextOptions opts, std::string const& user,
