@@ -1696,8 +1696,7 @@ DumpFeature::DumpFileProvider::DumpFileProvider(
     std::map<std::string, arangodb::velocypack::Slice>& collectionInfo,
     bool splitFiles)
     : _splitFiles(splitFiles),
-      _directory(directory),
-      _collectionInfo(collectionInfo) {
+      _directory(directory) {
   if (!_splitFiles) {
     // If we don't split files, i.e. arangorestore compatibility mode, we have
     // to create a file for each collection, even if it is empty. Otherwise,
