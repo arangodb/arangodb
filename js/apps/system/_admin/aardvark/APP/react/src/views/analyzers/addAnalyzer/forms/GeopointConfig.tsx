@@ -19,7 +19,7 @@ export const GeopointConfig = ({
           name={`${basePropertiesPath}.latitude`}
         />
         <CreatableMultiSelectControl
-          isDisabled
+          isDisabled={isDisabled}
           label={"Longitude Path"}
           name={`${basePropertiesPath}.longitude`}
         />
