@@ -166,34 +166,52 @@ void RestDumpHandler::handleCommandDumpStart() {
   opts.batchSize = [&body]() {
     if (auto s = body.get("batchSize"); s.isNumber()) {
       return s.getNumber<uint64_t>();
+    } else if (!s.isNone()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "`batchSize` expected to be a number");
     }
     return ::defaultBatchSize;
   }();
   opts.prefetchCount = [&body]() {
     if (auto s = body.get("prefetchCount"); s.isNumber()) {
       return s.getNumber<uint64_t>();
+    } else if (!s.isNone()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "`prefetchCount` expected to be a number");
     }
     return ::defaultPrefetchCount;
   }();
   opts.parallelism = [&body]() {
     if (auto s = body.get("parallelism"); s.isNumber()) {
       return s.getNumber<uint64_t>();
+    } else if (!s.isNone()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "`parallelism` expected to be a number");
     }
     return ::defaultParallelism;
   }();
   opts.ttl = [&body]() {
     if (auto s = body.get("ttl"); s.isNumber()) {
       return s.getNumber<double>();
+    } else if (!s.isNone()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "`ttl` expected to be a number");
     }
     return ::defaultTtl;
   }();
 
   if (auto s = body.get("shards"); !s.isArray()) {
-    generateError(
-        Result(TRI_ERROR_BAD_PARAMETER, "invalid 'shards' value in request"));
+    generateError(Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "invalid 'shards' value in request - expected array or strings"));
     return;
   } else {
     for (auto it : VPackArrayIterator(s)) {
+      if (!it.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "invalid 'shards' value in request - expected array or strings");
+      }
       opts.shards.emplace_back(it.copyString());
     }
   }
