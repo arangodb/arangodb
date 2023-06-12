@@ -59,9 +59,9 @@ const runInFatalError = (stats) => stats.state === "fatal error";
 const runFinishedUnsuccessfully = (stats) => runCanceled(stats) || runInFatalError(stats);
 const runFinished = (stats) => runFinishedSuccessfully(stats) || runFinishedUnsuccessfully(stats);
 
-const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sleepIntervalSeconds = 0.2) {
+const waitUntilRunStart = function (pid, maxWaitSeconds = 120, sleepIntervalSeconds = 0.2) {
   let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
-  var status;
+  let status;
   // Note: This is added because there is a race between the conductor for pid
   // being created and the user asking for the status of a pregel run for the
   // first time.
@@ -80,6 +80,13 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
       return;
     }
   } while(status === undefined);
+
+  return wakeupsLeft;
+};
+
+const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sleepIntervalSeconds = 0.2) {
+  let wakeupsLeft = waitUntilRunStart(pid, maxWaitSeconds, sleepIntervalSeconds);
+  let status;
   do {
     internal.sleep(sleepIntervalSeconds);
     try {
@@ -1831,6 +1838,7 @@ exports.assertAlmostEquals = assertAlmostEquals;
 exports.runFinished = runFinished;
 exports.runCanceled = runCanceled;
 exports.runFinishedSuccessfully = runFinishedSuccessfully;
+exports.waitUntilRunStart = waitUntilRunStart;
 exports.waitUntilRunFinishedSuccessfully = waitUntilRunFinishedSuccessfully;
 exports.waitForResultsBeeingGarbageCollected = waitForResultsBeeingGarbageCollected;
 exports.uniquePregelResults = uniquePregelResults;
