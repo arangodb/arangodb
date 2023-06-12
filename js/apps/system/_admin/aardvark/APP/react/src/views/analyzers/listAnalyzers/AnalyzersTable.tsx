@@ -1,7 +1,7 @@
 import { Link, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { AnalyzerDescription } from "arangojs/analyzer";
-import React, { useMemo } from "react";
+import React from "react";
 import { Link as RouterLink, useHistory } from "react-router-dom";
 import { FiltersList, FilterType } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
@@ -32,14 +32,24 @@ const TABLE_COLUMNS = [
       );
     }
   }),
-  columnHelper.accessor("name", {
-    header: "DB",
-    id: "db",
-    cell: info => {
-      const cellValue = info.cell.getValue();
-      return cellValue.includes("::") ? cellValue.split("::")[0] : "_system";
+  columnHelper.accessor(
+    row => {
+      return row.name.includes("::") ? row.name.split("::")[0] : "_system";
+    },
+    {
+      header: "DB",
+      id: "db"
     }
-  }),
+  ),
+  columnHelper.accessor(
+    row => {
+      return row.name.includes("::") ? "Custom" : "Built-in";
+    },
+    {
+      header: "Source",
+      id: "source"
+    }
+  ),
   columnHelper.accessor("type", {
     header: "Type",
     id: "type",
@@ -50,15 +60,6 @@ const TABLE_COLUMNS = [
 ];
 
 const TABLE_FILTERS = TABLE_COLUMNS.map(column => {
-  if (column.id === "db") {
-    return {
-      ...column,
-      filterType: "single-select",
-      getValue: (value: string) => {
-        return value.includes("::") ? value.split("::")[0] : "_system";
-      }
-    };
-  }
   return {
     ...column,
     filterType: "single-select"
@@ -66,19 +67,20 @@ const TABLE_FILTERS = TABLE_COLUMNS.map(column => {
 }).filter(Boolean) as FilterType[];
 
 export const AnalyzersTable = () => {
-  const { analyzers, showSystemAnalyzers } = useAnalyzersContext();
-  const newAnalyzers = useMemo(() => {
-    return analyzers?.filter(analyzer =>
-      showSystemAnalyzers ? true : analyzer.name.includes("::")
-    );
-  }, [analyzers, showSystemAnalyzers]);
+  const { analyzers } = useAnalyzersContext();
   const tableInstance = useSortableReactTable<AnalyzerDescription>({
-    data: newAnalyzers || [],
+    data: analyzers || [],
     columns: TABLE_COLUMNS,
     initialSorting: [
       {
         id: "name",
         desc: false
+      }
+    ],
+    initialFilters: [
+      {
+        id: "source",
+        value: "Custom"
       }
     ]
   });

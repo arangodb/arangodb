@@ -49,7 +49,6 @@ const HeaderFilter = <Data extends object>({
           ],
     [column, firstValue, filter]
   );
-  console.log({ column });
   const options = sortedUniqueValues.map(value => ({
     label: value,
     value
@@ -111,10 +110,11 @@ export const FiltersList = <Data extends object>({
   filters: FilterType[];
 }) => {
   const [showFilters, setShowFilters] = React.useState(false);
+  const columnFilters = table.getState().columnFilters;
   return (
     <Grid gridTemplateColumns="100px 1fr" gap="4">
       <FilterButton
-        appliedFiltersCount={table.getState().columnFilters.length}
+        appliedFiltersCount={columnFilters.length}
         onClick={() => setShowFilters(!showFilters)}
         isSelected={showFilters}
       />
@@ -122,6 +122,11 @@ export const FiltersList = <Data extends object>({
         filters={filters}
         table={table}
         showFilters={showFilters}
+        initialFilters={filters.filter(filter => {
+          return columnFilters.find(
+            columnFilter => columnFilter.id === filter.id
+          );
+        })}
       />
     </Grid>
   );
@@ -169,15 +174,16 @@ const FilterButton = ({
 const FilterSelector = <Data extends object>({
   table,
   showFilters,
-  filters
+  filters,
+  initialFilters = []
 }: {
   table: TableType<Data>;
   showFilters: boolean;
   filters: FilterType[];
+  initialFilters: (FilterType | undefined)[];
 }) => {
-  const [currentFilters, setCurrentFilters] = React.useState<
-    (FilterType | undefined)[]
-  >([]);
+  const [currentFilters, setCurrentFilters] =
+    React.useState<(FilterType | undefined)[]>(initialFilters);
   if (!showFilters) {
     return null;
   }

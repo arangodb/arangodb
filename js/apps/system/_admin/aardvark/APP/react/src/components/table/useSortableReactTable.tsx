@@ -15,17 +15,18 @@ type SortableReactTableOptions<Data extends object> = {
   data: Data[];
   initialSorting?: SortingState;
   columns: ColumnDef<Data, any>[];
+  initialFilters?: ColumnFiltersState;
 };
 
 export const useSortableReactTable = <Data extends object>({
   data,
   columns,
-  initialSorting = []
+  initialSorting = [],
+  initialFilters = []
 }: SortableReactTableOptions<Data>) => {
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
+  const [columnFilters, setColumnFilters] =
+    React.useState<ColumnFiltersState>(initialFilters);
   const table = useReactTable({
     columns,
     data,
