@@ -25,6 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RequestLane.h"
@@ -32,6 +34,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -125,6 +128,40 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
           TRI_ERROR_BAD_PARAMETER,
           "expecting POST /_api/dump/start or /_api/dump/next/<id>");
     }
+    if (suffixes[0] == "start") {
+      bool parseSuccess = false;
+      VPackSlice body = this->parseVPackBody(parseSuccess);
+      if (!parseSuccess) {  // error message generated in parseVPackBody
+        return {TRI_ERROR_BAD_PARAMETER};
+      }
+
+      ExecContext& exec =
+          *static_cast<ExecContext*>(_request->requestContext());
+      LOG_DEVEL << "exec user = " << exec.user()
+                << " req user = " << _request->user();
+      if (auto s = body.get("shards"); !s.isArray()) {
+        return Result(
+            TRI_ERROR_BAD_PARAMETER,
+            "invalid 'shards' value in request - expected array or strings");
+      } else {
+        for (auto it : VPackArrayIterator(s)) {
+          if (!it.isString()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                           "invalid 'shards' value in request "
+                                           "- expected array or strings");
+          }
+
+          auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+          // get collection name
+          auto collectionName = ci.getCollectionNameForShard(it.stringView());
+          if (!exec.canUseCollection(_request->databaseName(), collectionName,
+                                     auth::Level::RO)) {
+            return {TRI_ERROR_FORBIDDEN};
+          }
+        }
+      }
+    }
   } else {
     // invalid HTTP method
     return ResultT<std::pair<std::string, bool>>::error(
@@ -135,6 +172,7 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
     ServerID const& DBserver = _request->value("dbserver");
     if (!DBserver.empty()) {
       // if DBserver property present, remove auth header
+      _request->addHeader("x-arango-dump-auth-user", _request->user());
       return std::make_pair(DBserver, true);
     }
 
@@ -146,21 +184,14 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
 }
 
 void RestDumpHandler::handleCommandDumpStart() {
-  std::string database = _request->databaseName();
-  std::string user = _request->user();
-
-  // TODO: check permissions
-
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {  // error message generated in parseVPackBody
     return;
   }
 
-  if (!body.isObject()) {
-    generateError(Result(TRI_ERROR_BAD_PARAMETER, "invalid request body"));
-    return;
-  }
+  auto database = _request->databaseName();
+  auto user = getAuthorizedUser();
 
   RocksDBDumpContextOptions opts;
   opts.batchSize = [&body]() {
@@ -233,8 +264,8 @@ void RestDumpHandler::handleCommandDumpNext() {
   TRI_ASSERT(suffixes.size() == 2);
   auto const& id = _request->suffixes()[1];
 
-  std::string database = _request->databaseName();
-  std::string user = _request->user();
+  auto database = _request->databaseName();
+  auto user = getAuthorizedUser();
 
   auto batchId = _request->parsedValue<uint64_t>("batchId");
   if (!batchId.has_value()) {
@@ -274,8 +305,8 @@ void RestDumpHandler::handleCommandDumpFinished() {
   TRI_ASSERT(suffixes.size() == 1);
   auto const& id = _request->suffixes()[0];
 
-  std::string database = _request->databaseName();
-  std::string user = _request->user();
+  auto database = _request->databaseName();
+  auto user = getAuthorizedUser();
 
   auto& engine =
       server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
@@ -284,4 +315,14 @@ void RestDumpHandler::handleCommandDumpFinished() {
   manager->remove(id, database, user);
 
   generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+}
+
+std::string RestDumpHandler::getAuthorizedUser() {
+  bool headerExtracted;
+  auto user = _request->header("x-arango-dump-auth-user", headerExtracted);
+  if (!headerExtracted) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "missing authorization header");
+  }
+  return user;
 }
