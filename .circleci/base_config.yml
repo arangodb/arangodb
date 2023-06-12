@@ -94,7 +94,7 @@ jobs:
       enterprise:
         type: boolean
     docker:
-      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.0.8
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.0.9
     resource_class: xlarge
     environment:
       GIT_SSH_COMMAND: ssh
@@ -126,7 +126,7 @@ jobs:
                 if [ "$?" == "0" ] ; then
                   ENTERPRISE_BRANCH=$CIRCLE_BRANCH
                 else
-                  ENTERPRISE_BRANCH=devel
+                  ENTERPRISE_BRANCH=3.11
                 fi
                 set -e
               else

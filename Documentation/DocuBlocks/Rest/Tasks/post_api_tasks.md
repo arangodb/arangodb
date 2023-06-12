@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_tasks
-@brief creates a new task
 
-@RESTHEADER{POST /_api/tasks, creates a task, createTask}
+@RESTHEADER{POST /_api/tasks, Create a task, createTask}
 
 @RESTBODYPARAM{name,string,required,string}
 The name of the task
@@ -54,7 +53,7 @@ the database this task belongs to
 The status code, 200 in this case.
 
 @RESTREPLYBODY{error,boolean,required,}
-*false* in this case
+`false` in this case
 
 @RESTRETURNCODE{400}
 If the post body is not accurate, a *HTTP 400* is returned.
