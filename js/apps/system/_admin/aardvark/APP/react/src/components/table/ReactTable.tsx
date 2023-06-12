@@ -47,7 +47,7 @@ export function ReactTable<Data extends object>({
             {table.getHeaderGroups().map(headerGroup => (
               <Tr key={headerGroup.id}>
                 {headerGroup.headers.map(header => {
-                  return <SortableTh<Data> header={header} />;
+                  return <SortableTh<Data> key={header.id} header={header} />;
                 })}
               </Tr>
             ))}
@@ -55,7 +55,11 @@ export function ReactTable<Data extends object>({
           <Tbody>
             {rows.length > 0 ? (
               rows.map(row => (
-                <SelectableTr<Data> row={row} onRowSelect={onRowSelect} />
+                <SelectableTr<Data>
+                  key={row.id}
+                  row={row}
+                  onRowSelect={onRowSelect}
+                />
               ))
             ) : (
               <Box padding="4">{emptyStateMessage}</Box>
@@ -75,7 +79,6 @@ const SortableTh = <Data extends object>({
   const canSort = header.column.getCanSort();
   return (
     <Th
-      key={header.id}
       onClick={header.column.getToggleSortingHandler()}
       _hover={
         canSort
@@ -122,7 +125,6 @@ const SelectableTr = <Data extends object>({
 }) => {
   return (
     <Tr
-      key={row.id}
       onClick={() => onRowSelect?.(row)}
       _hover={
         onRowSelect

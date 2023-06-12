@@ -24,10 +24,18 @@ export const DeleteAnalyzerModal = ({
   const onDelete = async () => {
     const currentDB = getCurrentDB();
     setIsLoading(true);
-    await currentDB.analyzer(analyzer.name).drop();
-    mutate("/analyzers");
-    setIsLoading(false);
-    onSuccess();
+    try {
+      await currentDB.analyzer(analyzer.name).drop();
+      mutate("/analyzers");
+      setIsLoading(false);
+      onSuccess();
+    } catch (e: any) {
+      window.arangoHelper.arangoError(
+        "Analyzer",
+        `Could not delete analyzer: ${e.response.body.errorMessage}`
+      );
+      setIsLoading(false);
+    }
   };
   return (
     <Modal isOpen onClose={onClose}>
