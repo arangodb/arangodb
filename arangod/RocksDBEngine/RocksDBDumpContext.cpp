@@ -186,24 +186,25 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
 
   // start all the threads
   for (size_t i = 0; i < _options.parallelism; i++) {
-    _threads.emplace_back([&, guard = BoundedChannelProducerGuard(_channel)] {
-      try {
-        while (true) {
-          // will block until all workers wait, i.e. no work is left
-          auto workItem = _workItems.pop();
-          if (workItem.empty()) {
-            break;
-          }
+    _threads.emplace_back(
+        [this, guard = BoundedChannelProducerGuard(_channel)] {
+          try {
+            while (true) {
+              // will block until all workers wait, i.e. no work is left
+              auto workItem = _workItems.pop();
+              if (workItem.empty()) {
+                break;
+              }
 
-          handleWorkItem(std::move(workItem));
-        }
-      } catch (basics::Exception const& ex) {
-        _workItems.setError(Result(ex.code(), ex.what()));
-      } catch (std::exception const& ex) {
-        // must not let exceptions escape from the thread's lambda
-        _workItems.setError(Result(TRI_ERROR_INTERNAL, ex.what()));
-      }
-    });
+              handleWorkItem(std::move(workItem));
+            }
+          } catch (basics::Exception const& ex) {
+            _workItems.setError(Result(ex.code(), ex.what()));
+          } catch (std::exception const& ex) {
+            // must not let exceptions escape from the thread's lambda
+            _workItems.setError(Result(TRI_ERROR_INTERNAL, ex.what()));
+          }
+        });
   }
 }
 
