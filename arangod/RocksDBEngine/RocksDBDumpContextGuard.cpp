@@ -30,21 +30,10 @@
 namespace arangodb {
 
 RocksDBDumpContextGuard::RocksDBDumpContextGuard(
-    RocksDBDumpManager& manager, std::shared_ptr<RocksDBDumpContext> ctx)
-    : _manager(manager), _ctx(std::move(ctx)) {
-  TRI_ASSERT(_ctx != nullptr);
-}
-
-RocksDBDumpContextGuard::RocksDBDumpContextGuard(
-    RocksDBDumpContextGuard&& other) noexcept
-    : _manager(other._manager), _ctx(std::move(other._ctx)) {
-  TRI_ASSERT(_ctx != nullptr);
+    std::shared_ptr<RocksDBDumpContext> ctx)
+    : _ctx(std::move(ctx)) {
   _ctx->extendLifetime();
-}
-
-RocksDBDumpContextGuard::~RocksDBDumpContextGuard() {
   TRI_ASSERT(_ctx != nullptr);
-  _ctx->extendLifetime();
 }
 
 RocksDBDumpContext* RocksDBDumpContextGuard::operator->() {

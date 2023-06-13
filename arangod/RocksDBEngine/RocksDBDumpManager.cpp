@@ -70,7 +70,7 @@ RocksDBDumpContextGuard RocksDBDumpManager::createContext(
 
   TRI_ASSERT(_contexts.at(context->id()) != nullptr);
 
-  return RocksDBDumpContextGuard(*this, std::move(context));
+  return RocksDBDumpContextGuard(std::move(context));
 }
 
 RocksDBDumpContextGuard RocksDBDumpManager::find(std::string const& id,
@@ -98,7 +98,7 @@ RocksDBDumpContextGuard RocksDBDumpManager::find(std::string const& id,
   // so it does not expire quickly after
   context->extendLifetime();
 
-  return RocksDBDumpContextGuard(*this, std::move(context));
+  return RocksDBDumpContextGuard(std::move(context));
 }
 
 void RocksDBDumpManager::remove(std::string const& id,

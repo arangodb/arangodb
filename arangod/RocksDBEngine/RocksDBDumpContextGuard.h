@@ -31,19 +31,13 @@ class RocksDBDumpManager;
 
 class RocksDBDumpContextGuard {
  public:
-  RocksDBDumpContextGuard(RocksDBDumpManager& manager,
-                          std::shared_ptr<RocksDBDumpContext> ctx);
+  RocksDBDumpContextGuard(std::shared_ptr<RocksDBDumpContext> ctx);
 
-  RocksDBDumpContextGuard(RocksDBDumpContextGuard&& other) noexcept;
-
-  ~RocksDBDumpContextGuard();
-
+  RocksDBDumpContextGuard(RocksDBDumpContextGuard&& other) noexcept = default;
+  ~RocksDBDumpContextGuard() = default;
   RocksDBDumpContext* operator->();
 
  private:
-  // TODO: _manager is currently unused. maybe remove it?
-  RocksDBDumpManager& _manager;
-
   std::shared_ptr<RocksDBDumpContext> _ctx;
 };
 }  // namespace arangodb
