@@ -41,4 +41,10 @@ RocksDBDumpContext* RocksDBDumpContextGuard::operator->() {
   return _ctx.get();
 }
 
+RocksDBDumpContextGuard::~RocksDBDumpContextGuard() {
+  if (_ctx) {
+    _ctx->extendLifetime();
+  }
+}
+
 }  // namespace arangodb
