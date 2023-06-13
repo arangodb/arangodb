@@ -55,11 +55,24 @@ const TABLE_COLUMNS = [
     id: "type",
     cell: info => {
       return TYPE_TO_LABEL_MAP[info.cell.getValue()] || info.cell.getValue();
-    }
+    },
+    filterFn: "arrIncludesSome"
   })
 ];
 
 const TABLE_FILTERS = TABLE_COLUMNS.map(column => {
+  if (column.id === "name") {
+    return {
+      ...column,
+      filterType: "text"
+    };
+  }
+  if (column.id === "type") {
+    return {
+      ...column,
+      filterType: "multi-select"
+    };
+  }
   return {
     ...column,
     filterType: "single-select"
