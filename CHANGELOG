@@ -1,3 +1,9 @@
+v3.10.6.2 (XXXX-XX-XX)
+----------------------
+
+* Improved dump performance by increasing parallelism and prefetching.
+
+
 v3.10.6.1 (2023-05-22)
 ----------------------
 
