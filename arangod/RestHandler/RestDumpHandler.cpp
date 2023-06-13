@@ -58,9 +58,11 @@ RestDumpHandler::RestDumpHandler(ArangodServer& server, GeneralRequest* request,
 
 // main function that dispatches the different routes and commands
 RestStatus RestDumpHandler::execute() {
-  // we should not get here on coordinators, simply because of the
-  // request forwarding.
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (!ServerState::instance()->isDBServer()) {
+    generateError(Result(TRI_ERROR_HTTP_NOT_IMPLEMENTED,
+                         "api only expected to be called on dbservers"));
+    return RestStatus::DONE;
+  }
 
   auto type = _request->requestType();
   auto const& suffixes = _request->suffixes();
