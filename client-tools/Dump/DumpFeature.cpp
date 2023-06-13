@@ -1459,7 +1459,7 @@ void DumpFeature::ParallelDumpServer::finishDumpContext(
   auto check = ::arangodb::HttpResponseChecker::check(client.getErrorMessage(),
                                                       response.get());
   if (check.fail()) {
-    LOG_TOPIC("bdedf", ERR, Logger::DUMP)
+    LOG_TOPIC("bdedf", WARN, Logger::DUMP)
         << "failed to finish dump context on server " << server << ": "
         << check.errorMessage();
   }
@@ -1492,8 +1492,9 @@ Result DumpFeature::ParallelDumpServer::run(
   }
   threads.clear();
 
-  // remove dump context from server
-  finishDumpContext(client);
+  // remove dump context from server - get a new client because the old might
+  // already be disconnected.
+  finishDumpContext(*clientManager.getConnectedClient(true, false, false, 0));
 
   printBlockStats();
 
@@ -1695,8 +1696,7 @@ DumpFeature::DumpFileProvider::DumpFileProvider(
     ManagedDirectory& directory,
     std::map<std::string, arangodb::velocypack::Slice>& collectionInfo,
     bool splitFiles)
-    : _splitFiles(splitFiles),
-      _directory(directory) {
+    : _splitFiles(splitFiles), _directory(directory) {
   if (!_splitFiles) {
     // If we don't split files, i.e. arangorestore compatibility mode, we have
     // to create a file for each collection, even if it is empty. Otherwise,
@@ -1727,8 +1727,8 @@ std::shared_ptr<ManagedDirectory::File> DumpFeature::DumpFileProvider::getFile(
 
   if (_splitFiles) {
     auto cnt = _filesByCollection[name].count++;
-    std::string filename = name + "_" + hexString + "." +
-                           std::to_string(cnt) + ".data.json";
+    std::string filename =
+        name + "_" + hexString + "." + std::to_string(cnt) + ".data.json";
     auto file = _directory.writableFile(filename, true /*overwrite*/, 0,
                                         true /*gzipOk*/);
     if (file == nullptr || file->status().fail()) {
