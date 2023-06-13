@@ -241,7 +241,7 @@ void Query::destroy() {
   _snippets.clear();  // simon: must be before plan
 
   TRI_ASSERT(_plans.size() == 1);
-  _plans.clear();     // simon: must be before AST
+  _plans.clear();  // simon: must be before AST
   resourceMonitor().decreaseMemoryUsage(planMemoryBytes);
 
   _ast.reset();
@@ -468,10 +468,12 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   Optimizer opt(_queryOptions.maxNumberOfPlans);
   // get enabled/disabled rules
   opt.createPlans(std::move(plan), _queryOptions, false);
-  resourceMonitor().increaseMemoryUsage(opt._stats.plansCreated * planMemoryBytes);
+  resourceMonitor().increaseMemoryUsage(opt._stats.plansCreated *
+                                        planMemoryBytes);
   // Now plan and all derived plans belong to the optimizer
   plan = opt.stealBest();  // Now we own the best one again
-  resourceMonitor().decreaseMemoryUsage((opt._stats.plansCreated - 1) * planMemoryBytes);
+  resourceMonitor().decreaseMemoryUsage((opt._stats.plansCreated - 1) *
+                                        planMemoryBytes);
 
   TRI_ASSERT(plan != nullptr);
 
