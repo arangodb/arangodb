@@ -68,7 +68,7 @@ if [ -z "${ARANGOSH}" ];  then
           exit 1
         }
         guessed_arangosh_location=1
-        echo "WARNING: Using guessed arangosh location $ARANGOSH"
+        echo "WARNING: Using guessed arangosh location $ARANGOSH" >&2
     fi
 fi
 
@@ -85,7 +85,7 @@ if [ -z "${BUILD_DIR_PARAM}" ]; then
   fi
   EXTRA_ARGS=("--build" "${BUILD_PATH}")
   if ! [ -z "$guessed_arangosh_location" ]; then
-      echo "WARNING: Using guessed build dir location $BUILD_PATH"
+      echo "WARNING: Using guessed build dir location $BUILD_PATH" >&2
   fi
 fi
 
