@@ -1,8 +1,7 @@
 /* global $, _, nv, d3 arangoHelper */
-import { ChakraProvider } from '@chakra-ui/react';
-import { theme } from '../../theme/theme';
+import React from 'react';
 
-function fetchOverallStatistics () {
+function fetchOverallStatistics() {
   $.ajax({
     type: 'GET',
     cache: false,
@@ -21,7 +20,7 @@ function fetchOverallStatistics () {
   });
 }
 
-function rerenderOverallValues (data) {
+function rerenderOverallValues(data) {
   arangoHelper.renderStatisticsBoxValue('#clusterDatabases', data.databases);
   arangoHelper.renderStatisticsBoxValue('#clusterCollections', data.collections);
   arangoHelper.renderStatisticsBoxValue('#clusterDBServers', data.servers);
@@ -31,7 +30,7 @@ function rerenderOverallValues (data) {
   arangoHelper.renderStatisticsBoxValue('#clusterShards', data.shards);
 }
 
-function fetchDetailsStatistics (previousData) {
+function fetchDetailsStatistics(previousData) {
   // fetch general overall shardStatistics
   $.ajax({
     type: 'GET',
@@ -49,10 +48,9 @@ function fetchDetailsStatistics (previousData) {
   });
 }
 
-function formatDBServerDetailsData (previousData, data) {
+function formatDBServerDetailsData(previousData, data) {
   // previousData is our date from our first overall request (needed for upcoming calculations)
   // data is our variable for holding the dbserver specific details.
-
   let totalShards = previousData.shards;
   let totalLeaders = previousData.leaders;
   let totalFollowers = previousData.followers;
@@ -68,9 +66,9 @@ function formatDBServerDetailsData (previousData, data) {
   _.each(data, (info, dbServerId) => {
     let shortName = arangoHelper.getDatabaseShortName(dbServerId);
     tableData[shortName] = {
-      shards: {total: 0, percent: 0},
-      leaders: {total: 0, percent: 0},
-      followers: {total: 0, percent: 0}
+      shards: { total: 0, percent: 0 },
+      leaders: { total: 0, percent: 0 },
+      followers: { total: 0, percent: 0 }
     };
 
     donutChartData.shards.push({
@@ -99,7 +97,7 @@ function formatDBServerDetailsData (previousData, data) {
   rerenderDistributionTable(tableData);
 }
 
-function rerenderDistributionDonuts (donutChartData) {
+function rerenderDistributionDonuts(donutChartData) {
   let renderDonut = (chartData, idSelector) => {
     nv.addGraph(function () {
       var chart = nv.models.pieChart()
@@ -133,7 +131,7 @@ function rerenderDistributionDonuts (donutChartData) {
   renderDonut(donutChartData.followers, '#followerDonut');
 }
 
-function rerenderDistributionTable (data) {
+function rerenderDistributionTable(data) {
 
   const orderedData = Object.keys(data).sort().reduce(
     (obj, key) => {
@@ -164,42 +162,20 @@ function rerenderDistributionTable (data) {
   });
 }
 
-function rebalanceShards () {
-  $.ajax({
-    type: 'POST',
-    cache: false,
-    url: arangoHelper.databaseUrl('/_admin/cluster/rebalanceShards'),
-    contentType: 'application/json',
-    processData: false,
-    data: JSON.stringify({}),
-    async: true,
-    success: function (data) {
-      if (data.result.operations === 0) {
-        arangoHelper.arangoNotification('No move shards operations were scheduled.');
-      } else {
-        arangoHelper.arangoNotification('Started rebalance process. Scheduled ' + data.result.operations + ' shards move operation(s).');
-      }
-    },
-    error: function () {
-      arangoHelper.arangoError('Could not start rebalance process.');
-    }
-  });
-  window.modalView.hide();
-}
-
-const ShardDistributionReactView = ({ readOnly, maxNumberOfMoveShards }) => {
-  fetchOverallStatistics();
+export const ShardDistributionContent = () => {
+  React.useEffect(() => {
+    fetchOverallStatistics();
+  }, []);
 
   return (
-    <ChakraProvider theme={theme}>
-      <div id="shardDistributionContent" className="innerContent shardDistributionContent">
+    <div id="shardDistributionContent" className="innerContent shardDistributionContent">
 
       <div className="pure-g cluster-values">
 
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
             <div id="clusterDatabases" className="value"><i className="fa fa-spin fa-circle-o-notch"
-                                                        style={{color: "rgba(0, 0, 0, 0.64)"}}></i></div>
+              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
             <div className="graphLabel">databases</div>
           </div>
         </div>
@@ -207,7 +183,7 @@ const ShardDistributionReactView = ({ readOnly, maxNumberOfMoveShards }) => {
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
             <div id="clusterCollections" className="value"><i className="fa fa-spin fa-circle-o-notch"
-                                                          style={{color: "rgba(0, 0, 0, 0.64)"}}></i></div>
+              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
             <div className="graphLabel">collections</div>
           </div>
         </div>
@@ -215,15 +191,15 @@ const ShardDistributionReactView = ({ readOnly, maxNumberOfMoveShards }) => {
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
             <div id="clusterShards" className="value"><i className="fa fa-spin fa-circle-o-notch"
-                                                    style={{color: "rgba(0, 0, 0, 0.64)"}}></i></div>
+              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
             <div className="graphLabel">total shards</div>
           </div>
         </div>
-        
+
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
             <div id="clusterDBServers" className="value"><i className="fa fa-spin fa-circle-o-notch"
-                                                        style={{color: "rgba(0, 0, 0, 0.64)"}}></i></div>
+              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
             <div className="graphLabel">db servers with shards</div>
           </div>
         </div>
@@ -231,7 +207,7 @@ const ShardDistributionReactView = ({ readOnly, maxNumberOfMoveShards }) => {
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
             <div id="clusterLeaders" className="value"><i className="fa fa-spin fa-circle-o-notch"
-                                                      style={{color: "rgba(0, 0, 0, 0.64)"}}></i></div>
+              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
             <div className="graphLabel">leader shards</div>
           </div>
         </div>
@@ -239,7 +215,7 @@ const ShardDistributionReactView = ({ readOnly, maxNumberOfMoveShards }) => {
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
             <div id="clusterRealLeaders" className="value"><i className="fa fa-spin fa-circle-o-notch"
-                                                          style={{color: "rgba(0, 0, 0, 0.64)"}}></i></div>
+              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
             <div className="graphLabel">shard group leader shards</div>
           </div>
         </div>
@@ -247,11 +223,11 @@ const ShardDistributionReactView = ({ readOnly, maxNumberOfMoveShards }) => {
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
             <div id="clusterFollowers" className="value"><i className="fa fa-spin fa-circle-o-notch"
-                                                        style={{color: "rgba(0, 0, 0, 0.64)"}}></i></div>
+              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
             <div className="graphLabel">follower shards</div>
           </div>
         </div>
-        
+
       </div>
 
       <div className="pure-g cluster-values">
@@ -283,15 +259,15 @@ const ShardDistributionReactView = ({ readOnly, maxNumberOfMoveShards }) => {
         <div className="pure-u-1-1">
           <table className="pure-table" id="shardDistributionTable">
             <thead>
-            <tr>
-              <th>DB Server</th>
-              <th>Total (absolute)</th>
-              <th>Total (percent)</th>
-              <th>Leaders (absolute)</th>
-              <th>Leaders (percent)</th>
-              <th>Followers (absolute)</th>
-              <th>Followers (percent)</th>
-            </tr>
+              <tr>
+                <th>DB Server</th>
+                <th>Total (absolute)</th>
+                <th>Total (percent)</th>
+                <th>Leaders (absolute)</th>
+                <th>Leaders (percent)</th>
+                <th>Followers (absolute)</th>
+                <th>Followers (percent)</th>
+              </tr>
             </thead>
             <tbody>
             </tbody>
@@ -299,22 +275,6 @@ const ShardDistributionReactView = ({ readOnly, maxNumberOfMoveShards }) => {
         </div>
 
       </div>
-
-
-      </div>
-
-      {!readOnly &&
-      <div className="arangoToolbar arangoToolbarTop" style={{marginTop: "1rem"}} id="rebalanceShards">
-      <div className="pull-right">
-        <button id="rebalanceShardsBtn" style={{marginLeft: "10px"}} className="button-warning" onClick={() => rebalanceShards()}>Rebalance Shards</button>
-      </div>
-      <div style={{fontSize: "10pt", marginLeft: "10px", marginTop: "12px", fontWeight: "200"}}>
-        <b>WARNING:</b> Clicking this button will start a
-          shard rebalancing process and schedule up to {maxNumberOfMoveShards} shards move operations,
-          which may cause background activity and increase the load in the cluster until finished.</div>
-      </div>}
-    </ChakraProvider>
+    </div>
   );
 };
-
-window.ShardDistributionReactView = ShardDistributionReactView;
