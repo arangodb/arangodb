@@ -1522,7 +1522,7 @@ void DumpFeature::ParallelDumpServer::finishDumpContext(
   auto check = ::arangodb::HttpResponseChecker::check(client.getErrorMessage(),
                                                       response.get());
   if (check.fail()) {
-    LOG_TOPIC("bdedf", ERR, Logger::DUMP)
+    LOG_TOPIC("bdedf", WARN, Logger::DUMP)
         << "failed to finish dump context on server " << server << ": "
         << check.errorMessage();
   }
@@ -1555,8 +1555,9 @@ Result DumpFeature::ParallelDumpServer::run(
   }
   threads.clear();
 
-  // remove dump context from server
-  finishDumpContext(client);
+  // remove dump context from server - get a new client because the old might
+  // already be disconnected.
+  finishDumpContext(*clientManager.getConnectedClient(true, false, false, 0));
 
   printBlockStats();
 
