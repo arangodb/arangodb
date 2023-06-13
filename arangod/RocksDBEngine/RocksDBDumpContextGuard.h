@@ -32,9 +32,9 @@ class RocksDBDumpManager;
 class RocksDBDumpContextGuard {
  public:
   RocksDBDumpContextGuard(std::shared_ptr<RocksDBDumpContext> ctx);
+  ~RocksDBDumpContextGuard();
 
   RocksDBDumpContextGuard(RocksDBDumpContextGuard&& other) noexcept = default;
-  ~RocksDBDumpContextGuard() = default;
   RocksDBDumpContext* operator->();
 
  private:
