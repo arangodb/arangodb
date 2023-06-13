@@ -59,12 +59,9 @@ const TABLE_COLUMNS = [
       }
     }
   ),
-  columnHelper.accessor("type", {
+  columnHelper.accessor(row => TYPE_TO_LABEL_MAP[row.type], {
     header: "Type",
     id: "type",
-    cell: info => {
-      return TYPE_TO_LABEL_MAP[info.cell.getValue()] || info.cell.getValue();
-    },
     filterFn: "arrIncludesSome",
     meta: {
       filterType: "multi-select"

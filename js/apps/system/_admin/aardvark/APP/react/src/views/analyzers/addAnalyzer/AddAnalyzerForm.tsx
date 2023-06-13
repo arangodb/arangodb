@@ -37,8 +37,8 @@ export const AddAnalyzerForm = ({
   return (
     <Grid templateColumns={"1fr 1fr"} gap="6">
       <Stack>
-        <Text fontSize="lg">Basic</Text>
-        <Divider />
+        <Text>Basic</Text>
+        <Divider borderColor="gray.400" />
         <Grid templateColumns={"1fr 1fr"} columnGap="4" alignItems="start">
           <InputControl
             ref={initialFocusRef}
@@ -58,6 +58,7 @@ export const AddAnalyzerForm = ({
             <Link
               spacing="1"
               as={Stack}
+              alignItems="center"
               direction="row"
               marginLeft="2"
               marginBottom="2"
@@ -70,8 +71,8 @@ export const AddAnalyzerForm = ({
         </Grid>
       </Stack>
       <Stack>
-        <Text fontSize="lg">Features</Text>
-        <Divider />
+        <Text>Features</Text>
+        <Divider borderColor="gray.400" />
         <Grid templateColumns={"1fr 1fr 1fr"} rowGap="4">
           <FeatureSwitch name="frequency" />
           <FeatureSwitch name="norm" />
@@ -95,6 +96,8 @@ const FeatureSwitch = ({ name }: { name: string }) => {
 
   return (
     <Switch
+      display="flex"
+      alignItems="center"
       isDisabled={isDisabled}
       isChecked={featuresField.value.includes(name)}
       onChange={() => {

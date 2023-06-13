@@ -49,8 +49,8 @@ export const AnalyzerTypeForm = ({
   }
   return (
     <Stack gridColumn="1 / -1">
-      <Text fontSize="lg">Configuration</Text>
-      <Divider />
+      <Text>Configuration</Text>
+      <Divider borderColor="gray.400" />
       <AnalyzerConfigComponent basePropertiesPath={basePropertiesPath} />
     </Stack>
   );
