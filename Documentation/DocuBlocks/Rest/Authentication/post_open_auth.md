@@ -1,5 +1,4 @@
 @startDocuBlock post_open_auth
-@brief Create a JWT access token
 
 @RESTHEADER{POST /_open/auth, Create a JWT session token, createSessionToken}
 

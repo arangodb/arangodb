@@ -1,5 +1,5 @@
 @RESTSTRUCT{error,admin_server_jwt,boolean,required,}
-boolean flag to indicate whether an error occurred (*false* in this case)
+boolean flag to indicate whether an error occurred (`false` in this case)
 
 @RESTSTRUCT{code,admin_server_jwt,integer,required,int64}
 the HTTP status code - 200 in this case

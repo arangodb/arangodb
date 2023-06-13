@@ -1,7 +1,6 @@
 @startDocuBlock put_api_foxx_dependencies
-@brief replace dependencies options
 
-@RESTHEADER{PUT /_api/foxx/dependencies, Replace dependencies options, replaceFoxxDependencies}
+@RESTHEADER{PUT /_api/foxx/dependencies, Replace the dependency options, replaceFoxxDependencies}
 
 @RESTDESCRIPTION
 Replaces the given service's dependencies completely.
