@@ -60,7 +60,7 @@ If the `view-name` is unknown, then a *HTTP 404* is returned.
     coll.ensureIndex({ type: "inverted", name: "inv_title", fields: ["title"] });
     coll.ensureIndex({ type: "inverted", name: "inv_descr", fields: ["description"] });
 
-    var view = db._createView("products", "search-alias", {
+    var view = db._createView("productsView", "search-alias", {
       indexes: [ { collection: coll.name(), index: "inv_title" } ] });
 
     var url = "/_api/view/"+ view.name() + "/properties";

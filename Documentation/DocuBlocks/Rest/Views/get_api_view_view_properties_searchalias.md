@@ -30,14 +30,14 @@ Using an identifier:
 @EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesIdentifierSearchAlias}
     var coll = db._create("books");
     var idx = coll.ensureIndex({ type: "inverted", name: "inv-idx", fields: [ { name: "title", analyzer: "text_en" } ] });
-    var view = db._createView("products", "search-alias", { indexes: [ { collection: "books", index: "inv-idx" } ] });
+    var view = db._createView("productsView", "search-alias", { indexes: [ { collection: "books", index: "inv-idx" } ] });
 
     var url = "/_api/view/"+ view._id + "/properties";
     var response = logCurlRequest('GET', url);
     assert(response.code === 200);
     logJsonResponse(response);
 
-    db._dropView("products");
+    db._dropView("productsView");
     db._drop("books");
 @END_EXAMPLE_ARANGOSH_RUN
 
@@ -46,14 +46,14 @@ Using a name:
 @EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesNameSearchAlias}
     var coll = db._create("books");
     var idx = coll.ensureIndex({ type: "inverted", name: "inv-idx", fields: [ { name: "title", analyzer: "text_en" } ] });
-    var view = db._createView("products", "search-alias", { indexes: [ { collection: "books", index: "inv-idx" } ] });
+    var view = db._createView("productsView", "search-alias", { indexes: [ { collection: "books", index: "inv-idx" } ] });
 
-    var url = "/_api/view/products/properties";
+    var url = "/_api/view/productsView/properties";
     var response = logCurlRequest('GET', url);
     assert(response.code === 200);
     logJsonResponse(response);
 
-    db._dropView("products");
+    db._dropView("productsView");
     db._drop("books");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

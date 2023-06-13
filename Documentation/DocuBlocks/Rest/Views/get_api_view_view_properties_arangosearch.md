@@ -28,14 +28,14 @@ Using an identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesIdentifierArangoSearch}
     var coll = db._create("books");
-    var view = db._createView("products", "arangosearch", { links: { books: { fields: { title: { analyzers: ["text_en"] } } } } });
+    var view = db._createView("productsView", "arangosearch", { links: { books: { fields: { title: { analyzers: ["text_en"] } } } } });
 
     var url = "/_api/view/"+ view._id + "/properties";
     var response = logCurlRequest('GET', url);
     assert(response.code === 200);
     logJsonResponse(response);
 
-    db._dropView("products");
+    db._dropView("productsView");
     db._drop("books");
 @END_EXAMPLE_ARANGOSH_RUN
 
@@ -43,14 +43,14 @@ Using a name:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesNameArangoSearch}
     var coll = db._create("books");
-    var view = db._createView("products", "arangosearch", { links: { books: { fields: { title: { analyzers: ["text_en"] } } } } });
+    var view = db._createView("productsView", "arangosearch", { links: { books: { fields: { title: { analyzers: ["text_en"] } } } } });
 
-    var url = "/_api/view/products/properties";
+    var url = "/_api/view/productsView/properties";
     var response = logCurlRequest('GET', url);
     assert(response.code === 200);
     logJsonResponse(response);
 
-    db._dropView("products");
+    db._dropView("productsView");
     db._drop("books");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

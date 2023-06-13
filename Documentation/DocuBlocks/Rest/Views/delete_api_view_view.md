@@ -28,7 +28,7 @@ If the `view-name` is unknown, then a *HTTP 404* is returned.
 Using an identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewIdentifierArangoSearch}
-    var view = db._createView("products", "arangosearch");
+    var view = db._createView("productsView", "arangosearch");
 
     var url = "/_api/view/"+ view._id;
     var response = logCurlRequest('DELETE', url);
@@ -39,9 +39,9 @@ Using an identifier:
 Using a name:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewNameArangoSearch}
-    var view = db._createView("products", "arangosearch");
+    var view = db._createView("productsView", "arangosearch");
 
-    var url = "/_api/view/products";
+    var url = "/_api/view/productsView";
     var response = logCurlRequest('DELETE', url);
     assert(response.code === 200);
     logJsonResponse(response);

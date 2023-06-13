@@ -132,7 +132,7 @@ If the `view-name` is unknown, then a *HTTP 404* is returned.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestViewPutPropertiesArangoSearch}
-    var view = db._createView("products", "arangosearch");
+    var view = db._createView("productsView", "arangosearch");
 
     var url = "/_api/view/"+ view.name() + "/properties";
     var response = logCurlRequest('PUT', url, { "locale": "en" });

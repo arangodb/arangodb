@@ -29,13 +29,13 @@ If the `view-name` is unknown, then a *HTTP 404* is returned.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestViewPutRename}
-    var view = db._createView("products", "arangosearch");
+    var view = db._createView("productsView", "arangosearch");
 
     var url = "/_api/view/" + view.name() + "/rename";
-    var response = logCurlRequest('PUT', url, { name: "catalog" });
+    var response = logCurlRequest('PUT', url, { name: "catalogView" });
     assert(response.code === 200);
     logJsonResponse(response);
 
-    db._dropView("catalog");
+    db._dropView("catalogView");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
