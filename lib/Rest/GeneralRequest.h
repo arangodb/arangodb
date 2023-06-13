@@ -168,7 +168,10 @@ class GeneralRequest {
     return _headers;
   }
 
-  void removeHeader(std::string key) { _headers.erase(key); }
+  void removeHeader(std::string const& key) { _headers.erase(key); }
+  void addHeader(std::string key, std::string value) {
+    _headers.emplace(std::move(key), std::move(value));
+  }
 
   // the value functions give access to to query string parameters
   std::string const& value(std::string const& key) const;
