@@ -195,6 +195,9 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     if (this.dumpOptions.useParallelDump) {
       this.dumpConfig.setUseExperimentalParallelDump();
     }
+    if (this.dumpOptions.splitFiles) {
+      this.dumpConfig.setUseSplitFiles();
+    }
     if (this.dumpOptions.jwtSecret) {
       this.keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
       if (!fs.exists(this.keyDir)) {  // needed on win32
@@ -803,6 +806,8 @@ function dumpWithCrashes (options) {
     deactivateCompression: true,
     activateFailurePoint: true,
     threads: 1,
+    useParallelDump: true,
+    splitFiles: true
   };
   _.defaults(dumpOptions, options);
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){});
@@ -912,6 +917,7 @@ function dumpParallel (options) {
 
   let dumpOptions = _.clone(options);
   dumpOptions.useParallelDump = true;
+  dumpOptions.splitFiles = true;
 
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',

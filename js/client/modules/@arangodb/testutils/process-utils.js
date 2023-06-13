@@ -235,6 +235,12 @@ class ConfigBuilder {
       this.config['use-experimental-dump'] = true;
     }
   }
+
+  setUseSplitFiles() {
+    if (this.type === 'dump') {
+      this.config['split-files'] = true;
+    }
+  }
   deactivateEnvelopes() {
     if (this.type === 'dump') {
       this.config['--envelope'] = false;

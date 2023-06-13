@@ -125,12 +125,28 @@ class RestoreFeature final : public ArangoRestoreFeature {
     RESTORED = 3,
   };
 
+  struct MultiFileReadOffset {
+    size_t fileNo{0};
+    size_t readOffset{0};
+
+    friend auto operator<=>(MultiFileReadOffset const&,
+                            MultiFileReadOffset const&) noexcept = default;
+
+    auto operator+(size_t x) {
+      return MultiFileReadOffset{fileNo, readOffset + x};
+    }
+
+    friend auto& operator<<(std::ostream& os, MultiFileReadOffset const& x) {
+      return os << x.fileNo << ":" << x.readOffset;
+    }
+  };
+
   struct CollectionStatus {
     CollectionState state{UNKNOWN};
-    size_t bytes_acked{0};
+    MultiFileReadOffset bytesAcked;
 
     CollectionStatus();
-    explicit CollectionStatus(CollectionState state, size_t bytes_acked = 0u);
+    explicit CollectionStatus(CollectionState state, MultiFileReadOffset);
     explicit CollectionStatus(VPackSlice slice);
 
     void toVelocyPack(VPackBuilder& builder) const;
@@ -162,7 +178,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
     /// currently ongoing. Resumption of the restore must start at the smallest
     /// key value contained in here (note: we also need to track the length of
     /// each chunk to test the resumption of a restore after a crash)
-    std::map<size_t, size_t> readOffsets;
+    std::map<MultiFileReadOffset, size_t> readOffsets;
 
     /// @brief whether ot not we have read the complete input data file for the
     /// collection
@@ -183,7 +199,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
     void updateProgress();
 
     Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& client,
-                           size_t readOffset, char const* buffer,
+                           MultiFileReadOffset readOffset, char const* buffer,
                            size_t bufferSize);
 
     RestoreFeature& feature;
@@ -203,7 +219,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
     Result dispatchRestoreData(arangodb::httpclient::SimpleHttpClient& client,
-                               size_t readOffset, char const* data,
+                               MultiFileReadOffset readOffset, char const* data,
                                size_t length, bool forceDirect);
 
     Result restoreData(arangodb::httpclient::SimpleHttpClient& client);
@@ -225,12 +241,13 @@ class RestoreFeature final : public ArangoRestoreFeature {
                    RestoreProgressTracker& progressTracker,
                    Options const& options, Stats& stats,
                    std::string const& collectionName,
-                   std::shared_ptr<SharedState> sharedState, size_t readOffset,
+                   std::shared_ptr<SharedState> sharedState,
+                   MultiFileReadOffset readOffset,
                    std::unique_ptr<basics::StringBuffer> buffer);
 
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
-    size_t const readOffset;
+    MultiFileReadOffset const readOffset;
     std::unique_ptr<basics::StringBuffer> buffer;
   };
 
