@@ -143,7 +143,9 @@ const replicatedLogSuite = function () {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    waitForSync: false,
+    // TODO Set waitForSync to false after https://arangodb.atlassian.net/browse/CINFRA-755 is finished.
+    //      This is tracked in https://arangodb.atlassian.net/browse/CINFRA-783.
+    waitForSync: true,
   };
 
   const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} =
