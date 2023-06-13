@@ -73,7 +73,7 @@ struct CleanOracle {
       -> bool;
 };
 
-auto runElectionCampaign(LogCurrentLocalStates const& participantId,
+auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsConfig const& participantsConfig,
                          ParticipantsHealth const& health, LogTerm term,
                          bool assumedWaitForSync, CleanOracle&)
