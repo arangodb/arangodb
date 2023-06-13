@@ -3,7 +3,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { AnalyzerDescription } from "arangojs/analyzer";
 import React from "react";
 import { Link as RouterLink, useHistory } from "react-router-dom";
-import { FiltersList, FilterType } from "../../../components/table/FiltersList";
+import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { useAnalyzersContext } from "../AnalyzersContext";
@@ -30,6 +30,9 @@ const TABLE_COLUMNS = [
           {cellValue}
         </Link>
       );
+    },
+    meta: {
+      filterType: "text"
     }
   }),
   columnHelper.accessor(
@@ -38,7 +41,10 @@ const TABLE_COLUMNS = [
     },
     {
       header: "DB",
-      id: "db"
+      id: "db",
+      meta: {
+        filterType: "single-select"
+      }
     }
   ),
   columnHelper.accessor(
@@ -47,7 +53,10 @@ const TABLE_COLUMNS = [
     },
     {
       header: "Source",
-      id: "source"
+      id: "source",
+      meta: {
+        filterType: "single-select"
+      }
     }
   ),
   columnHelper.accessor("type", {
@@ -56,28 +65,12 @@ const TABLE_COLUMNS = [
     cell: info => {
       return TYPE_TO_LABEL_MAP[info.cell.getValue()] || info.cell.getValue();
     },
-    filterFn: "arrIncludesSome"
+    filterFn: "arrIncludesSome",
+    meta: {
+      filterType: "multi-select"
+    }
   })
 ];
-
-const TABLE_FILTERS = TABLE_COLUMNS.map(column => {
-  if (column.id === "name") {
-    return {
-      ...column,
-      filterType: "text"
-    };
-  }
-  if (column.id === "type") {
-    return {
-      ...column,
-      filterType: "multi-select"
-    };
-  }
-  return {
-    ...column,
-    filterType: "single-select"
-  };
-}).filter(Boolean) as FilterType[];
 
 export const AnalyzersTable = () => {
   const { analyzers } = useAnalyzersContext();
@@ -101,7 +94,7 @@ export const AnalyzersTable = () => {
   return (
     <Stack>
       <FiltersList<AnalyzerDescription>
-        filters={TABLE_FILTERS}
+        columns={TABLE_COLUMNS}
         table={tableInstance}
       />
       <ReactTable<AnalyzerDescription>

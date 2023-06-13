@@ -6,45 +6,47 @@ import {
   Menu,
   MenuButton,
   MenuItem,
-  MenuList} from "@chakra-ui/react";
-import { Table as TableType } from "@tanstack/react-table";
+  MenuList
+} from "@chakra-ui/react";
+import { ColumnDef, Table as TableType } from "@tanstack/react-table";
 import * as React from "react";
 import { FilterComponent } from "./FilterComponent";
-import { FilterType } from "./FiltersList";
 
 export const FilterBar = <Data extends object>({
   table,
   showFilters,
-  filters,
-  initialFilters = []
+  columns,
+  currentFilterColumns,
+  setCurrentFilterColumns
 }: {
   table: TableType<Data>;
   showFilters: boolean;
-  filters: FilterType[];
-  initialFilters: (FilterType | undefined)[];
+  columns: ColumnDef<Data>[];
+  currentFilterColumns: (ColumnDef<Data> | undefined)[];
+  setCurrentFilterColumns: (
+    currentFilterColumns: (ColumnDef<Data> | undefined)[]
+  ) => void;
 }) => {
-  const [currentFilters, setCurrentFilters] =
-    React.useState<(FilterType | undefined)[]>(initialFilters);
-  const isAnyFilterSelected = currentFilters.length > 0;
+  const isAnyFilterSelected = currentFilterColumns.length > 0;
   if (!showFilters) {
     return null;
   }
-  const filterOptions = filters.filter(filter => {
-    return !currentFilters.find(
-      currentFilter => currentFilter?.id === filter.id
+  const filterOptions = columns.filter(column => {
+    return !currentFilterColumns.find(
+      currentFilter => currentFilter?.id === column.id
     );
   });
-  const addFilter = (filter: FilterType) => {
+  const addFilter = (filter: ColumnDef<Data>) => {
     const filterId = filter.id;
-    const column = table.getColumn(filterId);
+    const column = filterId && table.getColumn(filterId);
     if (!column || !column.getCanFilter()) {
       return;
     }
-    const newCurrentFilters = [
-      ...currentFilters,
-      filters.find(filter => filter.id === filterId) as FilterType
+    const newCurrentFilterColumns = [
+      ...currentFilterColumns,
+      columns.find(column => column.id === filterId)
     ];
-    setCurrentFilters(newCurrentFilters);
+    setCurrentFilterColumns(newCurrentFilterColumns);
   };
   return (
     <Grid
@@ -52,22 +54,18 @@ export const FilterBar = <Data extends object>({
       gridTemplateColumns="repeat(auto-fill, minmax(200px, 1fr))"
       gap="4"
     >
-      {currentFilters.map(filter => {
-        if (!filter) {
+      {currentFilterColumns.map(column => {
+        if (!column || !column.id) {
           return null;
         }
-        const column = table.getColumn(filter.id);
-        if (!column) {
-          return null;
-        }
+
         return (
           <FilterComponent<Data>
-            filter={filter}
-            currentFilters={currentFilters}
-            setCurrentFilters={setCurrentFilters}
-            table={table}
             column={column}
-            key={filter.id}
+            currentFilterColumns={currentFilterColumns}
+            setCurrentFilterColumns={setCurrentFilterColumns}
+            table={table}
+            key={column.id}
           />
         );
       })}

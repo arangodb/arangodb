@@ -1,41 +1,42 @@
 import { MinusIcon } from "@chakra-ui/icons";
-import { Flex, FormLabel, IconButton, Stack, Input } from "@chakra-ui/react";
-import { Column, Table as TableType } from "@tanstack/react-table";
+import { Flex, FormLabel, IconButton, Input, Stack } from "@chakra-ui/react";
+import { Column, ColumnDef, Table as TableType } from "@tanstack/react-table";
 import * as React from "react";
 import MultiSelect from "../select/MultiSelect";
 import SingleSelect from "../select/SingleSelect";
-import { FilterType } from "./FiltersList";
 
 export const FilterComponent = <Data extends object>({
-  filter,
-  table,
   column,
-  currentFilters,
-  setCurrentFilters
+  table,
+  currentFilterColumns,
+  setCurrentFilterColumns
 }: {
-  filter: FilterType;
+  column: ColumnDef<Data>;
   table: TableType<Data>;
-  column: Column<Data, unknown>;
-  currentFilters: (FilterType | undefined)[];
-  setCurrentFilters: (filters: (FilterType | undefined)[]) => void;
+  currentFilterColumns: (ColumnDef<Data> | undefined)[];
+  setCurrentFilterColumns: (filters: (ColumnDef<Data> | undefined)[]) => void;
 }) => {
+  const columnInstance = column.id ? table.getColumn(column.id) : undefined;
   const { options, columnFilterValue } = useFilterValues<Data>({
     table,
-    column,
-    filter
+    columnInstance,
+    column
   });
+  if (!columnInstance) {
+    return null;
+  }
   return (
     <Flex alignItems="flex-end">
       <Stack width="full">
         <FilterLabel<Data>
+          columnInstance={columnInstance}
+          currentFilterColumns={currentFilterColumns}
           column={column}
-          currentFilters={currentFilters}
-          filter={filter}
-          setCurrentFilters={setCurrentFilters}
+          setCurrentFilterColumns={setCurrentFilterColumns}
         />
         <FilterInput<Data>
-          filter={filter}
           column={column}
+          columnInstance={columnInstance}
           options={options}
           columnFilterValue={columnFilterValue}
         />
@@ -44,20 +45,20 @@ export const FilterComponent = <Data extends object>({
   );
 };
 const FilterLabel = <Data extends object>({
+  columnInstance,
+  currentFilterColumns,
   column,
-  currentFilters,
-  filter,
-  setCurrentFilters
+  setCurrentFilterColumns
 }: {
-  column: Column<Data, unknown>;
-  currentFilters: (FilterType | undefined)[];
-  filter: FilterType;
-  setCurrentFilters: (filters: (FilterType | undefined)[]) => void;
+  columnInstance: Column<Data, unknown>;
+  currentFilterColumns: (ColumnDef<Data> | undefined)[];
+  column: ColumnDef<Data>;
+  setCurrentFilterColumns: (filters: (ColumnDef<Data> | undefined)[]) => void;
 }) => {
   return (
     <Stack direction="row" alignItems="center">
-      <FormLabel margin="0" htmlFor={column.id}>
-        {column.columnDef.header}
+      <FormLabel margin="0" htmlFor={columnInstance.id}>
+        {columnInstance.columnDef.header}
       </FormLabel>
       <IconButton
         size="xxs"
@@ -68,11 +69,11 @@ const FilterLabel = <Data extends object>({
         aria-label={"Remove filter"}
         colorScheme="red"
         onClick={() => {
-          const newCurrentFilters = currentFilters.filter(
-            currentFilter => currentFilter?.id !== filter.id
+          const newCurrentFilterColumns = currentFilterColumns.filter(
+            currentFilter => currentFilter?.id !== column.id
           );
-          setCurrentFilters(newCurrentFilters);
-          column.setFilterValue(undefined);
+          setCurrentFilterColumns(newCurrentFilterColumns);
+          columnInstance.setFilterValue(undefined);
         }}
       />
     </Stack>
@@ -81,69 +82,67 @@ const FilterLabel = <Data extends object>({
 
 const useFilterValues = <Data extends object>({
   table,
-  column,
-  filter
+  columnInstance,
+  column
 }: {
   table: TableType<Data>;
-  column: Column<Data, unknown>;
-  filter: FilterType;
+  columnInstance?: Column<Data, unknown>;
+  column: ColumnDef<Data>;
 }) => {
-  const firstValue = table
-    .getPreFilteredRowModel()
-    .flatRows[0]?.getValue(column.id);
-
-  const columnFilterValue = column.getFilterValue() as
+  const firstValue =
+    columnInstance?.id &&
+    table.getPreFilteredRowModel().flatRows[0]?.getValue(columnInstance.id);
+  const columnFilterValue = columnInstance?.getFilterValue() as
     | string
     | string[]
     | undefined;
-  const sortedUniqueValues = React.useMemo(
-    () =>
-      typeof firstValue === "number"
-        ? []
-        : [
-            ...new Set(
-              Array.from(column.getFacetedUniqueValues().keys())
-                .sort()
-                .map(value => {
-                  return filter.getValue ? filter.getValue(value) : value;
-                })
-            )
-          ],
-    [column, firstValue, filter]
-  );
-  const options = sortedUniqueValues.map(value => ({
-    label: value,
-    value
-  }));
+  if (column.meta?.filterType === "text") {
+    return { options: [], columnFilterValue };
+  }
+  let options = [] as {
+    label: string;
+    value: string;
+  }[];
+  if (typeof firstValue !== "number") {
+    const uniqueValues = columnInstance?.getFacetedUniqueValues() || new Map();
+    const sortedUniqueValues = [
+      ...new Set(Array.from(uniqueValues.keys()).sort())
+    ];
+    options = sortedUniqueValues.map(value => ({
+      label: value,
+      value
+    }));
+  }
   return { options, columnFilterValue };
 };
 const FilterInput = <Data extends object>({
-  filter,
   column,
+  columnInstance,
   options,
   columnFilterValue
 }: {
-  filter: FilterType;
-  column: Column<Data, unknown>;
+  column: ColumnDef<Data>;
+  columnInstance: Column<Data, unknown>;
   options: { label: any; value: any }[];
   columnFilterValue: string | string[] | undefined;
 }) => {
-  if (filter.filterType === "text") {
+  const filterType = column.meta?.filterType;
+  if (filterType === "text") {
     return (
       <Input
         placeholder="Search"
-        id={column.id}
+        id={columnInstance.id}
         value={columnFilterValue}
         onChange={event => {
-          column.setFilterValue(event.target.value);
+          columnInstance.setFilterValue(event.target.value);
         }}
       />
     );
   }
-  if (filter.filterType === "multi-select") {
+  if (filterType === "multi-select") {
     return (
       <MultiSelect
-        inputId={column.id}
+        inputId={columnInstance.id}
         isClearable
         options={options}
         value={
@@ -156,17 +155,17 @@ const FilterInput = <Data extends object>({
         }
         onChange={(value, action) => {
           if (action.action === "clear") {
-            column.setFilterValue([]);
+            columnInstance.setFilterValue([]);
             return;
           }
-          column.setFilterValue(value?.map(option => option.value));
+          columnInstance.setFilterValue(value?.map(option => option.value));
         }}
       />
     );
   }
   return (
     <SingleSelect
-      inputId={column.id}
+      inputId={columnInstance.id}
       isClearable
       options={options}
       value={
@@ -176,10 +175,10 @@ const FilterInput = <Data extends object>({
       }
       onChange={(value, action) => {
         if (action.action === "clear") {
-          column.setFilterValue(undefined);
+          columnInstance.setFilterValue(undefined);
           return;
         }
-        column.setFilterValue(value?.value);
+        columnInstance.setFilterValue(value?.value);
       }}
     />
   );

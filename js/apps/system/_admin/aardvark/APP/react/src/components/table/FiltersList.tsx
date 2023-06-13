@@ -1,55 +1,54 @@
 import { Badge, Button, Grid, Stack } from "@chakra-ui/react";
-import { Table as TableType } from "@tanstack/react-table";
+import { ColumnDef, Table as TableType } from "@tanstack/react-table";
 import * as React from "react";
 import { FilterBar } from "./FilterBar";
 
-export type FilterType = {
-  id: string;
-  header: string;
-  filterType: "text" | "single-select" | "multi-select";
-  getValue?: (value: string) => string;
-};
 export const FiltersList = <Data extends object>({
   table,
-  filters
+  columns
 }: {
   table: TableType<Data>;
-  filters: FilterType[];
+  columns: ColumnDef<Data, any>[];
 }) => {
   const [showFilters, setShowFilters] = React.useState(false);
   const columnFilters = table.getState().columnFilters;
+  const initialFilterColumns = columns.filter(column => {
+    return columnFilters.find(columnFilter => columnFilter.id === column.id);
+  });
+  const [currentFilterColumns, setCurrentFilterColumns] =
+    React.useState<(ColumnDef<Data> | undefined)[]>(initialFilterColumns);
   return (
     <Grid gridTemplateColumns="200px 1fr" gap="4">
-      <FilterButton<Data>
-        table={table}
+      <FilterButton
         appliedFiltersCount={columnFilters.length}
         onClick={() => setShowFilters(!showFilters)}
         isSelected={showFilters}
+        onReset={() => {
+          table.resetColumnFilters();
+          setCurrentFilterColumns([]);
+        }}
       />
       <FilterBar<Data>
-        filters={filters}
+        columns={columns}
         table={table}
         showFilters={showFilters}
-        initialFilters={filters.filter(filter => {
-          return columnFilters.find(
-            columnFilter => columnFilter.id === filter.id
-          );
-        })}
+        currentFilterColumns={currentFilterColumns}
+        setCurrentFilterColumns={setCurrentFilterColumns}
       />
     </Grid>
   );
 };
 
-const FilterButton = <Data extends object>({
-  table,
+const FilterButton = ({
   onClick,
   isSelected,
-  appliedFiltersCount
+  appliedFiltersCount,
+  onReset
 }: {
-  table: TableType<Data>;
   onClick: () => void;
   isSelected: boolean;
   appliedFiltersCount: number;
+  onReset: () => void;
 }) => {
   return (
     <Stack direction="row" alignItems="center">
@@ -83,7 +82,7 @@ const FilterButton = <Data extends object>({
         <Button
           textTransform="uppercase"
           onClick={() => {
-            table.resetColumnFilters();
+            onReset();
           }}
           variant="ghost"
           size="xs"
