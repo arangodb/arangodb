@@ -1,7 +1,7 @@
 devel
 -----
 
-* Whenever there is an query request timeout in AQL (e.g. a server died)
+* Whenever there is a query request timeout in AQL (e.g., a server died)
   which causes the query to fail, the DBServers will now all directly kill
   their potentially ongoing parts of the query and not wait for garbage collection.
 
