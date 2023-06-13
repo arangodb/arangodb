@@ -486,14 +486,15 @@
           return;
         }
 
-        if (this.shardDistributionView) {
-          this.shardDistributionView.remove();
-        }
-        this.shardDistributionView = new window.ShardDistributionView({
-          maxNumberOfMoveShards: this.maxNumberOfMoveShards,
-          readOnly: this.userCollection.authOptions.ro
-        });
-        this.shardDistributionView.render();
+        ReactDOM.render(
+          React.createElement(ShardDistributionReactView, {
+            maxNumberOfMoveShards: this.maxNumberOfMoveShards,
+            readOnly: this.userCollection.authOptions.ro
+          }),
+          document.getElementById("content")
+        );
+
+        arangoHelper.buildClusterSubNav('Distribution');
       });
     },
 
