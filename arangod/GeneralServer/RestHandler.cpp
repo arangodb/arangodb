@@ -42,7 +42,6 @@
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Scheduler/SupervisedScheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
@@ -74,10 +73,7 @@ RestHandler::~RestHandler() {
     // someone forgot to call trackTaskEnd 🤔
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
                RequestPriority::LOW);
-    TRI_ASSERT(dynamic_cast<SupervisedScheduler*>(
-                   SchedulerFeature::SCHEDULER) != nullptr);
-    static_cast<SupervisedScheduler*>(SchedulerFeature::SCHEDULER)
-        ->trackEndOngoingLowPriorityTask();
+    SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
   }
 }
 
@@ -132,10 +128,7 @@ void RestHandler::trackTaskStart() noexcept {
   TRI_ASSERT(!_trackedAsOngoingLowPrio);
 
   if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
-    TRI_ASSERT(dynamic_cast<SupervisedScheduler*>(
-                   SchedulerFeature::SCHEDULER) != nullptr);
-    static_cast<SupervisedScheduler*>(SchedulerFeature::SCHEDULER)
-        ->trackBeginOngoingLowPriorityTask();
+    SchedulerFeature::SCHEDULER->trackBeginOngoingLowPriorityTask();
     _trackedAsOngoingLowPrio = true;
   }
 }
@@ -144,10 +137,7 @@ void RestHandler::trackTaskEnd() noexcept {
   if (_trackedAsOngoingLowPrio) {
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
                RequestPriority::LOW);
-    TRI_ASSERT(dynamic_cast<SupervisedScheduler*>(
-                   SchedulerFeature::SCHEDULER) != nullptr);
-    static_cast<SupervisedScheduler*>(SchedulerFeature::SCHEDULER)
-        ->trackEndOngoingLowPriorityTask();
+    SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
     _trackedAsOngoingLowPrio = false;
 
     // update the time the last low priority item spent waiting in the queue.
@@ -155,8 +145,7 @@ void RestHandler::trackTaskEnd() noexcept {
     // the queueing time is in ms
     uint64_t queueTimeMs =
         static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
-    static_cast<SupervisedScheduler*>(SchedulerFeature::SCHEDULER)
-        ->setLastLowPriorityDequeueTime(queueTimeMs);
+    SchedulerFeature::SCHEDULER->setLastLowPriorityDequeueTime(queueTimeMs);
   }
 }
 

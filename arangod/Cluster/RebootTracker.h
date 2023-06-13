@@ -37,8 +37,6 @@
 
 namespace arangodb {
 
-class SupervisedScheduler;
-
 namespace velocypack {
 
 class Builder;
