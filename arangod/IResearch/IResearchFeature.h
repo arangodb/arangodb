@@ -78,7 +78,7 @@ inline bool isScorer(aql::AstNode const& node) noexcept {
       aql::NODE_TYPE_FCALL_USER != node.type) {
     return false;
   }
-
+  // cppcheck-suppress throwInNoexceptFunction
   return isScorer(*static_cast<aql::Function const*>(node.getData()));
 }
 
