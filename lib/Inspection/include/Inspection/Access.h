@@ -35,6 +35,7 @@
 #include <velocypack/Value.h>
 
 #include "Inspection/detail/traits.h"
+#include "Inspection/Factory.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
 
@@ -283,7 +284,7 @@ struct OptionalAccess {
 
 template<class T>
 struct Access<std::optional<T>> : OptionalAccess<std::optional<T>> {
-  static auto make() { return T{}; }
+  static auto make() { return Factory<T>::make_value(); }
 };
 
 template<class T, class Deleter>

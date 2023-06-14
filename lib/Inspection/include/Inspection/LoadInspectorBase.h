@@ -207,7 +207,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
                       Args&&... args) {
     if constexpr (Arg::isInlineType) {
       if (this->self().template shouldTryType<typename Arg::Type>(type)) {
-        auto v = Factory<typename Arg::Type>::create();
+        auto v = Factory<typename Arg::Type>::make_value();
         auto res = this->apply(v);
         if (res.ok()) {
           variant.value = std::move(v);
@@ -231,7 +231,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
                              Args&&... args) {
     auto loadVariant = [&]() -> Status {
       std::string_view type;
-      auto data = Factory<ValueType>::create();
+      auto data = Factory<ValueType>::make_value();
       auto res = this->self().parseVariantInformation(type, data, variant);
       if (!res.ok()) {
         return res;
@@ -380,7 +380,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
                   "All inline types must be listed at the beginning of the "
                   "alternatives list");
     if (arg.tag == tag) {
-      auto v = Factory<typename Arg::Type>::create();
+      auto v = Factory<typename Arg::Type>::make_value();
       auto res = parse(v);
       if (res.ok()) {
         result = v;
@@ -404,7 +404,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
     return this->self().doProcessObject(
         [&](std::string_view key, ValueType value) -> Status {
           auto ff = this->make(value);
-          auto val = Factory<typename T::mapped_type>::create();
+          auto val = Factory<typename T::mapped_type>::make_value();
           if (auto res = process(ff, val); !res.ok()) {
             return {std::move(res), "'" + std::string(key) + "'",
                     Status::ArrayTag{}};
@@ -420,7 +420,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
     std::size_t idx = 0;
     return this->self().doProcessList([&](auto value) -> Status {
       auto ff = this->self().make(value);
-      auto val = Factory<typename T::value_type>::create();
+      auto val = Factory<typename T::value_type>::make_value();
       if (auto res = process(ff, val); !res.ok()) {
         return {std::move(res), std::to_string(idx), Status::ArrayTag{}};
       }

@@ -433,6 +433,28 @@ TEST_F(VPackLoadInspectorTest, load_non_default_constructible_type_map) {
   EXPECT_EQ(map, (decltype(map){{"foo", NonDefaultConstructibleIntLike{42}}}));
 }
 
+TEST_F(VPackLoadInspectorTest, load_non_default_constructible_type_optional) {
+  builder.add(VPackValue(42));
+
+  VPackLoadInspector inspector{builder};
+
+  auto x = std::optional<NonDefaultConstructibleIntLike>();
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(x, (decltype(x){NonDefaultConstructibleIntLike{42}}));
+}
+
+TEST_F(VPackLoadInspectorTest, load_non_default_constructible_type_variant) {
+  builder.add(VPackValue(42));
+
+  VPackLoadInspector inspector{builder};
+
+  auto x = VariantWithNonDefaultConstructible{};
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(x, (decltype(x){NonDefaultConstructibleIntLike{42}}));
+}
+
 TEST_F(VPackLoadInspectorTest, load_optional_pointer) {
   builder.openObject();
   builder.add(VPackValue("vec"));

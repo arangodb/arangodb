@@ -328,6 +328,22 @@ TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type_map) {
   EXPECT_EQ(vec.at("foo").value, builder.slice().get("foo").getInt());
 }
 
+TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type_optional) {
+  auto x = std::optional<NonDefaultConstructibleIntLike>{
+      NonDefaultConstructibleIntLike{42}};
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(x.value().value, builder.slice().getInt());
+}
+
+TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type_variant) {
+  auto v =
+      VariantWithNonDefaultConstructible{NonDefaultConstructibleIntLike{42}};
+  auto result = inspector.apply(v);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(std::get<1>(v).value, builder.slice().getInt());
+}
+
 TEST_F(VPackSaveInspectorTest, store_object_with_fallbacks) {
   Fallback f;
   auto result = inspector.apply(f);

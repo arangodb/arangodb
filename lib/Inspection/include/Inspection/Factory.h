@@ -26,7 +26,7 @@ namespace arangodb::inspection {
 
 template<typename T>
 struct Factory {
-  static auto create() -> T { return T{}; }
+  static auto make_value() -> T { return T{}; }
 };
 
 }  // namespace arangodb::inspection

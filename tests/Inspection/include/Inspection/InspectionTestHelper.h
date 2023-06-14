@@ -404,7 +404,7 @@ struct Access<AnEnumClass>
     : StorageTransformerAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
 template<>
 struct Factory<NonDefaultConstructibleIntLike> {
-  static auto create() -> NonDefaultConstructibleIntLike {
+  static auto make_value() -> NonDefaultConstructibleIntLike {
     return NonDefaultConstructibleIntLike(0);
   }
 };
@@ -570,6 +570,17 @@ auto inspect(Inspector& f, InlineVariant& x) {
   return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
                             f.field("c", x.c), f.field("d", x.d),
                             f.field("e", x.e));
+}
+
+struct VariantWithNonDefaultConstructible
+    : std::variant<std::string, NonDefaultConstructibleIntLike> {};
+
+template<class Inspector>
+auto inspect(Inspector& f, VariantWithNonDefaultConstructible& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).unqualified().alternatives(
+      insp::inlineType<std::string>(),
+      insp::inlineType<NonDefaultConstructibleIntLike>());
 }
 
 enum class MyStringEnum {
