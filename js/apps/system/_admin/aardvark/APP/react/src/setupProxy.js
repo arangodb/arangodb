@@ -2,6 +2,7 @@
  * Proxy Configuration (see routes array for details)
  */
 
+const ARANGODB_HOST = process.env.ARANGODB_HOST || "localhost";
 const ARANGODB_PORT = !isNaN(process.env.ARANGODB_PORT)
   ? Number(process.env.ARANGODB_PORT) : 8529;
 
@@ -12,7 +13,7 @@ module.exports = function (app) {
   });
   app.use(
     createProxyMiddleware(["/_db/**", "!/_db/*/_admin/aardvark/index.html"], {
-      target: `http://localhost:${ARANGODB_PORT}`,
+      target: `http://${ARANGODB_HOST}:${ARANGODB_PORT}`,
       changeOrigin: true,
     })
   );
