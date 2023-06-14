@@ -457,6 +457,8 @@ std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
 
 }  // namespace
 
+constexpr auto planMemoryBytes = 2 * 1024 * 1024;
+
 /// @brief create the plan
 ExecutionPlan::ExecutionPlan(Ast* ast, bool trackMemoryUsage)
     : _ids(),
@@ -469,7 +471,12 @@ ExecutionPlan::ExecutionPlan(Ast* ast, bool trackMemoryUsage)
       _ast(ast),
       _lastLimitNode(nullptr),
       _subqueries(),
-      _typeCounts{} {}
+      _typeCounts{} {
+  // Assume planMemoryBytes storage for the AST nodes.
+  if (_trackMemoryUsage) {
+    _ast->query().resourceMonitor().increaseMemoryUsage(planMemoryBytes);
+  }
+}
 
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
@@ -498,6 +505,7 @@ ExecutionPlan::~ExecutionPlan() {
 #endif
 
   if (_trackMemoryUsage) {
+    _ast->query().resourceMonitor().decreaseMemoryUsage(planMemoryBytes);
     // only track memory usage here and access ast/query if we are allowed to do
     // so. this can be inherently unsafe from within the gtest unit tests, so it
     // is protected by an option here
