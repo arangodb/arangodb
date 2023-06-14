@@ -238,7 +238,7 @@ void Query::destroy() {
   exitV8Context();
 
   _snippets.clear();  // simon: must be before plan
-  _plans.clear();  // simon: must be before AST
+  _plans.clear();     // simon: must be before AST
   _ast.reset();
 
   LOG_TOPIC("f5cee", DEBUG, Logger::QUERIES)
@@ -463,9 +463,9 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   Optimizer opt(_queryOptions.maxNumberOfPlans);
   // get enabled/disabled rules
   opt.createPlans(std::move(plan), _queryOptions, false);
-
   // Now plan and all derived plans belong to the optimizer
   plan = opt.stealBest();  // Now we own the best one again
+
   TRI_ASSERT(plan != nullptr);
 
   // return the V8 context if we are in one
