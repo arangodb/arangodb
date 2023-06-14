@@ -1,14 +1,15 @@
 
 @startDocuBlock post_admin_routing_reload
-@brief Reload the routing table.
 
-@RESTHEADER{POST /_admin/routing/reload, Reloads the routing information, reloadRouting}
+@RESTHEADER{POST /_admin/routing/reload, Reload the routing table, reloadRouting}
 
 @RESTDESCRIPTION
-Reloads the routing information from the collection *routing*.
+Reloads the routing information from the `_routing` system collection if it
+exists, and makes Foxx rebuild its local routing table on the next request.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Routing information was reloaded successfully.
+The routing information has been reloaded successfully.
+
 @endDocuBlock

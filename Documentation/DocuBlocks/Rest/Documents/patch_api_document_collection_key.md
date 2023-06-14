@@ -1,8 +1,7 @@
 
 @startDocuBlock patch_api_document_collection_key
-@brief updates a document
 
-@RESTHEADER{PATCH /_api/document/{collection}/{key},Update document,updateDocument}
+@RESTHEADER{PATCH /_api/document/{collection}/{key},Update a document,updateDocument}
 
 @RESTALLBODYPARAM{document,object,required}
 A JSON representation of a document update as an object.
@@ -93,7 +92,7 @@ If a precondition is violated, an *HTTP 412* is returned.
 
 If the document exists and can be updated, then an *HTTP 201* or
 an *HTTP 202* is returned (depending on `waitForSync`, see below),
-the `Etag` header field contains the new revision of the document
+the `ETag` header field contains the new revision of the document
 (in double quotes) and the `Location` header contains a complete URL
 under which the document can be queried.
 

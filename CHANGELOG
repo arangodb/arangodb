@@ -1,6 +1,34 @@
 devel
 -----
 
+* Whenever there is a query request timeout in AQL (e.g., a server died)
+  which causes the query to fail, the DBServers will now all directly kill
+  their potentially ongoing parts of the query and not wait for garbage collection.
+
+* Updated arangosync to v2.18.1.
+
+* FE-211: Allow admins to edit gravatar email.
+
+* Use libunwind in jemalloc profiling to make it available with libmusl
+  and static binaries.
+
+* Updated arangosync to v2.18.1-preview-1.
+
+* BTS-1325: AQL: Fixed a possible deadlock with multiple parallel traversals.
+
+* Upgraded OpenSSL to 3.1.1.
+
+* BTS-1435: fixed invalid AQL optimization and added a safeguard.
+
+* APM-766, SEARCH-479: Reduce memory overhead for ArangoSearch removes.
+
+* Improve precision for ArangoSearch GEO_IN_RANGE function.
+
+* Updated ArangoDB Starter to 0.15.8.
+
+* OASIS-25262: Fixed undefined behavior in IN lookup in unique indexes when the
+  lookup array had to be rebuilt in memory.
+
 * BTS-846: Relaxed setup cost for calculation of default sort cost. There was 
   a hardcoded value of 100 being added to the sort cost that would be dominant
   when there was a small amount of documents in the collection. Even if an 
