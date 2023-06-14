@@ -405,8 +405,7 @@ struct Access<AnEnumClass>
     : StorageTransformerAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
 template<>
 struct Factory<NonDefaultConstructibleIntLike>
-    : BaseFactory<NonDefaultConstructibleIntLike,
-                  Factory<NonDefaultConstructibleIntLike>> {
+    : BaseFactory<NonDefaultConstructibleIntLike> {
   static auto make_value() -> NonDefaultConstructibleIntLike {
     return NonDefaultConstructibleIntLike(0);
   }
