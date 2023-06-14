@@ -50,7 +50,7 @@ struct Factory {
   }
 };
 
-template<typename T, typename Derived>
+template<typename T, typename Derived = Factory<T>>
 struct BaseFactory {
   static auto make_unique() -> std::unique_ptr<T> {
     // If you get a compile error here because T has deleted copy and move
