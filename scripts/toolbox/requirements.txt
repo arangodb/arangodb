@@ -1,6 +1,6 @@
 python-arango
 prometheus_client
-requests~=2.25.1
-numpy~=1.23.0
-matplotlib~=3.7.1
-termcolor~=2.3.0
+requests
+numpy
+matplotlib
+termcolor
