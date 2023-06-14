@@ -2,7 +2,8 @@
  * Proxy Configuration (see routes array for details)
  */
 
-const ARANGODB_PORT = 8529;
+const ARANGODB_PORT = !isNaN(process.env.ARANGODB_PORT)
+  ? Number(process.env.ARANGODB_PORT) : 8529;
 
 const { createProxyMiddleware } = require("http-proxy-middleware");
 module.exports = function (app) {
