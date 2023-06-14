@@ -96,7 +96,6 @@ router.get('/config.js', function (req, res) {
       maxReplicationFactor: internal.maxReplicationFactor,
       defaultReplicationFactor: internal.defaultReplicationFactor,
       maxNumberOfShards: internal.maxNumberOfShards,
-      maxNumberOfMoveShards: internal.maxNumberOfMoveShards,
       extendedNames: internal.extendedNames,
       forceOneShard: internal.forceOneShard,
       sessionTimeout: internal.sessionTimeout,

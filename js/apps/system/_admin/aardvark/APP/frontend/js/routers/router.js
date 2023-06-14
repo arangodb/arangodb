@@ -14,7 +14,6 @@
     foxxApiEnabled: undefined,
     statisticsInAllDatabases: undefined,
     lastRoute: undefined,
-    maxNumberOfMoveShards: undefined,
 
     routes: {
       '': 'cluster',
@@ -262,8 +261,6 @@
         this.statisticsInAllDatabases = frontendConfig.statisticsInAllDatabases;
       }
 
-      this.maxNumberOfMoveShards = frontendConfig.maxNumberOfMoveShards;
-
       document.addEventListener('keyup', this.listener, false);
 
       // This should be the only global object
@@ -488,7 +485,6 @@
 
         ReactDOM.render(
           React.createElement(ShardDistributionReactView, {
-            maxNumberOfMoveShards: this.maxNumberOfMoveShards,
             readOnly: this.userCollection.authOptions.ro
           }),
           document.getElementById("content")

@@ -6,10 +6,10 @@ import { IndexType } from "../useFetchIndices";
 import { FulltextIndexForm } from "./FulltextIndexForm";
 import { GeoIndexForm } from "./GeoIndexForm";
 import { IndexInfoTooltip } from "./IndexInfoTooltip";
-import { InvertedIndexFormWrap } from "./invertedIndex/InvertedIndexFormWrap";
 import { PersistentIndexForm } from "./PersistentIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
 import { ZKDIndexForm } from "./ZKDIndexForm";
+import { InvertedIndexFormWrap } from "./invertedIndex/InvertedIndexFormWrap";
 
 export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { indexTypeOptions } = useCollectionIndicesContext();

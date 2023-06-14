@@ -1,16 +1,30 @@
+import { Box, Button, FormLabel } from '@chakra-ui/react';
+import { Global } from '@emotion/react';
+import { Form, Formik } from 'formik';
 import React from 'react';
+import { SwitchControl } from '../../../components/form/SwitchControl';
+import { InfoTooltip } from '../../../components/tooltip/InfoTooltip';
 import { getAdminRouteForCurrentDB } from '../../../utils/arangoClient';
 
-async function rebalanceShards() {
+async function rebalanceShards(opts: {
+  maximumNumberOfMoves?: number;
+  leaderChanges?: boolean;
+  moveLeaders?: boolean;
+  moveFollowers?: boolean;
+  excludeSystemCollections?: boolean;
+  piFactor?: number;
+  databasesExcluded?: string[]
+}) {
   const route = getAdminRouteForCurrentDB();
   try {
-    const res = await route.post("cluster/rebalanceShards");
-    if (res.statusCode! >= 400 || !res.body?.result) {
-      window.arangoHelper.arangoError('Could not start rebalance process.');
-    } else if (res.body.result.operations === 0) {
-      window.arangoHelper.arangoNotification('No move shards operations were scheduled.');
+    const res = await route.put("cluster/rebalance", {
+      version: 1,
+      ...opts
+    });
+    if (res.body.result.moves.length === 0) {
+      window.arangoHelper.arangoNotification('No move shard operations were performed.');
     } else {
-      window.arangoHelper.arangoNotification('Started rebalance process. Scheduled ' + res.body.result.operations + ' shards move operation(s).');
+      window.arangoHelper.arangoNotification('Rebalanced shards with ' + res.body.result.moves.length + ' move operation(s).');
     }
   } catch (e: any) {
     window.arangoHelper.arangoError(
@@ -20,17 +34,103 @@ async function rebalanceShards() {
   }
 }
 
-export const RebalanceShards = ({ maxNumberOfMoveShards }: { maxNumberOfMoveShards: number }) => {
+export const RebalanceShards = () => {
   return (
-    <div className="arangoToolbar arangoToolbarTop" style={{ marginTop: "1rem" }} id="rebalanceShards">
-      <div className="pull-right">
-        <button id="rebalanceShardsBtn" style={{ marginLeft: "10px" }} className="button-warning" onClick={() => rebalanceShards()}>Rebalance Shards</button>
-      </div>
-      <div style={{ fontSize: "10pt", marginLeft: "10px", marginTop: "12px", fontWeight: 200 }}>
-        <b>WARNING:</b> Clicking this button will start a
-        shard rebalancing process and schedule up to {maxNumberOfMoveShards} shards move operations,
-        which may cause background activity and increase the load in the cluster until finished.
-      </div>
-    </div>
+    <Formik
+      onSubmit={async ({includeSystemCollections, ...opts}) => {
+        await rebalanceShards({
+          excludeSystemCollections: !includeSystemCollections,
+          ...opts
+        });
+      }}
+      initialValues={{
+        moveLeaders: false,
+        moveFollowers: false,
+        includeSystemCollections: false,
+      }}
+      isInitialValid={true}
+    >{({isValid, isSubmitting}) => (
+      <Form>
+      <Global
+        styles={{
+          "label": {
+            marginBottom: "unset"
+          }
+        }}
+      />
+        <Box width="100%" padding="5" background="white">
+          <Box fontSize={"lg"}>
+            Shard rebalancing
+          </Box>
+          <Box
+            display={"grid"}
+            gridTemplateColumns={"250px 40px 40px"}
+            rowGap="5"
+            columnGap="3"
+            marginY="4"
+            maxWidth="600px"
+          >
+            <FormLabel margin="0" htmlFor="moveLeaders">
+              Move Leaders
+            </FormLabel>
+            <SwitchControl
+              isDisabled={isSubmitting}
+              name="moveLeaders"
+            />
+            <InfoTooltip
+              label="Allow moving leaders."
+              boxProps={{
+                padding: "0",
+                alignSelf: "start",
+                top: "1"
+              }}
+            />
+            <FormLabel margin="0" htmlFor="moveFollowers">
+              Move Followers
+            </FormLabel>
+            <SwitchControl
+              isDisabled={isSubmitting}
+              name="moveFollowers"
+            />
+            <InfoTooltip
+              label="Allow moving followers."
+              boxProps={{
+                padding: "0",
+                alignSelf: "start",
+                top: "1"
+              }}
+            />
+            <FormLabel margin="0" htmlFor="includeSystemCollections">
+              Include System Collections
+            </FormLabel>
+            <SwitchControl
+              isDisabled={isSubmitting}
+              name="includeSystemCollections"
+            />
+            <InfoTooltip
+              label="Include system collections in the rebalance plan."
+              boxProps={{
+                padding: "0",
+                alignSelf: "start",
+                top: "1"
+              }}
+            />
+          </Box>
+          <Box
+          >
+            <Button
+              colorScheme="green"
+              size="sm"
+              type="submit"
+              isDisabled={!isValid}
+              isLoading={isSubmitting}
+            >
+              Rebalance
+            </Button>
+          </Box>
+        </Box>
+      </Form>
+      )}
+    </Formik>
   );
 };

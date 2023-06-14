@@ -4,7 +4,7 @@ import { theme } from '../../../theme/theme';
 import { RebalanceShards } from './RebalanceShards';
 import { ShardDistributionContent } from './ShardDistributionContent';
 
-const ShardDistributionReactView = ({ readOnly, maxNumberOfMoveShards }) => {
+const ShardDistributionReactView = ({ readOnly }) => {
   return (
     <ChakraProvider theme={theme}>
       <ShardDistributionContent />
