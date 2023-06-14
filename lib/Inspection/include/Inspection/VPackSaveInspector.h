@@ -44,8 +44,8 @@ struct VPackSaveInspector
     : SaveInspectorBase<VPackSaveInspector<Context>, Context> {
   using Base = SaveInspectorBase<VPackSaveInspector, Context>;
 
-  explicit VPackSaveInspector(velocypack::Builder& builder)
-    requires(!Base::hasContext)
+  explicit VPackSaveInspector(velocypack::Builder& builder) requires(
+        !Base::hasContext)
       : _builder(builder) {}
 
   explicit VPackSaveInspector(velocypack::Builder& builder,
