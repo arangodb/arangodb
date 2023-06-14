@@ -256,11 +256,16 @@ bool isIgnoredHiddenEnterpriseCollection(
 
 arangodb::Result dumpJsonObjects(arangodb::DumpFeature::DumpJob& job,
                                  arangodb::ManagedDirectory::File& file,
-                                 arangodb::basics::StringBuffer const& body) {
+                                 arangodb::basics::StringBuffer const& body,
+                                 std::string const* collectionName = nullptr) {
+  if (collectionName == nullptr) {
+    collectionName = &job.collectionName;
+  }
+  TRI_ASSERT(collectionName != nullptr);
   size_t length;
   if (job.maskings != nullptr) {
     arangodb::basics::StringBuffer masked(256, false);
-    job.maskings->mask(job.collectionName, body, masked);
+    job.maskings->mask(*collectionName, body, masked);
     file.write(masked.data(), masked.length());
     length = masked.length();
   } else {
@@ -1680,8 +1685,8 @@ void DumpFeature::ParallelDumpServer::runWriterThread() noexcept {
     countBlocker(kRemoteQueue, count);
 
     auto file = getFileForShard(shardId);
-    collectionName = shards.at(shardId).collectionName;
-    arangodb::Result result = dumpJsonObjects(*this, *file, body);
+    arangodb::Result result =
+        dumpJsonObjects(*this, *file, body, &shards.at(shardId).collectionName);
 
     if (result.fail()) {
       LOG_TOPIC("77881", FATAL, Logger::DUMP)
