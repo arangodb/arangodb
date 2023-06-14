@@ -532,7 +532,7 @@ struct AstNode {
   bool stringEquals(std::string const& other) const;
 
   /// @brief return the data value of a node
-  void* getData() const;
+  void* getData() const noexcept;
 
   /// @brief set the data value of a node
   void setData(void* v);

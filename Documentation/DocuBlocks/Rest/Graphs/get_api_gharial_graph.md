@@ -1,6 +1,5 @@
 
 @startDocuBlock get_api_gharial_graph
-@brief Get a graph from the graph module.
 
 @RESTHEADER{GET /_api/gharial/{graph}, Get a graph, getGraph}
 

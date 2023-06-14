@@ -195,11 +195,10 @@ class Node final {
   Node& getOrCreate(std::vector<std::string> const& pv);
 
   /// @brief Get node specified by path vector
-  std::optional<std::reference_wrapper<Node const>> get(
-      std::vector<std::string> const& pv) const;
+  Node const* get(std::vector<std::string> const& pv) const;
 
   /// @brief Get node specified by path
-  std::optional<std::reference_wrapper<Node const>> get(
+  Node const* get(
       std::shared_ptr<cluster::paths::Path const> const& path) const;
 
   /// @brief Get root node
@@ -295,9 +294,8 @@ class Node final {
   void timeToLive(TimePoint const& ttl);
 
   /// @brief accessor to Node object
-  /// @return  returns nullopt if not found or type doesn't match
-  std::optional<std::reference_wrapper<Node const>> hasAsNode(
-      std::string const&) const noexcept;
+  /// @return  returns nullptr if not found or type doesn't match
+  Node const* hasAsNode(std::string const&) const noexcept;
 
   /// @brief accessor to Node object
   Node& hasAsWritableNode(std::string const&);
@@ -323,9 +321,8 @@ class Node final {
   std::optional<std::string> hasAsString(std::string const&) const;
 
   /// @brief accessor to Node's _children
-  /// @return  returns nullopt if not found or type doesn't match
-  std::optional<std::reference_wrapper<Children const>> hasAsChildren(
-      std::string const&) const;
+  /// @return  returns nullptr if not found or type doesn't match
+  Children const* hasAsChildren(std::string const&) const;
 
   /// @brief accessor to Node then write to builder
   /// @return  returns true if url exists
@@ -347,8 +344,7 @@ class Node final {
   Node& getOrCreate(std::string_view path);
 
   /// @brief Get node specified by path string
-  std::optional<std::reference_wrapper<Node const>> get(
-      std::string_view path) const;
+  Node const* get(std::string_view path) const;
 
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::optional<std::string> getString() const;

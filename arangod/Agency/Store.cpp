@@ -238,9 +238,9 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
 
     // Check is guarded in ::apply
     bool found = false;
-    if (auto n = _node.get(pv); n.has_value()) {
+    if (auto n = _node.get(pv); n) {
       found = true;
-      node = &n->get();
+      node = n;
     }
 
     if (precond.value.isObject()) {
@@ -526,7 +526,7 @@ bool Store::read(VPackSlice query, Builder& ret) const {
       ret.add(VPackValue(*it));
     }
     if (e == pv.size()) {  // existing
-      _node.get(pv).value().get().toBuilder(ret, showHidden);
+      _node.get(pv)->toBuilder(ret, showHidden);
     } else {
       VPackObjectBuilder guard(&ret);
     }
@@ -541,7 +541,7 @@ bool Store::read(VPackSlice query, Builder& ret) const {
       std::vector<std::string> pv = split(path);
       size_t e = _node.exists(pv).size();
       if (e == pv.size()) {  // existing
-        copy.getOrCreate(pv) = _node.get(pv)->get();
+        copy.getOrCreate(pv) = *_node.get(pv);
       } else {  // non-existing
         for (size_t i = 0; i < pv.size() - e + 1; ++i) {
           pv.pop_back();
@@ -681,7 +681,7 @@ void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
                 bool showHidden) const {
   std::lock_guard storeLocker{_storeLock};
   if (auto node = _node.hasAsNode(path); node) {
-    node.value().get().toBuilder(b, showHidden);
+    node->toBuilder(b, showHidden);
   } else {
     // Backwards compatibility of a refactoring. Would be better to communicate
     // this clearly via a return code or so.
@@ -692,7 +692,7 @@ void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
 /// Get node at path under mutex
 Node Store::get(std::string const& path) const {
   std::lock_guard storeLocker{_storeLock};
-  return _node.hasAsNode(path).value().get();
+  return *_node.hasAsNode(path);
 }
 
 /// Get node at path under mutex
@@ -738,7 +738,7 @@ std::string Store::normalize(char const* key, size_t length) {
  *        Caller must enforce locking.
  */
 Node const* Store::nodePtr(std::string const& path) const {
-  return &_node.get(path).value().get();
+  return _node.get(path);
 }
 
 void Store::callTriggers(std::string_view key, std::string_view op,

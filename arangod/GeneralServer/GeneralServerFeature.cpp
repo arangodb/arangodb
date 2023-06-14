@@ -224,8 +224,8 @@ void GeneralServerFeature::collectOptions(
   options
       ->addOption(
           "--server.telemetrics-api-max-requests",
-          "Maximum number of requests from the arangosh that the telemetrics "
-          "API will respond without rate-limiting.",
+          "The maximum number of requests from arangosh that the "
+          "telemetrics API responds to without rate-limiting.",
           new options::UInt64Parameter(&_telemetricsMaxRequestsPerInterval),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Uncommon,
@@ -233,17 +233,16 @@ void GeneralServerFeature::collectOptions(
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100)
-      .setLongDescription(R"(This option controls the maximum 
-number of requests that the telemetrics API will respond to before
-it rate-limits. Note that only requests from the arangosh to the
-telemetrics API will be rate-limited, but not any other requests
-to the telemetrics API.
-Requests to the telemetrics API will be counted for every 2 hour
-interval, and then resetted. That means after a period of at most
-2 hours, the telemetrics API will become usable again.
-The purpose of this option is to keep a deployment from being
-overwhelmed by too many telemetrics requests, issued by arangosh
-instances that are used for batch processing.)");
+      .setLongDescription(R"(This option limits requests from the arangosh to
+the telemetrics API, but not any other requests to the API.
+
+Requests to the telemetrics API are counted for every 2 hour interval, and then
+reset. This means after a period of at most 2 hours, the telemetrics API
+becomes usable again.
+
+The purpose of this option is to keep a deployment from being overwhelmed by
+too many telemetrics requests issued by arangosh instances that are used for
+batch processing.)");
 
   options->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
