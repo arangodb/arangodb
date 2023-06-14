@@ -251,7 +251,7 @@ query. This can be a consequence of applying other optimizations.)");
                OptimizerRule::optimizeSubqueriesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Apply optimizations to subqueries.
-               
+
 This rule adds a `LIMIT` statement to qualifying subqueries to make them return
 less data. It also modifies the result value of subqueries in case only the
 number of subquery results is checked later. This saves copying the document
@@ -525,7 +525,7 @@ late as possible and not before their results are required.)");
       OptimizerRule::clusterOneShardRule,
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                OptimizerRule::Flags::ClusterOnly,
-                               OptimizerRule::Flags::EnterpriseOnly)
+                               OptimizerRule::Flags::EnterpriseOnly),
           R"(Offload the entire query to the DB-Server (except the client
 communication via a Coordinator). This saves all the back and forth that
 normally exists in regular cluster queries, benefitting traversals and joins
