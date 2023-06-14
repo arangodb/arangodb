@@ -38,4 +38,7 @@ def start(args, cfg):
     print("My hot backup identifier is: " + hotBackupIdentifier)
     HotBackup.restoreHotBackup(endpoint, hotBackupIdentifier)
 
+    assert (sysDB.has_collection(pregelSystemCollectionName))
+    assert (testDB.has_collection(pregelSystemCollectionName))
+
     print("Done HotBackup Test")
