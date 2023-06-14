@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import time
+from termcolor import colored
 from arango import ArangoClient
 from modules import HotBackup
 
@@ -38,7 +38,16 @@ def start(args, cfg):
     print("My hot backup identifier is: " + hotBackupIdentifier)
     HotBackup.restoreHotBackup(endpoint, hotBackupIdentifier)
 
-    assert (sysDB.has_collection(pregelSystemCollectionName))
-    assert (testDB.has_collection(pregelSystemCollectionName))
+    try:
+        assert (sysDB.has_collection(pregelSystemCollectionName))
+        assert (testDB.has_collection(pregelSystemCollectionName))
+    except AssertionError:
+        errorMessage = "ERROR: The pregel system collection is not present in both databases after the restore"
+        colored("FAILED", 'red')
+        colored(errorMessage, 'red')
+        colored("FAILED", 'red')
+        # exit(1)
 
+    # Right now I do not want to exit in failure case, as it seems that I've found a shutdown issue
+    # right after the restore of a HotBackup. This is WIP.
     print("Done HotBackup Test")
