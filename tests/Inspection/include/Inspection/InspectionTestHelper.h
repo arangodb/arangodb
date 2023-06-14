@@ -371,6 +371,21 @@ auto inspect(Inspector& f, AnEmptyObject& x) {
   return f.object(x).fields();
 }
 
+struct NonDefaultConstructibleIntLike {
+  NonDefaultConstructibleIntLike() = delete;
+  explicit NonDefaultConstructibleIntLike(std::uint64_t value) : value(value) {}
+
+  friend auto operator==(NonDefaultConstructibleIntLike,
+                         NonDefaultConstructibleIntLike) -> bool = default;
+
+  std::uint64_t value{};
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, NonDefaultConstructibleIntLike& x) {
+  return f.apply(x.value);
+}
+
 }  // namespace
 
 template<>
@@ -387,6 +402,12 @@ struct Access<Specialization> : AccessBase<Specialization> {
 template<>
 struct Access<AnEnumClass>
     : StorageTransformerAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
+template<>
+struct Factory<NonDefaultConstructibleIntLike> {
+  static auto create() -> NonDefaultConstructibleIntLike {
+    return NonDefaultConstructibleIntLike(0);
+  }
+};
 }  // namespace arangodb::inspection
 
 namespace {

@@ -310,6 +310,8 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
   EXPECT_TRUE(slice["y"].isNull());
 }
 
+TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type) {}
+
 TEST_F(VPackSaveInspectorTest, store_object_with_fallbacks) {
   Fallback f;
   auto result = inspector.apply(f);
