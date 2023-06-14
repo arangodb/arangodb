@@ -403,6 +403,7 @@ void ResignLeadership::scheduleJobsR2(std::shared_ptr<Builder>& trx,
           database, logTarget.id,
           {ReconfigureOperation{
               ReconfigureOperation::SetLeader{.participant = replacement}}},
+          // cppcheck-suppress accessMoved
           std::move(undo))
           .create(trx);
     }
