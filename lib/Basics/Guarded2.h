@@ -211,12 +211,34 @@ class Guarded {
   template<class F, class R = std::invoke_result_t<F, value_type&>>
   auto doUnderLock(F&& callback) const -> R;
 
+  template<class F, class R = std::invoke_result_t<F, value_type&>>
+  auto doUnderExclusiveLock(F&& callback) -> R;
+  template<class F, class R = std::invoke_result_t<F, value_type&>>
+  auto doUnderExclusiveLock(F&& callback) const -> R;
+
+  template<class F, class R = std::invoke_result_t<F, value_type&>>
+  auto doUnderSharedLock(F&& callback) const
+      -> R requires details::IsSharedLock<M>;
+
   template<class F, class R = std::invoke_result_t<F, value_type&>,
            class Q = std::conditional_t<std::is_void_v<R>, std::monostate, R>>
   [[nodiscard]] auto tryUnderLock(F&& callback) -> std::optional<Q>;
   template<class F, class R = std::invoke_result_t<F, value_type&>,
            class Q = std::conditional_t<std::is_void_v<R>, std::monostate, R>>
   [[nodiscard]] auto tryUnderLock(F&& callback) const -> std::optional<Q>;
+
+  template<class F, class R = std::invoke_result_t<F, value_type&>,
+           class Q = std::conditional_t<std::is_void_v<R>, std::monostate, R>>
+  [[nodiscard]] auto tryUnderExclusiveLock(F&& callback) -> std::optional<Q>;
+  template<class F, class R = std::invoke_result_t<F, value_type&>,
+           class Q = std::conditional_t<std::is_void_v<R>, std::monostate, R>>
+  [[nodiscard]] auto tryUnderExclusiveLock(F&& callback) const
+      -> std::optional<Q>;
+
+  template<class F, class R = std::invoke_result_t<F, value_type&>,
+           class Q = std::conditional_t<std::is_void_v<R>, std::monostate, R>>
+  [[nodiscard]] auto tryUnderSharedLock(F&& callback) const -> std::optional<Q>
+  requires details::IsSharedLock<M>;
 
   // get a copy of the value, made under the lock.
   template<typename U = T>
@@ -231,6 +253,12 @@ class Guarded {
 
   auto getLockedGuard() -> mutex_guard_type;
   auto getLockedGuard() const -> const_mutex_guard_type;
+
+  auto getExclusiveLockedGuard() -> mutex_guard_type;
+  auto getExclusiveLockedGuard() const -> const_mutex_guard_type;
+
+  auto getSharedLockedGuard() const -> const_mutex_guard_type requires
+      details::IsSharedLock<M>;  // TODO use shared_lock_type
 
   auto tryLockedGuard() -> std::optional<MutexGuard<value_type, lock_type>>;
   auto tryLockedGuard() const
