@@ -393,10 +393,10 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       }
     } else {
       // We can just retry here.
-      // Most of our preconditions are protections against dead servers and changes in plan version
-      // Those are recomputed in this loop.
-      // The only thing that we cannot retry: The CollectionName is taken. That is checked at the
-      // beginning of this retry loop
+      // Most of our preconditions are protections against dead servers and
+      // changes in plan version Those are recomputed in this loop. The only
+      // thing that we cannot retry: The CollectionName is taken. That is
+      // checked at the beginning of this retry loop
     }
   }
 }
