@@ -77,8 +77,8 @@ def stopCluster():
         subprocess.Popen(parameters).wait()
 
 
-def stopAndWaitCluster(cfg):
-    stopCluster(cfg)
+def stopAndWaitCluster():
+    stopCluster()
     time.sleep(5)  # TODO: wait for process to be shut down properly
 
 

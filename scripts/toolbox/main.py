@@ -21,7 +21,7 @@ def main():
         # In cluster case, we do not return a process as we do have multiple.
         # Internally, we'll make use of our scripts/startLocalCluster.sh and
         # scripts/shutdownLocalCluster.sh scripts.
-        ArangoDBInstanceManager.stopCluster(calculatedConfig)
+        ArangoDBInstanceManager.stopCluster()
 
 
 if __name__ == "__main__":
