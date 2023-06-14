@@ -55,8 +55,8 @@ void serializeWithContext(Builder& builder, T& value, Context const& context) {
   if (auto res = inspector.apply(value); !res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        std::string{"Error while serializing to VelocyPack: "} + res.error() +
-            "\nPath: " + res.path());
+        basics::StringUtils::concatT("Error while serializing to VelocyPack: ",
+                                     res.error(), "\nPath: ", res.path()));
   }
 }
 

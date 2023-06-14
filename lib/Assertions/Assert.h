@@ -43,10 +43,6 @@
                                            #expr} &                            \
             ::arangodb::debug::AssertionLogger::assertionStringStream
 
-#define ADB_MAINTAINER_CRASH()                                             \
-  ::arangodb::debug::AssertionLogger{ADB_HERE, ARANGODB_PRETTY_FUNCTION} & \
-      ::arangodb::debug::AssertionLogger::assertionStringStream
-
 #else  // Production
 
 #include "AssertionNoOpLogger.h"
@@ -55,7 +51,5 @@
   (true) ? ((false) ? (void)(expr) : (void)nullptr)   \
          : ::arangodb::debug::AssertionNoOpLogger{} & \
                ::arangodb::debug::NoOpStream {}
-
-#define ADB_MAINTAINER_CRASH() TRI_ASSERT(false)
 
 #endif

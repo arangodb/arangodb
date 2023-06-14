@@ -38,7 +38,6 @@
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
 
 #include "AssertionConditionalLogger.h"
-#include "AssertionLogger.h"
 
 #include "Basics/system-compiler.h"
 
