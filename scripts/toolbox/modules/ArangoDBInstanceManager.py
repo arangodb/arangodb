@@ -5,6 +5,17 @@ import os
 import shutil
 import subprocess
 import json
+from contextlib import contextmanager
+
+
+@contextmanager
+def cwd(path):
+    oldPwd = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(oldPwd)
 
 
 def checkWorkDirectory(args, cfg):
@@ -27,7 +38,7 @@ def start(args, cfg):
     checkWorkDirectory(args, cfg)
 
     if args.mode == "cluster":
-        print("TODO: Not yet implemented <Starting ArangoDB in cluster mode>")
+        startCluster(cfg)
     elif args.mode == "single":
         parameters = [cfg["arangodb"]["executable"]]
         for key, value in cfg["arangodb"]["startupParameters"].items():
@@ -39,6 +50,7 @@ def start(args, cfg):
                 parameters.append("--" + key + "=" + value)
 
         process = subprocess.Popen(parameters, stdout=subprocess.DEVNULL)
+        print("We will wait 5 seconds for arangod to start up...")
         time.sleep(5)  # TODO: wait for process to be started up properly
         print(
             "Started ArangoDB in single mode, logfile: " + cfg["arangodb"]["startupParameters"][
@@ -47,6 +59,27 @@ def start(args, cfg):
         return process
     else:
         print("Invalid mode")
+
+
+def startCluster(cfg):
+    print("Starting ArangoDB in cluster mode...")
+    # main ArangoDB repository
+    with cwd('../../'):
+        parameters = ["./scripts/startLocalCluster.sh"]
+        subprocess.Popen(parameters).wait()
+
+
+def stopCluster(cfg):
+    print("Stopping ArangoDB in cluster mode...")
+    # main ArangoDB repository
+    with cwd('../../'):
+        parameters = ["./scripts/shutdownLocalCluster.sh"]
+        subprocess.Popen(parameters).wait()
+
+
+def stopAndWaitCluster(cfg):
+    stopCluster(cfg)
+    time.sleep(5)  # TODO: wait for process to be shut down properly
 
 
 def stop(process):
