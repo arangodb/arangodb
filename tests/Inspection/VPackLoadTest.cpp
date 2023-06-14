@@ -466,12 +466,28 @@ TEST_F(VPackLoadInspectorTest, load_non_default_constructible_type_shared_ptr) {
   EXPECT_EQ(*x, NonDefaultConstructibleIntLike{42});
 }
 
-TEST_F(VPackLoadInspectorTest, load_non_default_constructible_type_variant) {
+TEST_F(VPackLoadInspectorTest,
+       load_non_default_constructible_type_inline_variant) {
   builder.add(VPackValue(42));
 
   VPackLoadInspector inspector{builder};
 
-  auto x = VariantWithNonDefaultConstructible{};
+  auto x = InlineVariantWithNonDefaultConstructible{};
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(x, (decltype(x){NonDefaultConstructibleIntLike{42}}));
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_non_default_constructible_type_qualified_variant) {
+  builder.openObject();
+  builder.add("t", "nondc_type");
+  builder.add("v", VPackValue(42));
+  builder.close();
+
+  VPackLoadInspector inspector{builder};
+
+  auto x = QualifiedVariantWithNonDefaultConstructible{};
   auto result = inspector.apply(x);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ(x, (decltype(x){NonDefaultConstructibleIntLike{42}}));

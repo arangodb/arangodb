@@ -354,12 +354,24 @@ TEST_F(VPackSaveInspectorTest,
   EXPECT_EQ(x->value, builder.slice().getInt());
 }
 
-TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type_variant) {
-  auto v =
-      VariantWithNonDefaultConstructible{NonDefaultConstructibleIntLike{42}};
+TEST_F(VPackSaveInspectorTest,
+       store_non_default_constructible_type_inline_variant) {
+  auto v = InlineVariantWithNonDefaultConstructible{
+      NonDefaultConstructibleIntLike{42}};
   auto result = inspector.apply(v);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ(std::get<1>(v).value, builder.slice().getInt());
+}
+
+TEST_F(VPackSaveInspectorTest,
+       store_non_default_constructible_type_qualified_variant) {
+  auto v = QualifiedVariantWithNonDefaultConstructible{
+      NonDefaultConstructibleIntLike{42}};
+  auto result = inspector.apply(v);
+  EXPECT_TRUE(result.ok());
+  ASSERT_TRUE(builder.slice().isObject());
+  EXPECT_EQ("nondc_type", builder.slice().get("t").stringView());
+  EXPECT_EQ(std::get<1>(v).value, builder.slice().get("v").getInt());
 }
 
 TEST_F(VPackSaveInspectorTest, store_object_with_fallbacks) {

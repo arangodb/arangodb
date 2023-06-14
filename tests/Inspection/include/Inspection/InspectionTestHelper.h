@@ -574,15 +574,26 @@ auto inspect(Inspector& f, InlineVariant& x) {
                             f.field("e", x.e));
 }
 
-struct VariantWithNonDefaultConstructible
+struct InlineVariantWithNonDefaultConstructible
     : std::variant<std::string, NonDefaultConstructibleIntLike> {};
 
 template<class Inspector>
-auto inspect(Inspector& f, VariantWithNonDefaultConstructible& x) {
+auto inspect(Inspector& f, InlineVariantWithNonDefaultConstructible& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).unqualified().alternatives(
       insp::inlineType<std::string>(),
       insp::inlineType<NonDefaultConstructibleIntLike>());
+}
+
+struct QualifiedVariantWithNonDefaultConstructible
+    : std::variant<std::string, NonDefaultConstructibleIntLike> {};
+
+template<class Inspector>
+auto inspect(Inspector& f, QualifiedVariantWithNonDefaultConstructible& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).qualified("t", "v").alternatives(
+      insp::inlineType<std::string>(),
+      insp::type<NonDefaultConstructibleIntLike>("nondc_type"));
 }
 
 enum class MyStringEnum {
