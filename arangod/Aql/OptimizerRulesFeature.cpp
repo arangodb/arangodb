@@ -397,10 +397,9 @@ AQL traversals away and try to move `FILTER` conditions into `TraversalNode`
 for early pruning of results.)");
 
   // optimize K_PATHS
-  registerRule("optimize-paths", optimizePathsRule,
-               OptimizerRule::optimizePathsRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(TODO)");
+  registerRule(
+      "optimize-paths", optimizePathsRule, OptimizerRule::optimizePathsRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled), R"(TODO)");
 
   // optimize unnecessary filters already applied by the traversal
   registerRule("remove-filter-covered-by-traversal",
@@ -422,7 +421,7 @@ in a query.)");
                arangodb::iresearch::handleConstrainedSortInView,
                OptimizerRule::handleConstrainedSortInView,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-              R"(TODO)");
+               R"(TODO)");
 
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2",
@@ -438,7 +437,7 @@ optimizations)");
   registerRule("remove-redundant-path-var", removeTraversalPathVariable,
                OptimizerRule::removeTraversalPathVariable,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-              R"(Avoid computing the variables emitted by AQL traversals if
+               R"(Avoid computing the variables emitted by AQL traversals if
 they are unused in the query, significantly reducing overhead.)");
 
   registerRule("optimize-cluster-single-document-operations",
@@ -446,7 +445,7 @@ they are unused in the query, significantly reducing overhead.)");
                OptimizerRule::substituteSingleDocumentOperations,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly),
-              R"(Let a Coordinator work with a document directly if you
+               R"(Let a Coordinator work with a document directly if you
 reference a document by its `_key`. In this case, no AQL is executed on the
 DB-Servers.)");
 
@@ -455,7 +454,7 @@ DB-Servers.)");
                OptimizerRule::substituteMultipleDocumentOperations,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly),
-              R"(For bulk `INSERT` operations in cluster deployments, avoid
+               R"(For bulk `INSERT` operations in cluster deployments, avoid
 unnecessary overhead that AQL queries typically require for the setup and
 shutdown in clusters, as well as for the internal batching.
 
@@ -521,12 +520,13 @@ late as possible and not before their results are required.)");
 
 #ifdef USE_ENTERPRISE
   // must be the first cluster optimizer rule
-  registerRule("cluster-one-shard", clusterOneShardRule,
-               OptimizerRule::clusterOneShardRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly,
-                                        OptimizerRule::Flags::EnterpriseOnly)
-                R"(Offload the entire query to the DB-Server (except the client
+  registerRule(
+      "cluster-one-shard", clusterOneShardRule,
+      OptimizerRule::clusterOneShardRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                               OptimizerRule::Flags::ClusterOnly,
+                               OptimizerRule::Flags::EnterpriseOnly)
+          R"(Offload the entire query to the DB-Server (except the client
 communication via a Coordinator). This saves all the back and forth that
 normally exists in regular cluster queries, benefitting traversals and joins
 in particular.
@@ -546,7 +546,7 @@ SmartGraphs cannot be optimized.)");
                OptimizerRule::clusterLiftConstantsForDisjointGraphNodes,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
                                         OptimizerRule::Flags::EnterpriseOnly),
-              R"(TODO)");
+               R"(TODO)");
 #endif
 
   registerRule("distribute-in-cluster", distributeInClusterRule,
@@ -560,7 +560,7 @@ This is not an optimization rule, and it cannot be turned off.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly,
                                         OptimizerRule::Flags::EnterpriseOnly),
-              R"(Reduce inter-node joins to server-local joins.
+               R"(Reduce inter-node joins to server-local joins.
 This rule is only employed when joining two collections with identical sharding
 setup via their shard keys.)");
 #endif
@@ -579,7 +579,7 @@ This is not an optimization rule, and it cannot be turned off.)");
                OptimizerRule::distributeOffsetInfoToClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
                                         OptimizerRule::Flags::EnterpriseOnly),
-              R"(TODO)");
+               R"(TODO)");
 #endif
 
   registerRule("distribute-filtercalc-to-cluster",
@@ -587,7 +587,7 @@ This is not an optimization rule, and it cannot be turned off.)");
                OptimizerRule::distributeFilterCalcToClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly),
-              R"(Move filters up in a distributed execution plan. Filters are
+               R"(Move filters up in a distributed execution plan. Filters are
 moved as far up in the plan as possible to make result sets as small as
 possible, as early as possible.)");
 
@@ -595,7 +595,7 @@ possible, as early as possible.)");
                OptimizerRule::distributeSortToClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly),
-              R"(Move sort operations up in a distributed query. Sorts are
+               R"(Move sort operations up in a distributed query. Sorts are
 moved as far up in the query plan as possible to make result sets as small as
 possible, as early as possible.)");
 
@@ -606,7 +606,7 @@ possible, as early as possible.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault,
                                         OptimizerRule::Flags::Hidden),
-              R"(Third pass of removing all calculations whose result is not
+               R"(Third pass of removing all calculations whose result is not
 referenced in the query. This can be a consequence of applying other
 optimizations)");
 
@@ -615,7 +615,7 @@ optimizations)");
                OptimizerRule::removeUnnecessaryRemoteScatterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly),
-              R"(Avoid distributing calculations and handle them centrally if
+               R"(Avoid distributing calculations and handle them centrally if
 a `RemoteNode` is followed by a `ScatterNode`, and the `ScatterNode` is only
 followed by calculations or a `SingletonNode`.)");
 
@@ -625,7 +625,7 @@ followed by calculations or a `SingletonNode`.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly,
                                         OptimizerRule::Flags::EnterpriseOnly),
-              R"(Execute nodes of the types `TraversalNode`,
+               R"(Execute nodes of the types `TraversalNode`,
 `ShortestPathNode`, and `KShortestPathsNode` on a DB-Server instead of on a
 Coordinator if the nodes operate on SatelliteGraphs, removing the need to
 transfer data for these nodes.)");
@@ -635,7 +635,7 @@ transfer data for these nodes.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly,
                                         OptimizerRule::Flags::EnterpriseOnly),
-              R"(Optimize nodes of the types `ScatterNode`, `GatherNode`, and
+               R"(Optimize nodes of the types `ScatterNode`, `GatherNode`, and
 `RemoteNode` for SatelliteCollections and SatelliteGraphs away. Execute the
 respective query parts on each participating DB-Server independently, so that
 the results become available locally without network communication.
@@ -646,7 +646,7 @@ Depends on the `remove-unnecessary-remote-scatter` rule.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly,
                                         OptimizerRule::Flags::EnterpriseOnly),
-              R"(Combine multiples nodes of type `DistributeNode` into one if
+               R"(Combine multiples nodes of type `DistributeNode` into one if
 two adjacent `DistributeNode` nodes share the same input variables and
 therefore can be optimized into a single `DistributeNode`.)");
 #endif
@@ -656,7 +656,7 @@ therefore can be optimized into a single `DistributeNode`.)");
                OptimizerRule::undistributeRemoveAfterEnumCollRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly),
-              R"(Push nodes of type `RemoveNode` into the same query part that
+               R"(Push nodes of type `RemoveNode` into the same query part that
 enumerates over the documents of a collection. This saves inter-cluster
 roundtrips between the `EnumerateCollectionNode` and the `RemoveNode`.
 It includes simple `UPDATE` and `REPLACE` operations that modify multiple
@@ -666,7 +666,7 @@ documents and do not use `LIMIT`.)");
                OptimizerRule::collectInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly),
-              R"(Perform the heavy processing for `COLLECT` statements on
+               R"(Perform the heavy processing for `COLLECT` statements on
 DB-Servers and only light-weight aggregation on a Coordinator. Both sides get
 a `CollectNode` in the query plan.)");
 
@@ -674,7 +674,7 @@ a `CollectNode` in the query plan.)");
                OptimizerRule::restrictToSingleShardRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly),
-              R"(Restrict operations to a single shard instead of applying
+               R"(Restrict operations to a single shard instead of applying
 them for all shards if a collection operation (`IndexNode` or a
 data modification node) only affects a single shard.
   
@@ -711,7 +711,7 @@ filtering but not for further calculations.)");
                OptimizerRule::parallelizeGatherRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly),
-              R"(Apply an optimization to execute Coordinator `GatherNode`
+               R"(Apply an optimization to execute Coordinator `GatherNode`
 nodes in parallel. These notes cannot be parallelized if they depend on a
 `TraversalNode`, except for certain Disjoint SmartGraph traversals where the
 traversal can run completely on the local DB-Server.)");
@@ -720,7 +720,7 @@ traversal can run completely on the local DB-Server.)");
                OptimizerRule::decayUnnecessarySortedGatherRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly),
-              R"(TODO)");
+               R"(TODO)");
 
 #ifdef USE_ENTERPRISE
   registerRule("push-subqueries-to-dbserver", clusterPushSubqueryToDBServer,
@@ -728,7 +728,7 @@ traversal can run completely on the local DB-Server.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly,
                                         OptimizerRule::Flags::EnterpriseOnly),
-              R"(Execute subqueries entirely on a DB-Server if possible.
+               R"(Execute subqueries entirely on a DB-Server if possible.
 Subqueries need to contain exactly one distribute/gather section, and only one
 collection access or traversal, shortest path, or k-shortest paths query.)");
 #endif
@@ -755,7 +755,7 @@ involved attributes are covered by regular indexes.)");
                OptimizerRule::lateMaterialiationOffsetInfoRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::EnterpriseOnly),
-              R"(TODO)");
+               R"(TODO)");
 #endif
 
   // add the storage-engine specific rules
@@ -795,7 +795,7 @@ a time.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault,
                                         OptimizerRule::Flags::Hidden),
-              R"(TODO)");
+               R"(TODO)");
 
   // finally sort all rules by their level
   std::sort(_rules.begin(), _rules.end(),
