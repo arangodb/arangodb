@@ -290,12 +290,12 @@ struct Access<std::optional<T>> : OptionalAccess<std::optional<T>> {
 template<class T, class Deleter>
 struct Access<std::unique_ptr<T, Deleter>>
     : OptionalAccess<std::unique_ptr<T, Deleter>> {
-  static auto make() { return std::make_unique<T>(); }
+  static auto make() { return Factory<T>::make_unique(); }
 };
 
 template<class T>
 struct Access<std::shared_ptr<T>> : OptionalAccess<std::shared_ptr<T>> {
-  static auto make() { return std::make_shared<T>(); }
+  static auto make() { return Factory<T>::make_shared(); }
 };
 
 template<>

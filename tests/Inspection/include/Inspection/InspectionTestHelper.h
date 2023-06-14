@@ -399,11 +399,14 @@ struct Access<Specialization> : AccessBase<Specialization> {
     return f.object(x).fields(f.field("i", x.i), f.field("s", x.s));
   }
 };
+
 template<>
 struct Access<AnEnumClass>
     : StorageTransformerAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
 template<>
-struct Factory<NonDefaultConstructibleIntLike> {
+struct Factory<NonDefaultConstructibleIntLike>
+    : BaseFactory<NonDefaultConstructibleIntLike,
+                  Factory<NonDefaultConstructibleIntLike>> {
   static auto make_value() -> NonDefaultConstructibleIntLike {
     return NonDefaultConstructibleIntLike(0);
   }

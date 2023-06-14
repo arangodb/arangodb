@@ -336,6 +336,24 @@ TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type_optional) {
   EXPECT_EQ(x.value().value, builder.slice().getInt());
 }
 
+TEST_F(VPackSaveInspectorTest,
+       store_non_default_constructible_type_unique_ptr) {
+  auto x = std::make_unique<NonDefaultConstructibleIntLike>(
+      NonDefaultConstructibleIntLike{42});
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(x->value, builder.slice().getInt());
+}
+
+TEST_F(VPackSaveInspectorTest,
+       store_non_default_constructible_type_shared_ptr) {
+  auto x = std::make_shared<NonDefaultConstructibleIntLike>(
+      NonDefaultConstructibleIntLike{42});
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(x->value, builder.slice().getInt());
+}
+
 TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type_variant) {
   auto v =
       VariantWithNonDefaultConstructible{NonDefaultConstructibleIntLike{42}};
