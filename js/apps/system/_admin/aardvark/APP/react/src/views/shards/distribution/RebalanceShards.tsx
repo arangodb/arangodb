@@ -21,11 +21,13 @@ async function rebalanceShards(opts: {
       version: 1,
       ...opts
     });
-    if (res.body.result.moves.length === 0) {
+    const result = res.body.result;
+    if (result.moves.length === 0) {
       window.arangoHelper.arangoNotification('No move shard operations were performed.');
     } else {
-      window.arangoHelper.arangoNotification('Rebalanced shards with ' + res.body.result.moves.length + ' move operation(s).');
+      window.arangoHelper.arangoNotification('Rebalanced shards with ' + result.moves.length + ' move operation(s).');
     }
+    return result;
   } catch (e: any) {
     window.arangoHelper.arangoError(
       "Failure",
@@ -34,14 +36,15 @@ async function rebalanceShards(opts: {
   }
 }
 
-export const RebalanceShards = () => {
+export const RebalanceShards = ({refetchStats}: {refetchStats: () => void}) => {
   return (
     <Formik
       onSubmit={async ({includeSystemCollections, ...opts}) => {
-        await rebalanceShards({
+        const result = await rebalanceShards({
           excludeSystemCollections: !includeSystemCollections,
           ...opts
         });
+        if (result && result.moves.length > 0) refetchStats();
       }}
       initialValues={{
         moveLeaders: false,

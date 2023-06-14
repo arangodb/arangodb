@@ -162,10 +162,10 @@ function rerenderDistributionTable(data) {
   });
 }
 
-export const ShardDistributionContent = () => {
+export const ShardDistributionContent = ({refetchToken}) => {
   React.useEffect(() => {
     fetchOverallStatistics();
-  }, []);
+  }, [refetchToken]);
 
   return (
     <div id="shardDistributionContent" className="innerContent shardDistributionContent">

@@ -5,10 +5,11 @@ import { RebalanceShards } from './RebalanceShards';
 import { ShardDistributionContent } from './ShardDistributionContent';
 
 const ShardDistributionReactView = ({ readOnly }) => {
+  const [refetchToken, setRefetchToken] = React.useState(() => Date.now());
   return (
     <ChakraProvider theme={theme}>
-      <ShardDistributionContent />
-      {!readOnly && <RebalanceShards />}
+      <ShardDistributionContent refetchToken={refetchToken} />
+      {!readOnly && <RebalanceShards refetchStats={() => setRefetchToken(Date.now())} />}
     </ChakraProvider>
   );
 };
