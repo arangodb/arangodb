@@ -298,7 +298,8 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
                      VPackValue(arangodb::basics::StringUtils::tolower(
                          ServerState::instance()->getPersistedId())));
         } else {
-          result.add("persisted_id", VPackValue(std::to_string(serverId)));
+          result.add("persisted_id",
+                     VPackValue("id" + std::to_string(serverId)));
         }
 
         std::string envValue;
