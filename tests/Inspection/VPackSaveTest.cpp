@@ -310,7 +310,23 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
   EXPECT_TRUE(slice["y"].isNull());
 }
 
-TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type) {}
+TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type_vec) {
+  auto vec = std::vector<NonDefaultConstructibleIntLike>{
+      NonDefaultConstructibleIntLike{42}};
+  auto result = inspector.apply(vec);
+  EXPECT_TRUE(result.ok());
+  ASSERT_TRUE(builder.slice().isArray());
+  EXPECT_EQ(vec[0].value, builder.slice().at(0).getInt());
+}
+
+TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type_map) {
+  auto vec = std::map<std::string, NonDefaultConstructibleIntLike>{
+      {"foo", NonDefaultConstructibleIntLike{42}}};
+  auto result = inspector.apply(vec);
+  EXPECT_TRUE(result.ok());
+  ASSERT_TRUE(builder.slice().isObject());
+  EXPECT_EQ(vec.at("foo").value, builder.slice().get("foo").getInt());
+}
 
 TEST_F(VPackSaveInspectorTest, store_object_with_fallbacks) {
   Fallback f;
