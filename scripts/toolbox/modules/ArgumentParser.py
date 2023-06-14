@@ -7,7 +7,7 @@ def arguments():
     parser.add_argument('--init', type=str, required=False, choices=['true', 'false'],
                         help="Initialize the database or not")
     parser.add_argument('--startupParameters', type=str, required=False,
-                        help="Additional startup parameters for ArangoDB, format: JSON object string")
+                        help="Additional startup parameters for ArangoDB, format: JSON object string (Currently only single server supported)")
     parser.add_argument('--workDir', type=str, required=False,
                         help="Working directory for ArangoDB, needs to be a relative path right now.")
     parser.add_argument('--devFlag', type=str, required=False,

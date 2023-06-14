@@ -38,7 +38,7 @@ def start(args, cfg):
     checkWorkDirectory(args, cfg)
 
     if args.mode == "cluster":
-        startCluster(cfg)
+        startCluster()
     elif args.mode == "single":
         parameters = [cfg["arangodb"]["executable"]]
         for key, value in cfg["arangodb"]["startupParameters"].items():
@@ -61,7 +61,7 @@ def start(args, cfg):
         print("Invalid mode")
 
 
-def startCluster(cfg):
+def startCluster():
     print("Starting ArangoDB in cluster mode...")
     # main ArangoDB repository
     with cwd('../../'):
@@ -69,7 +69,7 @@ def startCluster(cfg):
         subprocess.Popen(parameters).wait()
 
 
-def stopCluster(cfg):
+def stopCluster():
     print("Stopping ArangoDB in cluster mode...")
     # main ArangoDB repository
     with cwd('../../'):
