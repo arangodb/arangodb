@@ -304,18 +304,15 @@ bool isIgnoredHiddenEnterpriseCollection(
   return false;
 }
 
-arangodb::Result dumpJsonObjects(arangodb::DumpFeature::DumpJob& job,
+arangodb::Result dumpJsonObjects(arangodb::DumpFeature::Stats& stats,
+                                 arangodb::maskings::Maskings* maskings,
                                  arangodb::ManagedDirectory::File& file,
                                  arangodb::basics::StringBuffer const& body,
-                                 std::string const* collectionName = nullptr) {
-  if (collectionName == nullptr) {
-    collectionName = &job.collectionName;
-  }
-  TRI_ASSERT(collectionName != nullptr);
+                                 std::string const& collectionName) {
   size_t length;
-  if (job.maskings != nullptr) {
+  if (maskings != nullptr) {
     arangodb::basics::StringBuffer masked(256, false);
-    job.maskings->mask(*collectionName, body, masked);
+    maskings->mask(collectionName, body, masked);
     file.write(masked.data(), masked.length());
     length = masked.length();
   } else {
@@ -330,7 +327,7 @@ arangodb::Result dumpJsonObjects(arangodb::DumpFeature::DumpJob& job,
                 "': ", file.status().errorMessage())};
   }
 
-  job.stats.totalWritten += static_cast<uint64_t>(length);
+  stats.totalWritten += static_cast<uint64_t>(length);
 
   return {};
 }
@@ -429,7 +426,8 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
 
     // now actually write retrieved data to dump file
     arangodb::basics::StringBuffer const& body = response->getBody();
-    arangodb::Result result = dumpJsonObjects(job, file, body);
+    arangodb::Result result = dumpJsonObjects(job.stats, job.maskings, file,
+                                              body, job.collectionName);
 
     if (result.fail()) {
       return result;
@@ -1748,8 +1746,8 @@ void DumpFeature::ParallelDumpServer::runWriterThread() noexcept {
     countBlocker(kRemoteQueue, count);
 
     auto file = getFileForShard(shardId);
-    arangodb::Result result =
-        dumpJsonObjects(*this, *file, body, &shards.at(shardId).collectionName);
+    arangodb::Result result = dumpJsonObjects(
+        stats, maskings, *file, body, shards.at(shardId).collectionName);
 
     if (result.fail()) {
       LOG_TOPIC("77881", FATAL, Logger::DUMP)
