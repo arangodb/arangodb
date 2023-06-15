@@ -15,7 +15,6 @@ import { SelectControl } from "../../../components/form/SelectControl";
 import { AnalyzerTypes } from "../Analyzer.types";
 import { useAnalyzersContext } from "../AnalyzersContext";
 import { TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
-import { useReinitializeForm } from "../useReinitializeForm";
 import { AnalyzerTypeForm } from "./AnalyzerTypeForm";
 
 const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP).map(type => {
@@ -30,7 +29,6 @@ export const AddAnalyzerForm = ({
 }: {
   initialFocusRef?: React.RefObject<HTMLInputElement>;
 }) => {
-  useReinitializeForm();
   const [analyzerTypeField] = useField<AnalyzerTypes>("type");
   const { isFormDisabled: isDisabled } = useAnalyzersContext();
   const analyzerTypeValue = analyzerTypeField.value;

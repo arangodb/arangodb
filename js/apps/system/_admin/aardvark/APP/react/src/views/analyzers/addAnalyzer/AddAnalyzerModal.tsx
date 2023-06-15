@@ -11,6 +11,7 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
+import { useReinitializeForm } from "../useReinitializeForm";
 import { AddAnalyzerForm } from "./AddAnalyzerForm";
 import { AnalyzerJSONForm } from "./AnalyzerJSONForm";
 import { CopyAnalyzerDropdown } from "./CopyAnalyzerDropdown";
@@ -28,8 +29,23 @@ export const AddAnalyzerModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  const [showJSONForm, setShowJSONForm] = React.useState(false);
   const initialFocusRef = React.useRef<HTMLInputElement>(null);
+  const handleSubmit = async (values: AnalyzerDescription) => {
+    const currentDB = getCurrentDB();
+    try {
+      await currentDB.analyzer(values.name).create(values);
+      window.arangoHelper.arangoNotification(
+        `The analyzer: ${values.name} was successfully created`
+      );
+      mutate("/analyzers");
+      onClose();
+    } catch (error: any) {
+      const errorMessage = error?.response?.body?.errorMessage;
+      if (errorMessage) {
+        window.arangoHelper.arangoError("Analyzer", errorMessage);
+      }
+    }
+  };
   return (
     <Modal
       initialFocusRef={initialFocusRef}
@@ -42,68 +58,69 @@ export const AddAnalyzerModal = ({
         validationSchema={Yup.object({
           name: Yup.string().required("Name is required")
         })}
-        onSubmit={async (values: AnalyzerDescription) => {
-          const currentDB = getCurrentDB();
-          try {
-            await currentDB.analyzer(values.name).create(values);
-            window.arangoHelper.arangoNotification(
-              `The analyzer: ${values.name} was successfully created`
-            );
-            mutate("/analyzers");
-            onClose();
-          } catch (error: any) {
-            const errorMessage = error?.response?.body?.errorMessage;
-            if (errorMessage) {
-              window.arangoHelper.arangoError("Analyzer", errorMessage);
-            }
-          }
-        }}
+        onSubmit={handleSubmit}
       >
         {({ isSubmitting }) => (
-          <Form>
-            <ModalHeader fontSize="sm" fontWeight="normal">
-              <Flex direction="row" alignItems="center">
-                <Heading marginRight="4" size="md">
-                  Create Analyzer
-                </Heading>
-                <CopyAnalyzerDropdown />
-                <Button
-                  size="xs"
-                  colorScheme="gray"
-                  marginLeft="auto"
-                  onClick={() => {
-                    setShowJSONForm(!showJSONForm);
-                  }}
-                >
-                  {showJSONForm ? "Show form" : " Show JSON"}
-                </Button>
-              </Flex>
-            </ModalHeader>
-
-            <ModalBody>
-              {showJSONForm ? (
-                <AnalyzerJSONForm />
-              ) : (
-                <AddAnalyzerForm initialFocusRef={initialFocusRef} />
-              )}
-            </ModalBody>
-            <ModalFooter>
-              <Stack direction="row" spacing={4} align="center">
-                <Button colorScheme="gray" onClick={onClose}>
-                  Close
-                </Button>
-                <Button
-                  isLoading={isSubmitting}
-                  colorScheme="blue"
-                  type="submit"
-                >
-                  Create
-                </Button>
-              </Stack>
-            </ModalFooter>
-          </Form>
+          <AddAnalyzerModalInner
+            initialFocusRef={initialFocusRef}
+            onClose={onClose}
+            isSubmitting={isSubmitting}
+          />
         )}
       </Formik>
     </Modal>
+  );
+};
+
+const AddAnalyzerModalInner = ({
+  initialFocusRef,
+  onClose,
+  isSubmitting
+}: {
+  initialFocusRef: React.RefObject<HTMLInputElement>;
+  onClose: () => void;
+  isSubmitting: boolean;
+}) => {
+  const [showJSONForm, setShowJSONForm] = React.useState(false);
+  useReinitializeForm();
+  return (
+    <Form>
+      <ModalHeader fontSize="sm" fontWeight="normal">
+        <Flex direction="row" alignItems="center">
+          <Heading marginRight="4" size="md">
+            Create Analyzer
+          </Heading>
+          <CopyAnalyzerDropdown />
+          <Button
+            size="xs"
+            colorScheme="gray"
+            marginLeft="auto"
+            onClick={() => {
+              setShowJSONForm(!showJSONForm);
+            }}
+          >
+            {showJSONForm ? "Show form" : " Show JSON"}
+          </Button>
+        </Flex>
+      </ModalHeader>
+
+      <ModalBody>
+        {showJSONForm ? (
+          <AnalyzerJSONForm />
+        ) : (
+          <AddAnalyzerForm initialFocusRef={initialFocusRef} />
+        )}
+      </ModalBody>
+      <ModalFooter>
+        <Stack direction="row" spacing={4} align="center">
+          <Button colorScheme="gray" onClick={onClose}>
+            Close
+          </Button>
+          <Button isLoading={isSubmitting} colorScheme="blue" type="submit">
+            Create
+          </Button>
+        </Stack>
+      </ModalFooter>
+    </Form>
   );
 };
