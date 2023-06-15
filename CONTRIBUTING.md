@@ -1319,6 +1319,30 @@ getting the PIDs of the server in the testrun using jq:
     "1721884_dbserver": {
     "1721885_coordinator": {
 
+### Installing bash completion for `./scripts/unittest`
+
+Calling
+
+```bash
+./scripts/generateUnittestCompletion.bash > ~/arango_unittest_comp.bash
+```
+
+generates a bash completion script for `./scripts/unittest` which can be sourced
+in your `~/.bashrc` or `~/.bash_profile`:
+
+```bash
+. ~/arango_unittest_comp.bash
+```
+
+You can also install completions directly by running
+
+```bash
+  eval "$(./scripts/generateUnittestCompletion.bash)"
+```
+
+in your shell, or `.bashrc`, but note that it has to be executed in the arangodb
+directory.
+
 # Additional Resources
 
 - [ArangoDB website](https://www.arangodb.com/)
