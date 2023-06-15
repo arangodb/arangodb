@@ -25,7 +25,7 @@ async function rebalanceShards(opts: {
     if (result.moves.length === 0) {
       window.arangoHelper.arangoNotification('No move shard operations were performed.');
     } else {
-      window.arangoHelper.arangoNotification('Rebalanced shards with ' + result.moves.length + ' move operation(s).');
+      window.arangoHelper.arangoNotification(`Rebalanced shards with ${result.moves.length} move operation(s).`);
     }
     return result;
   } catch (e: any) {
@@ -62,11 +62,10 @@ export const RebalanceShards = ({refetchStats}: {refetchStats: () => void}) => {
         }}
       />
         <Box width="100%" padding="5" background="white">
-          <Box fontSize={"lg"}>
+          <Text fontSize={"lg"}>
             Shard rebalancing
           </Box>
-          <Box
-            display={"grid"}
+          <Grid
             gridTemplateColumns={"250px 40px 40px"}
             rowGap="5"
             columnGap="3"

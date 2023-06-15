@@ -484,7 +484,7 @@
         }
 
         ReactDOM.render(
-          React.createElement(ShardDistributionReactView, {
+          React.createElement(window.ShardDistributionReactView, {
             readOnly: this.userCollection.authOptions.ro
           }),
           document.getElementById("content")
