@@ -1,4 +1,4 @@
-import { Box, Button, FormLabel } from '@chakra-ui/react';
+import { Box, Button, FormLabel, Grid, Text } from '@chakra-ui/react';
 import { Global } from '@emotion/react';
 import { Form, Formik } from 'formik';
 import React from 'react';
@@ -64,13 +64,14 @@ export const RebalanceShards = ({refetchStats}: {refetchStats: () => void}) => {
         <Box width="100%" padding="5" background="white">
           <Text fontSize={"lg"}>
             Shard rebalancing
-          </Box>
+          </Text>
           <Grid
             gridTemplateColumns={"250px 40px 40px"}
             rowGap="5"
             columnGap="3"
             marginY="4"
             maxWidth="600px"
+            alignItems="center"
           >
             <FormLabel margin="0" htmlFor="moveLeaders">
               Move Leaders
@@ -79,14 +80,7 @@ export const RebalanceShards = ({refetchStats}: {refetchStats: () => void}) => {
               isDisabled={isSubmitting}
               name="moveLeaders"
             />
-            <InfoTooltip
-              label="Allow moving leaders."
-              boxProps={{
-                padding: "0",
-                alignSelf: "start",
-                top: "1"
-              }}
-            />
+            <InfoTooltip label="Allow moving leaders." />
             <FormLabel margin="0" htmlFor="moveFollowers">
               Move Followers
             </FormLabel>
@@ -94,14 +88,7 @@ export const RebalanceShards = ({refetchStats}: {refetchStats: () => void}) => {
               isDisabled={isSubmitting}
               name="moveFollowers"
             />
-            <InfoTooltip
-              label="Allow moving followers."
-              boxProps={{
-                padding: "0",
-                alignSelf: "start",
-                top: "1"
-              }}
-            />
+            <InfoTooltip label="Allow moving followers." />
             <FormLabel margin="0" htmlFor="includeSystemCollections">
               Include System Collections
             </FormLabel>
@@ -109,27 +96,17 @@ export const RebalanceShards = ({refetchStats}: {refetchStats: () => void}) => {
               isDisabled={isSubmitting}
               name="includeSystemCollections"
             />
-            <InfoTooltip
-              label="Include system collections in the rebalance plan."
-              boxProps={{
-                padding: "0",
-                alignSelf: "start",
-                top: "1"
-              }}
-            />
-          </Box>
-          <Box
+            <InfoTooltip label="Include system collections in the rebalance plan." />
+          </Grid>
+          <Button
+            colorScheme="green"
+            size="sm"
+            type="submit"
+            isDisabled={!isValid}
+            isLoading={isSubmitting}
           >
-            <Button
-              colorScheme="green"
-              size="sm"
-              type="submit"
-              isDisabled={!isValid}
-              isLoading={isSubmitting}
-            >
-              Rebalance
-            </Button>
-          </Box>
+            Rebalance
+          </Button>
         </Box>
       </Form>
       )}

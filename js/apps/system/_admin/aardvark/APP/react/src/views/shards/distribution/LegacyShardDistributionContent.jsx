@@ -162,7 +162,7 @@ function rerenderDistributionTable(data) {
   });
 }
 
-export const ShardDistributionContent = ({refetchToken}) => {
+export const LegacyShardDistributionContent = ({refetchToken}) => {
   React.useEffect(() => {
     fetchOverallStatistics();
   }, [refetchToken]);

@@ -12,11 +12,11 @@ export const InfoTooltip = ({
   return (
     <Tooltip hasArrow label={label} placement="top">
       <Box
+        {...boxProps}
         position="relative"
         padding="2"
         display="flex"
         justifyContent="center"
-        {...boxProps}
       >
         <InfoIcon />
       </Box>

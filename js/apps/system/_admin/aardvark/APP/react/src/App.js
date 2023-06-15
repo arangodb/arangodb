@@ -17,7 +17,7 @@ require('./views/graphV2/GraphV2ReactView');
 require('./views/views/ViewSettingsReactView');
 require('./views/views/ViewsListReactView');
 require('./views/collections/indices/CollectionIndicesReactView');
-require('./views/shards/distribution/ShardDistributionReactView.jsx');
+require('./views/shards/distribution/ShardDistributionReactView');
 
 // old libraries
 const jQuery = require('jquery');
