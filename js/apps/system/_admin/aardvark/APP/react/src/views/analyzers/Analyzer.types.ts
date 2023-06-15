@@ -177,7 +177,7 @@ export type GeoJsonState = GeoOptionsProperty & {
   type: "geojson";
   properties: {
     type?: "shape" | "centroid" | "point";
-    legacy: boolean;
+    legacy?: boolean;
   };
 };
 
