@@ -3,13 +3,13 @@
 # Generates a stand-alone bash script which installs completions for
 # `./scripts/unittest`.
 # Save it like
-#   ./scripts/generateUnittestCompletion.bash > ~/arango_unittest_comp.bash
+#   ./scripts/buildUnittestBashCompletion.bash > ~/arango_unittest_comp.bash
 # and run
 #   . ~/arango_unittest_comp.bash
 # to install completions, probably in your .bashrc.
 #
 # You can also install completions directly by running
-#   eval "$(./scripts/generateUnittestCompletion.bash)"
+#   eval "$(./scripts/buildUnittestBashCompletion.bash)"
 # in your shell, or .bashrc, but note that it has to be executed in the arangodb
 # directory, so ./scripts/unittest can be found.
 

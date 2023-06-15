@@ -1324,7 +1324,7 @@ getting the PIDs of the server in the testrun using jq:
 Calling
 
 ```bash
-./scripts/generateUnittestCompletion.bash > ~/arango_unittest_comp.bash
+./scripts/buildUnittestBashCompletion.bash > ~/arango_unittest_comp.bash
 ```
 
 generates a bash completion script for `./scripts/unittest` which can be sourced
@@ -1337,11 +1337,11 @@ in your `~/.bashrc` or `~/.bash_profile`:
 You can also install completions directly by running
 
 ```bash
-  eval "$(./scripts/generateUnittestCompletion.bash)"
+  eval "$(./scripts/buildUnittestBashCompletion.bash)"
 ```
 
-in your shell, or `.bashrc`, but note that it has to be executed in the arangodb
-directory.
+in your shell, or `.bashrc` etc., but note that it has to be executed in the
+arangodb directory.
 
 # Additional Resources
 
