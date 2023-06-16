@@ -154,7 +154,7 @@ function makeDataWrapper (options) {
           }
         }
         require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
-        if (this.options.extremeVerbosity !== 'silence') {
+        if (this.options.extremeVerbosity) {
           print(argv);
         }
         let rc = pu.executeAndWait(pu.ARANGOSH_BIN, argv, this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
