@@ -8403,7 +8403,7 @@
             "name": "Apache License, Version 2.0"
         }, 
         "title": "ArangoDB", 
-        "version": "3.11.1"
+        "version": "3.11.2"
     }, 
     "paths": {
         "/_admin/backup/create": {
