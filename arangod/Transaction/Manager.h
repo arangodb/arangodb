@@ -30,6 +30,7 @@
 #include "Basics/ResultT.h"
 #include "Cluster/CallbackGuard.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Fwd.h"
 #include "Transaction/ManagedContext.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
@@ -307,7 +308,11 @@ class Manager final : public IManager {
 
   double _streamingLockTimeout;
 
+
   std::atomic<bool> _softShutdownOngoing;
+
+ // metrics::Gauge<uint64_t>& _metricsTransactionMemoryInternal;
+
 };
 }  // namespace transaction
 }  // namespace arangodb

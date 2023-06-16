@@ -23,7 +23,9 @@
 
 #pragma once
 
+#include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+
 
 namespace arangodb {
 
@@ -124,6 +126,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   IRocksDBTransactionCallback& _callback;
 
   rocksdb::TransactionDB* _db{nullptr};
+
+  metrics::Gauge<uint64_t>& _metricsTransactionMemoryInternal;
 
   /// @brief shared read options which can be used by operations
   ReadOptions _readOptions{};

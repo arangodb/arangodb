@@ -25,6 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -38,10 +40,18 @@
 
 using namespace arangodb;
 
+DECLARE_GAUGE(arangodb_transaction_memory_internal, uint64_t,
+              "Memory accounting for ongoing transactions");
+
 RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
     RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
     rocksdb::TransactionDB* db)
-    : RocksDBTransactionMethods(state), _callback(callback), _db(db) {
+    : RocksDBTransactionMethods(state),
+      _callback(callback),
+      _db(db),
+      _metricsTransactionMemoryInternal(
+          _state->vocbase().server().getFeature<metrics::MetricsFeature>().add(
+              arangodb_transaction_memory_internal{})) {
   TRI_ASSERT(!_state->isReadOnlyTransaction());
   _readOptions.prefix_same_as_start = true;  // should always be true
   _readOptions.fill_cache = _state->options().fillBlockCache;
@@ -50,6 +60,11 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
 RocksDBTrxBaseMethods::~RocksDBTrxBaseMethods() {
   // cppcheck-suppress *
   RocksDBTrxBaseMethods::cleanupTransaction();
+  LOG_DEVEL << "destructor, removing memoy tracking gauge "
+            << _state->vocbase()
+                   .server()
+                   .getFeature<metrics::MetricsFeature>()
+                   .remove(arangodb_transaction_memory_internal{});
 }
 
 bool RocksDBTrxBaseMethods::DisableIndexing() {
@@ -73,6 +88,7 @@ bool RocksDBTrxBaseMethods::EnableIndexing() {
 }
 
 Result RocksDBTrxBaseMethods::beginTransaction() {
+  LOG_DEVEL << "RocksDBTrxBaseMethods::beginTransaction";
   TRI_ASSERT(_rocksTransaction == nullptr);
 
   createTransaction();
@@ -198,21 +214,35 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                            RocksDBKey const& key,
                                            rocksdb::Slice const& val,
                                            bool assume_tracked) {
+  LOG_DEVEL << "RocksDBTrxBaseMethods::Put";
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
-  return _rocksTransaction->Put(cf, key.string(), val, assume_tracked);
+  rocksdb::Status s =
+      _rocksTransaction->Put(cf, key.string(), val, assume_tracked);
+  if (s.ok()) {
+    _metricsTransactionMemoryInternal.fetch_add(val.size());
+    LOG_DEVEL << "increased memory tracking by " << val.size() << " bytes";
+  }
+  return s;
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
     rocksdb::Slice const& val) {
+  LOG_DEVEL << "RocksDBTrxBaseMethods::PutUntracked";
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
-  return _rocksTransaction->PutUntracked(cf, key.string(), val);
+  rocksdb::Status s = _rocksTransaction->PutUntracked(cf, key.string(), val);
+  if (s.ok()) {
+    _metricsTransactionMemoryInternal.fetch_add(val.size());
+    LOG_DEVEL << "increased memory tracking by " << val.size() << " bytes";
+  }
+  return s;
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                               RocksDBKey const& key) {
+  LOG_DEVEL << "RocksDBTrxBaseMethods::Delete";
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   return _rocksTransaction->Delete(cf, key.string());
@@ -220,14 +250,18 @@ rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
 
 rocksdb::Status RocksDBTrxBaseMethods::SingleDelete(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
+  LOG_DEVEL << "RocksDBTrxBaseMethods::SingleDelete";
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   return _rocksTransaction->SingleDelete(cf, key.string());
 }
 
 void RocksDBTrxBaseMethods::PutLogData(rocksdb::Slice const& blob) {
+  LOG_DEVEL << "RocksDBTrxBaseMethods::PutLogData";
   TRI_ASSERT(_rocksTransaction);
   _rocksTransaction->PutLogData(blob);
+  _metricsTransactionMemoryInternal.fetch_add(blob.size());
+  LOG_DEVEL << "increased memory tracking by " << blob.size() << " bytes";
 }
 
 void RocksDBTrxBaseMethods::SetSavePoint() {
@@ -278,11 +312,13 @@ void RocksDBTrxBaseMethods::PopSavePoint() {
 }
 
 void RocksDBTrxBaseMethods::cleanupTransaction() {
+  LOG_DEVEL << "RocksDBTrxBaseMethods::cleanupTransaction";
   delete _rocksTransaction;
   _rocksTransaction = nullptr;
 }
 
 void RocksDBTrxBaseMethods::createTransaction() {
+  LOG_DEVEL << "RocksDBTrxBaseMethods::createTransaction";
   // start rocks transaction
   rocksdb::TransactionOptions trxOpts;
 
@@ -325,6 +361,7 @@ void RocksDBTrxBaseMethods::createTransaction() {
 }
 
 Result RocksDBTrxBaseMethods::doCommit() {
+  LOG_DEVEL << "RocksDBTrxBaseMethods::doCommit";
   // We need to call callbacks always, even if hasOperations() == false,
   // because it is like this in recovery
   TRI_ASSERT(_state != nullptr);
@@ -338,6 +375,7 @@ Result RocksDBTrxBaseMethods::doCommit() {
 }
 
 Result RocksDBTrxBaseMethods::doCommitImpl() {
+  LOG_DEVEL << "RocksDBTrxBaseMethods::doCommitImpl";
   if (!hasOperations()) {  // bail out early
     TRI_ASSERT(_rocksTransaction == nullptr ||
                (_rocksTransaction->GetNumPuts() == 0 &&
