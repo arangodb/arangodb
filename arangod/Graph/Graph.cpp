@@ -30,6 +30,7 @@
 #include <array>
 #include <utility>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
@@ -37,6 +38,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
@@ -44,6 +46,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
 
@@ -157,7 +160,12 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
       _vertexColls(),
       _edgeColls(),
       _numberOfShards(1),
-      _replicationFactor(vocbase.replicationFactor()),
+      _replicationFactor(vocbase.getDatabaseConfiguration().isOneShardDB
+                             ? (std::max)(vocbase.replicationFactor(),
+                                          vocbase.server()
+                                              .getFeature<ClusterFeature>()
+                                              .systemReplicationFactor())
+                             : vocbase.replicationFactor()),
       _writeConcern(1),
       _rev("") {
   if (_graphName.empty()) {
@@ -826,13 +834,19 @@ auto Graph::addSatellites(VPackSlice const&) -> Result {
 
 auto Graph::prepareCreateCollectionBodyEdge(
     std::string_view name, std::optional<std::string> const& leadingCollection,
-    std::unordered_set<std::string> const& satellites) const noexcept
+    std::unordered_set<std::string> const& satellites,
+    DatabaseConfiguration const& config) const noexcept
     -> ResultT<CreateCollectionBody> {
   CreateCollectionBody body;
   body.name = name;
   body.type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
+
   auto res =
-      injectShardingToCollectionBody(body, leadingCollection, satellites);
+      injectShardingToCollectionBody(body, leadingCollection, satellites, config);
+  if (res.fail()) {
+    return res;
+  }
+  res = body.applyDefaultsAndValidateDatabaseConfiguration(config);
   if (res.fail()) {
     return res;
   }
@@ -841,13 +855,18 @@ auto Graph::prepareCreateCollectionBodyEdge(
 
 auto Graph::prepareCreateCollectionBodyVertex(
     std::string_view name, std::optional<std::string> const& leadingCollection,
-    std::unordered_set<std::string> const& satellites) const noexcept
+    std::unordered_set<std::string> const& satellites,
+    DatabaseConfiguration const& config) const noexcept
     -> ResultT<CreateCollectionBody> {
   CreateCollectionBody body;
   body.name = name;
   body.type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
-  auto res =
-      injectShardingToCollectionBody(body, leadingCollection, satellites);
+  auto res = injectShardingToCollectionBody(body, leadingCollection, satellites,
+                                            config);
+  if (res.fail()) {
+    return res;
+  }
+  res = body.applyDefaultsAndValidateDatabaseConfiguration(config);
   if (res.fail()) {
     return res;
   }
@@ -856,9 +875,14 @@ auto Graph::prepareCreateCollectionBodyVertex(
 
 auto Graph::injectShardingToCollectionBody(
     CreateCollectionBody& body, std::optional<std::string> const&,
-    std::unordered_set<std::string> const&) const noexcept -> Result {
+    std::unordered_set<std::string> const&,
+    DatabaseConfiguration const& config) const noexcept -> Result {
   // Only specialized enterprise Graphs make use of the leadingCollection.
   // Inject all attributes required for a collection
+  if (config.isOneShardDB) {
+    // Nothing to do for oneShardDBs we just use defaults
+    return {};
+  }
   body.numberOfShards = numberOfShards();
   if (!isSatellite()) {
     body.writeConcern = writeConcern();
