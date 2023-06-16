@@ -73,15 +73,6 @@
     execute: function (callback, args, handler, skipDirtyViewCheck = false) {
       const self = this;
 
-      if (this.lastRoute === '#queries') {
-        // cleanup input editors
-        this.queryView.removeInputEditors();
-        // cleanup old canvas elements
-        this.queryView.cleanupGraphs();
-        // cleanup old ace instances
-        this.queryView.removeResults();
-      }
-
       let skipExecute = false, goBack = true;
       if (this.lastRoute) {
         // service replace logic
@@ -184,13 +175,6 @@
         if (this.graphViewer) {
           if (this.graphViewer.graphSettingsView) {
             this.graphViewer.graphSettingsView.hide();
-          }
-        }
-        if (this.queryView) {
-          if (this.queryView.graphViewer) {
-            if (this.queryView.graphViewer.graphSettingsView) {
-              this.queryView.graphViewer.graphSettingsView.hide();
-            }
           }
         }
       }
@@ -947,12 +931,10 @@
       this.checkUser();
 
       this.init.then(() => {
-        if (!this.queryView) {
-          this.queryView = new window.QueryView({
-            collection: this.queryCollection
-          });
-        }
-        this.queryView.render();
+        ReactDOM.render(
+          React.createElement(window.QueryReactView),
+          document.getElementById("content-react")
+        );
       });
     },
 
