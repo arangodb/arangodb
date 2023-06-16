@@ -34,6 +34,7 @@
 
 using namespace arangodb;
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot,
                                      AgentInterface* agent,

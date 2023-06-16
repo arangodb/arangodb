@@ -46,10 +46,10 @@
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
+using namespace arangodb::velocypack;
 
 /// Ctor with name
-Store::Store(arangodb::ArangodServer& server, std::string const& name)
-    : _server(server), _node(name, this) {}
+Store::Store(std::string const& name) : _node(name, this) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
@@ -130,13 +130,6 @@ std::vector<apply_ret_t> Store::applyTransactions(
             break;
         }
       }
-
-      // Wake up TTL processing
-      {
-        std::lock_guard guard{_cv.mutex};
-        _cv.cv.notify_one();
-      }
-
     } catch (std::exception const& e) {  // Catch any errors
       LOG_TOPIC("8264b", ERR, Logger::AGENCY) << e.what();
       success.push_back(UNKNOWN_ERROR);
@@ -178,11 +171,6 @@ check_ret_t Store::applyTransaction(VPackSlice query) {
             << "However we received " << query.toJson();
         break;
     }
-  }
-  // Wake up TTL processing
-  {
-    std::lock_guard guard{_cv.mutex};
-    _cv.cv.notify_one();
   }
 
   return ret;

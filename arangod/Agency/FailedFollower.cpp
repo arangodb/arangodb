@@ -31,6 +31,7 @@
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 FailedFollower::FailedFollower(
     Node const& snapshot, AgentInterface* agent, std::string const& jobId,

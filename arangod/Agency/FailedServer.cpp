@@ -34,6 +34,7 @@
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,

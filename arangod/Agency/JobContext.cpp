@@ -35,6 +35,7 @@
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 JobContext::JobContext(JOB_STATUS status, std::string const& id,
                        Node const& snapshot, AgentInterface* agent)

@@ -49,7 +49,7 @@ AgencyCache::AgencyCache(ArangodServer& server,
                          ErrorCode shutdownCode)
     : ServerThread(server, "AgencyCache"),
       _commitIndex(0),
-      _readDB(server, "readDB"),
+      _readDB("readDB"),
       _shutdownCode(shutdownCode),
       _initialized(false),
       _callbackRegistry(callbackRegistry),

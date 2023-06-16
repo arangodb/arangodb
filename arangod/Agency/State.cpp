@@ -430,7 +430,7 @@ index_t State::logFollower(VPackSlice transactions) {
     if (useSnapshot) {
       // Now we must completely erase our log and compaction snapshots and
       // start from the snapshot
-      Store snapshot(_agent->server(), "snapshot");
+      Store snapshot("snapshot");
       snapshot.loadFromVelocyPack(transactions[0]);
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC("f7250", FATAL, Logger::AGENCY)
@@ -1311,7 +1311,7 @@ bool State::compact(index_t cind, index_t keep) {
       (std::max)(_nextCompactionAfter.load(),
                  cind + _agent->config().compactionStepSize());
 
-  Store snapshot(_agent->server(), "snapshot");
+  Store snapshot("snapshot");
   index_t index;
   term_t term;
   if (!loadLastCompactedSnapshot(snapshot, index, term)) {
@@ -1732,7 +1732,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   VPackSlice result = queryResult.data->slice();
   TRI_ASSERT(result.isArray());
 
-  Store store(vocbase.server());
+  Store store;
   index = 0;
   term = 0;
   if (result.length() == 1) {

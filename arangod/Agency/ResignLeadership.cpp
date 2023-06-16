@@ -36,6 +36,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
                                    std::string const& jobId,

@@ -100,9 +100,6 @@ Agent::Agent(ArangodServer& server, config_t const& config)
       _state(server),
       _config(config),
       _commitIndex(0),
-      _spearhead(server),
-      _readDB(server),
-      _transient(server),
       _agentNeedsWakeup(false),
       _compactor(this),
       _ready(false),
@@ -711,7 +708,7 @@ void Agent::sendAppendEntriesRPC() {
       }
       index_t lowest = unconfirmed.front().index;
 
-      Store snapshot(server(), "snapshot");
+      Store snapshot("snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
 
@@ -2388,7 +2385,7 @@ void Agent::emptyCbTrashBin() {
 }
 
 query_t Agent::buildDB(arangodb::consensus::index_t index) {
-  Store store(server());
+  Store store;
   index_t oldIndex;
   term_t term;
   if (!_state.loadLastCompactedSnapshot(store, oldIndex, term)) {

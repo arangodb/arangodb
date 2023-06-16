@@ -61,6 +61,7 @@ using namespace arangodb::consensus;
 using namespace arangodb::application_features;
 using namespace arangodb::cluster::paths;
 using namespace arangodb::cluster::paths::aliases;
+using namespace arangodb::velocypack;
 
 struct RuntimeScale {
   static metrics::LogScale<uint64_t> scale() { return {2, 50, 8000, 10}; }
@@ -200,7 +201,6 @@ std::string Supervision::_agencyPrefix = "/arango";
 Supervision::Supervision(ArangodServer& server)
     : arangodb::Thread(server, "Supervision"),
       _agent(nullptr),
-      _spearhead(server),
       _snapshot(nullptr),
       _transient("Transient"),
       _frequency(1.),

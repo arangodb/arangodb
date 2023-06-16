@@ -37,6 +37,7 @@
 
 using namespace arangodb;
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 constexpr auto PARENT_JOB_ID = "parentJob";
 constexpr auto EXPECTED_TARGET_VERSION = "expectedTargetVersion";

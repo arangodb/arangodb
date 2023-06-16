@@ -40,6 +40,7 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);

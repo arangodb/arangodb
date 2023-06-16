@@ -52,6 +52,7 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+using namespace arangodb::velocypack;
 
 namespace {
 std::vector<std::string> const jobStatus{"ToDo", "Pending", "Finished",

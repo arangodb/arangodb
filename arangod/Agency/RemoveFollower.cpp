@@ -32,6 +32,7 @@
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
                                std::string const& jobId,

@@ -76,9 +76,8 @@ class Agent;
 class Store {
  public:
   /// @brief Construct with name
-  explicit Store(arangodb::ArangodServer& server,
-                 std::string const& name = "root");
-  explicit Store(arangodb::ArangodServer& server, std::nullptr_t) = delete;
+  explicit Store(std::string const& name = "root");
+  explicit Store(std::nullptr_t) = delete;
 
   /// @brief Destruct
   ~Store();
@@ -108,7 +107,7 @@ class Store {
   /// first entry is a write transaction (i.e. an array of length 1, 2 or 3),
   /// if present, the second entry is a precondition, and the third
   /// entry, if present, is a uuid:
-  check_ret_t applyTransaction(Slice query);
+  check_ret_t applyTransaction(velocypack::Slice query);
 
   /// @brief Apply log entries in query, also process callbacks
   std::vector<bool> applyLogEntries(arangodb::velocypack::Builder const& query,
@@ -123,12 +122,12 @@ class Store {
             arangodb::velocypack::Builder& result) const;
 
   /// @brief Dump everything to builder
-  void dumpToBuilder(Builder&) const;
+  void dumpToBuilder(velocypack::Builder&) const;
 
   Store& loadFromVelocyPack(VPackSlice slice);
 
   /// @brief Create Builder representing this store
-  void toBuilder(Builder&, bool showHidden = false) const;
+  void toBuilder(velocypack::Builder&, bool showHidden = false) const;
 
   /// @brief get node from this store.
   /// Unprotected! Caller must guard the store.
@@ -176,12 +175,6 @@ class Store {
                     CheckMode = FIRST_FAIL) const;
 
  private:
-  /// @brief underlying application server, needed for testing code
-  arangodb::ArangodServer& _server;
-
-  /// @brief Condition variable guarding removal of expired entries
-  mutable arangodb::basics::ConditionVariable _cv;
-
   /// @brief Read/Write mutex on database
   /// guard _node, _timeTable, _observerTable, _observedTable
   mutable std::mutex _storeLock;

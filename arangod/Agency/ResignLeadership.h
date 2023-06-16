@@ -49,7 +49,7 @@ struct ResignLeadership : public Job {
 
   // Check if all shards' have a follower
   bool checkFeasibility();
-  bool scheduleMoveShards(std::shared_ptr<Builder>& trx);
+  bool scheduleMoveShards(std::shared_ptr<velocypack::Builder>& trx);
 
   std::string _server;
   bool _undoMoves{true};

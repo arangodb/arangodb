@@ -39,33 +39,22 @@
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
+using namespace arangodb::velocypack;
 
 const Node::Children Node::dummyChildren = Node::Children();
 const Node Node::_dummyNode = Node("dumm-di-dumm");
 
 /// @brief Construct with node name
 Node::Node(std::string const& name)
-    : _nodeName(name),
-      _parent(nullptr),
-      _store(nullptr),
-      _vecBufDirty(true),
-      _isArray(false) {}
+    : _nodeName(name), _parent(nullptr), _vecBufDirty(true), _isArray(false) {}
 
 /// @brief Construct with node name in tree structure
 Node::Node(std::string const& name, Node* parent)
-    : _nodeName(name),
-      _parent(parent),
-      _store(nullptr),
-      _vecBufDirty(true),
-      _isArray(false) {}
+    : _nodeName(name), _parent(parent), _vecBufDirty(true), _isArray(false) {}
 
 /// @brief Construct for store
 Node::Node(std::string const& name, Store* store)
-    : _nodeName(name),
-      _parent(nullptr),
-      _store(store),
-      _vecBufDirty(true),
-      _isArray(false) {}
+    : _nodeName(name), _parent(nullptr), _vecBufDirty(true), _isArray(false) {}
 
 /// @brief Default dtor
 Node::~Node() = default;
@@ -168,9 +157,7 @@ std::string Node::uri() const {
 Node::Node(Node&& other) noexcept
     : _nodeName(std::move(other._nodeName)),
       _parent(nullptr),
-      _store(nullptr),
       _children(std::move(other._children)),
-      _ttl(std::move(other._ttl)),
       _value(std::move(other._value)),
       _vecBuf(std::move(other._vecBuf)),
       _vecBufDirty(std::move(other._vecBufDirty)),
@@ -188,9 +175,7 @@ Node::Node(Node&& other) noexcept
 Node::Node(Node const& other)
     : _nodeName(other._nodeName),
       _parent(nullptr),
-      _store(nullptr),
       _children(nullptr),
-      _ttl(other._ttl),
       _value(nullptr),
       _vecBuf(other._vecBuf ? std::make_unique<SmallBuffer>(*other._vecBuf)
                             : nullptr),
@@ -214,7 +199,7 @@ Node::Node(Node const& other)
 /// 1. remove any existing time to live entry
 /// 2. clear children map
 /// 3. copy from rhs buffer to my buffer
-/// @brief Must not copy _parent, _store, _ttl
+/// @brief Must not copy _parent, _store
 Node& Node::operator=(VPackSlice const& slice) {
   _children.reset();
   _value.reset();
@@ -254,7 +239,6 @@ Node& Node::operator=(Node&& rhs) noexcept {
   _vecBuf = std::move(rhs._vecBuf);
   _vecBufDirty = std::move(rhs._vecBufDirty);
   _isArray = std::move(rhs._isArray);
-  _ttl = std::move(rhs._ttl);
   return *this;
 }
 
@@ -303,7 +287,6 @@ Node& Node::operator=(Node const& rhs) {
   }
   _vecBufDirty = rhs._vecBufDirty;
   _isArray = rhs._isArray;
-  _ttl = rhs._ttl;
   return *this;
 }
 
@@ -426,20 +409,6 @@ Node& Node::root() {
   }
   return *tmp;
 }
-
-Store* Node::getRootStore() const {
-  Node const* par = _parent;
-  Node const* tmp = this;
-  while (par != nullptr) {
-    tmp = par;
-    par = par->_parent;
-  }
-  return tmp->_store;  // Can be nullptr if we are not in a Node that belongs
-                       // to a store.
-}
-
-// velocypack value type of this node
-ValueType Node::valueType() const { return slice().type(); }
 
 namespace arangodb {
 namespace consensus {
@@ -974,16 +943,13 @@ bool Node::applies(VPackSlice slice) {
 }
 
 void Node::toBuilder(Builder& builder, bool showHidden) const {
-  typedef std::chrono::system_clock clock;
   try {
     if (type() == NODE) {
       VPackObjectBuilder guard(&builder);
       if (_children != nullptr) {
         for (auto const& child : *_children) {
           auto const& cptr = child.second;
-          if ((cptr->_ttl != clock::time_point() &&
-               cptr->_ttl < clock::now()) ||
-              (child.first[0] == '.' && !showHidden)) {
+          if (child.first[0] == '.' && !showHidden) {
             continue;
           }
           builder.add(VPackValue(child.first));
@@ -1039,9 +1005,7 @@ std::vector<std::string> Node::exists(
   Node const* cur = this;
   for (auto const& sub : rel) {
     auto it = cur->children().find(sub);
-    if (it != cur->children().end() &&
-        (it->second->_ttl == std::chrono::system_clock::time_point() ||
-         it->second->_ttl >= std::chrono::system_clock::now())) {
+    if (it != cur->children().end()) {
       cur = it->second.get();
       result.push_back(sub);
     } else {

@@ -147,10 +147,10 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   trans_ret_t transact(velocypack::Slice qs) override;
 
   /// @brief Put trxs into list of ongoing ones.
-  void addTrxsOngoing(Slice trxs);
+  void addTrxsOngoing(velocypack::Slice trxs);
 
   /// @brief Remove trxs from list of ongoing ones.
-  void removeTrxsOngoing(Slice trxs) noexcept;
+  void removeTrxsOngoing(velocypack::Slice trxs) noexcept;
 
   /// @brief Check whether a trx is ongoing.
   bool isTrxOngoing(std::string const& id) const noexcept;
@@ -312,7 +312,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
       index_t end = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief Last contact with followers
-  void lastAckedAgo(Builder&) const;
+  void lastAckedAgo(velocypack::Builder&) const;
 
   /// @brief Are we ready for RAFT?
   bool ready() const;
