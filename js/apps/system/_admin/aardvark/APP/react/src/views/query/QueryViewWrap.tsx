@@ -3,7 +3,7 @@ import React from "react";
 import { ChakraCustomProvider } from "../../theme/ChakraCustomProvider";
 import { useDisableNavBar } from "../../utils/useDisableNavBar";
 import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
-import { EditorPane } from "./EditorPane";
+import { QueryEditorPane } from "./QueryEditorPane";
 import { RunningQueries } from "./RunningQueries";
 import { SlowQueryHistory } from "./SlowQueryHistory";
 
@@ -23,7 +23,7 @@ export const QueryViewWrap = () => {
           </TabList>
           <TabPanels>
             <TabPanel>
-              <EditorPane />
+              <QueryEditorPane />
             </TabPanel>
             <TabPanel>
               <RunningQueries />
