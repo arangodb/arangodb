@@ -202,7 +202,7 @@ Supervision::Supervision(ArangodServer& server)
     : arangodb::Thread(server, "Supervision"),
       _agent(nullptr),
       _snapshot(nullptr),
-      _transient("Transient"),
+      _transient(std::make_shared<Node>("Transient")),
       _frequency(1.),
       _gracePeriod(10.),
       _okThreshold(5.),
@@ -611,8 +611,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       // Get last health entries from transient and persistent key value stores
       bool transientHealthRecordFound = true;
-      if (_transient.has(healthPrefix + serverID)) {
-        transist = *_transient.hasAsNode(healthPrefix + serverID);
+      if (_transient->has(healthPrefix + serverID)) {
+        transist = *_transient->hasAsNode(healthPrefix + serverID);
       } else {
         // In this case this is the first time we look at this server during our
         // new leadership. So we do not touch the persisted health record and
@@ -655,16 +655,16 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // specially marked.
       [[maybe_unused]] bool isHealthy = true;
 
-      bool heartbeatVisible = _transient.has(syncPrefix + serverID);
+      bool heartbeatVisible = _transient->has(syncPrefix + serverID);
       if (heartbeatVisible) {
         syncTime =
-            _transient.hasAsString(syncPrefix + serverID + "/time").value();
+            _transient->hasAsString(syncPrefix + serverID + "/time").value();
         syncStatus =
-            _transient.hasAsString(syncPrefix + serverID + "/status").value();
+            _transient->hasAsString(syncPrefix + serverID + "/status").value();
         // it is optional for servers to send health data, so we need to be
         // prepared for not receiving any.
         auto healthData =
-            _transient.hasAsBuilder(syncPrefix + serverID + "/health");
+            _transient->hasAsBuilder(syncPrefix + serverID + "/health");
         if (healthData) {
           VPackSlice healthSlice = healthData.value().slice();
           if (healthSlice.isObject()) {
@@ -855,12 +855,12 @@ bool Supervision::earlyBird() const {
   VPackBuilder coordinatorsB = snapshot().get(pcpath)->toBuilder();
   VPackSlice coordinators = coordinatorsB.slice();
 
-  if (!_transient.has(tpath)) {
+  if (!_transient->has(tpath)) {
     LOG_TOPIC("fe42a", DEBUG, Logger::SUPERVISION)
         << "No Sync/ServerStates key in transient store";
     return false;
   }
-  VPackBuilder serverStatesB = _transient.get(tpath)->toBuilder();
+  VPackBuilder serverStatesB = _transient->get(tpath)->toBuilder();
   VPackSlice serverStates = serverStatesB.slice();
 
   // every db server in plan accounted for in transient store?
@@ -923,7 +923,8 @@ bool Supervision::updateSnapshot() {
 
   _agent->executeTransientLocked([&]() {
     if (_agent->transient().has(_agencyPrefix)) {
-      _transient = _agent->transient().get(_agencyPrefix);
+      _transient =
+          std::make_shared<Node>(_agent->transient().get(_agencyPrefix));
     }
   });
 
@@ -1185,20 +1186,21 @@ void Supervision::step() {
       if (_agent->leaderFor() > 300 &&
           _nextServerCleanup < std::chrono::system_clock::now()) {
         // Make sure that we have the latest and greatest information
-        // about heartbeats in _transient. Note that after a long
+        // about heartbeats in _transient-> Note that after a long
         // Maintenance mode of the supervision, the `doChecks` above
         // might have updated /arango/Supervision/Health in the
         // transient store *just now above*. We need to reflect these
-        // changes in _transient.
+        // changes in _transient->
         _agent->executeTransientLocked([&]() {
           if (_agent->transient().has(_agencyPrefix)) {
-            _transient = _agent->transient().get(_agencyPrefix);
+            _transient =
+                std::make_shared<Node>(_agent->transient().get(_agencyPrefix));
           }
         });
 
         LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
             << "Begin cleanupExpiredServers";
-        cleanupExpiredServers(snapshot(), _transient);
+        cleanupExpiredServers(snapshot(), *_transient);
         LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
             << "Finished cleanupExpiredServers";
       }

@@ -25,6 +25,7 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Logger/LogMacros.h"

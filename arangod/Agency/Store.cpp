@@ -24,6 +24,7 @@
 #include "Store.h"
 
 #include "Agency/Agent.h"
+#include "Agency/Node.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -49,7 +50,8 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 
 /// Ctor with name
-Store::Store(std::string const& name) : _node(name, this) {}
+Store::Store(std::string const& name)
+    : _node(std::make_shared<Node>(name, this)) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
@@ -226,7 +228,7 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
 
     // Check is guarded in ::apply
     bool found = false;
-    if (auto n = _node.get(pv); n) {
+    if (auto n = _node->get(pv); n) {
       found = true;
       node = n;
     }
@@ -507,14 +509,14 @@ bool Store::read(VPackSlice query, Builder& ret) const {
     auto const& path = query_strs[0];
     std::vector<std::string> pv = split(path);
     // Build surrounding object structure:
-    size_t e = _node.exists(pv).size();  // note: e <= pv.size()!
+    size_t e = _node->exists(pv).size();  // note: e <= pv.size()!
     size_t i = 0;
     for (auto it = pv.begin(); i < e; ++i, ++it) {
       ret.openObject();
       ret.add(VPackValue(*it));
     }
     if (e == pv.size()) {  // existing
-      _node.get(pv)->toBuilder(ret, showHidden);
+      _node->get(pv)->toBuilder(ret, showHidden);
     } else {
       VPackObjectBuilder guard(&ret);
     }
@@ -527,9 +529,9 @@ bool Store::read(VPackSlice query, Builder& ret) const {
     Node copy("copy");
     for (auto const& path : query_strs) {
       std::vector<std::string> pv = split(path);
-      size_t e = _node.exists(pv).size();
+      size_t e = _node->exists(pv).size();
       if (e == pv.size()) {  // existing
-        copy.getOrCreate(pv) = *_node.get(pv);
+        copy.getOrCreate(pv) = *_node->get(pv);
       } else {  // non-existing
         for (size_t i = 0; i < pv.size() - e + 1; ++i) {
           pv.pop_back();
@@ -619,17 +621,17 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
       std::string_view const op = value.get("op").stringView();
 
       if (op == "delete" || op == "replace" || op == "erase") {
-        if (!_node.has(abskeys.at(i.first))) {
+        if (!_node->has(abskeys.at(i.first))) {
           continue;
         }
       }
       auto uri = Store::normalize(abskeys.at(i.first));
-      auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).applyOp(value);
+      auto ret = _node->hasAsWritableNode(abskeys.at(i.first)).applyOp(value);
       success &= ret.ok();
       // check for triggers here
       callTriggers(abskeys.at(i.first), op, value);
     } else {
-      success &= _node.hasAsWritableNode(abskeys.at(i.first)).applies(value);
+      success &= _node->hasAsWritableNode(abskeys.at(i.first)).applies(value);
     }
   }
 
@@ -639,7 +641,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 // Clear my data
 void Store::clear() {
   std::lock_guard storeLocker{_storeLock};
-  _node.clear();
+  _node->clear();
 }
 
 /// Apply a request to my key value store
@@ -651,24 +653,24 @@ Store& Store::loadFromVelocyPack(VPackSlice s) {
   std::lock_guard storeLocker{_storeLock};
   if (slice.isArray()) {
     TRI_ASSERT(slice.length() >= 1);
-    _node.applies(slice[0]);
+    _node->applies(slice[0]);
 
   } else if (slice.isObject()) {
-    _node.applies(slice);
+    _node->applies(slice);
   }
   return *this;
 }
 
 /// Put key value store in velocypack, guarded by caller
 void Store::toBuilder(Builder& b, bool showHidden) const {
-  _node.toBuilder(b, showHidden);
+  _node->toBuilder(b, showHidden);
 }
 
 /// Get node at path under mutex and store it in velocypack
 void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
                 bool showHidden) const {
   std::lock_guard storeLocker{_storeLock};
-  if (auto node = _node.hasAsNode(path); node) {
+  if (auto node = _node->hasAsNode(path); node) {
     node->toBuilder(b, showHidden);
   } else {
     // Backwards compatibility of a refactoring. Would be better to communicate
@@ -680,13 +682,13 @@ void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
 /// Get node at path under mutex
 Node Store::get(std::string const& path) const {
   std::lock_guard storeLocker{_storeLock};
-  return *_node.hasAsNode(path);
+  return *_node->hasAsNode(path);
 }
 
 /// Get node at path under mutex
 bool Store::has(std::string const& path) const {
   std::lock_guard storeLocker{_storeLock};
-  return _node.has(path);
+  return _node->has(path);
 }
 
 std::string Store::normalize(char const* key, size_t length) {
@@ -726,7 +728,7 @@ std::string Store::normalize(char const* key, size_t length) {
  *        Caller must enforce locking.
  */
 Node const* Store::nodePtr(std::string const& path) const {
-  return _node.get(path);
+  return _node->get(path);
 }
 
 void Store::callTriggers(std::string_view key, std::string_view op,
@@ -749,4 +751,8 @@ void Store::registerPrefixTrigger(std::string const& prefix,
   std::unique_lock guard(_triggersMutex);
   auto normalized = normalize(prefix);
   _triggers.emplace(std::move(normalized), AgencyTrigger(std::move(cb)));
+}
+
+std::vector<std::string> Store::split(std::string_view str) {
+  return Node::split(str);
 }

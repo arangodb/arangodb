@@ -25,13 +25,14 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
-#include "Logger/LogMacros.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/LogicalCollection.h"
 

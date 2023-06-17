@@ -29,6 +29,7 @@
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/MoveShard.h"
+#include "Agency/Node.h"
 #include "Basics/TimeString.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"

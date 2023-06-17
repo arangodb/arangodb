@@ -26,7 +26,7 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
-#include "Agency/Store.h"
+#include "Agency/Node.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Logger/LogMacros.h"

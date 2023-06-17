@@ -26,6 +26,7 @@
 
 #include "fakeit.hpp"
 
+#include "Agency/Node.h"
 #include "Agency/Store.h"
 using namespace arangodb::velocypack;
 

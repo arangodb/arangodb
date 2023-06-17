@@ -24,7 +24,6 @@
 #pragma once
 
 #include "AgentInterface.h"
-#include "Agency/Node.h"
 #include "Basics/ConditionVariable.h"
 #include "RestServer/arangod.h"
 
@@ -37,6 +36,8 @@
 
 namespace arangodb {
 namespace consensus {
+
+class Node;
 
 struct check_ret_t {
   bool success;
@@ -156,9 +157,7 @@ class Store {
 
   /// @brief Split strings by forward slashes, omitting empty strings,
   /// and ignoring multiple subsequent forward slashes
-  static std::vector<std::string> split(std::string_view str) {
-    return Node::split(str);
-  }
+  static std::vector<std::string> split(std::string_view str);
 
   using AgencyTriggerCallback =
       std::function<void(std::string_view path, VPackSlice trx)>;
@@ -180,7 +179,7 @@ class Store {
   mutable std::mutex _storeLock;
 
   /// @brief Root node
-  Node _node;
+  std::shared_ptr<Node> _node;
 
   struct AgencyTrigger {
     explicit AgencyTrigger(AgencyTriggerCallback callback)
@@ -193,9 +192,7 @@ class Store {
   std::map<std::string, AgencyTrigger, std::less<>> _triggers;
 };
 
-inline std::ostream& operator<<(std::ostream& o, Store const& store) {
-  return store.get().print(o);
-}
+inline std::ostream& operator<<(std::ostream& o, Store const& store);
 
 }  // namespace consensus
 }  // namespace arangodb

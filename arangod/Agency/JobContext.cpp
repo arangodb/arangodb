@@ -30,6 +30,7 @@
 #include "Agency/FailedLeader.h"
 #include "Agency/FailedServer.h"
 #include "Agency/MoveShard.h"
+#include "Agency/Node.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/ResignLeadership.h"
 #include "Logger/LogMacros.h"

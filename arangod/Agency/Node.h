@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/ResultT.h"
+#include "Agency/AgencyCommon.h"
 
 #include <cstdint>
 #include <string>
@@ -63,9 +64,6 @@ enum Operation {
   WRITE_UNLOCK,
   PUSH_QUEUE,
 };
-
-using TimePoint = std::chrono::system_clock::time_point;
-using SteadyTimePoint = std::chrono::steady_clock::time_point;
 
 class Store;
 
