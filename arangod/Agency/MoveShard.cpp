@@ -206,7 +206,7 @@ bool MoveShard::checkLeaderFollowerCurrent(
     auto sharedPath = _database + "/" + s.collection + "/";
     auto currentServersPath = curColPrefix + sharedPath + s.shard + "/servers";
     auto serverList = _snapshot.hasAsArray(currentServersPath);
-    if (serverList && (*serverList).length() > 0) {
+    if (serverList && serverList->size() > 0) {
       if (_from != (*serverList)[0].stringView()) {
         LOG_TOPIC("55261", DEBUG, Logger::SUPERVISION)
             << "MoveShard: From server " << _from
@@ -217,7 +217,7 @@ bool MoveShard::checkLeaderFollowerCurrent(
         break;
       }
       bool toFound = false;
-      for (auto server : VPackArrayIterator(*serverList)) {
+      for (auto server : *serverList) {
         if (_to == server.stringView()) {
           toFound = true;
           break;
@@ -938,7 +938,7 @@ JOB_STATUS MoveShard::pendingLeader() {
         auto const tmp = _snapshot.hasAsArray(shardPath + "/servers");
         if (tmp) {  // safe iterator below
           bool found = false;
-          for (auto const& server : VPackArrayIterator(*tmp)) {
+          for (auto const& server : *tmp) {
             if (server.isEqualString(_to)) {
               found = true;
               break;
@@ -1302,7 +1302,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
   if (_isLeader) {
     auto const& plan = _snapshot.hasAsArray(planColPrefix + _database + "/" +
                                             _collection + "/shards/" + _shard);
-    if (plan && plan.value()[0].copyString() == _to) {
+    if (plan && plan->operator[](0).copyString() == _to) {
       LOG_TOPIC("72a82", INFO, Logger::SUPERVISION)
           << "MoveShard can no longer abort through reversion to where it "
              "started. Flight forward, leaving Plan as it is now.";

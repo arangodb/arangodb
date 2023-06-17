@@ -202,7 +202,7 @@ Supervision::Supervision(ArangodServer& server)
     : arangodb::Thread(server, "Supervision"),
       _agent(nullptr),
       _snapshot(nullptr),
-      _transient(std::make_shared<Node>("Transient")),
+      _transient(std::make_shared<Node>()),
       _frequency(1.),
       _gracePeriod(10.),
       _okThreshold(5.),
@@ -1444,10 +1444,10 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
         for (auto const& collection : database.second->children()) {
           for (auto const& shard :
                (*collection.second).get("shards")->children()) {
-            Slice const servers = (*shard.second).getArray().value();
-            if (servers.length() > 0) {
+            Node::Array const& servers = *(*shard.second).getArray();
+            if (servers.size() > 0) {
               try {
-                for (auto const& server : VPackArrayIterator(servers)) {
+                for (auto const& server : servers) {
                   if (serverList.find(server.copyString()) !=
                       serverList.end()) {
                     serverList.erase(server.copyString());
@@ -1599,11 +1599,9 @@ void Supervision::cleanupLostCollections(Node const& snapshot,
         auto const& colname = collection.first;
 
         for (auto const& shard : collection.second->children()) {
-          auto servers = shard.second->hasAsArray("servers").value();
+          auto& servers = *shard.second->hasAsArray("servers");
 
-          TRI_ASSERT(servers.isArray());
-
-          if (servers.length() >= 1) {
+          if (servers.size() >= 1) {
             TRI_ASSERT(servers[0].isString());
             auto const& servername = servers[0].copyString();
 
@@ -2494,11 +2492,10 @@ void Supervision::checkBrokenCollections() {
 
       // also check all indexes of the collection to see if they are abandoned
       if (collectionPair.second->has("indexes")) {
-        Slice indexes =
-            collectionPair.second->get("indexes")->getArray().value();
+        auto& indexes = *collectionPair.second->get("indexes")->getArray();
         // check if the coordinator which started creating this index is
         // still present...
-        for (VPackSlice planIndex : VPackArrayIterator(indexes)) {
+        for (VPackSlice planIndex : indexes) {
           if (VPackSlice isBuildingSlice =
                   planIndex.get(StaticStrings::AttrIsBuilding);
               !isBuildingSlice.isTrue()) {
@@ -2799,11 +2796,10 @@ void Supervision::readyOrphanedIndexCreations() {
         std::string const& colPath = dbname + "/" + colname + "/";
         auto const& collection = *(col.second);
         std::unordered_set<std::string> built;
-        Slice indexes;
+        Node::Array const& indexes = *collection.get("indexes")->getArray();
         if (collection.has("indexes")) {
-          indexes = collection.get("indexes")->getArray().value();
-          if (indexes.length() > 0) {
-            for (auto planIndex : VPackArrayIterator(indexes)) {
+          if (indexes.size() > 0) {
+            for (auto planIndex : indexes) {
               if (planIndex.hasKey(StaticStrings::IndexIsBuilding) &&
                   collection.has("shards")) {
                 auto const& planId = planIndex.get("id");
@@ -2868,7 +2864,7 @@ void Supervision::readyOrphanedIndexCreations() {
                 envelope.add(VPackValue(_agencyPrefix + planColPrefix +
                                         colPath + "indexes"));
                 VPackArrayBuilder value(&envelope);
-                for (auto planIndex : VPackArrayIterator(indexes)) {
+                for (auto planIndex : indexes) {
                   if (built.find(planIndex.get("id").copyString()) !=
                       built.end()) {
                     {
@@ -2891,7 +2887,10 @@ void Supervision::readyOrphanedIndexCreations() {
                 VPackObjectBuilder precondition(&envelope);
                 envelope.add(VPackValue(_agencyPrefix + planColPrefix +
                                         colPath + "indexes"));
-                envelope.add(indexes);
+                VPackArrayBuilder ab(&envelope);
+                for (auto const& slice : indexes) {
+                  envelope.add(slice);
+                }
               }
             }
           }
@@ -3372,8 +3371,8 @@ void Supervision::checkUndoLeaderChangeActions() {
     if (not servers) {
       return false;
     }
-    TRI_ASSERT(servers->isArray() && servers->length() > 0);
-    for (size_t i = 0; i < servers->length(); ++i) {
+    TRI_ASSERT(servers && servers->size() > 0);
+    for (size_t i = 0; i < servers->size(); ++i) {
       if (server == servers->at(i).stringView()) {
         return true;
       }
@@ -3390,8 +3389,8 @@ void Supervision::checkUndoLeaderChangeActions() {
     if (not servers) {
       return false;
     }
-    TRI_ASSERT(servers->isArray() && servers->length() > 0);
-    for (size_t i = 1; i < servers->length(); ++i) {
+    TRI_ASSERT(servers && servers->size() > 0);
+    for (size_t i = 1; i < servers->size(); ++i) {
       if (server == servers->at(i).stringView()) {
         return true;
       }

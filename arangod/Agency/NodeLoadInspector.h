@@ -110,7 +110,7 @@ struct NodeLoadInspectorImpl
 
   [[nodiscard]] Status value(velocypack::Slice& v) {
     static_assert(AllowUnsafeTypes);
-    if (_node->type() != consensus::LEAF) {
+    if (!_node->isLeaveNode()) {
       return {"Cannot parse non-leaf node as Slice."};
     }
     v = _node->slice();
@@ -118,7 +118,7 @@ struct NodeLoadInspectorImpl
   }
 
   [[nodiscard]] Status::Success value(velocypack::SharedSlice& v) {
-    if (_node->type() == consensus::LEAF) {
+    if (!_node->isLeaveNode()) {
       if constexpr (AllowUnsafeTypes) {
         v = velocypack::SharedSlice(velocypack::SharedSlice{}, _node->slice());
         return {};
@@ -198,7 +198,7 @@ struct NodeLoadInspectorImpl
   }
 
   auto getTypeTag() const noexcept {
-    if (_node->type() == consensus::LEAF) {
+    if (!_node->isLeaveNode()) {
       return _node->slice().type();
     } else {
       return velocypack::ValueType::Object;
@@ -222,7 +222,7 @@ struct NodeLoadInspectorImpl
   template<class Func>
   Status doProcessList(Func&& func) {
     assert(_node->isArray());
-    for (auto&& s : VPackArrayIterator(*_node->getArray())) {
+    for (auto&& s : *_node->getArray()) {
       if (auto res = func(s); !res.ok()) {
         return res;
       }
@@ -326,8 +326,8 @@ struct NodeLoadInspectorImpl
 
   Status checkArrayLength(std::size_t arrayLength) {
     auto slice = _node->getArray();
-    assert(slice.has_value());
-    if (slice->length() != arrayLength) {
+    assert(slice != nullptr);
+    if (slice->size() != arrayLength) {
       return {"Expected array of length " + std::to_string(arrayLength)};
     }
     return {};

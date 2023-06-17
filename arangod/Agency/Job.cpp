@@ -683,12 +683,12 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
 
     // If we do have failover candidates, we should use them
     auto serverList = snap.hasAsArray(currentFailoverCandidatesPath);
-    if (!serverList.has_value()) {
+    if (!serverList) {
       // We have old DBServers that do not report failover candidates,
       // Need to rely on current
       serverList = snap.hasAsArray(currentShardPath);
-      TRI_ASSERT(serverList.has_value());
-      if (!serverList.has_value()) {
+      TRI_ASSERT(serverList);
+      if (!serverList) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
             "Could not find common insync server for: " + currentShardPath +
@@ -696,9 +696,9 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
       }
     }
     // Guaranteed by if above
-    TRI_ASSERT(serverList->isArray());
+    TRI_ASSERT(serverList);
 
-    for (auto server : VPackArrayIterator(*serverList)) {
+    for (auto server : *serverList) {
       auto id = server.copyString();
       if (id == serverToAvoid) {
         // Skip current leader for which we are seeking a replacement
@@ -723,8 +723,7 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
       // check if it is also part of the plan...because if not the soon-to-be
       // leader will drop the collection
       bool found = false;
-      for (auto const& plannedServer :
-           VPackArrayIterator(snap.hasAsArray(plannedShardPath).value())) {
+      for (auto const& plannedServer : *snap.hasAsArray(plannedShardPath)) {
         if (plannedServer.isEqualString(server.stringView())) {
           found = true;
           break;
@@ -763,7 +762,7 @@ std::vector<std::string> Job::findAllInSyncReplicas(
     auto serverList = snap.hasAsArray(currentPath);
     if (serverList) {
       std::unordered_set<std::string> setHere;
-      for (auto server : VPackArrayIterator(*serverList)) {
+      for (auto server : *serverList) {
         auto id = server.copyString();
         if (first) {
           result.push_back(id);
@@ -803,7 +802,7 @@ std::unordered_set<std::string> Job::findAllFailoverCandidates(
     // If we do have failover candidates, we should use them
     auto serverList = snap.hasAsArray(currentFailoverCandidatesPath);
     if (serverList) {
-      for (auto server : VPackArrayIterator(*serverList)) {
+      for (auto server : *serverList) {
         result.insert(server.copyString());
       }
     }

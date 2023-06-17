@@ -125,7 +125,7 @@ class Store {
   /// @brief Dump everything to builder
   void dumpToBuilder(velocypack::Builder&) const;
 
-  Store& loadFromVelocyPack(VPackSlice slice);
+  void applyModification(VPackSlice slice);
 
   /// @brief Create Builder representing this store
   void toBuilder(velocypack::Builder&, bool showHidden = false) const;

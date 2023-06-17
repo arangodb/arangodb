@@ -50,8 +50,7 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 
 /// Ctor with name
-Store::Store(std::string const& name)
-    : _node(std::make_shared<Node>(name, this)) {}
+Store::Store(std::string const& name) : _node(std::make_shared<Node>()) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
@@ -259,7 +258,7 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
               break;
             }
           }
-          bool isArray = (node->type() == LEAF && node->slice().isArray());
+          bool isArray = node->isArray();
           if (op.value.getBool() ? !isArray : isArray) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
@@ -325,10 +324,9 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
         } else if (oper == PREC_IS_WRITE_LOCKED) {  // is-write-locked
           // the lock is write locked by the given entity, if node and the value
           // are strings and both are equal.
-          if (found && op.value.isString() && node->slice().isString()) {
-            if (node->slice().isEqualString(op.value.stringView())) {
-              continue;
-            }
+          if (found && op.value.isString() &&
+              node->isWriteLocked(op.value.stringView())) {
+            continue;
           }
           ret.push_back(precond.key);
           if (mode == FIRST_FAIL) {
@@ -338,20 +336,9 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
           // the lock is read locked by the given entity, if node is an
           // array of strings and the value is a string and if the value is
           // contained in the node array.
-          if (found && op.value.isString() && node->slice().isArray()) {
-            bool isValid = false;
-            for (auto const& i : VPackArrayIterator(node->slice())) {
-              if (!i.isString()) {
-                isValid = false;
-                break;  // invalid, only strings allowed
-              }
-              if (i.isEqualString(op.value.stringView())) {
-                isValid = true;
-              }
-            }
-            if (isValid) {
-              continue;
-            }
+          if (found && op.value.isString() &&
+              node->isReadLocked(op.value.stringView())) {
+            continue;
           }
           ret.push_back(precond.key);
           if (mode == FIRST_FAIL) {
@@ -524,9 +511,11 @@ bool Store::read(VPackSlice query, Builder& ret) const {
     for (i = 0; i < e; ++i) {
       ret.close();
     }
-  } else {  // slow path for 0 or more than 2 paths:
+  } else {              // slow path for 0 or more than 2 paths:
+    TRI_ASSERT(false);  // TODO
+#if 0
     // Create response tree
-    Node copy("copy");
+    Node copy;
     for (auto const& path : query_strs) {
       std::vector<std::string> pv = split(path);
       size_t e = _node->exists(pv).size();
@@ -542,10 +531,12 @@ bool Store::read(VPackSlice query, Builder& ret) const {
               arangodb::velocypack::Slice::emptyObjectSlice();
         }
       }
+
     }
 
     // Into result builder
     copy.toBuilder(ret, showHidden);
+#endif
   }
 
   return success;
@@ -614,8 +605,12 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
             });
 
   bool success = true;
-  for (const auto& i : idx) {
+  TRI_ASSERT(false);
+#if 0
+    for (const auto& i : idx) {
+
     Slice value = i.second;
+
 
     if (value.isObject() && value.hasKey("op")) {
       std::string_view const op = value.get("op").stringView();
@@ -633,8 +628,9 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
     } else {
       success &= _node->hasAsWritableNode(abskeys.at(i.first)).applies(value);
     }
-  }
 
+  }
+#endif
   return success;
 }
 
@@ -645,7 +641,7 @@ void Store::clear() {
 }
 
 /// Apply a request to my key value store
-Store& Store::loadFromVelocyPack(VPackSlice s) {
+void Store::applyModification(VPackSlice s) {
   TRI_ASSERT(s.isObject());
   TRI_ASSERT(s.hasKey("readDB"));
   auto const& slice = s.get("readDB");
@@ -658,7 +654,6 @@ Store& Store::loadFromVelocyPack(VPackSlice s) {
   } else if (slice.isObject()) {
     _node->applies(slice);
   }
-  return *this;
 }
 
 /// Put key value store in velocypack, guarded by caller
