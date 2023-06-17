@@ -1590,8 +1590,6 @@ void Agent::run() {
       try {
         // Clear expired long polls
         clearExpiredPolls();
-        // Empty store callback trash bin
-        emptyCbTrashBin();
         std::this_thread::sleep_for(std::chrono::seconds(1));
       } catch (std::exception const& e) {
         LOG_TOPIC("a0ef7", WARN, Logger::AGENCY)
@@ -1655,9 +1653,6 @@ void Agent::run() {
 
           // Check whether we can advance _commitIndex
           advanceCommitIndex();
-
-          // Empty store callback trash bin
-          emptyCbTrashBin();
 
           bool commenceService = false;
           {
@@ -2006,13 +2001,6 @@ Store const& Agent::spearhead() const { return _spearhead; }
 Store const& Agent::readDB() const { return _readDB; }
 
 /// Get readdb
-arangodb::consensus::index_t Agent::readDB(Node& node) const {
-  READ_LOCKER(oLocker, _outputLock);
-  node = _readDB.get();
-  return _commitIndex.load(std::memory_order_relaxed);
-}
-
-/// Get readdb
 arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
@@ -2311,77 +2299,6 @@ bool Agent::ready() const {
   }
 
   return _ready;
-}
-
-void Agent::trashStoreCallback(std::string const& url, VPackSlice slice) {
-  TRI_ASSERT(slice.isObject());
-
-  // body consists of object holding keys index, term and the observed keys
-  // we'll remove observation on every key and according observer url
-  for (auto const& i : VPackObjectIterator(slice)) {
-    if (!i.key.isEqualString("term") && !i.key.isEqualString("index")) {
-      std::lock_guard lock{_cbtLock};
-      _callbackTrashBin[i.key.copyString()].emplace(url);
-    }
-  }
-}
-
-void Agent::emptyCbTrashBin() {
-  using clock = std::chrono::steady_clock;
-
-  auto envelope = std::make_shared<VPackBuilder>();
-  {
-    std::lock_guard lock{_cbtLock};
-
-    auto early = std::chrono::duration_cast<std::chrono::seconds>(
-                     clock::now() - _callbackLastPurged)
-                     .count() < 10;
-
-    if (early || _callbackTrashBin.empty()) {
-      return;
-    }
-
-    {
-      VPackArrayBuilder trxs(envelope.get());
-      for (auto const& i : _callbackTrashBin) {
-        for (auto const& j : i.second) {
-          {
-            VPackArrayBuilder trx(envelope.get());
-            {
-              VPackObjectBuilder ak(envelope.get());
-              envelope->add(VPackValue(i.first));
-              {
-                VPackObjectBuilder oper(envelope.get());
-                envelope->add("op", VPackValue("unobserve"));
-                envelope->add("url", VPackValue(j));
-              }
-            }
-          }
-        }
-      }
-    }
-    _callbackTrashBin.clear();
-    _callbackLastPurged = std::chrono::steady_clock::now();
-  }
-
-  LOG_TOPIC("12ad3", DEBUG, Logger::AGENCY)
-      << "unobserving: " << envelope->toJson();
-
-  // This is a best effort attempt. If either the queueing or the write fail,
-  // while above _callbackTrashBin has been cleaned, entries will repopulate
-  // with future 404 errors, when they are triggered again. So either way these
-  // attempts are repeated until such time, when the callbacks are gone
-  // successfully through queue + write.
-  auto* scheduler = SchedulerFeature::SCHEDULER;
-  if (scheduler != nullptr) {
-    scheduler->queue(RequestLane::INTERNAL_LOW,
-                     [&server = server(), envelope = std::move(envelope)] {
-                       auto* agent = server.getFeature<AgencyFeature>().agent();
-                       if (!server.isStopping() && agent) {
-                         agent->write(envelope->slice());
-                       }
-                     });
-  }
 }
 
 query_t Agent::buildDB(arangodb::consensus::index_t index) {

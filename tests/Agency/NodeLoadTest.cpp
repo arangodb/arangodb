@@ -33,6 +33,8 @@
 
 #include "Inspection/InspectionTestHelper.h"
 
+using namespace arangodb::velocypack;
+
 namespace {
 using namespace arangodb;
 using NodeLoadInspector = inspection::NodeLoadInspector<>;

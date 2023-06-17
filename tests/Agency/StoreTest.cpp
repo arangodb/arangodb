@@ -27,6 +27,7 @@
 #include "fakeit.hpp"
 
 #include "Agency/Store.h"
+using namespace arangodb::velocypack;
 
 TEST(StoreTest, store_preconditions) {
   using namespace arangodb::consensus;

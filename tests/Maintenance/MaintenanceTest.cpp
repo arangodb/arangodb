@@ -56,6 +56,7 @@ using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::maintenance;
 using namespace arangodb::cluster;
+using namespace arangodb::velocypack;
 
 #ifndef _WIN32
 char const* planStr =

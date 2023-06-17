@@ -43,6 +43,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
 using namespace fakeit;
+using namespace arangodb::velocypack;
 
 namespace arangodb {
 namespace tests {

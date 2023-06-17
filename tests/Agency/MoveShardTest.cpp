@@ -38,6 +38,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
 using namespace fakeit;
+using namespace arangodb::velocypack;
 
 const std::string PREFIX = "arango";
 const std::string DATABASE = "database";

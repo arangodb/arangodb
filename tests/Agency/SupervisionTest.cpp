@@ -37,6 +37,7 @@
 
 using namespace arangodb;
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 std::vector<std::string> servers{"XXX-XXX-XXX", "XXX-XXX-XXY"};
 
