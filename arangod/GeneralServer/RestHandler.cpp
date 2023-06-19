@@ -129,6 +129,7 @@ void RestHandler::trackTaskStart() noexcept {
   TRI_ASSERT(!_trackedAsOngoingLowPrio);
 
   if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackBeginOngoingLowPriorityTask();
     _trackedAsOngoingLowPrio = true;
   }
@@ -138,6 +139,7 @@ void RestHandler::trackTaskEnd() noexcept {
   if (_trackedAsOngoingLowPrio) {
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
                RequestPriority::LOW);
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
     _trackedAsOngoingLowPrio = false;
 

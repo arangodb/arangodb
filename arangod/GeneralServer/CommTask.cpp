@@ -515,6 +515,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   SchedulerFeature::SCHEDULER->trackCreateHandlerTask();
 
   // asynchronous request
