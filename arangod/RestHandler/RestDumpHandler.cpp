@@ -30,6 +30,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RequestLane.h"
+#include "Inspection/VPack.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -43,13 +44,6 @@
 
 using namespace arangodb;
 using namespace arangodb::rest;
-
-namespace {
-constexpr uint64_t defaultBatchSize = 16 * 1024;
-constexpr uint64_t defaultPrefetchCount = 2;
-constexpr uint64_t defaultParallelism = 2;
-constexpr double defaultTtl = 600.0;
-}  // namespace
 
 RestDumpHandler::RestDumpHandler(ArangodServer& server, GeneralRequest* request,
                                  GeneralResponse* response)
@@ -152,58 +146,7 @@ void RestDumpHandler::handleCommandDumpStart() {
   auto user = getAuthorizedUser();
 
   RocksDBDumpContextOptions opts;
-  opts.batchSize = [&body]() {
-    if (auto s = body.get("batchSize"); s.isNumber()) {
-      return s.getNumber<uint64_t>();
-    } else if (!s.isNone()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "`batchSize` expected to be a number");
-    }
-    return ::defaultBatchSize;
-  }();
-  opts.prefetchCount = [&body]() {
-    if (auto s = body.get("prefetchCount"); s.isNumber()) {
-      return s.getNumber<uint64_t>();
-    } else if (!s.isNone()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "`prefetchCount` expected to be a number");
-    }
-    return ::defaultPrefetchCount;
-  }();
-  opts.parallelism = [&body]() {
-    if (auto s = body.get("parallelism"); s.isNumber()) {
-      return s.getNumber<uint64_t>();
-    } else if (!s.isNone()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "`parallelism` expected to be a number");
-    }
-    return ::defaultParallelism;
-  }();
-  opts.ttl = [&body]() {
-    if (auto s = body.get("ttl"); s.isNumber()) {
-      return s.getNumber<double>();
-    } else if (!s.isNone()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "`ttl` expected to be a number");
-    }
-    return ::defaultTtl;
-  }();
-
-  if (auto s = body.get("shards"); !s.isArray()) {
-    generateError(Result(
-        TRI_ERROR_BAD_PARAMETER,
-        "invalid 'shards' value in request - expected array of strings"));
-    return;
-  } else {
-    for (auto it : VPackArrayIterator(s)) {
-      if (!it.isString()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            "invalid 'shards' value in request - expected array of strings");
-      }
-      opts.shards.emplace_back(it.copyString());
-    }
-  }
+  velocypack::deserializeUnsafe(body, opts);
 
   auto& engine =
       server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
@@ -319,28 +262,20 @@ Result RestDumpHandler::validateRequest() {
         return {TRI_ERROR_BAD_PARAMETER};
       }
 
-      if (auto s = body.get("shards"); !s.isArray()) {
-        return {
-            TRI_ERROR_BAD_PARAMETER,
-            "invalid 'shards' value in request - expected array of strings"};
-      } else {
-        for (auto it : VPackArrayIterator(s)) {
-          if (!it.isString()) {
-            return {TRI_ERROR_BAD_PARAMETER,
-                    "invalid 'shards' value in request "
-                    "- expected array of strings"};
-          }
+      // validate permissions for all participating shards
+      RocksDBDumpContextOptions opts;
+      velocypack::deserializeUnsafe(body, opts);
 
-          auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      ExecContext& exec =
+          *static_cast<ExecContext*>(_request->requestContext());
 
-          // get collection name
-          auto collectionName = ci.getCollectionNameForShard(it.stringView());
-          ExecContext& exec =
-              *static_cast<ExecContext*>(_request->requestContext());
-          if (!exec.canUseCollection(_request->databaseName(), collectionName,
-                                     auth::Level::RO)) {
-            return {TRI_ERROR_FORBIDDEN};
-          }
+      for (auto const& it : opts.shards) {
+        // get collection name
+        auto collectionName = ci.getCollectionNameForShard(it);
+        if (!exec.canUseCollection(_request->databaseName(), collectionName,
+                                   auth::Level::RO)) {
+          return {TRI_ERROR_FORBIDDEN};
         }
       }
     }

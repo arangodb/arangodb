@@ -34,6 +34,7 @@
 
 #include "Basics/BoundedChannel.h"
 #include "Basics/Result.h"
+#include "Inspection/Types.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
@@ -58,11 +59,21 @@ class RocksDBCollection;
 class RocksDBEngine;
 
 struct RocksDBDumpContextOptions {
-  std::uint64_t batchSize;
-  std::uint64_t prefetchCount;
-  std::uint64_t parallelism;
+  std::uint64_t batchSize = 16 * 1024;
+  std::uint64_t prefetchCount = 2;
+  std::uint64_t parallelism = 2;
+  double ttl = 600.0;
   std::vector<std::string> shards;
-  double ttl;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, RocksDBDumpContextOptions& o) {
+    return f.object(o).fields(
+        f.field("batchSize", o.batchSize).fallback(f.keep()),
+        f.field("prefetchCount", o.prefetchCount).fallback(f.keep()),
+        f.field("parallelism", o.parallelism).fallback(f.keep()),
+        f.field("ttl", o.ttl).fallback(f.keep()),
+        f.field("shards", o.shards).fallback(f.keep()));
+  }
 };
 
 class RocksDBDumpContext {
