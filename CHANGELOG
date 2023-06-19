@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-166: Handle a space separated list to display multiple node labels in the
+  Graph Viewer.
+
 * FE-15: Removed green checkmark next to the version number and made
   keyboard shortcuts button easier to discover.
 
