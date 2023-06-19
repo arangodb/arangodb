@@ -94,6 +94,10 @@ function medQueueBlockedSuite() {
             if (res.code !== 204) {
               break;
             }
+            if (new Date() - start > 50000) {
+              throw "Lost patience, almost certainly the coordinator is deadlocked!";
+            }
+            require("internal").wait(0.1);
           }
           count += 1;
         }
