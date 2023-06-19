@@ -1,6 +1,8 @@
 devel
 -----
 
+* BTS-744: Disable development mode for system services.
+
 * FE-229: Improve shard rebalancing UI.
 
 * FE-20: fix UI placeholder format for locale when creating analyzers.
