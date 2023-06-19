@@ -140,7 +140,8 @@ class Store {
            bool showHidden) const;
 
   /// @brief Copy out a node
-  Node get(std::string const& path = std::string("/")) const;
+  std::shared_ptr<Node const> get(
+      std::string const& path = std::string("/")) const;
 
   /// @brief Copy out a node
   bool has(std::string const& path = std::string("/")) const;

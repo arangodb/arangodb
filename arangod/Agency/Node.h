@@ -75,7 +75,7 @@ using NodePtr = std::shared_ptr<Node const>;
 /// assignment operator.
 /// toBuilder(Builder&) will create a _vecBuf, when needed as a means to
 /// optimization by avoiding to build it before necessary.
-class Node final : public std::enable_shared_from_this<Node> {
+class Node : public std::enable_shared_from_this<Node> {
  public:
   /// @brief Slash-segmented path
   using PathType = std::vector<std::string>;
@@ -90,13 +90,6 @@ class Node final : public std::enable_shared_from_this<Node> {
   /// @brief Split strings by forward slashes, omitting empty strings,
   /// and ignoring multiple subsequent forward slashes
   static std::vector<std::string> split(std::string_view str);
-
-  Node() = default;
-  explicit Node(VariantType value) noexcept;
-  Node(Node const& other) = default;
-  Node(Node&& other) noexcept = default;
-  Node& operator=(Node const& node) = default;
-  Node& operator=(Node&& node) noexcept = default;
 
   /// @brief Default dtor
   ~Node() = default;
@@ -167,7 +160,7 @@ class Node final : public std::enable_shared_from_this<Node> {
 
   /// @brief accessor to Node object
   /// @return  returns nullptr if not found or type doesn't match
-  Node const* hasAsNode(std::string const&) const noexcept;
+  std::shared_ptr<Node const> hasAsNode(std::string const&) const noexcept;
 
   /// @brief accessor to Node's Slice value
   /// @return  returns nullopt if not found or type doesn't match
@@ -256,6 +249,7 @@ class Node final : public std::enable_shared_from_this<Node> {
 
   [[nodiscard]] static NodePtr create(VPackSlice);
   [[nodiscard]] static NodePtr create();
+  [[nodiscard]] static NodePtr create(VariantType);
 
   /// @brief handle "op" keys in write json
   template<Operation Oper>
@@ -263,9 +257,19 @@ class Node final : public std::enable_shared_from_this<Node> {
       Node const* target, arangodb::velocypack::Slice const&);
 
   // @brief Helper function to return static instance of dummy node below
-  static Node const& dummyNode() { return _dummyNode; }
+  static std::shared_ptr<Node const> dummyNode();
 
  private:
+  struct NodeWrapper;
+  friend struct NodeWrapper;
+
+  Node() = default;
+  explicit Node(VariantType value) noexcept;
+  Node(Node const& other) = default;
+  Node(Node&& other) noexcept = default;
+  Node& operator=(Node const& node) = default;
+  Node& operator=(Node&& node) noexcept = default;
+
   VariantType _value;
 
   static Children const dummyChildren;

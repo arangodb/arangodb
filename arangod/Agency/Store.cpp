@@ -50,7 +50,7 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 
 /// Ctor with name
-Store::Store(std::string const& name) : _node(std::make_shared<Node>()) {}
+Store::Store(std::string const& name) : _node(Node::create()) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
@@ -494,7 +494,7 @@ bool Store::read(VPackSlice query, Builder& ret) const {
 
   std::lock_guard storeLocker{_storeLock};  // Freeze KV-Store for read
 
-  NodePtr node = std::make_shared<Node const>();
+  NodePtr node = Node::create();
   for (auto const& path : query_strs) {
     auto value = _node->get(path);
     if (value) {
@@ -607,7 +607,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 // Clear my data
 void Store::clear() {
   std::lock_guard storeLocker{_storeLock};
-  _node = std::make_shared<Node>();
+  _node = Node::create();
 }
 
 /// Apply a request to my key value store
@@ -644,9 +644,9 @@ void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
 }
 
 /// Get node at path under mutex
-Node Store::get(std::string const& path) const {
+std::shared_ptr<Node const> Store::get(std::string const& path) const {
   std::lock_guard storeLocker{_storeLock};
-  return *_node->hasAsNode(path);
+  return _node->hasAsNode(path);
 }
 
 /// Get node at path under mutex

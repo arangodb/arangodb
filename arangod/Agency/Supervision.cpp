@@ -202,7 +202,7 @@ Supervision::Supervision(ArangodServer& server)
     : arangodb::Thread(server, "Supervision"),
       _agent(nullptr),
       _snapshot(nullptr),
-      _transient(std::make_shared<Node>()),
+      _transient(Node::create()),
       _frequency(1.),
       _gracePeriod(10.),
       _okThreshold(5.),
@@ -924,8 +924,7 @@ bool Supervision::updateSnapshot() {
 
   _agent->executeTransientLocked([&]() {
     if (_agent->transient().has(_agencyPrefix)) {
-      _transient =
-          std::make_shared<Node>(_agent->transient().get(_agencyPrefix));
+      _transient = _agent->transient().get(_agencyPrefix);
     }
   });
 
@@ -1194,8 +1193,7 @@ void Supervision::step() {
         // changes in _transient->
         _agent->executeTransientLocked([&]() {
           if (_agent->transient().has(_agencyPrefix)) {
-            _transient =
-                std::make_shared<Node>(_agent->transient().get(_agencyPrefix));
+            _transient = _agent->transient().get(_agencyPrefix);
           }
         });
 
@@ -1279,7 +1277,7 @@ void Supervision::waitForSupervisionNode() {
       if (_agent->readDB().has(supervisionNode)) {
         try {
           auto const sn = _agent->readDB().get(supervisionNode);
-          if (sn.children().size() > 0) {
+          if (sn->children().size() > 0) {
             done = true;
           }
         } catch (...) {
@@ -3016,8 +3014,8 @@ void arangodb::consensus::enforceReplicationFunctional(
   auto const& todos = *snapshot.hasAsChildren(toDoPrefix);
   int nrAddRemoveJobsInTodo = 0;
   for (auto it = todos.begin(); it != todos.end(); ++it) {
-    auto jobNode = *(it->second);
-    auto t = jobNode.hasAsString("type");
+    auto jobNode = (it->second);
+    auto t = jobNode->hasAsString("type");
     if (t && (t.value() == "addFollower" || t.value() == "removeFollower")) {
       if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
         return;

@@ -189,7 +189,7 @@ ResultT<NodePtr> Node::handle<PUSH>(Node const* target,
   }
 
   array.emplace_back(v);
-  return std::make_shared<Node>(std::move(array));
+  return Node::create(std::move(array));
 }
 
 /// Remove element from any place in array by value or position
@@ -240,7 +240,7 @@ ResultT<NodePtr> Node::handle<ERASE>(Node const* target,
       array.erase(array.begin() + pos);
     }
   }
-  return std::make_shared<Node>(std::move(array));
+  return Node::create(std::move(array));
 }
 
 /// Push to end while keeping a specified length
@@ -267,7 +267,7 @@ ResultT<NodePtr> Node::handle<PUSH_QUEUE>(Node const* target,
 
   Node::Array array;
   if (ol == 0) {
-    return std::make_shared<Node>(array);
+    return Node::create(array);
   }
   array.reserve(ol);
   array.emplace_back(v);
@@ -276,7 +276,7 @@ ResultT<NodePtr> Node::handle<PUSH_QUEUE>(Node const* target,
     std::copy_n(other->begin(), std::min(ol - 1, other->size()),
                 std::back_inserter(array));
   }
-  return std::make_shared<Node>(std::move(array));
+  return Node::create(std::move(array));
 }
 
 /// Replace element from any place in array by new value
@@ -305,7 +305,7 @@ ResultT<NodePtr> Node::handle<REPLACE>(Node const* target,
       },
       slice.get("new"));
 
-  return std::make_shared<Node>(std::move(array));
+  return Node::create(std::move(array));
 }
 
 /// Remove element from end of array.
@@ -319,7 +319,7 @@ ResultT<NodePtr> Node::handle<POP>(Node const* target,
   if (!array.empty()) {
     array.erase(array.rbegin().base());
   }
-  return std::make_shared<Node>(std::move(array));
+  return Node::create(std::move(array));
 }
 
 /// Prepend element to array
@@ -338,7 +338,7 @@ ResultT<NodePtr> Node::handle<PREPEND>(Node const* target,
   if (!array.empty()) {
     array.insert(array.begin(), slice.get("new"));
   }
-  return std::make_shared<Node>(std::move(array));
+  return Node::create(std::move(array));
 }
 
 /// Remove element from front of array
@@ -352,7 +352,7 @@ ResultT<NodePtr> Node::handle<SHIFT>(Node const* target,
   if (!array.empty()) {
     array.erase(array.begin());
   }
-  return std::make_shared<Node>(std::move(array));
+  return Node::create(std::move(array));
 }
 
 template<>
@@ -373,7 +373,7 @@ ResultT<NodePtr> Node::handle<READ_LOCK>(Node const* target,
     array = *target->getArray();
   }
   array.emplace_back(user);
-  return std::make_shared<Node>(std::move(array));
+  return Node::create(std::move(array));
 }
 
 template<>
@@ -399,7 +399,7 @@ ResultT<NodePtr> Node::handle<READ_UNLOCK>(Node const* target,
     if (array.empty()) {
       return nullptr;
     } else {
-      return std::make_unique<Node>(std::move(array));
+      return Node::create(std::move(array));
     }
   }
 
@@ -516,7 +516,7 @@ ResultT<NodePtr> buildPathAndExecute(Node const* node, Iter begin, Iter end,
     } else {
       newChildren[key] = std::move(updated.get());
     }
-    return std::make_shared<Node>(std::move(newChildren));
+    return Node::create(std::move(newChildren));
   }
 }
 
@@ -745,13 +745,14 @@ std::optional<double> Node::getDouble() const noexcept {
   return std::nullopt;
 }
 
-Node const* Node::hasAsNode(std::string const& url) const noexcept {
+std::shared_ptr<Node const> Node::hasAsNode(
+    std::string const& url) const noexcept {
   // retrieve node, throws if does not exist
-  if (auto node = get(url).get(); node) {
+  if (auto node = get(url); node) {
     return node;
   }
 
-  return &dummyNode();
+  return dummyNode();
 }  // hasAsNode
 
 std::optional<String> Node::hasAsSlice(std::string const& url) const noexcept {
@@ -855,6 +856,11 @@ std::vector<std::string> Node::keys() const {
   return result;
 }
 
+struct Node::NodeWrapper : Node {
+  template<typename... Args>
+  NodeWrapper(Args&&... args) : Node(std::forward<Args>(args)...) {}
+};
+
 NodePtr Node::create(VPackSlice slice) {
   if (slice.isObject()) {
     Children c;
@@ -862,17 +868,26 @@ NodePtr Node::create(VPackSlice slice) {
     for (auto const& [key, sub] : VPackObjectIterator(slice)) {
       c.emplace(key.copyString(), Node::create(sub));
     }
-    return std::make_shared<Node>(std::move(c));
+    return std::make_shared<NodeWrapper>(std::move(c));
   } else if (slice.isArray()) {
     Array a;
     a.reserve(slice.length());
     for (auto const& elem : VPackArrayIterator(slice)) {
       a.emplace_back(elem);
     }
-    return std::make_shared<Node>(std::move(a));
+    return std::make_shared<NodeWrapper>(std::move(a));
   } else {
-    return std::make_shared<Node>(VPackString(slice));
+    return std::make_shared<NodeWrapper>(VPackString(slice));
   }
 }
 
-NodePtr Node::create() { return std::make_shared<Node>(); }
+NodePtr Node::create() { return std::make_shared<NodeWrapper>(); }
+
+NodePtr Node::create(Node::VariantType value) {
+  return std::make_shared<NodeWrapper>(std::move(value));
+}
+
+std::shared_ptr<Node const> consensus::Node::dummyNode() {
+  static auto node = Node::create();
+  return node;
+}
