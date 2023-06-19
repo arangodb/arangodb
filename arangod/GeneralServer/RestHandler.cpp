@@ -73,6 +73,7 @@ RestHandler::~RestHandler() {
     // someone forgot to call trackTaskEnd 🤔
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
                RequestPriority::LOW);
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
   }
 }
