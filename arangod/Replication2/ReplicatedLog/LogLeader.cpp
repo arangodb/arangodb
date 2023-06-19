@@ -423,6 +423,7 @@ auto replicated_log::LogLeader::construct(
       leaderDataGuard->_follower =
           instantiateFollowers(commonLogContext, followerFactory, localFollower,
                                lastIndex, participantsConfig);
+      leaderDataGuard->activeParticipantsConfig = participantsConfig;
       leader->_localFollower = std::move(localFollower);
       leader->_storageManager = std::move(storageManager);
       leader->_inMemoryLogManager = std::move(inMemoryLogManager);
@@ -440,9 +441,31 @@ auto replicated_log::LogLeader::construct(
                                return leaderDataGuard->activeParticipantsConfig
                                    ->participants.contains(it.first);
                              }));
+
+      LOG_CTX("f3aa8", TRACE, logContext) << "trying to establish leadership";
+      // Immediately append an empty log entry in the new term. This is
+      // necessary because we must not commit entries of older terms, but do
+      // not want to wait with committing until the next insert.
+
+      // Also make sure that this entry is written with waitForSync = true
+      // to ensure that entries of the previous term are synced as well.
+      auto meta = LogMetaPayload::FirstEntryOfTerm{
+          .leader = leader->_id, .participants = *participantsConfig};
+
+      auto const insertTp = InMemoryLogEntry::clock::now();
+      auto const logIndex = leader->_inMemoryLogManager->appendLogEntry(
+          LogMetaPayload{std::move(meta)}, leader->_currentTerm, insertTp,
+          true);
+      // It's not strictly necessary to set this, leaving it to zero would also
+      // work; because either way the first commit will commit this
+      // configuration.
+      leaderDataGuard->activeParticipantsConfigLogIndex = logIndex;
+
+      TRI_ASSERT(logIndex == leader->_firstIndexOfCurrentTerm)
+          << "got logIndex = " << logIndex << " but firstIndexOfCurrentTerm is "
+          << leader->_firstIndexOfCurrentTerm;
     }
 
-    leader->establishLeadership(std::move(participantsConfig));
     leader->triggerAsyncReplication();
     return leader;
   } catch (...) {
