@@ -34,7 +34,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -142,13 +141,13 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
       if (auto s = body.get("shards"); !s.isArray()) {
         return Result(
             TRI_ERROR_BAD_PARAMETER,
-            "invalid 'shards' value in request - expected array or strings");
+            "invalid 'shards' value in request - expected array of strings");
       } else {
         for (auto it : VPackArrayIterator(s)) {
           if (!it.isString()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                            "invalid 'shards' value in request "
-                                           "- expected array or strings");
+                                           "- expected array of strings");
           }
 
           auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
@@ -172,7 +171,7 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
     ServerID const& DBserver = _request->value("dbserver");
     if (!DBserver.empty()) {
       // if DBserver property present, remove auth header
-      _request->addHeader("x-arango-dump-auth-user", _request->user());
+      _request->addHeader(StaticStrings::DumpAuthUser, _request->user());
       return std::make_pair(DBserver, true);
     }
 
@@ -234,14 +233,14 @@ void RestDumpHandler::handleCommandDumpStart() {
   if (auto s = body.get("shards"); !s.isArray()) {
     generateError(Result(
         TRI_ERROR_BAD_PARAMETER,
-        "invalid 'shards' value in request - expected array or strings"));
+        "invalid 'shards' value in request - expected array of strings"));
     return;
   } else {
     for (auto it : VPackArrayIterator(s)) {
       if (!it.isString()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "invalid 'shards' value in request - expected array or strings");
+            "invalid 'shards' value in request - expected array of strings");
       }
       opts.shards.emplace_back(it.copyString());
     }
@@ -253,7 +252,7 @@ void RestDumpHandler::handleCommandDumpStart() {
   auto guard = manager->createContext(std::move(opts), user, database);
 
   resetResponse(rest::ResponseCode::CREATED);
-  _response->setHeaderNC("x-arango-dump-id", guard->id());
+  _response->setHeaderNC(StaticStrings::DumpId, guard->id());
 }
 
 void RestDumpHandler::handleCommandDumpNext() {
@@ -289,8 +288,9 @@ void RestDumpHandler::handleCommandDumpNext() {
   }
 
   // output the batch value
-  _response->setHeaderNC("x-arango-dump-shard-id", std::string{batch->shard});
-  _response->setHeaderNC("x-arango-dump-block-counts", std::to_string(counts));
+  _response->setHeaderNC(StaticStrings::DumpShardId, std::string{batch->shard});
+  _response->setHeaderNC(StaticStrings::DumpBlockCounts,
+                         std::to_string(counts));
   _response->setContentType(rest::ContentType::DUMP);
   _response->addRawPayload(batch->content);
   _response->setGenerateBody(true);
@@ -317,9 +317,9 @@ void RestDumpHandler::handleCommandDumpFinished() {
   generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
 }
 
-std::string RestDumpHandler::getAuthorizedUser() {
+std::string RestDumpHandler::getAuthorizedUser() const {
   bool headerExtracted;
-  auto user = _request->header("x-arango-dump-auth-user", headerExtracted);
+  auto user = _request->header(StaticStrings::DumpAuthUser, headerExtracted);
   if (!headerExtracted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "missing authorization header");

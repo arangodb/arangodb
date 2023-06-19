@@ -152,8 +152,8 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
     _collections.emplace(it, ci);
 
     // full key range for LocalDocumentId values
-    uint64_t min = 0;
-    uint64_t max = UINT64_MAX;
+    std::uint64_t min = 0;
+    std::uint64_t max = UINT64_MAX;
     {
       // determine actual key range
       auto rocksIt = buildIterator(*ci);
@@ -314,8 +314,8 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   auto it = buildIterator(ci);
   TRI_ASSERT(it != nullptr);
 
-  uint64_t docsProduced = 0;
-  uint64_t batchesProduced = 0;
+  std::uint64_t docsProduced = 0;
+  std::uint64_t batchesProduced = 0;
 
   for (it->Seek(lowerBound.string()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(ci.upper) < 0);
@@ -336,7 +336,7 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
 
     TRI_ASSERT(sink.getBuffer() != nullptr);
     dumper.dump(velocypack::Slice(
-        reinterpret_cast<uint8_t const*>(it->value().data())));
+        reinterpret_cast<std::uint8_t const*>(it->value().data())));
     // always add a newline after each document, as we must produce
     // JSONL output format
     sink.push_back('\n');

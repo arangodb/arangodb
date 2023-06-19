@@ -58,9 +58,9 @@ class RocksDBCollection;
 class RocksDBEngine;
 
 struct RocksDBDumpContextOptions {
-  uint64_t batchSize;
-  uint64_t prefetchCount;
-  uint64_t parallelism;
+  std::uint64_t batchSize;
+  std::uint64_t prefetchCount;
+  std::uint64_t parallelism;
   std::vector<std::string> shards;
   double ttl;
 };
@@ -126,8 +126,8 @@ class RocksDBDumpContext {
 
   struct WorkItem {
     std::shared_ptr<CollectionInfo> collection;
-    uint64_t lowerBound = 0;
-    uint64_t upperBound = UINT64_MAX;
+    std::uint64_t lowerBound = 0;
+    std::uint64_t upperBound = UINT64_MAX;
 
     bool empty() const noexcept {
       return collection == nullptr && lowerBound == 0 &&

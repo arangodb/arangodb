@@ -419,7 +419,8 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
 
     header = response->getHeaderField(
         arangodb::StaticStrings::ContentTypeHeader, headerExtracted);
-    if (!headerExtracted || !header.starts_with("application/x-arango-dump")) {
+    if (!headerExtracted ||
+        !header.starts_with(arangodb::StaticStrings::MimeTypeDumpNoEncoding)) {
       return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
               "got invalid response from server: content-type is invalid"};
     }
@@ -1506,7 +1507,7 @@ void DumpFeature::ParallelDumpServer::createDumpContext(
   }
 
   bool headerExtracted;
-  dumpId = response->getHeaderField("x-arango-dump-id", headerExtracted);
+  dumpId = response->getHeaderField(StaticStrings::DumpId, headerExtracted);
   if (!headerExtracted) {
     LOG_TOPIC("d7a76", FATAL, Logger::DUMP)
         << "dump create response did not contain any dump id for server "
@@ -1725,17 +1726,17 @@ void DumpFeature::ParallelDumpServer::runWriterThread() noexcept {
     arangodb::basics::StringBuffer const& body = response->getBody();
     bool headerExtracted;
     auto shardId =
-        response->getHeaderField("x-arango-dump-shard-id", headerExtracted);
+        response->getHeaderField(StaticStrings::DumpShardId, headerExtracted);
     if (!headerExtracted) {
       LOG_TOPIC("14cbf", FATAL, Logger::DUMP)
-          << "Missing header field x-arango-dump-shard-id";
+          << "Missing header field '" << StaticStrings::DumpShardId << "'";
       FATAL_ERROR_EXIT();
     }
 
     // update block counts from remote servers
     auto count = [&, &response = response]() -> int64_t {
       bool headerExtracted;
-      auto str = response->getHeaderField("x-arango-dump-block-counts",
+      auto str = response->getHeaderField(StaticStrings::DumpBlockCounts,
                                           headerExtracted);
       if (!headerExtracted) {
         return 0;
