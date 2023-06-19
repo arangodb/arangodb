@@ -558,9 +558,11 @@ struct CountingMemoryResource : std::pmr::memory_resource {
 
  private:
   void* do_allocate(size_t bytes, size_t alignment) override {
+    void* mem = base->allocate(bytes, alignment);
     metric += bytes;
-    return base->allocate(bytes, alignment);
+    return mem;
   }
+
   void do_deallocate(void* p, size_t bytes, size_t alignment) override {
     base->deallocate(p, bytes, alignment);
     metric -= bytes;
