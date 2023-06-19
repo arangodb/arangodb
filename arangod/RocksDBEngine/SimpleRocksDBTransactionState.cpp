@@ -32,6 +32,8 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 
 SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
@@ -120,6 +122,7 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
 
 /// @brief commit a transaction
 futures::Future<Result> SimpleRocksDBTransactionState::doCommit() {
+  LOG_DEVEL << "commit 2";
   return _rocksMethods->commitTransaction();
 }
 

@@ -37,6 +37,8 @@
 
 #include <absl/cleanup/cleanup.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
+#include "rocksdb/utilities/memory_util.h"
+
 
 using namespace arangodb;
 
@@ -47,24 +49,32 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
     RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
     rocksdb::TransactionDB* db)
     : RocksDBTransactionMethods(state),
+      _engine(_state->vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>()),
       _callback(callback),
-      _db(db),
+      _db(db)
+          /*
       _metricsTransactionMemoryInternal(
           _state->vocbase().server().getFeature<metrics::MetricsFeature>().add(
-              arangodb_transaction_memory_internal{})) {
+              arangodb_transaction_memory_internal{}))
+*/
+{
+  LOG_DEVEL << "RocksDBTrxBaseMethods constructor";
   TRI_ASSERT(!_state->isReadOnlyTransaction());
   _readOptions.prefix_same_as_start = true;  // should always be true
   _readOptions.fill_cache = _state->options().fillBlockCache;
 }
 
 RocksDBTrxBaseMethods::~RocksDBTrxBaseMethods() {
+  LOG_DEVEL << "RocksDBTrxBaseMethods destructor";
   // cppcheck-suppress *
   RocksDBTrxBaseMethods::cleanupTransaction();
+  /*
   LOG_DEVEL << "destructor, removing memoy tracking gauge "
             << _state->vocbase()
                    .server()
                    .getFeature<metrics::MetricsFeature>()
                    .remove(arangodb_transaction_memory_internal{});
+                   */
 }
 
 bool RocksDBTrxBaseMethods::DisableIndexing() {
@@ -190,6 +200,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
                                            rocksdb::PinnableSlice* val,
                                            ReadOwnWrites readOwnWrites) {
+  LOG_DEVEL << "Get";
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _readOptions;
   TRI_ASSERT(ro.snapshot != nullptr || _state->options().delaySnapshot);
@@ -203,6 +214,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
     rocksdb::PinnableSlice* val) {
+  LOG_DEVEL << "GetForUpdate";
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   rocksdb::ReadOptions const& ro = _readOptions;
@@ -214,14 +226,46 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                            RocksDBKey const& key,
                                            rocksdb::Slice const& val,
                                            bool assume_tracked) {
-  LOG_DEVEL << "RocksDBTrxBaseMethods::Put";
+  LOG_DEVEL << "RocksDBTrxBaseMethods::Put " << val.data();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
+  std::vector<rocksdb::DB*> dbs = {_engine.db()->GetRootDB()};
+  std::map<rocksdb::MemoryUtil::UsageType, uint64_t> usage_by_type;
+
+  rocksdb::MemoryUtil::GetApproximateMemoryUsageByType(dbs, {nullptr},
+                                                    & usage_by_type);
+  for (int i = 0; i < rocksdb::MemoryUtil::kNumUsageTypes; ++i) {
+    LOG_DEVEL <<
+        usage_by_type[static_cast<rocksdb::MemoryUtil::UsageType>(i)];
+  }
+
+  std::string memProperty;
+  _engine.db()->GetProperty(cf, "rocksdb.cur-size-active-mem-table", &memProperty);
+  LOG_DEVEL << "BEFORE " << memProperty;
+  _engine.db()->GetProperty(cf, "rocksdb.estimate-live-data-size", &memProperty);
+  LOG_DEVEL << "BEFORE 2 " << memProperty;
+  _engine.db()->GetProperty(cf, "rocksdb.cur-size-all-mem-tables", &memProperty);
+  LOG_DEVEL << "BEFORE 3 " << memProperty;
   rocksdb::Status s =
       _rocksTransaction->Put(cf, key.string(), val, assume_tracked);
   if (s.ok()) {
-    _metricsTransactionMemoryInternal.fetch_add(val.size());
+  //  _metricsTransactionMemoryInternal.fetch_add(val.size());
     LOG_DEVEL << "increased memory tracking by " << val.size() << " bytes";
+    _engine.db()->GetProperty(cf, "rocksdb.cur-size-active-mem-table", &memProperty);
+    LOG_DEVEL << "AFTER " << memProperty;
+    _engine.db()->GetProperty(cf, "rocksdb.estimate-live-data-size", &memProperty);
+    LOG_DEVEL << "AFTER 2 " << memProperty;
+    _engine.db()->GetProperty(cf, "rocksdb.cur-size-all-mem-tables", &memProperty);
+    LOG_DEVEL << "AFTER 3 " << memProperty;
+    usage_by_type.clear();
+    std::unordered_set<const rocksdb::Cache*> cache_set;
+
+    rocksdb::MemoryUtil::GetApproximateMemoryUsageByType(dbs, {nullptr},
+                                                         & usage_by_type);
+    for (int i = 0; i < rocksdb::MemoryUtil::kNumUsageTypes; ++i) {
+      LOG_DEVEL <<
+          usage_by_type[static_cast<rocksdb::MemoryUtil::UsageType>(i)];
+    }
   }
   return s;
 }
@@ -229,13 +273,46 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
     rocksdb::Slice const& val) {
-  LOG_DEVEL << "RocksDBTrxBaseMethods::PutUntracked";
+  LOG_DEVEL << "RocksDBTrxBaseMethods::PutUntracked " << val.data();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
+  std::vector<rocksdb::DB*> dbs = {_engine.db()->GetRootDB()};
+  std::map<rocksdb::MemoryUtil::UsageType, uint64_t> usage_by_type;
+
+  rocksdb::MemoryUtil::GetApproximateMemoryUsageByType(dbs, {nullptr},
+                                                       & usage_by_type);
+  for (int i = 0; i < rocksdb::MemoryUtil::kNumUsageTypes; ++i) {
+    LOG_DEVEL <<
+        usage_by_type[static_cast<rocksdb::MemoryUtil::UsageType>(i)];
+  }
+
+  std::string memProperty;
+  _engine.db()->GetProperty(cf, "rocksdb.cur-size-active-mem-table", &memProperty);
+  LOG_DEVEL << "BEFORE " << memProperty;
+  _engine.db()->GetProperty(cf, "rocksdb.estimate-live-data-size", &memProperty);
+  LOG_DEVEL << "BEFORE 2 " << memProperty;
+  _engine.db()->GetProperty(cf, "rocksdb.cur-size-all-mem-tables", &memProperty);
+  LOG_DEVEL << "BEFORE 3 " << memProperty;
+
   rocksdb::Status s = _rocksTransaction->PutUntracked(cf, key.string(), val);
   if (s.ok()) {
-    _metricsTransactionMemoryInternal.fetch_add(val.size());
+ //   _metricsTransactionMemoryInternal.fetch_add(val.size());
     LOG_DEVEL << "increased memory tracking by " << val.size() << " bytes";
+    _engine.db()->GetProperty(cf, "rocksdb.cur-size-active-mem-table", &memProperty);
+    LOG_DEVEL << "AFTER " << memProperty;
+    _engine.db()->GetProperty(cf, "rocksdb.estimate-live-data-size", &memProperty);
+    LOG_DEVEL << "AFTER 2 " << memProperty;
+    _engine.db()->GetProperty(cf, "rocksdb.cur-size-all-mem-tables", &memProperty);
+    LOG_DEVEL << "AFTER 3 " << memProperty;
+    usage_by_type.clear();
+    std::unordered_set<const rocksdb::Cache*> cache_set;
+
+    rocksdb::MemoryUtil::GetApproximateMemoryUsageByType(dbs, {nullptr},
+                                                         & usage_by_type);
+    for (int i = 0; i < rocksdb::MemoryUtil::kNumUsageTypes; ++i) {
+      LOG_DEVEL <<
+          usage_by_type[static_cast<rocksdb::MemoryUtil::UsageType>(i)];
+    }
   }
   return s;
 }
@@ -260,7 +337,7 @@ void RocksDBTrxBaseMethods::PutLogData(rocksdb::Slice const& blob) {
   LOG_DEVEL << "RocksDBTrxBaseMethods::PutLogData";
   TRI_ASSERT(_rocksTransaction);
   _rocksTransaction->PutLogData(blob);
-  _metricsTransactionMemoryInternal.fetch_add(blob.size());
+ // _metricsTransactionMemoryInternal.fetch_add(blob.size());
   LOG_DEVEL << "increased memory tracking by " << blob.size() << " bytes";
 }
 
@@ -366,10 +443,42 @@ Result RocksDBTrxBaseMethods::doCommit() {
   // because it is like this in recovery
   TRI_ASSERT(_state != nullptr);
   _state->applyBeforeCommitCallbacks();
+  std::vector<rocksdb::DB*> dbs = {_engine.db()->GetRootDB()};
+  std::map<rocksdb::MemoryUtil::UsageType, uint64_t> usage_by_type;
+
+  rocksdb::MemoryUtil::GetApproximateMemoryUsageByType(dbs, {nullptr},
+                                                       & usage_by_type);
+  for (int i = 0; i < rocksdb::MemoryUtil::kNumUsageTypes; ++i) {
+    LOG_DEVEL <<
+        usage_by_type[static_cast<rocksdb::MemoryUtil::UsageType>(i)];
+  }
+
+  std::string memProperty;
+  _engine.db()->GetProperty("rocksdb.cur-size-active-mem-table", &memProperty);
+  LOG_DEVEL << "BEFORE " << memProperty;
+  _engine.db()->GetProperty("rocksdb.estimate-live-data-size", &memProperty);
+  LOG_DEVEL << "BEFORE 2 " << memProperty;
+  _engine.db()->GetProperty("rocksdb.cur-size-all-mem-tables", &memProperty);
+  LOG_DEVEL << "BEFORE 3 " << memProperty;
   auto r = doCommitImpl();
   if (r.ok()) {
     TRI_ASSERT(_state != nullptr);
     _state->applyAfterCommitCallbacks();
+    _engine.db()->GetProperty("rocksdb.cur-size-active-mem-table", &memProperty);
+    LOG_DEVEL << "AFTER " << memProperty;
+    _engine.db()->GetProperty("rocksdb.estimate-live-data-size", &memProperty);
+    LOG_DEVEL << "AFTER 2 " << memProperty;
+    _engine.db()->GetProperty("rocksdb.cur-size-all-mem-tables", &memProperty);
+    LOG_DEVEL << "AFTER 3 " << memProperty;
+    usage_by_type.clear();
+    std::unordered_set<const rocksdb::Cache*> cache_set;
+
+    rocksdb::MemoryUtil::GetApproximateMemoryUsageByType(dbs, {nullptr},
+                                                         & usage_by_type);
+    for (int i = 0; i < rocksdb::MemoryUtil::kNumUsageTypes; ++i) {
+      LOG_DEVEL <<
+          usage_by_type[static_cast<rocksdb::MemoryUtil::UsageType>(i)];
+    }
   }
   return r;
 }

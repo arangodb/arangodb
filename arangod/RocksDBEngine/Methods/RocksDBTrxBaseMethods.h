@@ -123,11 +123,13 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   Result doCommit();
   Result doCommitImpl();
 
+  RocksDBEngine& _engine;
+
   IRocksDBTransactionCallback& _callback;
 
   rocksdb::TransactionDB* _db{nullptr};
 
-  metrics::Gauge<uint64_t>& _metricsTransactionMemoryInternal;
+  //metrics::Gauge<uint64_t>& _metricsTransactionMemoryInternal;
 
   /// @brief shared read options which can be used by operations
   ReadOptions _readOptions{};
