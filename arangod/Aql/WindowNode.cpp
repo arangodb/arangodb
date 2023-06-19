@@ -527,9 +527,7 @@ ExecutionNode::NodeType WindowNode::getType() const {
   return ExecutionNode::WINDOW;
 }
 
-size_t WindowNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t WindowNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 std::vector<Variable const*> WindowNode::getVariablesSetHere() const {
   std::vector<Variable const*> v;

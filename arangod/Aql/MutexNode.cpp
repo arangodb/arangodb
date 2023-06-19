@@ -50,7 +50,7 @@ MutexNode::MutexNode(ExecutionPlan* plan,
 
 ExecutionNode::NodeType MutexNode::getType() const { return MUTEX; }
 
-size_t MutexNode::getMemoryUsedBytes() const { return sizeof(decltype(*this)); }
+size_t MutexNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 ExecutionNode* MutexNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {

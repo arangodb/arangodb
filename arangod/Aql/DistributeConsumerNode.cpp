@@ -79,5 +79,5 @@ ExecutionNode* DistributeConsumerNode::clone(ExecutionPlan* plan,
 }
 
 size_t DistributeConsumerNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
+  return sizeof(*this);
 }

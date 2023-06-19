@@ -2214,9 +2214,7 @@ bool IResearchViewNode::isBuilding() const {
   return _view && _view->isBuilding();
 }
 
-size_t IResearchViewNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t IResearchViewNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 }  // namespace arangodb::iresearch
 

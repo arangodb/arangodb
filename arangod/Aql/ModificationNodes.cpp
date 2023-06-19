@@ -270,9 +270,7 @@ void InsertNode::replaceVariables(
   _inVariable = Variable::replace(_inVariable, replacements);
 }
 
-size_t InsertNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t InsertNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// REMOVE
@@ -366,9 +364,7 @@ void RemoveNode::replaceVariables(
   _inVariable = Variable::replace(_inVariable, replacements);
 }
 
-size_t RemoveNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t RemoveNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 /// @brief clone ExecutionNode recursively
 ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -402,9 +398,7 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-size_t UpdateNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t UpdateNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 ReplaceNode::ReplaceNode(ExecutionPlan* plan,
                          arangodb::velocypack::Slice const& base)
@@ -486,9 +480,7 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-size_t ReplaceNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t ReplaceNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// UPSERT
@@ -607,8 +599,6 @@ void UpsertNode::replaceVariables(
   }
 }
 
-size_t UpsertNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t UpsertNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 }  // namespace arangodb::aql

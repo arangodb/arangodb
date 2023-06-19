@@ -239,4 +239,4 @@ SortNode::SorterType SortNode::sorterType() const {
                                      : SorterType::Standard;
 }
 
-size_t SortNode::getMemoryUsedBytes() const { return sizeof(decltype(*this)); }
+size_t SortNode::getMemoryUsedBytes() const { return sizeof(*this); }

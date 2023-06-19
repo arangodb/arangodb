@@ -169,6 +169,4 @@ bool SubqueryEndNode::isModificationNode() const {
   return false;
 }
 
-size_t SubqueryEndNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t SubqueryEndNode::getMemoryUsedBytes() const { return sizeof(*this); }

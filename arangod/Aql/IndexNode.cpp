@@ -503,7 +503,7 @@ void IndexNode::getVariablesUsedHere(VarSet& vars) const {
 
 ExecutionNode::NodeType IndexNode::getType() const { return INDEX; }
 
-size_t IndexNode::getMemoryUsedBytes() const { return sizeof(decltype(*this)); }
+size_t IndexNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 Condition* IndexNode::condition() const { return _condition.get(); }
 

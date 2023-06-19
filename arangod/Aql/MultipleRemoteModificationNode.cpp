@@ -171,5 +171,5 @@ void MultipleRemoteModificationNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 size_t MultipleRemoteModificationNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
+  return sizeof(*this);
 }

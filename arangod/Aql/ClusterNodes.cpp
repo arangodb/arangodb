@@ -184,9 +184,7 @@ CostEstimate RemoteNode::estimateCost() const {
   return estimate;
 }
 
-size_t RemoteNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t RemoteNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 /// @brief construct a scatter node
 ScatterNode::ScatterNode(ExecutionPlan* plan,
@@ -215,9 +213,7 @@ void ScatterNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   writeClientsToVelocyPack(nodes);
 }
 
-size_t ScatterNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t ScatterNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
   auto const clientsSlice = base.get("clients");
@@ -388,9 +384,7 @@ void DistributeNode::addSatellite(aql::Collection* satellite) {
   _satellites.emplace_back(satellite);
 }
 
-size_t DistributeNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t DistributeNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 /*static*/ Collection const* GatherNode::findCollection(
     GatherNode const& root) noexcept {
@@ -609,9 +603,7 @@ void GatherNode::getVariablesUsedHere(VarSet& vars) const {
   }
 }
 
-size_t GatherNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
-}
+size_t GatherNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(
     ExecutionPlan* plan, ExecutionNodeId id, NodeType mode,
@@ -794,5 +786,5 @@ void SingleRemoteOperationNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 size_t SingleRemoteOperationNode::getMemoryUsedBytes() const {
-  return sizeof(decltype(*this));
+  return sizeof(*this);
 }
