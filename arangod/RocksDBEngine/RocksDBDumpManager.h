@@ -24,7 +24,6 @@
 #pragma once
 
 #include "RocksDBEngine/RocksDBDumpContext.h"
-#include "RocksDBEngine/RocksDBDumpContextGuard.h"
 
 #include <cstdint>
 #include <memory>
@@ -48,16 +47,16 @@ class RocksDBDumpManager {
   // the context can later be accessed by passing the context's id
   // into find(), together with the same database name and user name
   // that were used when creating the context.
-  RocksDBDumpContextGuard createContext(RocksDBDumpContextOptions opts,
-                                        std::string const& user,
-                                        std::string const& database);
+  std::shared_ptr<RocksDBDumpContext> createContext(
+      RocksDBDumpContextOptions opts, std::string const& user,
+      std::string const& database);
 
   // look up context by id. must provide the same database name and
   // user name as when creating the context. otherwise a "forbidden"
   // exception is thrown.
-  RocksDBDumpContextGuard find(std::string const& id,
-                               std::string const& database,
-                               std::string const& user);
+  std::shared_ptr<RocksDBDumpContext> find(std::string const& id,
+                                           std::string const& database,
+                                           std::string const& user);
 
   // remove a context by id. must provide the same database name and
   // user name as when creating the context. otherwise a "forbidden"
@@ -76,7 +75,18 @@ class RocksDBDumpManager {
   void beginShutdown();
 
  private:
+  using MapType =
+      std::unordered_map<std::string, std::shared_ptr<RocksDBDumpContext>>;
+
+  // generate a new context id
   std::string generateId();
+
+  // look up a context by id. will throw in case that the context cannot be
+  // found or the user is different.
+  // assumes that _lock is already acquired by the caller.
+  MapType::iterator lookupContext(std::string const& id,
+                                  std::string const& database,
+                                  std::string const& user);
 
   RocksDBEngine& _engine;
 
@@ -86,8 +96,7 @@ class RocksDBDumpManager {
   // this maps stores contexts by their id. contexts are handed out from the
   // manager as shared_ptrs. if remove is called on a context, it will be
   // destroyed once the last shared_ptr to it goes out of scope.
-  std::unordered_map<std::string, std::shared_ptr<RocksDBDumpContext>>
-      _contexts;
+  MapType _contexts;
 };
 
 }  // namespace arangodb

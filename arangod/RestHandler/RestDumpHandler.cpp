@@ -277,10 +277,13 @@ void RestDumpHandler::handleCommandDumpNext() {
   auto& engine =
       server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   auto* manager = engine.dumpManager();
-  auto guard = manager->find(id, database, user);
+  // find() will throw in case the context cannot be found or the user does not
+  // match.
+  auto context = manager->find(id, database, user);
+  context->extendLifetime();
 
-  auto batch = guard->next(*batchId, lastBatch);
-  auto counts = guard->getBlockCounts();
+  auto batch = context->next(*batchId, lastBatch);
+  auto counts = context->getBlockCounts();
 
   if (batch == nullptr) {
     // all batches have been received
@@ -295,6 +298,10 @@ void RestDumpHandler::handleCommandDumpNext() {
   _response->addRawPayload(batch->content);
   _response->setGenerateBody(true);
   _response->setResponseCode(rest::ResponseCode::OK);
+
+  // prolong lifetime of context, so that it is still there for follow-up
+  // requests.
+  context->extendLifetime();
 }
 
 void RestDumpHandler::handleCommandDumpFinished() {

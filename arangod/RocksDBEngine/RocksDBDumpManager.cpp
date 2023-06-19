@@ -41,7 +41,7 @@ RocksDBDumpManager::RocksDBDumpManager(RocksDBEngine& engine)
 
 RocksDBDumpManager::~RocksDBDumpManager() { _contexts.clear(); }
 
-RocksDBDumpContextGuard RocksDBDumpManager::createContext(
+std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
     RocksDBDumpContextOptions opts, std::string const& user,
     std::string const& database) {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
@@ -70,35 +70,20 @@ RocksDBDumpContextGuard RocksDBDumpManager::createContext(
 
   TRI_ASSERT(_contexts.at(context->id()) != nullptr);
 
-  return RocksDBDumpContextGuard(std::move(context));
+  return context;
 }
 
-RocksDBDumpContextGuard RocksDBDumpManager::find(std::string const& id,
-                                                 std::string const& database,
-                                                 std::string const& user) {
+std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::find(
+    std::string const& id, std::string const& database,
+    std::string const& user) {
   std::lock_guard mutexLocker{_lock};
 
-  auto it = _contexts.find(id);
-  if (it == _contexts.end()) {
-    // "cursor not found" is not a great return code, but it is much more
-    // specific than a generic error. we can also think of a dump context
-    // as a collection of cursors for shard dumping.
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
-                                   "requested dump context not found");
-  }
+  // this will throw in case the context cannot be found or belongs to a
+  // different user
+  auto it = lookupContext(id, database, user);
+  TRI_ASSERT(it != _contexts.end());
 
-  auto context = (*it).second;
-  TRI_ASSERT(context != nullptr);
-  if (!context->canAccess(database, user)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "insufficient permissions");
-  }
-
-  // whenever we access a context, we proactively extend its lifetime,
-  // so it does not expire quickly after
-  context->extendLifetime();
-
-  return RocksDBDumpContextGuard(std::move(context));
+  return (*it).second;
 }
 
 void RocksDBDumpManager::remove(std::string const& id,
@@ -106,20 +91,10 @@ void RocksDBDumpManager::remove(std::string const& id,
                                 std::string const& user) {
   std::lock_guard mutexLocker{_lock};
 
-  auto it = _contexts.find(id);
-  if (it == _contexts.end()) {
-    // "cursor not found" is not a great return code, but it is much more
-    // specific than a generic error. we can also think of a dump context
-    // as a collection of cursors for shard dumping.
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
-                                   "requested dump context not found");
-  }
-
-  auto& context = (*it).second;
-  if (!context->canAccess(database, user)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "insufficient permissions");
-  }
+  // this will throw in case the context cannot be found or belongs to a
+  // different user
+  auto it = lookupContext(id, database, user);
+  TRI_ASSERT(it != _contexts.end());
 
   // if we remove the context from the map, then the context will be
   // destroyed if it is not in use by any other thread. if it is in
@@ -169,4 +144,25 @@ std::string RocksDBDumpManager::generateId() {
   // down the server, and handing out the same HLC value for a different
   // dump after the restart.
   return absl::StrCat("dump-", TRI_HybridLogicalClock());
+}
+
+RocksDBDumpManager::MapType::iterator RocksDBDumpManager::lookupContext(
+    std::string const& id, std::string const& database,
+    std::string const& user) {
+  auto it = _contexts.find(id);
+  if (it == _contexts.end()) {
+    // "cursor not found" is not a great return code, but it is much more
+    // specific than a generic error. we can also think of a dump context
+    // as a collection of cursors for shard dumping.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
+                                   "requested dump context not found");
+  }
+
+  auto& context = (*it).second;
+  TRI_ASSERT(context != nullptr);
+  if (!context->canAccess(database, user)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "insufficient permissions");
+  }
+  return it;
 }
