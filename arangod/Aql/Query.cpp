@@ -1469,10 +1469,6 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
   ensureExecutionTime();
 
-  TRI_IF_FAILURE("BlockSchedulerMediumQueueBeforeCleanupAQL") {
-    TRI_AddFailurePointDebugging("BlockSchedulerMediumQueue");
-  }
-
   if (!_resultCode.has_value()) {  // TODO possible data race here
     // result code not yet set.
     _resultCode = errorCode;
