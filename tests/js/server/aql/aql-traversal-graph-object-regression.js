@@ -28,20 +28,17 @@
 /// @author Copyright 2020, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
-var db = require("@arangodb").db, indexId;
-
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
 const vertexCollectionName = "person";
 const edgeCollectionName = "link";
 
-var cleanup = function() {
+const cleanup = function() {
   db._drop(vertexCollectionName);
   db._drop(edgeCollectionName);
 };
 
-var createBaseGraph = function () {
+const createBaseGraph = function () {
   const vc = db._create(vertexCollectionName);
   const ec = db._createEdgeCollection(edgeCollectionName);
 
@@ -60,26 +57,13 @@ var createBaseGraph = function () {
            {"_key":"287057444","_from":"person/287056982","_to":"person/287056990","field":"home"}]);
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function pathTraversalObjectRegressionSuite() {
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUpAll : function () {
       cleanup();
       createBaseGraph();
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll : function () {
       cleanup();
@@ -149,17 +133,12 @@ function pathTraversalObjectRegressionSuite() {
     // This tests a regression occurred in ArangoDB 3.11 reported by a
     // user in the GitHub Issue #19175.
     testTraversalConditionFilterNormalizationRegression: function () {
-      // The rule `-optimize-traversals` is the villain. At least at this point
-      // we're running into issues.
       const query = `
         LET filter0 = (FOR m0 IN [] FILTER "" IN m0.kinds RETURN m0)
-        LET m1 = (
-          FOR v in filter0 FOR z IN 0..1 OUTBOUND v ${edgeCollectionName}
+        FOR v IN filter0 FOR z IN 0..1 OUTBOUND v ${edgeCollectionName}
           COLLECT x = v WITH COUNT INTO counter1
           FILTER counter1 == 0
           RETURN x
-        )
-        FOR result in m1 RETURN UNSET(result, ["flat"])
       `;
       let actual = db._query(query);
       assertEqual(actual.toArray(), []);
@@ -167,11 +146,6 @@ function pathTraversalObjectRegressionSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(pathTraversalObjectRegressionSuite);
 
 return jsunity.done();
-
