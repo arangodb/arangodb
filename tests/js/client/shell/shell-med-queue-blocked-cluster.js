@@ -60,7 +60,7 @@ function medQueueBlockedSuite() {
     },
     
     testRunAql: function() {
-      let coll = db._create(cn);
+      let coll = db._create(cn, {numberOfShards:3});
       let l = [];
       for (let i = 0; i < 100; ++i) {
         l.push({"Hello":i});
