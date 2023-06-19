@@ -59,14 +59,14 @@ function medQueueBlockedSuite() {
       // overwhelm any server without the fix. Note that we post the query
       // with x-arango-frontend: true, such that we can start enough queries
       // concurrently to fill the medium queue on the coordinator.
-      const f = require("@arangodb/aql/functions")
+      const f = require("@arangodb/aql/functions");
       try {
         f.register("USER::FUNC", function() {
           const db = require("@arangodb").db;
           require("internal").wait(1);
           db._query("FOR d IN @@c RETURN d", {"@c": "UnitTestsMedQueueBlocked"});
           return 12;
-        })
+        });
         let start = new Date();
         let jobs = []; 
         for (let i = 0; i < 100; ++i) {
