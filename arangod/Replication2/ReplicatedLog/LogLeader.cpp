@@ -1212,30 +1212,6 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
       .thenValue(std::move(returnAppendEntriesResult));
 }
 
-void replicated_log::LogLeader::establishLeadership(
-    std::shared_ptr<agency::ParticipantsConfig const> config) {
-  LOG_CTX("f3aa8", TRACE, _logContext) << "trying to establish leadership";
-  // Immediately append an empty log entry in the new term. This is
-  // necessary because we must not commit entries of older terms, but do
-  // not want to wait with committing until the next insert.
-
-  // Also make sure that this entry is written with waitForSync = true
-  // to ensure that entries of the previous term are synced as well.
-  auto meta =
-      LogMetaPayload::FirstEntryOfTerm{.leader = _id, .participants = *config};
-  _guardedLeaderData.doUnderLock([&](auto& data) {
-    auto const insertTp = InMemoryLogEntry::clock::now();
-    auto const logIndex = _inMemoryLogManager->appendLogEntry(
-        LogMetaPayload{std::move(meta)}, _currentTerm, insertTp, true);
-    data.activeParticipantsConfig = std::move(config);
-    data.activeParticipantsConfigLogIndex = logIndex;
-
-    TRI_ASSERT(logIndex == _firstIndexOfCurrentTerm)
-        << "got logIndex = " << logIndex << " but firstIndexOfCurrentTerm is "
-        << _firstIndexOfCurrentTerm;
-  });
-}
-
 auto replicated_log::LogLeader::waitForLeadership()
     -> replicated_log::ILogParticipant::WaitForFuture {
   return waitFor(_firstIndexOfCurrentTerm);
