@@ -53,7 +53,12 @@ constexpr double defaultTtl = 600.0;
 
 RestDumpHandler::RestDumpHandler(ArangodServer& server, GeneralRequest* request,
                                  GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response),
+      _manager(server.getFeature<EngineSelectorFeature>()
+                   .engine<RocksDBEngine>()
+                   .dumpManager()) {
+  TRI_ASSERT(_manager != nullptr);
+}
 
 // main function that dispatches the different routes and commands
 RestStatus RestDumpHandler::execute() {
@@ -246,10 +251,7 @@ void RestDumpHandler::handleCommandDumpStart() {
     }
   }
 
-  auto& engine =
-      server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  auto* manager = engine.dumpManager();
-  auto guard = manager->createContext(std::move(opts), user, database);
+  auto guard = _manager->createContext(std::move(opts), user, database);
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC(StaticStrings::DumpId, guard->id());
@@ -274,12 +276,9 @@ void RestDumpHandler::handleCommandDumpNext() {
 
   auto lastBatch = _request->parsedValue<uint64_t>("lastBatch");
 
-  auto& engine =
-      server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  auto* manager = engine.dumpManager();
   // find() will throw in case the context cannot be found or the user does not
   // match.
-  auto context = manager->find(id, database, user);
+  auto context = _manager->find(id, database, user);
   context->extendLifetime();
 
   auto batch = context->next(*batchId, lastBatch);
@@ -315,11 +314,8 @@ void RestDumpHandler::handleCommandDumpFinished() {
   auto database = _request->databaseName();
   auto user = getAuthorizedUser();
 
-  auto& engine =
-      server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  auto* manager = engine.dumpManager();
   // will throw if dump context is not found or cannot be accessed
-  manager->remove(id, database, user);
+  _manager->remove(id, database, user);
 
   generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
 }
