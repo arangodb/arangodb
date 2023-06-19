@@ -53,5 +53,7 @@ class RestDumpHandler : public RestVocbaseBaseHandler {
   void handleCommandDumpFinished();
 
   std::string getAuthorizedUser() const;
+
+  Result validateRequest();
 };
 }  // namespace arangodb

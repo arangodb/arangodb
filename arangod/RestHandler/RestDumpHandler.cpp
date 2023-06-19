@@ -63,34 +63,41 @@ RestStatus RestDumpHandler::execute() {
     return RestStatus::DONE;
   }
 
+  Result res = validateRequest();
+  if (res.fail()) {
+    generateError(std::move(res));
+    return RestStatus::DONE;
+  }
+
   auto type = _request->requestType();
+  // already validated by validateRequest()
+  TRI_ASSERT(type == rest::RequestType::DELETE_REQ ||
+             type == rest::RequestType::POST);
+
   auto const& suffixes = _request->suffixes();
   size_t const len = suffixes.size();
 
   if (type == rest::RequestType::DELETE_REQ) {
-    if (len == 1) {
-      // end a dump
-      handleCommandDumpFinished();
-    } else {
-      generateError(
-          Result(TRI_ERROR_BAD_PARAMETER, "expecting DELETE /_api/dump/<id>"));
-    }
+    // already validated by validateRequest()
+    TRI_ASSERT(len == 1);
+    // end a dump
+    handleCommandDumpFinished();
   } else if (type == rest::RequestType::POST) {
-    if (len == 1 && suffixes[0] == "start") {
+    if (len == 1) {
+      TRI_ASSERT(suffixes[0] == "start");
       // start a dump
       handleCommandDumpStart();
-    } else if (len == 2 && suffixes[0] == "next") {
+    } else if (len == 2) {
+      TRI_ASSERT(suffixes[0] == "next");
       // fetch next data from a dump
       handleCommandDumpNext();
     } else {
-      generateError(
-          Result(TRI_ERROR_BAD_PARAMETER,
-                 "expecting POST /_api/dump/start or /_api/dump/next/<id>"));
+      // unreachable. already validated by validateRequest()
+      ADB_UNREACHABLE;
     }
   } else {
-    // invalid HTTP method
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    // unreachable. already validated by validateRequest()
+    ADB_UNREACHABLE;
   }
 
   return RestStatus::DONE;
@@ -114,57 +121,9 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
     return base;
   }
 
-  auto type = _request->requestType();
-  auto const& suffixes = _request->suffixes();
-  size_t const len = suffixes.size();
-  if (type == rest::RequestType::DELETE_REQ) {
-    if (len != 1) {
-      return ResultT<std::pair<std::string, bool>>::error(
-          TRI_ERROR_BAD_PARAMETER, "expecting DELETE /_api/dump/<id>");
-    }
-  } else if (type == rest::RequestType::POST) {
-    if ((len == 1 && suffixes[0] != "start") ||
-        (len == 2 && suffixes[0] != "next") || len < 1 || len > 2) {
-      return ResultT<std::pair<std::string, bool>>::error(
-          TRI_ERROR_BAD_PARAMETER,
-          "expecting POST /_api/dump/start or /_api/dump/next/<id>");
-    }
-    if (suffixes[0] == "start") {
-      bool parseSuccess = false;
-      VPackSlice body = this->parseVPackBody(parseSuccess);
-      if (!parseSuccess) {  // error message generated in parseVPackBody
-        return {TRI_ERROR_BAD_PARAMETER};
-      }
-
-      ExecContext& exec =
-          *static_cast<ExecContext*>(_request->requestContext());
-      if (auto s = body.get("shards"); !s.isArray()) {
-        return Result(
-            TRI_ERROR_BAD_PARAMETER,
-            "invalid 'shards' value in request - expected array of strings");
-      } else {
-        for (auto it : VPackArrayIterator(s)) {
-          if (!it.isString()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                           "invalid 'shards' value in request "
-                                           "- expected array of strings");
-          }
-
-          auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-
-          // get collection name
-          auto collectionName = ci.getCollectionNameForShard(it.stringView());
-          if (!exec.canUseCollection(_request->databaseName(), collectionName,
-                                     auth::Level::RO)) {
-            return {TRI_ERROR_FORBIDDEN};
-          }
-        }
-      }
-    }
-  } else {
-    // invalid HTTP method
-    return ResultT<std::pair<std::string, bool>>::error(
-        TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  Result res = validateRequest();
+  if (res.fail()) {
+    return ResultT<std::pair<std::string, bool>>::error(std::move(res));
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -332,4 +291,63 @@ std::string RestDumpHandler::getAuthorizedUser() const {
                                    "missing authorization header");
   }
   return user;
+}
+
+Result RestDumpHandler::validateRequest() {
+  auto type = _request->requestType();
+  auto const& suffixes = _request->suffixes();
+  size_t const len = suffixes.size();
+
+  if (type == rest::RequestType::DELETE_REQ) {
+    if (len != 1) {
+      return {TRI_ERROR_BAD_PARAMETER, "expecting DELETE /_api/dump/<id>"};
+    }
+    return {};
+  }
+
+  if (type == rest::RequestType::POST) {
+    if ((len == 1 && suffixes[0] != "start") ||
+        (len == 2 && suffixes[0] != "next") || len < 1 || len > 2) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "expecting POST /_api/dump/start or /_api/dump/next/<id>"};
+    }
+
+    if (suffixes[0] == "start") {
+      bool parseSuccess = false;
+      VPackSlice body = this->parseVPackBody(parseSuccess);
+      if (!parseSuccess) {  // error message generated in parseVPackBody
+        return {TRI_ERROR_BAD_PARAMETER};
+      }
+
+      if (auto s = body.get("shards"); !s.isArray()) {
+        return {
+            TRI_ERROR_BAD_PARAMETER,
+            "invalid 'shards' value in request - expected array of strings"};
+      } else {
+        for (auto it : VPackArrayIterator(s)) {
+          if (!it.isString()) {
+            return {TRI_ERROR_BAD_PARAMETER,
+                    "invalid 'shards' value in request "
+                    "- expected array of strings"};
+          }
+
+          auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+          // get collection name
+          auto collectionName = ci.getCollectionNameForShard(it.stringView());
+          ExecContext& exec =
+              *static_cast<ExecContext*>(_request->requestContext());
+          if (!exec.canUseCollection(_request->databaseName(), collectionName,
+                                     auth::Level::RO)) {
+            return {TRI_ERROR_FORBIDDEN};
+          }
+        }
+      }
+    }
+
+    return {};
+  }
+
+  // invalid HTTP method
+  return {TRI_ERROR_HTTP_METHOD_NOT_ALLOWED};
 }
