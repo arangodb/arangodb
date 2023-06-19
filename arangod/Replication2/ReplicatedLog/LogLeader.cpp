@@ -449,13 +449,12 @@ auto replicated_log::LogLeader::construct(
 
       // Also make sure that this entry is written with waitForSync = true
       // to ensure that entries of the previous term are synced as well.
-      auto meta = LogMetaPayload::FirstEntryOfTerm{
-          .leader = leader->_id, .participants = *participantsConfig};
+      auto meta = LogMetaPayload::withFirstEntryOfTerm(leader->_id,
+                                                       *participantsConfig);
 
       auto const insertTp = InMemoryLogEntry::clock::now();
       auto const logIndex = leader->_inMemoryLogManager->appendLogEntry(
-          LogMetaPayload{std::move(meta)}, leader->_currentTerm, insertTp,
-          true);
+          std::move(meta), leader->_currentTerm, insertTp, true);
       // It's not strictly necessary to set this, leaving it to zero would also
       // work; because either way the first commit will commit this
       // configuration.
@@ -712,7 +711,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
 
   if (activeParticipantsConfig != committedParticipantsConfig) {
     // check whether the active config has been committed
-    if (activeParticipantsConfigLogIndex >= newCommitIndex) {
+    if (activeParticipantsConfigLogIndex <= newCommitIndex) {
       committedParticipantsConfig = activeParticipantsConfig;
       LOG_CTX("536f5", DEBUG, _self._logContext)
           << "configuration committed, generation "
