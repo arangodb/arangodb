@@ -1,6 +1,17 @@
 devel
 -----
 
+* FE-15: Removed green checkmark next to the version number and made
+  keyboard shortcuts button easier to discover.
+
+* Whenever there is a query request timeout in AQL (e.g., a server died)
+  which causes the query to fail, the DBServers will now all directly kill
+  their potentially ongoing parts of the query and not wait for garbage collection.
+
+* Updated arangosync to v2.18.1.
+
+* FE-211: Allow admins to edit gravatar email.
+
 * Use libunwind in jemalloc profiling to make it available with libmusl
   and static binaries.
 
