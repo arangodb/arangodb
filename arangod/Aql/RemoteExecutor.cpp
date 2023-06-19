@@ -385,6 +385,11 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 
   _requestInFlight = true;
   auto ticket = generateRequestTicket();
+  TRI_IF_FAILURE("RemoteExecutor::impatienceTimeout") {
+    // Vastly lower the request timeout. This should guarantee
+    // a network timeout triggered and not continue with the query.
+    req->timeout(std::chrono::seconds(2));
+  }
   conn->sendRequest(
       std::move(req),
       [this, ticket, spec, sqs = _engine->sharedState()](
