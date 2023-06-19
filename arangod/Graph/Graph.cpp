@@ -160,6 +160,9 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
       _vertexColls(),
       _edgeColls(),
       _numberOfShards(1),
+      /* In OneShardDatabases this value is not used internally. It mostly has
+       * informative value on how your graph is sharded. The OneShard feature
+       * will overwrite this setting */
       _replicationFactor(vocbase.getDatabaseConfiguration().isOneShardDB
                              ? (std::max)(vocbase.replicationFactor(),
                                           vocbase.server()
