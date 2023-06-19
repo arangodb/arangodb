@@ -49,25 +49,17 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   bool canBeDropped() const final { return IResearchDataStore::canBeDropped(); }
 
-  Result drop() final /*noexcept*/ { return IResearchLink::drop(); }
+  Result drop() /*noexcept*/ final { return IResearchLink::drop(); }
 
   bool hasSelectivityEstimate() const final {
     return IResearchDataStore::hasSelectivityEstimate();
   }
 
-  Result insertInRecovery(transaction::Methods& trx,
-                          LocalDocumentId const& documentId, VPackSlice doc,
-                          rocksdb::SequenceNumber tick) {
-    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
-                                      IResearchLinkMeta>(trx, documentId, doc,
-                                                         meta(), &tick);
-  }
-
-  Result removeInRecovery(transaction::Methods& trx,
-                          LocalDocumentId const& documentId,
-                          rocksdb::SequenceNumber tick) {
-    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
-                                      &tick);
+  void recoveryInsert(uint64_t tick, LocalDocumentId documentId,
+                      VPackSlice doc) {
+    IResearchDataStore::recoveryInsert<FieldIterator<FieldMeta>,
+                                       IResearchLinkMeta>(tick, documentId, doc,
+                                                          meta());
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
@@ -76,14 +68,13 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
                 bool /*performChecks*/) final {
     return IResearchDataStore::insert<FieldIterator<FieldMeta>,
                                       IResearchLinkMeta>(trx, documentId, doc,
-                                                         meta(), nullptr);
+                                                         meta());
   }
 
-  Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, VPackSlice,
+  Result remove(transaction::Methods& trx, RocksDBMethods* /*methods*/,
+                LocalDocumentId const& documentId, VPackSlice /*doc*/,
                 OperationOptions const& /*options*/) final {
-    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
-                                      nullptr);
+    return IResearchDataStore::remove(trx, documentId);
   }
 
   bool isSorted() const final { return IResearchLink::isSorted(); }

@@ -246,8 +246,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
 #ifdef ARANGODB_ROCKSDB8
       _blockCacheEstimatedEntryCharge(0),
 #endif
-      _minBlobSize(0),
-      _blobFileSize(1ULL << 28),
+      _minBlobSize(256),
+      _blobFileSize(1ULL << 30),
 #ifdef ARANGODB_ROCKSDB8
       _blobFileStartingLevel(0),
 #endif
@@ -311,7 +311,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _useFileLogging(false),
       _limitOpenFilesAtStartup(false),
       _allowFAllocate(true),
-      _enableBlobGarbageCollection(false),
+      _enableBlobGarbageCollection(true),
       _exclusiveWrites(false),
       _minWriteBufferNumberToMergeTouched(false),
       _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0} {
@@ -1281,7 +1281,7 @@ version.)");
 #ifdef ARANGODB_ROCKSDB8
   options
       ->addOption("--rocksdb.prepopulate-blob-cache",
-                  "Prepopulate the blob cache on flushes.",
+                  "Pre-populate the blob cache on flushes.",
                   new BooleanParameter(&_prepopulateBlobCache),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Experimental,
@@ -1501,6 +1501,12 @@ void RocksDBOptionFeature::validateOptions(
         << "disabling jemalloc allocator for RocksDB - jemalloc not compiled";
   }
 #endif
+
+  if (!_enableBlobFiles) {
+    // turn off blob garbage collection to avoid potential side effects
+    // for performance
+    _enableBlobGarbageCollection = false;
+  }
 }
 
 void RocksDBOptionFeature::prepare() {

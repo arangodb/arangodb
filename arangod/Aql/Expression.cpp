@@ -353,12 +353,19 @@ void Expression::initAccessor() {
     member = member->getMemberUnchecked(0);
   }
 
-  TRI_ASSERT(member->type == NODE_TYPE_REFERENCE);
-  auto v = static_cast<Variable const*>(member->getData());
+  if (member->type != NODE_TYPE_REFERENCE) {
+    // the accessor accesses something else than a variable/reference.
+    // this is something we are not prepared for. so fall back to a
+    // simple expression instead
+    _type = SIMPLE;
+  } else {
+    TRI_ASSERT(member->type == NODE_TYPE_REFERENCE);
+    auto v = static_cast<Variable const*>(member->getData());
 
-  // specialize the simple expression into an attribute accessor
-  _accessor = AttributeAccessor::create(std::move(parts), v);
-  TRI_ASSERT(_accessor != nullptr);
+    // specialize the simple expression into an attribute accessor
+    _accessor = AttributeAccessor::create(std::move(parts), v);
+    TRI_ASSERT(_accessor != nullptr);
+  }
 }
 
 /// @brief prepare the expression for execution, without an
@@ -1528,22 +1535,30 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
       quantifierAndFilterNode->type == NODE_TYPE_NOP) {
     filterNode = nullptr;
   } else {
-    TRI_ASSERT(quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER);
-    TRI_ASSERT(quantifierAndFilterNode->numMembers() == 2);
+    if (quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER) {
+      // 3.10 format: we get an ARRAY_FILTER node, which contains
+      // both a quantifier and the filter condition
+      TRI_ASSERT(quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER);
+      TRI_ASSERT(quantifierAndFilterNode->numMembers() == 2);
 
-    quantifierNode = quantifierAndFilterNode->getMember(0);
-    TRI_ASSERT(quantifierNode != nullptr);
+      quantifierNode = quantifierAndFilterNode->getMember(0);
+      TRI_ASSERT(quantifierNode != nullptr);
 
-    filterNode = quantifierAndFilterNode->getMember(1);
+      filterNode = quantifierAndFilterNode->getMember(1);
 
-    if (!isBoolean && filterNode->isConstant()) {
-      if (filterNode->isTrue()) {
-        // filter expression is always true
-        filterNode = nullptr;
-      } else {
-        // filter expression is always false
-        return AqlValue(AqlValueHintEmptyArray());
+      if (!isBoolean && filterNode->isConstant()) {
+        if (filterNode->isTrue()) {
+          // filter expression is always true
+          filterNode = nullptr;
+        } else {
+          // filter expression is always false
+          return AqlValue(AqlValueHintEmptyArray());
+        }
       }
+    } else {
+      // pre-3.10 format: we get the filter condition as the only value
+      TRI_ASSERT(quantifierNode == nullptr);
+      filterNode = quantifierAndFilterNode;
     }
   }
 

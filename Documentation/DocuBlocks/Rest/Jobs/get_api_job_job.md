@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_job_job
-@brief Returns the ids of job results with a specific status or the status of a specific job
 
-@RESTHEADER{GET /_api/job/{job-id}, List async jobs by status or get status of specific job, getJob}
+@RESTHEADER{GET /_api/job/{job-id}, List async jobs by status or get the status of specific job, getJob}
 
 @RESTDESCRIPTION
 This endpoint returns either of the following, depending on the specified value

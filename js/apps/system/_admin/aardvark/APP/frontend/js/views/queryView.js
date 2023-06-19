@@ -1303,7 +1303,10 @@
 
       var newObject = {};
       _.each(foundBindParams, function (word) {
-        if (self.bindParamTableObj[word]) {
+        if (
+          self.bindParamTableObj[word] !== undefined &&
+          self.bindParamTableObj[word] !== null
+        ) {
           newObject[word] = self.bindParamTableObj[word];
         } else if (self.bindParamTableObj[word] === null) {
           newObject[word] = null;
@@ -2211,12 +2214,7 @@
                 }
               } else if (geometry.type === 'Polygon' || geometry.type === 'LineString' || geometry.type === 'MultiLineString' || geometry.type === 'MultiPolygon') {
                 try {
-                  geojson = new L.GeoJSON(geometry, {
-                    style: geoStyle,
-                    onEachFeature: function (feature, layer) {
-                      layer.bindPopup('<pre style="width: 250px;">' + JSON.stringify(feature, null, 2) + '</pre>');
-                    }
-                  }).addTo(self.maps[counter]);
+                  geojson = new L.Geodesic().fromGeoJson(geometry).addTo(self.maps[counter]);
                   markers.push(geojson);
                 } catch (ignore) {
                   invalidGeoJSON++;

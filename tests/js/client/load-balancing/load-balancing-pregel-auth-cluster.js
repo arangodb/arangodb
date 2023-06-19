@@ -143,22 +143,7 @@ function PregelAuthSuite () {
       const pid = postResponse.body;
       assertTrue(pid > 1);
 
-      // check that pregel status of run can be retrieved
-      // need to wait for short time until pregel run was created
-      const sleepIntervalSeconds = 0.2;
-      const maxWaitSeconds = 10;
-      let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
-      var statusResponse;
-      do {
-        require("internal").sleep(sleepIntervalSeconds);
-        statusResponse = sendRequest(users[0], 'GET', `${baseUrl}/${pid}`, {}, false);
-        assertFalse(statusResponse === undefined || statusResponse === {});
-        if (wakeupsLeft-- === 0) {
-          assertTrue(false, "Cannot retrieve status of pregel run, got response code " + statusResponse.status);
-          return;
-        }
-      } while (statusResponse.status !== 200);
-
+      // directly cancel pregel run (before it finishes)
       const deleteResponse = sendRequest(users[0], 'DELETE',  `${baseUrl}/${pid}`, {}, {}, false);
       assertFalse(deleteResponse === undefined || deleteResponse === {});
       assertFalse(deleteResponse.body.error);
@@ -166,7 +151,10 @@ function PregelAuthSuite () {
 
       // check that pregel status state is canceled
       // need to wait for short time until pregel run was canceled
-      wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
+      var statusResponse;
+      const sleepIntervalSeconds = 0.2;
+      const maxWaitSeconds = 10;
+      let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
       do {
         require("internal").sleep(sleepIntervalSeconds);
         statusResponse = sendRequest(users[0], 'GET', `${baseUrl}/${pid}`, {}, false);
@@ -176,6 +164,8 @@ function PregelAuthSuite () {
           return;
         }
       } while (!pregelTestHelpers.runCanceled(statusResponse.body));
+
+
     },
 
     testPregelForwardingDifferentUser: function() {
@@ -195,7 +185,13 @@ function PregelAuthSuite () {
       const pid = postResponse.body;
       assertTrue(pid > 1);
 
-      // need to wait for short time until pregel run was created (check that with runCreator user)
+      // pregel run cannot be deleted by different user
+      const deleteResponseDifferentUser = sendRequest(differentUser, 'DELETE', `${baseUrl}/${pid}`, {}, {}, false);
+      assertFalse(deleteResponseDifferentUser === undefined || deleteResponseDifferentUser === {});
+      assertTrue(deleteResponseDifferentUser.body.error);
+      assertEqual(deleteResponseDifferentUser.status, 404);
+
+      // need to wait for short time until pregel run was definitly created (check that with runCreator user)
       const sleepIntervalSeconds = 0.2;
       const maxWaitSeconds = 10;
       let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
@@ -216,17 +212,6 @@ function PregelAuthSuite () {
       assertTrue(statusResponseDifferentUser.body.error);
       assertEqual(statusResponseDifferentUser.status, 404);
 
-      // pregel run cannot be deleted by different user
-      const deleteResponseDifferentUser = sendRequest(differentUser, 'DELETE', `${baseUrl}/${pid}`, {}, {}, false);
-      assertFalse(deleteResponseDifferentUser === undefined || deleteResponseDifferentUser === {});
-      assertTrue(deleteResponseDifferentUser.body.error);
-      assertEqual(deleteResponseDifferentUser.status, 404);
-
-      // but it can be deleted by the same user that created the run
-      const deleteResponse = sendRequest(runCreator, 'DELETE', `${baseUrl}/${pid}`, {}, {}, false);
-      assertFalse(deleteResponse === undefined || deleteResponse === {});
-      assertFalse(deleteResponse.body.error);
-      assertEqual(deleteResponse.status, 200);
     },
 
   };

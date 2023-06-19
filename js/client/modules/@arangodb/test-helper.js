@@ -215,7 +215,7 @@ function getMetricName(text, name) {
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.*{.*}\s*([0-9.]+)$/, "$1"));
+  return Number(matches[0].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
 }
 
 exports.getMetric = function (endpoint, name) {
@@ -245,7 +245,6 @@ const runShell = function(args, prefix) {
     'server.database': arango.getDatabaseName(),
     'server.username': arango.connectedUser(),
     'server.password': '',
-    'server.request-timeout': '10',
     'log.foreground-tty': 'false',
     'log.output': 'file://' + prefix + '.log'
   };
@@ -268,7 +267,8 @@ const buildCode = function(key, command, cn, duration) {
   let file = fs.getTempFile() + "-" + key;
   fs.write(file, `
 (function() {
-require('internal').SetGlobalExecutionDeadlineTo((${duration} + 10) * 1000);
+// For chaos tests additional 10 secs might be not enough
+require('internal').SetGlobalExecutionDeadlineTo((${duration} + 60) * 1000);
 let tries = 0;
 while (true) {
   if (++tries % 3 === 0) {

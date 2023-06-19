@@ -44,6 +44,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/ssl-helper.h"
 #include "Utils/ClientManager.h"
+#include "Utilities/NameValidator.h"
 
 #include <fuerte/jwt.h>
 
@@ -305,6 +306,12 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         });
   }
 
+  if (auto res = DatabaseNameValidator::validateName(true, true, _databaseName);
+      res.fail()) {
+    LOG_TOPIC("122a6", FATAL, arangodb::Logger::FIXME) << res.errorMessage();
+    FATAL_ERROR_EXIT();
+  }
+
   SimpleHttpClientParams::setDefaultMaxPacketSize(_maxPacketSize);
 }
 
@@ -353,7 +360,7 @@ void ClientFeature::loadJwtSecretFile() {
 }
 
 void ClientFeature::prepare() {
-  setDatabaseName(normalizeUtf8ToNFC(_databaseName));
+  setDatabaseName(_databaseName);
 
   if (!isEnabled()) {
     return;
@@ -371,17 +378,17 @@ void ClientFeature::prepare() {
 }
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
-    size_t threadNumber) const {
+    size_t threadNumber, bool suppressError) const {
   std::string endpoint;
   {
     READ_LOCKER(locker, _settingsLock);
     endpoint = _endpoints[threadNumber % _endpoints.size()];
   }
-  return createHttpClient(endpoint);
+  return createHttpClient(endpoint, suppressError);
 }
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
-    std::string const& definition) const {
+    std::string const& definition, bool suppressError) const {
   double requestTimeout;
   bool warn;
   {
@@ -389,16 +396,17 @@ std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     requestTimeout = _requestTimeout;
     warn = _warn;
   }
-  return createHttpClient(definition,
-                          SimpleHttpClientParams(requestTimeout, warn));
+  return createHttpClient(
+      definition, SimpleHttpClientParams(requestTimeout, warn), suppressError);
 }
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
-    std::string const& definition, SimpleHttpClientParams const& params) const {
+    std::string const& definition, SimpleHttpClientParams const& params,
+    bool suppressError) const {
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint == nullptr) {
-    if (definition != "none") {
+    if (definition != "none" && !suppressError) {
       LOG_TOPIC("2fac8", ERR, arangodb::Logger::FIXME)
           << "invalid value for --server.endpoint ('" << definition << "')";
     }
@@ -464,8 +472,13 @@ std::string ClientFeature::databaseName() const {
 }
 
 void ClientFeature::setDatabaseName(std::string_view databaseName) {
+  if (auto res = DatabaseNameValidator::validateName(true, true, databaseName);
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
   WRITE_LOCKER(locker, _settingsLock);
-  _databaseName = normalizeUtf8ToNFC(databaseName);
+  _databaseName = databaseName;
 }
 
 bool ClientFeature::authentication() const noexcept {

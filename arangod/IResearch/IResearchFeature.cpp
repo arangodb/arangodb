@@ -26,6 +26,7 @@
 
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
+#include <utils/source_location.hpp>
 
 // otherwise define conflict between 3rdParty\date\include\date\date.h and
 // 3rdParty\iresearch\core\shared.hpp
@@ -114,7 +115,7 @@ class IResearchLogTopic final : public LogTopic {
     setIResearchLogLevel(kDefaultLevel);
   }
 
-  virtual void setLogLevel(LogLevel level) override {
+  void setLogLevel(LogLevel level) final {
     LogTopic::setLogLevel(level);
     setIResearchLogLevel(level);
   }
@@ -122,42 +123,34 @@ class IResearchLogTopic final : public LogTopic {
  private:
   static constexpr LogLevel kDefaultLevel = LogLevel::INFO;
 
-  using irsLogLevelType = std::underlying_type_t<irs::logger::level_t>;
-  using arangoLogLevelType = std::underlying_type_t<LogLevel>;
-
-  static_assert(static_cast<irsLogLevelType>(irs::logger::IRL_FATAL) ==
-                        static_cast<arangoLogLevelType>(LogLevel::FATAL) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_ERROR) ==
-                        static_cast<arangoLogLevelType>(LogLevel::ERR) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_WARN) ==
-                        static_cast<arangoLogLevelType>(LogLevel::WARN) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_INFO) ==
-                        static_cast<arangoLogLevelType>(LogLevel::INFO) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_DEBUG) ==
-                        static_cast<arangoLogLevelType>(LogLevel::DEBUG) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_TRACE) ==
-                        static_cast<arangoLogLevelType>(LogLevel::TRACE) - 1,
-                "inconsistent log level mapping");
-
-  static void log_appender(void* context, char const* function,
-                           char const* file, int line,
-                           irs::logger::level_t level, char const* message,
-                           size_t message_len);
-  static void setIResearchLogLevel(LogLevel level) {
-    if (level == LogLevel::DEFAULT) {
-      level = kDefaultLevel;
-    }
-
-    auto irsLevel = static_cast<irs::logger::level_t>(
-        static_cast<arangoLogLevelType>(level) - 1);  // -1 for DEFAULT
-
-    irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
-    irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
-    irs::logger::output_le(irsLevel, log_appender, nullptr);
-  }
+  static void setIResearchLogLevel(LogLevel level);
 };
 
-IResearchLogTopic LIBIRESEARCH("libiresearch");
+static IResearchLogTopic LIBIRESEARCH("libiresearch");
+
+template<LogLevel Level>
+static void log(irs::SourceLocation&& source, std::string_view message) {
+  Logger::log("9afd3", source.func.data(), source.file.data(),
+              static_cast<int>(source.line), Level, LIBIRESEARCH.id(), message);
+}
+
+static constexpr std::array<irs::log::Callback, 6> kLogs = {
+    &log<LogLevel::FATAL>, &log<LogLevel::ERR>,   &log<LogLevel::WARN>,
+    &log<LogLevel::INFO>,  &log<LogLevel::DEBUG>, &log<LogLevel::TRACE>,
+};
+
+void IResearchLogTopic::setIResearchLogLevel(LogLevel level) {
+  if (level == LogLevel::DEFAULT) {
+    level = kDefaultLevel;
+  }
+  for (size_t i = 0; i != kLogs.size(); ++i) {
+    if (i < static_cast<size_t>(level)) {
+      irs::log::SetCallback(static_cast<irs::log::Level>(i), kLogs[i]);
+    } else {
+      irs::log::SetCallback(static_cast<irs::log::Level>(i), nullptr);
+    }
+  }
+}
 
 std::string const THREADS_PARAM("--arangosearch.threads");
 std::string const THREADS_LIMIT_PARAM("--arangosearch.threads-limit");
@@ -788,33 +781,20 @@ void registerTransactionDataSourceRegistrationCallback() {
   }
 }
 
-void IResearchLogTopic::log_appender(void* /*context*/, char const* function,
-                                     char const* file, int line,
-                                     irs::logger::level_t level,
-                                     char const* message, size_t message_len) {
-  auto const arangoLevel = static_cast<LogLevel>(level + 1);
-  std::string msg(message, message_len);
-  Logger::log("9afd3", function, file, line, arangoLevel, LIBIRESEARCH.id(),
-              msg);
-}
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 class AssertionCallbackSetter {
  public:
   AssertionCallbackSetter() noexcept {
-    irs::SetAssertCallback(&assertCallback);
+    irs::assert::SetCallback(&assertCallback);
   }
 
  private:
-  [[noreturn]] static void assertCallback(std::string_view file,
-                                          std::size_t line,
-                                          std::string_view function,
-                                          std::string_view condition,
+  [[noreturn]] static void assertCallback(irs::SourceLocation&& source,
                                           std::string_view message) noexcept {
-    CrashHandler::assertionFailure(file.data(), static_cast<int>(line),
-                                   function.data(), condition.data(),
-                                   message.data());
+    CrashHandler::assertionFailure(source.file.data(),
+                                   static_cast<int>(source.line),
+                                   source.func.data(), message.data(), "");
   }
 };
 
@@ -1354,14 +1334,6 @@ std::tuple<size_t, size_t, size_t> IResearchFeature::stats(
 
 std::pair<size_t, size_t> IResearchFeature::limits(ThreadGroup id) const {
   return _async->get(id).limits();
-}
-
-bool IResearchFeature::linkSkippedDuringRecovery(
-    arangodb::IndexId id) const noexcept {
-  if (_recoveryHelper != nullptr) {
-    return _recoveryHelper->wasSkipped(id);
-  }
-  return false;
 }
 
 void IResearchFeature::trackOutOfSyncLink() noexcept { ++_outOfSyncLinks; }

@@ -63,7 +63,7 @@ void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
 }
 
 Result CreateDatabaseInfo::load(std::string_view name, uint64_t id) {
-  _name = methods::Databases::normalizeName(name);
+  _name = name;
   _id = id;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -90,7 +90,7 @@ Result CreateDatabaseInfo::load(VPackSlice options, VPackSlice users) {
 
 Result CreateDatabaseInfo::load(std::string_view name, VPackSlice options,
                                 VPackSlice users) {
-  _name = methods::Databases::normalizeName(name);
+  _name = name;
 
   Result res = extractOptions(options, true /*getId*/, false /*getName*/);
   if (res.ok()) {
@@ -109,7 +109,7 @@ Result CreateDatabaseInfo::load(std::string_view name, VPackSlice options,
 
 Result CreateDatabaseInfo::load(std::string_view name, uint64_t id,
                                 VPackSlice options, VPackSlice users) {
-  _name = methods::Databases::normalizeName(name);
+  _name = name;
   _id = id;
 
   Result res = extractOptions(options, false /*getId*/, false /*getUser*/);
@@ -251,7 +251,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice options, bool extractId,
       if (!nameSlice.isString()) {
         return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
       }
-      _name = methods::Databases::normalizeName(nameSlice.copyString());
+      _name = nameSlice.copyString();
     }
     if (extractId) {
       auto idSlice = options.get(StaticStrings::DatabaseId);

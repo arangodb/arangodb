@@ -78,7 +78,7 @@ find_package(Git 1.5.3 REQUIRED)
 # ARANGODB_VERSION_PRELEASE_NUMBER = NUMBER
 #
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "11")
+set(ARANGODB_VERSION_MINOR "12")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
@@ -601,51 +601,8 @@ endif ()
 ## TARGET ARCHITECTURE
 ################################################################################
 
-set(ARANGODB_SSE42_FLAGS "")
-set(BUILDING_FOR_ARM64 OFF)
-if (NOT WINDOWS)
-  include(TargetArch)
-
-  target_architecture(CMAKE_TARGET_ARCHITECTURES)
-  list(LENGTH CMAKE_TARGET_ARCHITECTURES cmake_target_arch_len)
-
-  if (NOT "${cmake_target_arch_len}" EQUAL "1")
-    set(CMAKE_TARGET_ARCHITECTURE_UNIVERSAL TRUE)
-    set(CMAKE_TARGET_ARCHITECTURE_CODE "universal")
-  else ()
-    set(CMAKE_TARGET_ARCHITECTURE_UNIVERSAL FALSE)
-    set(CMAKE_TARGET_ARCHITECTURE_CODE "${CMAKE_TARGET_ARCHITECTURES}")
-  endif ()
-
-  if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL CMAKE_TARGET_ARCHITECTURE_CODE)
-    # Probably we are cross-compiling or CMAKE_SYSTEM_PROCESSOR is an empty string.
-    message(WARNING "Changing CMAKE_SYSTEM_PROCESSOR from ${CMAKE_SYSTEM_PROCESSOR} to ${CMAKE_TARGET_ARCHITECTURE_CODE}")
-    set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_TARGET_ARCHITECTURE_CODE}")
-  endif()
-
-  include(VcMacros)
-
-  # Detect target architecture properties. This honors
-  # any target architecture set via -DTARGET_ARCHITECTURE=...
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
-
-  if (USE_SSE4_2)
-    set(ARANGODB_SSE42_FLAGS "-msse4.2")
-  endif ()
-
-  set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
-endif ()
-
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
-  set(BUILDING_FOR_ARM64 ON)
-else()
-  set(BUILDING_FOR_ARM64 OFF)
-endif()
-
-message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
-
-set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
+include(OptimizeForArchitecture)
+set(BASE_FLAGS "${BASE_FLAGS} ${ARCHITECTURE_OPTIMIZATIONS}")
 
 ################################################################################
 ## BACKTRACE
@@ -668,11 +625,11 @@ endif()
 ################################################################################
 
 # Allow to prohibit assembler optimization code explicitly
-if (BUILDING_FOR_ARM64)
-  SET(ASM_OPTIMIZATIONS_DEFAULT OFF)
-else (BUILDING_FOR_ARM64)
+if (ARCH_AMD64)
   SET(ASM_OPTIMIZATIONS_DEFAULT ON)
-endif (BUILDING_FOR_ARM64)
+else (ARCH_AMD64)
+  SET(ASM_OPTIMIZATIONS_DEFAULT OFF)
+endif (ARCH_AMD64)
 
 option(ASM_OPTIMIZATIONS "whether hand-optimized assembler code should be used"
   ${ASM_OPTIMIZATIONS_DEFAULT})
@@ -800,10 +757,13 @@ endfunction()
 # JEMALLOC
 # ------------------------------------------------------------------------------
 
-option(USE_JEMALLOC_PROF "use jemalloc profiler" OFF)
+option(USE_JEMALLOC_PROF "use jemalloc profiler" ON)
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+else ()
+  # Must not compile in profiling stuff if we are not using JEMALLOC
+  set(USE_JEMALLOC_PROF OFF)
 endif ()
 
 if (USE_JEMALLOC_PROF)

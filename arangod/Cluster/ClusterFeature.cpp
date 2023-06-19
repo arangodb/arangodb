@@ -577,7 +577,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
   pos = fallback.rfind(':');
   if (pos != std::string::npos) {
-    fallback = fallback.substr(0, pos);
+    fallback.resize(pos);
   }
   auto ss = ServerState::instance();
   ss->findHost(fallback);
@@ -790,8 +790,6 @@ void ClusterFeature::start() {
   comm.sendServerState(120.0);
 
   auto const version = comm.version();
-
-  ServerState::instance()->setInitialized();
 
   std::string const endpoints =
       AsyncAgencyCommManager::INSTANCE->getCurrentEndpoint();

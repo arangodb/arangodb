@@ -133,6 +133,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
 
+  Result drop() override;
+
   std::shared_ptr<cache::Cache> makeCache() const override;
 
   size_t numFieldsToConsiderInIndexSelection() const noexcept override {

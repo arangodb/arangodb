@@ -1,8 +1,7 @@
 
 @startDocuBlock delete_api_aqlfunction_function
-@brief remove an existing AQL user function
 
-@RESTHEADER{DELETE /_api/aqlfunction/{name}, Remove existing AQL user function, deleteAqlUserFunction}
+@RESTHEADER{DELETE /_api/aqlfunction/{name}, Remove a user-defined AQL function, deleteAqlUserFunction}
 
 @RESTURLPARAMETERS
 
@@ -12,14 +11,15 @@ the name of the AQL user function.
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{group,string,optional}
-- *true*: The function name provided in *name* is treated as
+- `true`: The function name provided in `name` is treated as
   a namespace prefix, and all functions in the specified namespace will be deleted.
   The returned number of deleted functions may become 0 if none matches the string.
-- *false*: The function name provided in *name* must be fully
-  qualified, including any namespaces. If none matches the *name*, HTTP 404 is returned.
+- `false`: The function name provided in `name` must be fully
+  qualified, including any namespaces. If none matches the `name`, HTTP 404 is returned.
 
 @RESTDESCRIPTION
-Removes an existing AQL user function or function group, identified by *name*.
+Deletes an existing user-defined function (UDF) or function group identified by
+`name` from the current database.
 
 @RESTRETURNCODES
 
@@ -28,20 +28,20 @@ If the function can be removed by the server, the server will respond with
 *HTTP 200*.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate whether an error occurred (*false* in this case)
+boolean flag to indicate whether an error occurred (`false` in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
 
 @RESTREPLYBODY{deletedCount,integer,required,int64}
-The number of deleted user functions, always `1` when `group` is set to *false*.
-Any number `>= 0` when `group` is set to *true*
+The number of deleted user functions, always `1` when `group` is set to `false`.
+Any number `>= 0` when `group` is set to `true`.
 
 @RESTRETURNCODE{400}
 If the user function name is malformed, the server will respond with *HTTP 400*.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate whether an error occurred (*true* in this case)
+boolean flag to indicate whether an error occurred (`true` in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
@@ -56,7 +56,7 @@ a descriptive error message
 If the specified user function does not exist, the server will respond with *HTTP 404*.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate whether an error occurred (*true* in this case)
+boolean flag to indicate whether an error occurred (`true` in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code

@@ -1,4 +1,4 @@
-import { MenuItem, MenuList, MenuOptionGroup } from "@chakra-ui/react";
+import { MenuDivider, MenuItem, MenuList, MenuOptionGroup } from "@chakra-ui/react";
 import React, { forwardRef } from "react";
 import { FullItem } from "vis-data/declarations/data-interface";
 import { useGraph } from "../GraphContext";
@@ -24,16 +24,6 @@ export const NodeRightClickMenu = forwardRef(
     return (
       <MenuList ref={ref}>
         <MenuOptionGroup title={`Node: ${rightClickedEntity.nodeId}`}>
-          <MenuItem
-            onClick={() => {
-              setSelectedAction({
-                action: "delete",
-                entity: rightClickedEntity
-              });
-            }}
-          >
-            Delete Node
-          </MenuItem>
           <MenuItem
             onClick={() =>
               setSelectedAction({
@@ -88,6 +78,17 @@ export const NodeRightClickMenu = forwardRef(
           >
             {foundNode?.fixed ? "Unpin node" : "Pin node"}
           </MenuItem>
+          <MenuDivider />
+          <MenuItem
+            onClick={() => {
+              setSelectedAction({
+                action: "delete",
+                entity: rightClickedEntity
+              });
+            }}
+          >
+            Delete Node
+          </MenuItem>
         </MenuOptionGroup>
       </MenuList>
     );
@@ -133,5 +134,5 @@ const ExpandNodeButton = ({
     datasets?.nodes.add(newNodes);
     datasets?.edges.add(newEdges);
   };
-  return <MenuItem onClick={expandNode}>Expand Node</MenuItem>;
+  return <MenuItem isDisabled={foundNode.label?.includes(" (expanded)")} onClick={expandNode}>Expand Node</MenuItem>;
 };
