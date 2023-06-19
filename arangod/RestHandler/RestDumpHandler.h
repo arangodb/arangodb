@@ -31,7 +31,6 @@
 #include <utility>
 
 namespace arangodb {
-class RocksDBDumpManager;
 
 class RestDumpHandler : public RestVocbaseBaseHandler {
  public:
@@ -47,8 +46,6 @@ class RestDumpHandler : public RestVocbaseBaseHandler {
   ResultT<std::pair<std::string, bool>> forwardingTarget() override final;
 
  private:
-  RocksDBDumpManager* _manager;
-
   void handleCommandDumpStart();
 
   void handleCommandDumpNext();
