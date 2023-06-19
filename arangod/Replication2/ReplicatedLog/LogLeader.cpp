@@ -423,7 +423,6 @@ auto replicated_log::LogLeader::construct(
       leaderDataGuard->_follower =
           instantiateFollowers(commonLogContext, followerFactory, localFollower,
                                lastIndex, participantsConfig);
-      leaderDataGuard->activeParticipantsConfig = participantsConfig;
       leader->_localFollower = std::move(localFollower);
       leader->_storageManager = std::move(storageManager);
       leader->_inMemoryLogManager = std::move(inMemoryLogManager);
@@ -648,6 +647,7 @@ auto replicated_log::LogLeader::triggerAsyncReplication() -> void {
 auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     LogIndex const newCommitIndex, std::shared_ptr<QuorumData> quorum)
     -> ResolvedPromiseSet {
+  TRI_ASSERT(newCommitIndex >= _self._firstIndexOfCurrentTerm);
   LOG_CTX("a9a7e", TRACE, _self._logContext)
       << "updating commit index to " << newCommitIndex << " with quorum "
       << quorum->quorum;
@@ -685,6 +685,16 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     _leadershipEstablished = true;
     LOG_CTX("f1136", DEBUG, _self._logContext) << "leadership established";
     _stateHandle->leadershipEstablished(std::make_unique<MethodsImpl>(_self));
+  }
+
+  if (activeParticipantsConfig != committedParticipantsConfig) {
+    // check whether the active config has been committed
+    if (activeParticipantsConfigLogIndex >= newCommitIndex) {
+      committedParticipantsConfig = activeParticipantsConfig;
+      LOG_CTX("536f5", DEBUG, _self._logContext)
+          << "configuration committed, generation "
+          << committedParticipantsConfig->generation;
+    }
   }
 
   // Currently unused, and could deadlock with recoverEntries, because that in
@@ -1190,40 +1200,17 @@ void replicated_log::LogLeader::establishLeadership(
   // to ensure that entries of the previous term are synced as well.
   auto meta =
       LogMetaPayload::FirstEntryOfTerm{.leader = _id, .participants = *config};
-  auto const insertTp = InMemoryLogEntry::clock::now();
-  auto waitForIndex = _inMemoryLogManager->appendLogEntry(
-      LogMetaPayload{std::move(meta)}, _currentTerm, insertTp, true);
-  TRI_ASSERT(waitForIndex == _firstIndexOfCurrentTerm)
-      << "got waitForIndex = " << waitForIndex
-      << " but firstIndexOfCurrentTerm is " << _firstIndexOfCurrentTerm;
-  waitFor(waitForIndex)
-      .thenFinal([weak = weak_from_this(), config = std::move(config)](
-                     futures::Try<WaitForResult>&& result) mutable noexcept {
-        if (auto self = weak.lock(); self) {
-          try {
-            result.throwIfFailed();
-            self->_guardedLeaderData.doUnderLock([&](auto& data) {
-              data._leadershipEstablished = true;
-              if (data.activeParticipantsConfig->generation ==
-                  config->generation) {
-                data.committedParticipantsConfig = std::move(config);
-              }
-            });
-            LOG_CTX("536f4", TRACE, self->_logContext)
-                << "leadership established";
-          } catch (ParticipantResignedException const& err) {
-            LOG_CTX("22264", TRACE, self->_logContext)
-                << "failed to establish leadership due to resign: "
-                << err.what();
-          } catch (std::exception const& err) {
-            LOG_CTX("5ceda", FATAL, self->_logContext)
-                << "failed to establish leadership: " << err.what();
-          }
-        } else {
-          LOG_TOPIC("94696", TRACE, Logger::REPLICATION2)
-              << "leader is already gone, no leadership was established";
-        }
-      });
+  _guardedLeaderData.doUnderLock([&](auto& data) {
+    auto const insertTp = InMemoryLogEntry::clock::now();
+    auto const logIndex = _inMemoryLogManager->appendLogEntry(
+        LogMetaPayload{std::move(meta)}, _currentTerm, insertTp, true);
+    data.activeParticipantsConfig = std::move(config);
+    data.activeParticipantsConfigLogIndex = logIndex;
+
+    TRI_ASSERT(logIndex == _firstIndexOfCurrentTerm)
+        << "got logIndex = " << logIndex << " but firstIndexOfCurrentTerm is "
+        << _firstIndexOfCurrentTerm;
+  });
 }
 
 auto replicated_log::LogLeader::waitForLeadership()
@@ -1352,51 +1339,13 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
         auto const idx = _inMemoryLogManager->appendLogEntry(
             LogMetaPayload{std::move(meta)}, _currentTerm, insertTp, true);
         data.activeParticipantsConfig = config;
+        data.activeParticipantsConfigLogIndex = idx;
         data._follower.swap(followers);
 
         return idx;
       });
 
   triggerAsyncReplication();
-  waitFor(waitForIndex)
-      .thenFinal([weak = weak_from_this(),
-                  config](futures::Try<WaitForResult>&& result) noexcept {
-        if (auto self = weak.lock(); self) {
-          try {
-            result.throwIfFailed();
-            if (auto guard = self->_guardedLeaderData.getLockedGuard();
-                guard->activeParticipantsConfig->generation ==
-                config->generation) {
-              // Make sure config is the currently active configuration. It
-              // could happen that activeParticipantsConfig was changed before
-              // config got any chance to see anything committed, thus never
-              // being considered an actual committedParticipantsConfig. In
-              // this case we skip it.
-              guard->committedParticipantsConfig = config;
-              LOG_CTX("536f5", DEBUG, self->_logContext)
-                  << "configuration committed, generation "
-                  << config->generation;
-            } else {
-              LOG_CTX("fd245", TRACE, self->_logContext)
-                  << "configuration already newer than generation "
-                  << config->generation;
-            }
-          } catch (ParticipantResignedException const& err) {
-            LOG_CTX("3959f", DEBUG, self->_logContext)
-                << "leader resigned before new participant configuration was "
-                   "committed: "
-                << err.message();
-          } catch (std::exception const& err) {
-            LOG_CTX("1af0f", FATAL, self->_logContext)
-                << "failed to commit new participant config; " << err.what();
-            FATAL_ERROR_EXIT();  // TODO is there nothing we can do here?
-          }
-        }
-
-        LOG_TOPIC("a4fc1", TRACE, Logger::REPLICATION2)
-            << "leader is already gone, configuration change was not "
-               "committed";
-      });
 
   return waitForIndex;
 }
