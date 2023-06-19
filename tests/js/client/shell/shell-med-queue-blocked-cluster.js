@@ -99,7 +99,7 @@ function medQueueBlockedSuite() {
   };
 }
 
-let ep = getEndpointsByType('dbserver');
+let ep = getEndpointsByType('coordinator');
 if (ep.length && debugCanUseFailAt(ep[0])) {
   // only execute if failure tests are available
   jsunity.run(medQueueBlockedSuite);
