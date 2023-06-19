@@ -1301,39 +1301,75 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
     var sizeCategory;
     var nodeObj;
     var notFoundString = "(attribute not found)";
+
+    const truncate = (str, n) => {
+      return (str.length > n) ? str.slice(0, n-1) + '...' : str;
+    };
     
     const generateNodeObject = (node) => {
       nodeNames[node._id] = true;
+      var label = "";
+      var tooltipText = "";
 
       if (config.nodeLabel) {
-        if (config.nodeLabel.indexOf('.') > -1) {
-          nodeLabel = getAttributeByKey(node, config.nodeLabel);
-          if (nodeLabel === undefined || nodeLabel === '') {
-            nodeLabel = node._id;
-          }
-        } else {
-          if (node[config.nodeLabel] !== undefined) {
-            if (typeof node[config.nodeLabel] === 'string') {
-              nodeLabel = node[config.nodeLabel];
+        var nodeLabelArr = config.nodeLabel.trim().split(" ");
+        // in case multiple node labels are given
+        if (nodeLabelArr.length > 1) {
+          _.each(nodeLabelArr, function (attr) {
+
+            var attrVal = getAttributeByKey(node, attr);
+            if (attrVal !== undefined) {
+              if (typeof attrVal === 'string') {
+                tooltipText += attr + ": " + attrVal + "\n";
+              } else {
+                // in case we do not have a string here, we need to stringify it
+                // otherwise we might end up sending not displayable values.
+                tooltipText += attr + ": " + JSON.stringify(attrVal) + "\n";
+              }
             } else {
-              // in case we do not have a string here, we need to stringify it
-              // otherwise we might end up sending not displayable values.
-              nodeLabel = JSON.stringify(node[config.nodeLabel]);
+              label += attr + ": " + notFoundString;
+              tooltipText += attr + ": " + notFoundString + "\n";
+            }
+            
+          });
+          // in case of multiple node labels just display the first one in the graph
+          // and the others in the tooltip
+          var firstAttrVal = getAttributeByKey(node, nodeLabelArr[0]);
+          if (firstAttrVal !== undefined) {
+            if (typeof firstAttrVal === 'string') {
+              label = nodeLabelArr[0] + ": " + truncate(firstAttrVal, 16) + " ...";
+            } else {
+              label = nodeLabelArr[0] + ": " + truncate(JSON.stringify(firstAttrVal), 16) + " ...";
             }
           } else {
-            // in case the document does not have the nodeLabel in it, return fallback string
-            nodeLabel = notFoundString;
+            label = nodeLabelArr[0] + ": " + notFoundString + " ...";
+          }
+        } else {
+          // in case of single node attribute given
+          var singleAttrVal = getAttributeByKey(node, nodeLabelArr[0]);
+          if (singleAttrVal !== undefined) {
+            if (typeof singleAttrVal === 'string') {
+              label = nodeLabelArr[0] + ": " + truncate(singleAttrVal, 16);
+              tooltipText = nodeLabelArr[0] + ": " + singleAttrVal;
+            } else {
+              label = nodeLabelArr[0] + ": " + truncate(JSON.stringify(singleAttrVal), 16);
+              tooltipText = nodeLabelArr[0] + ": " + truncate(JSON.stringify(singleAttrVal), 16);
+            }
+          } else {
+            label = nodeLabelArr[0] + ": " + notFoundString;
+            tooltipText = nodeLabelArr[0] + ": " + notFoundString;
           }
         }
       } else {
-        nodeLabel = node._key || node._id;
+        label = node._key || node._id;
+        tooltipText = node._key || node._id;
       }
 
       if (config.nodeLabelByCollection === 'true') {
-        nodeLabel += ' - ' + node._id.split('/')[0];
+        label += ' - ' + node._id.split('/')[0];
       }
-      if (typeof nodeLabel === 'number') {
-        nodeLabel = JSON.stringify(nodeLabel);
+      if (typeof label === 'number') {
+        label = JSON.stringify(label);
       }
       let sizeAttributeFound;
       if (config.nodeSize && config.nodeSizeByEdges === 'false') {
@@ -1359,17 +1395,19 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
         
       nodeObj = {
         id: node._id,
-        label: nodeLabel,
+        label: label,
         size: nodeSize || 20,
         value: nodeSize || 20,
         sizeCategory: sizeCategory || '',
         shape: "dot",
         color: calculatedNodeColor,
         font: {
+          multi: 'html',
           strokeWidth: 2,
           strokeColor: '#ffffff',
           vadjust: -7
         },
+        title: tooltipText,
         sizeAttributeFound
       };
 
@@ -1643,7 +1681,7 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
         bindToWindow: false
       },
       multiselect: false,
-      navigationButtons: true,
+      navigationButtons: false,
       selectable: true,
       selectConnectedEdges: false,
       tooltipDelay: 300,

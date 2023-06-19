@@ -1,11 +1,10 @@
 @startDocuBlock get_admin_database_target_version
-@brief returns the version of the database.
 
-@RESTHEADER{GET /_admin/database/target-version, Return the required version of the database, getDatabaseVersion}
+@RESTHEADER{GET /_admin/database/target-version, Get the required database version, getDatabaseVersion}
 
 @RESTDESCRIPTION
 Returns the database version that this server requires.
-The version is returned in the *version* attribute of the result.
+The version is returned in the `version` attribute of the result.
 
 @RESTRETURNCODES
 

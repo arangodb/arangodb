@@ -1,6 +1,27 @@
 devel
 -----
 
+* FE-166: Handle a space separated list to display multiple node labels in the
+  Graph Viewer.
+
+* FE-15: Removed green checkmark next to the version number and made
+  keyboard shortcuts button easier to discover.
+
+* Whenever there is a query request timeout in AQL (e.g., a server died)
+  which causes the query to fail, the DBServers will now all directly kill
+  their potentially ongoing parts of the query and not wait for garbage collection.
+
+* Updated arangosync to v2.18.1.
+
+* FE-211: Allow admins to edit gravatar email.
+
+* Use libunwind in jemalloc profiling to make it available with libmusl
+  and static binaries.
+
+* Updated arangosync to v2.18.1-preview-1.
+
+* BTS-1325: AQL: Fixed a possible deadlock with multiple parallel traversals.
+
 * Upgraded OpenSSL to 3.1.1.
 
 * BTS-1435: fixed invalid AQL optimization and added a safeguard.

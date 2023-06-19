@@ -352,7 +352,7 @@ auto QueryRegistry::lookupQueryForFinalization(QueryId id, ErrorCode errorCode)
   if (queryInfo._numOpen > 0) {
     TRI_ASSERT(!queryInfo._isTombstone);
     // query in use by another thread/request
-    if (errorCode == TRI_ERROR_QUERY_KILLED) {
+    if (errorCode != TRI_ERROR_NO_ERROR) {
       queryInfo._query->kill();
     }
     queryInfo._expires = 0.0;

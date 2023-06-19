@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_batch
-@brief executes a batch request
 
-@RESTHEADER{POST /_api/batch,executes a batch request, executeBatchRequest}
+@RESTHEADER{POST /_api/batch, Execute a batch request, executeBatchRequest}
 
 @RESTALLBODYPARAM{body,string,required}
 The multipart batch request, consisting of the envelope and the individual

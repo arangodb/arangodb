@@ -116,11 +116,8 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
       _jb->add(VPackValue(failedServersPrefix));
       {
         VPackObjectBuilder old(_jb.get());
-        _jb->add("old", _snapshot.get(failedServersPrefix)
-                            .value()
-                            .get()
-                            .toBuilder()
-                            .slice());
+        _jb->add("old",
+                 _snapshot.get(failedServersPrefix)->toBuilder().slice());
       }
     }  // Preconditions
   }    // transactions
@@ -179,7 +176,7 @@ bool ActiveFailoverJob::start(bool&) {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
       try {
-        _snapshot.get(toDoPrefix + _jobId).value().get().toBuilder(todo);
+        _snapshot.get(toDoPrefix + _jobId)->toBuilder(todo);
       } catch (std::exception const&) {
         LOG_TOPIC("26fec", INFO, Logger::SUPERVISION)
             << "Failed to get key " << toDoPrefix << _jobId
@@ -282,8 +279,7 @@ std::string ActiveFailoverJob::findBestFollower() {
 
   // blocked; (not sure if this can even happen)
   try {
-    for (auto const& srv :
-         _snapshot.get(blockedServersPrefix).value().get().children()) {
+    for (auto const& srv : _snapshot.get(blockedServersPrefix)->children()) {
       healthy.erase(std::remove(healthy.begin(), healthy.end(), srv.first),
                     healthy.end());
     }
