@@ -37,7 +37,7 @@ const TextForm = ({ formState, dispatch, disabled }: FormProps<TextState>) => {
       <Grid>
         <Cell size={'1'}>
           <LocaleInput formState={formState} dispatch={dispatch as Dispatch<DispatchArgs<LocaleProperty>>}
-                       placeholder="language[_COUNTRY]" disabled={disabled}/>
+                       placeholder="language[_COUNTRY][_VARIANT]" disabled={disabled}/>
         </Cell>
 
         <Cell size={'1'}>
