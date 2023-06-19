@@ -333,8 +333,7 @@ class Graph {
       CreateCollectionBody& body,
       std::optional<std::string> const& leadingCollection,
       std::unordered_set<std::string> const& satellites,
-      DatabaseConfiguration const& config) const noexcept
-      -> Result;
+      DatabaseConfiguration const& config) const noexcept -> Result;
 
  private:
   /// @brief Parse the edgeDefinition slice and inject it into this graph

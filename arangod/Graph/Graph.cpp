@@ -841,8 +841,8 @@ auto Graph::prepareCreateCollectionBodyEdge(
   body.name = name;
   body.type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
 
-  auto res =
-      injectShardingToCollectionBody(body, leadingCollection, satellites, config);
+  auto res = injectShardingToCollectionBody(body, leadingCollection, satellites,
+                                            config);
   if (res.fail()) {
     return res;
   }

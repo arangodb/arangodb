@@ -667,8 +667,8 @@ Result GraphManager::ensureCollections(
     };
   }
   for (auto const& c : documentCollectionsToCreate) {
-    auto col = graph.prepareCreateCollectionBodyVertex(
-        c, leadingCollection, satellites, config);
+    auto col = graph.prepareCreateCollectionBodyVertex(c, leadingCollection,
+                                                       satellites, config);
     if (col.fail()) {
       return col.result();
     }
@@ -676,8 +676,8 @@ Result GraphManager::ensureCollections(
   }
 
   for (auto const& c : edgeCollectionsToCreate) {
-    auto col =
-        graph.prepareCreateCollectionBodyEdge(c, leadingCollection, satellites, config);
+    auto col = graph.prepareCreateCollectionBodyEdge(c, leadingCollection,
+                                                     satellites, config);
     if (col.fail()) {
       return col.result();
     }
