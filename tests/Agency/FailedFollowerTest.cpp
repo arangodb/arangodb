@@ -99,7 +99,7 @@ Node createNodeFromBuilder(VPackBuilder const& builder) {
     opBuilder.add("new", builder.slice());
   }
 
-  Node node("");
+  Node node;
   node.handle<SET>(opBuilder.slice());
   return node;
 }

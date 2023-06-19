@@ -2055,13 +2055,13 @@ Store const& Agent::transient() const { return _transient; }
 /// Rebuild from persisted state
 void Agent::setPersistedState(VPackSlice compaction) {
   // Catch up with compacted state, this is only called at startup
-  _spearhead.applyModification(compaction);
+  _spearhead.setNodeValue(compaction);
 
   // Catch up with commit
   try {
     WRITE_LOCKER(oLocker, _outputLock);
     std::lock_guard guard{_waitForCV.mutex};
-    _readDB.applyModification(compaction);
+    _readDB.setNodeValue(compaction);
     _commitIndex = arangodb::basics::StringUtils::uint64(
         compaction.get(StaticStrings::KeyString).copyString());
     _local_index = _commitIndex.load(std::memory_order_relaxed);

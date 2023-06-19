@@ -453,7 +453,7 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
         auto it = healthData.find(serverStr);
         if (it != healthData.end()) {
           // Only check if found
-          std::shared_ptr<Node> healthNode = it->second;
+          NodePtr healthNode = it->second;
           // Check its status:
 
           if (auto status = healthNode->hasAsString("Status");
@@ -485,7 +485,7 @@ size_t Job::countGoodOrBadServersInList(
       auto it = healthData.find(serverStr);
       if (it != healthData.end()) {
         // Only check if found
-        std::shared_ptr<Node> healthNode = it->second;
+        auto healthNode = it->second;
         // Check its status:
         if (auto status = healthNode->hasAsString("Status");
             status && (status.value() == Supervision::HEALTH_STATUS_GOOD ||

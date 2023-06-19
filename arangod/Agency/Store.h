@@ -125,14 +125,15 @@ class Store {
   /// @brief Dump everything to builder
   void dumpToBuilder(velocypack::Builder&) const;
 
-  void applyModification(VPackSlice slice);
+  void setNodeValue(VPackSlice s);
 
   /// @brief Create Builder representing this store
   void toBuilder(velocypack::Builder&, bool showHidden = false) const;
 
   /// @brief get node from this store.
   /// Unprotected! Caller must guard the store.
-  Node const* nodePtr(std::string const& path = std::string("/")) const;
+  std::shared_ptr<Node const> nodePtr(
+      std::string const& path = std::string("/")) const;
 
   /// @brief Get node at path under mutex and store it in velocypack
   void get(std::string const& path, arangodb::velocypack::Builder& b,
@@ -179,7 +180,7 @@ class Store {
   mutable std::mutex _storeLock;
 
   /// @brief Root node
-  std::shared_ptr<Node> _node;
+  std::shared_ptr<Node const> _node;
 
   struct AgencyTrigger {
     explicit AgencyTrigger(AgencyTriggerCallback callback)

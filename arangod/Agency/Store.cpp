@@ -223,13 +223,14 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
   for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
     std::vector<std::string> pv = split(precond.key.stringView());
 
-    Node const* node = &Node::dummyNode();
-
+    NodePtr node = nullptr;
     // Check is guarded in ::apply
     bool found = false;
     if (auto n = _node->get(pv); n) {
       found = true;
       node = n;
+    } else {
+      node = Node::create();
     }
 
     if (precond.value.isObject()) {
@@ -492,53 +493,17 @@ bool Store::read(VPackSlice query, Builder& ret) const {
   //   a slow path for more than one path
 
   std::lock_guard storeLocker{_storeLock};  // Freeze KV-Store for read
-  if (query_strs.size() == 1) {
-    auto const& path = query_strs[0];
-    std::vector<std::string> pv = split(path);
-    // Build surrounding object structure:
-    size_t e = _node->exists(pv).size();  // note: e <= pv.size()!
-    size_t i = 0;
-    for (auto it = pv.begin(); i < e; ++i, ++it) {
-      ret.openObject();
-      ret.add(VPackValue(*it));
-    }
-    if (e == pv.size()) {  // existing
-      _node->get(pv)->toBuilder(ret, showHidden);
-    } else {
-      VPackObjectBuilder guard(&ret);
-    }
-    // And close surrounding object structures:
-    for (i = 0; i < e; ++i) {
-      ret.close();
-    }
-  } else {              // slow path for 0 or more than 2 paths:
-    TRI_ASSERT(false);  // TODO
-#if 0
-    // Create response tree
-    Node copy;
-    for (auto const& path : query_strs) {
-      std::vector<std::string> pv = split(path);
-      size_t e = _node->exists(pv).size();
-      if (e == pv.size()) {  // existing
-        copy.getOrCreate(pv) = *_node->get(pv);
-      } else {  // non-existing
-        for (size_t i = 0; i < pv.size() - e + 1; ++i) {
-          pv.pop_back();
-        }
-        if (copy.getOrCreate(pv).type() == LEAF &&
-            copy.getOrCreate(pv).slice().isNone()) {
-          copy.getOrCreate(pv) =
-              arangodb::velocypack::Slice::emptyObjectSlice();
-        }
-      }
 
+  NodePtr node = std::make_shared<Node const>();
+  for (auto const& path : query_strs) {
+    auto value = _node->get(path);
+    if (value) {
+      node = node->placeAt(path, value);
     }
-
-    // Into result builder
-    copy.toBuilder(ret, showHidden);
-#endif
   }
 
+  // Into result builder
+  node->toBuilder(ret, showHidden);
   return success;
 }
 
@@ -605,43 +570,48 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
             });
 
   bool success = true;
-  TRI_ASSERT(false);
-#if 0
-    for (const auto& i : idx) {
 
+  auto node = _node;
+  for (const auto& i : idx) {
     Slice value = i.second;
-
 
     if (value.isObject() && value.hasKey("op")) {
       std::string_view const op = value.get("op").stringView();
 
       if (op == "delete" || op == "replace" || op == "erase") {
-        if (!_node->has(abskeys.at(i.first))) {
+        if (!node->has(abskeys.at(i.first))) {
           continue;
         }
       }
       auto uri = Store::normalize(abskeys.at(i.first));
-      auto ret = _node->hasAsWritableNode(abskeys.at(i.first)).applyOp(value);
-      success &= ret.ok();
+
+      auto ret = node->applyOp(abskeys.at(i.first), value);
+      if (ret.fail()) {
+        success = false;
+        break;
+      }
+      node = std::move(ret).get();
       // check for triggers here
       callTriggers(abskeys.at(i.first), op, value);
     } else {
-      success &= _node->hasAsWritableNode(abskeys.at(i.first)).applies(value);
+      node = node->applies(abskeys.at(i.first), value);
     }
-
   }
-#endif
+
+  if (success) {
+    _node = node;
+  }
   return success;
 }
 
 // Clear my data
 void Store::clear() {
   std::lock_guard storeLocker{_storeLock};
-  _node->clear();
+  _node = std::make_shared<Node>();
 }
 
 /// Apply a request to my key value store
-void Store::applyModification(VPackSlice s) {
+void Store::setNodeValue(VPackSlice s) {
   TRI_ASSERT(s.isObject());
   TRI_ASSERT(s.hasKey("readDB"));
   auto const& slice = s.get("readDB");
@@ -649,10 +619,9 @@ void Store::applyModification(VPackSlice s) {
   std::lock_guard storeLocker{_storeLock};
   if (slice.isArray()) {
     TRI_ASSERT(slice.length() >= 1);
-    _node->applies(slice[0]);
-
+    _node = Node::create(slice[0]);
   } else if (slice.isObject()) {
-    _node->applies(slice);
+    _node = Node::create(slice);
   }
 }
 
@@ -722,7 +691,7 @@ std::string Store::normalize(char const* key, size_t length) {
  * @brief Unguarded pointer to a node path in this store.
  *        Caller must enforce locking.
  */
-Node const* Store::nodePtr(std::string const& path) const {
+std::shared_ptr<Node const> Store::nodePtr(std::string const& path) const {
   return _node->get(path);
 }
 

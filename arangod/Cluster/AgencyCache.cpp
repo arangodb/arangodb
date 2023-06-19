@@ -464,7 +464,7 @@ void AgencyCache::run() {
                     LOG_TOPIC("4579f", TRACE, Logger::CLUSTER)
                         << "Fresh start: overwriting agency cache with "
                         << rs.toJson();
-                    _readDB.applyModification(rs);  // overwrite
+                    _readDB.setNodeValue(rs);  // overwrite
                     std::unordered_set<std::string> pc = reInitPlan();
                     for (auto const& i : pc) {
                       _planChanges.emplace(_commitIndex, i);

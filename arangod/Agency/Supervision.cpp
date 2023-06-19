@@ -262,6 +262,7 @@ void Supervision::upgradeOne(Builder& builder) {
 
 void Supervision::upgradeZero(Builder& builder) {
   // "/arango/Target/FailedServers" is still an array
+  LOG_DEVEL << "snapshot: " << snapshot().toJson();
   Slice fails = snapshot().hasAsSlice(failedServersPrefix).value();
   if (fails.isArray()) {
     {
@@ -1066,7 +1067,7 @@ void Supervision::updateDBServerMaintenance() {
     Node::Children const& targetServers = *target;
     for (auto const& p : targetServers) {
       std::string const& serverId = p.first;
-      std::shared_ptr<Node> const& entry = p.second;
+      NodePtr const& entry = p.second;
       auto mode = entry->hasAsString("Mode");
       if (mode) {
         std::string const& modeSt = mode.value();
@@ -2124,7 +2125,8 @@ void Supervision::workJobs() {
           .run(_haveAborts);
       LOG_TOPIC("98115", TRACE, Logger::SUPERVISION)
           << "Finish JobContext::run()";
-      it = todos.erase(it);
+      auto copy_it = it++;
+      todos.erase(copy_it);
       doneFailedJob = true;
     } else {
       ++it;
@@ -2396,7 +2398,7 @@ void Supervision::restoreBrokenAnalyzersRevision(
 }
 
 void Supervision::resourceCreatorLost(
-    std::shared_ptr<Node> const& resource,
+    std::shared_ptr<Node const> const& resource,
     std::function<void(ResourceCreatorLostEvent const&)> const& action) {
   //  check if the coordinator exists and its reboot is the same as specified
   auto rebootID = resource->hasAsUInt(StaticStrings::AttrCoordinatorRebootId);
@@ -2423,7 +2425,7 @@ void Supervision::resourceCreatorLost(
 }
 
 void Supervision::ifResourceCreatorLost(
-    std::shared_ptr<Node> const& resource,
+    std::shared_ptr<Node const> const& resource,
     std::function<void(ResourceCreatorLostEvent const&)> const& action) {
   // check if isBuilding is set and it is true
   auto isBuilding = resource->hasAsBool(StaticStrings::AttrIsBuilding);
@@ -2442,7 +2444,7 @@ void Supervision::checkBrokenCreatedDatabases() {
 
   // dbpair is <std::string, std::shared_ptr<Node>>
   for (auto const& dbpair : databases->children()) {
-    std::shared_ptr<Node> const& db = dbpair.second;
+    std::shared_ptr<Node const> const& db = dbpair.second;
 
     LOG_TOPIC("24152", TRACE, Logger::SUPERVISION) << "checkBrokenDbs: " << *db;
 
@@ -2467,7 +2469,7 @@ void Supervision::checkBrokenCollections() {
 
   // dbpair is <std::string, std::shared_ptr<Node>>
   for (auto const& dbpair : collections->children()) {
-    std::shared_ptr<Node> const& db = dbpair.second;
+    std::shared_ptr<Node const> const& db = dbpair.second;
 
     for (auto const& collectionPair : db->children()) {
       // collectionPair.first is collection id
