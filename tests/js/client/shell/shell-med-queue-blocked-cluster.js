@@ -39,23 +39,10 @@ function medQueueBlockedSuite() {
   return {
 
     setUp: function () {
-      // We are using the direct connection to set the failure point here,
-      // since for this particular failure point (block scheduler medium
-      // queue) a reconnect is not possible. Therefore we cannot use
-      // debugFailAt.
-      arango.DELETE_RAW("/_admin/debug/failat");
       db._drop(cn);
     },
 
     tearDown: function () {
-      // We are using the direct connection to set the failure point here,
-      // since for this particular failure point (block scheduler medium
-      // queue) a reconnect is not possible. Therefore we cannot use
-      // debugFailAt.
-      arango.DELETE_RAW("/_admin/debug/failat");
-      require("internal").wait(3);  // give the system time to finish the 
-                                    // creation of the collection, in case
-                                    // the test TestCreateColl fails.
       db._drop(cn);
     },
     
@@ -87,7 +74,6 @@ function medQueueBlockedSuite() {
             {query:`LET s = USER::FUNC() FOR d IN ${cn} RETURN {d,s}`},
             {"x-arango-async": "store", "x-arango-frontend": true}).headers["x-arango-async-id"]);
         }
-        let count = 0;
         for (let j of jobs) {
           while (true) {
             let res = arango.PUT_RAW(`/_api/job/${j}`, {});
@@ -99,7 +85,6 @@ function medQueueBlockedSuite() {
             }
             require("internal").wait(0.1);
           }
-          count += 1;
         }
         let end = new Date();
         // Why 50 seconds? If only two of the queries are executed concurrently,
@@ -108,30 +93,42 @@ function medQueueBlockedSuite() {
         // not finish within 50s.
         assertTrue(end - start < 50000);   // Should be done in 50 seconds
       } finally {
-        require("@arangodb/aql/functions").unregister("USER::FUNC");
+        f.unregister("USER::FUNC");
+        coll.drop();
       }
     },
 
     testCreateColl: function() {
-      // This failure point blocks the medium priority queue. This means
-      // that the response to an AgencyCache poll operation to the AgencyCache
-      // can only work if it skips the scheduler. That means that a collection
-      // creation can only succeed if this is the case. Note that we send
-      // our collection creation request with the header "x-arango-frontend"
-      // set to true, land it on the high prio queue:
-      arango.PUT_RAW("/_admin/debug/failat/BlockSchedulerMediumQueue", {});
-      // We are using the direct connection to set the failure point here,
-      // since for this particular failure point (block scheduler medium
-      // queue) a reconnect is not possible. Therefore we cannot use
-      // debugFailAt.
+      try {
+        // This failure point blocks the medium priority queue. This means
+        // that the response to an AgencyCache poll operation to the AgencyCache
+        // can only work if it skips the scheduler. That means that a collection
+        // creation can only succeed if this is the case. Note that we send
+        // our collection creation request with the header "x-arango-frontend"
+        // set to true, land it on the high prio queue:
+        arango.PUT_RAW("/_admin/debug/failat/BlockSchedulerMediumQueue", {});
+        // We are using the direct connection to set the failure point here,
+        // since for this particular failure point (block scheduler medium
+        // queue) a reconnect is not possible. Therefore we cannot use
+        // debugFailAt.
 
-      let start = new Date();
-      let savedTimeout = arango.timeout();
-      arango.timeout(20);
-      let res = arango.POST_RAW("/_api/collection", {"name":cn}, {"x-arango-frontend": true});
-      let end = new Date();
-      arango.timeout(savedTimeout);
-      assertTrue(end - start < 10000);   // Should be done in 10 seconds
+        let start = new Date();
+        let savedTimeout = arango.timeout();
+        arango.timeout(20);
+        let res = arango.POST_RAW("/_api/collection", {"name":cn}, {"x-arango-frontend": true});
+        let end = new Date();
+        arango.timeout(savedTimeout);
+        assertTrue(end - start < 10000);   // Should be done in 10 seconds
+      } finally {
+        // We are using the direct connection to set the failure point here,
+        // since for this particular failure point (block scheduler medium
+        // queue) a reconnect is not possible. Therefore we cannot use
+        // debugFailAt.
+        arango.DELETE_RAW("/_admin/debug/failat");
+        require("internal").wait(3);  // give the system time to finish the 
+                                      // creation of the collection, in case
+                                      // the test TestCreateColl fails.
+      }
     },
 
   };
