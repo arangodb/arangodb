@@ -1,6 +1,5 @@
 
 @startDocuBlock post_admin_server_jwt
-@brief Hot-reload JWT secrets
 
 @RESTHEADER{POST /_admin/server/jwt, Hot-reload the JWT secret(s) from disk, reloadServerJwtSecrets}
 

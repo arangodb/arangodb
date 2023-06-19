@@ -1,5 +1,4 @@
 @startDocuBlock put_api_gharial_graph_edge_definition
-@brief Replace an existing edge definition
 
 @RESTHEADER{PUT /_api/gharial/{graph}/edge/{collection}, Replace an edge definition, replaceEdgeDefinition}
 

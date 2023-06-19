@@ -1,5 +1,4 @@
 @startDocuBlock post_api_document_collection_multiple
-@brief creates multiple documents
 
 @RESTHEADER{POST /_api/document/{collection}#multiple,Create multiple documents,createDocuments}
 
