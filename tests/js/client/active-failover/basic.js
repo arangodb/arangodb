@@ -1,5 +1,5 @@
 /*jshint strict: false, sub: true */
-/*global print, assertTrue, assertEqual, assertNotEqual */
+/*global print, assertTrue, assertEqual, assertNotEqual, fail */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,22 +28,21 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 const console = require('console');
 const expect = require('chai').expect;
-
 const arangosh = require('@arangodb/arangosh');
 const crypto = require('@arangodb/crypto');
 const request = require("@arangodb/request");
 const tasks = require("@arangodb/tasks");
-
-const arango = internal.arango;
-const db = internal.db;
 const fs = require('fs');
 const path = require('path');
 const utils = require('@arangodb/foxx/manager-utils');
+const arango = internal.arango;
+const errors = internal.errors;
+const db = internal.db;
 const wait = internal.wait;
-
 const compareTicks = require("@arangodb/replication").compareTicks;
 const suspendExternal = internal.suspendExternal;
 const continueExternal = internal.continueExternal;
+const { debugSetFailAt, debugClearFailAt, debugRemoveFailAt, debugCanUseFailAt } = require("@arangodb/test-helper");
 
 const jwtSecret = 'haxxmann';
 const jwtSuperuser = crypto.jwtEncode(jwtSecret, {
@@ -63,14 +62,6 @@ if (!internal.env.hasOwnProperty('INSTANCEINFO')) {
 const instanceinfo = JSON.parse(internal.env.INSTANCEINFO);
 
 const cname = "UnitTestActiveFailover";
-
-/*try {
-  let globals = JSON.parse(process.env.ARANGOSH_GLOBALS);
-  Object.keys(globals).forEach(g => {
-    global[g] = globals[g];
-  });
-} catch (e) {
-}*/
 
 function getUrl(endpoint) {
   return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
@@ -448,9 +439,6 @@ function ActiveFailoverSuite() {
     },
 
     tearDown: function () {
-      //db._collection(cname).drop();
-      //serverTeardown();
-
       suspended.forEach(arangod => {
         print("Resuming: ", arangod.endpoint);
         assertTrue(continueExternal(arangod.pid));
@@ -467,7 +455,7 @@ function ActiveFailoverSuite() {
         let endpoints = getClusterEndpoints();
         if (endpoints.length === servers.length && endpoints[0] === currentLead) {
           db._collection(cname).truncate({ compact: false });
-          return ;
+          return;
         }
         print("cluster endpoints not as expected: found =", endpoints, " expected =", servers);
         internal.wait(1); // settle down
@@ -685,10 +673,6 @@ function ActiveFailoverSuite() {
 
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
-      /*if (checkData(currentLead) != 10000) {
-        print("ERROR! DODEBUG")
-        while(1){}
-      }*/
 
       print("Suspending followers, except original leader");
       suspended = instanceinfo.arangods.filter(arangod => arangod.instanceRole !== 'agent' &&
@@ -752,10 +736,188 @@ function ActiveFailoverSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+function LeaderInactivitySuite() {
+  let servers = getClusterEndpoints();
+  assertTrue(servers.length >= 4, "This test expects four single instances");
+  const initialLead = leaderInAgency();
+
+  return {
+    setUp: function () {
+      let c = db._create(cname);
+      let docs = [];
+      for (let i = 0; i < 10000; i++) {
+        docs.push({ attr: i});
+      }
+      c.insert(docs);
+      assertTrue(checkInSync(leaderInAgency(), servers));
+    },
+
+    tearDown: function () {
+      // clear all failure points
+      servers.forEach((s) => {
+        debugClearFailAt(s);
+      });
+
+      let currentLead = leaderInAgency();
+      print("connecting shell to leader ", currentLead);
+      connectToServer(currentLead);
+      
+      db._drop(cname);
+
+      let i = 100;
+      do {
+        let endpoints = getClusterEndpoints();
+        if (endpoints.length === servers.length && endpoints[0] === currentLead) {
+          break;
+        }
+        print("cluster endpoints not as expected: found =", endpoints, " expected =", servers);
+        internal.wait(1); // settle down
+      } while (i-- > 0);
+
+      let endpoints = getClusterEndpoints();
+      print("endpoints: ", endpoints, " servers: ", servers);
+      assertEqual(endpoints.length, servers.length);
+      assertEqual(endpoints[0], currentLead);
+      
+      connectToServer(initialLead);
+
+      // unfortunately the following is necessary to work against
+      // the quirks of our test framework.
+      // the test framework does some post-checks, which queries all
+      // sorts of REST endpoints. querying such endpoints is disallowed
+      // on active failover followers, and will result in the post-tests
+      // failing.
+      // therefore it is necessary that we finish the test with the
+      // leader being the same leader as when the test was started.
+      currentLead = leaderInAgency();
+      if (currentLead !== initialLead) {
+        let suspended = [];
+        let toSuspend = instanceinfo.arangods.filter(arangod => arangod.endpoint !== initialLead && arangod.instanceRole !== 'agent');
+        toSuspend.forEach(arangod => {
+          print("Suspending servers: ", arangod.endpoint);
+          assertTrue(suspendExternal(arangod.pid));
+          suspended.push(toSuspend);
+        });
+
+        i = 100;
+        do {
+          currentLead = leaderInAgency();
+          if (currentLead === initialLead) {
+            break;
+          }
+          internal.wait(1.0);
+        } while (i-- > 0);
+      
+        suspended.forEach(arangod => {
+          print("Resuming: ", arangod.endpoint);
+          assertTrue(continueExternal(arangod.pid));
+        });
+
+        // wait until the server itself has recognized that it is leader again
+        i = 100;
+        do {
+          try {
+            db._dropDatabase("doesNotExist");
+          } catch (err) {
+            if (err.errorNum !== errors.ERROR_CLUSTER_NOT_LEADER.code) {
+              break;
+            }
+          }
+          internal.wait(1.0);
+        } while (i-- > 0);
+      }
+
+      assertEqual(currentLead, initialLead);
+      // must drop again here
+      db._drop(cname);
+
+      // wait for things to settle
+      internal.wait(5.0);
+    },
+
+    testLeaderCannotSendToAgency: function () {
+      let oldLead = leaderInAgency();
+      if (!debugCanUseFailAt(oldLead)) {
+        return;
+      }
+     
+      // establish connection to leader before we are making it 
+      // unresponsive.
+      connectToServer(oldLead);
+      
+      // we need to set this failure point on the leader so that we can
+      // later reconnect to it. if we don't set this failure point, the
+      // leader will switch into TRYAGAIN mode and every request to /_api/version
+      // and /_api/database/current is denied. such requests happen during reconnects.
+      debugSetFailAt(oldLead, "CommTask::allowReconnectRequests");
+
+      // we want this to speed up the test
+      debugSetFailAt(oldLead, "HeartbeatThread::reducedLeaderGracePeriod");
+
+      // this failure point makes the leader not send its heartbeat
+      // to the agency anymore
+      print("Setting failure point to block heartbeats from leader");
+      debugSetFailAt(oldLead, "HeartbeatThread::sendServerState");
+
+      let currentLead;
+      let i = 60;
+      do {
+        currentLead = leaderInAgency();
+        if (currentLead !== oldLead) {
+          break;
+        }
+        internal.sleep(1.0);
+      } while (i-- > 0);
+
+      print("Leader has changed to", currentLead);
+
+      // leader must have changed
+      assertNotEqual(currentLead, oldLead);
+
+      try {
+        db._create(cname + "2");
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING.code, err.errorNum);
+      }
+
+      // clear failure points
+      print("Healing old leader", oldLead);
+      debugRemoveFailAt(oldLead, "HeartbeatThread::sendServerState");
+
+      connectToServer(currentLead);
+
+      print("Waiting for old leader to become a follower");
+      // wait until old leader responds properly again
+      i = 60;
+      do {
+        try {
+          connectToServer(oldLead);
+          // if this succeeds, the old leader is back in normal operations mode 
+          db._collections();
+          break;
+        } catch (err) {
+          // leader will refuse the connection while it is in TRYAGAIN mode.
+        }
+        internal.sleep(1.0);
+      } while (i-- > 0);
+          
+      connectToServer(oldLead);
+      db._collections();
+
+      // we need this to make the post-tests succeed. these query extra
+      // paths such as /_api/user, which is disallowed for followers in 
+      // active failover mode
+      connectToServer(currentLead);
+
+      // make sure everything gets back into sync
+      assertTrue(checkInSync(currentLead, servers));
+    },
+
+  };
+}
 
 jsunity.run(ActiveFailoverSuite);
+jsunity.run(LeaderInactivitySuite);
 
 return jsunity.done();
