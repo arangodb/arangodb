@@ -931,3 +931,7 @@ std::vector<arangodb::cluster::CallbackGuard>&
 ExecutionEngine::rebootTrackers() {
   return _rebootTrackers;
 }
+
+std::shared_ptr<SharedQueryState> const& ExecutionEngine::sharedState() const {
+  return _sharedState;
+}

@@ -1210,7 +1210,8 @@ size_t AqlItemBlock::decrRefCount() const noexcept {
 size_t AqlItemBlock::getAddress(size_t index,
                                 RegisterId::value_t reg) const noexcept {
   TRI_ASSERT(index < _numRows);
-  TRI_ASSERT(reg < _numRegisters);
+  TRI_ASSERT(reg < _numRegisters)
+      << "violated " << reg << " < " << _numRegisters;
   return index * _numRegisters + reg;
 }
 

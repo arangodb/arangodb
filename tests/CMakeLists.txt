@@ -57,6 +57,8 @@ if (WINDOWS)
 endif ()
 
 set(ARANGODB_TESTS_COMMON_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.h
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
@@ -91,6 +93,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/StoreTestAPI.cpp
   Agency/SupervisionTest.cpp
   Agency/TransactionBuilderTests.cpp
+  Aql/AsyncExecutorTest.cpp
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
   Aql/AqlSharedExecutionBlockImplTest.cpp
