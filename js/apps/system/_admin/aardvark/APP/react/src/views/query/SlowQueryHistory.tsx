@@ -88,7 +88,7 @@ export const SlowQueryHistory = () => {
           <Tbody>
             {runningQueries.map(query => {
               return (
-                <Tr>
+                <Tr key={query.id}>
                   {TABLE_COLUMNS.map(column => {
                     return (
                       <Td whiteSpace="normal" key={column.accessor}>

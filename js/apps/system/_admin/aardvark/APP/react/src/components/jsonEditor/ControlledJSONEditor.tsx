@@ -19,9 +19,11 @@ export const ControlledJSONEditor = ({
   schema,
   isDisabled,
   htmlElementProps,
+  mainMenuBar,
   ...rest
 }: JsonEditorProps & {
   isDisabled?: boolean;
+  mainMenuBar?: boolean;
 }) => {
   useEffect(() => {
     const editor = (jsonEditorRef.current as any)?.jsonEditor;
@@ -63,6 +65,8 @@ export const ControlledJSONEditor = ({
               : ""
           }}
           {...rest}
+          // @ts-ignore
+          mainMenuBar={mainMenuBar}
         />
       )}
     </ClassNames>
