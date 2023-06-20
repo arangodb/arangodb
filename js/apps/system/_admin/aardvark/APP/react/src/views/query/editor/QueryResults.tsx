@@ -14,7 +14,8 @@ import {
 } from "@chakra-ui/react";
 import React from "react";
 import { Table } from "styled-icons/boxicons-regular";
-import { ControlledJSONEditor } from "../../collections/indices/addIndex/invertedIndex/ControlledJSONEditor";
+import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
+
 import { QueryResultType, useQueryContext } from "../QueryContextProvider";
 import { ProfileResultDisplay } from "./ProfileResultDisplay";
 

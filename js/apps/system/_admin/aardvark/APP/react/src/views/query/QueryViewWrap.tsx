@@ -10,9 +10,7 @@ import { SlowQueryHistory } from "./SlowQueryHistory";
 
 export const QueryViewWrap = () => {
   useDisableNavBar();
-  useGlobalStyleReset({
-    removeContentDiv: true
-  });
+  useGlobalStyleReset();
   return (
     <ChakraCustomProvider>
       <QueryContextProvider>

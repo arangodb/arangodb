@@ -6,10 +6,7 @@ import { useEffect } from "react";
  * - #content
  * Adds it back on unmount.
  */
-export const useGlobalStyleReset = (options?: {
-  removeContentDiv?: boolean;
-}) => {
-  const { removeContentDiv = false } = options || {};
+export const useGlobalStyleReset = () => {
   useEffect(() => {
     const contentWrapper = document.querySelector(".contentWrapper");
     const contentDiv = document.querySelector("#content");
@@ -20,5 +17,5 @@ export const useGlobalStyleReset = (options?: {
       contentDiv && contentDiv.removeAttribute("style");
       contentWrapper && contentWrapper.removeAttribute("style");
     };
-  }, [removeContentDiv]);
+  }, []);
 };

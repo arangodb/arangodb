@@ -16,7 +16,7 @@ import {
   Tr
 } from "@chakra-ui/react";
 import React, { useState } from "react";
-import { ControlledJSONEditor } from "../../collections/indices/addIndex/invertedIndex/ControlledJSONEditor";
+import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { useQueryContext } from "../QueryContextProvider";
 
 export const QuerySettingsPane = () => {
