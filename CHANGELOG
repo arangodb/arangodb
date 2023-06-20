@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-223: refactor arangosearch, handle nested fields special characters.
+
 * FE-166: Handle a space separated list to display multiple node labels in the
   Graph Viewer.
 
