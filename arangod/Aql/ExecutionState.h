@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <fmt/format.h>
+
 #include <iosfwd>
 
 namespace arangodb::aql {
@@ -70,8 +72,36 @@ enum class MainQueryState {
   HASMORE
 };
 
+auto toStringView(ExecutionState state) -> std::string_view;
+
+auto toStringView(ExecutorState state) -> std::string_view;
+
 std::ostream& operator<<(std::ostream& ostream, ExecutionState state);
 
 std::ostream& operator<<(std::ostream& ostream, ExecutorState state);
 
 }  // namespace arangodb::aql
+
+template<>
+struct fmt::formatter<::arangodb::aql::ExecutionState>
+    : formatter<std::string_view> {
+  // parse is inherited from formatter<string_view>.
+  template<class FormatContext>
+  auto format(::arangodb::aql::ExecutionState state, FormatContext& fc) const {
+    auto view = toStringView(state);
+
+    return formatter<std::string_view>::format(view, fc);
+  }
+};
+
+template<>
+struct fmt::formatter<::arangodb::aql::ExecutorState>
+    : formatter<std::string_view> {
+  // parse is inherited from formatter<string_view>.
+  template<class FormatContext>
+  auto format(::arangodb::aql::ExecutorState state, FormatContext& fc) const {
+    auto view = toStringView(state);
+
+    return formatter<std::string_view>::format(view, fc);
+  }
+};
