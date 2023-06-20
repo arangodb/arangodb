@@ -1,8 +1,7 @@
 
 @startDocuBlock patch_api_document_collection
-@brief updates multiple documents
 
-@RESTHEADER{PATCH /_api/document/{collection},Update documents,updateDocuments}
+@RESTHEADER{PATCH /_api/document/{collection},Update multiple documents,updateDocuments}
 
 @RESTALLBODYPARAM{documents,json,required}
 A JSON representation of an array of document updates as objects.

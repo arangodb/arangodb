@@ -218,6 +218,7 @@ void ClusterMetricsFeature::update() {
   auto rebootId = oldData.get("RebootId").getNumber<uint64_t>();
   auto serverId = oldData.get("ServerId").copyString();
   data.reset();
+  // cppcheck-suppress accessMoved
   metricsFromLeader(nf, cf, *leader, std::move(serverId), rebootId, version)
       .thenFinal([this](futures::Try<LeaderResponse>&& raw) mutable noexcept {
         if (wasStop()) {

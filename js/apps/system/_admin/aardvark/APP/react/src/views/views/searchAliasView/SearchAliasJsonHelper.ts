@@ -1,9 +1,9 @@
 import { JSONSchemaType } from "ajv";
 import { useEffect, useState } from "react";
-import { useSearchAliasContext } from "./SearchAliasContext";
-import { ViewPropertiesType } from "./useFetchViewProperties";
+import { useEditViewContext } from "../editView/EditViewContext";
+import { SearchAliasViewPropertiesType } from "../searchView.types";
 
-const searchAliasJsonSchema: JSONSchemaType<ViewPropertiesType> = {
+const searchAliasJsonSchema: JSONSchemaType<SearchAliasViewPropertiesType> = {
   $id: "https://arangodb.com/schemas/views/searchAliasViews.json",
   type: "object",
   properties: {
@@ -52,9 +52,13 @@ const searchAliasJsonSchema: JSONSchemaType<ViewPropertiesType> = {
   additionalProperties: false
 };
 
-export const useAliasViewSchema = ({ view }: { view: ViewPropertiesType }) => {
+export const useAliasViewSchema = ({
+  view
+}: {
+  view: SearchAliasViewPropertiesType;
+}) => {
   const [schema, setSchema] = useState(searchAliasJsonSchema);
-  const { isCluster } = useSearchAliasContext();
+  const { isCluster } = useEditViewContext();
   useEffect(() => {
     const nameProperty =
       isCluster && schema.properties
