@@ -163,6 +163,8 @@ DECLARE_GAUGE(arangodb_revision_tree_memory_usage, uint64_t,
 DECLARE_GAUGE(
     arangodb_revision_tree_buffered_memory_usage, uint64_t,
     "Total memory consumed by buffered updates for all revision trees");
+DECLARE_GAUGE(arangodb_transaction_memory_internal, uint64_t,
+              "Memory accounting for ongoing transactions");
 DECLARE_GAUGE(arangodb_internal_index_estimates_memory, uint64_t,
               "Total memory consumed by all index selectivity estimates");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total,
@@ -305,7 +307,10 @@ RocksDBEngine::RocksDBEngine(Server& server,
           arangodb_revision_tree_hibernations_total{})),
       _metricsTreeResurrections(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_revision_tree_resurrections_total{})) {
+              arangodb_revision_tree_resurrections_total{})),
+      _metricsTransactionMemoryInternal(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_transaction_memory_internal{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
@@ -1304,6 +1309,7 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
 std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options) {
+  LOG_DEVEL << "createTransactionState";
   if (vocbase.replicationVersion() == replication::Version::TWO &&
       (tid.isLeaderTransactionId() || tid.isLegacyTransactionId()) &&
       ServerState::instance()->isRunningInCluster() &&

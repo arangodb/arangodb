@@ -39,7 +39,7 @@ using namespace arangodb;
 SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options)
-    : RocksDBTransactionState(vocbase, tid, options) {}
+    : RocksDBTransactionState(vocbase, tid, options) {LOG_DEVEL << "SimpleRocksDBTransactionState constructor";}
 
 SimpleRocksDBTransactionState::~SimpleRocksDBTransactionState() {}
 
@@ -62,11 +62,15 @@ Result SimpleRocksDBTransactionState::beginTransaction(
       _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(this, db);
     }
   } else {
+    using Tracker = RocksDBTrxBaseMethods::MemoryTrackerType;
+    std::pair<Tracker const, metrics::Gauge<uint64_t>&> memoryTrackingInfo(
+        {RocksDBTrxBaseMethods::MemoryTrackerType::Internal,
+         engine.getTransactionMemoryInternalMetric()});
     if (isSingleOperation()) {
       _rocksMethods =
-          std::make_unique<RocksDBSingleOperationTrxMethods>(this, *this, db);
+          std::make_unique<RocksDBSingleOperationTrxMethods>(this, *this, db, memoryTrackingInfo);
     } else {
-      _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, *this, db);
+      _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, *this, db, memoryTrackingInfo);
     }
   }
 

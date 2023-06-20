@@ -61,11 +61,16 @@ Result ReplicatedRocksDBTransactionCollection::beginTransaction() {
       _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(trx, db);
     }
   } else {
+    using Tracker = RocksDBTrxBaseMethods::MemoryTrackerType;
+    std::pair<Tracker const, metrics::Gauge<uint64_t>&> memoryTrackingInfo(
+        {RocksDBTrxBaseMethods::MemoryTrackerType::Internal,
+         engine.getTransactionMemoryInternalMetric()});
     if (trx->isSingleOperation()) {
-      _rocksMethods =
-          std::make_unique<RocksDBSingleOperationTrxMethods>(trx, *this, db);
+      _rocksMethods = std::make_unique<RocksDBSingleOperationTrxMethods>(
+          trx, *this, db, memoryTrackingInfo);
     } else {
-      _rocksMethods = std::make_unique<RocksDBTrxMethods>(trx, *this, db);
+      _rocksMethods = std::make_unique<RocksDBTrxMethods>(trx, *this, db,
+                                                          memoryTrackingInfo);
     }
   }
 

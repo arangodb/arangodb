@@ -1802,6 +1802,7 @@ std::string transaction::Methods::extractIdString(VPackSlice slice) {
 
 /// @brief begin the transaction
 Result transaction::Methods::begin() {
+  LOG_DEVEL << "Methods::begin";
   if (_state == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");

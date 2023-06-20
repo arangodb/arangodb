@@ -37,10 +37,12 @@
 
 using namespace arangodb;
 
-RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state,
-                                     IRocksDBTransactionCallback& callback,
-                                     rocksdb::TransactionDB* db)
-    : RocksDBTrxBaseMethods(state, callback, db) {
+RocksDBTrxMethods::RocksDBTrxMethods(
+    RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
+    rocksdb::TransactionDB* db,
+    std::pair<MemoryTrackerType const, metrics::Gauge<uint64_t>&>&
+        memoryTrackerInfo)
+    : RocksDBTrxBaseMethods(state, callback, db, memoryTrackerInfo) {
   TRI_ASSERT(!_state->isSingleOperation());
 }
 
