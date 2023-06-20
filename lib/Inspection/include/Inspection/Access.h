@@ -35,6 +35,7 @@
 #include <velocypack/Value.h>
 
 #include "Inspection/detail/traits.h"
+#include "Inspection/Factory.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
 
@@ -283,18 +284,18 @@ struct OptionalAccess {
 
 template<class T>
 struct Access<std::optional<T>> : OptionalAccess<std::optional<T>> {
-  static auto make() { return T{}; }
+  static auto make() { return Factory<T>::make_value(); }
 };
 
 template<class T, class Deleter>
 struct Access<std::unique_ptr<T, Deleter>>
     : OptionalAccess<std::unique_ptr<T, Deleter>> {
-  static auto make() { return std::make_unique<T>(); }
+  static auto make() { return Factory<T>::make_unique(); }
 };
 
 template<class T>
 struct Access<std::shared_ptr<T>> : OptionalAccess<std::shared_ptr<T>> {
-  static auto make() { return std::make_shared<T>(); }
+  static auto make() { return Factory<T>::make_shared(); }
 };
 
 template<>
