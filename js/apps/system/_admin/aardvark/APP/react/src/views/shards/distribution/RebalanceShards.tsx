@@ -36,10 +36,10 @@ async function rebalanceShards(opts: {
   }
 }
 
-export const RebalanceShards = ({refetchStats}: {refetchStats: () => void}) => {
+export const RebalanceShards = ({ refetchStats }: { refetchStats: () => void }) => {
   return (
     <Formik
-      onSubmit={async ({includeSystemCollections, ...opts}) => {
+      onSubmit={async ({ includeSystemCollections, ...opts }) => {
         const result = await rebalanceShards({
           excludeSystemCollections: !includeSystemCollections,
           ...opts
@@ -52,15 +52,15 @@ export const RebalanceShards = ({refetchStats}: {refetchStats: () => void}) => {
         includeSystemCollections: false,
       }}
       isInitialValid={true}
-    >{({isValid, isSubmitting}) => (
+    >{({ isValid, isSubmitting }) => (
       <Form>
-      <Global
-        styles={{
-          "label": {
-            marginBottom: "unset"
-          }
-        }}
-      />
+        <Global
+          styles={{
+            "label": {
+              marginBottom: "unset"
+            }
+          }}
+        />
         <Box width="100%" padding="5" background="white">
           <Text fontSize={"lg"}>
             Shard rebalancing
@@ -109,7 +109,7 @@ export const RebalanceShards = ({refetchStats}: {refetchStats: () => void}) => {
           </Button>
         </Box>
       </Form>
-      )}
+    )}
     </Formik>
   );
 };
