@@ -668,26 +668,18 @@ Result GraphManager::ensureCollections(
   }
   for (auto const& c : documentCollectionsToCreate) {
     auto col = graph.prepareCreateCollectionBodyVertex(c, leadingCollection,
-                                                       satellites);
+                                                       satellites, config);
     if (col.fail()) {
       return col.result();
-    }
-    auto res = col->applyDefaultsAndValidateDatabaseConfiguration(config);
-    if (res.fail()) {
-      return res;
     }
     createRequests.emplace_back(std::move(col.get()));
   }
 
   for (auto const& c : edgeCollectionsToCreate) {
-    auto col =
-        graph.prepareCreateCollectionBodyEdge(c, leadingCollection, satellites);
+    auto col = graph.prepareCreateCollectionBodyEdge(c, leadingCollection,
+                                                     satellites, config);
     if (col.fail()) {
       return col.result();
-    }
-    auto res = col->applyDefaultsAndValidateDatabaseConfiguration(config);
-    if (res.fail()) {
-      return res;
     }
     createRequests.emplace_back(std::move(col.get()));
   }
