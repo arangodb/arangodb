@@ -29,6 +29,8 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/types.h"
 
+#include <fmt/core.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -199,9 +201,18 @@ struct LogCurrentSupervisionElection {
 
   TermIndexPair bestTermIndex;
 
+  // minimum quorum size of voters
   std::size_t participantsRequired{};
-  std::size_t participantsAvailable{};
+  // number of participants that are attending (i.e. reported back during this
+  // election)
+  std::size_t participantsAttending{};
+  // number of participants that are attending and also eligible to vote
+  std::size_t participantsVoting{};
+  // whether all participants attend this election.
+  bool allParticipantsAttending{};
   std::unordered_map<ParticipantId, ErrorCode> detail;
+  // set of participants which are attending, eligible, and have the maximum
+  // spearhead amongst all attending and eligible participants.
   std::vector<ServerInstanceReference> electibleLeaderSet;
 
   friend auto operator==(LogCurrentSupervisionElection const&,
@@ -214,6 +225,9 @@ struct LogCurrentSupervisionElection {
 
   LogCurrentSupervisionElection() = default;
 };
+
+auto operator<<(std::ostream&, LogCurrentSupervisionElection const&)
+    -> std::ostream&;
 
 auto operator==(LogCurrentSupervisionElection const&,
                 LogCurrentSupervisionElection const&) noexcept -> bool;
@@ -429,3 +443,30 @@ struct Log {
 };
 
 }  // namespace arangodb::replication2::agency
+
+template<>
+struct fmt::formatter<arangodb::replication2::agency::ServerInstanceReference>
+    : formatter<string_view> {
+  // parse is inherited from formatter<string_view>.
+  template<typename FormatContext>
+  auto format(
+      arangodb::replication2::agency::ServerInstanceReference const& inst,
+      FormatContext& ctx) const {
+    return fmt::format_to(ctx.out(), "{}@{}", inst.serverId,
+                          inst.rebootId.value());
+  }
+};
+
+template<>
+struct fmt::formatter<
+    arangodb::replication2::agency::LogCurrentSupervisionElection::ErrorCode>
+    : formatter<string_view> {
+  // parse is inherited from formatter<string_view>.
+  template<typename FormatContext>
+  auto format(
+      arangodb::replication2::agency::LogCurrentSupervisionElection::ErrorCode
+          errorCode,
+      FormatContext& ctx) const {
+    return fmt::format_to(ctx.out(), "{}", to_string(errorCode));
+  }
+};

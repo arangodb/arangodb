@@ -509,7 +509,9 @@ const replicatedStateRecoverySuite = function () {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+      // TODO Set waitForSync to false after https://arangodb.atlassian.net/browse/CINFRA-755 is finished.
+      //      This is tracked in https://arangodb.atlassian.net/browse/CINFRA-783.
+      collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3, waitForSync: true});
       shards = collection.shards();
       shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
       logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
@@ -627,7 +629,9 @@ const replicatedStateSnapshotTransferSuite = function () {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+      // TODO Set waitForSync to false after https://arangodb.atlassian.net/browse/CINFRA-755 is finished.
+      //      This is tracked in https://arangodb.atlassian.net/browse/CINFRA-783.
+      collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3, waitForSync: true});
       shards = collection.shards();
       shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
       logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
