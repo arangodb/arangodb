@@ -45,9 +45,6 @@ using namespace arangodb::velocypack;
 using namespace arangodb;
 
 const Node::Children Node::dummyChildren = Node::Children();
-const Node Node::_dummyNode;
-
-Node::Node(VariantType value) noexcept : _value(std::move(value)) {}
 
 /// @brief Split strings by forward slashes, omitting empty strings,
 /// and ignoring multiple subsequent forward slashes
@@ -525,10 +522,8 @@ ResultT<NodePtr> buildPathAndExecute(Node const* node, std::string_view path,
                                      F&& func) {
   static_assert(std::is_invocable_r_v<ResultT<NodePtr>, F, Node const*>);
   auto segments = boost::make_split_iterator(path, boost::first_finder("/"));
-  auto res = buildPathAndExecute(node, segments, decltype(segments){},
-                                 std::forward<F>(func));
-  TRI_ASSERT(res.ok());
-  return std::move(res.get());
+  return buildPathAndExecute(node, segments, decltype(segments){},
+                             std::forward<F>(func));
 }
 }  // namespace
 
@@ -536,7 +531,7 @@ NodePtr Node::applies(std::string_view path, VPackSlice slice) const {
   auto res = buildPathAndExecute(
       this, path,
       [&](Node const*) -> ResultT<NodePtr> { return Node::create(slice); });
-  TRI_ASSERT(res.ok());
+  TRI_ASSERT(res.ok()) << res.errorMessage();
   return std::move(res.get());
 }
 
@@ -695,12 +690,12 @@ std::optional<bool> Node::getBool() const noexcept {
   return std::nullopt;
 }
 
-VPackString Node::slice() const noexcept {
-  if (isObject()) {
-    return VPackSlice ::emptyObjectSlice();
+VPackSlice Node::slice() const noexcept {
+  if (auto slice = std::get_if<VPackString>(&_value); slice) {
+    return slice->slice();
   }
-  VPackBuilder builder = toBuilder();
-  return builder.slice();
+
+  return VPackSlice::noneSlice();
 }
 
 bool Node::isBool() const {
@@ -863,6 +858,9 @@ struct Node::NodeWrapper : Node {
 
 NodePtr Node::create(VPackSlice slice) {
   if (slice.isObject()) {
+    if (slice.isEmptyObject()) {
+      return emptyObjectValue();
+    }
     Children c;
     c.reserve(slice.length());
     for (auto const& [key, sub] : VPackObjectIterator(slice)) {
@@ -870,6 +868,9 @@ NodePtr Node::create(VPackSlice slice) {
     }
     return std::make_shared<NodeWrapper>(std::move(c));
   } else if (slice.isArray()) {
+    if (slice.isEmptyArray()) {
+      return emptyArrayValue();
+    }
     Array a;
     a.reserve(slice.length());
     for (auto const& elem : VPackArrayIterator(slice)) {
@@ -877,17 +878,47 @@ NodePtr Node::create(VPackSlice slice) {
     }
     return std::make_shared<NodeWrapper>(std::move(a));
   } else {
+    if (slice.isTrue()) {
+      return trueValue();
+    } else if (slice.isFalse()) {
+      return falseValue();
+    }
     return std::make_shared<NodeWrapper>(VPackString(slice));
   }
 }
 
-NodePtr Node::create() { return std::make_shared<NodeWrapper>(); }
+NodePtr Node::create() { return emptyObjectValue(); }
 
 NodePtr Node::create(Node::VariantType value) {
   return std::make_shared<NodeWrapper>(std::move(value));
 }
+NodePtr Node::create(Node::Array value) {
+  return std::make_shared<NodeWrapper>(std::move(value));
+}
+NodePtr Node::create(Node::Children value) {
+  return std::make_shared<NodeWrapper>(std::move(value));
+}
 
 std::shared_ptr<Node const> consensus::Node::dummyNode() {
-  static auto node = Node::create();
+  return emptyObjectValue();
+}
+
+NodePtr consensus::Node::trueValue() {
+  static auto node = std::make_shared<NodeWrapper>(VPackSlice::trueSlice());
+  return node;
+}
+
+NodePtr consensus::Node::falseValue() {
+  static auto node = std::make_shared<NodeWrapper>(VPackSlice::falseSlice());
+  return node;
+}
+
+NodePtr consensus::Node::emptyObjectValue() {
+  static auto node = std::make_shared<NodeWrapper>();
+  return node;
+}
+
+NodePtr consensus::Node::emptyArrayValue() {
+  static auto node = std::make_shared<NodeWrapper>(Array{});
   return node;
 }

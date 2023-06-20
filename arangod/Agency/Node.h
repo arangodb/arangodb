@@ -226,9 +226,10 @@ class Node : public std::enable_shared_from_this<Node> {
   /// @brief Get double value (throws if type NODE or if conversion fails)
   std::optional<double> getDouble() const noexcept;
 
-  VPackString slice() const noexcept;
+  VPackSlice slice() const noexcept;
 
   bool isLeaveNode() const noexcept { return !isObject(); }
+  bool isPrimitiveValue() const noexcept { return !isObject() && !isArray(); }
 
   bool isReadLockable(std::string_view by) const;
   bool isWriteLockable(std::string_view by) const;
@@ -245,11 +246,25 @@ class Node : public std::enable_shared_from_this<Node> {
                                          VPackSlice slice) const;
   [[nodiscard]] NodePtr placeAt(std::string_view path, NodePtr) const;
 
+  template<typename T>
+  [[nodiscard]] NodePtr placeAt(std::string_view path, T&& value) const {
+    return placeAt(path, Node::create(std::forward<T>(value)));
+  }
+
   [[nodiscard]] NodePtr applies(std::string_view path, VPackSlice) const;
 
+  // Get rid of this constructor mess
   [[nodiscard]] static NodePtr create(VPackSlice);
   [[nodiscard]] static NodePtr create();
   [[nodiscard]] static NodePtr create(VariantType);
+  [[nodiscard]] static NodePtr create(Array);
+  [[nodiscard]] static NodePtr create(Children);
+  template<typename T>
+  [[nodiscard]] static NodePtr create(T&& value) {
+    velocypack::Builder builder;
+    builder.add(velocypack::Value(value));
+    return Node::create(builder.slice());
+  }
 
   /// @brief handle "op" keys in write json
   template<Operation Oper>
@@ -259,21 +274,27 @@ class Node : public std::enable_shared_from_this<Node> {
   // @brief Helper function to return static instance of dummy node below
   static std::shared_ptr<Node const> dummyNode();
 
+  static NodePtr trueValue();
+  static NodePtr falseValue();
+  static NodePtr emptyObjectValue();
+  static NodePtr emptyArrayValue();
+
+  Node(Node const& other) = delete;
+  Node(Node&& other) noexcept = delete;
+  Node& operator=(Node const& node) = delete;
+  Node& operator=(Node&& node) noexcept = delete;
+
  private:
   struct NodeWrapper;
   friend struct NodeWrapper;
 
   Node() = default;
-  explicit Node(VariantType value) noexcept;
-  Node(Node const& other) = default;
-  Node(Node&& other) noexcept = default;
-  Node& operator=(Node const& node) = default;
-  Node& operator=(Node&& node) noexcept = default;
+  template<typename... Args>
+  explicit Node(Args&&... args) : _value(std::forward<Args>(args)...) {}
 
   VariantType _value;
 
   static Children const dummyChildren;
-  static Node const _dummyNode;
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {

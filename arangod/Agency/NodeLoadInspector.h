@@ -54,10 +54,17 @@ struct NodeLoadInspectorImpl
       consensus::Node const* node,
       ParseOptions options = {}) requires(!Base::hasContext)
       : Base(options), _node(node) {}
+  explicit NodeLoadInspectorImpl(
+      consensus::NodePtr const& node,
+      ParseOptions options = {}) requires(!Base::hasContext)
+      : Base(options), _node(node.get()) {}
 
   explicit NodeLoadInspectorImpl(consensus::Node const* node,
                                  ParseOptions options, Context const& context)
       : Base(options, context), _node(node) {}
+  explicit NodeLoadInspectorImpl(consensus::NodePtr const& node,
+                                 ParseOptions options, Context const& context)
+      : Base(options, context), _node(node.get()) {}
 
   template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
   [[nodiscard]] Status value(T& v) {
@@ -110,15 +117,15 @@ struct NodeLoadInspectorImpl
 
   [[nodiscard]] Status value(velocypack::Slice& v) {
     static_assert(AllowUnsafeTypes);
-    if (!_node->isLeaveNode()) {
-      return {"Cannot parse non-leaf node as Slice."};
+    if (!_node->isPrimitiveValue()) {
+      return {"Cannot parse non-primitive node as Slice."};
     }
     v = _node->slice();
     return {};
   }
 
   [[nodiscard]] Status::Success value(velocypack::SharedSlice& v) {
-    if (!_node->isLeaveNode()) {
+    if (_node->isPrimitiveValue()) {
       if constexpr (AllowUnsafeTypes) {
         v = velocypack::SharedSlice(velocypack::SharedSlice{}, _node->slice());
         return {};
@@ -198,8 +205,10 @@ struct NodeLoadInspectorImpl
   }
 
   auto getTypeTag() const noexcept {
-    if (!_node->isLeaveNode()) {
+    if (_node->isPrimitiveValue()) {
       return _node->slice().type();
+    } else if (_node->isArray()) {
+      return velocypack::ValueType::Array;
     } else {
       return velocypack::ValueType::Object;
     }
@@ -260,7 +269,7 @@ struct NodeLoadInspectorImpl
       return {"Variant value field \"" + std::string(variant.valueField) +
               "\" is missing"};
     }
-    data = node;
+    data = node.get();
     return {};
   }
 
@@ -300,7 +309,7 @@ struct NodeLoadInspectorImpl
       return type == ValueType::Double || isInt(type);
     } else if constexpr (detail::IsTuple<T>::value) {
       return type == ValueType::Array && _node->isArray() &&
-             detail::TupleSize<T>::value == _node->slice().length();
+             detail::TupleSize<T>::value == _node->getArray()->size();
     } else if constexpr (detail::IsListLike<T>::value) {
       return type == ValueType::Array;
     } else if constexpr (detail::IsMapLike<T>::value) {
