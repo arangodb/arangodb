@@ -358,8 +358,10 @@ OperationResult handleCRUDShardResponsesFast(
   std::map<ShardID, int> shardError;
   std::unordered_map<::ErrorCode, size_t> errorCounter;
 
-  fuerte::StatusCode code = fuerte::StatusInternalError;
-  // If none of the shards responded we return a SERVER_ERROR;
+  fuerte::StatusCode code =
+      results.empty() ? fuerte::StatusOK : fuerte::StatusInternalError;
+  // If the list of shards is not empty and none of the shards responded we
+  // return a SERVER_ERROR;
   if constexpr (std::is_same_v<CT, InsertOperationCtx>) {
     if (opCtx.reverseMapping.size() == opCtx.localErrors.size()) {
       // all batch operations failed because of key errors, return Accepted
@@ -1421,6 +1423,7 @@ futures::Future<metrics::LeaderResponse> metricsFromLeader(
   headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJsonNoEncoding);
   auto options = network::RequestOptions{}
                      .param("type", metrics::kCDJson)
+                     // cppcheck-suppress accessMoved
                      .param("MetricsServerId", std::move(serverId))
                      .param("MetricsRebootId", std::to_string(rebootId))
                      .param("MetricsVersion", std::to_string(version));

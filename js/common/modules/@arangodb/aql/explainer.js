@@ -2448,6 +2448,10 @@ function debug(query, bindVars, options) {
               }
             });
           } catch (err) { }
+        } else {
+          node.graph.forEach(edgeColl => {
+            collections.push({name: edgeColl});
+          });
         }
       } else if (node.type === 'SubqueryNode') {
         // recurse into subqueries
@@ -2563,11 +2567,21 @@ function inspectDump(filename, outfile) {
   }
 
   let data = JSON.parse(require('fs').read(filename));
-  if (data.version && data.version) {
-    print("/* original data is from " + data.version["server-version"] + ", " + data.version.license + " */");
+  let version = "";
+  let license = "";
+  if (data.version) {
+    version = data.version;
+    license = version.license;
+    if (version && version.details) {
+      version = version.details;
+    }
+    if (version && version.hasOwnProperty('server-version')) {
+      version = version['server-version'];
+    }
+    print("/* original data is from " + version + ", " + license + " */");
   }
   if (data.database) {
-    print("/* original data gathered from database '" + data.database + "' */");
+    print("/* original data gathered from database " + JSON.stringify(data.database) + " */");
   }
 
   try {

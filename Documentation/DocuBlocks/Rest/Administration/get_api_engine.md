@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_engine
-@brief returns the engine the type the server is running with
 
-@RESTHEADER{GET /_api/engine, Return server database engine type, getEngine}
+@RESTHEADER{GET /_api/engine, Get the storage engine type, getEngine}
 
 @RESTDESCRIPTION
 Returns the storage engine the server is configured to use.
@@ -14,7 +13,7 @@ The response is a JSON object with the following attributes:
 is returned in all cases.
 
 @RESTREPLYBODY{name,string,required,string}
-will be *rocksdb*
+will be `rocksdb`
 
 @EXAMPLES
 

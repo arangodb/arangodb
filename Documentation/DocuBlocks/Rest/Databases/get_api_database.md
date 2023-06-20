@@ -1,15 +1,12 @@
 
 @startDocuBlock get_api_database
-@brief retrieves a list of all existing databases
 
-@RESTHEADER{GET /_api/database, List of databases, listDatabases}
+@RESTHEADER{GET /_api/database, List all databases, listDatabases}
 
 @RESTDESCRIPTION
 Retrieves the list of all existing databases
 
-**Note**: retrieving the list of databases is only possible from within the *_system* database.
-
-**Note**: You should use the *GET user API* to fetch the list of the available databases now.
+**Note**: retrieving the list of databases is only possible from within the `_system` database.
 
 @RESTRETURNCODES
 
@@ -20,7 +17,7 @@ is returned if the list of database was compiled successfully.
 is returned if the request is invalid.
 
 @RESTRETURNCODE{403}
-is returned if the request was not executed in the *_system* database.
+is returned if the request was not executed in the `_system` database.
 
 @EXAMPLES
 

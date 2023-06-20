@@ -76,9 +76,14 @@
   delete global.MODULES_PATH;
 
   function internalModuleStat (path) {
-    if (fs.isDirectory(path)) return 1;
-    else if (fs.isFile(path)) return 0;
-    else return -1;
+    try {
+      if (fs.isDirectory(path)) {
+        return 1;
+      } else if (fs.isFile(path)) {
+        return 0;
+      }
+    } catch (err) {}
+    return -1;
   }
 
   // If obj.hasOwnProperty has been overridden, then calling
@@ -255,7 +260,9 @@
     // For each path
     for (var i = 0, PL = paths.length; i < PL; i++) {
       // Don't search further if path doesn't exist
-      if (paths[i] && internalModuleStat(path._makeLong(paths[i])) < 1) continue;
+      if (paths[i] && internalModuleStat(path._makeLong(paths[i])) < 1) {
+        continue;
+      }
       var basePath = path.resolve(paths[i], request);
       var filename;
 

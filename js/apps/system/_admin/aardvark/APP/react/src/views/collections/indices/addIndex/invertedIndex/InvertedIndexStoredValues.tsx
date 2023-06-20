@@ -4,13 +4,13 @@ import { FieldArray, useFormikContext } from "formik";
 import React from "react";
 import { CreatableMultiSelectControl } from "../../../../../components/form/CreatableMultiSelectControl";
 import { SelectControl } from "../../../../../components/form/SelectControl";
-import { IndexFormFieldProps } from "../IndexFormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
 export const InvertedIndexStoredValues = ({
   field
 }: {
-  field: IndexFormFieldProps;
+  field: FormFieldProps;
 }) => {
   return (
     <Box
@@ -34,7 +34,7 @@ const compressionOptions = [
   { label: "None", value: "none" }
 ];
 
-const StoredValuesField = ({ field }: { field: IndexFormFieldProps }) => {
+const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
   const { values } = useFormikContext<InvertedIndexValuesType>();
   return (
     <>
