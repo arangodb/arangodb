@@ -29,6 +29,7 @@ const arangodb = require("@arangodb");
 const _ = require('lodash');
 const db = arangodb.db;
 const helper = require("@arangodb/testutils/replicated-logs-helper");
+const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const {
   waitFor,
   waitForReplicatedLogAvailable,
@@ -56,12 +57,21 @@ const replicatedLogSuite = function () {
     setUp, tearDown,
 
     testParticipantFailedOnInsert: function () {
-      const {logId, followers} = createReplicatedLogAndWaitForLeader(database);
-      waitForReplicatedLogAvailable(logId);
+      const {logId, servers, leader, term, followers} = createReplicatedLogAndWaitForLeader(database);
+      // This test may not be stable. When a log is created, the followers
+      // haven't yet reported to Current. The Supervision may immediately lower
+      // the effectiveWriteConcern, because it assumes the participants are
+      // unavailable.
+      // The following waits for the followers to report to Current. However,
+      // there might still be a race with the Supervision.
+      // If the test fails because the quorum size is only 2, this is probably
+      // the reason: Please report such a failure to team CINFRA, so we can try
+      // again to stabilize the test.
+      waitFor(lp.replicatedLogIsReady(database, logId, term, servers, leader));
 
       let log = db._replicatedLog(logId);
       let quorum = log.insert({foo: "bar"});
-      assertEqual(quorum.result.quorum.quorum.length, 3);
+      assertEqual(quorum.result.quorum.quorum.length, 3, JSON.stringify({logId, leader, followers, quorum}));
 
       // now stop one server
       stopServerWait(followers[0]);

@@ -143,7 +143,9 @@ const replicatedLogSuite = function () {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    waitForSync: false,
+    // TODO Set waitForSync to false after https://arangodb.atlassian.net/browse/CINFRA-755 is finished.
+    //      This is tracked in https://arangodb.atlassian.net/browse/CINFRA-783.
+    waitForSync: true,
   };
 
   const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} =
@@ -298,7 +300,7 @@ const replicatedLogSuite = function () {
         const election = current.supervision.StatusReport[0].detail.election;
         assertEqual(election.term, term + 1);
         assertEqual(election.participantsRequired, 2);
-        assertEqual(election.participantsAvailable, 1);
+        assertEqual(election.participantsVoting, 1);
         const detail = election.details;
         assertEqual(detail[leader].code, 1);
         assertEqual(detail[followers[0]].code, 1);

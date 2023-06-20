@@ -35,8 +35,11 @@ auto constexpr CommittedParticipantsConfig =
 auto constexpr ParticipantsConfig = std::string_view{"participantsConfig"};
 auto constexpr BestTermIndex = std::string_view{"bestTermIndex"};
 auto constexpr ParticipantsRequired = std::string_view{"participantsRequired"};
-auto constexpr ParticipantsAvailable =
-    std::string_view{"participantsAvailable"};
+auto constexpr ParticipantsAttending =
+    std::string_view{"participantsAttending"};
+auto constexpr ParticipantsVoting = std::string_view{"participantsVoting"};
+auto constexpr AllParticipantsAttending =
+    std::string_view{"allParticipantsAttending"};
 auto constexpr Details = std::string_view{"details"};
 auto constexpr ElectibleLeaderSet = std::string_view{"electibleLeaderSet"};
 auto constexpr Error = std::string_view{"error"};
@@ -132,7 +135,10 @@ auto inspect(Inspector& f, LogCurrentSupervisionElection& x) {
       f.field(StaticStrings::Term, x.term),
       f.field(static_strings::BestTermIndex, x.bestTermIndex),
       f.field(static_strings::ParticipantsRequired, x.participantsRequired),
-      f.field(static_strings::ParticipantsAvailable, x.participantsAvailable),
+      f.field(static_strings::ParticipantsAttending, x.participantsAttending),
+      f.field(static_strings::ParticipantsVoting, x.participantsVoting),
+      f.field(static_strings::AllParticipantsAttending,
+              x.allParticipantsAttending),
       f.field(static_strings::Details, x.detail),
       f.field(static_strings::ElectibleLeaderSet, x.electibleLeaderSet));
 }

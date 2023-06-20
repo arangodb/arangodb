@@ -44,7 +44,7 @@ struct ReplicatedOperation {
     ShardID shard;
     velocypack::SharedSlice payload;
 
-    explicit DocumentOperation() = default;
+    DocumentOperation() = default;
     explicit DocumentOperation(TransactionId tid, ShardID shard,
                                velocypack::SharedSlice payload);
 
