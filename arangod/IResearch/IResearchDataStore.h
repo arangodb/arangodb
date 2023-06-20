@@ -281,6 +281,9 @@ class IResearchDataStore {
   bool failQueriesOnOutOfSync() const noexcept;
 
  protected:
+  struct DefaultConstructKey {};
+  explicit IResearchDataStore(DefaultConstructKey) {}
+
   friend struct CommitTask;
   friend struct ConsolidationTask;
 
