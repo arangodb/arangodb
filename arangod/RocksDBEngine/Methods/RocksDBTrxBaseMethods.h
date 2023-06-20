@@ -25,7 +25,21 @@
 
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 
+#include <cstdint>
+#include <memory>
+
 namespace arangodb {
+
+struct IMemoryTracker {
+  virtual ~IMemoryTracker() {}
+  virtual void reset() noexcept = 0;
+  virtual void increaseMemoryUsage(std::uint64_t value) = 0;
+  virtual void decreaseMemoryUsage(std::uint64_t value) noexcept = 0;
+
+  virtual void setSavePoint() = 0;
+  virtual void rollbackToSavePoint() noexcept = 0;
+  virtual void popSavePoint() noexcept = 0;
+};
 
 struct IRocksDBTransactionCallback {
   virtual ~IRocksDBTransactionCallback() = default;
@@ -121,6 +135,19 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   Result doCommit();
   Result doCommitImpl();
 
+  /// @brief assumed overhead for each appended entry to a rocksdb::WriteBuffer.
+  /// this is not the actual per-entry overhead, but a good enough estimate.
+  /// the actual overhead depends on a lot of factors, and we don't want to
+  /// replicate rocksdb's internals here.
+  static constexpr std::uint64_t writeBufferEntryOverhead = 12;
+  /// @brief assumed additional overhead for each entry in a
+  /// WriteBatchWithIndex. this is in addition to the actual WriteBuffer entry.
+  static constexpr std::uint64_t indexingEntryOverhead = 32;
+  /// @brief function to calculate overhead of a WriteBatchWithIndex entry,
+  /// depending on keySize. will return 0 if indexing is disabled in the current
+  /// transaction.
+  std::uint64_t indexingOverhead(std::uint64_t keySize) const noexcept;
+
   IRocksDBTransactionCallback& _callback;
 
   rocksdb::TransactionDB* _db{nullptr};
@@ -132,24 +159,25 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   rocksdb::Transaction* _rocksTransaction{nullptr};
 
   /// store the number of log entries in WAL
-  uint64_t _numLogdata{0};
+  std::uint64_t _numLogdata{0};
 
   /// @brief number of commits, including intermediate commits
-  uint64_t _numCommits{0};
+  std::uint64_t _numCommits{0};
   /// @brief number of intermediate commits
-  uint64_t _numIntermediateCommits{0};
-  // if a transaction gets bigger than these values then an automatic
-  // intermediate commit will be done
-  uint64_t _numInserts{0};
-  uint64_t _numUpdates{0};
-  uint64_t _numRemoves{0};
+  std::uint64_t _numIntermediateCommits{0};
+  std::uint64_t _numInserts{0};
+  std::uint64_t _numUpdates{0};
+  std::uint64_t _numRemoves{0};
 
   /// @brief number of rollbacks performed in current transaction. not
   /// resetted on intermediate commit
-  uint64_t _numRollbacks{0};
+  std::uint64_t _numRollbacks{0};
 
   /// @brief tick of last added & written operation
   TRI_voc_tick_t _lastWrittenOperationTick{0};
+
+  /// @brief object used for tracking memory usage
+  std::unique_ptr<IMemoryTracker> _memoryTracker;
 
   bool _indexingDisabled{false};
 };
