@@ -203,7 +203,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
           << fmt::format("Worker Actor: Execution state changed to {}",
                          this->state->executionState->name());
 
-      if (dynamic_cast<FatalError*>(newState.get()) != nullptr) {
+      if (dynamic_cast<FatalError*>(this->state->executionState.get()) !=
+          nullptr) {
         dispatchConductor(ResultT<conductor::message::WorkerFailed>{Result{
             TRI_ERROR_INTERNAL,
             fmt::format("Worker {} has entered fatal state.", this->self)}});

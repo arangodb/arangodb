@@ -1178,13 +1178,11 @@ TEST_F(NodeLoadInspectorTest, load_type_with_unsafe_fields) {
   Unsafe u;
   auto result = inspector.apply(u);
   ASSERT_TRUE(result.ok());
-  EXPECT_EQ(node.get("view")->get().getStringView().value(), u.view);
-  EXPECT_EQ(node.get("view")->get().getStringView().value().data(),
-            u.view.data());
-  EXPECT_EQ(node.get("slice")->get().slice().start(), u.slice.start());
-  EXPECT_EQ(node.get("hashed")->get().getStringView().value(),
-            u.hashed.stringView());
-  EXPECT_EQ(node.get("hashed")->get().getStringView().value().data(),
+  EXPECT_EQ(node.get("view")->getStringView().value(), u.view);
+  EXPECT_EQ(node.get("view")->getStringView().value().data(), u.view.data());
+  EXPECT_EQ(node.get("slice")->slice().start(), u.slice.start());
+  EXPECT_EQ(node.get("hashed")->getStringView().value(), u.hashed.stringView());
+  EXPECT_EQ(node.get("hashed")->getStringView().value().data(),
             u.hashed.data());
 }
 

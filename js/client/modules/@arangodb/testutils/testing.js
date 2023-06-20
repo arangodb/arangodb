@@ -451,7 +451,7 @@ function loadTestSuites () {
   testFuncs['auto'] = autoTest;
 }
 
-function translateTestList(cases) {
+function translateTestList(cases, options) {
   let caselist = [];
   const expandWildcard = ( name ) => {
     if (!name.endsWith('*')) {
@@ -469,6 +469,10 @@ function translateTestList(cases) {
       if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
+        if (fs.exists(which)) {
+          options.test = which;
+          return translateTestList(['auto'], options);
+        }
         print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).sort().join(', '));
         throw new Error("USAGE ERROR");
       }
@@ -510,7 +514,7 @@ function iterateTests(cases, options) {
     // we are applying the failed filter -> only consider cases with failed tests
     cases = _.filter(cases, c => options.failed.hasOwnProperty(c));
   }
-  caselist = translateTestList(cases);
+  caselist = translateTestList(cases, options);
   let optionsList = [];
   if (options.optionsJson != null) {
     optionsList = JSON.parse(options.optionsJson);

@@ -542,6 +542,12 @@ MerkleTree<Hasher, BranchingBits>& MerkleTree<Hasher, BranchingBits>::operator=(
 template<typename Hasher, std::uint64_t const BranchingBits>
 std::uint64_t MerkleTree<Hasher, BranchingBits>::memoryUsage() const {
   std::shared_lock<std::shared_mutex> guard(_dataLock);
+  return MetaSize + _data.memoryUsage;
+}
+
+template<typename Hasher, std::uint64_t const BranchingBits>
+std::uint64_t MerkleTree<Hasher, BranchingBits>::dynamicMemoryUsage() const {
+  std::shared_lock<std::shared_mutex> guard(_dataLock);
   return _data.memoryUsage;
 }
 

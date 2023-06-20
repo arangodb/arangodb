@@ -177,10 +177,12 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 /// that call sites only create Query objects using the `create` factory
 /// method
 Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
-             std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options)
+             std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
+             Query::SchedulerT* scheduler)
     : Query(0, ctx, std::move(queryString), std::move(bindParameters),
             std::move(options),
-            std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
+            std::make_shared<SharedQueryState>(ctx->vocbase().server(),
+                                               scheduler)) {}
 
 Query::~Query() {
   if (_planSliceCopy != nullptr) {
@@ -247,16 +249,17 @@ void Query::destroy() {
 /// ensure that Query objects are always created using shared_ptrs.
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
-    std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options) {
+    std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options,
+    Query::SchedulerT* scheduler) {
   TRI_ASSERT(ctx != nullptr);
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : Query {
     MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
                     QueryString queryString,
                     std::shared_ptr<velocypack::Builder> bindParameters,
-                    QueryOptions options)
+                    QueryOptions options, Query::SchedulerT* scheduler)
         : Query{std::move(ctx), std::move(queryString),
-                std::move(bindParameters), std::move(options)} {}
+                std::move(bindParameters), std::move(options), scheduler} {}
 
     ~MakeSharedQuery() final {
       // Destroy this query, otherwise it's still
@@ -268,7 +271,7 @@ std::shared_ptr<Query> Query::create(
   TRI_ASSERT(ctx != nullptr);
   return std::make_shared<MakeSharedQuery>(
       std::move(ctx), std::move(queryString), std::move(bindParameters),
-      std::move(options));
+      std::move(options), scheduler);
 }
 
 /// @brief return the user that started the query
@@ -1574,8 +1577,12 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   network::RequestOptions options;
   options.database = query.vocbase().name();
   options.timeout = network::Timeout(60.0);  // Picked arbitrarily
-  options.continuationLane = RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR;
-  //  options.skipScheduler = true;
+  options.continuationLane = RequestLane::CLUSTER_INTERNAL;
+  // Most coordinator AQL code might be executed on the MEDIUM prio lane,
+  // since it comes from a continuation. Therefore, to avoid deadlock, we
+  // must use a lane which has priority HIGH. We do not want to skip the
+  // scheduler, since the cleanup code acquires locks and does some
+  // non-trivial work.
 
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
@@ -1757,13 +1764,14 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     // we only get here if something in the network stack is out of order.
     // so there is no need to retry on cleaning up the engines, caller can
     // continue Also note: If an error in cleanup happens the query was
-    // completed already, so this error does not need to be reported to client.
+    // completed already, so this error does not need to be reported to
+    // client.
     _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
 
     if (isModificationQuery()) {
-      // For modification queries these left-over locks will have negative side
-      // effects We will report those to the user. Lingering Read-locks should
-      // not block the system.
+      // For modification queries these left-over locks will have negative
+      // side effects We will report those to the user. Lingering Read-locks
+      // should not block the system.
       std::vector<std::string_view> writeLocked{};
       std::vector<std::string_view> exclusiveLocked{};
       _collections.visit([&](std::string const& name, Collection& col) -> bool {
@@ -1785,12 +1793,14 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       LOG_TOPIC("63572", WARN, Logger::QUERIES)
           << " Failed to cleanup leftovers of a query due to communication "
              "errors. "
-          << " The DBServers will eventually clean up the state. The following "
+          << " The DBServers will eventually clean up the state. The "
+             "following "
              "locks still exist: "
           << " write: " << writeLocked
           << ": you may not drop these collections until the locks time out."
           << " exclusive: " << exclusiveLocked
-          << ": you may not be able to write into these collections until the "
+          << ": you may not be able to write into these collections until "
+             "the "
              "locks time out.";
 
       for (auto const& [server, queryId, rebootId] : _serverQueryIds) {
@@ -1866,9 +1876,10 @@ void Query::debugKillQuery() {
   // A query can only be killed under certain circumstances.
   // We assert here that one of those is true.
   // a) Query is in the list of current queries, this can be requested by the
-  // user and the query can be killed by user b) Query is in the query registry.
-  // In this case the query registry can hit a timeout, which triggers the kill
-  // c) The query id has been handed out to the user (stream query only)
+  // user and the query can be killed by user b) Query is in the query
+  // registry. In this case the query registry can hit a timeout, which
+  // triggers the kill c) The query id has been handed out to the user (stream
+  // query only)
   bool isStreaming = queryOptions().stream;
   bool isInList = false;
   bool isInRegistry = false;

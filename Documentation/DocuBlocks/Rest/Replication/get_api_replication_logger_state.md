@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_replication_logger_state
-@brief returns the state of the replication logger
 
-@RESTHEADER{GET /_api/replication/logger-state, Return replication logger state, getReplicationLoggerState}
+@RESTHEADER{GET /_api/replication/logger-state, Get the replication logger state, getReplicationLoggerState}
 
 @RESTDESCRIPTION
 Returns the current state of the server's replication logger. The state will
@@ -13,35 +12,35 @@ data.
 The body of the response contains a JSON object with the following
 attributes:
 
-- *state*: the current logger state as a JSON object with the following
+- `state`: the current logger state as a JSON object with the following
   sub-attributes:
 
-  - *running*: whether or not the logger is running
+  - `running`: whether or not the logger is running
 
-  - *lastLogTick*: the tick value of the latest tick the logger has logged.
+  - `lastLogTick`: the tick value of the latest tick the logger has logged.
     This value can be used for incremental fetching of log data.
 
-  - *totalEvents*: total number of events logged since the server was started.
+  - `totalEvents`: total number of events logged since the server was started.
     The value is not reset between multiple stops and re-starts of the logger.
 
-  - *time*: the current date and time on the logger server
+  - `time`: the current date and time on the logger server
 
-- *server*: a JSON object with the following sub-attributes:
+- `server`: a JSON object with the following sub-attributes:
 
-  - *version*: the logger server's version
+  - `version`: the logger server's version
 
-  - *serverId*: the logger server's id
+  - `serverId`: the logger server's id
 
-- *clients*: returns the last fetch status by replication clients connected to
+- `clients`: returns the last fetch status by replication clients connected to
   the logger. Each client is returned as a JSON object with the following attributes:
 
-  - *syncerId*: id of the client syncer
+  - `syncerId`: id of the client syncer
 
-  - *serverId*: server id of client
+  - `serverId`: server id of client
 
-  - *lastServedTick*: last tick value served to this client via the WAL tailing API
+  - `lastServedTick`: last tick value served to this client via the WAL tailing API
 
-  - *time*: date and time when this client last called the WAL tailing API
+  - `time`: date and time when this client last called the WAL tailing API
 
 @RESTRETURNCODES
 

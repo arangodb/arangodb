@@ -1,14 +1,13 @@
 
 @startDocuBlock put_api_replication_applier_config
-@brief set configuration values of an applier
 
-@RESTHEADER{PUT /_api/replication/applier-config, Adjust configuration of replication applier, updateReplicationApplierConfig}
+@RESTHEADER{PUT /_api/replication/applier-config, Update the replication applier configuration, updateReplicationApplierConfig}
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{global,boolean,optional}
-If set to *true*, adjusts the configuration of the global replication applier for all
-databases. If set to *false*, adjusts the configuration of the replication applier in the
+If set to `true`, adjusts the configuration of the global replication applier for all
+databases. If set to `false`, adjusts the configuration of the replication applier in the
 selected database.
 
 @RESTBODYPARAM{endpoint,string,required,string}
@@ -44,7 +43,7 @@ whether or not to auto-start the replication applier on
 (next and following) server starts
 
 @RESTBODYPARAM{adaptivePolling,boolean,required,}
-if set to *true*, the replication applier will fall
+if set to `true`, the replication applier will fall
 to sleep for an increasingly long period in case the logger server at the
 endpoint does not have any more replication events to apply. Using
 adaptive polling is thus useful to reduce the amount of work for both the
@@ -53,7 +52,7 @@ changes. The downside is that when using adaptive polling, it might take
 longer for the replication applier to detect that there are new replication
 events on the logger server.
 
-Setting *adaptivePolling* to false will make the replication applier
+Setting `adaptivePolling` to false will make the replication applier
 contact the logger server in a constant interval, regardless of whether
 the logger server provides updates frequently or seldom.
 
@@ -67,9 +66,9 @@ follower, or when the replication is started and no tick value can be found.
 
 @RESTBODYPARAM{autoResyncRetries,integer,optional,int64}
 number of resynchronization retries that will be performed in a row when
-automatic resynchronization is enabled and kicks in. Setting this to *0*
+automatic resynchronization is enabled and kicks in. Setting this to `0`
 will
-effectively disable *autoResync*. Setting it to some other value will limit
+effectively disable `autoResync`. Setting it to some other value will limit
 the number of retries that are performed. This helps preventing endless
 retries
 in case resynchronizations always fail.
@@ -80,15 +79,15 @@ wait for a response from the leader when fetching initial collection data.
 This wait time can be used to control after what time the initial
 synchronization
 will give up waiting for a response and fail. This value is relevant even
-for continuous replication when *autoResync* is set to *true* because this
+for continuous replication when `autoResync` is set to `true` because this
 may re-start the initial synchronization when the leader cannot provide
 log data the follower requires.
-This value will be ignored if set to *0*.
+This value will be ignored if set to `0`.
 
 @RESTBODYPARAM{connectionRetryWaitTime,integer,optional,int64}
 the time (in seconds) that the applier will intentionally idle before
 it retries connecting to the leader in case of connection problems.
-This value will be ignored if set to *0*.
+This value will be ignored if set to `0`.
 
 @RESTBODYPARAM{idleMinWaitTime,integer,optional,int64}
 the minimum wait time (in seconds) that the applier will intentionally idle
@@ -96,7 +95,7 @@ before fetching more log data from the leader in case the leader has
 already sent all its log data. This wait time can be used to control the
 frequency with which the replication applier sends HTTP log fetch requests
 to the leader in case there is no write activity on the leader.
-This value will be ignored if set to *0*.
+This value will be ignored if set to `0`.
 
 @RESTBODYPARAM{idleMaxWaitTime,integer,optional,int64}
 the maximum wait time (in seconds) that the applier will intentionally idle
@@ -106,28 +105,28 @@ that resulted in no more log data. This wait time can be used to control the
 maximum frequency with which the replication applier sends HTTP log fetch
 requests to the leader in case there is no write activity on the leader for
 longer periods. This configuration value will only be used if the option
-*adaptivePolling* is set to *true*.
-This value will be ignored if set to *0*.
+`adaptivePolling` is set to `true`.
+This value will be ignored if set to `0`.
 
 @RESTBODYPARAM{requireFromPresent,boolean,required,}
-if set to *true*, then the replication applier will check
+if set to `true`, then the replication applier will check
 at start whether the start tick from which it starts or resumes replication is
 still present on the leader. If not, then there would be data loss. If
-*requireFromPresent* is *true*, the replication applier will abort with an
-appropriate error message. If set to *false*, then the replication applier will
+`requireFromPresent` is `true`, the replication applier will abort with an
+appropriate error message. If set to `false`, then the replication applier will
 still start, and ignore the data loss.
 
 @RESTBODYPARAM{verbose,boolean,required,}
-if set to *true*, then a log line will be emitted for all operations
+if set to `true`, then a log line will be emitted for all operations
 performed by the replication applier. This should be used for debugging replication
 problems only.
 
 @RESTBODYPARAM{restrictType,string,required,string}
-the configuration for *restrictCollections*; Has to be either *include* or *exclude*
+the configuration for `restrictCollections`; Has to be either `include` or `exclude`
 
 @RESTBODYPARAM{restrictCollections,array,optional,string}
 the array of collections to include or exclude,
-based on the setting of *restrictType*
+based on the setting of `restrictType`
 
 @RESTDESCRIPTION
 Sets the configuration of the replication applier. The configuration can
