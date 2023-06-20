@@ -747,7 +747,7 @@ void DumpFeature::collectOptions(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
-  //options
+  // options
   //    ->addOption(
   //        "--split-files",
   //        "Split a collection in multiple files to increase throughput.",
