@@ -22,6 +22,7 @@
       'replication/applier/:endpoint/:database': 'applier',
       'collections': 'collections',
       'analyzers': 'analyzers',
+      'analyzers/:name': 'analyzers',
       'new': 'newCollection',
       'login': 'login',
       'collection/:colid/documents/:pageid': 'documents',
@@ -372,14 +373,14 @@
       this.checkUser();
 
       this.init.then(() => ReactDOM.render(React.createElement(window.AnalyzersReactView),
-        document.getElementById('content')));
+        document.getElementById('content-react')));
     },
 
     showV2Graph: function (name) {
       this.checkUser();
 
       this.init.then(() => ReactDOM.render(React.createElement(window.GraphV2ReactView),
-        document.getElementById('content'))
+        document.getElementById('content-react'))
       );
     },
 
