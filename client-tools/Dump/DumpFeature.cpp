@@ -747,15 +747,15 @@ void DumpFeature::collectOptions(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
-  options
-      ->addOption(
-          "--split-files",
-          "Split a collection in multiple files to increase throughput.",
-          new BooleanParameter(&_options.splitFiles),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Experimental,
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+  //options
+  //    ->addOption(
+  //        "--split-files",
+  //        "Split a collection in multiple files to increase throughput.",
+  //        new BooleanParameter(&_options.splitFiles),
+  //        arangodb::options::makeDefaultFlags(
+  //            arangodb::options::Flags::Experimental,
+  //            arangodb::options::Flags::Uncommon))
+  //    .setIntroducedIn(31200);
   options
       ->addOption("--dbserver-worker-threads",
                   "Number of worker threads on each dbserver.",
