@@ -1,15 +1,24 @@
-v3.11.1 (XXXX-XX-XX)
+v3.11.2 (XXXX-XX-XX)
 --------------------
 
 * FE-240: disable JSON editor when viewing inverted index.
+
+* Fixed two possible deadlocks which could occur if all medium priority
+  threads are busy. One is that in this case the AgencyCache could no longer
+  receive updates from the agency and another that queries could no longer
+  be finished. This fixes BTS-1475 and BTS-1486.
+
+
+v3.11.1 (2023-06-12)
+--------------------
+
+* Updated arangosync to v2.18.1.
 
 * SEARCH-480: Speedup ArangoSearch recovery.
 
 * SEARCH-476: Fix bug in fst builder.
 
 * BTS-1325: AQL: Fixed a possible deadlock with multiple parallel traversals.
-
-* Updated arangosync to v2.18.0.
 
 * Updated OpenSSL to 3.0.9.
 
