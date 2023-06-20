@@ -40,6 +40,20 @@ and `geoJson` is `true`, then the order within the array is longitude
 followed by latitude. This corresponds to the format described in
 http://geojson.org/geojson-spec.html#positions
 
+@RESTBODYPARAM{legacyPolygons,boolean,optional,}
+If `geoJson` is set to `true`, then this option controls how GeoJSON Polygons
+are interpreted.
+
+- If `legacyPolygons` is `true`, the smaller of the two regions defined by a
+  linear ring is interpreted as the interior of the ring and a ring can at most
+  enclose half the Earth's surface.
+- If `legacyPolygons` is `false`, the area to the left of the boundary ring's
+  path is considered to be the interior and a ring can enclose the entire
+  surface of the Earth.
+
+The default is `true` for geo indexes that were created in versions before 3.10,
+and `false` for geo indexes created in 3.10 or later.
+
 @RESTBODYPARAM{inBackground,boolean,optional,}
 You can set this option to `true` to create the index
 in the background, which will not write-lock the underlying collection for
