@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-262: Improve Analyzer table UI.
+
 * FE-287: fix number validation for replicationFactor and writeConcern.
 
 * FE-285: Fix query download - use post request for query.
