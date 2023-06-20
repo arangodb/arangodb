@@ -26,6 +26,7 @@ export const InvertedIndexFormJSONEditor = ({
     <Box height="100%" backgroundColor="white" position="relative" minWidth={0}>
       <ControlledJSONEditor
         value={values}
+        isDisabled={isFormDisabled}
         onValidationError={errors => {
           setErrors(errors);
         }}
