@@ -172,7 +172,8 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::replaceNearWithinFulltext,
                OptimizerRule::makeFlags(),
                R"(Replace deprecated index functions such as `FULLTEXT()`,
-`NEAR()`, `WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.)");
+`NEAR()`, `WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.
+This is not an optimization rule and cannot be turned off.)");
 
   // inline subqueries one level higher
   registerRule("inline-subqueries", inlineSubqueriesRule,
@@ -238,7 +239,9 @@ query. This can be a consequence of applying other optimizations.)");
       OptimizerRule::specializeCollectRule,
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanCreateAdditionalPlans,
                                OptimizerRule::Flags::Hidden),
-      R"(TODO)");
+      R"(Appears whenever a `COLLECT` statement is used in a query to determine
+the type of `CollectNode` to use. This is not an optimization rule and cannot
+be turned off.)");
 
   // remove redundant sort blocks
   registerRule("remove-redundant-sorts", removeRedundantSortsRule,
@@ -392,9 +395,10 @@ further optimizations that are not possible on the path variable `p`.)");
   registerRule("optimize-traversals", optimizeTraversalsRule,
                OptimizerRule::optimizeTraversalsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(Optimize unused vertex, edge, and path output variables of
-AQL traversals away and try to move `FILTER` conditions into `TraversalNode`
-for early pruning of results.)");
+               R"(Try to move `FILTER` conditions into `TraversalNode` for
+early pruning of results, apply traversal projections, and avoid calculating
+edge and path output variables that are not declared in the query for the
+AQL traversal.)");
 
   // optimize K_PATHS
   registerRule(
@@ -414,14 +418,16 @@ already covered by `TraversalNode`.)");
       "handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
       OptimizerRule::handleArangoSearchViewsRule, OptimizerRule::makeFlags(),
       R"(Appears whenever an `arangosearch` or `search-alias` View is accessed
-in a query.)");
+in a query. This is not an optimization rule and cannot be turned off.)");
 
   // move constrained sort into views
   registerRule("arangosearch-constrained-sort",
                arangodb::iresearch::handleConstrainedSortInView,
                OptimizerRule::handleConstrainedSortInView,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(TODO)");
+               R"(Make nodes of type `EnumerateViewNode` aware of `SORT` with a
+subsequent `LIMIT` when using Views to reduce memory usage and avoid unnecessary
+sorting that has already been carried out by ArangoSearch internally.)");
 
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2",
@@ -438,7 +444,8 @@ optimizations)");
                OptimizerRule::removeTraversalPathVariable,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Avoid computing the variables emitted by AQL traversals if
-they are unused in the query, significantly reducing overhead.)");
+they are declared but unused in the query, or only used in filters that are
+pulled into the traversal, significantly reducing overhead.)");
 
   registerRule("optimize-cluster-single-document-operations",
                substituteClusterSingleDocumentOperationsRule,
@@ -490,7 +497,7 @@ are skipped if the optimization is triggered.
   registerRule("sort-limit", sortLimitRule, OptimizerRule::applySortLimitRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Make `SORT` aware of a subsequent `LIMIT` to enable
-optimizations internal to the `SortNode` that allow to reduce the memory usage
+optimizations internal to the `SortNode` that allow to reduce memory usage
 and, in many cases, improve the sorting speed.
 
 A `SortNode` needs to be followed by a `LimitNode` with no intervening nodes
@@ -520,13 +527,12 @@ late as possible and not before their results are required.)");
 
 #ifdef USE_ENTERPRISE
   // must be the first cluster optimizer rule
-  registerRule(
-      "cluster-one-shard", clusterOneShardRule,
-      OptimizerRule::clusterOneShardRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                               OptimizerRule::Flags::ClusterOnly,
-                               OptimizerRule::Flags::EnterpriseOnly),
-          R"(Offload the entire query to the DB-Server (except the client
+  registerRule("cluster-one-shard", clusterOneShardRule,
+               OptimizerRule::clusterOneShardRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly),
+               R"(Offload the entire query to the DB-Server (except the client
 communication via a Coordinator). This saves all the back and forth that
 normally exists in regular cluster queries, benefitting traversals and joins
 in particular.
@@ -553,7 +559,7 @@ SmartGraphs cannot be optimized.)");
                OptimizerRule::distributeInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly),
                R"(Appears if query parts get distributed in a cluster.
-This is not an optimization rule, and it cannot be turned off.)");
+This is not an optimization rule and cannot be turned off.)");
 
 #ifdef USE_ENTERPRISE
   registerRule("smart-joins", smartJoinsRule, OptimizerRule::smartJoinsRule,
@@ -571,7 +577,7 @@ setup via their shard keys.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly),
                R"(Appears if nodes of the types `ScatterNode`, `GatherNode`,
 and `RemoteNode` are inserted into a distributed query plan.
-This is not an optimization rule, and it cannot be turned off.)");
+This is not an optimization rule and cannot be turned off.)");
 
 #ifdef USE_ENTERPRISE
   registerRule("distribute-offset-info-to-cluster",
@@ -579,7 +585,8 @@ This is not an optimization rule, and it cannot be turned off.)");
                OptimizerRule::distributeOffsetInfoToClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
                                         OptimizerRule::Flags::EnterpriseOnly),
-               R"(TODO)");
+               R"(Push the calculation of search highlighting information to
+DB-Servers where the data for determining the offsets is stored.)");
 #endif
 
   registerRule("distribute-filtercalc-to-cluster",
@@ -720,7 +727,8 @@ traversal can run completely on the local DB-Server.)");
                OptimizerRule::decayUnnecessarySortedGatherRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly),
-               R"(TODO)");
+               R"(Avoid merge-sorting results on a Coordinator if they are all
+from a single shard and fully sorted by a DB-Server already.)");
 
 #ifdef USE_ENTERPRISE
   registerRule("push-subqueries-to-dbserver", clusterPushSubqueryToDBServer,
@@ -755,7 +763,8 @@ involved attributes are covered by regular indexes.)");
                OptimizerRule::lateMaterialiationOffsetInfoRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::EnterpriseOnly),
-               R"(TODO)");
+               R"(Get the search highlighting offsets as late as possible to
+avoid unnecessary reads.)");
 #endif
 
   // add the storage-engine specific rules
@@ -779,7 +788,7 @@ involved attributes are covered by regular indexes.)");
   registerRule("splice-subqueries", spliceSubqueriesRule,
                OptimizerRule::spliceSubqueriesRule, OptimizerRule::makeFlags(),
                R"(Appears if subqueries are spliced into the surrounding query.
-This is performed on all subqueries and cannot be switched off.
+This is performed on all subqueries and cannot be turned off.
 This optimization is applied after all other optimizations and reduces overhead
 for executing subqueries by inlining the execution. This mainly benefits
 queries which execute subqueries very often that only return a few results at
@@ -795,7 +804,10 @@ a time.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault,
                                         OptimizerRule::Flags::Hidden),
-               R"(TODO)");
+               R"(Allow query execution nodes to asynchronously prefetch the
+next batch while processing the current batch, allowing parts of the query to
+run in parallel. This is an experimental option as not all operations are
+thread-safe.)");
 
   // finally sort all rules by their level
   std::sort(_rules.begin(), _rules.end(),
