@@ -294,7 +294,7 @@ const replicatedLogSuite = function () {
         const {current} = lh.readReplicatedLogAgency(database, log.id());
         if (!current.safeRebootIds.hasOwnProperty(newFollower)) {
           return Error(`Reboot id of ${newFollower} is not yet reported.`);
-        } else if (current.safeRebootIds.hasOwnProperty(newFollower)) {
+        } else if (current.safeRebootIds.hasOwnProperty(oldFollower)) {
           return Error(`Reboot id of ${oldFollower} is still being reported.`);
         } else {
           return true;
