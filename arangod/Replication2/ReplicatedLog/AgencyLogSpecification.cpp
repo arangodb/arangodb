@@ -118,6 +118,7 @@ auto agency::operator<<(std::ostream& ostream,
       "participantsRequired"_a = el.participantsRequired,
       "participantsVoting"_a = el.participantsVoting,
       "electibleLeaderSet"_a = el.electibleLeaderSet,
+      // cppcheck-suppress assignBoolToPointer
       "allParticipantsAttending"_a = el.allParticipantsAttending,
       "detail"_a = el.detail);
 
