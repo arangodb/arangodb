@@ -308,11 +308,7 @@ class Manager final : public IManager {
 
   double _streamingLockTimeout;
 
-
   std::atomic<bool> _softShutdownOngoing;
-
- // metrics::Gauge<uint64_t>& _metricsTransactionMemoryInternal;
-
 };
 }  // namespace transaction
 }  // namespace arangodb
