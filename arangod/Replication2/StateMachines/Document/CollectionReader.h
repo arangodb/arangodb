@@ -25,22 +25,31 @@
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "Transaction/Methods.h"
+#include "Transaction/Options.h"
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 
 struct TRI_vocbase_t;
 namespace arangodb {
 class LogicalCollection;
 class ReplicationIterator;
-class SingleCollectionTransaction;
 
 namespace transaction {
 class Context;
-}
+}  // namespace transaction
 }  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
+
+struct SnapshotTransaction : transaction::Methods {
+  explicit SnapshotTransaction(std::shared_ptr<transaction::Context> ctx);
+  static auto options() -> transaction::Options;
+  void addCollection(LogicalCollection const& collection);
+};
+
 /*
  * Used to read raw collection data in batches.
  * There is no guarantee that it will always give you the latest documents, as
@@ -66,7 +75,8 @@ struct ICollectionReader {
 class CollectionReader : public ICollectionReader {
  public:
   explicit CollectionReader(
-      std::shared_ptr<LogicalCollection> logicalCollection);
+      std::shared_ptr<LogicalCollection> logicalCollection,
+      SnapshotTransaction& trx);
 
   [[nodiscard]] bool hasMore() override;
   [[nodiscard]] std::optional<uint64_t> getDocCount() override;
@@ -74,30 +84,45 @@ class CollectionReader : public ICollectionReader {
 
  private:
   std::shared_ptr<LogicalCollection> _logicalCollection;
-  std::shared_ptr<transaction::Context> _ctx;
-  std::unique_ptr<SingleCollectionTransaction> _trx;
   std::unique_ptr<ReplicationIterator> _it;
   std::optional<uint64_t> _totalDocs{std::nullopt};
+};
+
+struct IDatabaseSnapshot {
+  virtual ~IDatabaseSnapshot() = default;
+  [[nodiscard]] virtual auto createCollectionReader(
+      std::string_view collectionName)
+      -> std::unique_ptr<ICollectionReader> = 0;
+  virtual auto resetTransaction() -> Result = 0;
+};
+
+struct DatabaseSnapshot : IDatabaseSnapshot {
+  explicit DatabaseSnapshot(TRI_vocbase_t& vocbase);
+  [[nodiscard]] auto createCollectionReader(std::string_view collectionName)
+      -> std::unique_ptr<ICollectionReader> override;
+  auto resetTransaction() -> Result override;
+
+ private:
+  TRI_vocbase_t& _vocbase;
+  std::shared_ptr<transaction::Context> _ctx;
+  std::unique_ptr<SnapshotTransaction> _trx;
 };
 
 /*
  * Used to abstract away the underlying storage engine.
  */
-struct ICollectionReaderFactory {
-  virtual ~ICollectionReaderFactory() = default;
-  virtual auto createCollectionReader(std::string_view collectionName)
-      -> ResultT<std::unique_ptr<ICollectionReader>> = 0;
+struct IDatabaseSnapshotFactory {
+  virtual ~IDatabaseSnapshotFactory() = default;
+  virtual auto createSnapshot() -> std::unique_ptr<IDatabaseSnapshot> = 0;
 };
 
-class CollectionReaderFactory : public ICollectionReaderFactory {
+class DatabaseSnapshotFactory : public IDatabaseSnapshotFactory {
  public:
-  explicit CollectionReaderFactory(TRI_vocbase_t& vocbase);
+  explicit DatabaseSnapshotFactory(TRI_vocbase_t& vocbase);
 
-  auto createCollectionReader(std::string_view collectionName)
-      -> ResultT<std::unique_ptr<ICollectionReader>> override;
+  auto createSnapshot() -> std::unique_ptr<IDatabaseSnapshot> override;
 
  private:
-  // TODO should we use a database guard here? CINFRA-596
   TRI_vocbase_t& _vocbase;
 };
 

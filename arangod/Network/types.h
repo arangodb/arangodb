@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include <fuerte/types.h>
 #include <chrono>
+#include <map>
 
 namespace arangodb {
 namespace network {

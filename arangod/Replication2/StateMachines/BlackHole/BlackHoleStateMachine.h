@@ -25,6 +25,8 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb::replication2::replicated_state {
 /**
  * The black-hole state machine is here only for testing purpose. It accepts
@@ -76,7 +78,7 @@ struct BlackHoleFollowerState
       -> std::unique_ptr<BlackHoleCore> override;
 
  protected:
-  auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
+  auto acquireSnapshot(ParticipantId const& destination) noexcept
       -> futures::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
@@ -91,7 +93,7 @@ struct BlackHoleFactory {
       -> std::shared_ptr<BlackHoleFollowerState>;
   auto constructLeader(std::unique_ptr<BlackHoleCore> core)
       -> std::shared_ptr<BlackHoleLeaderState>;
-  auto constructCore(GlobalLogIdentifier const&)
+  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
       -> std::unique_ptr<BlackHoleCore>;
 };
 

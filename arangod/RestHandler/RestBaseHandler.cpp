@@ -103,7 +103,8 @@ void RestBaseHandler::generateResult(
 /// convenience function akin to generateError,
 /// renders payload in 'result' field
 /// adds proper `error`, `code` fields
-void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload) {
+void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload,
+                                 VPackOptions const& options) {
   resetResponse(code);
 
   try {
@@ -117,7 +118,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload) {
     }
     tmp.close();
 
-    writeResult(std::move(buffer), VPackOptions::Defaults);
+    writeResult(std::move(buffer), options);
   } catch (...) {
     // Building the error response failed
   }

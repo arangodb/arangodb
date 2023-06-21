@@ -3,7 +3,6 @@ import minimatch from "minimatch";
 import { cloneDeep, compact, has, isEqual, merge, set, uniqueId, unset } from "lodash";
 import { DispatchArgs, State } from "./constants";
 import { ErrorObject, ValidateFunction } from "ajv";
-import { fixFieldsInit } from "../views/views/reducerHelper";
 
 export const getChangeHandler = (setter: (value: string) => void) => {
   return (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -101,7 +100,6 @@ export const getReducer = <FormState extends object> (initialState: State<FormSt
       case 'setField':
         if (action.field && action.field.value !== undefined) {
           newState = cloneDeep(state);
-          fixFieldsInit(newState.formCache, action);
           const path = getPath(action.basePath, action.field.path);
 
           set(newState.formCache, path, action.field.value);

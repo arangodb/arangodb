@@ -236,4 +236,44 @@ struct QuorumData {
   void toVelocyPack(velocypack::Builder& builder) const;
 };
 
+namespace {
+constexpr std::string_view kStringUnconfigured = "Unconfigured";
+constexpr std::string_view kStringConnecting = "Connecting";
+constexpr std::string_view kStringRecovery = "RecoveryInProgress";
+constexpr std::string_view kStringAcquiringSnapshot = "AcquiringSnapshot";
+constexpr std::string_view kStringOperational = "ServiceOperational";
+}  // namespace
+
+enum class LocalStateMachineStatus {
+  // resigned or not constructed
+  kUnconfigured,
+  // a follower is connecting before it processed its first append entries
+  // request successfully
+  kConnecting,
+  // a leader is in this state until it has completed recovery
+  kRecovery,
+  // a follower that has established a connection to the leader, but doesn't
+  // have a snapshot yet
+  kAcquiringSnapshot,
+  // state machine is operational, i.e. on a leader, recovery has completed
+  // succesfully; and on a follower, it has established a connection to the
+  // leader (received and processed an append entries request successfully) and
+  // has a valid snapshot
+  kOperational
+};
+
+auto to_string(LocalStateMachineStatus) noexcept -> std::string_view;
+auto operator<<(std::ostream& ostream, LocalStateMachineStatus const& status)
+    -> std::ostream&;
+
+template<class Inspector>
+auto inspect(Inspector& f, LocalStateMachineStatus& x) {
+  return f.enumeration(x).values(
+      LocalStateMachineStatus::kUnconfigured, kStringUnconfigured,
+      LocalStateMachineStatus::kConnecting, kStringConnecting,
+      LocalStateMachineStatus::kRecovery, kStringRecovery,
+      LocalStateMachineStatus::kAcquiringSnapshot, kStringAcquiringSnapshot,
+      LocalStateMachineStatus::kOperational, kStringOperational);
+}
+
 }  // namespace arangodb::replication2::replicated_log

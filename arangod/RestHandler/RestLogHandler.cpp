@@ -33,6 +33,7 @@
 #include <Cluster/ClusterFeature.h>
 #include <Cluster/AgencyCache.h>
 
+#include "Agency/AgencyPaths.h"
 #include "Inspection/VPack.h"
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Methods.h"
@@ -600,10 +601,10 @@ RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,
   }
   LogIndex logIdx{basics::StringUtils::uint64(suffixes[2])};
 
-  return waitForFuture(
-      methods.getLogEntryByIndex(logId, logIdx)
-          .thenValue([this](std::optional<PersistingLogEntry>&& entry) {
-            if (entry) {
+  auto fut =
+      methods.slice(logId, logIdx, logIdx + 1)
+          .thenValue([this](std::unique_ptr<PersistedLogIterator>&& iter) {
+            if (auto entry = iter->next(); entry) {
               VPackBuilder result;
               entry->toVelocyPack(result);
               generateOk(rest::ResponseCode::OK, result.slice());
@@ -611,5 +612,7 @@ RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,
               generateError(rest::ResponseCode::NOT_FOUND,
                             TRI_ERROR_HTTP_NOT_FOUND, "log index not found");
             }
-          }));
+          });
+
+  return waitForFuture(std::move(fut));
 }

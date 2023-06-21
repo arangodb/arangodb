@@ -77,6 +77,8 @@ struct ReplicatedStateMetrics {
       replicatedStateNumberAcquireSnapshotErrors;
   std::shared_ptr<metrics::Counter> const
       replicatedStateNumberApplyEntriesErrors;
+
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> const replicatedStateApplyDebt;
 };
 
 }  // namespace arangodb::replication2::replicated_state

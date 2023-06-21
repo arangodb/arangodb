@@ -1,5 +1,4 @@
 /*jshint strict: true */
-/*global assertTrue, assertEqual, print*/
 "use strict";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -25,6 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue} = jsunity.jsUnity.assertions;
 const arangodb = require("@arangodb");
 const _ = require("lodash");
 const db = arangodb.db;
@@ -41,6 +41,7 @@ const {
   registerAgencyTestEnd,
   replicatedLogUpdateTargetParticipants,
   waitForReplicatedLogAvailable,
+  createReconfigureJob,
 } = helper;
 const {
   replicatedLogIsReady,
@@ -142,7 +143,9 @@ const replicatedLogSuite = function () {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    waitForSync: false,
+    // TODO Set waitForSync to false after https://arangodb.atlassian.net/browse/CINFRA-755 is finished.
+    //      This is tracked in https://arangodb.atlassian.net/browse/CINFRA-783.
+    waitForSync: true,
   };
 
   const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} =
@@ -297,7 +300,7 @@ const replicatedLogSuite = function () {
         const election = current.supervision.StatusReport[0].detail.election;
         assertEqual(election.term, term + 1);
         assertEqual(election.participantsRequired, 2);
-        assertEqual(election.participantsAvailable, 1);
+        assertEqual(election.participantsVoting, 1);
         const detail = election.details;
         assertEqual(detail[leader].code, 1);
         assertEqual(detail[followers[0]].code, 1);
@@ -550,6 +553,36 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
+
+    // This tests makes a follower fail. Once it is declared as failed, we try to replace it with a new
+    // follower.
+    testReplaceFailedFollower: function () {
+      const {logId, servers, term, followers} = helper.createReplicatedLog(database, {
+        writeConcern: 2,
+        softWriteConcern: 3,
+        waitForSync: false,
+      });
+
+      const stoppedFollower = _.sample(followers);
+      stopServer(stoppedFollower);
+      waitFor(lpreds.serverFailed(stoppedFollower));
+
+      const replacement = _.sample(_.difference(dbservers, servers));
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [replacement]: {allowedInQuorum: true, allowedAsLeader: true},
+        [stoppedFollower]: null,
+      });
+
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [replacement]: {forced: false, allowedInQuorum: true, allowedAsLeader: true},
+            [stoppedFollower]: null,
+          })
+      );
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
     // This test first makes a follower excluded and then asks for this follower
     // to become the leader. It then removed the excluded flag and expects the
     // leadership to be transferred.
@@ -785,6 +818,91 @@ const replicatedLogSuite = function () {
               newServer
           )
       );
+
+      const actions = helper.getSupervisionActionTypes(database, logId);
+      const expected = [
+        // - create log
+        'AddLogToPlanAction',
+        // - add new participant
+        'AddParticipantToPlanAction',
+        // - force some old follower in order to become leader, as the new one's not allowed as a leader yet
+        'UpdateParticipantFlagsAction',
+        // - switch to old follower
+        'SwitchLeaderAction',
+        // - remove force of leader (previous old follower)
+        'UpdateParticipantFlagsAction',
+        // - disallow old leader from quorum
+        'UpdateParticipantFlagsAction',
+        // - remove old leader
+        'RemoveParticipantFromPlanAction',
+        // - update flags from target (as requested during the test, now allowing new participant as a leader)
+        'UpdateParticipantFlagsAction',
+        // - force new participant
+        'UpdateParticipantFlagsAction',
+        // - switch leader to new participant
+        'SwitchLeaderAction',
+        // - remove force flag of leader (new participant)
+        'UpdateParticipantFlagsAction',
+      ];
+      assertEqual(actions, expected);
+    },
+
+    // This test adds a new participant to the replicated log
+    // and requests that this new participant shall become the leader.
+    // As opposed to the previous test, it's not introduced with `allowedAsLeader: false`.
+    // It's also a regression test for CINFRA-717.
+    testChangeLeaderImmediatelyToNewFollower: function () {
+      const {logId, servers, term, leader, followers} =
+          createReplicatedLogAndWaitForLeader(database);
+
+      const newServer = _.sample(_.difference(dbservers, servers));
+      {
+        let {target} = readReplicatedLogAgency(database, logId);
+        // request this server to become leader
+        target.leader = newServer;
+        // delete old leader from target
+        delete target.participants[leader];
+        target.participants[newServer] = {};
+        replicatedLogSetTarget(database, logId, target);
+      }
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [newServer]: {
+              allowedInQuorum: true,
+              allowedAsLeader: true,
+              forced: false,
+            },
+            [leader]: null,
+          })
+      );
+      waitFor(
+          replicatedLogIsReady(
+              database,
+              logId,
+              term + 1,
+              [...followers, newServer],
+              newServer
+          )
+      );
+
+      const actions = helper.getSupervisionActionTypes(database, logId);
+      const expected = [
+        // - create log
+        'AddLogToPlanAction',
+        // - add new participant
+        'AddParticipantToPlanAction',
+        // - force new participant
+        'UpdateParticipantFlagsAction',
+        // - switch leader to new participant
+        'SwitchLeaderAction',
+        // - remove force flag of leader (new participant)
+        'UpdateParticipantFlagsAction',
+        // - disallow old leader from quorum
+        'UpdateParticipantFlagsAction',
+        // - remove old leader
+        'RemoveParticipantFromPlanAction',
+      ];
+      assertEqual(actions, expected);
     },
 
     // This tests requests a non-server as leader and expects the
@@ -898,7 +1016,7 @@ const replicatedLogSuite = function () {
           );
         }
 
-        let localStatus = helper.getLocalStatus(database, logId, leader);
+        let localStatus = helper.getLocalStatus(leader, database, logId);
         if (localStatus.role !== "leader") {
           return Error("Designated leader does not report as leader");
         }
@@ -918,7 +1036,7 @@ const replicatedLogSuite = function () {
               )}; expected = ${JSON.stringify(localStatus)}`
           );
         }
-        localStatus = helper.getLocalStatus(database, logId, followers[1]);
+        localStatus = helper.getLocalStatus(followers[1], database, logId);
         if (localStatus.role !== "follower") {
           return Error("Designated follower does not report as follower");
         }
@@ -1067,6 +1185,75 @@ const replicatedLogSuite = function () {
       continueServer(leader);
       // if we continue the server, we expect the old leader to come back
       waitFor(replicatedLogIsReady(database, logId, term + 3, servers, leader));
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testCreateReconfigureJob: function () {
+      const {logId} = createReplicatedLogAndWaitForLeader(database);
+      const jobId = createReconfigureJob(database, logId, []);
+      waitFor(lpreds.agencyJobIn(jobId, "Finished"));
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testCreateReconfigureJobSetLeader: function () {
+      const {logId, followers} = createReplicatedLogAndWaitForLeader(database);
+      const jobId = createReconfigureJob(database, logId, [{"operation": "set-leader", "participant": followers[0]}]);
+      waitFor(lpreds.agencyJobIn(jobId, "Finished"));
+      let {leader} = helper.getReplicatedLogLeaderPlan(database, logId);
+      assertEqual(followers[0], leader);
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testCreateReconfigureJobAddParticipant: function () {
+      const {logId, servers} = createReplicatedLogAndWaitForLeader(database);
+      const otherServers = _.difference(dbservers, servers);
+      const serverToAdd = _.sample(otherServers);
+      const jobId = createReconfigureJob(database, logId, [{
+        "operation": "add-participant",
+        "participant": serverToAdd
+      }]);
+      waitFor(lpreds.agencyJobIn(jobId, "Finished"));
+
+      const {plan} = helper.readReplicatedLogAgency(database, logId);
+      assertTrue(plan.participantsConfig.participants[serverToAdd] !== undefined);
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testCreateReconfigureJobRemoveParticipant: function () {
+      const {logId, followers} = createReplicatedLogAndWaitForLeader(database);
+      const serverToRemove = _.sample(followers);
+      const jobId = createReconfigureJob(database, logId, [{
+        "operation": "remove-participant",
+        "participant": serverToRemove
+      }]);
+      waitFor(lpreds.agencyJobIn(jobId, "Finished"));
+
+      const {plan} = helper.readReplicatedLogAgency(database, logId);
+      assertTrue(plan.participantsConfig.participants[serverToRemove] === undefined);
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testCreateReconfigureJobCombinedOperations: function () {
+      const {logId, followers, servers} = createReplicatedLogAndWaitForLeader(database);
+      const otherServers = _.difference(dbservers, servers);
+      const serverToAdd = _.sample(otherServers);
+      const [newLeader, serverToRemove] = _.sampleSize(followers, 2);
+      const jobId = createReconfigureJob(database, logId, [{
+        "operation": "remove-participant",
+        "participant": serverToRemove
+      }, {
+        "operation": "add-participant",
+        "participant": serverToAdd
+      }, {
+        "operation": "set-leader",
+        "participant": newLeader
+      },]);
+      waitFor(lpreds.agencyJobIn(jobId, "Finished"));
+
+      const {plan} = helper.readReplicatedLogAgency(database, logId);
+      assertTrue(plan.participantsConfig.participants[serverToRemove] === undefined);
+      assertTrue(plan.participantsConfig.participants[serverToAdd] !== undefined);
+      assertTrue(plan.currentTerm.leader.serverId === newLeader);
       replicatedLogDeleteTarget(database, logId);
     },
   };
