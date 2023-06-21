@@ -70,7 +70,6 @@
 #include "Replication2/IScheduler.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
-#include "Replication2/ReplicatedLog/IRebootIdCache.h"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
