@@ -3,7 +3,6 @@ import { Global } from "@emotion/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { SwitchControl } from "../../../components/form/SwitchControl";
-import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { getAdminRouteForCurrentDB } from "../../../utils/arangoClient";
 
 async function rebalanceShards(opts: {
@@ -72,8 +71,14 @@ export const RebalanceShards = ({
           />
           <Box width="100%" padding="5" background="white">
             <Text fontSize={"lg"}>Shard rebalancing</Text>
+            <Text marginY="4">
+              By default, rebalancing changes leaders only without moving data.
+              <br />
+              To correct data imbalance and move leader and/or follower shards,
+              use the options below.
+            </Text>
             <Grid
-              gridTemplateColumns={"250px 40px 40px"}
+              gridTemplateColumns={"250px 1fr"}
               rowGap="5"
               columnGap="3"
               marginY="4"
@@ -81,15 +86,13 @@ export const RebalanceShards = ({
               alignItems="center"
             >
               <FormLabel margin="0" htmlFor="moveLeaders">
-                Move Leaders
+                Move Leader Shards
               </FormLabel>
               <SwitchControl isDisabled={isSubmitting} name="moveLeaders" />
-              <InfoTooltip label="Allow moving leaders." />
               <FormLabel margin="0" htmlFor="moveFollowers">
-                Move Followers
+                Move Follower Shards
               </FormLabel>
               <SwitchControl isDisabled={isSubmitting} name="moveFollowers" />
-              <InfoTooltip label="Allow moving followers." />
               <FormLabel margin="0" htmlFor="includeSystemCollections">
                 Include System Collections
               </FormLabel>
@@ -97,7 +100,6 @@ export const RebalanceShards = ({
                 isDisabled={isSubmitting}
                 name="includeSystemCollections"
               />
-              <InfoTooltip label="Include system collections in the rebalance plan." />
             </Grid>
             <Button
               colorScheme="green"
