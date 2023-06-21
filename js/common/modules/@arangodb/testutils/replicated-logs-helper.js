@@ -217,7 +217,7 @@ const replicatedLogSetPlanTerm = function (database, logId, term) {
 
 const triggerLeaderElection = function (database, logId) {
   // This operation has to be in one envelope. Otherwise we violate the assumption
-  // that they are nly modified as a unit.
+  // that they are only modified as a unit.
   serverHelper.agency.transact([[{
     [`/arango/Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`]: {
       'op': 'increment',
