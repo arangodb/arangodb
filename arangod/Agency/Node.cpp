@@ -487,7 +487,13 @@ ResultT<NodePtr> buildPathAndExecute(Node const* node, Iter begin, Iter end,
   } else {
     // dig deeper. If `node` is nullptr we have to create a new node with a
     // single child, otherwise lookup the child.
-    auto key = boost::copy_range<std::string_view>(*begin);
+    auto key = [](auto const& begin) {
+      if constexpr (std::is_same_v<boost::split_iterator<const char*>, Iter>) {
+        return boost::copy_range<std::string_view>(*begin);
+      } else {
+        return *begin;
+      }
+    }(begin);
 
     Node const* child = nullptr;
     if (node && node->isObject()) {
@@ -546,6 +552,14 @@ arangodb::ResultT<NodePtr> Node::applyOp(std::string_view path,
 NodePtr Node::placeAt(std::string_view path, NodePtr node) const {
   auto res = buildPathAndExecute(
       this, path, [&](Node const*) -> ResultT<NodePtr> { return node; });
+  TRI_ASSERT(res.ok());
+  return std::move(res.get());
+}
+
+NodePtr Node::placeAt(PathType const& path, NodePtr node) const {
+  auto res = buildPathAndExecute(
+      this, path.begin(), path.end(),
+      [&](Node const*) -> ResultT<NodePtr> { return node; });
   TRI_ASSERT(res.ok());
   return std::move(res.get());
 }

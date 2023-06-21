@@ -245,9 +245,33 @@ class Node : public std::enable_shared_from_this<Node> {
   [[nodiscard]] ResultT<NodePtr> applyOp(std::string_view path,
                                          VPackSlice slice) const;
   [[nodiscard]] NodePtr placeAt(std::string_view path, NodePtr) const;
+  [[nodiscard]] NodePtr placeAt(PathType const& path, NodePtr) const;
+
+  template<Operation Op>
+  [[nodiscard]] NodePtr perform(std::string_view path,
+                                velocypack::Slice op) const {
+    auto res = Node::handle<Op>(get(path).get(), op);
+    if (res.fail()) {
+      return res;
+    }
+    return placeAt(path, res.get());
+  }
+  template<Operation Op>
+  [[nodiscard]] ResultT<NodePtr> perform(PathType const& path,
+                                         velocypack::Slice op) const {
+    auto res = Node::handle<Op>(get(path).get(), op);
+    if (res.fail()) {
+      return res;
+    }
+    return placeAt(path, res.get());
+  }
 
   template<typename T>
   [[nodiscard]] NodePtr placeAt(std::string_view path, T&& value) const {
+    return placeAt(path, Node::create(std::forward<T>(value)));
+  }
+  template<typename T>
+  [[nodiscard]] NodePtr placeAt(PathType const& path, T&& value) const {
     return placeAt(path, Node::create(std::forward<T>(value)));
   }
 
