@@ -172,8 +172,7 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::replaceNearWithinFulltext,
                OptimizerRule::makeFlags(),
                R"(Replace deprecated index functions such as `FULLTEXT()`,
-`NEAR()`, `WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.
-This is not an optimization rule and cannot be turned off.)");
+`NEAR()`, `WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.)");
 
   // inline subqueries one level higher
   registerRule("inline-subqueries", inlineSubqueriesRule,
@@ -240,8 +239,7 @@ query. This can be a consequence of applying other optimizations.)");
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanCreateAdditionalPlans,
                                OptimizerRule::Flags::Hidden),
       R"(Appears whenever a `COLLECT` statement is used in a query to determine
-the type of `CollectNode` to use. This is not an optimization rule and cannot
-be turned off.)");
+the type of `CollectNode` to use.)");
 
   // remove redundant sort blocks
   registerRule("remove-redundant-sorts", removeRedundantSortsRule,
@@ -418,7 +416,7 @@ already covered by `TraversalNode`.)");
       "handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
       OptimizerRule::handleArangoSearchViewsRule, OptimizerRule::makeFlags(),
       R"(Appears whenever an `arangosearch` or `search-alias` View is accessed
-in a query. This is not an optimization rule and cannot be turned off.)");
+in a query.)");
 
   // move constrained sort into views
   registerRule("arangosearch-constrained-sort",
@@ -558,8 +556,7 @@ SmartGraphs cannot be optimized.)");
   registerRule("distribute-in-cluster", distributeInClusterRule,
                OptimizerRule::distributeInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly),
-               R"(Appears if query parts get distributed in a cluster.
-This is not an optimization rule and cannot be turned off.)");
+               R"(Appears if query parts get distributed in a cluster.)");
 
 #ifdef USE_ENTERPRISE
   registerRule("smart-joins", smartJoinsRule, OptimizerRule::smartJoinsRule,
@@ -576,8 +573,7 @@ setup via their shard keys.)");
                OptimizerRule::scatterInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly),
                R"(Appears if nodes of the types `ScatterNode`, `GatherNode`,
-and `RemoteNode` are inserted into a distributed query plan.
-This is not an optimization rule and cannot be turned off.)");
+and `RemoteNode` are inserted into a distributed query plan.)");
 
 #ifdef USE_ENTERPRISE
   registerRule("distribute-offset-info-to-cluster",
@@ -787,12 +783,13 @@ avoid unnecessary reads.)");
   // coordinators during rolling upgrades.
   registerRule("splice-subqueries", spliceSubqueriesRule,
                OptimizerRule::spliceSubqueriesRule, OptimizerRule::makeFlags(),
-               R"(Appears if subqueries are spliced into the surrounding query.
-This is performed on all subqueries and cannot be turned off.
-This optimization is applied after all other optimizations and reduces overhead
-for executing subqueries by inlining the execution. This mainly benefits
-queries which execute subqueries very often that only return a few results at
-a time.)");
+               R"(Appears if subqueries are spliced into the surrounding query,
+reducing overhead for executing subqueries by inlining the execution.
+This mainly benefits queries which execute subqueries very often that only
+return a few results at a time.
+
+This optimization is performed on all subqueries and is applied after all other
+optimizations.)");
 
   // allow nodes to asynchronously prefetch the next batch while processing the
   // current batch. this effectively allows parts of the query to run in
