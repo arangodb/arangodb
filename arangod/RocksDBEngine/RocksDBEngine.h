@@ -63,6 +63,7 @@ class TransactionDB;
 namespace arangodb {
 
 struct RocksDBAsyncLogWriteBatcher;
+struct RocksDBAsyncLogWriteBatcherMetrics;
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
@@ -490,6 +491,7 @@ class RocksDBEngine final : public StorageEngine {
 
  private:
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
+  [[nodiscard]] Result dropReplicatedStates(TRI_voc_tick_t databaseId);
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
@@ -732,6 +734,7 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Counter& _metricsTreeResurrections;
 
   // @brief persistor for replicated logs
+  std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> _logMetrics;
   std::shared_ptr<RocksDBAsyncLogWriteBatcher> _logPersistor;
 
   // Checksum env for when creation of sha files is enabled

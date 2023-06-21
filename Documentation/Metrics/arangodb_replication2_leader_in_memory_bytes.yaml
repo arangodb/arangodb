@@ -1,0 +1,12 @@
+name: arangodb_replication2_leader_in_memory_bytes
+introducedIn: "3.12.0"
+help: |
+  Number of bytes of replicated log data stored in memory.
+unit: bytes
+type: gauge
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Number of bytes of replicated log data stored in memory.
