@@ -14,26 +14,24 @@ import {
   Thead,
   Tr
 } from "@chakra-ui/react";
-import { ArangoUser } from "arangojs/database";
 import React, { useState } from "react";
 import { InfoCircle } from "styled-icons/boxicons-solid";
 import { PlayArrow } from "styled-icons/material";
-import useSWR from "swr";
 import momentMin from "../../../../../frontend/js/lib/moment.min";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
-import { getCurrentDB } from "../../../utils/arangoClient";
 import { useQueryContext } from "../QueryContextProvider";
 import { AQLEditor } from "./AQLEditor";
+import { QueryType } from "./useFetchUserSavedQueries";
 
 export const SavedQueryView = () => {
-  const { savedQueries, isLoading } = useFetchUserSavedQueries();
+  const { savedQueries, isFetchingQueries } = useQueryContext();
 
   return (
     <Box background="white">
       <SavedQueryToolbar />
       <Grid gridTemplateRows="1fr 60px">
         <Grid gridTemplateColumns="minmax(450px, 0.5fr) 1fr">
-          {isLoading ? (
+          {isFetchingQueries ? (
             <Spinner />
           ) : (
             <SavedQueryTable savedQueries={savedQueries as QueryType[]} />
@@ -63,12 +61,6 @@ const SavedQueryToolbar = () => {
   );
 };
 
-type QueryType = {
-  name: string;
-  value: string;
-  modified_at: number;
-  parameter: any;
-};
 const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
   const [selectedQuery, setSelectedQuery] = useState<QueryType | null>(
     savedQueries[0]
@@ -85,9 +77,9 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
             <Th>Actions</Th>
           </Thead>
           <Tbody>
-            {savedQueries.map(query => (
+            {savedQueries.map((query, index) => (
               <Tr
-                key={query.name}
+                key={`${query.name}-${index}`}
                 backgroundColor={
                   selectedQuery?.name === query.name ? "gray.200" : undefined
                 }
@@ -115,8 +107,10 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
                     onClick={() => {
                       onQueryChange({
                         value: query.value,
-                        parameter: query.parameter || {}
+                        parameter: query.parameter || {},
+                        name: query.name
                       });
+
                       setCurrentView("editor");
                     }}
                     title="Copy"
@@ -204,21 +198,6 @@ const QueryPreview = ({ query }: { query: QueryType | null }) => {
       </Stack>
     </Grid>
   );
-};
-
-const useFetchUserSavedQueries = () => {
-  const fetchUser = async () => {
-    const currentDB = getCurrentDB();
-    const path = `/_api/user/${encodeURIComponent(window.App.currentUser)}`;
-    const user = await currentDB.request({
-      absolutePath: false,
-      path
-    });
-    const savedQueries = (user.body as ArangoUser).extra.queries;
-    return savedQueries;
-  };
-  const { data, isLoading } = useSWR<QueryType[]>("/savedQueries", fetchUser);
-  return { savedQueries: data, isLoading };
 };
 
 const SavedQueryBottomBar = () => {

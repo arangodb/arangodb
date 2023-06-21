@@ -23,9 +23,6 @@ export const QueryToolbar = () => {
       <Button size="sm" colorScheme="gray">
         New
       </Button>
-      <Button size="sm" colorScheme="gray">
-        Save as
-      </Button>
     </Stack>
   );
 };

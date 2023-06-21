@@ -1,7 +1,13 @@
+import { useDisclosure } from "@chakra-ui/react";
 import { aql } from "arangojs";
 import { CursorExtras } from "arangojs/cursor";
 import React, { createContext, ReactNode, useContext, useState } from "react";
+import { mutate } from "swr";
 import { getCurrentDB } from "../../utils/arangoClient";
+import {
+  QueryType,
+  useFetchUserSavedQueries
+} from "./editor/useFetchUserSavedQueries";
 
 type QueryExecutionOptions = {
   queryValue?: string;
@@ -19,12 +25,21 @@ type QueryContextType = {
   onQueryChange: (data: {
     value: string;
     parameter: { [key: string]: string };
+    name?: string;
   }) => void;
   queryResults: QueryResultType[];
   setQueryResults: (value: QueryResultType[]) => void;
   queryBindParams: { [key: string]: string };
   setQueryBindParams: (value: { [key: string]: string }) => void;
   onRemoveResult: (index: number) => void;
+  queryName?: string;
+  setQueryName: (value?: string) => void;
+  onSaveAs: (queryName: string) => void;
+  savedQueries?: QueryType[];
+  isFetchingQueries?: boolean;
+  isSaveAsModalOpen: boolean;
+  onOpenSaveAsModal: () => void;
+  onCloseSaveAsModal: () => void;
 };
 // const defaultValue = 'FOR v,e,p IN 1..3 ANY "place/0" GRAPH "ldbc" LIMIT 100 return p'
 const QueryContext = createContext<QueryContextType>({} as QueryContextType);
@@ -45,53 +60,57 @@ export const QueryContextProvider = ({ children }: { children: ReactNode }) => {
   const initialQuery: CachedQuery = initialQueryString
     ? JSON.parse(initialQueryString)
     : {};
-  console.log({ initialQuery });
+  const { savedQueries, isLoading: isFetchingQueries } =
+    useFetchUserSavedQueries();
+  console.log({ savedQueries });
   const [currentView, setCurrentView] = useState<"saved" | "editor">("editor");
   const [queryValue, setQueryValue] = useState<string>(
     initialQuery?.query || ""
   );
   const [queryResults, setQueryResults] = useState<QueryResultType[]>([]);
+  const [queryName, setQueryName] = useState<string | undefined>();
   const [queryBindParams, setQueryBindParams] = useState<{
     [key: string]: string;
   }>(initialQuery?.parameter || {});
-  const { onExecute, onProfile, onExplain } =
+  const { onExecute, onProfile, onExplain, onRemoveResult } =
     useQueryExecutors(setQueryResults);
-  const handleQueryValueChange = (value: string) => {
-    const queryBindParams = parseQueryParams(value);
-    window.sessionStorage.setItem(
-      "cachedQuery",
-      JSON.stringify({ query: value, parameter: queryBindParams })
-    );
-    setQueryValue(value);
-    setQueryBindParams(queryBindParams || {});
-  };
-  const handleBindParamsChange = (value: { [key: string]: string }) => {
-    window.sessionStorage.setItem(
-      "cachedQuery",
-      JSON.stringify({ query: queryValue, parameter: value })
-    );
-    setQueryBindParams(value);
-  };
-  const handleQueryChange = ({
-    value,
-    parameter
-  }: {
-    value: string;
-    parameter: { [key: string]: string };
-  }) => {
-    window.sessionStorage.setItem(
-      "cachedQuery",
-      JSON.stringify({ query: value, parameter: parameter })
-    );
-    setQueryValue(value);
-    setQueryBindParams(parameter);
-  };
-  const onRemoveResult = (index: number) => {
-    setQueryResults(queryResults => {
-      const newResults = [...queryResults];
-      newResults.splice(index, 1);
-      return newResults;
+  const { onQueryChange, onQueryValueChange, onBindParamsChange } =
+    useQueryValueModifiers({
+      setQueryValue,
+      setQueryBindParams,
+      queryValue,
+      setQueryName
     });
+
+  const {
+    isOpen: isSaveAsModalOpen,
+    onOpen: onOpenSaveAsModal,
+    onClose: onCloseSaveAsModal
+  } = useDisclosure();
+  const onSaveAs = async (queryName: string) => {
+    const currentDB = getCurrentDB();
+    try {
+      await currentDB.request({
+        method: "PATCH",
+        path: `/_api/user/${encodeURIComponent(window.App.currentUser)}`,
+        body: {
+          extra: {
+            queries: [
+              ...(savedQueries || []),
+              { name: queryName, value: queryValue, parameter: queryBindParams }
+            ]
+          }
+        }
+      });
+      window.arangoHelper.arangoNotification(`Saved query: ${queryName}`);
+      onCloseSaveAsModal();
+      mutate("/savedQueries");
+    } catch (e: any) {
+      const message = e.message || e.response.body.errorMessage;
+      window.arangoHelper.arangoError(
+        `Could not save query. Error - ${message}`
+      );
+    }
   };
   return (
     <QueryContext.Provider
@@ -100,16 +119,24 @@ export const QueryContextProvider = ({ children }: { children: ReactNode }) => {
         setCurrentView,
         onExecute,
         queryValue,
-        onQueryChange: handleQueryChange,
-        onQueryValueChange: handleQueryValueChange,
-        onBindParamsChange: handleBindParamsChange,
+        onQueryChange,
+        onQueryValueChange,
+        onBindParamsChange,
         queryResults,
         setQueryResults,
         queryBindParams,
         setQueryBindParams,
         onRemoveResult,
         onProfile,
-        onExplain
+        onExplain,
+        queryName,
+        setQueryName,
+        onSaveAs,
+        savedQueries,
+        isFetchingQueries,
+        isSaveAsModalOpen,
+        onOpenSaveAsModal,
+        onCloseSaveAsModal
       }}
     >
       {children}
@@ -128,9 +155,17 @@ const parseQueryParams = (queryValue: string) => {
     return acc;
   }, {} as { [key: string]: string });
 };
-function useQueryExecutors(
+
+const useQueryExecutors = (
   setQueryResults: React.Dispatch<React.SetStateAction<QueryResultType[]>>
-) {
+) => {
+  const onRemoveResult = (index: number) => {
+    setQueryResults(queryResults => {
+      const newResults = [...queryResults];
+      newResults.splice(index, 1);
+      return newResults;
+    });
+  };
   const onExecute = async ({
     queryValue,
     queryBindParams
@@ -153,7 +188,7 @@ function useQueryExecutors(
         ...queryResults
       ]);
     } catch (e: any) {
-      const message = e.response.body.errorMessage;
+      const message = e.message || e.response.body.errorMessage;
       window.arangoHelper.arangoError(
         `Could not execute query. Error - ${message}`
       );
@@ -200,5 +235,53 @@ function useQueryExecutors(
       ...queryResults
     ]);
   };
-  return { onExecute, onProfile, onExplain };
-}
+  return { onExecute, onProfile, onExplain, onRemoveResult };
+};
+const useQueryValueModifiers = ({
+  setQueryValue,
+  setQueryBindParams,
+  queryValue,
+  setQueryName
+}: {
+  setQueryValue: React.Dispatch<React.SetStateAction<string>>;
+  setQueryBindParams: React.Dispatch<
+    React.SetStateAction<{ [key: string]: string }>
+  >;
+  queryValue: string;
+  setQueryName: React.Dispatch<React.SetStateAction<string | undefined>>;
+}) => {
+  const onQueryValueChange = (value: string) => {
+    const queryBindParams = parseQueryParams(value);
+    window.sessionStorage.setItem(
+      "cachedQuery",
+      JSON.stringify({ query: value, parameter: queryBindParams })
+    );
+    setQueryValue(value);
+    setQueryBindParams(queryBindParams || {});
+  };
+  const onBindParamsChange = (value: { [key: string]: string }) => {
+    window.sessionStorage.setItem(
+      "cachedQuery",
+      JSON.stringify({ query: queryValue, parameter: value })
+    );
+    setQueryBindParams(value);
+  };
+  const onQueryChange = ({
+    value,
+    parameter,
+    name
+  }: {
+    value: string;
+    parameter: { [key: string]: string };
+    name?: string;
+  }) => {
+    window.sessionStorage.setItem(
+      "cachedQuery",
+      JSON.stringify({ query: value, parameter: parameter })
+    );
+    setQueryValue(value);
+    setQueryBindParams(parameter);
+    setQueryName(name);
+  };
+  return { onQueryChange, onQueryValueChange, onBindParamsChange };
+};

@@ -29,7 +29,7 @@ export const QueryResults = () => {
       {queryResults.map((result, index) => {
         if (result.type === "profile" || result.type === "explain") {
           return (
-            <Box height="500px">
+            <Box height="500px" key={index}>
               <Flex padding="2" alignItems="center">
                 <ResultTypeBox result={result} />
                 <Box marginLeft="auto">
@@ -45,7 +45,7 @@ export const QueryResults = () => {
         }
         if (result.type === "query") {
           return (
-            <Box height="300px">
+            <Box height="300px" key={index}>
               <Flex padding="2" alignItems="center">
                 <Stack direction="row">
                   <ResultTypeBox result={result} />
@@ -77,7 +77,7 @@ export const QueryResults = () => {
                 theme="ace/theme/textmate"
                 htmlElementProps={{
                   style: {
-                    height: "calc(100% - 48px)",
+                    height: "calc(100% - 48px)"
                   }
                 }}
                 mainMenuBar={false}
