@@ -135,6 +135,10 @@ auto LogRange::contains(LogIndex idx) const noexcept -> bool {
   return from <= idx && idx < to;
 }
 
+auto LogRange::contains(LogRange other) const noexcept -> bool {
+  return from <= other.from && other.to <= to;
+}
+
 auto replication2::operator<<(std::ostream& os, LogRange const& r)
     -> std::ostream& {
   return os << "[" << r.from << ", " << r.to << ")";
@@ -144,7 +148,7 @@ auto replication2::intersect(LogRange a, LogRange b) noexcept -> LogRange {
   auto max_from = std::max(a.from, b.from);
   auto min_to = std::min(a.to, b.to);
   if (max_from > min_to) {
-    return {LogIndex{0}, LogIndex{0}};
+    return {};
   } else {
     return {max_from, min_to};
   }
@@ -159,6 +163,12 @@ auto LogRange::end() const noexcept -> LogRange::Iterator {
 }
 auto LogRange::begin() const noexcept -> LogRange::Iterator {
   return Iterator{from};
+}
+
+auto replication2::operator==(LogRange left, LogRange right) noexcept -> bool {
+  // Two ranges compare equal iff either both are empty or _from_ and _to_ agree
+  return (left.empty() && right.empty()) ||
+         (left.from == right.from && left.to == right.to);
 }
 
 auto LogRange::Iterator::operator++() noexcept -> LogRange::Iterator& {

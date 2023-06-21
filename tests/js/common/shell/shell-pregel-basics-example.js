@@ -85,11 +85,12 @@ function basicTestSuite() {
         return;
       }
       var graph = graph_module._create(graphName);
-      db._create(vColl, { numberOfShards: 4 });
+      db._create(vColl, {
+        numberOfShards: 4,
+        replicationFactor: 1
+      });
       graph._addVertexCollection(vColl);
       db._createEdgeCollection(eColl, {
-        numberOfShards: 4,
-        replicationFactor: 1,
         shardKeys: ["vertex"],
         distributeShardsLike: vColl
       });

@@ -54,6 +54,7 @@ SRC_DIR="."
 USE_RR="false"
 ENCRYPTION_SECRET=""
 ENABLE_HOTBACKUP="true"
+REPLICATION_VERSION=""
 
 parse_args(){
 while [[ -n "$1" ]]; do
@@ -135,6 +136,10 @@ while [[ -n "$1" ]]; do
       ;;
     --auto-upgrade)
       AUTOUPGRADE=${2}
+      shift
+      ;;
+    -r|--replication-version)
+      REPLICATION_VERSION=${2}
       shift
       ;;
     --rr)

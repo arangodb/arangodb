@@ -63,6 +63,7 @@
 #include "RestServer/FlushFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -105,6 +106,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
+#include "VocBase/VocBaseLogManager.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/convenience.h>
@@ -861,6 +863,41 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
   exit(EXIT_SUCCESS);
 }
 
+namespace {
+
+struct RocksDBAsyncLogWriteBatcherMetricsImpl
+    : RocksDBAsyncLogWriteBatcherMetrics {
+  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(
+      metrics::MetricsFeature* metricsFeature) {
+    numWorkerThreadsWaitForSync = &metricsFeature->add(
+        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
+                                                                       "true"));
+    numWorkerThreadsNoWaitForSync = &metricsFeature->add(
+        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel(
+            "ws", "false"));
+
+    queueLength =
+        &metricsFeature->add(arangodb_replication2_rocksdb_queue_length{});
+    writeBatchSize =
+        &metricsFeature->add(arangodb_replication2_rocksdb_write_batch_size{});
+    rocksdbWriteTimeInUs =
+        &metricsFeature->add(arangodb_replication2_rocksdb_write_time{});
+    rocksdbSyncTimeInUs =
+        &metricsFeature->add(arangodb_replication2_rocksdb_sync_time{});
+
+    operationLatencyInsert = &metricsFeature->add(
+        arangodb_replication2_storage_operation_latency{}.withLabel("op",
+                                                                    "insert"));
+    operationLatencyRemoveFront = &metricsFeature->add(
+        arangodb_replication2_storage_operation_latency{}.withLabel(
+            "op", "remove-front"));
+    operationLatencyRemoveBack = &metricsFeature->add(
+        arangodb_replication2_storage_operation_latency{}.withLabel(
+            "op", "remove-back"));
+  }
+};
+}  // namespace
+
 void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
@@ -1163,11 +1200,14 @@ void RocksDBEngine::start() {
     Scheduler* _scheduler;
   };
 
+  _logMetrics = std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(
+      &server().getFeature<metrics::MetricsFeature>());
+
   _logPersistor = std::make_shared<RocksDBAsyncLogWriteBatcher>(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs),
       _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()),
-      server().getFeature<ReplicatedLogFeature>().options());
+      server().getFeature<ReplicatedLogFeature>().options(), _logMetrics);
 
   _settingsManager->retrieveInitialValues();
 
@@ -2701,6 +2741,45 @@ void RocksDBEngine::pruneWalFiles() {
       << "current number of prunable WAL files: " << _prunableWalFiles.size();
 }
 
+Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
+  auto* cfDefs = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions);
+
+  auto bounds = RocksDBKeyBounds::DatabaseStates(databaseId);
+  auto upper = bounds.end();
+  auto readOptions = rocksdb::ReadOptions();
+  readOptions.iterate_upper_bound = &upper;
+
+  auto rv = Result();
+
+  auto iter =
+      std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(readOptions, cfDefs));
+  for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
+    ADB_PROD_ASSERT(databaseId == RocksDBKey::databaseId(iter->key()));
+
+    auto slice =
+        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+
+    auto info = velocypack::deserialize<RocksDBReplicatedStateInfo>(slice);
+    auto* cfLogs = RocksDBColumnFamilyManager::get(
+        RocksDBColumnFamilyManager::Family::ReplicatedLogs);
+    auto methods = RocksDBLogStorageMethods(info.objectId, databaseId,
+                                            info.stateId, _logPersistor, _db,
+                                            cfDefs, cfLogs, _logMetrics);
+    auto res = methods.drop();
+    // Save the first error we encounter, but try to drop the rest.
+    if (rv.ok() && res.fail()) {
+      rv = res;
+    }
+    // TODO Should we do this here and now, or defer it, or don't do it at all?
+    //      To answer that, check whether and how compaction is usually done
+    //      after dropping a collection or database.
+    std::ignore = methods.compact();
+  }
+
+  return rv;
+}
+
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   using namespace rocksutils;
   arangodb::Result res;
@@ -2710,6 +2789,12 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   // remove view definitions
   res = rocksutils::removeLargeRange(db, RocksDBKeyBounds::DatabaseViews(id),
                                      true, /*rangeDel*/ false);
+  if (res.fail()) {
+    return res;
+  }
+
+  // remove replicated states
+  res = dropReplicatedStates(id);
   if (res.fail()) {
     return res;
   }
@@ -2955,18 +3040,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   // scan the database path for "arangosearch" views
   scanViews(iresearch::StaticStrings::ViewArangoSearchType);
 
-  try {
-    loadReplicatedStates(*vocbase);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
-    throw;
-  }
-
   // scan the database path for collections
   try {
     VPackBuilder builder;
@@ -3010,6 +3083,12 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
           << "added collection '" << vocbase->name() << "/"
           << collection->name() << "'";
+
+      if (collection->replicationVersion() ==
+          arangodb::replication::Version::TWO) {
+        vocbase->_logManager->_initCollections.emplace(
+            collection->replicatedStateId(), collection);
+      }
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)
@@ -3023,6 +3102,18 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     throw;
   }
 
+  try {
+    loadReplicatedStates(*vocbase);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
+        << "error while opening database: " << ex.what();
+    throw;
+  } catch (...) {
+    LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
+        << "error while opening database: unknown exception";
+    throw;
+  }
+
   // scan the database path for "search-alias" views
   if (ServerState::instance()->isSingleServer()) {
     scanViews(iresearch::StaticStrings::ViewSearchAliasType);
@@ -3032,21 +3123,26 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 }
 
 void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
-  rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(
-      readOptions, RocksDBColumnFamilyManager::get(
-                       RocksDBColumnFamilyManager::Family::Definitions)));
-  auto rSlice = rocksDBSlice(RocksDBEntryType::ReplicatedState);
-  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
-       iter->Next()) {
-    if (vocbase.id() != RocksDBKey::databaseId(iter->key())) {
-      continue;
-    }
+  auto* cfDefs = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions);
+
+  auto bounds = RocksDBKeyBounds::DatabaseStates(vocbase.id());
+  auto upper = bounds.end();
+  auto readOptions = rocksdb::ReadOptions();
+  readOptions.iterate_upper_bound = &upper;
+
+  auto iter =
+      std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(readOptions, cfDefs));
+  for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
+    ADB_PROD_ASSERT(vocbase.id() == RocksDBKey::databaseId(iter->key()));
 
     auto slice =
         VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+    // TODO Is this applicable? I think we can safely remove the following
+    //      lines.
     if (basics::VelocyPackHelper::getBooleanValue(
             slice, StaticStrings::DataSourceDeleted, false)) {
+      TRI_ASSERT(false) << "Please tell Team CINFRA if you see this happening.";
       continue;
     }
 
@@ -3056,7 +3152,8 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
         RocksDBColumnFamilyManager::get(
             RocksDBColumnFamilyManager::Family::Definitions),
         RocksDBColumnFamilyManager::get(
-            RocksDBColumnFamilyManager::Family::ReplicatedLogs));
+            RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+        _logMetrics);
     registerReplicatedState(vocbase, info.stateId, std::move(methods));
   }
 }
@@ -3873,8 +3970,12 @@ auto RocksDBEngine::createReplicatedState(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Definitions),
       RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::ReplicatedLogs));
-  methods->updateMetadata(info);
+          RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+      _logMetrics);
+  auto res = methods->updateMetadata(info);
+  if (res.fail()) {
+    return res;
+  }
   return {std::move(methods)};
 }
 
