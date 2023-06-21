@@ -62,20 +62,6 @@ bool readTick(irs::bytes_view payload, uint64_t& tickLow,
   return true;
 }
 
-std::string toString(irs::DirectoryReader const& reader, bool isNew, IndexId id,
-                     uint64_t tickLow, uint64_t tickHigh) {
-  auto const& meta = reader.Meta();
-  std::string_view const newOrExisting{isNew ? "new" : "existing"};
-
-  return absl::StrCat("Successfully opened data store reader for the ",
-                      newOrExisting, " ArangoSearchIndex '", id.id(),
-                      "', snapshot '", meta.filename, "', docs count '",
-                      reader.docs_count(), "', live docs count '",
-                      reader.live_docs_count(), "', number of segments '",
-                      meta.index_meta.segments.size(), "', recovery tick low '",
-                      tickLow, "' and recovery tick high '", tickHigh, "'");
-}
-
 }  // namespace
 
 arangodb::Result IResearchDataStoreHotbackupHelper::initDataStore(
@@ -95,12 +81,9 @@ arangodb::Result IResearchDataStoreHotbackupHelper::initDataStore(
   /// ???
   auto const formatId = getFormat(LinkVersion{version});
   auto format = irs::formats::get(formatId);
-  if (!format) {
-    return {TRI_ERROR_INTERNAL,
-            absl::StrCat("Failed to get data store codec '", formatId,
-                         "' while initializing ArangoSearch index '",
-                         index().id().id(), "'")};
-  }
+  ADB_PROD_ASSERT(format != nullptr)
+      << absl::StrCat("Failed to get data store codec '", formatId,
+                      "' while initializing ArangoSearch index");
 
   _dataStore._path = path;
 
@@ -134,9 +117,11 @@ arangodb::Result IResearchDataStoreHotbackupHelper::initDataStore(
     _lastCommittedTick = _dataStore._recoveryTickLow;
   }
 
+#if 0
   LOG_TOPIC("f00af", DEBUG, TOPIC)
       << toString(reader, !pathExists, index().id(),
                   _dataStore._recoveryTickLow, _dataStore._recoveryTickHigh);
+#endif
 
   // Reset data store meta, will be updated at runtime via properties(...)
   _dataStore._meta._cleanupIntervalStep = 0;        // 0 == disable
