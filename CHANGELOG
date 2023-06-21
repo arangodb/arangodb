@@ -1,4 +1,13 @@
-v3.11.1 (XXXX-XX-XX)
+v3.11.2 (XXXX-XX-XX)
+--------------------
+
+* Fixed two possible deadlocks which could occur if all medium priority
+  threads are busy. One is that in this case the AgencyCache could no longer
+  receive updates from the agency and another that queries could no longer
+  be finished. This fixes BTS-1475 and BTS-1486.
+
+
+v3.11.1 (2023-06-12)
 --------------------
 
 * Updated arangosync to v2.18.1.
