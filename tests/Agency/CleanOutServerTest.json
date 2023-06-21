@@ -78,6 +78,9 @@ R"=(
       "Shards": {}
     },
     "Target": {
+      "ReplicatedLogs": {
+        "database2": {}
+      },
       "CleanedServers": [],
       "ToBeCleanedServers": [],
       "FailedServers": {},

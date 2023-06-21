@@ -80,6 +80,9 @@ struct IStorageEngineMethods {
   virtual auto getSyncedSequenceNumber() -> SequenceNumber = 0;
   virtual auto waitForSync(SequenceNumber)
       -> futures::Future<futures::Unit> = 0;
+
+  // waits for all ongoing requests to be done
+  virtual void waitForCompletion() noexcept = 0;
 };
 
 }  // namespace arangodb::replication2::replicated_state
