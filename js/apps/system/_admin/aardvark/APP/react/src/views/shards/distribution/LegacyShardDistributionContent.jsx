@@ -1,12 +1,12 @@
 /* global $, _, nv, d3 arangoHelper */
-import React from 'react';
+import React from "react";
 
 function fetchOverallStatistics() {
   $.ajax({
-    type: 'GET',
+    type: "GET",
     cache: false,
-    url: arangoHelper.databaseUrl('/_admin/cluster/shardStatistics'),
-    contentType: 'application/json',
+    url: arangoHelper.databaseUrl("/_admin/cluster/shardStatistics"),
+    contentType: "application/json",
     processData: false,
     async: true,
     success: function (data) {
@@ -15,35 +15,49 @@ function fetchOverallStatistics() {
       fetchDetailsStatistics(data.result);
     },
     error: function () {
-      arangoHelper.arangoError('Distribution', 'Could not fetch "shardStatistics"');
+      arangoHelper.arangoError(
+        "Distribution",
+        'Could not fetch "shardStatistics"'
+      );
     }
   });
 }
 
 function rerenderOverallValues(data) {
-  arangoHelper.renderStatisticsBoxValue('#clusterDatabases', data.databases);
-  arangoHelper.renderStatisticsBoxValue('#clusterCollections', data.collections);
-  arangoHelper.renderStatisticsBoxValue('#clusterDBServers', data.servers);
-  arangoHelper.renderStatisticsBoxValue('#clusterLeaders', data.leaders);
-  arangoHelper.renderStatisticsBoxValue('#clusterRealLeaders', data.realLeaders);
-  arangoHelper.renderStatisticsBoxValue('#clusterFollowers', data.followers);
-  arangoHelper.renderStatisticsBoxValue('#clusterShards', data.shards);
+  arangoHelper.renderStatisticsBoxValue("#clusterDatabases", data.databases);
+  arangoHelper.renderStatisticsBoxValue(
+    "#clusterCollections",
+    data.collections
+  );
+  arangoHelper.renderStatisticsBoxValue("#clusterDBServers", data.servers);
+  arangoHelper.renderStatisticsBoxValue("#clusterLeaders", data.leaders);
+  arangoHelper.renderStatisticsBoxValue(
+    "#clusterRealLeaders",
+    data.realLeaders
+  );
+  arangoHelper.renderStatisticsBoxValue("#clusterFollowers", data.followers);
+  arangoHelper.renderStatisticsBoxValue("#clusterShards", data.shards);
 }
 
 function fetchDetailsStatistics(previousData) {
   // fetch general overall shardStatistics
   $.ajax({
-    type: 'GET',
+    type: "GET",
     cache: false,
-    url: arangoHelper.databaseUrl('/_admin/cluster/shardStatistics?details=true&DBserver=all'),
-    contentType: 'application/json',
+    url: arangoHelper.databaseUrl(
+      "/_admin/cluster/shardStatistics?details=true&DBserver=all"
+    ),
+    contentType: "application/json",
     processData: false,
     async: true,
     success: function (data) {
       formatDBServerDetailsData(previousData, data.result);
     },
     error: function () {
-      arangoHelper.arangoError('Distribution', 'Could not fetch "shardStatistics" details.');
+      arangoHelper.arangoError(
+        "Distribution",
+        'Could not fetch "shardStatistics" details.'
+      );
     }
   });
 }
@@ -73,24 +87,24 @@ function formatDBServerDetailsData(previousData, data) {
 
     donutChartData.shards.push({
       label: shortName,
-      value: (info.shards / totalShards)
+      value: info.shards / totalShards
     });
     tableData[shortName].shards.total = info.shards;
-    tableData[shortName].shards.percent = (info.shards / totalShards);
+    tableData[shortName].shards.percent = info.shards / totalShards;
 
     donutChartData.leaders.push({
       label: shortName,
-      value: (info.leaders / totalLeaders)
+      value: info.leaders / totalLeaders
     });
     tableData[shortName].leaders.total = info.leaders;
-    tableData[shortName].leaders.percent = (info.leaders / totalLeaders);
+    tableData[shortName].leaders.percent = info.leaders / totalLeaders;
 
     donutChartData.followers.push({
       label: shortName,
-      value: (info.followers / totalFollowers)
+      value: info.followers / totalFollowers
     });
     tableData[shortName].followers.total = info.followers;
-    tableData[shortName].followers.percent = (info.followers / totalFollowers);
+    tableData[shortName].followers.percent = info.followers / totalFollowers;
   });
 
   rerenderDistributionDonuts(donutChartData);
@@ -100,7 +114,8 @@ function formatDBServerDetailsData(previousData, data) {
 function rerenderDistributionDonuts(donutChartData) {
   let renderDonut = (chartData, idSelector) => {
     nv.addGraph(function () {
-      var chart = nv.models.pieChart()
+      var chart = nv.models
+        .pieChart()
         .x(function (d) {
           return d.label;
         })
@@ -114,39 +129,33 @@ function rerenderDistributionDonuts(donutChartData) {
         .labelType("percent")
         .donut(true)
         .donutRatio(0.35);
-      ;
-
       let id = `${idSelector} svg`;
-      d3.select(id)
-        .datum(chartData)
-        .transition().duration(350)
-        .call(chart);
+      d3.select(id).datum(chartData).transition().duration(350).call(chart);
 
       return chart;
     });
   };
 
-  renderDonut(donutChartData.shards, '#totalDonut');
-  renderDonut(donutChartData.leaders, '#leaderDonut');
-  renderDonut(donutChartData.followers, '#followerDonut');
+  renderDonut(donutChartData.shards, "#totalDonut");
+  renderDonut(donutChartData.leaders, "#leaderDonut");
+  renderDonut(donutChartData.followers, "#followerDonut");
 }
 
 function rerenderDistributionTable(data) {
-
-  const orderedData = Object.keys(data).sort().reduce(
-    (obj, key) => {
+  const orderedData = Object.keys(data)
+    .sort()
+    .reduce((obj, key) => {
       obj[key] = data[key];
       return obj;
-    }, {}
-  );
+    }, {});
 
-  let formatPercent = (number) => {
+  let formatPercent = number => {
     return (number * 100).toFixed(2) + " % ";
   };
 
-  $('#shardDistributionTable tbody').html('');
+  $("#shardDistributionTable tbody").html("");
   _.each(orderedData, (info, shortName) => {
-    $('#shardDistributionTable tbody').append(
+    $("#shardDistributionTable tbody").append(
       `
         <tr>
           <td>${shortName}</td>
@@ -162,72 +171,100 @@ function rerenderDistributionTable(data) {
   });
 }
 
-export const LegacyShardDistributionContent = ({refetchToken}) => {
+export const LegacyShardDistributionContent = ({ refetchToken }) => {
   React.useEffect(() => {
     fetchOverallStatistics();
   }, [refetchToken]);
 
   return (
-    <div id="shardDistributionContent" className="innerContent shardDistributionContent">
-
+    <div
+      id="shardDistributionContent"
+      className="innerContent shardDistributionContent"
+    >
       <div className="pure-g cluster-values">
-
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
-            <div id="clusterDatabases" className="value"><i className="fa fa-spin fa-circle-o-notch"
-              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
+            <div id="clusterDatabases" className="value">
+              <i
+                className="fa fa-spin fa-circle-o-notch"
+                style={{ color: "rgba(0, 0, 0, 0.64)" }}
+              ></i>
+            </div>
             <div className="graphLabel">databases</div>
           </div>
         </div>
 
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
-            <div id="clusterCollections" className="value"><i className="fa fa-spin fa-circle-o-notch"
-              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
+            <div id="clusterCollections" className="value">
+              <i
+                className="fa fa-spin fa-circle-o-notch"
+                style={{ color: "rgba(0, 0, 0, 0.64)" }}
+              ></i>
+            </div>
             <div className="graphLabel">collections</div>
           </div>
         </div>
 
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
-            <div id="clusterShards" className="value"><i className="fa fa-spin fa-circle-o-notch"
-              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
+            <div id="clusterShards" className="value">
+              <i
+                className="fa fa-spin fa-circle-o-notch"
+                style={{ color: "rgba(0, 0, 0, 0.64)" }}
+              ></i>
+            </div>
             <div className="graphLabel">total shards</div>
           </div>
         </div>
 
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
-            <div id="clusterDBServers" className="value"><i className="fa fa-spin fa-circle-o-notch"
-              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
+            <div id="clusterDBServers" className="value">
+              <i
+                className="fa fa-spin fa-circle-o-notch"
+                style={{ color: "rgba(0, 0, 0, 0.64)" }}
+              ></i>
+            </div>
             <div className="graphLabel">db servers with shards</div>
           </div>
         </div>
 
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
-            <div id="clusterLeaders" className="value"><i className="fa fa-spin fa-circle-o-notch"
-              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
+            <div id="clusterLeaders" className="value">
+              <i
+                className="fa fa-spin fa-circle-o-notch"
+                style={{ color: "rgba(0, 0, 0, 0.64)" }}
+              ></i>
+            </div>
             <div className="graphLabel">leader shards</div>
           </div>
         </div>
 
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
-            <div id="clusterRealLeaders" className="value"><i className="fa fa-spin fa-circle-o-notch"
-              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
+            <div id="clusterRealLeaders" className="value">
+              <i
+                className="fa fa-spin fa-circle-o-notch"
+                style={{ color: "rgba(0, 0, 0, 0.64)" }}
+              ></i>
+            </div>
             <div className="graphLabel">shard group leader shards</div>
           </div>
         </div>
 
         <div className="pure-u-1-2 pure-u-md-1-4">
           <div className="valueWrapper">
-            <div id="clusterFollowers" className="value"><i className="fa fa-spin fa-circle-o-notch"
-              style={{ color: "rgba(0, 0, 0, 0.64)" }}></i></div>
+            <div id="clusterFollowers" className="value">
+              <i
+                className="fa fa-spin fa-circle-o-notch"
+                style={{ color: "rgba(0, 0, 0, 0.64)" }}
+              ></i>
+            </div>
             <div className="graphLabel">follower shards</div>
           </div>
         </div>
-
       </div>
 
       <div className="pure-g cluster-values">
@@ -250,7 +287,9 @@ export const LegacyShardDistributionContent = ({refetchToken}) => {
         </div>
 
         <div className="pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
-          <div className="subHeader graphLabel">Follower Shard Distribution</div>
+          <div className="subHeader graphLabel">
+            Follower Shard Distribution
+          </div>
           <div id="followerDonut" className="svgWrapper">
             <svg></svg>
           </div>
@@ -269,11 +308,9 @@ export const LegacyShardDistributionContent = ({refetchToken}) => {
                 <th>Followers (percent)</th>
               </tr>
             </thead>
-            <tbody>
-            </tbody>
+            <tbody></tbody>
           </table>
         </div>
-
       </div>
     </div>
   );
