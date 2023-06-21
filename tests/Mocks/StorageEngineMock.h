@@ -44,6 +44,7 @@ class WalAccess;
 namespace aql {
 class OptimizerRulesFeature;
 }
+namespace iresearch {
 class IResearchLinkMock;
 class IResearchInvertedIndexMock;
 }  // namespace iresearch
