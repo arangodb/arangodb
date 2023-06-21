@@ -322,9 +322,6 @@
             self.naviView.render();
           }
         });
-
-        this.queryCollection = new window.ArangoQueries();
-
         window.checkVersion();
 
         this.userConfig = new window.UserConfig({
