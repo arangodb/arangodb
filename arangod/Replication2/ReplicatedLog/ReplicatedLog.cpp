@@ -39,6 +39,7 @@
 #include "Metrics/Gauge.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/IScheduler.h"
+#include "Replication2/ReplicatedLog/IRebootIdCache.h"
 
 namespace arangodb::replication2::replicated_log {
 struct AbstractFollower;
@@ -333,12 +334,15 @@ auto DefaultParticipantsFactory::constructLeader(
       std::move(methods), std::move(info.initialConfig), std::move(info.myself),
       info.term, context.loggerContext, std::move(context.metrics),
       std::move(context.options), std::move(context.stateHandle),
-      followerFactory, scheduler);
+      followerFactory, scheduler, rebootIdCache);
 }
 
 DefaultParticipantsFactory::DefaultParticipantsFactory(
     std::shared_ptr<IAbstractFollowerFactory> followerFactory,
-    std::shared_ptr<IScheduler> scheduler)
+    std::shared_ptr<IScheduler> scheduler,
+    std::shared_ptr<IRebootIdCache> rebootIdCache)
     : followerFactory(std::move(followerFactory)),
-      scheduler(std::move(scheduler)) {}
+      scheduler(std::move(scheduler)),
+      rebootIdCache(std::move(rebootIdCache)) {}
+
 }  // namespace arangodb::replication2::replicated_log

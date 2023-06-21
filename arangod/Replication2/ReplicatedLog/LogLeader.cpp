@@ -63,12 +63,14 @@
 #include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/IRebootIdCache.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/IScheduler.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
+#include "Replication2/ReplicatedLog/IRebootIdCache.h"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -95,12 +97,14 @@ replicated_log::LogLeader::LogLeader(
     ParticipantId id, LogTerm term, LogIndex firstIndex,
     std::unique_ptr<IReplicatedStateHandle> stateHandle,
     std::shared_ptr<IAbstractFollowerFactory> followerFactory,
-    std::shared_ptr<IScheduler> scheduler)
+    std::shared_ptr<IScheduler> scheduler,
+    std::shared_ptr<IRebootIdCache> rebootIdCache)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
       _followerFactory(std::move(followerFactory)),
       _scheduler(std::move(scheduler)),
+      _rebootIdCache(std::move(rebootIdCache)),
       _id(std::move(id)),
       _currentTerm(term),
       _firstIndexOfCurrentTerm(firstIndex),
@@ -184,6 +188,18 @@ void replicated_log::LogLeader::handleResolvedPromiseSet(
       promise.setValue(result);
     });
   }
+}
+
+auto replicated_log::LogLeader::getParticipantsRebootIds(
+    agency::ParticipantsConfig const& config,
+    IRebootIdCache const& rebootIdCache)
+    -> std::unordered_map<ParticipantId, RebootId> {
+  auto participantIds = std::vector<ParticipantId>();
+  participantIds.reserve(config.participants.size());
+  std::transform(config.participants.begin(), config.participants.end(),
+                 std::back_inserter(participantIds),
+                 [](auto const& it) { return it.first; });
+  return rebootIdCache.getRebootIdsFor(participantIds);
 }
 
 void replicated_log::LogLeader::executeAppendEntriesRequests(
@@ -322,7 +338,9 @@ auto replicated_log::LogLeader::construct(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::unique_ptr<IReplicatedStateHandle> stateHandle,
     std::shared_ptr<IAbstractFollowerFactory> followerFactory,
-    std::shared_ptr<IScheduler> scheduler) -> std::shared_ptr<LogLeader> {
+    std::shared_ptr<IScheduler> scheduler,
+    std::shared_ptr<IRebootIdCache> rebootIdCache)
+    -> std::shared_ptr<LogLeader> {
   auto const& config = participantsConfig->config;
   auto const& participants = participantsConfig->participants;
 
@@ -350,11 +368,13 @@ auto replicated_log::LogLeader::construct(
         ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
         std::unique_ptr<IReplicatedStateHandle> stateHandle,
         std::shared_ptr<IAbstractFollowerFactory> followerFactory,
-        std::shared_ptr<IScheduler> scheduler)
+        std::shared_ptr<IScheduler> scheduler,
+        std::shared_ptr<IRebootIdCache> rebootIdCache)
         : LogLeader(std::move(logContext), std::move(logMetrics),
                     std::move(options), std::move(id), term,
                     firstIndexOfCurrentTerm, std::move(stateHandle),
-                    std::move(followerFactory), std::move(scheduler)) {}
+                    std::move(followerFactory), std::move(scheduler),
+                    std::move(rebootIdCache)) {}
   };
 
   {
@@ -404,7 +424,7 @@ auto replicated_log::LogLeader::construct(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
       std::move(logMetrics), options, std::move(id), term,
       firstIndexOfCurrentTerm, std::move(stateHandle), followerFactory,
-      scheduler);
+      scheduler, rebootIdCache);
 
   auto compactionManager = std::make_shared<CompactionManager>(
       *storageManager, options,
@@ -423,7 +443,8 @@ auto replicated_log::LogLeader::construct(
       leaderDataGuard->_follower =
           instantiateFollowers(commonLogContext, followerFactory, localFollower,
                                lastIndex, participantsConfig);
-      leaderDataGuard->activeParticipantsConfig = participantsConfig;
+      leaderDataGuard->activeInnerTermConfig =
+          leader->makeInnerTermConfig(*participantsConfig);
       leader->_localFollower = std::move(localFollower);
       leader->_storageManager = std::move(storageManager);
       leader->_inMemoryLogManager = std::move(inMemoryLogManager);
@@ -432,15 +453,15 @@ auto replicated_log::LogLeader::construct(
                  config.effectiveWriteConcern)
           << "actual followers: " << leaderDataGuard->_follower.size()
           << " effectiveWriteConcern: " << config.effectiveWriteConcern;
-      TRI_ASSERT(
-          leaderDataGuard->_follower.size() ==
-          leaderDataGuard->activeParticipantsConfig->participants.size());
-      TRI_ASSERT(std::all_of(leaderDataGuard->_follower.begin(),
-                             leaderDataGuard->_follower.end(),
-                             [&](auto const& it) {
-                               return leaderDataGuard->activeParticipantsConfig
-                                   ->participants.contains(it.first);
-                             }));
+      TRI_ASSERT(leaderDataGuard->_follower.size() ==
+                 leaderDataGuard->activeInnerTermConfig->participantsConfig
+                     .participants.size());
+      TRI_ASSERT(std::all_of(
+          leaderDataGuard->_follower.begin(), leaderDataGuard->_follower.end(),
+          [&](auto const& it) {
+            return leaderDataGuard->activeInnerTermConfig->participantsConfig
+                .participants.contains(it.first);
+          }));
 
       LOG_CTX("f3aa8", TRACE, logContext) << "trying to establish leadership";
       // Immediately append an empty log entry in the new term. This is
@@ -452,13 +473,11 @@ auto replicated_log::LogLeader::construct(
       auto meta = LogMetaPayload::withFirstEntryOfTerm(leader->_id,
                                                        *participantsConfig);
 
-      auto const insertTp = InMemoryLogEntry::clock::now();
-      auto const logIndex = leader->_inMemoryLogManager->appendLogEntry(
-          std::move(meta), leader->_currentTerm, insertTp, true);
+      auto const logIndex = leader->insertInternal(std::move(meta), true);
       // It's not strictly necessary to set this, leaving it to zero would also
       // work; because either way the first commit will commit this
       // configuration.
-      leaderDataGuard->activeParticipantsConfigLogIndex = logIndex;
+      leaderDataGuard->activeInnerConfigLogIndex = logIndex;
 
       TRI_ASSERT(logIndex == leader->_firstIndexOfCurrentTerm)
           << "got logIndex = " << logIndex << " but firstIndexOfCurrentTerm is "
@@ -501,10 +520,12 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.firstInMemoryIndex = _inMemoryLogManager->getFirstInMemoryIndex();
     status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
-    status.activeParticipantsConfig = *leaderData.activeParticipantsConfig;
-    if (auto const config = leaderData.committedParticipantsConfig;
+    status.activeParticipantsConfig =
+        leaderData.activeInnerTermConfig->participantsConfig;
+    if (auto const config = leaderData.committedInnerTermConfig;
         config != nullptr) {
-      status.committedParticipantsConfig = *config;
+      status.committedParticipantsConfig = config->participantsConfig;
+      status.safeRebootIds = config->safeRebootIds;
     }
     for (auto const& [pid, f] : leaderData._follower) {
       auto lastRequestLatencyMS =
@@ -598,6 +619,22 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
       followersWithSnapshot.emplace_back(pid);
     }
   }
+  auto activeParticipantsConfig =
+      std::shared_ptr<agency::ParticipantsConfig const>(
+          guard->activeInnerTermConfig,
+          &guard->activeInnerTermConfig->participantsConfig);
+  auto committedParticipantsConfig =
+      guard->committedInnerTermConfig != nullptr
+          ? std::shared_ptr<agency::ParticipantsConfig const>(
+                guard->committedInnerTermConfig,
+                &guard->committedInnerTermConfig->participantsConfig)
+          : nullptr;
+  auto safeRebootIds =
+      guard->committedInnerTermConfig != nullptr
+          ? std::shared_ptr<std::unordered_map<ParticipantId, RebootId> const>(
+                guard->committedInnerTermConfig,
+                &guard->committedInnerTermConfig->safeRebootIds)
+          : nullptr;
   return QuickLogStatus{
       .role = ParticipantRole::kLeader,
       .localState = localState,
@@ -606,8 +643,9 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
       .leadershipEstablished = guard->_leadershipEstablished,
       .snapshotAvailable = true,
       .commitFailReason = commitFailReason,
-      .activeParticipantsConfig = guard->activeParticipantsConfig,
-      .committedParticipantsConfig = guard->committedParticipantsConfig,
+      .activeParticipantsConfig = std::move(activeParticipantsConfig),
+      .committedParticipantsConfig = std::move(committedParticipantsConfig),
+      .safeRebootIds = std::move(safeRebootIds),
       .followersWithSnapshot = std::move(followersWithSnapshot)};
 }
 
@@ -621,6 +659,12 @@ auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync)
 
 auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync,
                                        DoNotTriggerAsyncReplication)
+    -> LogIndex {
+  return insertInternal(std::move(payload), waitForSync);
+}
+
+auto replicated_log::LogLeader::insertInternal(
+    std::variant<LogMetaPayload, LogPayload> payload, bool waitForSync)
     -> LogIndex {
   auto const insertTp = InMemoryLogEntry::clock::now();
   // Currently we use a mutex. Is this the only valid semantic?
@@ -709,13 +753,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     _stateHandle->leadershipEstablished(std::make_unique<MethodsImpl>(_self));
   }
 
-  if (activeParticipantsConfig != committedParticipantsConfig) {
+  if (activeInnerTermConfig != committedInnerTermConfig) {
     // check whether the active config has been committed
-    if (activeParticipantsConfigLogIndex <= newCommitIndex) {
-      committedParticipantsConfig = activeParticipantsConfig;
+    if (activeInnerConfigLogIndex <= newCommitIndex) {
+      committedInnerTermConfig = activeInnerTermConfig;
       LOG_CTX("536f5", DEBUG, _self._logContext)
           << "configuration committed, generation "
-          << committedParticipantsConfig->generation;
+          << committedInnerTermConfig->participantsConfig.generation;
+      registerSafeRebootIdUpdateCallbacks();
     }
   }
 
@@ -837,7 +882,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   req.lowestIndexToKeep = lowestIndexToKeep;
   req.leaderTerm = _self._currentTerm;
   req.leaderId = _self._id;
-  req.waitForSync = this->activeParticipantsConfig->config.waitForSync;
+  req.waitForSync =
+      this->activeInnerTermConfig->participantsConfig.config.waitForSync;
   req.messageId = ++follower.lastSentMessageId;
 
   follower._state = FollowerInfo::State::REQUEST_IN_FLIGHT;
@@ -889,6 +935,51 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
       << ", lci = " << req.lowestIndexToKeep << ", msg-id = " << req.messageId;
 
   return std::make_pair(std::move(req), lastIndex);
+}
+
+auto replicated_log::LogLeader::GuardedLeaderData::
+    createSafeRebootIdUpdateCallback(LoggerContext logContext)
+        -> IRebootIdCache::Callback {
+  return IRebootIdCache::Callback(
+      [weak = _self.weak_from_this(), logContext = logContext] {
+        if (auto self = weak.lock()) {
+          LOG_CTX("2b8c5", TRACE, logContext)
+              << "RebootId of follower changed, updating reboot ids";
+          std::ignore = self->updateInnerTermConfig();
+        }
+      });
+}
+
+void replicated_log::LogLeader::GuardedLeaderData::
+    registerSafeRebootIdUpdateCallbackFor(
+        std::shared_ptr<replicated_log::LogLeader::FollowerInfo> follower,
+        PeerState peerState) {
+  auto ss = std::stringstream{};
+  ss << follower->logContext;
+  ss << " ";
+  auto description =
+      fmt::format("{} Trigger update of safe reboot id", ss.str());
+
+  auto callback = createSafeRebootIdUpdateCallback(follower->logContext);
+  follower->rebootIdCallbackGuard =
+      _self._rebootIdCache->registerCallbackOnChange(
+          std::move(peerState), std::move(callback), std::move(description));
+}
+
+void replicated_log::LogLeader::GuardedLeaderData::
+    registerSafeRebootIdUpdateCallbacks() {
+  TRI_ASSERT(activeInnerTermConfig->participantsConfig.generation ==
+             committedInnerTermConfig->participantsConfig.generation);
+  TRI_ASSERT(committedInnerTermConfig->participantsConfig.participants.size() ==
+             _follower.size());
+  for (auto const& [participantId, follower] : _follower) {
+    TRI_ASSERT(committedInnerTermConfig->safeRebootIds.contains(participantId));
+    auto const knownRebootId =
+        committedInnerTermConfig->safeRebootIds.at(participantId);
+    auto peerState = PeerState{participantId, knownRebootId};
+
+    registerSafeRebootIdUpdateCallbackFor(follower, peerState);
+  }
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
@@ -1037,8 +1128,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerStates() const
     // sent to a follower.
     TRI_ASSERT(follower->lastAckedIndex.term <= this->_self._currentTerm);
 
-    auto flags = activeParticipantsConfig->participants.find(pid);
-    TRI_ASSERT(flags != std::end(activeParticipantsConfig->participants));
+    auto flags =
+        activeInnerTermConfig->participantsConfig.participants.find(pid);
+    TRI_ASSERT(
+        flags !=
+        std::end(activeInnerTermConfig->participantsConfig.participants));
     participantStates.emplace_back(algorithms::ParticipantState{
         .lastAckedEntry = follower->lastAckedIndex,
         .id = pid,
@@ -1070,7 +1164,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
       _self._inMemoryLogManager->getSpearheadTermIndexPair();
   auto const [newCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(
-          indexes, this->activeParticipantsConfig->config.effectiveWriteConcern,
+          indexes,
+          this->activeInnerTermConfig->participantsConfig.config
+              .effectiveWriteConcern,
           currentCommitIndex, lastTermIndex);
   _lastCommitFailReason = commitFailReason;
 
@@ -1242,110 +1338,125 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
     -> LogIndex {
   LOG_CTX("ac277", TRACE, _logContext)
       << "trying to update configuration to generation " << config->generation;
-  auto waitForIndex =
-      _guardedLeaderData.doUnderLock([&](GuardedLeaderData& data) {
-        auto const [followersToRemove, additionalFollowers] = std::invoke([&] {
-          auto const& oldFollowers = data._follower;
-          // Note that newParticipants contains the leader, while
-          // oldFollowers does not.
-          auto const& newParticipants = config->participants;
-          auto const additionalParticipantIds =
-              keySetDifference(newParticipants, oldFollowers);
-          auto followersToRemove_ =
-              keySetDifference(oldFollowers, newParticipants);
 
-          auto additionalFollowers_ =
-              std::unordered_map<ParticipantId,
-                                 std::shared_ptr<AbstractFollower>>{};
-          for (auto const& participantId : additionalParticipantIds) {
-            // exclude the leader
-            if (participantId != _id) {
-              additionalFollowers_.try_emplace(
-                  participantId,
-                  _followerFactory->constructFollower(participantId));
-            }
-          }
-          return std::pair(std::move(followersToRemove_),
-                           std::move(additionalFollowers_));
-        });
+  auto innerTermConfig = makeInnerTermConfig(*config);
 
-        if (data.activeParticipantsConfig->generation >= config->generation) {
-          auto const message = basics::StringUtils::concatT(
-              "updated participant config generation is smaller or equal to "
-              "current generation - refusing to update; ",
-              "new = ", config->generation,
-              ", current = ", data.activeParticipantsConfig->generation);
-          LOG_CTX("bab5b", TRACE, _logContext) << message;
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
-        }
+  return updateInnerTermConfig(std::move(innerTermConfig));
+}
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        // all participants in the new configuration must either exist
-        // already, or be added via additionalFollowers.
-        {
-          auto const& newConfigParticipants = config->participants;
-          TRI_ASSERT(std::all_of(
-              newConfigParticipants.begin(), newConfigParticipants.end(),
-              [&, &additionalFollowers = additionalFollowers](auto const& it) {
-                return data._follower.contains(it.first) ||
-                       additionalFollowers.contains(it.first) ||
-                       it.first == data._self.getParticipantId();
-              }));
-        }
-#endif
+auto replicated_log::LogLeader::GuardedLeaderData::updateInnerTermConfig(
+    std::shared_ptr<const InnerTermConfig> config) -> LogIndex {
+  auto const [followersToRemove, additionalFollowers] = std::invoke([&] {
+    auto const& oldFollowers = _follower;
+    // Note that newParticipants contains the leader, while
+    // oldFollowers does not.
+    auto const& newParticipants = config->participantsConfig.participants;
+    auto const additionalParticipantIds =
+        keySetDifference(newParticipants, oldFollowers);
+    auto followersToRemove_ = keySetDifference(oldFollowers, newParticipants);
 
-        // Create a copy. This is important to keep the following code
-        // exception-safe, in particular never leave data._follower behind in
-        // a half-updated state.
-        auto followers = data._follower;
+    auto additionalFollowers_ =
+        std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>>{};
+    for (auto const& participantId : additionalParticipantIds) {
+      // exclude the leader
+      if (participantId != _self._id) {
+        additionalFollowers_.try_emplace(
+            participantId,
+            _self._followerFactory->constructFollower(participantId));
+      }
+    }
+    return std::pair(std::move(followersToRemove_),
+                     std::move(additionalFollowers_));
+  });
 
-        {  // remove obsolete followers
-          for (auto const& it : followersToRemove) {
-            followers.erase(it);
-          }
-        }
-        {  // add new followers
-          auto const lastIndex =
-              _inMemoryLogManager->getSpearheadTermIndexPair()
-                  .index.saturatedDecrement();
-          for (auto&& [participantId, abstractFollowerPtr] :
-               additionalFollowers) {
-            followers.try_emplace(participantId,
-                                  std::make_shared<FollowerInfo>(
-                                      std::move(abstractFollowerPtr), lastIndex,
-                                      data._self._logContext));
-          }
-        }
+  // Note that on equal config generations, we still might need to update the
+  // reboot ids.
+  if (activeInnerTermConfig->participantsConfig.generation >
+      config->participantsConfig.generation) {
+    auto const message = basics::StringUtils::concatT(
+        "updated participant config generation is smaller than the "
+        "current generation - refusing to update; ",
+        "new = ", config->participantsConfig.generation,
+        ", current = ", activeInnerTermConfig->participantsConfig.generation);
+    LOG_CTX("bab5b", TRACE, _self._logContext) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        // all participants (but the leader) in the new configuration must now
-        // be part of followers
-        {
-          auto const& newConfigParticipants = config->participants;
-          TRI_ASSERT(
-              std::all_of(newConfigParticipants.begin(),
-                          newConfigParticipants.end(), [&](auto const& it) {
-                            return followers.contains(it.first) ||
-                                   it.first == data._self.getParticipantId();
-                          }));
-        }
+  // all participants in the new configuration must either exist
+  // already, or be added via additionalFollowers.
+  {
+    auto const& newConfigParticipants = config->participantsConfig.participants;
+    TRI_ASSERT(std::all_of(
+        newConfigParticipants.begin(), newConfigParticipants.end(),
+        [&, &additionalFollowers = additionalFollowers](auto const& it) {
+          return _follower.contains(it.first) ||
+                 additionalFollowers.contains(it.first) ||
+                 it.first == _self.getParticipantId();
+        }));
+  }
 #endif
 
-        auto meta =
-            LogMetaPayload::UpdateParticipantsConfig{.participants = *config};
-        auto const insertTp = InMemoryLogEntry::clock::now();
-        auto const idx = _inMemoryLogManager->appendLogEntry(
-            LogMetaPayload{std::move(meta)}, _currentTerm, insertTp, true);
-        data.activeParticipantsConfig = config;
-        data.activeParticipantsConfigLogIndex = idx;
-        data._follower.swap(followers);
+  // Create a copy. This is important to keep the following code
+  // exception-safe, in particular never leave data._follower behind in
+  // a half-updated state.
+  auto followers = _follower;
 
-        return idx;
-      });
+  {  // remove obsolete followers
+    for (auto const& it : followersToRemove) {
+      followers.erase(it);
+    }
+  }
+  {  // add new followers
+    auto const lastIndex =
+        _self._inMemoryLogManager->getSpearheadTermIndexPair()
+            .index.saturatedDecrement();
+    for (auto&& [participantId, abstractFollowerPtr] : additionalFollowers) {
+      followers.try_emplace(participantId, std::make_shared<FollowerInfo>(
+                                               std::move(abstractFollowerPtr),
+                                               lastIndex, _self._logContext));
+    }
+  }
 
-  triggerAsyncReplication();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // all participants (but the leader) in the new configuration must now
+  // be part of followers
+  {
+    auto const& newConfigParticipants = config->participantsConfig.participants;
+    TRI_ASSERT(std::all_of(newConfigParticipants.begin(),
+                           newConfigParticipants.end(), [&](auto const& it) {
+                             return followers.contains(it.first) ||
+                                    it.first == _self.getParticipantId();
+                           }));
+  }
+#endif
 
-  return waitForIndex;
+  auto meta = LogMetaPayload::withUpdateInnerTermConfig(
+      config->participantsConfig, config->safeRebootIds);
+  auto const idx = _self.insertInternal(std::move(meta), true);
+  activeInnerTermConfig = config;
+  activeInnerConfigLogIndex = idx;
+  _follower.swap(followers);
+
+  return idx;
+}
+
+auto replicated_log::LogLeader::GuardedLeaderData::updateInnerTermConfig()
+    -> LogIndex {
+  // just update the reboot ids
+  return updateInnerTermConfig(
+      _self.makeInnerTermConfig(activeInnerTermConfig->participantsConfig));
+}
+
+auto replicated_log::LogLeader::makeInnerTermConfig(
+    agency::ParticipantsConfig config) const
+    -> std::shared_ptr<InnerTermConfig const> {
+  auto rebootIds = getParticipantsRebootIds(config, *_rebootIdCache);
+
+  auto innerTermConfig = std::make_shared<InnerTermConfig const>(
+      std::move(config), std::move(rebootIds));
+
+  return innerTermConfig;
 }
 
 auto replicated_log::LogLeader::setSnapshotAvailable(
@@ -1388,9 +1499,7 @@ auto replicated_log::LogLeader::setSnapshotAvailable(
 auto replicated_log::LogLeader::ping(std::optional<std::string> message)
     -> LogIndex {
   auto meta = LogMetaPayload::withPing(message);
-  auto const insertTp = InMemoryLogEntry::clock::now();
-  auto index = _inMemoryLogManager->appendLogEntry(
-      LogMetaPayload{std::move(meta)}, _currentTerm, insertTp, false);
+  auto index = insertInternal(std::move(meta), false);
 
   triggerAsyncReplication();
   return index;
@@ -1481,6 +1590,26 @@ auto replicated_log::LogLeader::getInternalLogIterator(
   return std::make_unique<Adapter>(std::move(iter), range);
 }
 
+auto replicated_log::LogLeader::updateInnerTermConfig() -> LogIndex {
+  auto waitForIndex =
+      _guardedLeaderData.getLockedGuard()->updateInnerTermConfig();
+
+  triggerAsyncReplication();
+
+  return waitForIndex;
+}
+
+auto replicated_log::LogLeader::updateInnerTermConfig(
+    std::shared_ptr<const InnerTermConfig> config) -> LogIndex {
+  auto waitForIndex =
+      _guardedLeaderData.getLockedGuard()->updateInnerTermConfig(
+          std::move(config));
+
+  triggerAsyncReplication();
+
+  return waitForIndex;
+}
+
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const
     -> Result {
   LOG_CTX("23745", DEBUG, _logContext)
@@ -1509,3 +1638,9 @@ replicated_log::LogLeader::FollowerInfo::FollowerInfo(
       logContext(
           logContext.with<logContextKeyLogComponent>("follower-info")
               .with<logContextKeyFollowerId>(_impl->getParticipantId())) {}
+
+replicated_log::LogLeader::InnerTermConfig::InnerTermConfig(
+    agency::ParticipantsConfig participantsConfig,
+    std::unordered_map<ParticipantId, RebootId> safeRebootIds)
+    : participantsConfig(std::move(participantsConfig)),
+      safeRebootIds(std::move(safeRebootIds)) {}

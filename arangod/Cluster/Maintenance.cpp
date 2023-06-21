@@ -1536,6 +1536,59 @@ static void writeUpdateReplicatedLogLeader(
   }
 }
 
+static auto reportCurrentReplicatedLogSafeRebootIds(
+    replication2::replicated_log::QuickLogStatus const& status,
+    std::optional<replication2::agency::LogCurrent> const& current)
+    -> std::optional<
+        std::unordered_map<replication2::ParticipantId, RebootId>> {
+  auto statusSafeRebootIds = status.safeRebootIds != nullptr
+                                 ? std::optional{*status.safeRebootIds}
+                                 : std::nullopt;
+  if (!current.has_value() or current->safeRebootIds != statusSafeRebootIds) {
+    // Note that this may still be std::nullopt, which means no update.
+    return statusSafeRebootIds;
+  }
+  return std::nullopt;
+}
+
+static void writeUpdateReplicatedLogSafeRebootIds(
+    VPackBuilder& report, replication2::LogId id, DatabaseID const& dbName,
+    replication2::LogTerm& localTerm,
+    std::unordered_map<replication2::ParticipantId, RebootId> const&
+        safeRebootIds) {
+  // update Current/ReplicatedLogs/<dbname>/<logId>/safeRebootIds
+  // with precondition
+  // Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
+  using namespace cluster::paths;
+  auto reportPath = aliases::current()
+                        ->replicatedLogs()
+                        ->database(dbName)
+                        ->log(to_string(id))
+                        ->safeRebootIds()
+                        ->str(SkipComponents(
+                            1) /* skip first path component, i.e. 'arango' */);
+  auto preconditionPath =
+      aliases::plan()
+          ->replicatedLogs()
+          ->database(dbName)
+          ->log(to_string(id))
+          ->currentTerm()
+          ->term()
+          ->str(
+              SkipComponents(1) /* skip first path component, i.e. 'arango' */);
+  report.add(VPackValue(reportPath));
+  {
+    VPackObjectBuilder o(&report);
+    report.add(OP, VP_SET);
+    report.add(VPackValue("payload"));
+    velocypack::serialize(report, safeRebootIds);
+    {
+      VPackObjectBuilder preconditionBuilder(&report, "precondition");
+      report.add(preconditionPath, VPackValue(localTerm));
+    }
+  }
+}
+
 static void writeUpdateReplicatedLogLocal(
     VPackBuilder& report, replication2::LogId id, DatabaseID const& dbName,
     ServerID const& serverId, replication2::LogTerm localTerm,
@@ -1644,6 +1697,12 @@ static void reportCurrentReplicatedLog(
               reportCurrentReplicatedLogLeader(status, serverId, currentLeader);
           result.has_value()) {
         writeUpdateReplicatedLogLeader(report, id, dbName, *localTerm, *result);
+      }
+      if (auto result =
+              reportCurrentReplicatedLogSafeRebootIds(status, current);
+          result.has_value()) {
+        writeUpdateReplicatedLogSafeRebootIds(report, id, dbName, *localTerm,
+                                              *result);
       }
     }
   }

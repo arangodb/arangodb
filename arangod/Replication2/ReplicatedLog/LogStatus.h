@@ -58,6 +58,10 @@ struct QuickLogStatus {
   // been established!
   std::shared_ptr<agency::ParticipantsConfig const>
       committedParticipantsConfig{};
+  // Note that safeRebootIds will be nullptr until leadership has been
+  // established!
+  std::shared_ptr<std::unordered_map<ParticipantId, RebootId> const>
+      safeRebootIds{};
 
   std::vector<ParticipantId> followersWithSnapshot{};
 
@@ -81,10 +85,14 @@ auto inspect(Inspector& f, QuickLogStatus& x) {
   auto activeParticipantsConfig = std::shared_ptr<agency::ParticipantsConfig>();
   auto committedParticipantsConfig =
       std::shared_ptr<agency::ParticipantsConfig>();
+  auto safeRebootIds =
+      std::shared_ptr<std::unordered_map<ParticipantId, RebootId>>();
   if constexpr (!Inspector::isLoading) {
     activeParticipantsConfig = std::make_shared<agency::ParticipantsConfig>();
     committedParticipantsConfig =
         std::make_shared<agency::ParticipantsConfig>();
+    safeRebootIds =
+        std::make_shared<std::unordered_map<ParticipantId, RebootId>>();
   }
   auto res = f.object(x).fields(
       f.field("role", x.role).transformWith(ParticipantRoleStringTransformer{}),
@@ -95,10 +103,12 @@ auto inspect(Inspector& f, QuickLogStatus& x) {
       f.field("commitFailReason", x.commitFailReason),
       f.field("followersWithSnapshot", x.followersWithSnapshot),
       f.field("activeParticipantsConfig", activeParticipantsConfig),
-      f.field("committedParticipantsConfig", committedParticipantsConfig));
+      f.field("committedParticipantsConfig", committedParticipantsConfig),
+      f.field("safeRebootIds", safeRebootIds));
   if constexpr (Inspector::isLoading) {
     x.activeParticipantsConfig = activeParticipantsConfig;
     x.committedParticipantsConfig = committedParticipantsConfig;
+    x.safeRebootIds = safeRebootIds;
   }
   return res;
 }
@@ -181,6 +191,7 @@ struct LeaderStatus {
   CompactionStatus compactionStatus;
   agency::ParticipantsConfig activeParticipantsConfig;
   std::optional<agency::ParticipantsConfig> committedParticipantsConfig;
+  std::optional<std::unordered_map<ParticipantId, RebootId>> safeRebootIds;
 
   friend auto operator==(LeaderStatus const& left,
                          LeaderStatus const& right) noexcept -> bool = default;
@@ -201,7 +212,8 @@ auto inspect(Inspector& f, LeaderStatus& x) {
       f.field("lastCommitStatus", x.lastCommitStatus),
       f.field("compactionStatus", x.compactionStatus),
       f.field("activeParticipantsConfig", x.activeParticipantsConfig),
-      f.field("committedParticipantsConfig", x.committedParticipantsConfig));
+      f.field("committedParticipantsConfig", x.committedParticipantsConfig),
+      f.field("safeRebootIds", x.safeRebootIds));
 }
 
 struct FollowerStatus {

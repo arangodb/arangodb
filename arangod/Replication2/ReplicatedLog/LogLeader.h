@@ -36,11 +36,13 @@
 #include <vector>
 
 #include "Basics/Result.h"
+#include "Cluster/CallbackGuard.h"
 #include "Futures/Future.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/IRebootIdCache.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
@@ -94,14 +96,16 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   ~LogLeader() override;
 
   [[nodiscard]] static auto construct(
-      std::unique_ptr<replicated_state::IStorageEngineMethods>&&,
+      std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
       std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      std::unique_ptr<IReplicatedStateHandle>,
+      std::unique_ptr<IReplicatedStateHandle> stateHandle,
       std::shared_ptr<IAbstractFollowerFactory> followerFactory,
-      std::shared_ptr<IScheduler> scheduler) -> std::shared_ptr<LogLeader>;
+      std::shared_ptr<IScheduler> scheduler,
+      std::shared_ptr<IRebootIdCache> rebootIdCache)
+      -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload payload, bool waitForSync = false) -> LogIndex;
 
@@ -166,7 +170,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
             ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
             std::unique_ptr<IReplicatedStateHandle>,
             std::shared_ptr<IAbstractFollowerFactory> followerFactory,
-            std::shared_ptr<IScheduler> scheduler);
+            std::shared_ptr<IScheduler> scheduler,
+            std::shared_ptr<IRebootIdCache> rebootIdCache);
 
  private:
   struct GuardedLeaderData;
@@ -195,6 +200,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     MessageId snapshotAvailableMessageId;
     LoggerContext const logContext;
     IScheduler::WorkItemHandle lastRequestHandle;
+    cluster::CallbackGuard rebootIdCallbackGuard;
 
     enum class State {
       IDLE,
@@ -249,6 +255,14 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     WaitForResult result;
   };
 
+  struct InnerTermConfig {
+    InnerTermConfig(agency::ParticipantsConfig participantsConfig,
+                    std::unordered_map<ParticipantId, RebootId> safeRebootIds);
+
+    agency::ParticipantsConfig const participantsConfig;
+    std::unordered_map<ParticipantId, RebootId> const safeRebootIds;
+  };
+
   struct alignas(128) GuardedLeaderData {
     ~GuardedLeaderData() = default;
     GuardedLeaderData(LogLeader& self, std::unique_ptr<IReplicatedStateHandle>,
@@ -289,6 +303,17 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         FollowerInfo& follower, TermIndexPair const& lastAvailableIndex) const
         -> std::pair<AppendEntriesRequest, TermIndexPair>;
 
+    [[nodiscard]] auto createSafeRebootIdUpdateCallback(
+        LoggerContext logContext) -> IRebootIdCache::Callback;
+    void registerSafeRebootIdUpdateCallbackFor(
+        std::shared_ptr<replicated_log::LogLeader::FollowerInfo> follower,
+        PeerState peerState);
+    void registerSafeRebootIdUpdateCallbacks();
+
+    [[nodiscard]] auto updateInnerTermConfig() -> LogIndex;
+    [[nodiscard]] auto updateInnerTermConfig(
+        std::shared_ptr<InnerTermConfig const> config) -> LogIndex;
+
     LogLeader& _self;
     std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>
         _follower{};
@@ -301,12 +326,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::unique_ptr<IReplicatedStateHandle> _stateHandle;
 
     // active - that is currently used to check for committed entries
-    std::shared_ptr<agency::ParticipantsConfig const> activeParticipantsConfig;
-    LogIndex activeParticipantsConfigLogIndex;
+    std::shared_ptr<InnerTermConfig const> activeInnerTermConfig;
+    LogIndex activeInnerConfigLogIndex;
     // committed - latest active config that has committed at least one entry
     // Note that this will be nullptr until leadership is established!
-    std::shared_ptr<agency::ParticipantsConfig const>
-        committedParticipantsConfig;
+    // std::shared_ptr<InnerTermConfig const> committedInnerTermConfig;
+    std::shared_ptr<InnerTermConfig const> committedInnerTermConfig;
   };
 
   LoggerContext const _logContext;
@@ -314,6 +339,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
   std::shared_ptr<IAbstractFollowerFactory> const _followerFactory;
   std::shared_ptr<IScheduler> const _scheduler;
+  std::shared_ptr<IRebootIdCache> const _rebootIdCache;
   ParticipantId const _id;
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;
@@ -326,8 +352,11 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
 
-  void establishLeadership(
-      std::shared_ptr<agency::ParticipantsConfig const> config);
+  // Internal insert. Does not trigger async replication. Call
+  // triggerAsyncReplication() after to do so.
+  [[nodiscard]] auto insertInternal(
+      std::variant<LogMetaPayload, LogPayload> payload, bool waitForSync)
+      -> LogIndex;
 
   [[nodiscard]] static auto instantiateFollowers(
       LoggerContext const& logContext,
@@ -341,12 +370,22 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;
 
+  [[nodiscard]] auto updateInnerTermConfig() -> LogIndex;
+  [[nodiscard]] auto updateInnerTermConfig(
+      std::shared_ptr<InnerTermConfig const> config) -> LogIndex;
+
   static void executeAppendEntriesRequests(
       std::vector<std::optional<PreparedAppendEntryRequest>> requests,
       std::shared_ptr<ReplicatedLogMetrics> const& logMetrics, IScheduler*);
   static void handleResolvedPromiseSet(
       IScheduler* sched, ResolvedPromiseSet set,
       std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
+
+  static auto getParticipantsRebootIds(agency::ParticipantsConfig const& config,
+                                       IRebootIdCache const& rebootIdCache)
+      -> std::unordered_map<ParticipantId, RebootId>;
+  auto makeInnerTermConfig(agency::ParticipantsConfig config) const
+      -> std::shared_ptr<InnerTermConfig const>;
 };
 
 }  // namespace arangodb::replication2::replicated_log
