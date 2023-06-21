@@ -281,17 +281,9 @@ const replicatedLogSuite = function () {
       lh.replicatedLogUpdateTargetParticipants(database, log.id(), {
         [newFollower]: {
           allowedInQuorum: true,
-          allowedAsLeader: true
+          allowedAsLeader: true,
         },
         [oldFollower]: null,
-      });
-      lh.waitFor(() => {
-        const {target, plan} = lh.readReplicatedLogAgency(database, log.id());
-        if (_.isEqual(Object.keys(plan.participantsConfig.participants).sort(), Object.keys(target.participants).sort())) {
-          return true;
-        } else {
-          return Error(`Plan participants haven't caught up with target. ${JSON.stringify({target, plan})}`);
-        }
       });
 
       const newFollowerRebootId = lh.getServerRebootId(newFollower);
@@ -300,10 +292,12 @@ const replicatedLogSuite = function () {
 
       lh.waitFor(() => {
         const {current} = lh.readReplicatedLogAgency(database, log.id());
-        if (current.safeRebootIds.hasOwnProperty(newFollower)) {
-          return true;
-        } else {
+        if (!current.safeRebootIds.hasOwnProperty(newFollower)) {
           return Error(`Reboot id of ${newFollower} is not yet reported.`);
+        } else if (current.safeRebootIds.hasOwnProperty(newFollower)) {
+          return Error(`Reboot id of ${oldFollower} is still being reported.`);
+        } else {
+          return true;
         }
       });
       const finalCurrent = lh.readReplicatedLogAgency(database, log.id()).current;
