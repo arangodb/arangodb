@@ -817,9 +817,13 @@ void DumpFeature::collectOptions(
           "Split a collection in multiple files to increase throughput.",
           new BooleanParameter(&_options.splitFiles),
           arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Experimental,
               arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(This option only has effect when the option
+`--use-experimental-dump` is set to `true`. Restoring split files also
+requires an arangorestore version that is capable of restoring data of a
+single collection/shard from multiple files.)")
       .setIntroducedIn(31200);
+
   options
       ->addOption("--dbserver-worker-threads",
                   "Number of worker threads on each dbserver.",
@@ -827,6 +831,7 @@ void DumpFeature::collectOptions(
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
+
   options
       ->addOption("--dbserver-prefetch-batches",
                   "Number of batches to prefetch on each dbserver.",
@@ -834,12 +839,14 @@ void DumpFeature::collectOptions(
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
+
   options
       ->addOption("--local-writer-threads", "Number of local writer threads.",
                   new UInt64Parameter(&_options.localWriterThreads),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
+
   options
       ->addOption("--local-network-threads",
                   "Number of local network threads, i.e. how many requests "
