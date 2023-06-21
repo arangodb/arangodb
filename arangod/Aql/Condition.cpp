@@ -662,12 +662,6 @@ std::unique_ptr<Condition> Condition::clone() const {
 /// @brief add a sub-condition to the condition
 /// the sub-condition will be AND-combined with the existing condition(s)
 void Condition::andCombine(AstNode const* node) {
-  if (_isNormalized) {
-    // already normalized
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot and-combine normalized condition");
-  }
-
   if (_root == nullptr) {
     // condition was empty before
     _root = _ast->clone(node);
@@ -678,6 +672,12 @@ void Condition::andCombine(AstNode const* node) {
   }
 
   TRI_ASSERT(_root != nullptr);
+
+  // note: it seems that andCombine() is sometimes called even for
+  // conditions that have been normalized already. in this case, we
+  // clear the normalization flag again after we have modified the
+  // condition.
+  _isNormalized = false;
 }
 
 /// @brief locate indexes for each condition

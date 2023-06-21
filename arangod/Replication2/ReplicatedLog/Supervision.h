@@ -36,7 +36,9 @@
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 #include "Replication2/ReplicatedLog/SupervisionContext.h"
 
-using namespace arangodb::replication2::agency;
+namespace arangodb::agency {
+struct envelope;
+}
 
 namespace arangodb::replication2::replicated_log {
 
@@ -47,6 +49,11 @@ auto computeEffectiveWriteConcern(LogTargetConfig const& config,
                                   ParticipantsFlagsMap const& participants,
                                   ParticipantsHealth const& health) -> size_t;
 
+auto computeEffectiveWriteConcern(LogTargetConfig const& config,
+                                  LogCurrent const& current,
+                                  LogPlanSpecification const& plan,
+                                  ParticipantsHealth const& health) -> size_t;
+
 auto isLeaderFailed(ServerInstanceReference const& leader,
                     ParticipantsHealth const& health) -> bool;
 
@@ -54,14 +61,29 @@ auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
                    bool healthy, bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode;
 
+struct CleanOracle {
+  TEST_VIRTUAL ~CleanOracle() = default;
+
+  auto serverIsClean(ServerInstanceReference const& participant,
+                     bool assumedWaitForSync) -> bool;
+
+ protected:
+  // Implementation of serverIsClean for waitForSync=false
+  TEST_VIRTUAL auto serverIsCleanWfsFalse(ServerInstanceReference const&)
+      -> bool;
+};
+
 auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsConfig const& participantsConfig,
-                         ParticipantsHealth const& health, LogTerm term)
+                         ParticipantsHealth const& health, LogTerm term,
+                         bool assumedWaitForSync, CleanOracle&)
     -> LogCurrentSupervisionElection;
 
 auto getParticipantsAcceptableAsLeaders(
-    ParticipantId const& currentLeader,
-    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId>;
+    ParticipantId const& currentLeader, LogTerm term,
+    ParticipantsFlagsMap const& participants,
+    std::unordered_map<ParticipantId, LogCurrentLocalState> const& localStates)
+    -> std::vector<ParticipantId>;
 
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)

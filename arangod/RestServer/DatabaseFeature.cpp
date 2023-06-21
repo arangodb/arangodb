@@ -260,15 +260,23 @@ void DatabaseFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("database", "database options");
 
+  auto static const allowedReplicationVersions = [] {
+    auto result = std::unordered_set<std::string>();
+    for (auto const& version : replication::allowedVersions) {
+      result.emplace(replication::versionToString(version));
+    }
+    return result;
+  }();
+
   options
       ->addOption("--database.default-replication-version",
                   "default replication version, can be overwritten "
                   "when creating a new database, possible values: 1, 2",
-                  new replication::ReplicationVersionParameter(
-                      &_defaultReplicationVersion),
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_defaultReplicationVersion, allowedReplicationVersions),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(31200);
 
   options->addOption(
       "--database.wait-for-sync",
@@ -450,6 +458,7 @@ void DatabaseFeature::beginShutdown() {
 
     // throw away all open cursors in order to speed up shutdown
     vocbase->cursorRepository()->garbageCollect(true);
+    vocbase->shutdownReplicatedLogs();
   }
 }
 
@@ -801,7 +810,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
       server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(
           *vocbase);
     }
-
+    vocbase->shutdownReplicatedLogs();
     auto queryRegistry = QueryRegistryFeature::registry();
     if (queryRegistry != nullptr) {
       queryRegistry->destroy(vocbase->name());

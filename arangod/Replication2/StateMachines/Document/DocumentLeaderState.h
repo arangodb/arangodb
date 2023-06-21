@@ -26,7 +26,8 @@
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Basics/UnshackledMutex.h"
 
@@ -38,6 +39,10 @@ struct IManager;
 }
 
 namespace arangodb::replication2::replicated_state::document {
+
+struct IDocumentStateTransactionHandler;
+struct IDocumentStateSnapshotHandler;
+
 struct DocumentLeaderState
     : replicated_state::IReplicatedLeaderState<DocumentState>,
       std::enable_shared_from_this<DocumentLeaderState> {
@@ -52,16 +57,28 @@ struct DocumentLeaderState
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;
 
-  auto replicateOperation(velocypack::SharedSlice payload,
-                          OperationType operation, TransactionId transactionId,
-                          ReplicationOptions opts) -> futures::Future<LogIndex>;
+  auto needsReplication(ReplicatedOperation const& op) -> bool;
 
-  std::size_t getActiveTransactionsCount() const noexcept {
-    return _activeTransactions.getLockedGuard()->size();
+  auto replicateOperation(ReplicatedOperation op, ReplicationOptions opts)
+      -> futures::Future<ResultT<LogIndex>>;
+
+  auto release(LogIndex index) -> Result;
+  auto release(TransactionId tid, LogIndex index) -> Result;
+
+  auto createShard(ShardID shard, CollectionID collectionId,
+                   std::shared_ptr<VPackBuilder> properties)
+      -> futures::Future<Result>;
+  auto dropShard(ShardID shard, CollectionID collectionId)
+      -> futures::Future<Result>;
+
+  auto getActiveTransactionsCount() const noexcept -> std::size_t {
+    return _activeTransactions.getLockedGuard()->getTransactions().size();
   }
 
+  auto getAssociatedShardList() const -> std::vector<ShardID>;
+
   auto snapshotStart(SnapshotParams::Start const& params)
-      -> ResultT<SnapshotBatch>;
+      -> ResultT<SnapshotConfig>;
   auto snapshotNext(SnapshotParams::Next const& params)
       -> ResultT<SnapshotBatch>;
   auto snapshotFinish(SnapshotParams::Finish const& params) -> Result;
@@ -70,15 +87,16 @@ struct DocumentLeaderState
 
   GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
-  ShardID const shardId;
 
  private:
   struct GuardedData {
-    explicit GuardedData(std::unique_ptr<DocumentCore> core)
-        : core(std::move(core)){};
+    explicit GuardedData(
+        std::unique_ptr<DocumentCore> core,
+        std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
     std::unique_ptr<DocumentCore> core;
+    std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler;
   };
 
   template<class ResultType, class GetFunc, class ProcessFunc>
@@ -86,12 +104,11 @@ struct DocumentLeaderState
                                 ProcessFunc processSnapshot) -> ResultType;
 
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
+  Guarded<std::shared_ptr<IDocumentStateSnapshotHandler>,
+          basics::UnshackledMutex>
+      _snapshotHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
-  Guarded<std::unique_ptr<IDocumentStateSnapshotHandler>,
-          basics::UnshackledMutex>
-      _snapshotHandler;
-  std::atomic_bool _isResigning;
 };
 }  // namespace arangodb::replication2::replicated_state::document
