@@ -401,7 +401,10 @@ AQL traversal.)");
   // optimize K_PATHS
   registerRule(
       "optimize-paths", optimizePathsRule, OptimizerRule::optimizePathsRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled), R"(TODO)");
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Check how the output variables of `K_PATHS`, `K_SHORTEST_PATHS`,
+and `ALL_SHORTEST_PATHS` path search graph algorithms are used and avoid
+loading the vertex documents if they are not accessed in the query.)");
 
   // optimize unnecessary filters already applied by the traversal
   registerRule("remove-filter-covered-by-traversal",
@@ -550,7 +553,9 @@ SmartGraphs cannot be optimized.)");
                OptimizerRule::clusterLiftConstantsForDisjointGraphNodes,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
                                         OptimizerRule::Flags::EnterpriseOnly),
-               R"(TODO)");
+               R"(Detect SmartGraph traversals with a constant start vertex to
+prepare follow-up optimizations that can determine the shard location and push
+down calculations to a DB-Server.)");
 #endif
 
   registerRule("distribute-in-cluster", distributeInClusterRule,
