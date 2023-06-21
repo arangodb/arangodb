@@ -158,8 +158,8 @@ bool AddFollower::start(bool&) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.hasAsSlice(planPath).value();
-
+  auto plannedBuilder = _snapshot.get(planPath)->toBuilder();
+  auto planned = plannedBuilder.slice();
   TRI_ASSERT(planned.isArray());
 
   // First check that we still have too few followers for the current

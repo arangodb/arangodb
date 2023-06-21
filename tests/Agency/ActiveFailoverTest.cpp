@@ -63,15 +63,8 @@ const char* transient =
 #include "ActiveFailoverTestTransient.json"
     ;
 
-Node createNodeFromBuilder(Builder const& builder) {
-  Builder opBuilder;
-  {
-    VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice());
-  }
-  Node node("");
-  node.handle<SET>(opBuilder.slice());
-  return node;
+NodePtr createNodeFromBuilder(Builder const& builder) {
+  return Node::create(builder.slice());
 }
 
 Builder createBuilder(char const* c) {
@@ -146,9 +139,8 @@ TEST_F(ActiveFailover, creating_a_job_should_create_a_job_in_todo) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
 
   auto& agent = mockAgent.get();
-  Node snapshot = createNodeFromBuilder(base);
-  ActiveFailoverJob job(snapshot.getOrCreate(PREFIX), &agent, jobId, "tests",
-                        LEADER);
+  NodePtr snapshot = createNodeFromBuilder(base);
+  ActiveFailoverJob job(*snapshot->get(PREFIX), &agent, jobId, "tests", LEADER);
 
   ASSERT_TRUE(job.create());
   Verify(Method(mockAgent, write));
@@ -197,8 +189,8 @@ TEST_F(ActiveFailover,
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  Node snapshot = createNodeFromBuilder(mod);
-  ActiveFailoverJob job(snapshot.getOrCreate(PREFIX), &agent, jobId, "unittest",
+  NodePtr snapshot = createNodeFromBuilder(mod);
+  ActiveFailoverJob job(*snapshot->get(PREFIX), &agent, jobId, "unittest",
                         LEADER);
 
   ASSERT_FALSE(job.create());
@@ -247,9 +239,10 @@ TEST_F(ActiveFailover, server_is_healthy_again_job_finishes) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  Node snapshot = createNodeFromBuilder(mod);  // snapshort contains GOOD leader
+  NodePtr snapshot =
+      createNodeFromBuilder(mod);  // snapshort contains GOOD leader
 
-  ActiveFailoverJob job(snapshot.getOrCreate(PREFIX), &agent, jobId, "unittest",
+  ActiveFailoverJob job(*snapshot->get(PREFIX), &agent, jobId, "unittest",
                         LEADER);
   ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot
                               // for finish
@@ -315,10 +308,10 @@ TEST_F(ActiveFailover, current_leader_is_different_from_server_in_job) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  Node snapshot =
+  NodePtr snapshot =
       createNodeFromBuilder(mod);  // snapshort contains different leader
 
-  ActiveFailoverJob job(snapshot.getOrCreate(PREFIX), &agent, jobId, "unittest",
+  ActiveFailoverJob job(*snapshot->get(PREFIX), &agent, jobId, "unittest",
                         LEADER);
   ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot
                               // for finish
@@ -385,9 +378,9 @@ TEST_F(ActiveFailover, no_in_sync_follower_found_job_retries) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  Node snapshot = createNodeFromBuilder(base);
+  NodePtr snapshot = createNodeFromBuilder(base);
 
-  ActiveFailoverJob job(snapshot.getOrCreate(PREFIX), &agent, jobId, "unittest",
+  ActiveFailoverJob job(*snapshot->get(PREFIX), &agent, jobId, "unittest",
                         LEADER);
   ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot
                               // for finish
@@ -456,9 +449,9 @@ TEST_F(ActiveFailover, follower_with_best_tick_value_used) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  Node snapshot = createNodeFromBuilder(base);
+  NodePtr snapshot = createNodeFromBuilder(base);
 
-  ActiveFailoverJob job(snapshot.getOrCreate(PREFIX), &agent, jobId, "unittest",
+  ActiveFailoverJob job(*snapshot->get(PREFIX), &agent, jobId, "unittest",
                         LEADER);
   ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot
                               // for finish

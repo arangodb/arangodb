@@ -865,10 +865,10 @@ void Job::doForAllShards(
     std::string curPath = curColPrefix + database + "/" + collShard.collection +
                           "/" + collShard.shard + "/servers";
 
-    Slice plan = snapshot.hasAsSlice(planPath).value();
+    auto planBuilder = snapshot.get(planPath)->toBuilder();
     Slice current = snapshot.hasAsSlice(curPath).value_or(Slice::noneSlice());
 
-    worker(plan, current, planPath, curPath);
+    worker(planBuilder.slice(), current, planPath, curPath);
   }
 }
 

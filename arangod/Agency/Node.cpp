@@ -878,7 +878,11 @@ NodePtr Node::create(VPackSlice slice) {
     Children c;
     c.reserve(slice.length());
     for (auto const& [key, sub] : VPackObjectIterator(slice)) {
-      c.emplace(key.copyString(), Node::create(sub));
+      auto [iter, inserted] = c.emplace(key.copyString(), Node::create(sub));
+      ADB_PROD_ASSERT(inserted) << "key `" << key.stringView()
+                                << "` could not be inserted, because it is "
+                                   "already present in the map. slice="
+                                << slice.toJson();
     }
     return std::make_shared<NodeWrapper>(std::move(c));
   } else if (slice.isArray()) {
