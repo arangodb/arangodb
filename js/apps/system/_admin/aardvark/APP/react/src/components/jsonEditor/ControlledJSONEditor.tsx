@@ -18,23 +18,25 @@ export const ControlledJSONEditor = ({
   onChange,
   schema,
   isDisabled,
+  isReadOnly,
   htmlElementProps,
   mainMenuBar,
   ...rest
 }: JsonEditorProps & {
   isDisabled?: boolean;
   mainMenuBar?: boolean;
+  isReadOnly?: boolean;
 }) => {
   useEffect(() => {
     const editor = (jsonEditorRef.current as any)?.jsonEditor;
     const ace = editor?.aceEditor;
     if (!editor || !ace) return;
-    if (isDisabled) {
+    if (isDisabled || isReadOnly) {
       ace.setReadOnly(true);
     } else {
       ace.setReadOnly(false);
     }
-  }, [isDisabled]);
+  }, [isDisabled, isReadOnly]);
   useResetSchema({ schema, ajv: rest.ajv });
   const jsonEditorRef = useRef(null);
   useEffect(() => {
