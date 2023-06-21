@@ -4,10 +4,12 @@ import React, { useEffect, useRef } from "react";
 
 export const AQLEditor = ({
   defaultValue,
-  onChange
+  onChange,
+  isPreview
 }: {
   defaultValue?: string;
   onChange: (value: string) => void;
+  isPreview?: boolean;
 }) => {
   const jsonEditorRef = useRef(null);
   useEffect(() => {
@@ -16,6 +18,14 @@ export const AQLEditor = ({
     editor.setText(defaultValue);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jsonEditorRef]);
+  useEffect(() => {
+    if (!isPreview) {
+      return;
+    }
+    const editor = (jsonEditorRef.current as any)?.jsonEditor;
+    editor.setText(defaultValue);
+    editor.aceEditor.setReadOnly(true);
+  }, [isPreview, defaultValue]);
   useSetupAQLEditor(jsonEditorRef);
   return (
     <>
@@ -32,6 +42,12 @@ export const AQLEditor = ({
         mode={"code" as any}
         onChange={onChange}
         value={undefined}
+        htmlElementProps={{
+          style: {
+            height: "100%",
+            width: "100%"
+          }
+        }}
         // @ts-ignore
         mainMenuBar={false}
       />

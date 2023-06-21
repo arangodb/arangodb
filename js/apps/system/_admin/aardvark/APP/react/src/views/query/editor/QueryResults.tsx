@@ -70,13 +70,14 @@ export const QueryResults = () => {
                 </Stack>
               </Flex>
               <ControlledJSONEditor
+                isReadOnly
                 key={index}
                 mode="code"
                 value={result.result}
                 theme="ace/theme/textmate"
                 htmlElementProps={{
                   style: {
-                    height: "100%"
+                    height: "calc(100% - 48px)",
                   }
                 }}
                 mainMenuBar={false}

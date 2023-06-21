@@ -52,7 +52,7 @@ export const QuerySettingsPane = () => {
 };
 
 const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
-  const { queryBindParams, setQueryBindParams } = useQueryContext();
+  const { queryBindParams, onBindParamsChange } = useQueryContext();
   if (mode === "table") {
     return (
       <TableContainer>
@@ -63,18 +63,19 @@ const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
           </Thead>
           <Tbody>
             {Object.keys(queryBindParams).map(key => (
-              <Tr>
+              <Tr key={key}>
                 <Td>{key}</Td>
                 <Td>
                   <Input
                     size="sm"
                     placeholder="Value"
+                    value={queryBindParams[key]}
                     onChange={e => {
                       const newQueryBindParams = {
                         ...queryBindParams,
                         [key]: e.target.value
                       };
-                      setQueryBindParams(newQueryBindParams);
+                      onBindParamsChange(newQueryBindParams);
                     }}
                   />
                 </Td>

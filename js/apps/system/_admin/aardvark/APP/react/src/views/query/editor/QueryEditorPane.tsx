@@ -11,7 +11,12 @@ import { SavedQueryView } from "./SavedQueryView";
 export const QueryEditorPane = () => {
   const { currentView, queryValue, onQueryChange } = useQueryContext();
   if (currentView === "saved") {
-    return <SavedQueryView />;
+    return (
+      <>
+        <SavedQueryView />
+        <QueryResults />
+      </>
+    );
   }
   return (
     <Box background="white" height="full">
@@ -25,10 +30,9 @@ export const QueryEditorPane = () => {
         />
         <QuerySettingsPane />
       </Grid>
+      <Divider borderColor="gray.400" borderBottomWidth="4px" />
       <QueryBottomBar />
       <QueryResults />
     </Box>
   );
 };
-
-

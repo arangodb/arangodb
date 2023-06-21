@@ -13,15 +13,23 @@ import React from "react";
 import { useQueryContext } from "../QueryContextProvider";
 
 export const QueryBottomBar = () => {
-  const { onExecute, onProfile, onExplain, queryResults, setQueryResults } =
-    useQueryContext();
+  const {
+    onExecute,
+    onProfile,
+    onExplain,
+    queryValue,
+    queryBindParams,
+    queryResults,
+    setQueryResults
+  } = useQueryContext();
   return (
     <Stack
       direction={"row"}
       padding="2"
       justifyContent="flex-end"
       borderBottom="1px solid"
-      borderBottomColor="gray.300"
+      borderX="1px solid"
+      borderColor="gray.300"
     >
       {queryResults.length > 0 ? (
         <Button
@@ -38,7 +46,11 @@ export const QueryBottomBar = () => {
         Create debug pacakge
       </Button>
       <ButtonGroup isAttached>
-        <Button size="sm" colorScheme="green" onClick={onExecute}>
+        <Button
+          size="sm"
+          colorScheme="green"
+          onClick={() => onExecute({ queryValue, queryBindParams })}
+        >
           Execute
         </Button>
         <Menu>
@@ -50,8 +62,16 @@ export const QueryBottomBar = () => {
             icon={<ChevronDownIcon />}
           />
           <MenuList>
-            <MenuItem onClick={onProfile}>Profile</MenuItem>
-            <MenuItem onClick={onExplain}>Explain</MenuItem>
+            <MenuItem
+              onClick={() => onProfile({ queryValue, queryBindParams })}
+            >
+              Profile
+            </MenuItem>
+            <MenuItem
+              onClick={() => onExplain({ queryValue, queryBindParams })}
+            >
+              Explain
+            </MenuItem>
           </MenuList>
         </Menu>
       </ButtonGroup>

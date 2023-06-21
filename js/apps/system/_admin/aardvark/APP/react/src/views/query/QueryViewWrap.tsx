@@ -12,16 +12,16 @@ export const QueryViewWrap = () => {
   useDisableNavBar();
   useGlobalStyleReset();
   return (
-    <ChakraCustomProvider>
+    <ChakraCustomProvider overrideNonReact>
       <QueryContextProvider>
-        <Box height="calc(100vh - 60px)" bg="gray.100" overflow="auto">
+        <Box width="full" height="calc(100vh - 60px)" overflow="auto">
           <Tabs height="full" isLazy>
             <TabList>
               <Tab>Editor</Tab>
               <Tab>Running Queries</Tab>
               <Tab>Slow Query History</Tab>
             </TabList>
-            <TabPanels height="full">
+            <TabPanels height="calc(100% - 60px)">
               <TabPanel height="full">
                 <QueryEditorPane />
               </TabPanel>

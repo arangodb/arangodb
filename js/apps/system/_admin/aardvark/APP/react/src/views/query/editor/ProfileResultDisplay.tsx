@@ -51,6 +51,7 @@ function useSetupProfileResultDisplay(
     aceEditor.$blockScrolling = Infinity;
     aceEditor.getSession().setMode("ace/mode/aql");
     aceEditor.getSession().setUseWrapMode(false);
+    aceEditor.setReadOnly(true);
     aceEditor.setFontSize("12px");
     aceEditor.setShowPrintMargin(false);
   }, [jsonEditorRef]);

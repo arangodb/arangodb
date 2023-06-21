@@ -3,14 +3,19 @@ import { CursorExtras } from "arangojs/cursor";
 import React, { createContext, ReactNode, useContext, useState } from "react";
 import { getCurrentDB } from "../../utils/arangoClient";
 
+type QueryExecutionOptions = {
+  queryValue?: string;
+  queryBindParams?: { [key: string]: string };
+};
 type QueryContextType = {
   currentView?: "saved" | "editor";
   setCurrentView: (view: "saved" | "editor") => void;
-  onExecute?: () => void;
-  onProfile?: () => void;
-  onExplain?: () => void;
+  onExecute: (options: QueryExecutionOptions) => void;
+  onProfile: (options: QueryExecutionOptions) => void;
+  onExplain: (options: QueryExecutionOptions) => void;
   queryValue?: string;
   onQueryChange: (value: string) => void;
+  onBindParamsChange: (value: { [key: string]: string }) => void;
   queryResults: QueryResultType[];
   setQueryResults: (value: QueryResultType[]) => void;
   queryBindParams: { [key: string]: string };
@@ -36,6 +41,7 @@ export const QueryContextProvider = ({ children }: { children: ReactNode }) => {
   const initialQuery: CachedQuery = initialQueryString
     ? JSON.parse(initialQueryString)
     : {};
+  console.log({ initialQuery });
   const [currentView, setCurrentView] = useState<"saved" | "editor">("editor");
   const [queryValue, setQueryValue] = useState<string>(
     initialQuery?.query || ""
@@ -44,24 +50,8 @@ export const QueryContextProvider = ({ children }: { children: ReactNode }) => {
   const [queryBindParams, setQueryBindParams] = useState<{
     [key: string]: string;
   }>(initialQuery?.parameter || {});
-  const onExecute = async () => {
-    const currentDB = getCurrentDB();
-    const cursor = await currentDB.query(
-      // An AQL literal created from a normal multi-line string
-      aql.literal(queryValue),
-      queryBindParams
-    );
-    const result = await cursor.all();
-    const extra = cursor.extra;
-    setQueryResults(queryResults => [
-      {
-        type: "query",
-        result,
-        extra
-      },
-      ...queryResults
-    ]);
-  };
+  const { onExecute, onProfile, onExplain } =
+    useQueryExecutors(setQueryResults);
   const handleQueryChange = (value: string) => {
     const queryBindParams = parseQueryParams(value);
     window.sessionStorage.setItem(
@@ -71,47 +61,19 @@ export const QueryContextProvider = ({ children }: { children: ReactNode }) => {
     setQueryValue(value);
     setQueryBindParams(queryBindParams || {});
   };
+  const handleBindParamsChange = (value: { [key: string]: string }) => {
+    window.sessionStorage.setItem(
+      "cachedQuery",
+      JSON.stringify({ query: queryValue, parameter: value })
+    );
+    setQueryBindParams(value);
+  };
   const onRemoveResult = (index: number) => {
     setQueryResults(queryResults => {
       const newResults = [...queryResults];
       newResults.splice(index, 1);
       return newResults;
     });
-  };
-  const onProfile = async () => {
-    const currentDB = getCurrentDB();
-    const literal = aql.literal(queryValue);
-    const path = `/_admin/aardvark/query/profile`;
-    const route = currentDB.route(path);
-    const profile = await route.post({
-      query: literal.toAQL(),
-      bindVars: queryBindParams
-    });
-    setQueryResults(queryResults => [
-      {
-        type: "profile",
-        result: profile.body.msg
-      },
-      ...queryResults
-    ]);
-  };
-  const onExplain = async () => {
-    const currentDB = getCurrentDB();
-    const literal = aql.literal(queryValue);
-    const path = `/_admin/aardvark/query/explain`;
-    const route = currentDB.route(path);
-    const explainResult = await route.post({
-      query: literal.toAQL(),
-      bindVars: queryBindParams
-    });
-    console.log(explainResult);
-    setQueryResults(queryResults => [
-      {
-        type: "explain",
-        result: explainResult.body.msg
-      },
-      ...queryResults
-    ]);
   };
   return (
     <QueryContext.Provider
@@ -121,6 +83,7 @@ export const QueryContextProvider = ({ children }: { children: ReactNode }) => {
         onExecute,
         queryValue,
         onQueryChange: handleQueryChange,
+        onBindParamsChange: handleBindParamsChange,
         queryResults,
         setQueryResults,
         queryBindParams,
@@ -146,3 +109,77 @@ const parseQueryParams = (queryValue: string) => {
     return acc;
   }, {} as { [key: string]: string });
 };
+function useQueryExecutors(
+  setQueryResults: React.Dispatch<React.SetStateAction<QueryResultType[]>>
+) {
+  const onExecute = async ({
+    queryValue,
+    queryBindParams
+  }: QueryExecutionOptions) => {
+    const currentDB = getCurrentDB();
+    try {
+      const cursor = await currentDB.query(
+        // An AQL literal created from a normal multi-line string
+        aql.literal(queryValue),
+        queryBindParams
+      );
+      const result = await cursor.all();
+      const extra = cursor.extra;
+      setQueryResults(queryResults => [
+        {
+          type: "query",
+          result,
+          extra
+        },
+        ...queryResults
+      ]);
+    } catch (e: any) {
+      const message = e.response.body.errorMessage;
+      window.arangoHelper.arangoError(
+        `Could not execute query. Error - ${message}`
+      );
+    }
+  };
+
+  const onProfile = async ({
+    queryValue,
+    queryBindParams
+  }: QueryExecutionOptions) => {
+    const currentDB = getCurrentDB();
+    const literal = aql.literal(queryValue);
+    const path = `/_admin/aardvark/query/profile`;
+    const route = currentDB.route(path);
+    const profile = await route.post({
+      query: literal.toAQL(),
+      bindVars: queryBindParams
+    });
+    setQueryResults(queryResults => [
+      {
+        type: "profile",
+        result: profile.body.msg
+      },
+      ...queryResults
+    ]);
+  };
+  const onExplain = async ({
+    queryValue,
+    queryBindParams
+  }: QueryExecutionOptions) => {
+    const currentDB = getCurrentDB();
+    const literal = aql.literal(queryValue);
+    const path = `/_admin/aardvark/query/explain`;
+    const route = currentDB.route(path);
+    const explainResult = await route.post({
+      query: literal.toAQL(),
+      bindVars: queryBindParams
+    });
+    setQueryResults(queryResults => [
+      {
+        type: "explain",
+        result: explainResult.body.msg
+      },
+      ...queryResults
+    ]);
+  };
+  return { onExecute, onProfile, onExplain };
+}
