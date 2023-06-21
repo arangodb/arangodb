@@ -35,7 +35,6 @@ const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const lhttp = require('@arangodb/testutils/replicated-logs-http-helper');
 const dh = require("@arangodb/testutils/document-state-helper");
 const ch = require("@arangodb/testutils/collection-groups-helper");
-const serverHelper = require('@arangodb/test-helper');
 
 const database = "replication2_document_store_test_db";
 const collectionName = "testCollection";

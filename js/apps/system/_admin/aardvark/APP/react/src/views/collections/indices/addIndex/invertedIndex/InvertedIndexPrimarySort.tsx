@@ -4,13 +4,13 @@ import { FieldArray, useField } from "formik";
 import React from "react";
 import { InputControl } from "../../../../../components/form/InputControl";
 import { SelectControl } from "../../../../../components/form/SelectControl";
-import { IndexFormFieldProps } from "../IndexFormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
 export const InvertedIndexPrimarySort = ({
   field
 }: {
-  field: IndexFormFieldProps;
+  field: FormFieldProps;
 }) => {
   return (
     <Box
@@ -37,7 +37,7 @@ const directionOptions = [
   }
 ];
 
-const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
+const PrimarySortFields = ({ field }: { field: FormFieldProps }) => {
   const [formikField] = useField<InvertedIndexValuesType[]>(field.name);
   return (
     <>
