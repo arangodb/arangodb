@@ -296,7 +296,7 @@ As& EngineSelectorFeature::engine() {
 template ClusterEngine& EngineSelectorFeature::engine<ClusterEngine>();
 template RocksDBEngine& EngineSelectorFeature::engine<RocksDBEngine>();
 
-std::string_view EngineSelectorFeature::engineName() {
+std::string_view EngineSelectorFeature::engineName() const {
   return _engine->typeName();
 }
 

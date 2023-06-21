@@ -139,6 +139,10 @@ RocksDBKeyBounds RocksDBKeyBounds::DatabaseViews(TRI_voc_tick_t databaseId) {
   return RocksDBKeyBounds(RocksDBEntryType::View, databaseId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::DatabaseStates(TRI_voc_tick_t databaseId) {
+  return RocksDBKeyBounds(RocksDBEntryType::ReplicatedState, databaseId);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
                                                        std::string_view word) {
   // I did not want to pass a bool to the constructor for this
@@ -342,7 +346,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     : _type(type) {
   switch (_type) {
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::View: {
+    case RocksDBEntryType::View:
+    case RocksDBEntryType::ReplicatedState: {
       // Collections are stored as follows:
       // Key: 1 + 8-byte ArangoDB database ID + 8-byte ArangoDB collection ID
       _internals.reserve(2 * sizeof(char) + 3 * sizeof(uint64_t));

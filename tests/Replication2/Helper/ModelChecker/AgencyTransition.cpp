@@ -43,7 +43,6 @@
 using namespace arangodb;
 using namespace arangodb::test;
 using namespace arangodb::replication2;
-using namespace arangodb::replication2::replicated_state;
 namespace RLA = arangodb::replication2::agency;
 
 namespace arangodb::test {
@@ -151,6 +150,8 @@ void DBServerCommitConfigAction::apply(AgencyState& agency) const {
 
   agency.logLeaderWriteConcern = agency.replicatedLog->plan->participantsConfig
                                      .config.effectiveWriteConcern;
+  agency.logLeaderWaitForSync =
+      agency.replicatedLog->plan->participantsConfig.config.waitForSync;
 }
 
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream& {
@@ -187,6 +188,9 @@ void ReplaceServerTargetLog::apply(AgencyState& agency) const {
   auto& target = agency.replicatedLog->target;
   target.participants.erase(oldServer);
   target.participants[newServer];
+  if (target.leader == oldServer) {
+    target.leader = newServer;
+  }
   target.version.emplace(target.version.value_or(0) + 1);
 }
 

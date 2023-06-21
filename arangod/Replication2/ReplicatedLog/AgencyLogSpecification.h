@@ -22,11 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <iosfwd>
 #include "Agency/AgencyPaths.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/types.h"
+
+#include <fmt/core.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -122,6 +125,9 @@ struct ServerInstanceReference {
       -> bool = default;
 };
 
+auto operator<<(std::ostream&, ServerInstanceReference const&) noexcept
+    -> std::ostream&;
+
 struct LogPlanTermSpecification {
   LogTerm term;
   std::optional<ServerInstanceReference> leader;
@@ -169,9 +175,12 @@ struct LogCurrentLocalState {
   LogTerm term{};
   TermIndexPair spearhead{};
   bool snapshotAvailable{false};
+  replicated_log::LocalStateMachineStatus state;
+  RebootId rebootId = RebootId(0);
 
   LogCurrentLocalState() = default;
-  LogCurrentLocalState(LogTerm, TermIndexPair, bool) noexcept;
+  LogCurrentLocalState(LogTerm, TermIndexPair, bool,
+                       RebootId rebootId) noexcept;
   friend auto operator==(LogCurrentLocalState const& s,
                          LogCurrentLocalState const& s2) noexcept
       -> bool = default;
@@ -192,10 +201,19 @@ struct LogCurrentSupervisionElection {
 
   TermIndexPair bestTermIndex;
 
+  // minimum quorum size of voters
   std::size_t participantsRequired{};
-  std::size_t participantsAvailable{};
+  // number of participants that are attending (i.e. reported back during this
+  // election)
+  std::size_t participantsAttending{};
+  // number of participants that are attending and also eligible to vote
+  std::size_t participantsVoting{};
+  // whether all participants attend this election.
+  bool allParticipantsAttending{};
   std::unordered_map<ParticipantId, ErrorCode> detail;
-  std::vector<ParticipantId> electibleLeaderSet;
+  // set of participants which are attending, eligible, and have the maximum
+  // spearhead amongst all attending and eligible participants.
+  std::vector<ServerInstanceReference> electibleLeaderSet;
 
   friend auto operator==(LogCurrentSupervisionElection const&,
                          LogCurrentSupervisionElection const&) noexcept -> bool;
@@ -207,6 +225,9 @@ struct LogCurrentSupervisionElection {
 
   LogCurrentSupervisionElection() = default;
 };
+
+auto operator<<(std::ostream&, LogCurrentSupervisionElection const&)
+    -> std::ostream&;
 
 auto operator==(LogCurrentSupervisionElection const&,
                 LogCurrentSupervisionElection const&) noexcept -> bool;
@@ -227,6 +248,12 @@ struct LogCurrentSupervision {
     static constexpr std::string_view code = "TargetLeaderExcluded";
     friend auto operator==(TargetLeaderExcluded const& s,
                            TargetLeaderExcluded const& s2) noexcept
+        -> bool = default;
+  };
+  struct TargetLeaderSnapshotMissing {
+    static constexpr std::string_view code = "TargetLeaderSnapshotMissing";
+    friend auto operator==(TargetLeaderSnapshotMissing const& s,
+                           TargetLeaderSnapshotMissing const& s2) noexcept
         -> bool = default;
   };
   struct TargetLeaderFailed {
@@ -294,11 +321,11 @@ struct LogCurrentSupervision {
 
   using StatusMessage =
       std::variant<TargetLeaderInvalid, TargetLeaderExcluded,
-                   TargetLeaderFailed, TargetNotEnoughParticipants,
-                   WaitingForConfigCommitted, LeaderElectionImpossible,
-                   LeaderElectionOutOfBounds, LeaderElectionQuorumNotReached,
-                   LeaderElectionSuccess, SwitchLeaderFailed, PlanNotAvailable,
-                   CurrentNotAvailable>;
+                   TargetLeaderSnapshotMissing, TargetLeaderFailed,
+                   TargetNotEnoughParticipants, WaitingForConfigCommitted,
+                   LeaderElectionImpossible, LeaderElectionOutOfBounds,
+                   LeaderElectionQuorumNotReached, LeaderElectionSuccess,
+                   SwitchLeaderFailed, PlanNotAvailable, CurrentNotAvailable>;
 
   using StatusReport = std::vector<StatusMessage>;
 
@@ -309,7 +336,7 @@ struct LogCurrentSupervision {
   // first effectiveWriteConcern that is calculated on creation
   // of the log.
   size_t assumedWriteConcern{1};
-  bool assumedWaitForSync{true};
+  bool assumedWaitForSync{false};
   std::optional<uint64_t> targetVersion;
   std::optional<StatusReport> statusReport;
   std::optional<clock::time_point> lastTimeModified;
@@ -337,7 +364,7 @@ struct LogCurrent {
         -> bool = default;
   };
 
-  // Will be nullopt until a leader has been assumed leadership
+  // Will be nullopt until a leader has assumed leadership
   std::optional<Leader> leader;
 
   // Temporary hack until Actions are de-serializable.
@@ -416,3 +443,30 @@ struct Log {
 };
 
 }  // namespace arangodb::replication2::agency
+
+template<>
+struct fmt::formatter<arangodb::replication2::agency::ServerInstanceReference>
+    : formatter<string_view> {
+  // parse is inherited from formatter<string_view>.
+  template<typename FormatContext>
+  auto format(
+      arangodb::replication2::agency::ServerInstanceReference const& inst,
+      FormatContext& ctx) const {
+    return fmt::format_to(ctx.out(), "{}@{}", inst.serverId,
+                          inst.rebootId.value());
+  }
+};
+
+template<>
+struct fmt::formatter<
+    arangodb::replication2::agency::LogCurrentSupervisionElection::ErrorCode>
+    : formatter<string_view> {
+  // parse is inherited from formatter<string_view>.
+  template<typename FormatContext>
+  auto format(
+      arangodb::replication2::agency::LogCurrentSupervisionElection::ErrorCode
+          errorCode,
+      FormatContext& ctx) const {
+    return fmt::format_to(ctx.out(), "{}", to_string(errorCode));
+  }
+};
