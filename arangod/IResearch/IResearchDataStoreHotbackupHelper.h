@@ -16,6 +16,30 @@ struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
       irs::type_info::type_id primarySortCompression,
       irs::IndexReaderOptions const& readerOptions);
 
+#if 0
+  template<typename MetaType>
+  void hotbackupInsert(uint64_t tick, LocalDocumentId documentId,
+                       velocypack::Slice doc, MetaType const& meta) {
+    IResearchDataStore::recoveryInsert<FieldIterator<MetaType>, MetaType>(
+        tick, documentId, doc, meta);
+  }
+#endif
+
+  void hotbackupInsert(uint64_t tick, LocalDocumentId documentId,
+                       velocypack::Slice doc, IResearchLinkMeta const& meta) {
+    IResearchDataStore::recoveryInsert<FieldIterator<FieldMeta>,
+                                       IResearchLinkMeta>(tick, documentId, doc,
+                                                          meta);
+  }
+
+  void hotbackupInsert(uint64_t tick, LocalDocumentId documentId,
+                       velocypack::Slice doc,
+                       IResearchInvertedIndexMeta const& meta) {
+    IResearchDataStore::recoveryInsert<
+        FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
+        IResearchInvertedIndexMetaIndexingContext>(tick, documentId, doc,
+                                                   *meta._indexingContext);
+  }
   [[nodiscard]] Index& index() noexcept final { TRI_ASSERT(false); }
   [[nodiscard]] Index const& index() const noexcept final { TRI_ASSERT(false); }
   [[nodiscard]] AnalyzerPool::ptr findAnalyzer(
