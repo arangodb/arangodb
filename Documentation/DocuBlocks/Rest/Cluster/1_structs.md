@@ -14,7 +14,12 @@ Allow moving leaders. (Default: `false`)
 Allow moving followers. (Default: `false`)
 
 @RESTSTRUCT{piFactor,rebalance_compute,number,optional,}
-(Default: `256e6`)
+A weighting factor that should remain untouched. (Default: `256e6`)
+
+If a collection has more shards than there are DB-Servers, then some DB-Servers
+could be responsible for more shards of the collection as leader than others.
+This is another, subtle form of leader imbalance. The `piFactor` adjusts how
+much weight such imbalances get in the overall imbalance score.
 
 @RESTSTRUCT{databasesExcluded,rebalance_compute,array,optional,string}
 A list of database names to exclude from the analysis. (Default: `[]`)
