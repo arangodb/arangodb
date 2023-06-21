@@ -52,26 +52,20 @@ If the `view-name` is unknown, then a *HTTP 404* is returned.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestViewPutPropertiesSearchAlias}
-    var viewName = "products";
-    var viewType = "search-alias";
-    var indexName1 = "inv_title";
-    var indexName2 = "inv_descr";
-
     var coll = db._create("books");
-    coll.ensureIndex({ type: "inverted", name: indexName1, fields: ["title"] });
-    coll.ensureIndex({ type: "inverted", name: indexName2, fields: ["description"] });
+    coll.ensureIndex({ type: "inverted", name: "inv_title", fields: ["title"] });
+    coll.ensureIndex({ type: "inverted", name: "inv_descr", fields: ["description"] });
 
-    var view = db._createView(viewName, viewType, {
-      indexes: [ { collection: coll.name(), index: indexName1 } ] });
+    var view = db._createView("productsView", "search-alias", {
+      indexes: [ { collection: coll.name(), index: "inv_title" } ] });
 
     var url = "/_api/view/"+ view.name() + "/properties";
     var response = logCurlRequest('PUT', url, {
-      "indexes": [ { collection: coll.name(), index: indexName2 } ] });
-
+      "indexes": [ { collection: coll.name(), index: "inv_descr" } ] });
     assert(response.code === 200);
-
     logJsonResponse(response);
-    db._dropView(viewName);
+
+    db._dropView(view.name());
     db._drop(coll.name());
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
