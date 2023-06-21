@@ -539,9 +539,9 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   auto excludePrefix = [&ret, &snapshot](std::string const& prefix,
                                          bool isArray) {
     if (isArray) {
-      auto slice = snapshot.hasAsSlice(prefix);
+      auto slice = snapshot.hasAsArray(prefix);
       if (slice) {
-        for (VPackSlice srv : VPackArrayIterator(*slice)) {
+        for (auto srv : *slice) {
           ret.erase(std::remove(ret.begin(), ret.end(), srv.copyString()),
                     ret.end());
         }
@@ -866,9 +866,14 @@ void Job::doForAllShards(
                           "/" + collShard.shard + "/servers";
 
     auto planBuilder = snapshot.get(planPath)->toBuilder();
-    Slice current = snapshot.hasAsSlice(curPath).value_or(Slice::noneSlice());
+    VPackBuilder currBuilder;
+    if (auto curr = snapshot.get(curPath); curr) {
+      currBuilder = curr->toBuilder();
+    } else {
+      currBuilder.add(VPackSlice::noneSlice());
+    }
 
-    worker(planBuilder.slice(), current, planPath, curPath);
+    worker(planBuilder.slice(), currBuilder.slice(), planPath, curPath);
   }
 }
 

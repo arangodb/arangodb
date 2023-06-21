@@ -709,6 +709,8 @@ VPackSlice Node::slice() const noexcept {
     return slice->slice();
   }
 
+  ADB_PROD_ASSERT(!isArray())
+      << "node was actually an array but called with slice()";
   return VPackSlice::noneSlice();
 }
 

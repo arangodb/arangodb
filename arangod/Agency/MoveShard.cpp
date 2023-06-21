@@ -140,7 +140,10 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice plan = _snapshot.hasAsSlice(planPath).value();
+  auto planNode = _snapshot.get(planPath);
+  TRI_ASSERT(planNode != nullptr);
+  auto planBuilder = planNode->toBuilder();
+  Slice plan = planBuilder.slice();
   TRI_ASSERT(plan.isArray());
   TRI_ASSERT(plan[0].isString());
 #endif

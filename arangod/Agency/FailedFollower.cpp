@@ -153,13 +153,14 @@ bool FailedFollower::start(bool& aborts) {
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto plannedPair = _snapshot.hasAsSlice(planPath);
+  auto plannedPair = _snapshot.get(planPath);
   if (!plannedPair) {
     finish("", _shard, true,
            "Plan entry for collection " + _collection + " gone");
     return false;
   }
-  Slice const& planned = plannedPair.value();
+  auto builder = plannedPair->toBuilder();
+  Slice planned = builder.slice();
 
   // Now check if _server is still in this plan, note that it could have
   // been removed by RemoveFollower already, in which case we simply stop:

@@ -394,8 +394,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         int found = -1;
         if (!isRepl2) {
           int count = 0;
-          for (VPackSlice dbserver :
-               VPackArrayIterator(shard.second->slice())) {
+          for (auto dbserver : *shard.second->getArray()) {
             if (dbserver.stringView() == _server) {
               found = count;
               break;
@@ -451,8 +450,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           decltype(servers) serversCopy(servers);  // a copy
 
           // Only destinations, which are not already holding this shard
-          for (VPackSlice dbserver :
-               VPackArrayIterator(shard.second->slice())) {
+          for (VPackSlice dbserver : *shard.second->getArray()) {
             serversCopy.erase(
                 std::remove(serversCopy.begin(), serversCopy.end(),
                             dbserver.copyString()),

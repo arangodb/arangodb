@@ -196,12 +196,6 @@ class Node : public std::enable_shared_from_this<Node> {
   /// @return  returns nullopt if not found or type doesn't match
   Array const* hasAsArray(std::string const&) const;
 
-  // These two operator() functions could be "protected" once
-  //  unit tests updated.
-  //
-  /// @brief Get node specified by path string
-  Node& getOrCreate(std::string_view path);
-
   /// @brief Get node specified by path string
   NodePtr get(std::string_view path) const;
 

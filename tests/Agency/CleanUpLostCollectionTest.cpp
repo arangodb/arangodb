@@ -52,26 +52,18 @@ const char* agency =
 #include "CleanUpLostCollectionTest.json"
     ;
 
-Node createRootNode() {
+NodePtr createRootNode() {
   VPackOptions options;
   options.checkAttributeUniqueness = true;
   VPackParser parser(&options);
   parser.parse(agency);
 
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder a(&builder);
-    builder.add("new", parser.steal()->slice());
-  }
-
-  Node root("ROOT");
-  root.handle<SET>(builder.slice());
-  return root;
+  return Node::create(parser.steal()->slice());
 }
 
 class CleanUpLostCollectionTest : public ::testing::Test {
  protected:
-  Node baseStructure;
+  NodePtr baseStructure;
   write_ret_t fakeWriteResult;
   uint64_t jobId;
 
@@ -159,8 +151,8 @@ TEST_F(CleanUpLostCollectionTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  Supervision::cleanupLostCollections(baseStructure.getOrCreate("arango"),
-                                      &agent, jobId);
+  Supervision::cleanupLostCollections(*baseStructure->get("arango"), &agent,
+                                      jobId);
   Verify(Method(mockAgent, write));
 }
 
