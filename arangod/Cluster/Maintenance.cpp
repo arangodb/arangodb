@@ -1558,7 +1558,7 @@ static void writeUpdateReplicatedLogSafeRebootIds(
         safeRebootIds) {
   // update Current/ReplicatedLogs/<dbname>/<logId>/safeRebootIds
   // with precondition
-  // Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
+  // Plan/ReplicatedLogs/<dbname>/<logId>/currentTerm/term == localTerm
   using namespace cluster::paths;
   auto reportPath = aliases::current()
                         ->replicatedLogs()
