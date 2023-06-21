@@ -1250,9 +1250,6 @@
       if (this.graphManagementView && Backbone.history.getFragment() === 'graphs') {
         this.graphManagementView.handleResize($('#content').width());
       }
-      if (this.queryView && Backbone.history.getFragment() === 'queries') {
-        this.queryView.resize();
-      }
       if (this.naviView) {
         this.naviView.resize();
       }
