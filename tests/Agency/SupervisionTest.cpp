@@ -22,6 +22,8 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "utils/string.hpp"
+
 #include "Agency/Job.h"
 #include "Agency/Node.h"
 #include "Agency/Supervision.h"
@@ -99,15 +101,8 @@ TEST(SupervisionTest, checking_for_the_delete_transaction_2_servers) {
   }
 }
 
-static Node createNodeFromBuilder(Builder const& builder) {
-  Builder opBuilder;
-  {
-    VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice());
-  }
-  Node node("");
-  node.handle<SET>(opBuilder.slice());
-  return node;
+static NodePtr createNodeFromBuilder(Builder const& builder) {
+  return Node::create(builder.slice());
 }
 
 static Builder createBuilder(char const* c) {
@@ -121,7 +116,7 @@ static Builder createBuilder(char const* c) {
   return builder;
 }
 
-static Node createNode(char const* c) {
+static NodePtr createNode(char const* c) {
   return createNodeFromBuilder(createBuilder(c));
 }
 
@@ -293,15 +288,16 @@ class SupervisionTestClass : public ::testing::Test {
   ~SupervisionTestClass() {}
 
  protected:
-  Node _snapshot;
+  NodePtr _snapshot;
 };
 
-static std::shared_ptr<VPackBuilder> runEnforceReplication(Node const& snap) {
+static std::shared_ptr<VPackBuilder> runEnforceReplication(
+    NodePtr const& snap) {
   auto envelope = std::make_shared<VPackBuilder>();
   uint64_t jobId = 1;
   {
     VPackObjectBuilder guard(envelope.get());
-    arangodb::consensus::enforceReplicationFunctional(snap, jobId, envelope);
+    arangodb::consensus::enforceReplicationFunctional(*snap, jobId, envelope);
   }
   return envelope;
 }
@@ -325,10 +321,12 @@ TEST_F(SupervisionTestClass, enforce_replication_nothing_to_do) {
 }
 
 TEST_F(SupervisionTestClass, schedule_removefollower) {
-  _snapshot.getOrCreate("/Plan/Collections/database/123/shards/s1") =
-      createNode(R"=(["leader", "follower1", "follower2"])=");
-  _snapshot.getOrCreate("/Current/Collections/database/123/s1/servers") =
-      createNode(R"=(["leader", "follower1", "follower2"])=");
+  _snapshot = _snapshot->placeAt(
+      "/Plan/Collections/database/123/shards/s1",
+      createNode(R"=(["leader", "follower1", "follower2"])="));
+  _snapshot = _snapshot->placeAt(
+      "/Current/Collections/database/123/s1/servers",
+      createNode(R"=(["leader", "follower1", "follower2"])="));
 
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice v = envelope->slice();
@@ -340,10 +338,10 @@ TEST_F(SupervisionTestClass, schedule_removefollower) {
 }
 
 TEST_F(SupervisionTestClass, schedule_addfollower) {
-  _snapshot.getOrCreate("/Plan/Collections/database/123/shards/s1") =
-      createNode(R"=(["leader"])=");
-  _snapshot.getOrCreate("/Current/Collections/database/123/s1/servers") =
-      createNode(R"=(["leader"])=");
+  _snapshot = _snapshot->placeAt("/Plan/Collections/database/123/shards/s1",
+                                 createNode(R"=(["leader"])="));
+  _snapshot = _snapshot->placeAt("/Current/Collections/database/123/s1/servers",
+                                 createNode(R"=(["leader"])="));
 
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice v = envelope->slice();
@@ -354,8 +352,8 @@ TEST_F(SupervisionTestClass, schedule_addfollower) {
 }
 
 TEST_F(SupervisionTestClass, schedule_addfollower_rf_3) {
-  _snapshot.getOrCreate("/Plan/Collections/database/123/replicationFactor") =
-      createNode(R"=(3)=");
+  _snapshot = _snapshot->placeAt(
+      "/Plan/Collections/database/123/replicationFactor", createNode(R"=(3)="));
 
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice v = envelope->slice();
@@ -376,8 +374,8 @@ static std::unordered_map<std::string, std::string> tableOfJobs(
 }
 
 TEST_F(SupervisionTestClass, schedule_addfollower_bad_server) {
-  _snapshot.getOrCreate("/Supervision/Health/follower1") =
-      createNode(R"=("FAILED")=");
+  _snapshot = _snapshot->placeAt("/Supervision/Health/follower1",
+                                 createNode(R"=("FAILED")="));
 
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice todo = envelope->slice();
@@ -391,10 +389,10 @@ TEST_F(SupervisionTestClass, schedule_addfollower_bad_server) {
 }
 
 TEST_F(SupervisionTestClass, schedule_addfollower_bad_server_but_maintenance) {
-  _snapshot.getOrCreate("/Supervision/Health/follower1") =
-      createNode(R"=("FAILED")=");
-  _snapshot.getOrCreate("/Current/MaintenanceDBServers/follower1") =
-      createNode(R"=({"Mode":"maintenance"})=");
+  _snapshot = _snapshot->placeAt("/Supervision/Health/follower1",
+                                 createNode(R"=("FAILED")="));
+  _snapshot = _snapshot->placeAt("/Current/MaintenanceDBServers/follower1",
+                                 createNode(R"=({"Mode":"maintenance"})="));
 
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice todo = envelope->slice();
@@ -406,14 +404,16 @@ TEST_F(SupervisionTestClass, no_remove_follower_loop) {
   // This tests the case which used to have an unholy loop of scheduling
   // a removeFollower job and immediately terminating it and so on.
   // Now, no removeFollower job should be scheduled.
-  _snapshot.getOrCreate("/Plan/Collections/database/123/replicationFactor") =
-      createNode(R"=(3)=");
-  _snapshot.getOrCreate("/Plan/Collections/database/123/shards/s1") =
-      createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
-  _snapshot.getOrCreate("/Current/Collections/database/123/s1/servers") =
-      createNode(R"=(["leader", "follower1", "follower2"])=");
-  _snapshot.getOrCreate("/Supervision/Health/follower1") =
-      createNode(R"=("FAILED")=");
+  _snapshot = _snapshot->placeAt(
+      "/Plan/Collections/database/123/replicationFactor", createNode(R"=(3)="));
+  _snapshot = _snapshot->placeAt(
+      "/Plan/Collections/database/123/shards/s1",
+      createNode(R"=(["leader", "follower1", "follower2", "follower3"])="));
+  _snapshot = _snapshot->placeAt(
+      "/Current/Collections/database/123/s1/servers",
+      createNode(R"=(["leader", "follower1", "follower2"])="));
+  _snapshot = _snapshot->placeAt("/Supervision/Health/follower1",
+                                 createNode(R"=("FAILED")="));
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice content = envelope->slice();
   EXPECT_EQ(content.length(), 1);
@@ -425,31 +425,38 @@ TEST_F(SupervisionTestClass, no_remove_follower_loop_distributeshardslike) {
   // This tests another case which used to have an unholy loop of scheduling
   // a removeFollower job and immediately terminating it and so on.
   // Now, no removeFollower job should be scheduled.
-  _snapshot.getOrCreate("/Plan/Collections/database/124/replicationFactor") =
-      createNode(R"=(3)=");
-  _snapshot.getOrCreate("/Plan/Collections/database/124/shards/s2") =
-      createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
-  _snapshot.getOrCreate("/Plan/Collections/database/125/shards/s3") =
-      createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
-  _snapshot.getOrCreate("/Plan/Collections/database/126/shards/s4") =
-      createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
-  _snapshot.getOrCreate("/Current/Collections/database/124/s2/servers") =
-      createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
-  _snapshot.getOrCreate("/Current/Collections/database/125/s3/servers") =
-      createNode(R"=(["leader", "follower1", "follower3"])=");
-  _snapshot.getOrCreate("/Current/Collections/database/126/s4/servers") =
-      createNode(R"=(["leader", "follower1", "follower2"])=");
+  _snapshot = _snapshot->placeAt(
+      "/Plan/Collections/database/124/replicationFactor", createNode(R"=(3)="));
+  _snapshot = _snapshot->placeAt(
+      "/Plan/Collections/database/124/shards/s2",
+      createNode(R"=(["leader", "follower1", "follower2", "follower3"])="));
+  _snapshot = _snapshot->placeAt(
+      "/Plan/Collections/database/125/shards/s3",
+      createNode(R"=(["leader", "follower1", "follower2", "follower3"])="));
+  _snapshot = _snapshot->placeAt(
+      "/Plan/Collections/database/126/shards/s4",
+      createNode(R"=(["leader", "follower1", "follower2", "follower3"])="));
+  _snapshot = _snapshot->placeAt(
+      "/Current/Collections/database/124/s2/servers",
+      createNode(R"=(["leader", "follower1", "follower2", "follower3"])="));
+  _snapshot = _snapshot->placeAt(
+      "/Current/Collections/database/125/s3/servers",
+      createNode(R"=(["leader", "follower1", "follower3"])="));
+  _snapshot = _snapshot->placeAt(
+      "/Current/Collections/database/126/s4/servers",
+      createNode(R"=(["leader", "follower1", "follower2"])="));
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice content = envelope->slice();
   EXPECT_EQ(content.length(), 0);
 }
 
-static void makeHotbackupTransferJob(Node& snapshot, size_t year, size_t id,
+static void makeHotbackupTransferJob(NodePtr& snapshot, size_t year, size_t id,
                                      char const* job) {
   std::string st = std::string(job) + "\"Timestamp\": \"" +
                    std::to_string(year) + "-02-25T12:38:29Z\"\n}";
-  snapshot.getOrCreate("/Target/HotBackup/TransferJobs/" + std::to_string(id)) =
-      createNode(st.c_str());
+  snapshot =
+      snapshot->placeAt("/Target/HotBackup/TransferJobs/" + std::to_string(id),
+                        createNode(st.c_str()));
 }
 
 TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
@@ -480,7 +487,7 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
   };
 
   auto envelope = std::make_shared<VPackBuilder>();
-  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot,
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(*_snapshot,
                                                               envelope);
   VPackSlice content = envelope->slice();
   EXPECT_TRUE(content.isArray());
@@ -514,7 +521,7 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_empty) {
   }
 
   auto envelope = std::make_shared<VPackBuilder>();
-  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot,
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(*_snapshot,
                                                               envelope);
   VPackSlice content = envelope->slice();
   EXPECT_TRUE(content.isArray());
@@ -694,7 +701,7 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_diverse) {
 )=");
 
   auto envelope = std::make_shared<VPackBuilder>();
-  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot,
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(*_snapshot,
                                                               envelope);
   VPackSlice content = envelope->slice();
   EXPECT_TRUE(content.isArray());
@@ -741,18 +748,19 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_locks) {
   };
   // Add 200 old transfer locks:
   for (size_t i = 0; i < 200; ++i) {
-    _snapshot.getOrCreate("/Target/HotBackup/Transfers/Upload/xyz" +
-                          std::to_string(i) + "abc") = createNode(R"=(
+    _snapshot = _snapshot->placeAt(
+        "/Target/HotBackup/Transfers/Upload/xyz" + std::to_string(i) + "abc",
+        createNode(R"=(
 {
   "some": 1,
   "arbitrary": 2,
   "data": 3
 }
-          )=");
+          )="));
   }
 
   auto envelope = std::make_shared<VPackBuilder>();
-  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot,
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(*_snapshot,
                                                               envelope);
   VPackSlice content = envelope->slice();
   EXPECT_TRUE(content.isArray());
@@ -808,18 +816,19 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_locks_dont) {
   };
   // Add 200 old transfer locks:
   for (size_t i = 0; i < 200; ++i) {
-    _snapshot.getOrCreate("/Target/HotBackup/Transfers/Upload/xyz" +
-                          std::to_string(i) + "abc") = createNode(R"=(
+    _snapshot = _snapshot->placeAt(
+        "/Target/HotBackup/Transfers/Upload/xyz" + std::to_string(i) + "abc",
+        createNode(R"=(
 {
   "some": 1,
   "arbitrary": 2,
   "data": 3
 }
-          )=");
+          )="));
   }
 
   auto envelope = std::make_shared<VPackBuilder>();
-  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot,
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(*_snapshot,
                                                               envelope);
   EXPECT_TRUE(envelope->isEmpty());
 }
@@ -830,8 +839,9 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
   // For the other ones either the dbserver is FAILED or its rebootId
   // has changed, in this case we want the job aborted and the lock
   // removed.
-  _snapshot.getOrCreate("/Target/HotBackup/TransferJobs/" +
-                        std::to_string(1234567)) = createNode(R"=(
+  _snapshot = _snapshot->placeAt(
+      "/Target/HotBackup/TransferJobs/" + std::to_string(1234567),
+      createNode(R"=(
 {
   "Timestamp": "2021-02-25T12:38:29Z",
   "DBServers": {
@@ -868,8 +878,8 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
   },
   "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0"
 }
-        )=");
-  _snapshot.getOrCreate("/Current/ServersKnown") = createNode(R"=(
+        )="));
+  _snapshot = _snapshot->placeAt("/Current/ServersKnown", createNode(R"=(
 {
   "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
     "rebootId": 1
@@ -881,8 +891,8 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
     "rebootId": 2
   }
 }
-        )=");
-  _snapshot.getOrCreate("/Supervision/Health") = createNode(R"=(
+        )="));
+  _snapshot = _snapshot->placeAt("/Supervision/Health", createNode(R"=(
 {
   "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
     "ShortName": "DBServer0001",
@@ -921,9 +931,9 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
     "LastAckedTime": "2021-11-26T11:05:22Z"
   }
 }
-        )=");
+        )="));
   auto envelope = std::make_shared<VPackBuilder>();
-  arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(_snapshot,
+  arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(*_snapshot,
                                                                  envelope);
   VPackSlice content = envelope->slice();
   EXPECT_TRUE(content.isArray());

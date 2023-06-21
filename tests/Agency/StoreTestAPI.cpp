@@ -795,9 +795,7 @@ TEST_F(StoreTestAPI, operators_on_root_node) {
   writeAndCheck(R"([[{"/":{"op":"pop"}}]])");
   assertEqual(read(R"([["/"]])"), R"( [[]])");
   writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-  assertEqual(read(R"([["/"]])"), R"( [[]])");
-  writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-  assertEqual(read(R"([["/"]])"), R"( [[]])");
+  assertEqual(read(R"([["/"]])"), R"( [{}])");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

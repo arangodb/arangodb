@@ -334,6 +334,8 @@ ResultT<NodePtr> Node::handle<PREPEND>(Node const* target,
   }
   if (!array.empty()) {
     array.insert(array.begin(), slice.get("new"));
+  } else {
+    array.emplace_back(slice.get("new"));
   }
   return Node::create(std::move(array));
 }

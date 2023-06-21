@@ -3069,7 +3069,7 @@ void arangodb::consensus::enforceReplicationFunctional(
           {
             VPackArrayBuilder guard(&onlyFollowers);
             bool first = true;
-            for (auto const& pp : VPackArrayIterator(shard.slice())) {
+            for (auto const& pp : *shard.getArray()) {
               if (!first) {
                 onlyFollowers.add(pp);
               }
@@ -3081,7 +3081,7 @@ void arangodb::consensus::enforceReplicationFunctional(
               Job::countGoodOrBadServersInList(snapshot, onlyFollowers.slice());
           // leader plus GOOD or BAD followers (not FAILED (except maintenance
           // servers))
-          size_t apparentReplicationFactor = shard.slice().length();
+          size_t apparentReplicationFactor = shard.getArray()->size();
 
           if (actualReplicationFactor != replicationFactor ||
               apparentReplicationFactor != replicationFactor) {

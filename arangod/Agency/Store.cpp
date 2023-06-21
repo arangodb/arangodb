@@ -283,9 +283,9 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
           }
         } else if (oper == "in") {  // in
           if (found) {
-            if (node->slice().isArray()) {
+            if (node->isArray()) {
               bool found = false;
-              for (auto const& i : VPackArrayIterator(node->slice())) {
+              for (auto const& i : *node->getArray()) {
                 if (basics::VelocyPackHelper::equal(i, op.value, false)) {
                   found = true;
                   break;
@@ -305,9 +305,9 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
           if (!found) {
             continue;
           }
-          if (node->slice().isArray()) {
+          if (node->isArray()) {
             bool found = false;
-            for (auto const& i : VPackArrayIterator(node->slice())) {
+            for (auto const& i : *node->getArray()) {
               if (basics::VelocyPackHelper::equal(i, op.value, false)) {
                 found = true;
                 break;
@@ -372,7 +372,6 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
             }
           }
         } else if (oper == "intersectionEmpty") {  // in
-          auto const nslice = node->slice();
           if (!op.value.isArray()) {  // right hand side must be array will
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
@@ -382,30 +381,35 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
             if (!found) {
               continue;
             }
-            if (nslice.isArray()) {
+            if (node->isArray()) {
               bool found_ = false;
+              auto& array = *node->getArray();
               std::unordered_set<VPackSlice,
                                  arangodb::velocypack::NormalizedCompare::Hash,
                                  arangodb::velocypack::NormalizedCompare::Equal>
                   elems;
-              Slice shorter, longer;
 
-              if (nslice.length() <= op.value.length()) {
-                longer = op.value;
-                shorter = nslice;
-              } else {
-                shorter = nslice;
-                longer = op.value;
-              }
-
-              for (auto const i : VPackArrayIterator(shorter)) {
-                elems.emplace(i);
-              }
-              for (auto const i : VPackArrayIterator(longer)) {
-                if (elems.find(i) != elems.end()) {
-                  found_ = true;
-                  break;
+              auto const loadHashMap = [&](auto const& iter) {
+                for (auto const& i : iter) {
+                  elems.emplace(i);
                 }
+              };
+
+              auto const searchIntersection = [&](auto const& iter) {
+                for (auto const& i : iter) {
+                  if (elems.find(i) != elems.end()) {
+                    return true;
+                  }
+                }
+                return false;
+              };
+
+              if (array.size() <= op.value.length()) {
+                loadHashMap(array);
+                found_ = searchIntersection(VPackArrayIterator(op.value));
+              } else {
+                loadHashMap(VPackArrayIterator(op.value));
+                found_ = searchIntersection(array);
               }
               if (!found_) {
                 continue;
@@ -457,6 +461,44 @@ std::vector<bool> Store::readMultiple(VPackSlice queries,
   return success;
 }
 
+namespace {
+
+template<typename Iter>
+NodePtr readQuerySub(NodePtr const& node, NodePtr const& result, Iter cur,
+                     Iter end) {
+  if (cur == end) {
+    return node;
+  } else {
+    auto sub = node->get(*cur);
+    auto sret = result->get(*cur);
+    if (sret == nullptr) {
+      sret = Node::create();
+    }
+    if (sub != nullptr) {
+      sub = readQuerySub(sub, sret, cur + 1, end);
+      return result->placeAt(*cur, sub);
+    } else {
+      return result;
+    }
+  }
+}
+
+NodePtr readQuery(NodePtr const& root, NodePtr const& result,
+                  std::string const& path) {
+  auto segments = Node::split(path);
+  return readQuerySub(root, result, segments.begin(), segments.end());
+}
+
+NodePtr readQueries(NodePtr const& root,
+                    std::vector<std::string> const& queries) {
+  auto result = Node::create();
+  for (auto const& path : queries) {
+    result = readQuery(root, result, path);
+  }
+  return result;
+}
+}  // namespace
+
 /// Read single query into ret
 bool Store::read(VPackSlice query, Builder& ret) const {
   bool success = true;
@@ -492,16 +534,11 @@ bool Store::read(VPackSlice query, Builder& ret) const {
   //   a fast path for exactly one path, in which we do not have to copy all
   //   a slow path for more than one path
 
-  std::lock_guard storeLocker{_storeLock};  // Freeze KV-Store for read
+  std::unique_lock storeLocker{_storeLock};
+  auto readNode = _node;  // Freeze KV-Store for shared_ptr copy
+  storeLocker.unlock();
 
-  NodePtr node = Node::create();
-  for (auto const& path : query_strs) {
-    auto value = _node->get(path);
-    if (value) {
-      node = node->placeAt(path, value);
-    }
-  }
-
+  NodePtr node = readQueries(readNode, query_strs);
   // Into result builder
   node->toBuilder(ret, showHidden);
   return success;
@@ -572,6 +609,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   bool success = true;
 
   auto node = _node;
+  TRI_ASSERT(node != nullptr);
   for (const auto& i : idx) {
     Slice value = i.second;
 
@@ -591,14 +629,19 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
         break;
       }
       node = std::move(ret).get();
+      if (node == nullptr) {  // if root node is deleted, keep an empty node
+        node = Node::create();
+      }
       // check for triggers here
       callTriggers(abskeys.at(i.first), op, value);
     } else {
       node = node->applies(abskeys.at(i.first), value);
+      TRI_ASSERT(node != nullptr);
     }
   }
 
   if (success) {
+    ADB_PROD_ASSERT(node != nullptr);
     _node = node;
   }
   return success;
