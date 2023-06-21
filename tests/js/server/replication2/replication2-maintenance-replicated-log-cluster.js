@@ -285,6 +285,14 @@ const replicatedLogSuite = function () {
         },
         [oldFollower]: null,
       });
+      lh.waitFor(() => {
+        const {target, plan} = lh.readReplicatedLogAgency(database, log.id());
+        if (_.isEqual(Object.keys(plan.participantsConfig.participants).sort(), Object.keys(target.participants).sort())) {
+          return true;
+        } else {
+          return Error(`Plan participants haven't caught up with target. ${JSON.stringify({target, plan})}`);
+        }
+      });
 
       const newFollowerRebootId = lh.getServerRebootId(newFollower);
       delete expectedRebootIds[oldFollower];
