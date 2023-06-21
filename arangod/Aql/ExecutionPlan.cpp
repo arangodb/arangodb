@@ -501,8 +501,10 @@ ExecutionPlan::~ExecutionPlan() {
     // only track memory usage here and access ast/query if we are allowed to do
     // so. this can be inherently unsafe from within the gtest unit tests, so it
     // is protected by an option here
-    _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() *
-                                                        sizeof(ExecutionNode));
+    for (auto const& [id, node] : _ids) {
+      _ast->query().resourceMonitor().decreaseMemoryUsage(
+          node->getMemoryUsedBytes());
+    }
   }
 
   for (auto& x : _ids) {
@@ -1119,8 +1121,9 @@ ExecutionNode* ExecutionPlan::registerNode(
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   {
-    ResourceUsageScope scope(_ast->query().resourceMonitor(),
-                             _trackMemoryUsage ? sizeof(ExecutionNode) : 0);
+    ResourceUsageScope scope(
+        _ast->query().resourceMonitor(),
+        _trackMemoryUsage ? node->getMemoryUsedBytes() : 0);
 
     auto emplaced =
         _ids.try_emplace(node->id(), node.get()).second;  // take ownership

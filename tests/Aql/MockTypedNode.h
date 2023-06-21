@@ -39,6 +39,9 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
   // return mocked type
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   // Necessary overrides, all not implemented:
 
   void doToVelocyPack(arangodb::velocypack::Builder&,
