@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryContext.h"
 #include "Basics/DebugRaceController.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
@@ -569,4 +570,9 @@ containers::FlatHashMap<ShardID, ServerID> TransactionState::whichReplicas(
     result.try_emplace(shard, it->second);
   }
   return result;
+}
+
+void TransactionState::setResourceMonitor(
+    arangodb::ResourceMonitor& resourceMonitor) {
+  _resourceMonitor = resourceMonitor;
 }

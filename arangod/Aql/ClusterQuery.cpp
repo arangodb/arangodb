@@ -139,6 +139,7 @@ void ClusterQuery::prepareClusterQuery(
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::move(inaccessibleCollections));
+  _trx->state()->setResourceMonitor(_resourceMonitor);
   // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel

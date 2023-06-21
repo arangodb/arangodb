@@ -34,11 +34,9 @@ namespace arangodb {
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
  public:
-  explicit RocksDBTrxMethods(
-      RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
-      rocksdb::TransactionDB* db,
-      std::pair<MemoryTrackerType const, metrics::Gauge<uint64_t>&>&
-          memoryTrackerInfo);
+  explicit RocksDBTrxMethods(RocksDBTransactionState* state,
+                             IRocksDBTransactionCallback& callback,
+                             rocksdb::TransactionDB* db);
 
   ~RocksDBTrxMethods() override;
 

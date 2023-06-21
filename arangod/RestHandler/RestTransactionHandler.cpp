@@ -44,8 +44,6 @@
 
 #include <velocypack/Builder.h>
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -55,7 +53,7 @@ RestTransactionHandler::RestTransactionHandler(ArangodServer& server,
                                                GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _v8Context(nullptr),
-      _lock() {LOG_DEVEL << "RestTransactionHandler constructor " << request->rawPayload();}
+      _lock() {}
 
 RestStatus RestTransactionHandler::execute() {
   switch (_request->requestType()) {

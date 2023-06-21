@@ -32,14 +32,12 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 
 SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options)
-    : RocksDBTransactionState(vocbase, tid, options) {LOG_DEVEL << "SimpleRocksDBTransactionState constructor";}
+    : RocksDBTransactionState(vocbase, tid, options) {}
 
 SimpleRocksDBTransactionState::~SimpleRocksDBTransactionState() {}
 
@@ -62,15 +60,11 @@ Result SimpleRocksDBTransactionState::beginTransaction(
       _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(this, db);
     }
   } else {
-    using Tracker = RocksDBTrxBaseMethods::MemoryTrackerType;
-    std::pair<Tracker const, metrics::Gauge<uint64_t>&> memoryTrackingInfo(
-        {RocksDBTrxBaseMethods::MemoryTrackerType::Internal,
-         engine.getTransactionMemoryInternalMetric()});
     if (isSingleOperation()) {
       _rocksMethods =
-          std::make_unique<RocksDBSingleOperationTrxMethods>(this, *this, db, memoryTrackingInfo);
+          std::make_unique<RocksDBSingleOperationTrxMethods>(this, *this, db);
     } else {
-      _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, *this, db, memoryTrackingInfo);
+      _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, *this, db);
     }
   }
 
@@ -126,7 +120,6 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
 
 /// @brief commit a transaction
 futures::Future<Result> SimpleRocksDBTransactionState::doCommit() {
-  LOG_DEVEL << "commit 2";
   return _rocksMethods->commitTransaction();
 }
 

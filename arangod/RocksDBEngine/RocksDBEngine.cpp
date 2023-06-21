@@ -164,7 +164,9 @@ DECLARE_GAUGE(
     arangodb_revision_tree_buffered_memory_usage, uint64_t,
     "Total memory consumed by buffered updates for all revision trees");
 DECLARE_GAUGE(arangodb_transaction_memory_internal, uint64_t,
-              "Memory accounting for ongoing transactions");
+              "Memory accounting for ongoing internal transactions");
+DECLARE_GAUGE(arangodb_transaction_memory_rest, uint64_t,
+              "Memory accounting for ongoing rest transactions");
 DECLARE_GAUGE(arangodb_internal_index_estimates_memory, uint64_t,
               "Total memory consumed by all index selectivity estimates");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total,
@@ -310,7 +312,10 @@ RocksDBEngine::RocksDBEngine(Server& server,
               arangodb_revision_tree_resurrections_total{})),
       _metricsTransactionMemoryInternal(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_transaction_memory_internal{})) {
+              arangodb_transaction_memory_internal{})),
+      _metricsTransactionMemoryRest(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_transaction_memory_rest{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine

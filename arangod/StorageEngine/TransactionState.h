@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
@@ -58,6 +59,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
+namespace aql {
+class QueryContext;
+}
 
 namespace transaction {
 class Methods;
@@ -290,6 +295,12 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   void clearKnownServers() { _knownServers.clear(); }
 
+  void setResourceMonitor(ResourceMonitor& resourceMonitor);
+  [[nodiscard]] std::optional<std::reference_wrapper<ResourceMonitor>>&
+  getResourceMonitor() {
+    return _resourceMonitor;
+  }
+
   /// @brief add the choice of replica for some more shards to the map
   /// _chosenReplicas. Please note that the choice of replicas is not
   /// arbitrary! If two collections have the same `distributeShardsLike`
@@ -432,6 +443,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// transaction option allowDirtyReads is set.
   std::mutex _replicaMutex;  // protects access to _chosenReplicas
   std::unique_ptr<containers::FlatHashMap<ShardID, ServerID>> _chosenReplicas;
+  std::optional<std::reference_wrapper<ResourceMonitor>> _resourceMonitor =
+      std::nullopt;
 
   QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction = false;

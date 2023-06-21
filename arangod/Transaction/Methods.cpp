@@ -87,8 +87,6 @@
 
 #include <sstream>
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::transaction;
 using namespace arangodb::transaction::helpers;
@@ -1713,7 +1711,6 @@ transaction::Methods::Methods(
     std::vector<std::string> const& exclusiveCollections,
     transaction::Options const& options)
     : transaction::Methods(ctx, options) {
-  LOG_DEVEL << "Methods constructor";
   Result res;
   for (auto const& it : exclusiveCollections) {
     res = Methods::addCollection(it, AccessMode::Type::EXCLUSIVE);
@@ -1737,7 +1734,6 @@ transaction::Methods::Methods(
 
 /// @brief destroy the transaction
 transaction::Methods::~Methods() {
-  LOG_DEVEL << "Methods destructor";
   if (_mainTransaction) {  // _nestingLevel == 0
     // unregister transaction from context
     _transactionContext->unregisterTransaction();
@@ -1802,7 +1798,6 @@ std::string transaction::Methods::extractIdString(VPackSlice slice) {
 
 /// @brief begin the transaction
 Result transaction::Methods::begin() {
-  LOG_DEVEL << "Methods::begin";
   if (_state == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");
@@ -1853,7 +1848,6 @@ auto transaction::Methods::abortAsync() noexcept -> Future<Result> {
 }
 
 auto Methods::finish(Result const& res) noexcept -> Result {
-  LOG_DEVEL << "finish the transaction";
   return finishInternal(res, MethodsApi::Synchronous)  //
       .then(basics::tryToResult)
       .get();

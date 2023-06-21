@@ -44,9 +44,7 @@ DECLARE_GAUGE(arangodb_transaction_memory_internal, uint64_t,
 
 RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
     RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
-    rocksdb::TransactionDB* db,
-    std::pair<MemoryTrackerType const, metrics::Gauge<uint64_t>&>&
-        memoryTrackerInfo)
+    rocksdb::TransactionDB* db)
     : RocksDBTransactionMethods(state),
       _engine(_state->vocbase()
                   .server()
@@ -54,27 +52,34 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
                   .engine<RocksDBEngine>()),
       _callback(callback),
       _db(db),
-      _memoryTrackerInfo(std::move(memoryTrackerInfo)),
-      _memoryTracker(_memoryTrackerInfo.second) {
-  LOG_DEVEL << "RocksDBTrxBaseMethods constructor "
-            << static_cast<uint8_t>(_memoryTrackerInfo.first) << " "
-            << _memoryTrackerInfo.second.name();
-  /*
-  switch (_memoryTrackerInfo.first) {
-    case MemoryTrackerType::Internal:
-      LOG_DEVEL << "internal";
-      _memoryTracker = dynamic_cast<InternalMemoryUsageTracker>(_memoryTracker);
-      break;
-    case MemoryTrackerType::Aql:
-      LOG_DEVEL << "AQL";
-      _memoryTracker = dynamic_cast<AqlMemoryUsageTracker>(_memoryTracker);
-      break;
-    default:
-      LOG_DEVEL << "REST";
-      _memoryTracker = dynamic_cast<RestMemoryUsageTracker>(_memoryTracker);
-      break;
+      _resourceMonitor(_state->getResourceMonitor()),
+      _memoryTracker(nullptr, _resourceMonitor) {
+  auto resourceMonitor = state->getResourceMonitor();
+  if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    LOG_DEVEL << "REST TRANSACTION";
+    _memoryTracker.setMemoryTrackerMetric(
+        static_cast<metrics::Gauge<uint64_t>*>(
+            _state->vocbase()
+                .server()
+                .getFeature<metrics::MetricsFeature>()
+                .get({"arangodb_transaction_memory_rest", ""})));
+  } else if (resourceMonitor.has_value()) {
+    LOG_DEVEL << "AQL TRANSACTION";
+    _memoryTracker.setMemoryTrackerMetric(
+        static_cast<metrics::Gauge<uint64_t>*>(
+            _state->vocbase()
+                .server()
+                .getFeature<metrics::MetricsFeature>()
+                .get({"arangodb_aql_global_memory_usage", ""})));
+  } else {
+    LOG_DEVEL << "INTERNAL TRANSACTION";
+    _memoryTracker.setMemoryTrackerMetric(
+        static_cast<metrics::Gauge<uint64_t>*>(
+            _state->vocbase()
+                .server()
+                .getFeature<metrics::MetricsFeature>()
+                .get({"arangodb_transaction_memory_internal", ""})));
   }
-  */
 
   TRI_ASSERT(!_state->isReadOnlyTransaction());
   _readOptions.prefix_same_as_start = true;  // should always be true
@@ -210,7 +215,6 @@ rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
                                            rocksdb::PinnableSlice* val,
                                            ReadOwnWrites readOwnWrites) {
-  LOG_DEVEL << "Get";
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _readOptions;
   TRI_ASSERT(ro.snapshot != nullptr || _state->options().delaySnapshot);
@@ -224,7 +228,6 @@ rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
     rocksdb::PinnableSlice* val) {
-  LOG_DEVEL << "GetForUpdate";
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   rocksdb::ReadOptions const& ro = _readOptions;
@@ -236,7 +239,6 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                            RocksDBKey const& key,
                                            rocksdb::Slice const& val,
                                            bool assume_tracked) {
-  LOG_DEVEL << "RocksDBTrxBaseMethods::Put " << val.data();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   rocksdb::Status s =
@@ -250,7 +252,6 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
     rocksdb::Slice const& val) {
-  LOG_DEVEL << "RocksDBTrxBaseMethods::PutUntracked " << val.data();
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   rocksdb::Status s = _rocksTransaction->PutUntracked(cf, key.string(), val);
@@ -262,7 +263,6 @@ rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
 
 rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                               RocksDBKey const& key) {
-  LOG_DEVEL << "RocksDBTrxBaseMethods::Delete";
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   return _rocksTransaction->Delete(cf, key.string());
@@ -270,18 +270,14 @@ rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
 
 rocksdb::Status RocksDBTrxBaseMethods::SingleDelete(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
-  LOG_DEVEL << "RocksDBTrxBaseMethods::SingleDelete";
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   return _rocksTransaction->SingleDelete(cf, key.string());
 }
 
 void RocksDBTrxBaseMethods::PutLogData(rocksdb::Slice const& blob) {
-  LOG_DEVEL << "RocksDBTrxBaseMethods::PutLogData";
   TRI_ASSERT(_rocksTransaction);
   _rocksTransaction->PutLogData(blob);
-  // _metricsTransactionMemoryInternal.fetch_add(blob.size());
-  LOG_DEVEL << "increased memory tracking by " << blob.size() << " bytes";
 }
 
 void RocksDBTrxBaseMethods::SetSavePoint() {
@@ -391,7 +387,6 @@ Result RocksDBTrxBaseMethods::doCommit() {
   if (r.ok()) {
     TRI_ASSERT(_state != nullptr);
     _state->applyAfterCommitCallbacks();
-    _memoryTracker.storeMemoryUsage(0);
   }
   return r;
 }

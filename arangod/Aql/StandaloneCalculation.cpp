@@ -183,6 +183,7 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
     _trx = AqlTransaction::create(newTrxContext(), _collections,
                                   _queryOptions.transactionOptions,
                                   std::unordered_set<std::string>{});
+    _trx->state()->setResourceMonitor(this->resourceMonitor());
     _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
     _trx->addHint(arangodb::transaction::Hints::Hint::
                       SINGLE_OPERATION);  // to avoid taking db snapshot

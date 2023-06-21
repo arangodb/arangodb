@@ -111,7 +111,6 @@ _metricsTransactionMemoryInternal(
 void Manager::registerTransaction(TransactionId transactionId,
                                   bool isReadOnlyTransaction,
                                   bool isFollowerTransaction) {
-  LOG_DEVEL << "registerTransaction";
   // If isFollowerTransaction is set then either the transactionId should be
   // an isFollowerTransactionId or it should be a legacy transactionId:
   TRI_ASSERT(!isFollowerTransaction ||
@@ -366,7 +365,6 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
 ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase,
                                                  VPackSlice trxOpts,
                                                  bool allowDirtyReads) {
-  LOG_DEVEL << "createManagedTrx";
   if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
     return {TRI_ERROR_SHUTTING_DOWN};
   }
@@ -428,7 +426,6 @@ transaction::Hints Manager::ensureHints(transaction::Options& options) const {
 
 Result Manager::beginTransaction(transaction::Hints hints,
                                  std::shared_ptr<TransactionState>& state) {
-  LOG_DEVEL << "Manager::beginTransaction";
   Result res;
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
@@ -598,7 +595,6 @@ ResultT<TransactionId> Manager::createManagedTrx(
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections,
     transaction::Options options, double ttl) {
-  LOG_DEVEL << "createManagedTrx 2";
   // We cannot run this on FollowerTransactions.
   // They need to get injected the TransactionIds.
   TRI_ASSERT(!isFollowerTransactionOnDBServer(options));
@@ -662,7 +658,6 @@ ResultT<TransactionId> Manager::createManagedTrx(
   // We can only do this because we KNOW that the tid is not
   // known to any other place yet.
   hints.set(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
-  LOG_DEVEL << "begin transaction";
   res = beginTransaction(hints, state);
   if (res.fail()) {
     return res;

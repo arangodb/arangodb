@@ -425,6 +425,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::move(inaccessibleCollections));
+  _trx->state()->setResourceMonitor(_resourceMonitor);
+
   // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
@@ -854,7 +856,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 
     if (useQueryCache && _warnings.empty()) {
       auto dataSources = _queryDataSources;
-
       _trx->state()->allCollections(  // collect transaction DataSources
           [&dataSources](TransactionCollection& trxCollection) -> bool {
             auto const& c = trxCollection.collection();
@@ -1012,6 +1013,7 @@ QueryResult Query::explain() {
     // create the transaction object, but do not start it yet
     _trx = AqlTransaction::create(_transactionContext, _collections,
                                   _queryOptions.transactionOptions);
+    _trx->state()->setResourceMonitor(_resourceMonitor);
 
     // we have an AST
     Result res = _trx->begin();
@@ -1538,6 +1540,7 @@ void Query::initTrxForTests() {
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::unordered_set<std::string>{});
+  _trx->state()->setResourceMonitor(_resourceMonitor);
   // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel

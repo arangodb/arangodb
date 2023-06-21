@@ -23,9 +23,12 @@
 
 #pragma once
 
+#include "Aql/QueryContext.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+
+#include "Logger/LogMacros.h"
 
 namespace arangodb {
 
@@ -36,36 +39,78 @@ struct IRocksDBTransactionCallback {
   virtual void commit(rocksdb::SequenceNumber lastWritten) = 0;
 };
 
+/*
 class MemoryUsageTracker {
  public:
   MemoryUsageTracker() = delete;
   MemoryUsageTracker(metrics::Gauge<uint64_t>& memoryTrackerMetric)
       : _memoryTrackerMetric(memoryTrackerMetric) {}
-  ~MemoryUsageTracker() = default;
-  void increaseMemoryUsage(std::uint64_t valueInBytes) {
+  virtual ~MemoryUsageTracker() = default;
+  virtual void increaseMemoryUsage(std::uint64_t valueInBytes) {
     _memoryTrackerMetric.fetch_add(valueInBytes);
   };
-  void decreaseMemoryUsage(std::uint64_t valueInBytes) {
+  virtual void decreaseMemoryUsage(std::uint64_t valueInBytes) {
     _memoryTrackerMetric.fetch_sub(valueInBytes);
   };
-  void storeMemoryUsage(std::uint64_t valueInBytes) {
+  virtual void storeMemoryUsage(std::uint64_t valueInBytes) {
     _memoryTrackerMetric.store(valueInBytes, std::memory_order_relaxed);
   };
   metrics::Gauge<uint64_t>& _memoryTrackerMetric;
 };
 
-/*
+
 class InternalMemoryUsageTracker : public MemoryUsageTracker {
+ public:
   void increaseMemoryUsage(std::uint64_t valueInBytes) override;
   void decreaseMemoryUsage(std::uint64_t valueInBytes) override;
 };
+ */
 
-class AqlMemoryUsageTracker : public MemoryUsageTracker {
-  void increaseMemoryUsage(std::uint64_t valueInBytes) override;
-  void decreaseMemoryUsage(std::uint64_t valueInBytes) override;
+class MemoryUsageTracker {
+ public:
+  MemoryUsageTracker() = delete;
+  MemoryUsageTracker(
+      metrics::Gauge<uint64_t>* memoryTrackerMetric,
+      std::optional<std::reference_wrapper<ResourceMonitor>>& resourceMonitor)
+      : _memoryTrackerMetric(memoryTrackerMetric),
+        _resourceMonitor(resourceMonitor) {}
+  ~MemoryUsageTracker() = default;
+  void increaseMemoryUsage(std::uint64_t valueInBytes) {
+    TRI_ASSERT(_memoryTrackerMetric != nullptr);
+    LOG_DEVEL << "Will increase metric"
+              << " " << _memoryTrackerMetric->name() << " by " << valueInBytes
+              << "bytes";
+    _memoryTrackerMetric->fetch_add(valueInBytes);
+    if (_resourceMonitor.has_value()) {
+      LOG_DEVEL << "Will increase resource monitor by " << valueInBytes
+                << "bytes";
+      _resourceMonitor.value().get().increaseMemoryUsage(valueInBytes);
+    }
+  }
+  void decreaseMemoryUsage(std::uint64_t valueInBytes) {
+    TRI_ASSERT(_memoryTrackerMetric != nullptr);
+    LOG_DEVEL << "Will decrease metric"
+              << " " << _memoryTrackerMetric->name() << " by " << valueInBytes
+              << "bytes";
+    _memoryTrackerMetric->fetch_sub(valueInBytes);
+    if (_resourceMonitor.has_value()) {
+      LOG_DEVEL << "Will decrease resource monitor by " << valueInBytes
+                << "bytes";
+      _resourceMonitor.value().get().decreaseMemoryUsage(valueInBytes);
+    }
+  }
+  void setMemoryTrackerMetric(metrics::Gauge<uint64_t>* memoryTrackerMetric) {
+    _memoryTrackerMetric = memoryTrackerMetric;
+  }
+
+ private:
+  metrics::Gauge<uint64_t>* _memoryTrackerMetric;
+  std::optional<std::reference_wrapper<ResourceMonitor>>& _resourceMonitor;
 };
 
+/*
 class RestMemoryUsageTracker : public MemoryUsageTracker {
+ public:
   void increaseMemoryUsage(std::uint64_t valueInBytes) override;
   void decreaseMemoryUsage(std::uint64_t valueInBytes) override;
 };
@@ -74,13 +119,9 @@ class RestMemoryUsageTracker : public MemoryUsageTracker {
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
  public:
-  enum class MemoryTrackerType : uint8_t { Internal = 1, Aql = 2, Rest = 3 };
-
-  explicit RocksDBTrxBaseMethods(
-      RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
-      rocksdb::TransactionDB* db,
-      std::pair<MemoryTrackerType const, metrics::Gauge<uint64_t>&>&
-          memoryTrackerInfo);
+  explicit RocksDBTrxBaseMethods(RocksDBTransactionState* state,
+                                 IRocksDBTransactionCallback& callback,
+                                 rocksdb::TransactionDB* db);
 
   ~RocksDBTrxBaseMethods() override;
 
@@ -168,10 +209,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   rocksdb::TransactionDB* _db{nullptr};
 
-  // metrics::Gauge<uint64_t>& _metricsTransactionMemoryInternal;
-
-  std::pair<MemoryTrackerType const, metrics::Gauge<uint64_t>&>
-      _memoryTrackerInfo;
+  std::optional<std::reference_wrapper<ResourceMonitor>> _resourceMonitor;
 
   MemoryUsageTracker _memoryTracker;
 

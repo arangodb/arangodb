@@ -32,9 +32,7 @@ class RocksDBSingleOperationTrxMethods : public RocksDBTrxBaseMethods {
  public:
   explicit RocksDBSingleOperationTrxMethods(
       RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
-      rocksdb::TransactionDB* db,
-      std::pair<MemoryTrackerType const, metrics::Gauge<uint64_t>&>&
-          memoryTrackerInfo);
+      rocksdb::TransactionDB* db);
 
   rocksdb::ReadOptions iteratorReadOptions() const override;
 
