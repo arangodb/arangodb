@@ -330,7 +330,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     LogIndex activeInnerConfigLogIndex;
     // committed - latest active config that has committed at least one entry
     // Note that this will be nullptr until leadership is established!
-    // std::shared_ptr<InnerTermConfig const> committedInnerTermConfig;
     std::shared_ptr<InnerTermConfig const> committedInnerTermConfig;
   };
 
