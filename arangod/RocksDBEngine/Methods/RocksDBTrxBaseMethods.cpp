@@ -328,13 +328,11 @@ void RocksDBTrxBaseMethods::PopSavePoint() {
 }
 
 void RocksDBTrxBaseMethods::cleanupTransaction() {
-  LOG_DEVEL << "RocksDBTrxBaseMethods::cleanupTransaction";
   delete _rocksTransaction;
   _rocksTransaction = nullptr;
 }
 
 void RocksDBTrxBaseMethods::createTransaction() {
-  LOG_DEVEL << "RocksDBTrxBaseMethods::createTransaction";
   // start rocks transaction
   rocksdb::TransactionOptions trxOpts;
 
@@ -377,7 +375,6 @@ void RocksDBTrxBaseMethods::createTransaction() {
 }
 
 Result RocksDBTrxBaseMethods::doCommit() {
-  LOG_DEVEL << "RocksDBTrxBaseMethods::doCommit";
   // We need to call callbacks always, even if hasOperations() == false,
   // because it is like this in recovery
   TRI_ASSERT(_state != nullptr);
@@ -392,7 +389,6 @@ Result RocksDBTrxBaseMethods::doCommit() {
 }
 
 Result RocksDBTrxBaseMethods::doCommitImpl() {
-  LOG_DEVEL << "RocksDBTrxBaseMethods::doCommitImpl";
   if (!hasOperations()) {  // bail out early
     TRI_ASSERT(_rocksTransaction == nullptr ||
                (_rocksTransaction->GetNumPuts() == 0 &&
