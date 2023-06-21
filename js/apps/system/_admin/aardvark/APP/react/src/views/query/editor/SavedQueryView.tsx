@@ -73,13 +73,8 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
   const [selectedQuery, setSelectedQuery] = useState<QueryType | null>(
     savedQueries[0]
   );
-  const {
-    onQueryChange,
-    setCurrentView,
-    onBindParamsChange,
-    onExecute,
-    onExplain
-  } = useQueryContext();
+  const { onQueryChange, setCurrentView, onExecute, onExplain } =
+    useQueryContext();
   return (
     <>
       <TableContainer height="400px" overflowX="auto" overflowY="auto">
@@ -118,8 +113,10 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
                     size="sm"
                     colorScheme="gray"
                     onClick={() => {
-                      onQueryChange(query.value);
-                      onBindParamsChange(query.parameter);
+                      onQueryChange({
+                        value: query.value,
+                        parameter: query.parameter || {}
+                      });
                       setCurrentView("editor");
                     }}
                     title="Copy"

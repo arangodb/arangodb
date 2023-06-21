@@ -14,8 +14,12 @@ type QueryContextType = {
   onProfile: (options: QueryExecutionOptions) => void;
   onExplain: (options: QueryExecutionOptions) => void;
   queryValue?: string;
-  onQueryChange: (value: string) => void;
+  onQueryValueChange: (value: string) => void;
   onBindParamsChange: (value: { [key: string]: string }) => void;
+  onQueryChange: (data: {
+    value: string;
+    parameter: { [key: string]: string };
+  }) => void;
   queryResults: QueryResultType[];
   setQueryResults: (value: QueryResultType[]) => void;
   queryBindParams: { [key: string]: string };
@@ -52,7 +56,7 @@ export const QueryContextProvider = ({ children }: { children: ReactNode }) => {
   }>(initialQuery?.parameter || {});
   const { onExecute, onProfile, onExplain } =
     useQueryExecutors(setQueryResults);
-  const handleQueryChange = (value: string) => {
+  const handleQueryValueChange = (value: string) => {
     const queryBindParams = parseQueryParams(value);
     window.sessionStorage.setItem(
       "cachedQuery",
@@ -67,6 +71,20 @@ export const QueryContextProvider = ({ children }: { children: ReactNode }) => {
       JSON.stringify({ query: queryValue, parameter: value })
     );
     setQueryBindParams(value);
+  };
+  const handleQueryChange = ({
+    value,
+    parameter
+  }: {
+    value: string;
+    parameter: { [key: string]: string };
+  }) => {
+    window.sessionStorage.setItem(
+      "cachedQuery",
+      JSON.stringify({ query: value, parameter: parameter })
+    );
+    setQueryValue(value);
+    setQueryBindParams(parameter);
   };
   const onRemoveResult = (index: number) => {
     setQueryResults(queryResults => {
@@ -83,6 +101,7 @@ export const QueryContextProvider = ({ children }: { children: ReactNode }) => {
         onExecute,
         queryValue,
         onQueryChange: handleQueryChange,
+        onQueryValueChange: handleQueryValueChange,
         onBindParamsChange: handleBindParamsChange,
         queryResults,
         setQueryResults,
