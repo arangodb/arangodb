@@ -27,6 +27,7 @@
 
 #include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "RocksDBEngine/RocksDBSyncThread.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -37,6 +38,7 @@
 
 #include <array>
 #include <variant>
+#include <map>
 #include <memory>
 
 namespace arangodb {
@@ -170,6 +172,7 @@ struct RocksDBAsyncLogWriteBatcherMetrics {
 
 struct RocksDBAsyncLogWriteBatcher final
     : IRocksDBAsyncLogWriteBatcher,
+      RocksDBSyncThread::ISyncListener,
       std::enable_shared_from_this<RocksDBAsyncLogWriteBatcher> {
   struct IAsyncExecutor {
     virtual ~IAsyncExecutor() = default;
@@ -224,6 +227,8 @@ struct RocksDBAsyncLogWriteBatcher final
   auto queue(AsyncLogWriteContext& ctx, Action action, WriteOptions const& wo)
       -> futures::Future<ResultT<futures::Future<Result>>>;
 
+  void onSync(SequenceNumber sequenceNumber) noexcept override;
+
   struct Lane {
     Lane() = delete;
 
@@ -250,6 +255,8 @@ struct RocksDBAsyncLogWriteBatcher final
   std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> const
       _options;
   std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> const _metrics;
+  Guarded<std::map<SequenceNumber, futures::Promise<Result>>>
+      _waitForSyncPromises;
 };
 
 struct RocksDBReplicatedStateInfo {

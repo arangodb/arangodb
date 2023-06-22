@@ -198,21 +198,27 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
           }
         }
 
+        // Promise used used to signal that data has been synced to disk up to
+        // the last sequence number.
         futures::Promise<Result> syncedToDisk;
-        // TODO schedule promise on the syncer thread
-        // auto seq = _db->GetLatestSequenceNumber();
-        syncedToDisk.setValue(Result{TRI_ERROR_NO_ERROR});
+        auto seq = _db->GetLatestSequenceNumber();
 
         // resolve all promises in [nextReqToResolve, nextReqToWrite)
         for (; nextReqToResolve != nextReqToWrite; ++nextReqToResolve) {
-          auto syncedToDiskFuture = syncedToDisk.getFuture();
-          _executor->operator()([reqToResolve = std::move(*nextReqToResolve),
-                                 syncedToDiskFuture = std::move(
-                                     syncedToDiskFuture)]() mutable noexcept {
-            reqToResolve.promise.setValue(
-                ResultT{std::move(syncedToDiskFuture)});
-          });
+          _executor->operator()(
+              [reqToResolve = std::move(*nextReqToResolve),
+               syncedToDiskFuture =
+                   syncedToDisk.getFuture()]() mutable noexcept {
+                reqToResolve.promise.setValue(
+                    ResultT{std::move(syncedToDiskFuture)});
+              });
         }
+
+        _waitForSyncPromises.doUnderLock([&](auto& promises) {
+          auto [_, inserted] = promises.emplace(seq, std::move(syncedToDisk));
+          TRI_ASSERT(inserted) << "Duplicate sequence number " << seq
+                               << " in waitForSyncPromises";
+        });
       }
 
       return Result{TRI_ERROR_NO_ERROR};
@@ -349,6 +355,37 @@ auto RocksDBAsyncLogWriteBatcher::queueRemoveBack(AsyncLogWriteContext& ctx,
                                                   WriteOptions const& opts)
     -> futures::Future<ResultT<futures::Future<Result>>> {
   return queue(ctx, RemoveBack{.start = start}, opts);
+}
+
+void RocksDBAsyncLogWriteBatcher::onSync(
+    SequenceNumber sequenceNumber) noexcept {
+  try {
+    // Will post a request on the scheduler
+    _executor->operator()(
+        [self = shared_from_this(), sequenceNumber]() noexcept {
+          std::vector<futures::Promise<Result>> promises;
+
+          auto guard = self->_waitForSyncPromises.getLockedGuard();
+          auto end = guard->upper_bound(sequenceNumber);
+          for (auto it = guard->begin(); it != end; ++it) {
+            promises.emplace_back(std::move(it->second));
+          }
+          guard->erase(guard->begin(), end);
+          guard.unlock();
+
+          for (auto& promise : promises) {
+            promise.setValue(Result{});
+          }
+        });
+  } catch (std::exception const& e) {
+    LOG_TOPIC("282be", FATAL, Logger::REPLICATION2)
+        << "Could not schedule an update after syncing log entries to disk: "
+        << e.what() << " Sequence number: " << sequenceNumber;
+  } catch (...) {
+    LOG_TOPIC("5572a", FATAL, Logger::REPLICATION2)
+        << "Could not schedule an update after syncing log entries to disk."
+        << " Sequence number: " << sequenceNumber;
+  }
 }
 
 Result RocksDBLogStorageMethods::updateMetadata(

@@ -114,9 +114,10 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
                             if (auto mngr = weakManager.lock()) {
                               auto diskSyncedRes = diskSynced.get();
                               if (diskSyncedRes.fail()) {
-                                LOG_CTX("de1bb", TRACE, mngr->loggerContext)
+                                LOG_CTX("de1bb", WARN, mngr->loggerContext)
                                     << "failed syncing to disk, lastIndex = "
                                     << lastIndex;
+                                return;
                               }
                               mngr->syncIndex.doUnderLock(
                                   [lastIndex](auto&& syncIndex) {
