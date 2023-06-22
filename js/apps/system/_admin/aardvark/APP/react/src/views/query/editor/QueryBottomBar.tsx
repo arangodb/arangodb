@@ -32,8 +32,17 @@ export const QueryBottomBar = () => {
     queryResults,
     setQueryResults,
     queryName,
-    onOpenSaveAsModal
+    onOpenSaveAsModal,
+    onSave,
+    savedQueries
   } = useQueryContext();
+  const existingQuery = queryName
+    ? savedQueries?.find(query => query.name === queryName)
+    : null;
+  const hasQueryChanged =
+    existingQuery?.value !== queryValue ||
+    JSON.stringify(existingQuery?.parameter) !==
+      JSON.stringify(queryBindParams);
   return (
     <Flex
       direction="row"
@@ -48,7 +57,13 @@ export const QueryBottomBar = () => {
         Query name: {queryName ? queryName : "Untitled"}
       </Text>
       {queryName && (
-        <Button marginLeft="2" size="sm" colorScheme="gray">
+        <Button
+          marginLeft="2"
+          size="sm"
+          colorScheme="gray"
+          isDisabled={!hasQueryChanged}
+          onClick={() => onSave(queryName)}
+        >
           Save
         </Button>
       )}
@@ -111,17 +126,27 @@ export const QueryBottomBar = () => {
 };
 
 const SaveAsModal = () => {
-  const [queryName, setQueryName] = React.useState<string>("");
-  const { onSaveAs, isSaveAsModalOpen, onCloseSaveAsModal } = useQueryContext();
+  const [newQueryName, setNewQueryName] = React.useState<string>("");
+  const {
+    onSaveAs,
+    onSave,
+    setQueryName,
+    savedQueries,
+    isSaveAsModalOpen,
+    onCloseSaveAsModal
+  } = useQueryContext();
+  const queryExists = !!savedQueries?.find(
+    query => query.name === newQueryName
+  );
   return (
     <Modal isOpen={isSaveAsModalOpen} onClose={onCloseSaveAsModal}>
       <ModalHeader>Save Query</ModalHeader>
       <ModalBody>
-        <FormLabel htmlFor="queryName">Query Name</FormLabel>
+        <FormLabel htmlFor="newQueryName">Query Name</FormLabel>
         <Input
-          id="queryName"
+          id="newQueryName"
           onChange={e => {
-            setQueryName(e.target.value);
+            setNewQueryName(e.target.value);
           }}
         />
       </ModalBody>
@@ -131,11 +156,19 @@ const SaveAsModal = () => {
             Cancel
           </Button>
           <Button
-            isDisabled={queryName === ""}
+            isDisabled={newQueryName === ""}
             colorScheme="green"
-            onClick={() => onSaveAs(queryName)}
+            onClick={async () => {
+              if (queryExists) {
+                await onSave(newQueryName);
+                onCloseSaveAsModal();
+                setQueryName(newQueryName);
+                return;
+              }
+              onSaveAs(newQueryName);
+            }}
           >
-            Save
+            {queryExists ? "Update" : "Save"}
           </Button>
         </Stack>
       </ModalFooter>

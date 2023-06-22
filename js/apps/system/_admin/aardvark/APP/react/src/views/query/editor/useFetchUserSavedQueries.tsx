@@ -4,7 +4,7 @@ import { getCurrentDB } from "../../../utils/arangoClient";
 export type QueryType = {
   name: string;
   value: string;
-  modified_at: number;
+  modified_at?: number;
   parameter: any;
 };
 export const useFetchUserSavedQueries = () => {
