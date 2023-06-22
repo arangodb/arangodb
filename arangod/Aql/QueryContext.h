@@ -35,6 +35,7 @@
 #include "Basics/ResultT.h"
 #include "VocBase/voc-types.h"
 #include <velocypack/Builder.h>
+#include <memory_resource>
 
 struct TRI_vocbase_t;
 
@@ -155,6 +156,8 @@ class QueryContext {
   constexpr static std::size_t baseMemoryUsage = 8192;
 
  protected:
+  std::unique_ptr<std::pmr::memory_resource> _memoryResource;
+
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;
 

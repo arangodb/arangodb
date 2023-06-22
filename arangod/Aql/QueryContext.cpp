@@ -42,6 +42,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "CountingMemoryResource.h"
 
 #include <velocypack/Iterator.h>
 
@@ -56,6 +57,9 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase, QueryId id)
       _vocbase(vocbase),
       _execState(QueryExecutionState::ValueType::INVALID_STATE),
       _numRequests(0) {
+  _memoryResource = std::make_unique<CountingMemoryResource>(
+      std::pmr::new_delete_resource(), _resourceMonitor);
+
   // aql analyzers should be able to run even during recovery when AqlFeature
   // is not started. And as optimization - these queries do not need
   // queryRegistry
@@ -123,7 +127,7 @@ ResultT<graph::Graph const*> QueryContext::lookupGraphByName(
 
 void QueryContext::addDataSource(  // track DataSource
     std::shared_ptr<arangodb::LogicalDataSource> const&
-        ds  // DataSource to track
+        ds                         // DataSource to track
 ) {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
   _queryDataSources.try_emplace(ds->guid(), ds->name());
