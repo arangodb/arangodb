@@ -14,7 +14,7 @@ def main():
     TestExecutor.start(args, calculatedConfig)
 
     print("=> All tests finished")
-    if inspect.isclass(process):
+    if process is not None:
         # A process is returned in the single-server case
         ArangoDBInstanceManager.stop(process)
     else:
