@@ -107,8 +107,7 @@ class Optimizer {
   /// @brief constructor, this will initialize the rules database
   /// the .cpp file includes Aql/OptimizerRules.h
   /// and add all methods there to the rules database
-  explicit Optimizer(size_t maxNumberOfPlans,
-                     ResourceMonitor& resource_monitor);
+  explicit Optimizer(size_t maxNumberOfPlans);
 
   ~Optimizer() = default;
 

@@ -36,7 +36,7 @@
 
 using namespace arangodb::aql;
 
-Optimizer::Optimizer(size_t maxNumberOfPlans, ResourceMonitor& resource_monitor)
+Optimizer::Optimizer(size_t maxNumberOfPlans)
     : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {}
 
 void Optimizer::disableRules(
