@@ -775,3 +775,4 @@ exports.replaceParticipant = replaceParticipant;
 exports.createReconfigureJob = createReconfigureJob;
 exports.getAgencyJobStatus = getAgencyJobStatus;
 exports.increaseTargetVersion = increaseTargetVersion;
+exports.triggerLeaderElection = triggerLeaderElection;
