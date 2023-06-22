@@ -1,6 +1,9 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+* Add a `description` field to OptimizerRule and dump the explanations via the
+  `GET /_api/query/rules` endpoint.
+
 * Fixed Github issue #19175.
   This fixes a problem in traversal query optimization that was introduced
   in 3.11 and that can lead to traversal queries being aborted with an error
@@ -10,7 +13,6 @@ v3.11.2 (XXXX-XX-XX)
   threads are busy. One is that in this case the AgencyCache could no longer
   receive updates from the agency and another that queries could no longer
   be finished. This fixes BTS-1475 and BTS-1486.
-
 
 
 v3.11.1 (2023-06-12)
