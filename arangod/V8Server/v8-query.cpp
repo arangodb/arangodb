@@ -49,6 +49,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -60,6 +62,7 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate,
                             arangodb::LogicalCollection const* col,
                             std::string const& aql,
                             std::shared_ptr<VPackBuilder> const& bindVars) {
+  LOG_DEVEL << "AqlQuery";
   TRI_ASSERT(col != nullptr);
 
   auto query = arangodb::aql::Query::create(
@@ -215,6 +218,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
       transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, *collection,
                                   AccessMode::Type::READ);
+  trx.addHint(transaction::Hints::Hint::REST);
+
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -301,6 +306,8 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
       transaction::V8Context::Create(col->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, *col,
                                   AccessMode::Type::READ);
+  trx.addHint(transaction::Hints::Hint::REST);
+
   Result res = trx.begin();
 
   if (!res.ok()) {

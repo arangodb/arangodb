@@ -50,6 +50,7 @@ class Hints {
     ALLOW_FAST_LOCK_ROUND_CLUSTER =
         2048,  // allow the coordinator to try a fast-lock path (parallel on all
                // DBServers), and if that fails revert to slow-lock path
+    REST = 4096,
   };
 
   Hints() : _value(0) {}

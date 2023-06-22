@@ -413,6 +413,7 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
 transaction::Hints Manager::ensureHints(transaction::Options& options) const {
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
+  hints.set(transaction::Hints::Hint::REST);
   if (isFollowerTransactionOnDBServer(options)) {
     hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     if (options.isIntermediateCommitEnabled()) {

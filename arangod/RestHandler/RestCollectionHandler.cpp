@@ -54,9 +54,12 @@ using namespace arangodb::rest;
 RestCollectionHandler::RestCollectionHandler(ArangodServer& server,
                                              GeneralRequest* request,
                                              GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response) {
+  LOG_DEVEL << "RestCollectionHandler constructor";
+}
 
 RestStatus RestCollectionHandler::execute() {
+  LOG_DEVEL << "request " << _request->rawPayload();
   switch (_request->requestType()) {
     case rest::RequestType::GET:
       return handleCommandGet();
@@ -86,7 +89,9 @@ void RestCollectionHandler::shutdownExecute(bool isFinalized) noexcept {
 }
 
 RestStatus RestCollectionHandler::handleCommandGet() {
+  LOG_DEVEL << "handleCommandGet";
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  LOG_DEVEL << "suffixes " << suffixes;
 
   // /_api/collection
   if (suffixes.empty()) {
@@ -495,6 +500,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     }
 
   } else if (sub == "truncate") {
+    LOG_DEVEL << "REST truncate";
     OperationOptions opts(_context);
 
     opts.waitForSync =
@@ -507,6 +513,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE, opts);
     _activeTrx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     _activeTrx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+    _activeTrx->addHint(transaction::Hints::Hint::REST);
     res = _activeTrx->begin();
     if (res.fail()) {
       generateError(res);
@@ -822,6 +829,7 @@ void RestCollectionHandler::initializeTransaction(LogicalCollection& coll) {
   try {
     _activeTrx = createTransaction(coll.name(), AccessMode::Type::READ,
                                    OperationOptions());
+    _activeTrx->addHint(transaction::Hints::Hint::REST);
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
       // this will happen if the tid of a managed transaction is passed in,

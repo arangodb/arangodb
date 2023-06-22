@@ -32,12 +32,13 @@
 #include "Aql/QueryProfile.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "Cluster/TraverserEngine.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 
@@ -139,7 +140,19 @@ void ClusterQuery::prepareClusterQuery(
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::move(inaccessibleCollections));
-  _trx->state()->setResourceMonitor(_resourceMonitor);
+  bool isSystem;
+  _collections.visit(
+      [&isSystem](std::string const& name, Collection& coll) -> bool {
+        if (coll.getCollection()->system()) {
+          isSystem = true;
+          return false;  // returns false for early aborting and not continue
+                         // the traversal, as it's already enough
+        }
+        return true;
+      });
+  if (!isSystem) {
+    _trx->state()->setResourceMonitor(_resourceMonitor);
+  }
   // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel

@@ -1152,6 +1152,7 @@ Result RestReplicationHandler::processRestoreCollection(
 
             trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+            trx.addHint(transaction::Hints::Hint::REST);
             auto trxRes = trx.begin();
 
             if (!trxRes.ok()) {
@@ -1493,6 +1494,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::REST);
 
   Result res = trx.begin();
 
@@ -1675,6 +1677,7 @@ Result RestReplicationHandler::parseBatchForSystemCollection(
   // system collection. we will not write anything into the collection here
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
+  trx.addHint(transaction::Hints::Hint::REST);
 
   Result res = trx.begin();
   if (res.ok()) {
@@ -2502,6 +2505,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
         << "Try add follower fast-path (no documents)";
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
+    trx.addHint(transaction::Hints::Hint::REST);
     auto res = trx.begin();
 
     if (res.ok()) {
@@ -2630,6 +2634,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   if (body.get("treeHash").isString() && body.get("treeCount").isString()) {
     auto context = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(context, *col, AccessMode::Type::READ, {});
+    trx.addHint(transaction::Hints::Hint::REST);
 
     auto res = trx.begin();
     if (res.ok()) {

@@ -44,6 +44,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -256,6 +258,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
 
   try {
     trx = createTransaction(cName, AccessMode::Type::READ, OperationOptions());
+    trx->addHint(transaction::Hints::Hint::REST);
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
       // this will happen if the tid of a managed transaction is passed in,
@@ -265,6 +268,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
       trx = std::make_unique<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(_vocbase), cName,
           AccessMode::Type::READ);
+      trx->addHint(transaction::Hints::Hint::REST);
     } else {
       throw;
     }
@@ -307,6 +311,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
 }
 
 RestStatus RestIndexHandler::createIndex() {
+  LOG_DEVEL << "createIndex";
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);

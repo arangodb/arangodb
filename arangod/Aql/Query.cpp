@@ -425,7 +425,20 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::move(inaccessibleCollections));
-  _trx->state()->setResourceMonitor(_resourceMonitor);
+
+  bool isSystem;
+  _collections.visit(
+      [&isSystem](std::string const& name, Collection& coll) -> bool {
+        if (coll.getCollection()->system()) {
+          isSystem = true;
+          return false;  // returns false for early aborting and not continue
+                         // the traversal, as it's already enough
+        }
+        return true;
+      });
+  if (!isSystem) {
+    _trx->state()->setResourceMonitor(_resourceMonitor);
+  }
 
   // create the transaction object, but do not start it yet
   _trx->addHint(
@@ -1013,7 +1026,19 @@ QueryResult Query::explain() {
     // create the transaction object, but do not start it yet
     _trx = AqlTransaction::create(_transactionContext, _collections,
                                   _queryOptions.transactionOptions);
-    _trx->state()->setResourceMonitor(_resourceMonitor);
+    bool isSystem;
+    _collections.visit(
+        [&isSystem](std::string const& name, Collection& coll) -> bool {
+          if (coll.getCollection()->system()) {
+            isSystem = true;
+            return false;  // returns false for early aborting and not continue
+                           // the traversal, as it's already enough
+          }
+          return true;
+        });
+    if (!isSystem) {
+      _trx->state()->setResourceMonitor(_resourceMonitor);
+    }
 
     // we have an AST
     Result res = _trx->begin();
@@ -1540,7 +1565,6 @@ void Query::initTrxForTests() {
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::unordered_set<std::string>{});
-  _trx->state()->setResourceMonitor(_resourceMonitor);
   // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel

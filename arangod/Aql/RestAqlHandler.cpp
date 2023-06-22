@@ -96,6 +96,7 @@ RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
 //    variables: [ <variables> ]
 //  }
 void RestAqlHandler::setupClusterQuery() {
+  LOG_DEVEL << "prepareClusterQuery";
   // We should not intentionally call this method
   // on the wrong server. So fail during maintanence.
   // On user setup reply gracefully.

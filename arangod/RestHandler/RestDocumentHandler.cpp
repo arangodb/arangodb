@@ -45,6 +45,8 @@
 
 #include <thread>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -158,6 +160,7 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestDocumentHandler::insertDocument() {
+  LOG_DEVEL << "RestDocumentHandler::insertDocument";
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 1) {
@@ -391,6 +394,7 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   _activeTrx = createTransaction(collection, AccessMode::Type::READ, options);
 
   _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  _activeTrx->addHint(arangodb::transaction::Hints::Hint::REST);
 
   // ...........................................................................
   // inside read transaction
@@ -866,6 +870,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   }
 
   _activeTrx = createTransaction(cname, AccessMode::Type::READ, opOptions);
+  _activeTrx->addHint(arangodb::transaction::Hints::Hint::REST);
 
   // ...........................................................................
   // inside read transaction
@@ -940,6 +945,7 @@ void RestDocumentHandler::handleFillIndexCachesValue(
 void RestDocumentHandler::addTransactionHints(std::string const& collectionName,
                                               bool isMultiple,
                                               bool isOverwritingInsert) {
+  _activeTrx->addHint(transaction::Hints::Hint::REST);
   if (ServerState::instance()->isCoordinator()) {
     CollectionNameResolver resolver{_vocbase};
     auto col = resolver.getCollection(collectionName);

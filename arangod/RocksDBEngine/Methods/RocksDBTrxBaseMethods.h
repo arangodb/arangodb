@@ -39,82 +39,69 @@ struct IRocksDBTransactionCallback {
   virtual void commit(rocksdb::SequenceNumber lastWritten) = 0;
 };
 
-/*
-class MemoryUsageTracker {
+class MemoryTracker {
  public:
-  MemoryUsageTracker() = delete;
-  MemoryUsageTracker(metrics::Gauge<uint64_t>& memoryTrackerMetric)
+  virtual ~MemoryTracker() = default;
+  virtual void increaseMemoryUsage(std::uint64_t valueInBytes) = 0;
+  virtual void decreaseMemoryUsage(std::uint64_t valueInBytes) = 0;
+};
+
+class MemoryUsageTracker : public MemoryTracker {
+ public:
+  MemoryUsageTracker(metrics::Gauge<uint64_t>* memoryTrackerMetric)
       : _memoryTrackerMetric(memoryTrackerMetric) {}
-  virtual ~MemoryUsageTracker() = default;
-  virtual void increaseMemoryUsage(std::uint64_t valueInBytes) {
-    _memoryTrackerMetric.fetch_add(valueInBytes);
-  };
-  virtual void decreaseMemoryUsage(std::uint64_t valueInBytes) {
-    _memoryTrackerMetric.fetch_sub(valueInBytes);
-  };
-  virtual void storeMemoryUsage(std::uint64_t valueInBytes) {
-    _memoryTrackerMetric.store(valueInBytes, std::memory_order_relaxed);
-  };
-  metrics::Gauge<uint64_t>& _memoryTrackerMetric;
-};
-
-
-class InternalMemoryUsageTracker : public MemoryUsageTracker {
- public:
-  void increaseMemoryUsage(std::uint64_t valueInBytes) override;
-  void decreaseMemoryUsage(std::uint64_t valueInBytes) override;
-};
- */
-
-class MemoryUsageTracker {
- public:
-  MemoryUsageTracker() = delete;
-  MemoryUsageTracker(
-      metrics::Gauge<uint64_t>* memoryTrackerMetric,
-      std::optional<std::reference_wrapper<ResourceMonitor>>& resourceMonitor)
-      : _memoryTrackerMetric(memoryTrackerMetric),
-        _resourceMonitor(resourceMonitor) {}
-  ~MemoryUsageTracker() = default;
-  void increaseMemoryUsage(std::uint64_t valueInBytes) {
+  ~MemoryUsageTracker() override{};
+  void increaseMemoryUsage(std::uint64_t valueInBytes) override {
     TRI_ASSERT(_memoryTrackerMetric != nullptr);
     LOG_DEVEL << "Will increase metric"
               << " " << _memoryTrackerMetric->name() << " by " << valueInBytes
               << "bytes";
     _memoryTrackerMetric->fetch_add(valueInBytes);
-    if (_resourceMonitor.has_value()) {
-      LOG_DEVEL << "Will increase resource monitor by " << valueInBytes
-                << "bytes";
-      _resourceMonitor.value().get().increaseMemoryUsage(valueInBytes);
-    }
   }
-  void decreaseMemoryUsage(std::uint64_t valueInBytes) {
+  void decreaseMemoryUsage(std::uint64_t valueInBytes) override {
     TRI_ASSERT(_memoryTrackerMetric != nullptr);
     LOG_DEVEL << "Will decrease metric"
               << " " << _memoryTrackerMetric->name() << " by " << valueInBytes
               << "bytes";
     _memoryTrackerMetric->fetch_sub(valueInBytes);
-    if (_resourceMonitor.has_value()) {
-      LOG_DEVEL << "Will decrease resource monitor by " << valueInBytes
-                << "bytes";
-      _resourceMonitor.value().get().decreaseMemoryUsage(valueInBytes);
-    }
-  }
-  void setMemoryTrackerMetric(metrics::Gauge<uint64_t>* memoryTrackerMetric) {
-    _memoryTrackerMetric = memoryTrackerMetric;
   }
 
  private:
   metrics::Gauge<uint64_t>* _memoryTrackerMetric;
-  std::optional<std::reference_wrapper<ResourceMonitor>>& _resourceMonitor;
 };
 
-/*
-class RestMemoryUsageTracker : public MemoryUsageTracker {
+class AqlMemoryUsageTracker : public MemoryTracker {
  public:
-  void increaseMemoryUsage(std::uint64_t valueInBytes) override;
-  void decreaseMemoryUsage(std::uint64_t valueInBytes) override;
+  AqlMemoryUsageTracker(metrics::Gauge<uint64_t>* memoryTrackerMetric,
+                        ResourceMonitor& resourceMonitor)
+      : _memoryTrackerMetric(memoryTrackerMetric),
+        _resourceMonitor(resourceMonitor) {}
+  ~AqlMemoryUsageTracker() override{};
+  void increaseMemoryUsage(std::uint64_t valueInBytes) override {
+    TRI_ASSERT(_memoryTrackerMetric != nullptr);
+    LOG_DEVEL << "Will increase metric"
+              << " " << _memoryTrackerMetric->name() << " by " << valueInBytes
+              << "bytes";
+    _memoryTrackerMetric->fetch_add(valueInBytes);
+    LOG_DEVEL << "Will increase resource monitor by " << valueInBytes
+              << "bytes";
+    _resourceMonitor.increaseMemoryUsage(valueInBytes);
+  }
+  void decreaseMemoryUsage(std::uint64_t valueInBytes) override {
+    TRI_ASSERT(_memoryTrackerMetric != nullptr);
+    LOG_DEVEL << "Will decrease metric"
+              << " " << _memoryTrackerMetric->name() << " by " << valueInBytes
+              << "bytes";
+    _memoryTrackerMetric->fetch_sub(valueInBytes);
+    LOG_DEVEL << "Will decrease resource monitor by " << valueInBytes
+              << "bytes";
+    _resourceMonitor.decreaseMemoryUsage(valueInBytes);
+  }
+
+ private:
+  metrics::Gauge<uint64_t>* _memoryTrackerMetric;
+  ResourceMonitor& _resourceMonitor;
 };
-*/
 
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
@@ -211,7 +198,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   std::optional<std::reference_wrapper<ResourceMonitor>> _resourceMonitor;
 
-  MemoryUsageTracker _memoryTracker;
+  std::unique_ptr<MemoryTracker> _memoryTracker;
 
   /// @brief shared read options which can be used by operations
   ReadOptions _readOptions{};
