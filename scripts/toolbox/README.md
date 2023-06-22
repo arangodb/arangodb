@@ -20,7 +20,7 @@ This project started to bundle some development helpers into a single toolbox.
 
 ### Executing program
 
-* Example of how to run the program
+* Example of how to run the program, more to follow...
 
 ```
 python3 main.py --mode=single --init=true --startupParameters='{"rocksdb.block-cache-size": "133713371337"}'
