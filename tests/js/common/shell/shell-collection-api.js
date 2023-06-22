@@ -51,8 +51,8 @@ const {
 
 const filterClusterOnlyAttributes = (attributes) => {
   // The following attributes are not returned by the Collection Properties API
-  // However we support restore cluster -> SingleServer so we need to be able to restore the
-  // corresponding collections.
+  // However the user can still send them to the API. Erase them here as they should
+  // not be returned by the server.
   if (!isCluster) {
     const clusterOnlyAttributes = ["numberOfShards", "shardKeys", "replicationFactor"];
     /* , , "writeConcern" */
@@ -215,7 +215,7 @@ const validatePropertiesDoNotExist = (colName, illegalProperties) => {
   }
 };
 
-function RestoreCollectionsSuite() {
+function CreateCollectionsSuite() {
 
   const collname = "UnitTestRestore";
   const leaderName = "UnitTestLeader";
@@ -388,7 +388,7 @@ function RestoreCollectionsSuite() {
           } else {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
             // MinReplicationFactor is forced to 0 on satellites
-            // NOTE: SingleServer Enterprise for some reason this restore returns MORE properties, then the others.
+            // NOTE: SingleServer Enterprise for some reason this create returns MORE properties, then the others.
             if (!isCluster) {
               if (replicationFactor === 0) {
                 validateProperties({replicationFactor: "satellite", writeConcern: 1}, collname, 2);
@@ -469,7 +469,7 @@ function RestoreCollectionsSuite() {
       }
     },
 
-    testGloballyUniqueIdRestoreTwice: function () {
+    testGloballyUniqueIdCreateTwice: function () {
       const globallyUniqueId = "notSoUnique";
       const res = tryCreate({name: collname, globallyUniqueId});
       try {
@@ -1248,14 +1248,12 @@ function IgnoreIllegalTypesSuite() {
   return suite;
 }
 
-function RestoreInOneShardSuite() {
+function CreateCollectionsInOneShardSuite() {
   const collname = "UnitTestCollection";
   const oneShardLeader = "_graphs";
   const fixedOneShardValues = ["numberOfShards", "replicationFactor", "minReplicationFactor", "writeConcern"];
   const getOneShardShardingValues = () => {
     const props = _.pick(db[oneShardLeader].properties(), fixedOneShardValues);
-    // NOTE: For some reason one-shard uses HASH sharding strategy.
-    // Original restore uses compat.
     return {...props, distributeShardsLike: oneShardLeader, shardingStrategy: "hash"};
   };
   return {
@@ -1333,7 +1331,7 @@ function RestoreInOneShardSuite() {
         if (isCluster) {
           isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {shardKeys: ["foo", "bar"]});
         } else {
-          // In single servers shardKeys have no effect. They are ignored, hence the restore works here
+          // In single servers shardKeys have no effect. They are ignored, hence the create works here
           isAllowed(res, collname, {shardKeys: ["foo", "bar"]});
           validatePropertiesDoNotExist(collname, ["shardKeys"]);
         }
@@ -1345,8 +1343,8 @@ function RestoreInOneShardSuite() {
   };
 }
 
-jsunity.run(RestoreCollectionsSuite);
+jsunity.run(CreateCollectionsSuite);
 jsunity.run(IgnoreIllegalTypesSuite);
-jsunity.run(RestoreInOneShardSuite);
+jsunity.run(CreateCollectionsInOneShardSuite);
 
 return jsunity.done();
