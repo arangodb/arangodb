@@ -1,3 +1,10 @@
+v3.10.9 (XXXX-XX-XX)
+--------------------
+
+* Add a `description` field to OptimizerRule and dump the explanations via the
+  `GET /_api/query/rules` endpoint.
+
+
 v3.10.8 (XXXX-XX-XX)
 --------------------
 
