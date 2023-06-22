@@ -30,6 +30,7 @@
 #include "Basics/ResultT.h"
 #include "Cluster/CallbackGuard.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Fwd.h"
 #include "Transaction/ManagedContext.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"

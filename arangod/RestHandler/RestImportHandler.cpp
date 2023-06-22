@@ -40,6 +40,8 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -183,6 +185,7 @@ ErrorCode RestImportHandler::handleSingleDocument(
     SingleCollectionTransaction& trx, VPackBuilder& tempBuilder,
     RestImportResult& result, VPackBuilder& babies, VPackSlice slice,
     bool isEdgeCollection, size_t i) {
+  LOG_DEVEL << "handleSingleDocument";
   if (!slice.isObject()) {
     std::string part = VPackDumper::toString(slice);
     if (part.size() > 255) {
@@ -356,6 +359,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  trx.addHint(transaction::Hints::Hint::REST);
 
   // .............................................................................
   // inside write transaction
@@ -521,6 +525,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 }
 
 bool RestImportHandler::createFromVPack(std::string const& type) {
+  LOG_DEVEL << "createFromVPack";
   if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request");
   }
@@ -555,6 +560,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::REST);
 
   // .............................................................................
   // inside write transaction
@@ -740,6 +746,7 @@ bool RestImportHandler::createFromKeyValueList() {
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::REST);
 
   // .............................................................................
   // inside write transaction
@@ -871,6 +878,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
                                         VPackBuilder const& babies,
                                         bool complete,
                                         OperationOptions const& opOptions) {
+  LOG_DEVEL << "performImport";
   auto makeError = [&](size_t i, ErrorCode res, VPackSlice const& slice,
                        RestImportResult& result) {
     VPackOptions options(VPackOptions::Defaults);

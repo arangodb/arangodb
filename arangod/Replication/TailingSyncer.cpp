@@ -836,6 +836,7 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
 /// @brief truncate a collections. Assumes no trx are running
 Result TailingSyncer::truncateCollection(
     arangodb::velocypack::Slice const& slice) {
+  LOG_DEVEL << "TailingSyncer::truncateCollection";
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "collection slice is no object");

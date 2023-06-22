@@ -24,6 +24,7 @@
 #include "RocksDBTrxBaseMethods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -41,10 +42,41 @@ using namespace arangodb;
 RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
     RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
     rocksdb::TransactionDB* db)
-    : RocksDBTransactionMethods(state), _callback(callback), _db(db) {
+    : RocksDBTransactionMethods(state),
+      _callback(callback),
+      _db(db),
+      _resourceMonitor(_state->getResourceMonitor()) {
+  auto resourceMonitor = state->getResourceMonitor();
+  // refine classification of transactions with hint by mapping
+  if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+      _state->hasHint(transaction::Hints::Hint::REST)) {
+    LOG_DEVEL << "REST TRANSACTION";
+    _memoryTracker = std::make_unique<
+        MemoryUsageTracker>(static_cast<metrics::Gauge<uint64_t>*>(
+        _state->vocbase().server().getFeature<metrics::MetricsFeature>().get(
+            {"arangodb_transaction_memory_rest", ""})));
+  } else if (resourceMonitor.has_value()) {
+    LOG_DEVEL << "AQL TRANSACTION";
+    _memoryTracker = std::make_unique<AqlMemoryUsageTracker>(
+        static_cast<metrics::Gauge<uint64_t>*>(
+            _state->vocbase()
+                .server()
+                .getFeature<metrics::MetricsFeature>()
+                .get({"arangodb_aql_global_memory_usage", ""})),
+        resourceMonitor.value().get());
+  } else {
+    LOG_DEVEL << "INTERNAL TRANSACTION";
+    _memoryTracker = std::make_unique<
+        MemoryUsageTracker>(static_cast<metrics::Gauge<uint64_t>*>(
+        _state->vocbase().server().getFeature<metrics::MetricsFeature>().get(
+            {"arangodb_transaction_memory_internal", ""})));
+  }
+
   TRI_ASSERT(!_state->isReadOnlyTransaction());
   _readOptions.prefix_same_as_start = true;  // should always be true
   _readOptions.fill_cache = _state->options().fillBlockCache;
+
+  _memoryTracker = std::make_unique<TestMemoryTracker>();
 }
 
 RocksDBTrxBaseMethods::~RocksDBTrxBaseMethods() {
@@ -200,7 +232,14 @@ rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                            bool assume_tracked) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
-  return _rocksTransaction->Put(cf, key.string(), val, assume_tracked);
+  rocksdb::Status s =
+      _rocksTransaction->Put(cf, key.string(), val, assume_tracked);
+  if (s.ok()) {
+    _memoryTracker->increaseMemoryUsage(writeBufferEntryOverhead +
+                                        key.string().size() + val.size() +
+                                        indexingOverhead(key.string().size()));
+  }
+  return s;
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
@@ -208,36 +247,62 @@ rocksdb::Status RocksDBTrxBaseMethods::PutUntracked(
     rocksdb::Slice const& val) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
-  return _rocksTransaction->PutUntracked(cf, key.string(), val);
+  rocksdb::Status s = _rocksTransaction->PutUntracked(cf, key.string(), val);
+  if (s.ok()) {
+    _memoryTracker->increaseMemoryUsage(writeBufferEntryOverhead +
+                                        key.string().size() + val.size() +
+                                        indexingOverhead(key.string().size()));
+  }
+  return s;
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                               RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
-  return _rocksTransaction->Delete(cf, key.string());
+  rocksdb::Status s = _rocksTransaction->Delete(cf, key.string());
+  if (s.ok()) {
+    _memoryTracker->increaseMemoryUsage(writeBufferEntryOverhead +
+                                        key.string().size() +
+                                        indexingOverhead(key.string().size()));
+  }
+  return s;
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::SingleDelete(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
-  return _rocksTransaction->SingleDelete(cf, key.string());
+  rocksdb::Status s = _rocksTransaction->SingleDelete(cf, key.string());
+  if (s.ok()) {
+    _memoryTracker->increaseMemoryUsage(writeBufferEntryOverhead +
+                                        key.string().size() +
+                                        indexingOverhead(key.string().size()));
+  }
+  return s;
 }
 
 void RocksDBTrxBaseMethods::PutLogData(rocksdb::Slice const& blob) {
   TRI_ASSERT(_rocksTransaction);
+  // PutLogData does not have a return value, so we assume it was successful
+  // when it returns.
   _rocksTransaction->PutLogData(blob);
+  _memoryTracker->increaseMemoryUsage(writeBufferEntryOverhead + blob.size());
 }
 
 void RocksDBTrxBaseMethods::SetSavePoint() {
   TRI_ASSERT(_rocksTransaction);
   _rocksTransaction->SetSavePoint();
+  _memoryTracker->setSavePoint();
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::RollbackToSavePoint() {
   TRI_ASSERT(_rocksTransaction);
-  return _rocksTransaction->RollbackToSavePoint();
+  rocksdb::Status s = _rocksTransaction->RollbackToSavePoint();
+  if (s.ok()) {
+    _memoryTracker->rollbackToSavePoint();
+  }
+  return s;
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::RollbackToWriteBatchSavePoint() {
@@ -269,17 +334,17 @@ rocksdb::Status RocksDBTrxBaseMethods::RollbackToWriteBatchSavePoint() {
 
 void RocksDBTrxBaseMethods::PopSavePoint() {
   TRI_ASSERT(_rocksTransaction);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   rocksdb::Status s = _rocksTransaction->PopSavePoint();
   TRI_ASSERT(s.ok());
-#else
-  _rocksTransaction->PopSavePoint();
-#endif
+  if (s.ok()) {
+    _memoryTracker->popSavePoint();
+  }
 }
 
 void RocksDBTrxBaseMethods::cleanupTransaction() {
   delete _rocksTransaction;
   _rocksTransaction = nullptr;
+  _memoryTracker->reset();
 }
 
 void RocksDBTrxBaseMethods::createTransaction() {
@@ -428,6 +493,8 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
     return rocksutils::convertStatus(s);
   }
 
+  _memoryTracker->reset();
+
   TRI_ASSERT(numOps > 0);  // simon: should hold unless we're being stupid
   // the transaction id that is returned here is the seqno of the transaction's
   // first write operation in the WAL
@@ -483,4 +550,12 @@ rocksdb::Status RocksDBTrxBaseMethods::GetFromSnapshot(
       [oldSnapshot, this]() { _readOptions.snapshot = oldSnapshot; }};
   _readOptions.snapshot = snapshot;
   return Get(family, slice, pinnable, rw);
+}
+
+std::uint64_t RocksDBTrxBaseMethods::indexingOverhead(
+    std::uint64_t keySize) const noexcept {
+  if (_indexingDisabled) {
+    return 0;
+  }
+  return keySize + indexingEntryOverhead;
 }

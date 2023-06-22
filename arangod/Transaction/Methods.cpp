@@ -2583,6 +2583,7 @@ OperationResult transaction::Methods::allLocal(
 
 OperationResult Methods::truncate(std::string const& collectionName,
                                   OperationOptions const& options) {
+  LOG_DEVEL << "Methods::truncate";
   return truncateInternal(collectionName, options, MethodsApi::Synchronous)
       .get();
 }
@@ -2590,6 +2591,7 @@ OperationResult Methods::truncate(std::string const& collectionName,
 /// @brief remove all documents in a collection
 Future<OperationResult> transaction::Methods::truncateAsync(
     std::string const& collectionName, OperationOptions const& options) {
+  LOG_DEVEL << "Methods::truncateAsync";
   return truncateInternal(collectionName, options, MethodsApi::Asynchronous);
 }
 
@@ -2631,6 +2633,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
   bool usedRangeDelete = false;
 
   if (res.ok()) {
+    LOG_DEVEL << "Will truncate";
     res = collection->truncate(*this, options, usedRangeDelete);
   }
 
@@ -3755,6 +3758,7 @@ Future<OperationResult> Methods::removeInternal(
 Future<OperationResult> Methods::truncateInternal(
     std::string const& collectionName, OperationOptions const& options,
     MethodsApi api) {
+  LOG_DEVEL << "Methods::truncateInternal";
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   OperationOptions optionsCopy = options;

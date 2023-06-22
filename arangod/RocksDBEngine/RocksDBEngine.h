@@ -398,6 +398,11 @@ class RocksDBEngine final : public StorageEngine {
     return _metricsIndexEstimatorMemoryUsage;
   }
 
+  metrics::Gauge<uint64_t>& getTransactionMemoryInternalMetric()
+      const noexcept {
+    return _metricsTransactionMemoryInternal;
+  }
+
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
@@ -732,6 +737,8 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Counter& _metricsTreeRebuildsFailure;
   metrics::Counter& _metricsTreeHibernations;
   metrics::Counter& _metricsTreeResurrections;
+  metrics::Gauge<uint64_t>& _metricsTransactionMemoryInternal;
+  metrics::Gauge<uint64_t>& _metricsTransactionMemoryRest;
 
   // @brief persistor for replicated logs
   std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> _logMetrics;

@@ -68,10 +68,12 @@ RocksDBTransactionState::RocksDBTransactionState(
       _users(0),
 #endif
       _cacheTx(nullptr) {
+  LOG_DEVEL << "RocksDBTransactionState constructor";
 }
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
+  LOG_DEVEL << "RocksDBTransactionState destructor";
   cleanupTransaction();
   _status = transaction::Status::ABORTED;
 }
@@ -88,6 +90,7 @@ void RocksDBTransactionState::unuse() noexcept {
 
 /// @brief start a transaction
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
+  LOG_DEVEL << "beginTransaction " << id();
   LOG_TRX("0c057", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
@@ -167,6 +170,7 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
 /// @brief commit a transaction
 futures::Future<Result> RocksDBTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
+  LOG_DEVEL << "commitTransaction " << activeTrx->tid().id();
   LOG_TRX("5cb03", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
 

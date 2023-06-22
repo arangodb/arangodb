@@ -38,6 +38,8 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -78,6 +80,10 @@ std::string currentUser() { return arangodb::ExecContext::current().user(); }
 }  // namespace
 
 namespace arangodb {
+
+DECLARE_GAUGE(arangodb_transaction_memory_internal, uint64_t,
+              "Memory accounting for ongoing transactions");
+
 namespace transaction {
 
 namespace {
@@ -95,7 +101,12 @@ Manager::Manager(ManagerFeature& feature)
       _disallowInserts(false),
       _writeLockHeld(false),
       _streamingLockTimeout(feature.streamingLockTimeout()),
-      _softShutdownOngoing(false) {}
+      _softShutdownOngoing(false)
+/*
+_metricsTransactionMemoryInternal(
+    _feature.server().getFeature<metrics::MetricsFeature>().add(
+        arangodb_transaction_memory_internal{})) */
+{}
 
 void Manager::registerTransaction(TransactionId transactionId,
                                   bool isReadOnlyTransaction,
@@ -402,6 +413,7 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
 transaction::Hints Manager::ensureHints(transaction::Options& options) const {
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
+  hints.set(transaction::Hints::Hint::REST);
   if (isFollowerTransactionOnDBServer(options)) {
     hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     if (options.isIntermediateCommitEnabled()) {
