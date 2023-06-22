@@ -14,24 +14,36 @@ export const useQueryValueModifiers = ({
   setQueryValue,
   setQueryBindParams,
   queryValue,
+  queryBindParams,
   setQueryName
 }: {
   setQueryValue: (value: string) => void;
   setQueryBindParams: React.Dispatch<
     React.SetStateAction<{ [key: string]: string }>
   >;
-  queryValue: string;
   setQueryName: (name: string) => void;
+  queryValue: string;
+  queryBindParams: { [key: string]: string };
 }) => {
+  /**
+   * Called when the query value is changed by the user
+   */
   const onQueryValueChange = async (value: string) => {
     setQueryValue(value);
-    const queryBindParams = await parseQueryParams(value);
     window.sessionStorage.setItem(
       "cachedQuery",
       JSON.stringify({ query: value, parameter: queryBindParams })
     );
-    setQueryBindParams(queryBindParams || {});
+    const parsedBindParams = await parseQueryParams(value);
+    window.sessionStorage.setItem(
+      "cachedQuery",
+      JSON.stringify({ query: value, parameter: parsedBindParams })
+    );
+    setQueryBindParams(parsedBindParams || {});
   };
+  /**
+   * Called when the query bind params are changed by the user (JSON  or form)
+   */
   const onBindParamsChange = (value: { [key: string]: string }) => {
     window.sessionStorage.setItem(
       "cachedQuery",
@@ -39,6 +51,10 @@ export const useQueryValueModifiers = ({
     );
     setQueryBindParams(value);
   };
+  /**
+   * Called when setting the query value from saved queries
+   * or when creating a new query
+   */
   const onQueryChange = ({
     value,
     parameter,

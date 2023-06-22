@@ -24,6 +24,7 @@ export const QueryEditorPane = () => {
       <QueryEditorTopBar />
       <Grid gridTemplateColumns="1.4fr 4px 0.6fr" height="calc(100% - 300px)">
         <AQLEditor
+          autoFocus
           resetEditor={resetEditor}
           value={queryValue}
           onChange={onQueryValueChange}

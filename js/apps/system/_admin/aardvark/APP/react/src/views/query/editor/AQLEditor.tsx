@@ -6,12 +6,14 @@ export const AQLEditor = ({
   value,
   onChange,
   isPreview,
-  resetEditor
+  resetEditor,
+  autoFocus
 }: {
   value?: string;
   onChange?: (value: string) => void;
   isPreview?: boolean;
   resetEditor?: boolean;
+  autoFocus?: boolean;
 }) => {
   const jsonEditorRef = useRef(null);
   useEffect(() => {
@@ -19,7 +21,7 @@ export const AQLEditor = ({
     editor.options.onChangeText = (value: string) => {
       onChange?.(value);
     };
-    editor.updateText(value);
+    editor.aceEditor.setValue(value, 1);
     // disabled because onChange updates can be ignored
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetEditor]);
@@ -32,6 +34,13 @@ export const AQLEditor = ({
       editor.updateText(value);
     }
   }, [isPreview, value]);
+
+  useEffect(() => {
+    const editor = (jsonEditorRef.current as any)?.jsonEditor;
+    if (autoFocus) {
+      editor.aceEditor.focus();
+    }
+  }, [autoFocus]);
   useSetupAQLEditor(jsonEditorRef);
   return (
     <>
