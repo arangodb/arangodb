@@ -225,10 +225,13 @@ auto LogMetaPayload::withFirstEntryOfTerm(ParticipantId leader,
                                          .participants = std::move(config)}};
 }
 
-auto LogMetaPayload::withUpdateParticipantsConfig(
-    agency::ParticipantsConfig config) -> LogMetaPayload {
+auto LogMetaPayload::withUpdateInnerTermConfig(
+    agency::ParticipantsConfig config,
+    std::unordered_map<ParticipantId, RebootId> safeRebootIds)
+    -> LogMetaPayload {
   return LogMetaPayload{
-      UpdateParticipantsConfig{.participants = std::move(config)}};
+      UpdateInnerTermConfig{.participants = std::move(config),
+                            .safeRebootIds = std::move(safeRebootIds)}};
 }
 
 auto LogMetaPayload::withPing(std::optional<std::string> message,
