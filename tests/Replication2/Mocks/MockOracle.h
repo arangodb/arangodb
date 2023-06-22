@@ -28,7 +28,7 @@
 
 namespace arangodb::replication2::tests {
 
-struct MockCleanOracle : replicated_log::CleanOracle {
+struct MockCleanOracle : replicated_log::ICleanOracle {
   MOCK_METHOD(bool, serverIsCleanWfsFalse, (ServerInstanceReference const&),
               (override));
 };
