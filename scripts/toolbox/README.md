@@ -10,7 +10,7 @@ This project started to bundle some development helpers into a single toolbox.
 
 ### Dependencies
 
-* Python3
+* Python3 (please install the requirements.txt via pip)
 * Go
 
 ### Installing
