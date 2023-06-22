@@ -1,28 +1,30 @@
 import React from "react";
+import { getCurrentDB } from "../../utils/arangoClient";
 
-const parseQueryParams = (queryValue: string) => {
-  // match all values that start with @ (like @variable & @@variable)
-  let queryBindParams = queryValue?.match(/@{1,2}\w+/g) as string[];
-  // remove the first @ from queryBindParams
-  queryBindParams = queryBindParams?.map(param => param.slice(1));
-  // convert to object
-  return queryBindParams?.reduce((acc, param) => {
-    acc[param] = "";
+const parseQueryParams = async (queryValue: string) => {
+  const currentDB = getCurrentDB();
+  const parsed = await currentDB.parse(queryValue);
+  const bindVarsMap = parsed.bindVars.reduce((acc, bindVar) => {
+    acc[bindVar] = "";
     return acc;
-  }, {} as { [key: string]: string; });
+  }, {} as { [key: string]: string });
+  return bindVarsMap;
 };
 export const useQueryValueModifiers = ({
-  setQueryValue, setQueryBindParams, queryValue, setQueryName
+  setQueryValue,
+  setQueryBindParams,
+  queryValue,
+  setQueryName
 }: {
   setQueryValue: React.Dispatch<React.SetStateAction<string>>;
   setQueryBindParams: React.Dispatch<
-    React.SetStateAction<{ [key: string]: string; }>
+    React.SetStateAction<{ [key: string]: string }>
   >;
   queryValue: string;
   setQueryName: React.Dispatch<React.SetStateAction<string | undefined>>;
 }) => {
-  const onQueryValueChange = (value: string) => {
-    const queryBindParams = parseQueryParams(value);
+  const onQueryValueChange = async (value: string) => {
+    const queryBindParams = await parseQueryParams(value);
     window.sessionStorage.setItem(
       "cachedQuery",
       JSON.stringify({ query: value, parameter: queryBindParams })
@@ -30,7 +32,7 @@ export const useQueryValueModifiers = ({
     setQueryValue(value);
     setQueryBindParams(queryBindParams || {});
   };
-  const onBindParamsChange = (value: { [key: string]: string; }) => {
+  const onBindParamsChange = (value: { [key: string]: string }) => {
     window.sessionStorage.setItem(
       "cachedQuery",
       JSON.stringify({ query: queryValue, parameter: value })
@@ -38,10 +40,12 @@ export const useQueryValueModifiers = ({
     setQueryBindParams(value);
   };
   const onQueryChange = ({
-    value, parameter, name
+    value,
+    parameter,
+    name
   }: {
     value: string;
-    parameter: { [key: string]: string; };
+    parameter: { [key: string]: string };
     name?: string;
   }) => {
     window.sessionStorage.setItem(
