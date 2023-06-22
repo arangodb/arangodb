@@ -20,21 +20,17 @@ export const useQueryValueModifiers = ({
    * Called when the query value is changed by the user
    */
   const onQueryValueChange = (value: string) => {
-    setQueryValue(value);
-    window.sessionStorage.setItem(
-      "cachedQuery",
-      JSON.stringify({ query: value, parameter: queryBindParams })
-    );
     const { bindParams: parsedBindParams } = parseQuery(value);
     const parsedBindParamsMap = parsedBindParams.reduce((acc, bindParam) => {
-      acc[bindParam] = "";
+      acc[bindParam] = queryBindParams[bindParam] || "";
       return acc;
     }, {} as { [key: string]: string });
+    setQueryValue(value);
+    setQueryBindParams(parsedBindParamsMap || {});
     window.sessionStorage.setItem(
       "cachedQuery",
-      JSON.stringify({ query: value, parameter: parsedBindParams })
+      JSON.stringify({ query: value, parameter: parsedBindParamsMap })
     );
-    setQueryBindParams(parsedBindParamsMap || {});
   };
   /**
    * Called when the query bind params are changed by the user (JSON  or form)

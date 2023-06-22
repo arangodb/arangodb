@@ -67,9 +67,9 @@ export const QueryContextProvider = ({
   children: React.ReactNode;
 }) => {
   const initialQueryString = window.sessionStorage.getItem("cachedQuery");
-  const initialQuery: CachedQuery = initialQueryString
+  const initialQuery = initialQueryString
     ? JSON.parse(initialQueryString)
-    : {};
+    : ({} as CachedQuery);
   const { savedQueries, isLoading: isFetchingQueries } =
     useFetchUserSavedQueries();
   const [currentView, setCurrentView] = React.useState<"saved" | "editor">(

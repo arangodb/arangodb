@@ -21,11 +21,14 @@ export const ControlledJSONEditor = ({
   isReadOnly,
   htmlElementProps,
   mainMenuBar,
+  defaultValue,
   ...rest
-}: JsonEditorProps & {
+}: Omit<JsonEditorProps, "value"> & {
+  value?: any;
   isDisabled?: boolean;
   mainMenuBar?: boolean;
   isReadOnly?: boolean;
+  defaultValue?: any;
 }) => {
   useEffect(() => {
     const editor = (jsonEditorRef.current as any)?.jsonEditor;
@@ -46,17 +49,24 @@ export const ControlledJSONEditor = ({
       value &&
       JSON.stringify(value) !== JSON.stringify(editor.get())
     ) {
+      console.log({ value });
       editor.update(value);
     }
   }, [jsonEditorRef, value]);
-
+  useEffect(() => {
+    const editor = (jsonEditorRef.current as any)?.jsonEditor;
+    if (editor && defaultValue) {
+      editor.update(defaultValue);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jsonEditorRef]);
   return (
     <ClassNames>
       {({ css }) => (
         <JsonEditor
           schema={schema}
           ref={jsonEditorRef}
-          value={value}
+          value={value || {}}
           onChange={onChange}
           htmlElementProps={{
             ...htmlElementProps,

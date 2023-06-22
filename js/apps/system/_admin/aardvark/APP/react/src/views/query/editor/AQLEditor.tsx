@@ -24,9 +24,8 @@ export const AQLEditor = ({
     };
 
     /**
-     * directly call aceEditor.setValue to avoid cursor jump,
-     * because this doesn't call the onChange callback.
-     * This still can't be called on every value change because that
+     * directly call aceEditor.setValue to avoid cursor jump.
+     * This can't be called on every value change because that
      * will destroy the undo stack
      */
     editor.aceEditor.setValue(value, 1);

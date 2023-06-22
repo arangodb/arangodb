@@ -64,9 +64,9 @@ export const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
     <Box position="relative" height="full">
       <ControlledJSONEditor
         mode="code"
-        value={queryBindParams}
-        onChangeJSON={updatedValue => {
-          onBindParamsChange(updatedValue);
+        defaultValue={queryBindParams}
+        onChange={updatedValue => {
+          !errors.length && onBindParamsChange(updatedValue || {});
         }}
         htmlElementProps={{
           style: {
@@ -104,7 +104,7 @@ const BindVariableRow = ({ bindParamKey }: { bindParamKey: string }) => {
   return (
     <Tr>
       <Td>
-        <Flex width="200px" alignItems="center" gap="2">
+        <Flex maxWidth="200px" alignItems="center" gap="2">
           <Text isTruncated>{bindParamKey}</Text>
           {definedType.includes(type) && (
             <Tag flexShrink={0} size="sm">
