@@ -36,8 +36,11 @@
 
 using namespace arangodb::aql;
 
-Optimizer::Optimizer(size_t maxNumberOfPlans)
-    : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {}
+Optimizer::Optimizer(size_t maxNumberOfPlans, ResourceMonitor& resource_monitor)
+    : _maxNumberOfPlans(maxNumberOfPlans),
+      _runOnlyRequiredRules(false),
+      _memoryResource(std::make_unique<CountingMemoryResource>(
+          std::pmr::new_delete_resource(), resource_monitor)) {}
 
 void Optimizer::disableRules(
     ExecutionPlan* plan,
