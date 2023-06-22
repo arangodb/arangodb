@@ -12,6 +12,7 @@ This project started to bundle some development helpers into a single toolbox.
 
 * Python3 (please install the requirements.txt via pip)
 * Go
+* Self compiled ArangoDB in the default build directory ("build")
 
 ### Installing
 
