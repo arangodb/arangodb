@@ -29,17 +29,7 @@
 #include <memory>
 
 namespace arangodb {
-
-struct IMemoryTracker {
-  virtual ~IMemoryTracker() {}
-  virtual void reset() noexcept = 0;
-  virtual void increaseMemoryUsage(std::uint64_t value) = 0;
-  virtual void decreaseMemoryUsage(std::uint64_t value) noexcept = 0;
-
-  virtual void setSavePoint() = 0;
-  virtual void rollbackToSavePoint() noexcept = 0;
-  virtual void popSavePoint() noexcept = 0;
-};
+struct IRocksDBTrxMemoryTracker;
 
 struct IRocksDBTransactionCallback {
   virtual ~IRocksDBTransactionCallback() = default;
@@ -135,18 +125,33 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   Result doCommit();
   Result doCommitImpl();
 
-  /// @brief assumed overhead for each appended entry to a rocksdb::WriteBuffer.
-  /// this is not the actual per-entry overhead, but a good enough estimate.
-  /// the actual overhead depends on a lot of factors, and we don't want to
-  /// replicate rocksdb's internals here.
-  static constexpr std::uint64_t writeBufferEntryOverhead = 12;
   /// @brief assumed additional overhead for each entry in a
   /// WriteBatchWithIndex. this is in addition to the actual WriteBuffer entry.
-  static constexpr std::uint64_t indexingEntryOverhead = 32;
+  static constexpr size_t fixedIndexingEntryOverhead = 32;
+
+  /// @brief assumed additional overhead for each lock that is held by the
+  /// transaction. the overhead is computed as follows:
+  /// locks are stored in rocksdb in a hash table, which maps from the locked
+  /// key to a LockInfo struct. The lockInfo struct is 120 bytes big.
+  /// we also assume some more overhead for the hash table entries and some
+  /// general overhead because the hash table is never assumed to be completely
+  /// full (load factor < 1). thus we assume 64 bytes of overhead for each
+  /// entry. this is an arbitrary value.
+  static constexpr size_t fixedLockEntryOverhead = 120 + 64;
+
   /// @brief function to calculate overhead of a WriteBatchWithIndex entry,
   /// depending on keySize. will return 0 if indexing is disabled in the current
   /// transaction.
-  std::uint64_t indexingOverhead(std::uint64_t keySize) const noexcept;
+  size_t indexingOverhead(size_t keySize) const noexcept;
+
+  /// @brief function to calculate overhead of a lock entry, depending on
+  /// keySize. will return 0 if no locks are used by the current transaction
+  /// (e.g. if the transaction is using an exclusive lock)
+  size_t lockOverhead(size_t keySize) const noexcept;
+
+  /// @brief returns the payload size of the transaction's WriteBatch. this
+  /// excludes locks and any potential indexes (i.e. WriteBatchWithIndex).
+  size_t currentWriteBatchSize() const noexcept;
 
   IRocksDBTransactionCallback& _callback;
 
@@ -177,7 +182,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   TRI_voc_tick_t _lastWrittenOperationTick{0};
 
   /// @brief object used for tracking memory usage
-  std::unique_ptr<IMemoryTracker> _memoryTracker;
+  std::unique_ptr<IRocksDBTrxMemoryTracker> _memoryTracker;
 
   bool _indexingDisabled{false};
 };
