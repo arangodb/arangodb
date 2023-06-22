@@ -753,6 +753,8 @@ CostEstimate CollectNode::estimateCost() const {
 
 ExecutionNode::NodeType CollectNode::getType() const { return COLLECT; }
 
+size_t CollectNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 bool CollectNode::isDistinctCommand() const { return _isDistinctCommand; }
 
 bool CollectNode::isSpecialized() const { return _specialized; }
