@@ -62,13 +62,12 @@ class RebootTracker {
       std::map<RebootId,
                containers::FlatHashMap<CallbackId, DescriptedCallback>>;
   using Callbacks = containers::FlatHashMap<ServerID, RebootIds>;
-  struct PeerState {
-    std::string serverId;
-    RebootId rebootId{0};
-  };
 
   explicit RebootTracker(SchedulerPointer scheduler);
 
+  // Register `callback`, which is executed once if the state of `peer` changes.
+  // Destroying or overwriting the returned CallbackGuard will unregister the
+  // callback. The description is used for logging related to the callback.
   CallbackGuard callMeOnChange(PeerState peer, Callback callback,
                                std::string description);
 

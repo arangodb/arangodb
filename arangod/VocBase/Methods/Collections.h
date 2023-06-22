@@ -40,6 +40,7 @@ class ClusterFeature;
 class LogicalCollection;
 struct CollectionCreationInfo;
 class CollectionNameResolver;
+struct CreateCollectionBody;
 
 namespace transaction {
 class Methods;
@@ -89,6 +90,19 @@ struct Collections {
 
   /// Create collection, ownership of collection in callback is
   /// transferred to callee
+  [[nodiscard]] static arangodb::ResultT<
+      std::vector<std::shared_ptr<LogicalCollection>>>
+  create(                      // create collection
+      TRI_vocbase_t& vocbase,  // collection vocbase
+      OperationOptions const& options,
+      std::vector<CreateCollectionBody> collections,  // Collections to create
+      bool createWaitsForSyncReplication,             // replication wait flag
+      bool enforceReplicationFactor,                  // replication factor flag
+      bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
+      bool isRestore = false);  // whether this is being called during restore
+
+  /// Create collection, ownership of collection in callback is
+  /// transferred to callee
   [[nodiscard]] static arangodb::Result create(  // create collection
       TRI_vocbase_t& vocbase,                    // collection vocbase
       OperationOptions const& options,
@@ -122,6 +136,10 @@ struct Collections {
       std::string const& collectionName, VPackBuilder& builder,
       TRI_vocbase_t const&);
 
+  static void applySystemCollectionProperties(
+      CreateCollectionBody& col, TRI_vocbase_t const& vocbase,
+      DatabaseConfiguration const& config, bool isLegacyDatabase);
+
   static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection& collection,
                                  velocypack::Slice props,
@@ -150,6 +168,12 @@ struct Collections {
   /// @brief filters properties for collection creation
   static arangodb::velocypack::Builder filterInput(
       arangodb::velocypack::Slice slice, bool allowDC2DCAttributes);
+
+ private:
+  static void appendSmartEdgeCollections(
+      CreateCollectionBody& collection,
+      std::vector<CreateCollectionBody>& collectionList,
+      std::function<DataSourceId()> const&);
 };
 
 #ifdef USE_ENTERPRISE

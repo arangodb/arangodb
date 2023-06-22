@@ -100,7 +100,8 @@ auto FakeStorageEngineMethods::insert(
         while (auto entry = iter->next()) {
           auto const res =
               _self.log.try_emplace(entry->logIndex(), entry.value());
-          TRI_ASSERT(res.second);
+          TRI_ASSERT(res.second)
+              << "duplicated log entry " << entry->logIndex();
 
           TRI_ASSERT(entry->logIndex() > lastIndex);
           lastIndex = entry->logIndex();
@@ -111,6 +112,7 @@ auto FakeStorageEngineMethods::insert(
         return {_self.lastSequenceNumber++};
       });
 }
+
 auto FakeStorageEngineMethods::removeFront(
     LogIndex stop,
     const replicated_state::IStorageEngineMethods::WriteOptions& options)
@@ -161,12 +163,31 @@ FakeStorageEngineMethods::FakeStorageEngineMethods(
     FakeStorageEngineMethodsContext& self)
     : _self(self) {}
 
+void FakeStorageEngineMethods::waitForCompletion() noexcept {}
+
 auto FakeStorageEngineMethodsContext::getMethods()
     -> std::unique_ptr<replicated_state::IStorageEngineMethods> {
-  return std::make_unique<FakeStorageEngineMethods>(*this);
+  auto methods = std::make_unique<FakeStorageEngineMethods>(*this);
+  return methods;
 }
 
 FakeStorageEngineMethodsContext::FakeStorageEngineMethodsContext(
     std::uint64_t objectId, arangodb::replication2::LogId logId,
-    std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor)
-    : objectId(objectId), logId(logId), executor(std::move(executor)) {}
+    std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor,
+    LogRange range, std::optional<replicated_state::PersistedStateInfo> meta)
+    : objectId(objectId),
+      logId(logId),
+      executor(std::move(executor)),
+      meta(std::move(meta)) {
+  emplaceLogRange(range, LogTerm{1});
+}
+
+void FakeStorageEngineMethodsContext::emplaceLogRange(LogRange range,
+                                                      LogTerm term) {
+  for (auto idx : range) {
+    log.emplace(idx, PersistingLogEntry{term, idx,
+                                        LogPayload::createFromString(
+                                            "(" + to_string(term) + "," +
+                                            to_string(idx) + ")")});
+  }
+}

@@ -773,6 +773,8 @@ auto ShortestPathNode::options() const -> ShortestPathOptions* {
   return opts;
 }
 
+size_t ShortestPathNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 // This constructor is only used from LocalTraversalNode, and GraphNode
 // is virtually inherited; thus its constructor is never called from here.
 ShortestPathNode::ShortestPathNode(ExecutionPlan& plan,

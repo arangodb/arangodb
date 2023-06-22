@@ -102,6 +102,7 @@ using Helper = arangodb::basics::VelocyPackHelper;
 namespace {
 std::string const edgeUrl = "/_internal/traverser/edge/";
 std::string const vertexUrl = "/_internal/traverser/vertex/";
+
 }  // namespace
 
 // Timeout for write operations, note that these are used for communication
@@ -746,11 +747,6 @@ static std::shared_ptr<ShardMap> DistributeShardsEvenly(
     std::vector<std::string> serverIds;
     for (uint64_t j = 0; j < replicationFactor; ++j) {
       if (j >= dbServers.size()) {
-        if (warnAboutReplicationFactor) {
-          LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
-              << "createCollectionCoordinator: replicationFactor is "
-              << "too large for the number of DBservers";
-        }
         break;
       }
 
@@ -2990,6 +2986,7 @@ ClusterMethods::persistCollectionsInAgency(
     infos.reserve(collections.size());
 
     TRI_IF_FAILURE("allShardsOnSameServer") {
+      std::sort(dbServers.begin(), dbServers.end());
       while (dbServers.size() > 1) {
         dbServers.pop_back();
       }
@@ -3051,13 +3048,6 @@ ClusterMethods::persistCollectionsInAgency(
         if (!avoid.empty()) {
           // We need to remove all servers that are in the avoid list
           if (dbServers.size() - avoid.size() < replicationFactor) {
-            LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
-                << "Do not have enough DBServers for requested "
-                   "replicationFactor,"
-                << " (after considering avoid list),"
-                << " nrDBServers: " << dbServers.size()
-                << " replicationFactor: " << replicationFactor
-                << " avoid list size: " << avoid.size();
             // Not enough DBServers left
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
           }
