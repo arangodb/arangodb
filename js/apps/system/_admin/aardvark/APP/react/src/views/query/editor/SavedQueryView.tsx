@@ -172,13 +172,7 @@ const QueryPreview = ({ query }: { query: QueryType | null }) => {
         <Box fontWeight="medium" fontSize="md">
           Preview: {query.name}
         </Box>
-        <AQLEditor
-          isPreview
-          defaultValue={query.value}
-          onChange={() => {
-            //noop
-          }}
-        />
+        <AQLEditor isPreview value={query.value} />
       </Stack>
       <Stack>
         <Box fontWeight="medium" fontSize="sm">

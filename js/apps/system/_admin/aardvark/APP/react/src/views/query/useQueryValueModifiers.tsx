@@ -16,20 +16,20 @@ export const useQueryValueModifiers = ({
   queryValue,
   setQueryName
 }: {
-  setQueryValue: React.Dispatch<React.SetStateAction<string>>;
+  setQueryValue: (value: string) => void;
   setQueryBindParams: React.Dispatch<
     React.SetStateAction<{ [key: string]: string }>
   >;
   queryValue: string;
-  setQueryName: React.Dispatch<React.SetStateAction<string | undefined>>;
+  setQueryName: (name: string) => void;
 }) => {
   const onQueryValueChange = async (value: string) => {
+    setQueryValue(value);
     const queryBindParams = await parseQueryParams(value);
     window.sessionStorage.setItem(
       "cachedQuery",
       JSON.stringify({ query: value, parameter: queryBindParams })
     );
-    setQueryValue(value);
     setQueryBindParams(queryBindParams || {});
   };
   const onBindParamsChange = (value: { [key: string]: string }) => {
@@ -54,7 +54,7 @@ export const useQueryValueModifiers = ({
     );
     setQueryValue(value);
     setQueryBindParams(parameter);
-    setQueryName(name);
+    setQueryName(name || "");
   };
   return { onQueryChange, onQueryValueChange, onBindParamsChange };
 };

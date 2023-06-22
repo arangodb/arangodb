@@ -3,29 +3,35 @@ import { JsonEditor } from "jsoneditor-react";
 import React, { useEffect, useRef } from "react";
 
 export const AQLEditor = ({
-  defaultValue,
+  value,
   onChange,
-  isPreview
+  isPreview,
+  resetEditor
 }: {
-  defaultValue?: string;
-  onChange: (value: string) => void;
+  value?: string;
+  onChange?: (value: string) => void;
   isPreview?: boolean;
+  resetEditor?: boolean;
 }) => {
   const jsonEditorRef = useRef(null);
   useEffect(() => {
     const editor = (jsonEditorRef.current as any)?.jsonEditor;
-    editor.options.onChange = () => onChange(editor.getText());
-    editor.setText(defaultValue);
+    editor.options.onChangeText = (value: string) => {
+      onChange?.(value);
+    };
+    editor.updateText(value);
+    // disabled because onChange updates can be ignored
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jsonEditorRef]);
+  }, [resetEditor]);
+
+  /** set to readOnly when in preview mode */
   useEffect(() => {
-    if (!isPreview) {
-      return;
-    }
     const editor = (jsonEditorRef.current as any)?.jsonEditor;
-    editor.setText(defaultValue);
-    editor.aceEditor.setReadOnly(true);
-  }, [isPreview, defaultValue]);
+    if (isPreview) {
+      editor.aceEditor.setReadOnly(true);
+      editor.updateText(value);
+    }
+  }, [isPreview, value]);
   useSetupAQLEditor(jsonEditorRef);
   return (
     <>
@@ -54,11 +60,10 @@ export const AQLEditor = ({
     </>
   );
 };
-function useSetupAQLEditor(jsonEditorRef: React.MutableRefObject<null>) {
+
+const useSetupAQLEditor = (jsonEditorRef: React.MutableRefObject<null>) => {
   useEffect(() => {
     const editor = (jsonEditorRef.current as any)?.jsonEditor;
-    editor.options.mainMenuBar = false;
-
     const aceEditor = editor.aceEditor;
     aceEditor.$blockScrolling = Infinity;
     aceEditor.getSession().setMode("ace/mode/aql");
@@ -67,4 +72,4 @@ function useSetupAQLEditor(jsonEditorRef: React.MutableRefObject<null>) {
     aceEditor.setFontSize("14px");
     aceEditor.setShowPrintMargin(false);
   }, [jsonEditorRef]);
-}
+};

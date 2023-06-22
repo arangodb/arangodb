@@ -96,7 +96,7 @@ const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
       mode="code"
       value={queryBindParams}
       onChange={value => {
-        console.log({ value });
+        onBindParamsChange(value);
       }}
       htmlElementProps={{
         style: {

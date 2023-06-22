@@ -9,7 +9,8 @@ import { QueryResults } from "./QueryResults";
 import { SavedQueryView } from "./SavedQueryView";
 
 export const QueryEditorPane = () => {
-  const { currentView, queryValue, onQueryValueChange } = useQueryContext();
+  const { currentView, queryValue, onQueryValueChange, resetEditor } =
+    useQueryContext();
   if (currentView === "saved") {
     return (
       <>
@@ -22,7 +23,11 @@ export const QueryEditorPane = () => {
     <Box background="white" height="full">
       <QueryEditorTopBar />
       <Grid gridTemplateColumns="1.4fr 4px 0.6fr" height="calc(100% - 300px)">
-        <AQLEditor defaultValue={queryValue} onChange={onQueryValueChange} />
+        <AQLEditor
+          resetEditor={resetEditor}
+          value={queryValue}
+          onChange={onQueryValueChange}
+        />
         <Divider
           borderLeftWidth="4px"
           borderColor="gray.400"
