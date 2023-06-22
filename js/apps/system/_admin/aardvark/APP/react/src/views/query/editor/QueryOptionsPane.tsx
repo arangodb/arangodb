@@ -95,8 +95,8 @@ const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
     <ControlledJSONEditor
       mode="code"
       value={queryBindParams}
-      onChange={value => {
-        onBindParamsChange(value);
+      onChangeJSON={updatedValue => {
+        onBindParamsChange(updatedValue);
       }}
       htmlElementProps={{
         style: {
