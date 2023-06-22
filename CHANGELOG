@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-20: fix UI placeholder format for locale when creating analyzers.
+
 * Fixed Github issue #19175.
   This fixes a problem in traversal query optimization that was introduced
   in 3.11 and that can lead to traversal queries being aborted with an error
