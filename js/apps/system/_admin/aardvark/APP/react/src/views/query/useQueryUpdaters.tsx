@@ -19,7 +19,9 @@ export const useQueryUpdaters = ({
     ];
     await patchQueries({
       queries: newQueries,
-      queryName
+      onSuccess: () => {
+        window.arangoHelper.arangoNotification(`Saved query: ${queryName}`);
+      }
     });
   };
   const onSave = async (queryName: string) => {
@@ -38,19 +40,31 @@ export const useQueryUpdaters = ({
       });
       await patchQueries({
         queries: newQueries || [],
-        queryName
+        onSuccess: () => {
+          window.arangoHelper.arangoNotification(`Updated query: ${queryName}`);
+        }
       });
     }
   };
-  return { onSaveAs, onSave };
+
+  const onDelete = async (queryName: string) => {
+    const newQueries = savedQueries?.filter(query => query.name !== queryName);
+    await patchQueries({
+      queries: newQueries || [],
+      onSuccess: () => {
+        window.arangoHelper.arangoNotification(`Deleted query: ${queryName}`);
+      }
+    });
+  };
+  return { onSaveAs, onSave, onDelete };
 };
 
 const patchQueries = async ({
   queries,
-  queryName
+  onSuccess
 }: {
   queries: QueryType[];
-  queryName: string;
+  onSuccess: () => void;
 }) => {
   const currentDB = getCurrentDB();
   try {
@@ -63,7 +77,7 @@ const patchQueries = async ({
         }
       }
     });
-    window.arangoHelper.arangoNotification(`Saved query: ${queryName}`);
+    onSuccess();
     mutate("/savedQueries");
   } catch (e: any) {
     const message = e.message || e.response.body.errorMessage;

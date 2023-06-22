@@ -43,6 +43,7 @@ type QueryContextType = {
   onSave: (queryName: string) => Promise<void>;
   resetEditor: boolean;
   setResetEditor: (value: boolean) => void;
+  onDelete: (queryName: string) => Promise<void>;
 };
 // const defaultValue = 'FOR v,e,p IN 1..3 ANY "place/0" GRAPH "ldbc" LIMIT 100 return p'
 const QueryContext = React.createContext<QueryContextType>(
@@ -98,7 +99,7 @@ export const QueryContextProvider = ({
     onOpen: onOpenSaveAsModal,
     onClose: onCloseSaveAsModal
   } = useDisclosure();
-  const { onSave, onSaveAs } = useQueryUpdaters({
+  const { onSave, onSaveAs, onDelete } = useQueryUpdaters({
     queryValue,
     queryBindParams,
     savedQueries
@@ -131,7 +132,8 @@ export const QueryContextProvider = ({
         onCloseSaveAsModal,
         onSave,
         resetEditor,
-        setResetEditor
+        setResetEditor,
+        onDelete
       }}
     >
       {children}
