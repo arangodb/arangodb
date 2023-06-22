@@ -6,8 +6,8 @@ export const AQLEditor = ({
   value,
   onChange,
   isPreview,
-  resetEditor,
-  autoFocus
+  autoFocus,
+  resetEditor
 }: {
   value?: string;
   onChange?: (value: string) => void;
@@ -16,13 +16,24 @@ export const AQLEditor = ({
   autoFocus?: boolean;
 }) => {
   const jsonEditorRef = useRef(null);
+
   useEffect(() => {
     const editor = (jsonEditorRef.current as any)?.jsonEditor;
     editor.options.onChangeText = (value: string) => {
       onChange?.(value);
     };
+
+    /**
+     * directly call aceEditor.setValue to avoid cursor jump,
+     * because this doesn't call the onChange callback.
+     * This still can't be called on every value change because that
+     * will destroy the undo stack
+     */
     editor.aceEditor.setValue(value, 1);
-    // disabled because onChange updates can be ignored
+    /**
+     * disabled because we are using the value as 'defaultValue',
+     * and onChange function update can be ignored
+     * */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetEditor]);
 
@@ -31,7 +42,7 @@ export const AQLEditor = ({
     const editor = (jsonEditorRef.current as any)?.jsonEditor;
     if (isPreview) {
       editor.aceEditor.setReadOnly(true);
-      editor.updateText(value);
+      editor.aceEditor.setValue(value, 1);
     }
   }, [isPreview, value]);
 
