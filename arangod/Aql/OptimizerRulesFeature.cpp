@@ -300,7 +300,7 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::removeFiltersCoveredByIndexRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
+  /// "Pass 7": try to remove redundant or unnecessary nodes (second try)
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node

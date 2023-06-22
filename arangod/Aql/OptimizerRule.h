@@ -196,6 +196,9 @@ struct OptimizerRule {
     // try to remove filters covered by index ranges
     removeFiltersCoveredByIndexRule,
 
+    /// "Pass 7": try to remove redundant or unnecessary nodes (second try)
+    // ======================================================
+
     removeUnnecessaryFiltersRule2,
 
     // try to find sort blocks which are superseeded by indexes
@@ -236,7 +239,7 @@ struct OptimizerRule {
     // special cluster handling for multiple operations (babies)
     substituteMultipleDocumentOperations,
 
-    /// Pass 9: push down calculations beyond FILTERs and LIMITs
+    /// Pass 8: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule,
 
     /// Pass 9: fuse filter conditions
