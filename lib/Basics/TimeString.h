@@ -24,19 +24,12 @@
 #pragma once
 
 #include <chrono>
-#include "Basics/Common.h"
-
-#include "Basics/system-functions.h"
+#include "date/date.h"
 
 inline std::string timepointToString(
     std::chrono::system_clock::time_point const& t) {
-  time_t tt = std::chrono::system_clock::to_time_t(t);
-  struct tm tb;
-  size_t const len(21);
-  char buffer[len];
-  TRI_gmtime(tt, &tb);
-  ::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-  return std::string(buffer, len - 1);
+  return date::format("%Y-%m-%dT%H:%M:%SZ",
+                      std::chrono::floor<std::chrono::seconds>(t));
 }
 
 inline std::string timepointToString(
@@ -46,24 +39,15 @@ inline std::string timepointToString(
 
 inline std::chrono::system_clock::time_point stringToTimepoint(
     std::string_view s) {
-  auto const strvtoi = [](std::string_view sv) -> int {
-    return static_cast<int>(std::strtol(sv.data(), nullptr, 10));
-  };
+  // FIXME: now copy :(
+  auto in = std::istringstream{std::string{s}};
+  auto target = std::chrono::system_clock::time_point{};
+  in >> date::parse("%Y-%m-%dT%H:%M:%SZ", target);
 
-  if (!s.empty()) {
-    try {
-      std::tm tt{};
-      tt.tm_year = strvtoi(s.substr(0, 4)) - 1900;
-      tt.tm_mon = strvtoi(s.substr(5, 2)) - 1;
-      tt.tm_mday = strvtoi(s.substr(8, 2));
-      tt.tm_hour = strvtoi(s.substr(11, 2));
-      tt.tm_min = strvtoi(s.substr(14, 2));
-      tt.tm_sec = strvtoi(s.substr(17, 2));
-      tt.tm_isdst = 0;
-      auto time_c = TRI_timegm(&tt);
-      return std::chrono::system_clock::from_time_t(time_c);
-    } catch (...) {
-    }
+  // FIXME: error handling would be nice.
+  if (!in.fail()) {
+    return target;
+  } else {
+    return {};
   }
-  return {};
 }
