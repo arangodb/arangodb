@@ -18,6 +18,30 @@ def cwd(path):
         os.chdir(oldPwd)
 
 
+@contextmanager
+def set_env(**environ):
+    """
+    Temporarily set the process environment variables.
+
+    >>> with set_env(PLUGINS_DIR='test/plugins'):
+    ...   "PLUGINS_DIR" in os.environ
+    True
+
+    >>> "PLUGINS_DIR" in os.environ
+    False
+
+    :type environ: dict[str, unicode]
+    :param environ: Environment variables to set
+    """
+    oldEnviron = dict(os.environ)
+    os.environ.update(environ)
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(oldEnviron)
+
+
 def checkWorkDirectory(args, cfg):
     if args.workDir:
         if not os.path.exists(args.workDir):
@@ -57,24 +81,91 @@ def start(args, cfg):
                 "log.file"] + ", port: " +
             cfg["arangodb"]["port"] + " (silently!)")
         return process
+    elif args.mode == "custom":
+        print("ArangoDB will not be started automatically!")
     else:
         print("Invalid mode")
 
 
-def startCluster():
+class InstanceOptions:
+    defaultWorkDir = "../../"
+
+    def __init__(self):
+        self.workDir = self.defaultWorkDir
+        self.initialize = True
+
+    def setWorkDir(self, workDir):
+        self.workDir = workDir
+
+    def setInitialize(self, initialize):
+        self.initialize = initialize
+
+
+def startCluster(options=None, performUpgrade=False):
+    if options is None:
+        options = InstanceOptions()
+    else:
+        assert (isinstance(options, InstanceOptions))
+
     print("Starting ArangoDB in cluster mode...")
-    # main ArangoDB repository
-    with cwd('../../'):
+    with cwd(options.workDir):
+        print("WorkDir is: " + options.workDir)
+        if options.initialize:
+            try:
+                shutil.rmtree("cluster")
+                shutil.rmtree("cluster-init")
+            except FileNotFoundError:
+                pass
+
+        oldEnvironment = dict(os.environ)
+        oldEnvironment = {"AUTOUPGRADE": "0"}
+        if performUpgrade:
+            oldEnvironment = {"AUTOUPGRADE": "1"}
+
+        # Set upgrade environment variable
+        os.environ.update(oldEnvironment)
         parameters = ["./scripts/startLocalCluster.sh"]
         subprocess.Popen(parameters).wait()
 
 
-def stopCluster():
+def stopCluster(options=None):
+    if options is None:
+        options = InstanceOptions()
+    else:
+        assert (isinstance(options, InstanceOptions))
+
     print("Stopping ArangoDB in cluster mode...")
     # main ArangoDB repository
-    with cwd('../../'):
+    with cwd(options.workDir):
         parameters = ["./scripts/shutdownLocalCluster.sh"]
         subprocess.Popen(parameters).wait()
+
+
+def copyDataDirectory(oldOptions, newOptions):
+    print("Copying data directory from " + oldOptions.workDir + " to " + newOptions.workDir)
+
+    try:
+        shutil.rmtree(newOptions.workDir + "/cluster-init")
+    except FileNotFoundError:
+        pass
+
+    shutil.copytree(oldOptions.workDir + "/cluster", newOptions.workDir + "/cluster-init")
+
+
+# Currently forced to work with the scripts/startLocalCluster.sh script
+# and two source directories (old and new, ArangoDB src checked-out from git)
+def upgradeCluster(oldOptions, newOptions):
+    assert (isinstance(oldOptions, InstanceOptions))
+    assert (isinstance(newOptions, InstanceOptions))
+
+    # 1.) Stop cluster "old"
+    stopCluster(oldOptions)
+    # 2.) Copy "old" cluster directory to "new" cluster directory
+    copyDataDirectory(oldOptions, newOptions)
+    # 3.) Start cluster "new" with upgrade procedure
+    startCluster(newOptions, performUpgrade=True)
+    # 4.) Start cluster "new" again with default procedure
+    startCluster(newOptions, performUpgrade=False)
 
 
 def stopAndWaitCluster():

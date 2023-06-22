@@ -36,6 +36,10 @@ metrics = {
     "endpoint": "http://" + arangodb["host"] + ":" + arangodb["port"] + "/_admin/metrics"
 }
 
+hotBackup = {
+    "workDir": globals["workDir"] + "/hotBackup"
+}
+
 
 class CalculatedConfig:
     def __init__(self, args):
@@ -43,6 +47,7 @@ class CalculatedConfig:
         self.feed = feed
         self.globals = globals
         self.metrics = metrics
+        self.hotBackup = hotBackup
 
         if args.host and args.port:
             self.arangodb["port"] = args.port
@@ -58,6 +63,7 @@ class CalculatedConfig:
             self.arangodb["startupParameters"]["database.directory"] = args.workDir + "/database"
             self.feed["jsonOutputFile"] = args.workDir + "/feed.json"
             self.globals["workDir"] = args.workDir
+            self.hotBackup["workDir"] = args.workDir + "/hotBackup"
 
     def getConfig(self):
         return {
@@ -78,3 +84,6 @@ class CalculatedConfig:
 
     def getMetrics(self):
         return self.metrics
+
+    def getHotBackup(self):
+        return self.hotBackup

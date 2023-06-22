@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 
 def arguments():
     parser = ArgumentParser()
-    parser.add_argument('--mode', type=str, choices=['cluster', 'single'], help="Run in cluster mode or single mode")
+    parser.add_argument('--mode', type=str, choices=['cluster', 'single', 'custom'], help="Select the mode you want to run in")
     parser.add_argument('--init', type=str, required=False, choices=['true', 'false'],
                         help="Initialize the database or not")
     parser.add_argument('--startupParameters', type=str, required=False,
