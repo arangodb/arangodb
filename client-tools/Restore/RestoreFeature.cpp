@@ -30,6 +30,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <regex>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -68,6 +69,8 @@
 #endif
 
 namespace {
+std::regex const splitFilesRegex(".*\\.[0-9]+\\.data\\.json(\\.gz)?$",
+                                 std::regex::ECMAScript);
 
 std::string escapedCollectionName(std::string const& name,
                                   VPackSlice parameters) {
@@ -1432,35 +1435,28 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   //  ... there are 6 possible names
   std::string escapedName =
       escapedCollectionName(collectionName, parameters.get("parameters"));
-  std::string nameHash = arangodb::rest::SslInterface::sslMD5(collectionName);
-  bool isCompressed = false;
-  bool isMultiFile = false;
+  std::string const nameHash =
+      arangodb::rest::SslInterface::sslMD5(collectionName);
+
   auto datafile =
       directory.readableFile(escapedName + "_" + nameHash + ".data.json");
   if (!datafile || datafile->status().fail()) {
     datafile =
         directory.readableFile(escapedName + "_" + nameHash + ".data.json.gz");
-    isCompressed = true;
   }
   if (!datafile || datafile->status().fail()) {
     datafile = directory.readableFile(escapedName + ".data.json.gz");
-    isCompressed = true;
   }
   if (!datafile || datafile->status().fail()) {
     datafile = directory.readableFile(escapedName + "_" + nameHash +
                                       ".0.data.json.gz");
-    isCompressed = true;
-    isMultiFile = true;
   }
   if (!datafile || datafile->status().fail()) {
     datafile =
         directory.readableFile(escapedName + "_" + nameHash + ".0.data.json");
-    isCompressed = false;
-    isMultiFile = true;
   }
   if (!datafile || datafile->status().fail()) {
     datafile = directory.readableFile(escapedName + ".data.json");
-    isCompressed = false;
   }
   if (!datafile || datafile->status().fail()) {
     {
@@ -1472,7 +1468,33 @@ Result RestoreFeature::RestoreMainJob::restoreData(
     return {TRI_ERROR_NO_ERROR};
   }
 
-  int64_t const fileSize = TRI_SizeFile(datafile->path().c_str());
+  TRI_ASSERT(datafile);
+  // check if we are dealing with compressed file(s)
+  bool const isCompressed = datafile->path().ends_with(".gz");
+  // check if we are dealing with multiple files (created via `--split-file
+  // true`)
+  bool const isMultiFile =
+      std::regex_match(datafile->path(), ::splitFilesRegex);
+
+  int64_t fileSize = TRI_SizeFile(datafile->path().c_str());
+  if (isMultiFile) {
+    fileSize = 0;
+    auto allFiles = arangodb::basics::FileUtils::listFiles(directory.path());
+    std::string const prefix = escapedName + "_" + nameHash + ".";
+    for (auto const& it : allFiles) {
+      if (!it.starts_with(prefix) || !std::regex_match(it, ::splitFilesRegex)) {
+        continue;
+      }
+      int64_t s = TRI_SizeFile(
+          arangodb::basics::FileUtils::buildFilename(directory.path(), it)
+              .c_str());
+      if (s >= 0) {
+        fileSize += s;
+      }
+    }
+  }
+  LOG_DEVEL << "IS COMPRESSED: " << isCompressed
+            << ", IS MULTI: " << isMultiFile << ", FILESIZE: " << fileSize;
 
   if (options.progress) {
     LOG_TOPIC("95913", INFO, Logger::RESTORE)
