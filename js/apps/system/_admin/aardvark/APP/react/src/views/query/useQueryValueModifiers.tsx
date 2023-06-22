@@ -1,15 +1,6 @@
 import React from "react";
-import { getCurrentDB } from "../../utils/arangoClient";
+import { parseQuery } from "./queryHelper";
 
-const parseQueryParams = async (queryValue: string) => {
-  const currentDB = getCurrentDB();
-  const parsed = await currentDB.parse(queryValue);
-  const bindVarsMap = parsed.bindVars.reduce((acc, bindVar) => {
-    acc[bindVar] = "";
-    return acc;
-  }, {} as { [key: string]: string });
-  return bindVarsMap;
-};
 export const useQueryValueModifiers = ({
   setQueryValue,
   setQueryBindParams,
@@ -28,18 +19,22 @@ export const useQueryValueModifiers = ({
   /**
    * Called when the query value is changed by the user
    */
-  const onQueryValueChange = async (value: string) => {
+  const onQueryValueChange = (value: string) => {
     setQueryValue(value);
     window.sessionStorage.setItem(
       "cachedQuery",
       JSON.stringify({ query: value, parameter: queryBindParams })
     );
-    const parsedBindParams = await parseQueryParams(value);
+    const { bindParams: parsedBindParams } = parseQuery(value);
+    const parsedBindParamsMap = parsedBindParams.reduce((acc, bindParam) => {
+      acc[bindParam] = "";
+      return acc;
+    }, {} as { [key: string]: string });
     window.sessionStorage.setItem(
       "cachedQuery",
       JSON.stringify({ query: value, parameter: parsedBindParams })
     );
-    setQueryBindParams(parsedBindParams || {});
+    setQueryBindParams(parsedBindParamsMap || {});
   };
   /**
    * Called when the query bind params are changed by the user (JSON  or form)
