@@ -47,19 +47,25 @@ auto replication2::operator==(LogPayload const& left, LogPayload const& right)
 LogPayload::LogPayload(BufferType buffer) : buffer(std::move(buffer)) {}
 
 auto LogPayload::createFromSlice(velocypack::Slice slice) -> LogPayload {
-  return LogPayload(BufferType{slice.start(), slice.byteSize()});
+  BufferType buffer(slice.byteSize());
+  buffer.append(slice.start(), slice.byteSize());
+  return LogPayload{std::move(buffer)};
 }
 
 auto LogPayload::createFromString(std::string_view string) -> LogPayload {
   VPackBuilder builder;
   builder.add(VPackValue(string));
-  return LogPayload::createFromSlice(builder.slice());
+  return LogPayload{*builder.steal()};
 }
 
 auto LogPayload::copyBuffer() const -> velocypack::UInt8Buffer {
   velocypack::UInt8Buffer result;
   result.append(buffer.data(), buffer.size());
   return result;
+}
+
+auto LogPayload::stealBuffer() -> velocypack::UInt8Buffer&& {
+  return std::move(buffer);
 }
 
 auto LogPayload::byteSize() const noexcept -> std::size_t {
