@@ -95,7 +95,7 @@ export const parseQuery = (query: string) => {
     }
   }
 
-  var match;
+  let match;
   _.each(bindParams, function (v, k) {
     match = v.match(bindParamRegExp);
 

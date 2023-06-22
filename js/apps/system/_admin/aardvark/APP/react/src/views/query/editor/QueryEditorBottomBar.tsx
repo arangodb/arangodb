@@ -3,24 +3,19 @@ import {
   Button,
   ButtonGroup,
   Flex,
-  FormLabel,
   IconButton,
-  Input,
   Menu,
   MenuButton,
   MenuItem,
   MenuList,
   Stack,
-  Text
+  Text,
+  useDisclosure
 } from "@chakra-ui/react";
 import React from "react";
-import {
-  Modal,
-  ModalBody,
-  ModalFooter,
-  ModalHeader
-} from "../../../components/modal";
 import { useQueryContext } from "../QueryContextProvider";
+import { DebugPackageModal } from "./DebugPackageModal";
+import { SaveAsModal } from "./SaveAsModal";
 
 export const QueryEditorBottomBar = () => {
   const {
@@ -43,6 +38,11 @@ export const QueryEditorBottomBar = () => {
     existingQuery?.value !== queryValue ||
     JSON.stringify(existingQuery?.parameter) !==
       JSON.stringify(queryBindParams);
+  const {
+    isOpen: isDebugPackageModalOpen,
+    onOpen: onOpenDebugPackageModal,
+    onClose: onCloseDebugPackageModal
+  } = useDisclosure();
   return (
     <Flex
       direction="row"
@@ -53,6 +53,10 @@ export const QueryEditorBottomBar = () => {
       alignItems="center"
     >
       <SaveAsModal />
+      <DebugPackageModal
+        isDebugPackageModalOpen={isDebugPackageModalOpen}
+        onCloseDebugPackageModal={onCloseDebugPackageModal}
+      />
       <Text fontWeight="medium">
         Query name: {queryName ? queryName : "Untitled"}
       </Text>
@@ -87,8 +91,8 @@ export const QueryEditorBottomBar = () => {
             Remove all results
           </Button>
         ) : null}
-        <Button size="sm" colorScheme="gray">
-          Create debug pacakge
+        <Button size="sm" colorScheme="gray" onClick={onOpenDebugPackageModal}>
+          Create debug package
         </Button>
         <ButtonGroup isAttached>
           <Button
@@ -122,58 +126,5 @@ export const QueryEditorBottomBar = () => {
         </ButtonGroup>
       </Stack>
     </Flex>
-  );
-};
-
-const SaveAsModal = () => {
-  const [newQueryName, setNewQueryName] = React.useState<string>("");
-  const {
-    onSaveAs,
-    onSave,
-    setQueryName,
-    savedQueries,
-    isSaveAsModalOpen,
-    onCloseSaveAsModal
-  } = useQueryContext();
-  const queryExists = !!savedQueries?.find(
-    query => query.name === newQueryName
-  );
-  return (
-    <Modal isOpen={isSaveAsModalOpen} onClose={onCloseSaveAsModal}>
-      <ModalHeader>Save Query</ModalHeader>
-      <ModalBody>
-        <FormLabel htmlFor="newQueryName">Query Name</FormLabel>
-        <Input
-          id="newQueryName"
-          onChange={e => {
-            setNewQueryName(e.target.value);
-          }}
-        />
-      </ModalBody>
-      <ModalFooter>
-        <Stack direction="row">
-          <Button colorScheme="gray" onClick={() => onCloseSaveAsModal()}>
-            Cancel
-          </Button>
-          <Button
-            isDisabled={newQueryName === ""}
-            colorScheme="green"
-            onClick={async () => {
-              if (queryExists) {
-                await onSave(newQueryName);
-                setQueryName(newQueryName);
-                onCloseSaveAsModal();
-                return;
-              }
-              await onSaveAs(newQueryName);
-              setQueryName(newQueryName);
-              onCloseSaveAsModal();
-            }}
-          >
-            {queryExists ? "Update" : "Save"}
-          </Button>
-        </Stack>
-      </ModalFooter>
-    </Modal>
   );
 };
