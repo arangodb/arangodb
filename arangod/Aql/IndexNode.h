@@ -73,6 +73,9 @@ class IndexNode : public ExecutionNode,
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief return the condition for the node
   Condition* condition() const;
 
