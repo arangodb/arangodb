@@ -1698,6 +1698,8 @@ SingletonNode::SingletonNode(ExecutionPlan* plan,
 
 ExecutionNode::NodeType SingletonNode::getType() const { return SINGLETON; }
 
+size_t SingletonNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -1913,6 +1915,8 @@ ExecutionNode::NodeType EnumerateListNode::getType() const {
   return ENUMERATE_LIST;
 }
 
+size_t EnumerateListNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 /// @brief replaces variables in the internals of the execution node
 /// replacements are { old variable id => new variable }
 void EnumerateListNode::replaceVariables(
@@ -1992,6 +1996,8 @@ LimitNode::LimitNode(ExecutionPlan* plan, ExecutionNodeId id, size_t offset,
       _fullCount(false) {}
 
 ExecutionNode::NodeType LimitNode::getType() const { return LIMIT; }
+
+size_t LimitNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
@@ -2193,6 +2199,8 @@ CostEstimate CalculationNode::estimateCost() const {
 }
 
 ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
+
+size_t CalculationNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 Variable const* CalculationNode::outVariable() const { return _outVariable; }
 
@@ -2482,6 +2490,8 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan, ExecutionNodeId id,
 
 ExecutionNode::NodeType SubqueryNode::getType() const { return SUBQUERY; }
 
+size_t SubqueryNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 Variable const* SubqueryNode::outVariable() const { return _outVariable; }
 
 ExecutionNode* SubqueryNode::getSubquery() const { return _subquery; }
@@ -2560,6 +2570,8 @@ FilterNode::FilterNode(ExecutionPlan* plan, ExecutionNodeId id,
 }
 
 ExecutionNode::NodeType FilterNode::getType() const { return FILTER; }
+
+size_t FilterNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 /// @brief replaces variables in the internals of the execution node
 /// replacements are { old variable id => new variable }
@@ -2666,6 +2678,8 @@ ReturnNode::ReturnNode(ExecutionPlan* plan, ExecutionNodeId id,
 
 ExecutionNode::NodeType ReturnNode::getType() const { return RETURN; }
 
+size_t ReturnNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 void ReturnNode::setCount() { _count = true; }
 
 /// @brief replaces variables in the internals of the execution node
@@ -2725,6 +2739,8 @@ ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan, bool withDependencies,
                      withDependencies, withProperties);
 }
 
+size_t NoResultsNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 SortElement::SortElement(Variable const* v, bool asc)
     : var(v), ascending(asc) {}
 
@@ -2752,6 +2768,10 @@ EnumerateCollectionNode::EnumerateCollectionNode(
 
 ExecutionNode::NodeType EnumerateCollectionNode::getType() const {
   return ENUMERATE_COLLECTION;
+}
+
+size_t EnumerateCollectionNode::getMemoryUsedBytes() const {
+  return sizeof(*this);
 }
 
 IndexHint const& EnumerateCollectionNode::hint() const { return _hint; }
@@ -2825,6 +2845,8 @@ AsyncNode::AsyncNode(ExecutionPlan* plan,
 
 ExecutionNode::NodeType AsyncNode::getType() const { return ASYNC; }
 
+size_t AsyncNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
   return cloneHelper(std::make_unique<AsyncNode>(plan, _id), withDependencies,
@@ -2890,6 +2912,8 @@ CostEstimate MaterializeNode::estimateCost() const {
 void MaterializeNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inNonMaterializedDocId);
 }
+
+size_t MaterializeNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 std::vector<Variable const*> MaterializeNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};

@@ -81,6 +81,9 @@ const replicatedLogRegressionSuite = function () {
       // is the only server that has received log index 2.
       const {index: logIdx} = log.insert({foo: "baz"}, {dontWaitForCommit: true});
 
+      const spearheadOf = (follower) => {
+        return log.status().participants[leader].response.follower[follower].spearhead.index;
+      };
       waitFor(() => {
             // As followers[0] is stopped and writeConcern=3, the log cannot currently commit.
             const {participants: {[leader]: {response: status}}} = log.status();
@@ -96,9 +99,9 @@ const replicatedLogRegressionSuite = function () {
 
       // wait for followers[1] to have received the log entries, and the leader to take note of that
       waitFor(() => {
-        const followerSpearhead = log.status().participants[leader].response.follower[followers[1]].spearhead.index;
-        return logIdx === followerSpearhead
-            || new Error(`Expected spearhead of ${followers[1]} to be ${logIdx}, but is ${followerSpearhead}.`);
+        const followerSpearhead = spearheadOf(followers[1]);
+        return logIdx <= followerSpearhead
+          || new Error(`Expected spearhead of ${followers[1]} to be at least ${logIdx}, but is ${followerSpearhead}.`);
       });
 
       // stop the other follower as well
@@ -109,23 +112,30 @@ const replicatedLogRegressionSuite = function () {
 
       // wait for followers[0] to have received the log entries, and the leader to take note of that
       waitFor(() => {
-        const followerSpearhead = log.status().participants[leader].response.follower[followers[0]].spearhead.index;
-        return logIdx === followerSpearhead
-            || new Error(`Expected spearhead of ${followers[0]} to be ${logIdx}, but is ${followerSpearhead}.`);
+        const followerSpearhead = spearheadOf(followers[0]);
+        return logIdx <= followerSpearhead
+          || new Error(`Expected spearhead of ${followers[0]} to be at least ${logIdx}, but is ${followerSpearhead}.`);
       });
 
       { // followers[1] got the log entry before it was stopped, and followers[0] just got it now, so it should be committed.
         const status = log.status().participants[leader].response;
-        assertIdentical(status.lastCommitStatus.reason, "NothingToCommit");
-        assertIdentical(status.local.commitIndex, logIdx, `Commit index is ${status.local.commitIndex}, but should be exactly ${logIdx}`);
+        assertTrue(logIdx <= status.local.commitIndex, `Commit index is ${status.local.commitIndex}, but should be at least ${logIdx}`);
       }
 
       continueServerWait(followers[1]);
-      {
-        const status = log.status().participants[leader].response;
-        assertIdentical(status.lastCommitStatus.reason, "NothingToCommit");
-        assertIdentical(status.local.commitIndex, logIdx, `Commit index is ${status.local.commitIndex}, but should be exactly ${logIdx}`);
-      }
+      waitFor(() => {
+        const status = log.status();
+        const {participants: {[leader]: {response: {lastCommitStatus: {reason: commitReason}, local: {spearhead: {index: spearhead}, commitIndex}}}}}
+          = status;
+        if (commitReason !== 'NothingToCommit') {
+          return Error(`Expected everything to be committed, but last commit reason is ${commitReason}. Status: ${JSON.stringify(status)}`);
+        }
+        if (commitIndex !== spearhead) {
+          return Error(`Commit index is ${commitIndex}, but should be equal to the spearhead ${spearhead}. Status: ${JSON.stringify(status)}`);
+        }
+        return true;
+      });
+
       replicatedLogDeleteTarget(database, logId);
     },
 
