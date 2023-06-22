@@ -3,9 +3,9 @@ import React from "react";
 import { useQueryContext } from "../QueryContextProvider";
 import { AQLEditor } from "./AQLEditor";
 import { QueryEditorBottomBar } from "./QueryEditorBottomBar";
+import { QueryEditorTopBar } from "./QueryEditorTopBar";
 import { QueryResults } from "./QueryResults";
 import { QuerySettingsPane } from "./QuerySettingsPane";
-import { QueryEditorTopBar } from "./QueryEditorTopBar";
 import { SavedQueryView } from "./SavedQueryView";
 
 export const QueryEditorPane = () => {
