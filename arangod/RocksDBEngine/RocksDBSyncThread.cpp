@@ -58,8 +58,9 @@ Result RocksDBSyncThread::syncWal() {
   auto const lastSequenceNumber = db->GetLatestSequenceNumber();
 
   // actual syncing is done without holding the lock
-  auto const result = sync(db);
+  auto result = sync(db);
 
+  bool sequenceNumberUpdate = false;
   if (result.ok()) {
     std::lock_guard guard{_condition.mutex};
 
@@ -71,7 +72,12 @@ Result RocksDBSyncThread::syncWal() {
     if (lastSequenceNumber > _lastSequenceNumber) {
       // update last sequence number
       _lastSequenceNumber = lastSequenceNumber;
+      sequenceNumberUpdate = true;
     }
+  }
+
+  if (sequenceNumberUpdate) {
+    notifySyncListeners(lastSequenceNumber);
   }
 
   return result;
@@ -93,6 +99,14 @@ void RocksDBSyncThread::beginShutdown() {
   // wake up the thread that may be waiting in run()
   std::lock_guard guard{_condition.mutex};
   _condition.cv.notify_all();
+}
+
+void RocksDBSyncThread::registerSyncListener(
+    std::shared_ptr<ISyncListener> listener) {
+  _syncListeners.doUnderLock(
+      [listener = std::move(listener)](auto& listeners) mutable {
+        listeners.emplace_back(std::move(listener));
+      });
 }
 
 void RocksDBSyncThread::run() {
@@ -158,6 +172,7 @@ void RocksDBSyncThread::run() {
 
       Result res = this->sync(db);
 
+      bool sequenceNumberUpdate = false;
       if (res.ok()) {
         // success case
         std::lock_guard guard{_condition.mutex};
@@ -165,6 +180,7 @@ void RocksDBSyncThread::run() {
         if (lastSequenceNumber > _lastSequenceNumber) {
           // bump last sequence number we have synced
           _lastSequenceNumber = lastSequenceNumber;
+          sequenceNumberUpdate = true;
         }
         if (lastSyncTime > _lastSyncTime) {
           _lastSyncTime = lastSyncTime;
@@ -175,6 +191,10 @@ void RocksDBSyncThread::run() {
         LOG_TOPIC("5e275", ERR, Logger::ENGINES)
             << "could not sync RocksDB WAL: " << res.errorMessage();
       }
+
+      if (sequenceNumberUpdate) {
+        notifySyncListeners(lastSequenceNumber);
+      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("77b1e", ERR, Logger::ENGINES)
           << "caught exception in RocksDBSyncThread: " << ex.what();
@@ -183,4 +203,13 @@ void RocksDBSyncThread::run() {
           << "caught unknown exception in RocksDBSyncThread";
     }
   }
+}
+
+void RocksDBSyncThread::notifySyncListeners(
+    rocksdb::SequenceNumber seq) noexcept {
+  _syncListeners.doUnderLock([seq](auto&& listeners) {
+    for (auto& listener : listeners) {
+      listener->onSync(seq);
+    }
+  });
 }
