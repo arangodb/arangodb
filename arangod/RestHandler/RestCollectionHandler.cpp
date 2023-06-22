@@ -352,7 +352,9 @@ void RestCollectionHandler::handleCommandPost() {
     }
   }
 
-  bool isDC2DCContext = ExecContext::current().isSuperuser();
+  // Without authentication we cannot distinguish if we are in a DC2DC context.
+  bool isDC2DCContext =
+      !ExecContext::isAuthEnabled() || ExecContext::current().isSuperuser();
 
   // for some "security" a list of allowed parameters (i.e. all
   // others are disallowed!)
