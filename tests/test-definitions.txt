@@ -122,6 +122,7 @@ dump_maskings,dump_encrypted enterprise -- --dumpAgencyOnError true
 dump_mixed_cluster_single,dump_mixed_single_cluster name=dump_mixed -- --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes !mac parallelity=1 priority=2000 -- --dumpAgencyOnError true 
+dump_with_crashes_parallel !mac parallelity=1 priority=2000 cluster -- --dumpAgencyOnError true 
 
 # Audit Tests
 audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true
