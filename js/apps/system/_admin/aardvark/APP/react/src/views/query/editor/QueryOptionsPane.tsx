@@ -19,7 +19,7 @@ import React, { useState } from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { useQueryContext } from "../QueryContextProvider";
 
-export const QuerySettingsPane = () => {
+export const QueryOptionsPane = () => {
   const [mode, setMode] = useState<"json" | "table">("table");
   return (
     <Box height="full">

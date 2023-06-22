@@ -4,8 +4,8 @@ import { useQueryContext } from "../QueryContextProvider";
 import { AQLEditor } from "./AQLEditor";
 import { QueryEditorBottomBar } from "./QueryEditorBottomBar";
 import { QueryEditorTopBar } from "./QueryEditorTopBar";
+import { QueryOptionsPane } from "./QueryOptionsPane";
 import { QueryResults } from "./QueryResults";
-import { QuerySettingsPane } from "./QuerySettingsPane";
 import { SavedQueryView } from "./SavedQueryView";
 
 export const QueryEditorPane = () => {
@@ -28,7 +28,7 @@ export const QueryEditorPane = () => {
           borderColor="gray.400"
           orientation="vertical"
         />
-        <QuerySettingsPane />
+        <QueryOptionsPane />
       </Grid>
       <Divider borderColor="gray.400" borderBottomWidth="4px" />
       <QueryEditorBottomBar />
