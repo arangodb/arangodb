@@ -35,7 +35,6 @@ class MetricsTracker:
         self.metricsNames.extend(metrics)
 
     def filterMetric(self, actualMetricName):
-        print(self.metricsNames)
         if len(self.metricsNames) > 0:
             for filterName in self.metricsNames:
                 if filterName in actualMetricName:
@@ -81,12 +80,14 @@ class MetricsTracker:
             else:
                 pngFileName = fileName + "-" + metric + ".png"
                 plotValues = []
+                plotTimestamps = []
                 for value in dictData[metric]["values"]:
-                    plotValues.append(value[1])  # value without timestamp
+                    plotValues.append(value[1])
+                    plotTimestamps.append(value[0])
 
                 # Metrics to file as plot data
                 fig, ax = plt.subplots()
-                t = self.timestamps
+                t = plotTimestamps
                 s = np.array(plotValues)
                 fmt = ticker.FuncFormatter(lambda x, pos: time.strftime('%H:%M:%S', time.gmtime(x)))
                 ax.xaxis.set_major_formatter(fmt)

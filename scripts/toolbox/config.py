@@ -12,6 +12,7 @@ arangodb = {
     "passwd": "",
     "startupParameters": {
         "server.authentication": "false",
+        "configuration": "../../etc/relative/arangod.conf",
         "log.file": globals["workDir"] + "/arangodb.log",
         "working-directory": globals["workDir"],
         "database.directory": globals["workDir"] + "/database",
