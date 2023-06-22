@@ -353,7 +353,7 @@ void RestCollectionHandler::handleCommandPost() {
   }
 
   bool isDC2DCContext =
-      ExecContext::isAuthEnabled() && ExecContext::current().isSuperuser();
+      !ExecContext::isAuthEnabled() || ExecContext::current().isSuperuser();
 
   // for some "security" a list of allowed parameters (i.e. all
   // others are disallowed!)
