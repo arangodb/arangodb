@@ -1,23 +1,13 @@
 import {
   Box,
   Button,
-  Input,
   Tab,
-  Table,
-  TableContainer,
   TabList,
   TabPanel,
   TabPanels,
-  Tabs,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from "@chakra-ui/react";
+  Tabs} from "@chakra-ui/react";
 import React, { useState } from "react";
-import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
-import { useQueryContext } from "../QueryContextProvider";
+import { BindVariablesTab } from "./BindVariablesTab";
 
 export const QueryOptionsPane = () => {
   const [mode, setMode] = useState<"json" | "table">("table");
@@ -51,60 +41,4 @@ export const QueryOptionsPane = () => {
   );
 };
 
-const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
-  const { queryBindParams, onBindParamsChange } = useQueryContext();
-  if (mode === "table") {
-    return (
-      <TableContainer>
-        <Table size="sm">
-          <Thead>
-            <Th>Key</Th>
-            <Th>Value</Th>
-          </Thead>
-          <Tbody>
-            {Object.keys(queryBindParams).map(key => (
-              <Tr key={key}>
-                <Td>{key}</Td>
-                <Td>
-                  <Input
-                    size="sm"
-                    placeholder="Value"
-                    value={queryBindParams[key]}
-                    onChange={e => {
-                      const newQueryBindParams = {
-                        ...queryBindParams,
-                        [key]: e.target.value
-                      };
-                      onBindParamsChange(newQueryBindParams);
-                    }}
-                  />
-                </Td>
-              </Tr>
-            ))}
-          </Tbody>
-          {Object.keys(queryBindParams).length === 0 ? (
-            <Tr>
-              <Td colSpan={2}>No bind parameters found in query</Td>
-            </Tr>
-          ) : null}
-        </Table>
-      </TableContainer>
-    );
-  }
-  return (
-    <ControlledJSONEditor
-      mode="code"
-      value={queryBindParams}
-      onChangeJSON={updatedValue => {
-        onBindParamsChange(updatedValue);
-      }}
-      htmlElementProps={{
-        style: {
-          height: "calc(100% - 20px)"
-        }
-      }}
-      // @ts-ignore
-      mainMenuBar={false}
-    />
-  );
-};
+
