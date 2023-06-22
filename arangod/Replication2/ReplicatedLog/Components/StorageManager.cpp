@@ -142,12 +142,15 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
 
 StorageManager::StorageManager(std::unique_ptr<IStorageEngineMethods> methods,
                                LoggerContext const& loggerContext,
-                               const std::shared_ptr<IScheduler> scheduler)
-    : syncIndex(LogIndex{0}),  // TODO load from disk
-      guardedData(std::move(methods)),
+                               std::shared_ptr<IScheduler> scheduler)
+    : guardedData(std::move(methods)),
       loggerContext(
           loggerContext.with<logContextKeyLogComponent>("storage-manager")),
-      scheduler(std::move(scheduler)) {}
+      scheduler(std::move(scheduler)),
+      syncIndex(getTermIndexMapping()
+                    .getLastIndex()
+                    .value_or(TermIndexPair{})
+                    .index) {}
 
 auto StorageManager::resign() noexcept
     -> std::unique_ptr<IStorageEngineMethods> {

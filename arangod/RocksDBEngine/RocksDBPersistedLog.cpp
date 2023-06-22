@@ -198,7 +198,7 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
           }
         }
 
-        // Promise used used to signal that data has been synced to disk up to
+        // Promise used to signal that data has been synced to disk up to
         // the last sequence number.
         futures::Promise<Result> syncedToDisk;
         auto seq = _db->GetLatestSequenceNumber();

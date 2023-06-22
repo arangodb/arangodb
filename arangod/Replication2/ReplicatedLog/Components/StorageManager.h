@@ -77,8 +77,6 @@ struct StorageManager : IStorageManager,
                             TermIndexMapping mappingResult);
   };
 
-  Guarded<LogIndex> syncIndex;
-
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<IStorageEngineMethods> methods);
 
@@ -92,6 +90,7 @@ struct StorageManager : IStorageManager,
   using GuardType = Guarded<GuardedData>::mutex_guard_type;
   LoggerContext const loggerContext;
   std::shared_ptr<IScheduler> const scheduler;
+  Guarded<LogIndex> syncIndex;
 
   auto scheduleOperation(GuardType&&, TermIndexMapping mapResult,
                          std::unique_ptr<StorageOperation>)
