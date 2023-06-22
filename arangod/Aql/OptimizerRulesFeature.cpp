@@ -264,7 +264,7 @@ optimizations.)");
       OptimizerRule::interchangeAdjacentEnumerationsRule,
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanCreateAdditionalPlans,
                                OptimizerRule::Flags::CanBeDisabled),
-      R"(Try out permutations of `FOR` statements in queries that contains
+      R"(Try out permutations of `FOR` statements in queries that contain
 multiple loops, which may enable further optimizations by other rules.)");
 
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
