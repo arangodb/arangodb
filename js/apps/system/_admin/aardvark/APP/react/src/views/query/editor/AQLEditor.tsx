@@ -89,7 +89,7 @@ const useSetupAQLEditor = (jsonEditorRef: React.MutableRefObject<null>) => {
     aceEditor.getSession().setMode("ace/mode/aql");
     aceEditor.setTheme("ace/theme/textmate");
     aceEditor.getSession().setUseWrapMode(true);
-    aceEditor.setFontSize("14px");
+    aceEditor.setFontSize("10pt");
     aceEditor.setShowPrintMargin(false);
   }, [jsonEditorRef]);
 };
