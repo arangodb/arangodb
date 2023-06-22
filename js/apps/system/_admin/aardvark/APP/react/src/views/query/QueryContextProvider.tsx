@@ -34,7 +34,7 @@ type QueryContextType = {
   onRemoveResult: (index: number) => void;
   queryName?: string;
   setQueryName: (value?: string) => void;
-  onSaveAs: (queryName: string) => void;
+  onSaveAs: (queryName: string) => Promise<void>;
   savedQueries?: QueryType[];
   isFetchingQueries?: boolean;
   isSaveAsModalOpen: boolean;
@@ -98,8 +98,7 @@ export const QueryContextProvider = ({
   const { onSave, onSaveAs } = useQueryUpdaters({
     queryValue,
     queryBindParams,
-    savedQueries,
-    onCloseSaveAsModal
+    savedQueries
   });
 
   return (

@@ -5,14 +5,12 @@ import { QueryType } from "./editor/useFetchUserSavedQueries";
 export const useQueryUpdaters = ({
   queryValue,
   queryBindParams,
-  savedQueries,
-  onCloseSaveAsModal
+  savedQueries
 }: {
   queryValue: string;
   queryBindParams: { [key: string]: string };
   queryName?: string;
   savedQueries?: QueryType[];
-  onCloseSaveAsModal: () => void;
 }) => {
   const onSaveAs = async (queryName: string) => {
     const newQueries = [
@@ -23,7 +21,6 @@ export const useQueryUpdaters = ({
       queries: newQueries,
       queryName
     });
-    onCloseSaveAsModal();
   };
   const onSave = async (queryName: string) => {
     await mutate("/savedQueries");
@@ -33,7 +30,8 @@ export const useQueryUpdaters = ({
           return {
             name: queryName,
             value: queryValue,
-            parameter: queryBindParams
+            parameter: queryBindParams,
+            modified_at: Date.now()
           };
         }
         return query;

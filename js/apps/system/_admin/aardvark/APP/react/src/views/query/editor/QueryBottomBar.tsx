@@ -161,11 +161,13 @@ const SaveAsModal = () => {
             onClick={async () => {
               if (queryExists) {
                 await onSave(newQueryName);
-                onCloseSaveAsModal();
                 setQueryName(newQueryName);
+                onCloseSaveAsModal();
                 return;
               }
-              onSaveAs(newQueryName);
+              await onSaveAs(newQueryName);
+              setQueryName(newQueryName);
+              onCloseSaveAsModal();
             }}
           >
             {queryExists ? "Update" : "Save"}

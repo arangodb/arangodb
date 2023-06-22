@@ -14,7 +14,8 @@ export const useQueryExecutors = (
     });
   };
   const onExecute = async ({
-    queryValue, queryBindParams
+    queryValue,
+    queryBindParams
   }: QueryExecutionOptions) => {
     const currentDB = getCurrentDB();
     try {
@@ -42,7 +43,8 @@ export const useQueryExecutors = (
   };
 
   const onProfile = async ({
-    queryValue, queryBindParams
+    queryValue,
+    queryBindParams
   }: QueryExecutionOptions) => {
     const currentDB = getCurrentDB();
     const literal = aql.literal(queryValue);
@@ -61,7 +63,8 @@ export const useQueryExecutors = (
     ]);
   };
   const onExplain = async ({
-    queryValue, queryBindParams
+    queryValue,
+    queryBindParams
   }: QueryExecutionOptions) => {
     const currentDB = getCurrentDB();
     const literal = aql.literal(queryValue);
