@@ -40,6 +40,8 @@ struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
       irs::type_info::type_id primarySortCompression,
       irs::IndexReaderOptions const& readerOptions);
 
+  void unload() { _dataStore.resetDataStore(); }
+
 #if 0
   template<typename MetaType>
   void hotbackupInsert(uint64_t tick, LocalDocumentId documentId,
@@ -64,6 +66,7 @@ struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
         IResearchInvertedIndexMetaIndexingContext>(tick, documentId, doc,
                                                    *meta._indexingContext);
   }
+
   [[nodiscard]] Index& index() noexcept final { TRI_ASSERT(false); }
   [[nodiscard]] Index const& index() const noexcept final { TRI_ASSERT(false); }
   [[nodiscard]] AnalyzerPool::ptr findAnalyzer(
