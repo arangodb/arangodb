@@ -49,6 +49,7 @@ auto constexpr LeadershipEstablished =
 auto constexpr CommitStatus = std::string_view{"commitStatus"};
 auto constexpr Supervision = std::string_view{"supervision"};
 auto constexpr Leader = std::string_view{"leader"};
+auto constexpr SafeRebootIds = std::string_view{"safeRebootIds"};
 auto constexpr TargetVersion = std::string_view{"targetVersion"};
 auto constexpr Version = std::string_view{"version"};
 auto constexpr Actions = std::string_view{"actions"};
@@ -287,6 +288,8 @@ auto inspect(Inspector& f, LogCurrent& x) {
           .fallback(std::unordered_map<ParticipantId, LogCurrentLocalState>{}),
       f.field(static_strings::Supervision, x.supervision),
       f.field(static_strings::Leader, x.leader),
+      f.field(static_strings::SafeRebootIds, x.safeRebootIds)
+          .fallback(std::unordered_map<ParticipantId, RebootId>{}),
       f.field(static_strings::Actions, x.actions)
           .fallback(std::vector<LogCurrent::ActionDummy>{}));
 }

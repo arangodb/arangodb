@@ -40,11 +40,13 @@
 #include "Replication2/Mocks/StorageEngineMethodsMock.h"
 #include "Mocks/Servers.h"
 
+#include "Replication2/ReplicatedLog/DefaultRebootIdCache.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/IScheduler.h"
 #include "Replication2/Mocks/SchedulerMocks.h"
+#include "Replication2/Mocks/RebootIdCacheMock.h"
 
 #include <thread>
 
@@ -223,11 +225,13 @@ struct StateManagerTest : testing::Test {
       std::make_shared<DelayedScheduler>();
   std::shared_ptr<DelayedScheduler> logScheduler =
       std::make_shared<DelayedScheduler>();
+  std::shared_ptr<test::RebootIdCacheMock> rebootIdCache =
+      std::make_shared<test::RebootIdCacheMock>();
   std::shared_ptr<FakeFollowerFactory> fakeFollowerFactory =
       std::make_shared<FakeFollowerFactory>(vocbaseMock, gid.id);
   std::shared_ptr<DefaultParticipantsFactory> participantsFactory =
       std::make_shared<replicated_log::DefaultParticipantsFactory>(
-          fakeFollowerFactory, logScheduler);
+          fakeFollowerFactory, logScheduler, rebootIdCache);
 
   std::shared_ptr<ReplicatedLog> log =
       std::make_shared<replicated_log::ReplicatedLog>(
@@ -265,6 +269,7 @@ TEST_F(StateManagerTest_EmptyState, get_leader_state_machine_early) {
   auto const config = agency::ParticipantsConfig{
       1, agency::ParticipantsFlagsMap{{myself.serverId, {}}},
       agency::LogPlanConfig{}};
+  EXPECT_CALL(*rebootIdCache, getRebootIdsFor);
   log->updateConfig(term, config, myself);
   {
     auto logStatus = log->getQuickStatus();
@@ -286,6 +291,7 @@ TEST_F(StateManagerTest_EmptyState, get_leader_state_machine_early) {
   EXPECT_TRUE(executor->hasWork() or scheduler->hasWork() or
               logScheduler->hasWork());
   bool runAtLeastOnce = false;
+  EXPECT_CALL(*rebootIdCache, registerCallbackOnChange);
   for (auto status = log->getQuickStatus();
        not status.leadershipEstablished and
        (executor->hasWork() or scheduler->hasWork() or logScheduler->hasWork());

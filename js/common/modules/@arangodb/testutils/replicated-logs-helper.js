@@ -77,6 +77,14 @@ const getServerRebootId = function (serverId) {
   return readAgencyValueAt(`Current/ServersKnown/${serverId}/rebootId`);
 };
 
+const bumpServerRebootId = function (serverId) {
+  const response = serverHelper.agency.increaseVersion(`Current/ServersKnown/${serverId}/rebootId`);
+  if (response !== true) {
+    return undefined;
+  }
+  return getServerRebootId(serverId);
+};
+
 const getParticipantsObjectForServers = function (servers) {
   return _.reduce(servers, (a, v) => {
     a[v] = {allowedInQuorum: true, allowedAsLeader: true, forced: false};
@@ -161,7 +169,8 @@ const coordinators = (function () {
  *         localStatus: Object<string, Object>,
  *         localState: Object,
  *         supervision?: Object,
- *         leader?: Object
+ *         leader?: Object,
+ *         safeRebootIds?: Object<string, number>
  *       }
  *   }}
  */
@@ -722,6 +731,7 @@ exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
 exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
+exports.bumpServerRebootId = bumpServerRebootId;
 exports.getServerUrl = getServerUrl;
 exports.getSupervisionActionTypes = getSupervisionActionTypes;
 exports.getSupervisionActions = getSupervisionActions;
