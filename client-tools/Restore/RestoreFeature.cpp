@@ -1493,8 +1493,6 @@ Result RestoreFeature::RestoreMainJob::restoreData(
       }
     }
   }
-  LOG_DEVEL << "IS COMPRESSED: " << isCompressed
-            << ", IS MULTI: " << isMultiFile << ", FILESIZE: " << fileSize;
 
   if (options.progress) {
     LOG_TOPIC("95913", INFO, Logger::RESTORE)
@@ -1670,9 +1668,19 @@ Result RestoreFeature::RestoreMainJob::restoreData(
 
   // end of main job
   if (result.ok()) {
-    {
-      std::lock_guard locker{sharedState->mutex};
-      sharedState->readCompleteInputfile = true;
+    while (true) {
+      {
+        std::lock_guard locker{sharedState->mutex};
+        if (sharedState->pendingJobs == 0) {
+          // no more pending jobs. we are done!
+          sharedState->readCompleteInputfile = true;
+          break;
+        }
+      }
+      // we still have pending jobs, which are dispatched to other
+      // threads but not yet finished. wait for all of them to be
+      // fully processed
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     updateProgress();
@@ -1737,9 +1745,20 @@ RestoreFeature::RestoreSendJob::RestoreSendJob(
     MultiFileReadOffset readOffset,
     std::unique_ptr<basics::StringBuffer> buffer)
     : RestoreJob(feature, progressTracker, options, stats, collectionName,
-                 std::move(sharedState)),
+                 sharedState),
       readOffset(readOffset),
-      buffer(std::move(buffer)) {}
+      buffer(std::move(buffer)) {
+  // count number of pending jobs up
+  std::lock_guard locker{sharedState->mutex};
+  ++sharedState->pendingJobs;
+}
+
+RestoreFeature::RestoreSendJob::~RestoreSendJob() {
+  // count number of pending jobs back at the end
+  std::lock_guard locker{sharedState->mutex};
+  TRI_ASSERT(sharedState->pendingJobs > 0);
+  --sharedState->pendingJobs;
+}
 
 Result RestoreFeature::RestoreSendJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {

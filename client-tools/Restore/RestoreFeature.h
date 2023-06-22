@@ -166,8 +166,6 @@ class RestoreFeature final : public ArangoRestoreFeature {
   /// @brief shared state for a single collection, can be shared by multiple
   /// RestoreJobs (one RestoreMainJob and x RestoreSendJobs)
   struct SharedState {
-    SharedState() : readCompleteInputfile(false) {}
-
     std::mutex mutex;
 
     /// @brief this contains errors produced by background send operations
@@ -180,9 +178,14 @@ class RestoreFeature final : public ArangoRestoreFeature {
     /// each chunk to test the resumption of a restore after a crash)
     std::map<MultiFileReadOffset, size_t> readOffsets;
 
+    /// @brief number of dispatched jobs that we need to wait for until we
+    /// can declare final success. this is important only when restoring the
+    /// data for a collection/shards from multiple files.
+    size_t pendingJobs{0};
+
     /// @brief whether ot not we have read the complete input data file for the
     /// collection
-    bool readCompleteInputfile;
+    bool readCompleteInputfile{false};
   };
 
   /// @brief Stores all necessary data to restore a single collection or shard
@@ -244,6 +247,8 @@ class RestoreFeature final : public ArangoRestoreFeature {
                    std::shared_ptr<SharedState> sharedState,
                    MultiFileReadOffset readOffset,
                    std::unique_ptr<basics::StringBuffer> buffer);
+
+    ~RestoreSendJob();
 
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
