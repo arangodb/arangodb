@@ -25,7 +25,7 @@
 
 #include "Aql/ExecutionPlan.h"
 #include "Containers/RollingVector.h"
-#include "Basics/ResourceUsage.h"
+#include "Aql/CountingMemoryResource.h"
 
 #include <velocypack/Builder.h>
 
@@ -37,36 +37,6 @@
 #include <memory_resource>
 
 namespace arangodb::aql {
-namespace {
-struct CountingMemoryResource : std::pmr::memory_resource {
-  explicit CountingMemoryResource(memory_resource* base,
-                                  ResourceMonitor& resourceMonitor)
-      : base(base), _resourceMonitor(resourceMonitor) {}
-
- private:
-  void* do_allocate(size_t bytes, size_t alignment) override {
-    void* mem = base->allocate(bytes, alignment);
-    _resourceMonitor.increaseMemoryUsage(bytes);
-
-    return mem;
-  }
-
-  void do_deallocate(void* p, size_t bytes, size_t alignment) override {
-    base->deallocate(p, bytes, alignment);
-    _resourceMonitor.decreaseMemoryUsage(bytes);
-  }
-
-  [[nodiscard]] bool do_is_equal(
-      memory_resource const&) const noexcept override {
-    return false;
-  }
-
-  std::pmr::memory_resource* base;
-
-  /// @brief current resources and limits used by query
-  ResourceMonitor& _resourceMonitor;
-};
-}  // namespace
 
 struct OptimizerRule;
 struct QueryOptions;
@@ -237,8 +207,6 @@ class Optimizer {
 
   /// @brief run only the required optimizer rules
   bool _runOnlyRequiredRules;
-
-  std::unique_ptr<std::pmr::memory_resource> _memoryResource;
 };
 
 }  // namespace arangodb::aql
