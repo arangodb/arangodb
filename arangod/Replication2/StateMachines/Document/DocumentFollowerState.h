@@ -25,8 +25,9 @@
 
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Basics/UnshackledMutex.h"
 
@@ -34,7 +35,7 @@ namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
-enum class OperationType;
+struct SnapshotConfig;
 struct SnapshotBatch;
 
 struct DocumentFollowerState
@@ -45,42 +46,71 @@ struct DocumentFollowerState
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
   ~DocumentFollowerState() override;
 
-  ShardID const shardId;
   LoggerContext const loggerContext;
 
-  // unprotected for gtests. TODO think about whether there's a better way
-  // protected:
+  auto getAssociatedShardList() const -> std::vector<ShardID>;
+
+ protected:
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
-  auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
+  auto acquireSnapshot(ParticipantId const& destination) noexcept
       -> futures::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
 
  private:
-  auto forceLocalTransaction(OperationType opType,
-                             velocypack::SharedSlice slice) -> Result;
-  auto truncateLocalShard() -> Result;
-  auto populateLocalShard(velocypack::SharedSlice slice) -> Result;
+  static auto populateLocalShard(
+      ShardID shardId, velocypack::SharedSlice slice,
+      std::shared_ptr<IDocumentStateTransactionHandler> const&
+          transactionHandler) -> Result;
+
+  struct SnapshotTransferResult {
+    Result res{};
+    bool reportFailure{};
+    std::optional<SnapshotId> snapshotId{};
+  };
+
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
-      LogIndex waitForIndex,
+      std::uint64_t snapshotVersion,
+      futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
+      -> futures::Future<SnapshotTransferResult>;
+  auto handleSnapshotTransfer(
+      SnapshotId shapshotId,
+      std::shared_ptr<IDocumentStateLeaderInterface> leader,
+      std::uint64_t snapshotVersion, std::optional<ShardID> currentShard,
       futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
-      -> futures::Future<Result>;
+      -> futures::Future<SnapshotTransferResult>;
 
  private:
   struct GuardedData {
-    explicit GuardedData(std::unique_ptr<DocumentCore> core)
-        : core(std::move(core)){};
+    explicit GuardedData(
+        std::unique_ptr<DocumentCore> core,
+        std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
+
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
+    auto applyEntry(ModifiesUserTransaction auto const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::IntermediateCommit const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(FinishesUserTransaction auto const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::AbortAllOngoingTrx const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::DropShard const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::CreateShard const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+
     std::unique_ptr<DocumentCore> core;
+    std::uint64_t currentSnapshotVersion;
+    std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler;
+    ActiveTransactionsQueue activeTransactions;
   };
 
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
-  std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
-  ActiveTransactionsQueue _activeTransactions;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

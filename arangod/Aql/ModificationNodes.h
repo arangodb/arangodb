@@ -169,6 +169,9 @@ class RemoveNode : public ModificationNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOVE; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -222,6 +225,9 @@ class InsertNode : public ModificationNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return INSERT; }
+
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -330,6 +336,9 @@ class UpdateNode : public UpdateReplaceNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return UPDATE; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -359,6 +368,9 @@ class ReplaceNode : public UpdateReplaceNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REPLACE; }
+
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -400,6 +412,9 @@ class UpsertNode : public ModificationNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return UPSERT; }
+
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

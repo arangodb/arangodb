@@ -169,3 +169,7 @@ void MultipleRemoteModificationNode::getVariablesUsedHere(VarSet& vars) const {
     vars.emplace(_inVariable);
   }
 }
+
+size_t MultipleRemoteModificationNode::getMemoryUsedBytes() const {
+  return sizeof(*this);
+}

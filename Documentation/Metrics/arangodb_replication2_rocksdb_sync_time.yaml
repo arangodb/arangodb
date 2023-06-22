@@ -1,0 +1,13 @@
+name: arangodb_replication2_rocksdb_sync_time
+introducedIn: "3.10.0"
+help: |
+  Histogram containing the sync times in microseconds.
+unit: us
+type: histogram
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Histogram containing the sync times in microseconds. This is the time a worker thread waited on the Sync call on
+  RocksDB. This is only applicable if written with wait-for-sync.

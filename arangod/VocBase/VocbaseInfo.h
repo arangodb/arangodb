@@ -134,6 +134,15 @@ class CreateDatabaseInfo {
   ShardingPrototype shardingPrototype() const;
   void shardingPrototype(ShardingPrototype type);
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ protected:
+  struct MockConstruct {
+  } constexpr static mockConstruct = {};
+  CreateDatabaseInfo(MockConstruct, ArangodServer& server,
+                     ExecContext const& execContext, std::string const& name,
+                     std::uint64_t id);
+#endif
+
  private:
   Result extractUsers(VPackSlice users);
   Result extractOptions(VPackSlice options, bool extactId = true,

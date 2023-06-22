@@ -49,6 +49,9 @@
 
 namespace arangodb {
 
+template<typename T>
+class ResultT;
+
 namespace graph {
 class ClusterTraverserCache;
 }
@@ -59,6 +62,7 @@ class HashedStringRef;
 }  // namespace velocypack
 
 class ClusterFeature;
+struct CreateCollectionBody;
 class NetworkFeature;
 struct OperationOptions;
 class LogicalCollection;

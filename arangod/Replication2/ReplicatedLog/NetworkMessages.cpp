@@ -149,6 +149,12 @@ auto replicated_log::to_string(MessageId id) -> std::string {
   return std::to_string(id._value);
 }
 
+auto replicated_log::to_string(AppendEntriesResult const& res) -> std::string {
+  auto builder = velocypack::Builder();
+  res.toVelocyPack(builder);
+  return builder.toJson();
+}
+
 MessageId::operator velocypack::Value() const noexcept {
   return velocypack::Value(_value);
 }

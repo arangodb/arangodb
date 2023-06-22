@@ -4,7 +4,9 @@ parameters:
   enterprise-branch:
     type: string
     default: ""
-
+  default-enterprise-branch:
+    type: string
+    default: "devel"
 
 commands:
   checkout-enterprise:
@@ -167,7 +169,7 @@ jobs:
       - run:
           name: Build
           command: |
-            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest
+            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest arangodbtests_replication2
             if [ << parameters.enterprise >> = true ]; then
               cmake --build --preset << parameters.preset >> --parallel 8 --target arangobackup
             fi
@@ -278,6 +280,8 @@ workflows:
   community-pr:
     jobs:
       - compile-linux:
+          context:
+          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ce
           preset: community-pr
           edition: x64-community
@@ -285,6 +289,8 @@ workflows:
   enterprise-pr:
     jobs:
       - compile-linux:
+          context:
+          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ee
           preset: enterprise-pr
           edition: x64-enterprise

@@ -129,18 +129,12 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(
   }
 
   std::string name;
-
-  if (!ServerState::instance()->isRunningInCluster()) {
-    // not running in cluster... so no sharding
-    name = ShardingStrategyNone::NAME;
+  // determine the correct method for sharding
+  VPackSlice s = slice.get("shardingStrategy");
+  if (s.isString()) {
+    name = s.copyString();
   } else {
-    // running in cluster... determine the correct method for sharding
-    VPackSlice s = slice.get("shardingStrategy");
-    if (s.isString()) {
-      name = s.copyString();
-    } else {
-      name = getDefaultShardingStrategy(sharding);
-    }
+    name = getDefaultShardingStrategy(sharding);
   }
 
   return create(name, sharding);
@@ -148,7 +142,6 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(
 
 std::string ShardingFeature::getDefaultShardingStrategy(
     ShardingInfo const* sharding) const {
-  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   // TODO change these to use better algorithms when we no longer
   //      need to support collections created before 3.4
 

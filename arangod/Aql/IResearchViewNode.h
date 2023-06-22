@@ -119,6 +119,9 @@ class IResearchViewNode final : public aql::ExecutionNode {
   // Return the type of the node.
   NodeType getType() const final { return ENUMERATE_IRESEARCH_VIEW; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   // Clone ExecutionNode recursively.
   aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,
                             bool withProperties) const final;

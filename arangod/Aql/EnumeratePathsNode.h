@@ -85,6 +85,9 @@ class EnumeratePathsNode : public virtual GraphNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_PATHS; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
