@@ -1,4 +1,5 @@
 import {
+  Box,
   Flex,
   Input,
   Table,
@@ -11,8 +12,10 @@ import {
   Thead,
   Tr
 } from "@chakra-ui/react";
+import { ValidationError } from "jsoneditor-react";
 import React from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
+import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
 import { useQueryContext } from "../QueryContextProvider";
 
 const detectType = (value: string) => {
@@ -34,6 +37,7 @@ const parseInput = (value: string) => {
 const definedType = ["string", "number", "array", "object", "boolean"];
 export const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
   const { queryBindParams, onBindParamsChange } = useQueryContext();
+  const [errors, setErrors] = React.useState<ValidationError[]>([]);
   if (mode === "table") {
     return (
       <TableContainer>
@@ -57,20 +61,33 @@ export const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
     );
   }
   return (
-    <ControlledJSONEditor
-      mode="code"
-      value={queryBindParams}
-      onChangeJSON={updatedValue => {
-        onBindParamsChange(updatedValue);
-      }}
-      htmlElementProps={{
-        style: {
-          height: "calc(100% - 20px)"
-        }
-      }}
-      // @ts-ignore
-      mainMenuBar={false}
-    />
+    <Box position="relative" height="full">
+      <ControlledJSONEditor
+        mode="code"
+        value={queryBindParams}
+        onChangeJSON={updatedValue => {
+          onBindParamsChange(updatedValue);
+        }}
+        htmlElementProps={{
+          style: {
+            height: "calc(100% - 20px)"
+          }
+        }}
+        onValidationError={errors => {
+          setErrors(errors);
+        }}
+        // @ts-ignore
+        mainMenuBar={false}
+      />
+      <JSONErrors
+        position="absolute"
+        bottom={0}
+        left={0}
+        right={0}
+        zIndex={10}
+        errors={errors}
+      />
+    </Box>
   );
 };
 

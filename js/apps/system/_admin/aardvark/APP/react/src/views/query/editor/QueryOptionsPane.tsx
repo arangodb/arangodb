@@ -5,7 +5,8 @@ import {
   TabList,
   TabPanel,
   TabPanels,
-  Tabs} from "@chakra-ui/react";
+  Tabs
+} from "@chakra-ui/react";
 import React, { useState } from "react";
 import { BindVariablesTab } from "./BindVariablesTab";
 
@@ -28,7 +29,7 @@ export const QueryOptionsPane = () => {
             {mode === "json" ? "Show Table" : "Show JSON"}
           </Button>
         </TabList>
-        <TabPanels height="full">
+        <TabPanels height="calc(100% - 32px)">
           <TabPanel padding="0" height="full">
             <BindVariablesTab mode={mode} />
           </TabPanel>
@@ -40,5 +41,3 @@ export const QueryOptionsPane = () => {
     </Box>
   );
 };
-
-
