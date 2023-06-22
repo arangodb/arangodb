@@ -81,6 +81,7 @@ struct IStorageManager {
       -> replicated_state::PersistedStateInfo = 0;
   [[nodiscard]] virtual auto getPersistedLogIterator(LogIndex first) const
       -> std::unique_ptr<PersistedLogIterator> = 0;
+  [[nodiscard]] virtual auto getSyncIndex() const -> LogIndex = 0;
 
   virtual auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> = 0;
   virtual auto commitMetaInfoTrx(std::unique_ptr<IStateInfoTransaction>)

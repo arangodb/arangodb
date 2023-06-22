@@ -432,6 +432,10 @@ auto StorageManager::getCommittedLogIterator(
   return std::make_unique<Iterator>(range, std::move(diskIter));
 }
 
+auto StorageManager::getSyncIndex() const -> LogIndex {
+  return syncIndex.getLockedGuard().get();
+}
+
 StorageManager::StorageRequest::StorageRequest(
     std::unique_ptr<StorageOperation> op, TermIndexMapping mappingResult)
     : operation(std::move(op)), mappingResult(std::move(mappingResult)) {}

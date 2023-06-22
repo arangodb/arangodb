@@ -57,6 +57,7 @@ struct StorageManager : IStorageManager,
       -> Result override;
   auto getCommittedMetaInfo() const
       -> replicated_state::PersistedStateInfo override;
+  auto getSyncIndex() const -> LogIndex override;
 
  private:
   friend struct StorageManagerTransaction;
