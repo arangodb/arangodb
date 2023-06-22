@@ -22,7 +22,7 @@ import {
 } from "../../../components/modal";
 import { useQueryContext } from "../QueryContextProvider";
 
-export const QueryBottomBar = () => {
+export const QueryEditorBottomBar = () => {
   const {
     onExecute,
     onProfile,

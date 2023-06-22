@@ -2,10 +2,10 @@ import { Box, Divider, Grid } from "@chakra-ui/react";
 import React from "react";
 import { useQueryContext } from "../QueryContextProvider";
 import { AQLEditor } from "./AQLEditor";
-import { QueryBottomBar } from "./QueryBottomBar";
+import { QueryEditorBottomBar } from "./QueryEditorBottomBar";
 import { QueryResults } from "./QueryResults";
 import { QuerySettingsPane } from "./QuerySettingsPane";
-import { QueryToolbar } from "./QueryToolbar";
+import { QueryEditorTopBar } from "./QueryEditorTopBar";
 import { SavedQueryView } from "./SavedQueryView";
 
 export const QueryEditorPane = () => {
@@ -20,7 +20,7 @@ export const QueryEditorPane = () => {
   }
   return (
     <Box background="white" height="full">
-      <QueryToolbar />
+      <QueryEditorTopBar />
       <Grid gridTemplateColumns="1.4fr 4px 0.6fr" height="calc(100% - 300px)">
         <AQLEditor defaultValue={queryValue} onChange={onQueryValueChange} />
         <Divider
@@ -31,7 +31,7 @@ export const QueryEditorPane = () => {
         <QuerySettingsPane />
       </Grid>
       <Divider borderColor="gray.400" borderBottomWidth="4px" />
-      <QueryBottomBar />
+      <QueryEditorBottomBar />
       <QueryResults />
     </Box>
   );

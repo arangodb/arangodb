@@ -2,7 +2,7 @@ import { Button, Stack } from "@chakra-ui/react";
 import React from "react";
 import { useQueryContext } from "../QueryContextProvider";
 
-export const QueryToolbar = () => {
+export const QueryEditorTopBar = () => {
   const { setCurrentView, currentView } = useQueryContext();
   return (
     <Stack
