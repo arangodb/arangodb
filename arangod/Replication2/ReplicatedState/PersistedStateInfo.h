@@ -69,11 +69,11 @@ struct IStorageEngineMethods {
 
   virtual auto insert(std::unique_ptr<PersistedLogIterator>,
                       WriteOptions const&)
-      -> futures::Future<ResultT<SequenceNumber>> = 0;
+      -> futures::Future<ResultT<futures::Future<Result>>> = 0;
   virtual auto removeFront(LogIndex stop, WriteOptions const&)
-      -> futures::Future<ResultT<SequenceNumber>> = 0;
+      -> futures::Future<ResultT<futures::Future<Result>>> = 0;
   virtual auto removeBack(LogIndex start, WriteOptions const&)
-      -> futures::Future<ResultT<SequenceNumber>> = 0;
+      -> futures::Future<ResultT<futures::Future<Result>>> = 0;
   virtual auto getObjectId() -> std::uint64_t = 0;
   virtual auto getLogId() -> LogId = 0;
 

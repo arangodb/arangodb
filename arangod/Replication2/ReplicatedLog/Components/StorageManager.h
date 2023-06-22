@@ -77,6 +77,8 @@ struct StorageManager : IStorageManager,
                             TermIndexMapping mappingResult);
   };
 
+  Guarded<LogIndex> syncIndex;
+
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<IStorageEngineMethods> methods);
 

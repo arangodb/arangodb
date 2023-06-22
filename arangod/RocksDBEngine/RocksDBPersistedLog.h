@@ -105,17 +105,18 @@ struct IRocksDBAsyncLogWriteBatcher {
   virtual auto queueInsert(
       AsyncLogWriteContext& ctx,
       std::unique_ptr<replication2::PersistedLogIterator> iter,
-      WriteOptions const& opts) -> futures::Future<ResultT<SequenceNumber>> = 0;
+      WriteOptions const& opts)
+      -> futures::Future<ResultT<futures::Future<Result>>> = 0;
 
   virtual auto queueRemoveFront(AsyncLogWriteContext& ctx,
                                 replication2::LogIndex stop,
                                 WriteOptions const& opts)
-      -> futures::Future<ResultT<SequenceNumber>> = 0;
+      -> futures::Future<ResultT<futures::Future<Result>>> = 0;
 
   virtual auto queueRemoveBack(AsyncLogWriteContext& ctx,
                                replication2::LogIndex start,
                                WriteOptions const& opts)
-      -> futures::Future<ResultT<SequenceNumber>> = 0;
+      -> futures::Future<ResultT<futures::Future<Result>>> = 0;
 };
 
 struct WriteBatchSizeScale {
@@ -201,7 +202,10 @@ struct RocksDBAsyncLogWriteBatcher final
     std::uint64_t objectId;
     Action action;
     AsyncLogOperationGuard asyncGuard;
-    futures::Promise<ResultT<SequenceNumber>> promise;
+
+    // The Promise is used to signal that the batch has been written to the WAL.
+    // The inner Future is used to wait for the data to be synced to disk.
+    futures::Promise<ResultT<futures::Future<Result>>> promise;
   };
 
   static_assert(std::is_nothrow_move_constructible_v<Request>);
@@ -210,15 +214,15 @@ struct RocksDBAsyncLogWriteBatcher final
   auto queueInsert(AsyncLogWriteContext& ctx,
                    std::unique_ptr<replication2::PersistedLogIterator> iter,
                    const WriteOptions& opts)
-      -> futures::Future<ResultT<SequenceNumber>> override;
+      -> futures::Future<ResultT<futures::Future<Result>>> override;
   auto queueRemoveFront(AsyncLogWriteContext& ctx, replication2::LogIndex stop,
                         const WriteOptions& opts)
-      -> futures::Future<ResultT<SequenceNumber>> override;
+      -> futures::Future<ResultT<futures::Future<Result>>> override;
   auto queueRemoveBack(AsyncLogWriteContext& ctx, replication2::LogIndex start,
                        const WriteOptions& opts)
-      -> futures::Future<ResultT<SequenceNumber>> override;
+      -> futures::Future<ResultT<futures::Future<Result>>> override;
   auto queue(AsyncLogWriteContext& ctx, Action action, WriteOptions const& wo)
-      -> futures::Future<ResultT<SequenceNumber>>;
+      -> futures::Future<ResultT<futures::Future<Result>>>;
 
   struct Lane {
     Lane() = delete;
@@ -281,13 +285,14 @@ struct RocksDBLogStorageMethods final
       -> std::unique_ptr<replication2::PersistedLogIterator> override;
   [[nodiscard]] auto insert(
       std::unique_ptr<replication2::PersistedLogIterator> ptr,
-      WriteOptions const&) -> futures::Future<ResultT<SequenceNumber>> override;
+      WriteOptions const&)
+      -> futures::Future<ResultT<futures::Future<Result>>> override;
   [[nodiscard]] auto removeFront(replication2::LogIndex stop,
                                  WriteOptions const&)
-      -> futures::Future<ResultT<SequenceNumber>> override;
+      -> futures::Future<ResultT<futures::Future<Result>>> override;
   [[nodiscard]] auto removeBack(replication2::LogIndex start,
                                 WriteOptions const&)
-      -> futures::Future<ResultT<SequenceNumber>> override;
+      -> futures::Future<ResultT<futures::Future<Result>>> override;
   [[nodiscard]] auto getObjectId() -> std::uint64_t override;
   [[nodiscard]] auto getLogId() -> replication2::LogId override;
 

@@ -97,10 +97,38 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
     mapping.append(sliceMapping);
     return scheduleOperation(
         std::move(mapping),
-        [slice = std::move(slice), iter = std::move(iter)](
+        [slice = std::move(slice), iter = std::move(iter),
+         weakManager = manager.weak_from_this()](
             StorageManager::IStorageEngineMethods& methods) mutable noexcept {
           return methods.insert(std::move(iter), {.waitForSync = true})
-              .thenValue([](auto&& res) { return res.result(); });
+              .thenValue(
+                  [lastIndex = slice.getLastIndex(),
+                   weakManager = std::move(weakManager)](auto&& res) mutable {
+                    // We're done writing to the WAL. That doesn't necessarily
+                    // mean the data is synced to disk. We'll update the
+                    // syncIndex, only after the inner Future is ready.
+                    if (auto mngr = weakManager.lock(); res.ok() && mngr) {
+                      mngr->scheduler->queue(
+                          [lastIndex, weakManager = std::move(weakManager),
+                           diskSynced = std::move(res.get())]() mutable {
+                            if (auto mngr = weakManager.lock()) {
+                              auto diskSyncedRes = diskSynced.get();
+                              if (diskSyncedRes.fail()) {
+                                LOG_CTX("de1bb", TRACE, mngr->loggerContext)
+                                    << "failed syncing to disk, lastIndex = "
+                                    << lastIndex;
+                              }
+                              mngr->syncIndex.doUnderLock(
+                                  [lastIndex](auto&& syncIndex) {
+                                    if (syncIndex < lastIndex) {
+                                      syncIndex = lastIndex;
+                                    }
+                                  });
+                            }
+                          });
+                    }
+                    return res.result();
+                  });
         });
   }
 
@@ -114,7 +142,8 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
 StorageManager::StorageManager(std::unique_ptr<IStorageEngineMethods> methods,
                                LoggerContext const& loggerContext,
                                const std::shared_ptr<IScheduler> scheduler)
-    : guardedData(std::move(methods)),
+    : syncIndex(LogIndex{0}),  // TODO load from disk
+      guardedData(std::move(methods)),
       loggerContext(
           loggerContext.with<logContextKeyLogComponent>("storage-manager")),
       scheduler(std::move(scheduler)) {}

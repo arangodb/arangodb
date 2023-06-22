@@ -198,15 +198,20 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
           }
         }
 
-        auto seq = _db->GetLatestSequenceNumber();
+        futures::Promise<Result> syncedToDisk;
+        // TODO schedule promise on the syncer thread
+        // auto seq = _db->GetLatestSequenceNumber();
+        syncedToDisk.setValue(Result{TRI_ERROR_NO_ERROR});
 
         // resolve all promises in [nextReqToResolve, nextReqToWrite)
         for (; nextReqToResolve != nextReqToWrite; ++nextReqToResolve) {
-          _executor->operator()(
-              [seq,
-               reqToResolve = std::move(*nextReqToResolve)]() mutable noexcept {
-                reqToResolve.promise.setValue(ResultT{seq});
-              });
+          auto syncedToDiskFuture = syncedToDisk.getFuture();
+          _executor->operator()([reqToResolve = std::move(*nextReqToResolve),
+                                 syncedToDiskFuture = std::move(
+                                     syncedToDiskFuture)]() mutable noexcept {
+            reqToResolve.promise.setValue(
+                ResultT{std::move(syncedToDiskFuture)});
+          });
         }
       }
 
@@ -234,7 +239,7 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
 auto RocksDBAsyncLogWriteBatcher::queue(AsyncLogWriteContext& ctx,
                                         Action action,
                                         WriteOptions const& options)
-    -> futures::Future<ResultT<SequenceNumber>> {
+    -> futures::Future<ResultT<futures::Future<Result>>> {
   auto const startNewThread = [&](Lane& lane) {
     size_t num_retries = 0;
     while (true) {
@@ -265,7 +270,7 @@ auto RocksDBAsyncLogWriteBatcher::queue(AsyncLogWriteContext& ctx,
   };
 
   auto queueRequest = [&](Lane& lane)
-      -> std::pair<futures::Future<ResultT<SequenceNumber>>, bool> {
+      -> std::pair<futures::Future<ResultT<futures::Future<Result>>>, bool> {
     std::unique_lock guard(lane._persistorMutex);
     auto& req =
         lane._pendingPersistRequests.emplace_back(ctx, std::move(action));
@@ -327,21 +332,22 @@ auto RocksDBAsyncLogWriteBatcher::prepareRequest(Request const& req,
 auto RocksDBAsyncLogWriteBatcher::queueInsert(
     AsyncLogWriteContext& ctx,
     std::unique_ptr<replication2::PersistedLogIterator> iter,
-    WriteOptions const& opts) -> futures::Future<ResultT<SequenceNumber>> {
+    WriteOptions const& opts)
+    -> futures::Future<ResultT<futures::Future<Result>>> {
   return queue(ctx, InsertEntries{.iter = std::move(iter)}, opts);
 }
 
 auto RocksDBAsyncLogWriteBatcher::queueRemoveFront(AsyncLogWriteContext& ctx,
                                                    replication2::LogIndex stop,
                                                    WriteOptions const& opts)
-    -> futures::Future<ResultT<SequenceNumber>> {
+    -> futures::Future<ResultT<futures::Future<Result>>> {
   return queue(ctx, RemoveFront{.stop = stop}, opts);
 }
 
 auto RocksDBAsyncLogWriteBatcher::queueRemoveBack(AsyncLogWriteContext& ctx,
                                                   replication2::LogIndex start,
                                                   WriteOptions const& opts)
-    -> futures::Future<ResultT<SequenceNumber>> {
+    -> futures::Future<ResultT<futures::Future<Result>>> {
   return queue(ctx, RemoveBack{.start = start}, opts);
 }
 
@@ -393,7 +399,7 @@ std::unique_ptr<PersistedLogIterator> RocksDBLogStorageMethods::read(
 
 auto RocksDBLogStorageMethods::removeFront(LogIndex stop,
                                            WriteOptions const& opts)
-    -> futures::Future<ResultT<SequenceNumber>> {
+    -> futures::Future<ResultT<futures::Future<Result>>> {
   IRocksDBAsyncLogWriteBatcher::WriteOptions wo;
   MeasureTimeGuard timeGuard(*_metrics->operationLatencyRemoveFront);
   wo.waitForSync = opts.waitForSync;
@@ -406,7 +412,7 @@ auto RocksDBLogStorageMethods::removeFront(LogIndex stop,
 
 auto RocksDBLogStorageMethods::removeBack(LogIndex start,
                                           WriteOptions const& opts)
-    -> futures::Future<ResultT<SequenceNumber>> {
+    -> futures::Future<ResultT<futures::Future<Result>>> {
   IRocksDBAsyncLogWriteBatcher::WriteOptions wo;
   MeasureTimeGuard timeGuard(*_metrics->operationLatencyRemoveBack);
   wo.waitForSync = opts.waitForSync;
@@ -419,7 +425,7 @@ auto RocksDBLogStorageMethods::removeBack(LogIndex start,
 
 auto RocksDBLogStorageMethods::insert(
     std::unique_ptr<PersistedLogIterator> iter, WriteOptions const& opts)
-    -> futures::Future<ResultT<SequenceNumber>> {
+    -> futures::Future<ResultT<futures::Future<Result>>> {
   IRocksDBAsyncLogWriteBatcher::WriteOptions wo;
   wo.waitForSync = opts.waitForSync;
   MeasureTimeGuard timeGuard(*_metrics->operationLatencyInsert);
