@@ -367,6 +367,9 @@ struct LogCurrent {
   // Will be nullopt until a leader has assumed leadership
   std::optional<Leader> leader;
 
+  // Lower bounds of RebootIds used in the last committed log entry.
+  std::unordered_map<ParticipantId, RebootId> safeRebootIds;
+
   // Temporary hack until Actions are de-serializable.
   struct ActionDummy {
     std::string timestamp;

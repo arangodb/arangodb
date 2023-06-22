@@ -1,5 +1,4 @@
 /*jshint strict: true */
-/*global assertEqual */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -24,10 +23,13 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 const jsunity = require('jsunity');
+const {assertTrue, assertEqual} = jsunity.jsUnity.assertions;
 const _ = require('lodash');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const lhttp = require("@arangodb/testutils/replicated-logs-http-helper");
+const arangodb = require("@arangodb");
+const {db} = arangodb;
 
 const database = 'ReplLogsMaintenanceTest';
 
@@ -207,6 +209,99 @@ const replicatedLogSuite = function () {
       });
       lh.waitFor(lp.replicatedLogParticipantsFlag(database, logId, {[toBeRemoved]: null}));
       lh.replicatedLogDeletePlan(database, logId);
+    },
+
+    testReportSafeRebootIdsToCurrentAfterCreation: function () {
+      const targetConfig = {
+        writeConcern: 3,
+        softWriteConcern: 3,
+        waitForSync: false,
+      };
+      const log = db._createReplicatedLog({config: targetConfig});
+      const {target, current} = lh.readReplicatedLogAgency(database, log.id());
+      const expectedRebootIds = Object.fromEntries(
+        Object.keys(target.participants).map(p => [p, lh.getServerRebootId(p)])
+      );
+      assertTrue(current.hasOwnProperty("safeRebootIds"));
+      assertEqual(Object.keys(target.participants), Object.keys(current.safeRebootIds));
+      assertEqual(expectedRebootIds, current.safeRebootIds);
+    },
+
+    testReportSafeRebootIdsToCurrentAfterBump: function () {
+      const targetConfig = {
+        writeConcern: 3,
+        softWriteConcern: 3,
+        waitForSync: false,
+      };
+      const log = db._createReplicatedLog({config: targetConfig});
+      const {target, plan, current} = lh.readReplicatedLogAgency(database, log.id());
+      const expectedRebootIds = Object.fromEntries(
+        Object.keys(target.participants).map(p => [p, lh.getServerRebootId(p)])
+      );
+      assertTrue(current.hasOwnProperty("safeRebootIds"));
+      assertEqual(Object.keys(target.participants), Object.keys(current.safeRebootIds));
+      assertEqual(expectedRebootIds, current.safeRebootIds);
+      const leader = plan.currentTerm.leader.serverId;
+      const follower = _.sample(Object.keys(plan.participantsConfig.participants).filter(p => p !== leader));
+      const newRebootId = lh.bumpServerRebootId(follower);
+      assertTrue(expectedRebootIds[follower] < newRebootId);
+      expectedRebootIds[follower] = newRebootId;
+      lh.waitFor(() => {
+        const {current} = lh.readReplicatedLogAgency(database, log.id());
+        const reportedRebootId = current.safeRebootIds[follower];
+        if (reportedRebootId === newRebootId) {
+          return true;
+        } else {
+          return Error(`Reboot id of ${follower} is ${newRebootId}, but still reported as ${reportedRebootId}.`);
+        }
+      });
+      const finalCurrent = lh.readReplicatedLogAgency(database, log.id()).current;
+      assertEqual(expectedRebootIds, finalCurrent.safeRebootIds);
+    },
+
+    testReportSafeRebootIdsToCurrentAfterReplaceParticipant: function () {
+      const targetConfig = {
+        writeConcern: 3,
+        softWriteConcern: 3,
+        waitForSync: false,
+      };
+      const log = db._createReplicatedLog({config: targetConfig});
+      const {target, plan, current} = lh.readReplicatedLogAgency(database, log.id());
+      const expectedRebootIds = Object.fromEntries(
+        Object.keys(target.participants).map(p => [p, lh.getServerRebootId(p)])
+      );
+      assertTrue(current.hasOwnProperty("safeRebootIds"));
+      assertEqual(Object.keys(target.participants), Object.keys(current.safeRebootIds));
+      assertEqual(expectedRebootIds, current.safeRebootIds);
+      const leader = plan.currentTerm.leader.serverId;
+      const participants = Object.keys(plan.participantsConfig.participants);
+      const oldFollower = _.sample(participants.filter(p => p !== leader));
+      const newFollower = _.sample(_.difference(lh.dbservers, participants));
+
+      lh.replicatedLogUpdateTargetParticipants(database, log.id(), {
+        [newFollower]: {
+          allowedInQuorum: true,
+          allowedAsLeader: true,
+        },
+        [oldFollower]: null,
+      });
+
+      const newFollowerRebootId = lh.getServerRebootId(newFollower);
+      delete expectedRebootIds[oldFollower];
+      expectedRebootIds[newFollower] = newFollowerRebootId;
+
+      lh.waitFor(() => {
+        const {current} = lh.readReplicatedLogAgency(database, log.id());
+        if (!current.safeRebootIds.hasOwnProperty(newFollower)) {
+          return Error(`Reboot id of ${newFollower} is not yet reported.`);
+        } else if (current.safeRebootIds.hasOwnProperty(oldFollower)) {
+          return Error(`Reboot id of ${oldFollower} is still being reported.`);
+        } else {
+          return true;
+        }
+      });
+      const finalCurrent = lh.readReplicatedLogAgency(database, log.id()).current;
+      assertEqual(expectedRebootIds, finalCurrent.safeRebootIds);
     },
   };
 };

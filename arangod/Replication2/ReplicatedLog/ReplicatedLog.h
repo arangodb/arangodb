@@ -44,6 +44,7 @@
 namespace arangodb::replication2::replicated_log {
 class LogLeader;
 struct AbstractFollower;
+struct IRebootIdCache;
 }  // namespace arangodb::replication2::replicated_log
 namespace arangodb::replication2::maintenance {
 struct LogStatus;
@@ -255,7 +256,8 @@ struct ReplicatedLogConnection {
 struct DefaultParticipantsFactory : IParticipantsFactory {
   explicit DefaultParticipantsFactory(
       std::shared_ptr<IAbstractFollowerFactory> followerFactory,
-      std::shared_ptr<IScheduler> scheduler);
+      std::shared_ptr<IScheduler> scheduler,
+      std::shared_ptr<IRebootIdCache> rebootIdCache);
   auto constructFollower(
       std::unique_ptr<replicated_state::IStorageEngineMethods>&&,
       FollowerTermInfo info, ParticipantContext context)
@@ -267,6 +269,7 @@ struct DefaultParticipantsFactory : IParticipantsFactory {
 
   std::shared_ptr<IAbstractFollowerFactory> followerFactory;
   std::shared_ptr<IScheduler> scheduler;
+  std::shared_ptr<IRebootIdCache> rebootIdCache;
 };
 
 }  // namespace arangodb::replication2::replicated_log
