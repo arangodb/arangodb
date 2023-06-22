@@ -157,7 +157,7 @@ class DatabaseFeature final : public ArangodFeature {
   bool upgrade() const noexcept { return _upgrade; }
   bool waitForSync() const noexcept { return _defaultWaitForSync; }
   replication::Version defaultReplicationVersion() const noexcept {
-    return _defaultReplicationVersion;
+    return replication::parseVersion(_defaultReplicationVersion).get();
   }
 
   /// @brief whether or not extended names for databases, collections, views
@@ -201,7 +201,8 @@ class DatabaseFeature final : public ArangodFeature {
   bool _performIOHeartbeat{true};
   std::atomic_bool _started{false};
 
-  replication::Version _defaultReplicationVersion{replication::Version::ONE};
+  std::string _defaultReplicationVersion{
+      replication::versionToString(replication::Version::ONE)};
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;

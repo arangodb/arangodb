@@ -30,7 +30,6 @@
 #include "Indexes/IndexIterator.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/IResearchInvertedIndexMock.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -44,7 +43,6 @@
 
 namespace arangodb {
 
-class TransactionManager;
 class WalAccess;
 
 namespace aql {

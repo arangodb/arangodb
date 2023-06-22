@@ -3,6 +3,11 @@ devel
 
 * FE-20: fix UI placeholder format for locale when creating analyzers.
 
+* Fixed Github issue #19175.
+  This fixes a problem in traversal query optimization that was introduced
+  in 3.11 and that can lead to traversal queries being aborted with an error
+  `AQL: cannot and-combine normalized condition`.
+
 * FE-240: disable JSON editor when viewing inverted index.
 
 * FE-262: Improve Analyzer table UI.
