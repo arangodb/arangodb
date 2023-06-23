@@ -115,14 +115,15 @@ class PlainCache final : public Cache {
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
-  virtual uint64_t freeMemoryFrom(std::uint32_t hash) override;
+  bool freeMemoryWhile(std::function<bool(std::uint64_t)> const& cb) override;
   virtual void migrateBucket(void* sourcePtr,
                              std::unique_ptr<Table::Subtable> targets,
                              Table& newTable) override;
 
   // helpers
   std::pair<::ErrorCode, Table::BucketLocker> getBucket(
-      std::uint32_t hash, std::uint64_t maxTries, bool singleOperation = true);
+      Table::HashOrId bucket, std::uint64_t maxTries,
+      bool singleOperation = true);
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
 };

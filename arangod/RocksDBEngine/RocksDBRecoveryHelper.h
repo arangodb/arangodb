@@ -57,8 +57,6 @@ class RocksDBRecoveryHelper {
 
   virtual void LogData(const rocksdb::Slice& blob,
                        rocksdb::SequenceNumber tick) {}
-
-  virtual bool wasSkipped(IndexId /*id*/) const noexcept { return false; }
 };
 
 }  // end namespace arangodb

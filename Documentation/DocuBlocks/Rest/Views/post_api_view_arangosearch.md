@@ -1,5 +1,4 @@
 @startDocuBlock post_api_view_arangosearch
-@brief Creates an `arangosearch` View
 
 @RESTHEADER{POST /_api/view, Create an arangosearch View, createView}
 

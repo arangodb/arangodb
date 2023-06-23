@@ -28,6 +28,7 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
+#include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -53,6 +54,7 @@
 #include "Ssl/SslInterface.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/ManagedDirectory.h"
+#include "Basics/BoundedChannel.h"
 
 namespace {
 
@@ -441,19 +443,18 @@ DumpFeature::DumpJob::DumpJob(ManagedDirectory& directory, DumpFeature& feature,
       maskings{maskings},
       stats{stats},
       collectionInfo{collectionInfo} {
+  if (collectionInfo.isNone()) {
+    return;
+  }
   // extract parameters about the individual collection
   TRI_ASSERT(collectionInfo.isObject());
   VPackSlice parameters = collectionInfo.get("parameters");
   TRI_ASSERT(parameters.isObject());
 
   // extract basic info about the collection
-  int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-      parameters, StaticStrings::DataSourceType.c_str(), 2);
-
   collectionName = arangodb::basics::VelocyPackHelper::getStringValue(
       parameters, StaticStrings::DataSourceName, "");
   TRI_ASSERT(!collectionName.empty());
-  collectionType = (type == 2 ? "document" : "edge");
 }
 
 DumpFeature::DumpJob::~DumpJob() = default;
@@ -529,7 +530,7 @@ Result DumpFeature::DumpCollectionJob::run(
     }
   }
 
-  if (res.ok()) {
+  if (res.ok() && !options.useExperimentalDump) {
     // always create the file so that arangorestore does not complain
     auto file =
         directory.writableFile(collectionName + "_" + hexString + ".data.json",
@@ -604,8 +605,6 @@ DumpFeature::DumpShardJob::DumpShardJob(
       shardName(shardName),
       server(server),
       file(file) {}
-
-DumpFeature::DumpShardJob::~DumpShardJob() = default;
 
 Result DumpFeature::DumpShardJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {
@@ -739,6 +738,52 @@ void DumpFeature::collectOptions(
                   "gzip format (not compatible with encryption).",
                   new BooleanParameter(&_options.useGzip))
       .setIntroducedIn(30406);
+
+  options
+      ->addOption("--use-experimental-dump",
+                  "Enable experimental dump behavior.",
+                  new BooleanParameter(&_options.useExperimentalDump),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31200);
+  // options
+  //    ->addOption(
+  //        "--split-files",
+  //        "Split a collection in multiple files to increase throughput.",
+  //        new BooleanParameter(&_options.splitFiles),
+  //        arangodb::options::makeDefaultFlags(
+  //            arangodb::options::Flags::Experimental,
+  //            arangodb::options::Flags::Uncommon))
+  //    .setIntroducedIn(31200);
+  options
+      ->addOption("--dbserver-worker-threads",
+                  "Number of worker threads on each dbserver.",
+                  new UInt64Parameter(&_options.dbserverWorkerThreads),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31200);
+  options
+      ->addOption("--dbserver-prefetch-batches",
+                  "Number of batches to prefetch on each dbserver.",
+                  new UInt64Parameter(&_options.dbserverPrefetchBatches),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31200);
+  options
+      ->addOption("--local-writer-threads", "Number of local writer threads.",
+                  new UInt64Parameter(&_options.localWriterThreads),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31200);
+  options
+      ->addOption("--local-network-threads",
+                  "Number of local network threads, i.e. how many requests "
+                  "are sent in parallel.",
+                  new UInt64Parameter(&_options.dbserverWorkerThreads),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31200);
 }
 
 void DumpFeature::validateOptions(
@@ -791,6 +836,21 @@ void DumpFeature::validateOptions(
         << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
   }
+
+  if (_options.useExperimentalDump && _options.useEnvelope) {
+    LOG_TOPIC("e088c", FATAL, arangodb::Logger::DUMP)
+        << "cannot use --use-experimental-dump and --envelope at the same time";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_options.splitFiles && !_options.useExperimentalDump) {
+    LOG_TOPIC("b0cbe", FATAL, Logger::DUMP)
+        << "--split-files is only available when using "
+           "--use-experimental-dump.";
+    FATAL_ERROR_EXIT();
+  }
+
+  // TODO add validation more for experimental stuff
 }
 
 // dump data from cluster via a coordinator
@@ -1004,6 +1064,13 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     FATAL_ERROR_EXIT();
   }
 
+  std::unordered_map<
+      std::string,
+      std::unordered_map<std::string, ParallelDumpServer::ShardInfo>>
+      shardsByServer;
+
+  std::shared_ptr<DumpFileProvider> fileProvider;
+
   for (auto const& [name, collectionInfo] : restrictList) {
     if (collectionInfo.isNone()) {
       LOG_TOPIC("e650c", WARN, arangodb::Logger::DUMP)
@@ -1011,11 +1078,43 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       continue;
     }
 
+    if (_options.useExperimentalDump) {
+      for (auto const& [shard, servers] : VPackObjectIterator(
+               collectionInfo.get("parameters").get("shards"))) {
+        TRI_ASSERT(servers.isArray());
+        auto serverStr = servers.at(0).copyString();
+        auto shardStr = shard.copyString();
+
+        if (!_options.shards.empty()) {
+          // dump is restricted to specific shards
+          if (std::find(_options.shards.begin(), _options.shards.end(),
+                        shardStr) == _options.shards.end()) {
+            // do not dump this shard, as it is not in the include list
+            continue;
+          }
+        }
+        shardsByServer[serverStr][shardStr].collectionName = name;
+      }
+    }
+
     // queue job to actually dump collection
     auto dumpJob = std::make_unique<DumpCollectionJob>(
         *_directory, *this, _options, _maskings.get(), _stats, collectionInfo,
         batchId);
     _clientTaskQueue.queueJob(std::move(dumpJob));
+  }
+
+  if (_options.useExperimentalDump) {
+    // now start jobs for each dbserver
+    fileProvider = std::make_shared<DumpFileProvider>(*_directory, restrictList,
+                                                      _options.splitFiles);
+
+    for (auto& [dbserver, shards] : shardsByServer) {
+      auto job = std::make_unique<ParallelDumpServer>(
+          *_directory, *this, _clientManager, _options, _maskings.get(), _stats,
+          fileProvider, std::move(shards), dbserver);
+      _clientTaskQueue.queueJob(std::move(job));
+    }
   }
 
   // wait for all jobs to finish, then check for errors
@@ -1216,6 +1315,14 @@ void DumpFeature::start() {
     }
   }
 
+  if (!_options.clusterMode) {
+    if (_options.useExperimentalDump) {
+      LOG_TOPIC("7a01a", WARN, Logger::DUMP)
+          << "parallel dumping only supported in cluster mode";
+      _options.useExperimentalDump = false;
+    }
+  }
+
   // set up threads and workers
   _clientTaskQueue.spawnWorkers(_clientManager, _options.threadCount);
 
@@ -1297,6 +1404,345 @@ void DumpFeature::start() {
           << " collection(s) from " << databases.size() << " database(s) in "
           << Logger::FIXED(totalTime, 6) << " s total time.";
     }
+  }
+}
+
+void DumpFeature::ParallelDumpServer::createDumpContext(
+    httpclient::SimpleHttpClient& client) {
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder ob(&builder);
+    builder.add("batchSize", VPackValue(options.maxChunkSize));
+    builder.add("prefetchCount", VPackValue(options.dbserverPrefetchBatches));
+    builder.add("parallelism", VPackValue(options.dbserverWorkerThreads));
+    {
+      VPackArrayBuilder ab(&builder, "shards");
+      for (auto const& [shard, info] : shards) {
+        builder.add(VPackValue(shard));
+      }
+    }
+  }
+
+  auto bodystr = builder.toJson();
+
+  auto url = basics::StringUtils::concatT("_api/dump/start?dbserver=", server);
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
+      client.request(arangodb::rest::RequestType::POST, url, bodystr.c_str(),
+                     bodystr.size(), {}));
+
+  auto check = ::arangodb::HttpResponseChecker::check(client.getErrorMessage(),
+                                                      response.get());
+  if (check.fail()) {
+    LOG_TOPIC("bdecf", FATAL, Logger::DUMP)
+        << "failed to create dump context on server " << server << ": "
+        << check.errorMessage();
+    FATAL_ERROR_EXIT();
+  }
+
+  bool headerExtracted;
+  dumpId = response->getHeaderField("x-arango-dump-id", headerExtracted);
+  if (!headerExtracted) {
+    LOG_TOPIC("d7a76", FATAL, Logger::DUMP)
+        << "dump create response did not contain any dump id for server "
+        << server << " body: " << response->getBody();
+    FATAL_ERROR_EXIT();
+  }
+}
+
+void DumpFeature::ParallelDumpServer::finishDumpContext(
+    httpclient::SimpleHttpClient& client) {
+  auto url =
+      basics::StringUtils::concatT("_api/dump/", dumpId, "?dbserver=", server);
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
+      client.request(arangodb::rest::RequestType::DELETE_REQ, url, nullptr, 0,
+                     {}));
+  auto check = ::arangodb::HttpResponseChecker::check(client.getErrorMessage(),
+                                                      response.get());
+  if (check.fail()) {
+    LOG_TOPIC("bdedf", WARN, Logger::DUMP)
+        << "failed to finish dump context on server " << server << ": "
+        << check.errorMessage();
+  }
+}
+
+Result DumpFeature::ParallelDumpServer::run(
+    httpclient::SimpleHttpClient& client) {
+  LOG_TOPIC("23f92", INFO, Logger::DUMP)
+      << "preparing data stream for server " << server;
+
+  // create context on dbserver
+  createDumpContext(client);
+
+  // start n network threads
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < options.localNetworkThreads; i++) {
+    threads.emplace_back([&, i, guard = BoundedChannelProducerGuard{queue}] {
+      runNetworkThread(i);
+    });
+  }
+
+  // start k writer threads
+  for (size_t i = 0; i < options.localWriterThreads; i++) {
+    threads.emplace_back(&ParallelDumpServer::runWriterThread, this);
+  }
+
+  // on our way out, we wait for all threads to join
+  for (auto& thrd : threads) {
+    thrd.join();
+  }
+  threads.clear();
+
+  // remove dump context from server - get a new client because the old might
+  // already be disconnected.
+  finishDumpContext(*clientManager.getConnectedClient(true, false, false, 0));
+
+  printBlockStats();
+
+  return Result{};
+}
+
+void DumpFeature::ParallelDumpServer::ParallelDumpServer::printBlockStats() {
+  const char* locations[] = {
+      "writer threads (+) / network threads (-)",
+      "dbserver worker put batch (+) / rest handler get batch (-)",
+  };
+
+  std::string msg;
+  for (size_t i = 0; i < 2; i++) {
+    if (i > 0) {
+      msg += ", ";
+    }
+    msg += locations[i];
+    msg += " = ";
+    msg += std::to_string(blockCounter[i]);
+  }
+
+  LOG_TOPIC("d1349", INFO, Logger::DUMP) << "block counter " << msg;
+}
+
+void DumpFeature::ParallelDumpServer::ParallelDumpServer::countBlocker(
+    BlockAt where, int64_t c) {
+  /* clang-format off */
+  const char* locations[] = {
+      "writer threads - consider increasing the number of network threads",
+      "network threads - consider increasing the number of local writer threads",
+      "dbserver get batch - consider increasing the parallelism on dbservers",
+      "dbserver put batch - consider increasing the number of network threads",
+  };
+  /* clang-format on */
+  const char* msg = nullptr;
+  auto actual = blockCounter[where].fetch_add(c);
+  if (actual == 100) {
+    msg = locations[2 * where];
+    blockCounter[where].fetch_sub(100);
+  } else if (actual == -100) {
+    msg = locations[2 * where + 1];
+    blockCounter[where].fetch_add(100);
+  }
+
+  if (msg) {
+    LOG_TOPIC("3cc53", DEBUG, Logger::DUMP)
+        << "when dumping data from server " << server << " system blocking at "
+        << msg;
+  }
+}
+
+DumpFeature::ParallelDumpServer::ParallelDumpServer(
+    ManagedDirectory& directory, DumpFeature& feature,
+    ClientManager& clientManager, const DumpFeature::Options& options,
+    maskings::Maskings* maskings, DumpFeature::Stats& stats,
+    std::shared_ptr<DumpFileProvider> fileProvider,
+    std::unordered_map<std::string, ShardInfo> shards, std::string server)
+    : DumpJob(directory, feature, options, maskings, stats,
+              VPackSlice::noneSlice()),
+      clientManager(clientManager),
+      fileProvider(std::move(fileProvider)),
+      shards(std::move(shards)),
+      server(std::move(server)),
+      queue(options.localWriterThreads) {}
+
+std::unique_ptr<httpclient::SimpleHttpResult>
+DumpFeature::ParallelDumpServer::receiveNextBatch(
+    httpclient::SimpleHttpClient& client, std::uint64_t batchId,
+    std::optional<std::uint64_t> lastBatch) {
+  std::string url = basics::StringUtils::concatT(
+      "_api/dump/next/", dumpId, "?batchId=", batchId, "&dbserver=", server);
+  if (lastBatch) {
+    url += "&lastBatch=" + std::to_string(*lastBatch);
+  }
+
+  while (true) {
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
+        client.request(arangodb::rest::RequestType::POST, url, nullptr, 0, {}));
+    auto check = ::arangodb::HttpResponseChecker::check(
+        client.getErrorMessage(), response.get());
+    if (check.fail()) {
+      LOG_TOPIC("ad972", ERR, arangodb::Logger::DUMP)
+          << "An error occurred while dumping from server '" << server
+          << "': " << check.errorMessage();
+
+      // TODO complete this list!
+      if (check.is(TRI_ERROR_CLUSTER_TIMEOUT) ||
+          check.is(TRI_ERROR_HTTP_GATEWAY_TIMEOUT)) {
+        // retry
+        continue;
+      } else {
+        LOG_TOPIC("5cb01", FATAL, Logger::DUMP)
+            << "Unrecoverable network/http error: " << check.errorMessage();
+        FATAL_ERROR_EXIT();
+      }
+    } else if (response->getHttpReturnCode() == 204) {
+      return nullptr;
+    }
+    return response;
+  }
+}
+
+void DumpFeature::ParallelDumpServer::runNetworkThread(
+    size_t threadId) noexcept {
+  std::unique_ptr<httpclient::SimpleHttpClient> client;
+  clientManager.getConnectedClient(client, /* force */ true, false, false, true,
+                                   threadId);
+  std::uint64_t batchId;
+  std::optional<std::uint64_t> lastBatchId;
+  while (true) {
+    batchId = _batchCounter.fetch_add(1);
+    auto response = receiveNextBatch(*client, batchId, lastBatchId);
+    if (response == nullptr) {
+      break;
+    }
+    ++stats.totalBatches;
+    auto [stopped, blocked] = queue.push(std::move(response));
+    if (stopped) {
+      LOG_TOPIC("b3cf8", DEBUG, Logger::DUMP)
+          << "network thread stopped by stopped channel";
+    }
+    if (blocked) {
+      countBlocker(kLocalQueue, -1);
+    }
+    lastBatchId = batchId;
+  }
+  LOG_TOPIC("ac308", DEBUG, Logger::DUMP)
+      << "dbserver " << server << " exhausted";
+}
+
+void DumpFeature::ParallelDumpServer::runWriterThread() noexcept {
+  std::unordered_map<std::string, std::shared_ptr<ManagedDirectory::File>>
+      filesByShard;
+
+  auto const getFileForShard = [&](std::string const& shardId) {
+    if (auto it = filesByShard.find(shardId); it != filesByShard.end()) {
+      return it->second;
+    } else {
+      auto it2 = shards.find(shardId);
+      if (it2 == shards.end()) {
+        LOG_TOPIC("cd43f", FATAL, Logger::DUMP)
+            << "server returned an unexpected shard " << shardId;
+        FATAL_ERROR_EXIT();
+      }
+
+      auto file = fileProvider->getFile(it2->second.collectionName);
+      filesByShard.emplace(shardId, file);
+      return file;
+    }
+  };
+
+  while (true) {
+    auto [response, blocked] = queue.pop();
+    if (response == nullptr) {
+      break;
+    }
+    if (blocked) {
+      countBlocker(kLocalQueue, 1);
+    }
+    // Decode which shard this is from header field
+    arangodb::basics::StringBuffer const& body = response->getBody();
+    bool headerExtracted;
+    auto shardId =
+        response->getHeaderField("x-arango-dump-shard-id", headerExtracted);
+    if (!headerExtracted) {
+      LOG_TOPIC("14cbf", FATAL, Logger::DUMP)
+          << "Missing header field x-arango-dump-shard-id";
+      FATAL_ERROR_EXIT();
+    }
+
+    // update block counts from remote servers
+    auto count = [&, &response = response]() -> int64_t {
+      bool headerExtracted;
+      auto str = response->getHeaderField("x-arango-dump-block-counts",
+                                          headerExtracted);
+      if (!headerExtracted) {
+        return 0;
+      }
+      return basics::StringUtils::int64(str);
+    }();
+
+    countBlocker(kRemoteQueue, count);
+
+    auto file = getFileForShard(shardId);
+    collectionName = shards.at(shardId).collectionName;
+    arangodb::Result result = dumpJsonObjects(*this, *file, body);
+
+    if (result.fail()) {
+      LOG_TOPIC("77881", FATAL, Logger::DUMP)
+          << "Failed to write data: " << result.errorMessage();
+      FATAL_ERROR_EXIT();
+    }
+  }
+  LOG_TOPIC("18eb0", DEBUG, Logger::DUMP) << "Worker completed";
+}
+
+DumpFeature::DumpFileProvider::DumpFileProvider(
+    ManagedDirectory& directory,
+    std::map<std::string, arangodb::velocypack::Slice>& collectionInfo,
+    bool splitFiles)
+    : _splitFiles(splitFiles), _directory(directory) {
+  if (!_splitFiles) {
+    // If we don't split files, i.e. arangorestore compatibility mode, we have
+    // to create a file for each collection, even if it is empty. Otherwise,
+    // arangorestore complains.
+    for (auto const& [name, info] : collectionInfo) {
+      std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
+
+      std::string filename = name + "_" + hexString + ".data.json";
+      auto file = _directory.writableFile(filename, true /*overwrite*/, 0,
+                                          true /*gzipOk*/);
+      if (file == nullptr || file->status().fail()) {
+        LOG_TOPIC("40543", FATAL, Logger::DUMP)
+            << "Failed to open file " << filename
+            << " for writing: " << file->status().errorMessage();
+        FATAL_ERROR_EXIT();
+      }
+      auto shared = std::shared_ptr<ManagedDirectory::File>(file.release());
+      _filesByCollection.emplace(name, CollectionFiles{0, shared});
+    }
+  }
+}
+
+std::shared_ptr<ManagedDirectory::File> DumpFeature::DumpFileProvider::getFile(
+    std::string const& name) {
+  std::unique_lock guard(_mutex);
+
+  std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
+
+  if (_splitFiles) {
+    auto cnt = _filesByCollection[name].count++;
+    std::string filename =
+        name + "_" + hexString + "." + std::to_string(cnt) + ".data.json";
+    auto file = _directory.writableFile(filename, true /*overwrite*/, 0,
+                                        true /*gzipOk*/);
+    if (file == nullptr || file->status().fail()) {
+      LOG_TOPIC("43543", FATAL, Logger::DUMP)
+          << "Failed to open file " << filename
+          << " for writing: " << file->status().errorMessage();
+      FATAL_ERROR_EXIT();
+    }
+
+    return file;
+  } else {
+    auto& fileInfo = _filesByCollection[name];
+    TRI_ASSERT(fileInfo.file != nullptr);
+    return fileInfo.file;
   }
 }
 

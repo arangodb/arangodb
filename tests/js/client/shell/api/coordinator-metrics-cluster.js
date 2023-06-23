@@ -102,7 +102,7 @@ function checkRawMetrics(txt, empty) {
   if (empty) {
     assertEqual(metrics, {});
   } else {
-    checkIndexMetrics(function() { return checkMetrics(metrics); });
+    checkMetrics(metrics);
   }
 }
 
@@ -110,8 +110,10 @@ function checkCoordinators(coordinators, mode) {
   assertTrue(coordinators.length > 1);
   for (let i = 1; i < coordinators.length; i++) {
     let c = coordinators[i];
-    let txt = getAllMetric(c, mode);
-    checkRawMetrics(txt, false);
+    checkIndexMetrics(function() {
+      let txt = getAllMetric(c, mode);
+      checkRawMetrics(txt, false);
+    });
   }
 }
 

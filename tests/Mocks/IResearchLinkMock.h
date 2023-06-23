@@ -56,24 +56,21 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
     return IResearchLink::hasSelectivityEstimate();
   }
 
-  Result insert(arangodb::transaction::Methods& trx,
-                arangodb::LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const doc) {
+  Result insert(transaction::Methods& trx, LocalDocumentId documentId,
+                velocypack::Slice doc) {
     return IResearchDataStore::insert<FieldIterator<FieldMeta>,
                                       IResearchLinkMeta>(trx, documentId, doc,
-                                                         meta(), nullptr);
+                                                         meta());
   }
 
-  Result insertInRecovery(arangodb::transaction::Methods& trx,
-                          arangodb::LocalDocumentId const& documentId,
-                          arangodb::velocypack::Slice doc, uint64_t tick) {
-    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
-                                      IResearchLinkMeta>(trx, documentId, doc,
-                                                         meta(), &tick);
+  void recoveryInsert(uint64_t tick, LocalDocumentId documentId,
+                      velocypack::Slice doc) {
+    IResearchDataStore::recoveryInsert<FieldIterator<FieldMeta>,
+                                       IResearchLinkMeta>(tick, documentId, doc,
+                                                          meta());
   }
 
-  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                bool nested, uint64_t const* recoveryTick);
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId);
 
   bool isSorted() const override { return IResearchLink::isSorted(); }
 

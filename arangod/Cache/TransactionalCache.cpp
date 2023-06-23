@@ -37,6 +37,7 @@
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
 #include "Cache/VPackKeyHasher.h"
+#include "Random/RandomGenerator.h"
 
 namespace arangodb::cache {
 
@@ -47,7 +48,7 @@ Finding TransactionalCache<Hasher>::find(void const* key,
                                          std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   Finding result;
-  std::uint32_t hash = Hasher::hashKey(key, keySize);
+  Table::BucketHash hash{Hasher::hashKey(key, keySize)};
 
   ::ErrorCode status = TRI_ERROR_NO_ERROR;
   Table::BucketLocker guard;
@@ -56,7 +57,7 @@ Finding TransactionalCache<Hasher>::find(void const* key,
     result.reportError(status);
   } else {
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
-    result.set(bucket.find<Hasher>(hash, key, keySize));
+    result.set(bucket.find<Hasher>(hash.value, key, keySize));
     if (result.found()) {
       recordStat(Stat::findHit);
     } else {
@@ -71,7 +72,7 @@ template<typename Hasher>
 Result TransactionalCache<Hasher>::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = Hasher::hashKey(value->key(), value->keySize());
+  Table::BucketHash hash{Hasher::hashKey(value->key(), value->keySize())};
 
   Result status;
   Table* source;
@@ -84,11 +85,11 @@ Result TransactionalCache<Hasher>::insert(CachedValue* value) {
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     source = guard.source();
-    bool allowed = !bucket.isBanished(hash);
+    bool allowed = !bucket.isBanished(hash.value);
     if (allowed) {
       std::int64_t change = static_cast<std::int64_t>(value->size());
       CachedValue* candidate =
-          bucket.find<Hasher>(hash, value->key(), value->keySize());
+          bucket.find<Hasher>(hash.value, value->key(), value->keySize());
 
       if (candidate == nullptr && bucket.isFull()) {
         candidate = bucket.evictionCandidate();
@@ -118,7 +119,7 @@ Result TransactionalCache<Hasher>::insert(CachedValue* value) {
             }
             freeValue(candidate);
           }
-          bucket.insert(hash, value);
+          bucket.insert(hash.value, value);
           if (!eviction) {
             TRI_ASSERT(source != nullptr);
             maybeMigrate = source->slotFilled();
@@ -136,6 +137,8 @@ Result TransactionalCache<Hasher>::insert(CachedValue* value) {
 
   if (maybeMigrate) {
     TRI_ASSERT(source != nullptr);
+    // caution: calling idealSize() can have side effects
+    // and trigger a table growth!
     requestMigrate(source->idealSize());  // let function do the hard work
   }
 
@@ -147,7 +150,7 @@ Result TransactionalCache<Hasher>::remove(void const* key,
                                           std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = Hasher::hashKey(key, keySize);
+  Table::BucketHash hash{Hasher::hashKey(key, keySize)};
 
   Result status;
   Table* source;
@@ -160,7 +163,7 @@ Result TransactionalCache<Hasher>::remove(void const* key,
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     source = guard.source();
-    CachedValue* candidate = bucket.remove<Hasher>(hash, key, keySize);
+    CachedValue* candidate = bucket.remove<Hasher>(hash.value, key, keySize);
 
     if (candidate != nullptr) {
       std::int64_t change = -static_cast<std::int64_t>(candidate->size());
@@ -178,6 +181,8 @@ Result TransactionalCache<Hasher>::remove(void const* key,
 
   if (maybeMigrate) {
     TRI_ASSERT(source != nullptr);
+    // caution: calling idealSize() can have side effects
+    // and trigger a table growth!
     requestMigrate(source->idealSize());
   }
 
@@ -189,7 +194,7 @@ Result TransactionalCache<Hasher>::banish(void const* key,
                                           std::uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
   bool maybeMigrate = false;
-  std::uint32_t hash = Hasher::hashKey(key, keySize);
+  Table::BucketHash hash{Hasher::hashKey(key, keySize)};
 
   Result status;
   Table* source;
@@ -202,7 +207,7 @@ Result TransactionalCache<Hasher>::banish(void const* key,
 
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     source = guard.source();
-    CachedValue* candidate = bucket.banish<Hasher>(hash, key, keySize);
+    CachedValue* candidate = bucket.banish<Hasher>(hash.value, key, keySize);
 
     if (candidate != nullptr) {
       std::int64_t change = -static_cast<std::int64_t>(candidate->size());
@@ -221,6 +226,8 @@ Result TransactionalCache<Hasher>::banish(void const* key,
 
   if (maybeMigrate) {
     TRI_ASSERT(source != nullptr);
+    // caution: calling idealSize() can have side effects
+    // and trigger a table growth!
     requestMigrate(source->idealSize());
   }
 
@@ -262,38 +269,53 @@ TransactionalCache<Hasher>::~TransactionalCache() {
 }
 
 template<typename Hasher>
-uint64_t TransactionalCache<Hasher>::freeMemoryFrom(std::uint32_t hash) {
-  std::uint64_t reclaimed = 0;
-  bool maybeMigrate = false;
+bool TransactionalCache<Hasher>::freeMemoryWhile(
+    std::function<bool(std::uint64_t)> const& cb) {
+  std::shared_ptr<cache::Table> table = this->table();
+  if (!table) {
+    return false;
+  }
 
-  ::ErrorCode status = TRI_ERROR_NO_ERROR;
-  {
-    Table::BucketLocker guard;
-    std::tie(status, guard) = getBucket(hash, Cache::triesFast, false);
+  std::size_t const n = table->size();
+  if (n == 0) {
+    return false;
+  }
+
+  // pick a random start bucket for scanning, so that we don't
+  // prefer some buckets over others
+  std::uint64_t offset = RandomGenerator::interval(uint64_t(n));
+
+  bool maybeMigrate = false;
+  for (std::size_t i = 0; i < n; ++i) {
+    std::uint64_t index = (offset + i) % n;
+
+    auto [status, guard] = getBucket(Table::BucketId{index}, Cache::triesFast,
+                                     /*singleOperation*/ false);
+
     if (status != TRI_ERROR_NO_ERROR) {
-      return 0;
+      continue;
     }
 
-    TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
+    TransactionalBucket& bucket = guard.template bucket<TransactionalBucket>();
     // evict LRU freeable value if exists
-    reclaimed = bucket.evictCandidate();
+    std::uint64_t reclaimed = bucket.evictCandidate(/*moveToFront*/ false);
 
     if (reclaimed > 0) {
-      maybeMigrate = guard.source()->slotEmptied();
+      maybeMigrate |= guard.source()->slotEmptied();
+    }
+
+    if (!cb(reclaimed)) {
+      break;
     }
   }
 
-  std::shared_ptr<cache::Table> table = this->table();
-  if (table) {
+  if (maybeMigrate) {
     // caution: calling idealSize() can have side effects
     // and trigger a table growth!
-    std::uint32_t size = table->idealSize();
-    if (maybeMigrate) {
-      requestMigrate(size);
-    }
+    requestMigrate(table->idealSize());
   }
 
-  return reclaimed;
+  return maybeMigrate;
 }
 
 template<typename Hasher>
@@ -379,7 +401,8 @@ void TransactionalCache<Hasher>::migrateBucket(
         } else {
           bool haveSpace = true;
           if (targetBucket->isFull()) {
-            std::size_t size = targetBucket->evictCandidate();
+            std::size_t size =
+                targetBucket->evictCandidate(/*moveToFront*/ true);
             if (size > 0) {
               totalSize += size;
               ++emptied;
@@ -412,7 +435,7 @@ void TransactionalCache<Hasher>::migrateBucket(
 
 template<typename Hasher>
 std::tuple<::ErrorCode, Table::BucketLocker>
-TransactionalCache<Hasher>::getBucket(std::uint32_t hash,
+TransactionalCache<Hasher>::getBucket(Table::HashOrId bucket,
                                       std::uint64_t maxTries,
                                       bool singleOperation) {
   ::ErrorCode status = TRI_ERROR_NO_ERROR;
@@ -427,7 +450,7 @@ TransactionalCache<Hasher>::getBucket(std::uint32_t hash,
     }
 
     std::uint64_t term = _manager->_transactions.term();
-    guard = table->fetchAndLockBucket(hash, maxTries);
+    guard = table->fetchAndLockBucket(bucket, maxTries);
     if (guard.isLocked()) {
       guard.bucket<TransactionalBucket>().updateBanishTerm(term);
     } else {

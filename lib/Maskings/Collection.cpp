@@ -90,7 +90,8 @@ ParseResult<Collection> Collection::parse(Maskings* maskings,
   return ParseResult<Collection>(Collection(selection, attributes));
 }
 
-MaskingFunction* Collection::masking(std::vector<std::string> const& path) {
+MaskingFunction* Collection::masking(
+    std::vector<std::string> const& path) const {
   for (auto const& m : _maskings) {
     if (m.match(path)) {
       return m.func();

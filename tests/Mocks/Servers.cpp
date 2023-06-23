@@ -424,6 +424,13 @@ std::shared_ptr<transaction::Methods> MockAqlServer::createFakeTransaction()
 std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
     bool activateTracing, std::string queryString,
     std::function<void(aql::Query&)> callback) const {
+  return createFakeQuery(SchedulerFeature::SCHEDULER, activateTracing,
+                         queryString, callback);
+}
+
+std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
+    Scheduler* scheduler, bool activateTracing, std::string queryString,
+    std::function<void(aql::Query&)> callback) const {
   VPackBuilder queryOptions;
   queryOptions.openObject();
   if (activateTracing) {
@@ -437,7 +444,7 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
   auto query = aql::Query::create(
       transaction::StandaloneContext::Create(getSystemDatabase()),
       aql::QueryString(queryString), nullptr,
-      aql::QueryOptions(queryOptions.slice()));
+      aql::QueryOptions(queryOptions.slice()), scheduler);
   callback(*query);
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 

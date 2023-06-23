@@ -176,6 +176,10 @@ bool Cache::isResizing() const noexcept {
     return false;
   }
 
+  return isResizingFlagSet();
+}
+
+bool Cache::isResizingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing();
 }
@@ -185,15 +189,15 @@ bool Cache::isMigrating() const noexcept {
     return false;
   }
 
+  return isMigratingFlagSet();
+}
+
+bool Cache::isMigratingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isMigrating();
 }
 
-bool Cache::isBusy() const noexcept {
-  if (ADB_UNLIKELY(isShutdown())) {
-    return false;
-  }
-
+bool Cache::isResizingOrMigratingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing() || _metadata.isMigrating();
 }
@@ -335,11 +339,8 @@ void Cache::shutdown() {
   TRI_ASSERT(handle.get() == this);
   if (!_shutdown.exchange(true)) {
     while (true) {
-      {
-        SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-        if (!_metadata.isMigrating() && !_metadata.isResizing()) {
-          break;
-        }
+      if (!isResizingOrMigratingFlagSet()) {
+        break;
       }
 
       SpinUnlocker taskUnguard(SpinUnlocker::Mode::Write, _taskLock);
@@ -373,8 +374,7 @@ bool Cache::canResize() noexcept {
     return false;
   }
 
-  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
-  return !(_metadata.isResizing() || _metadata.isMigrating());
+  return !isResizingOrMigratingFlagSet();
 }
 
 bool Cache::canMigrate() noexcept {
@@ -403,30 +403,24 @@ bool Cache::freeMemory() {
     return false;
   }
 
-  bool underLimit = reclaimMemory(0ULL);
-  std::uint64_t failures = 0;
-  while (!underLimit) {
-    // pick a random bucket
-    std::uint32_t randomHash =
-        RandomGenerator::interval(std::numeric_limits<std::uint32_t>::max());
-    std::uint64_t reclaimed = freeMemoryFrom(randomHash);
-
+  auto cb = [this](std::uint64_t reclaimed) -> bool {
     if (reclaimed > 0) {
-      failures = 0;
-      underLimit = reclaimMemory(reclaimed);
-    } else {
-      failures++;
-      if (failures > 100) {
-        if (isShutdown()) {
-          break;
-        } else {
-          failures = 0;
-        }
+      bool underLimit = reclaimMemory(reclaimed);
+      if (underLimit) {
+        // we have free enough memory.
+        // don't continue
+        return false;
       }
     }
-  }
+    // check if shutdown is in progress. then give up
+    return !isShutdown();
+  };
 
-  return true;
+  bool underLimit = reclaimMemory(0ULL);
+  if (!underLimit) {
+    underLimit = freeMemoryWhile(cb);
+  }
+  return underLimit;
 }
 
 bool Cache::migrate(std::shared_ptr<Table> newTable) {

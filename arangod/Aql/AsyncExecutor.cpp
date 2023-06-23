@@ -43,8 +43,14 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
-                                                      AsyncNode const* node)
+                                                      ExecutionNode const* node)
     : ExecutionBlock(engine, node), _sharedState(engine->sharedState()) {}
+
+ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
+                                                      ExecutionNode const* node,
+                                                      RegisterInfos,
+                                                      AsyncExecutor::Infos)
+    : ExecutionBlockImpl(engine, node) {}
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack const& stack) {
@@ -83,6 +89,7 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
   TRI_ASSERT(_dependencies.size() == 1);
 
   if (_internalState == AsyncState::InProgress) {
+    ++_numWakeupsQueued;
     return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
   } else if (_internalState == AsyncState::GotResult) {
     if (_returnState != ExecutionState::DONE) {
@@ -100,11 +107,18 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
 
   _internalState = AsyncState::InProgress;
   bool queued =
-      _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
+      _sharedState->asyncExecuteAndWakeup([this, stack](bool const isAsync) {
         std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
 
         try {
           auto [state, skip, block] = _dependencies[0]->execute(stack);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+          if (_postAsyncExecuteCallback) {
+            _postAsyncExecuteCallback();
+          }
+#endif
+
           if (isAsync) {
             guard.lock();
 
@@ -114,6 +128,40 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
             TRI_ASSERT(_isBlockInUse);
 #endif
           }
+
+          // If we got woken up while in progress, wake up our dependency now.
+          // This is necessary so the query will always wake up from sleep. See
+          // https://arangodb.atlassian.net/browse/BTS-1325
+          // and
+          // https://github.com/arangodb/arangodb/pull/18729
+          // for details.
+          while (state == ExecutionState::WAITING && _numWakeupsQueued > 0) {
+            --_numWakeupsQueued;
+            TRI_ASSERT(skip.nothingSkipped());
+            TRI_ASSERT(block == nullptr);
+            // isAsync => guard.owns_lock()
+            TRI_ASSERT(!isAsync || guard.owns_lock());
+            if (isAsync) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+              bool old = true;
+              TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, false));
+              TRI_ASSERT(!_isBlockInUse);
+#endif
+              guard.unlock();
+            }
+            std::tie(state, skip, block) = _dependencies[0]->execute(stack);
+            if (isAsync) {
+              TRI_ASSERT(!guard.owns_lock());
+              TRI_ASSERT(guard.mutex() != nullptr);
+              guard.lock();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+              bool old = false;
+              TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
+              TRI_ASSERT(_isBlockInUse);
+#endif
+            }
+          }
+
           _returnState = state;
           _returnSkip = std::move(skip);
           _returnBlock = std::move(block);
@@ -129,6 +177,8 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
 #endif
         } catch (...) {
           if (isAsync) {
+            TRI_ASSERT(!guard.owns_lock());
+            TRI_ASSERT(guard.mutex() != nullptr);
             guard.lock();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
             bool old = false;
@@ -179,3 +229,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
   _internalState = AsyncState::Empty;
   return res;
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+void ExecutionBlockImpl<AsyncExecutor>::setPostAsyncExecuteCallback(
+    std::function<void()> cb) {
+  _postAsyncExecuteCallback = std::move(cb);
+}
+#endif
