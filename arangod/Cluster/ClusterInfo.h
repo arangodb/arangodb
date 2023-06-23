@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 
 #include <memory>
-#include <memory_resource>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -38,14 +37,15 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/pmr.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
-#include "Network/types.h"
+#include "Containers/NodeHashMap.h"
 #include "Metrics/Fwd.h"
+#include "Network/types.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/Version.h"
-#include "Containers/NodeHashMap.h"
 
 struct TRI_vocbase_t;
 
