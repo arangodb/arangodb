@@ -6,20 +6,16 @@ import {
   IconButton,
   Spinner,
   Stack,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
   useDisclosure
 } from "@chakra-ui/react";
-import React, { useState } from "react";
+import { CellContext, createColumnHelper } from "@tanstack/react-table";
+import React from "react";
 import { InfoCircle } from "styled-icons/boxicons-solid";
 import { PlayArrow } from "styled-icons/material";
 import momentMin from "../../../../../frontend/js/lib/moment.min";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
+import { ReactTable } from "../../../components/table/ReactTable";
+import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { download } from "../../../utils/downloadHelper";
 import { useQueryContext } from "../QueryContextProvider";
 import { AQLEditor } from "./AQLEditor";
@@ -64,115 +60,128 @@ const SavedQueryToolbar = () => {
     </Stack>
   );
 };
+const columnHelper = createColumnHelper<QueryType>();
 
-const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
-  const [selectedQuery, setSelectedQuery] = useState<QueryType | null>(
-    savedQueries[0]
-  );
+const ActionCell = (info: CellContext<QueryType, unknown>) => {
   const { onQueryChange, setCurrentView, onExecute, onExplain } =
     useQueryContext();
+  const query = info.row.original;
   const {
     isOpen: isDeleteModalOpen,
     onOpen: onOpenDeleteModal,
     onClose: onCloseDeleteModal
   } = useDisclosure();
   return (
-    <>
-      <TableContainer height="400px" overflowX="auto" overflowY="auto">
-        <Table size="sm">
-          <Thead>
-            <Th>Name</Th>
-            <Th>Modified At</Th>
-            <Th>Actions</Th>
-          </Thead>
-          <Tbody>
-            {savedQueries.map((query, index) => (
-              <Tr
-                key={`${query.name}-${index}`}
-                backgroundColor={
-                  selectedQuery?.name === query.name ? "gray.200" : undefined
-                }
-                _hover={{
-                  background: "gray.100",
-                  cursor: "pointer"
-                }}
-                onClick={() => {
-                  setSelectedQuery(query);
-                }}
-              >
-                <Td>{query.name}</Td>
-                <Td>
-                  {query.modified_at
-                    ? momentMin(query.modified_at).format("YYYY-MM-DD HH:mm:ss")
-                    : "-"}
-                </Td>
-                <Td>
-                  <IconButton
-                    variant="ghost"
-                    icon={<CopyIcon />}
-                    aria-label={`Copy ${query.name}`}
-                    size="sm"
-                    colorScheme="gray"
-                    onClick={() => {
-                      onQueryChange({
-                        value: query.value,
-                        parameter: query.parameter || {},
-                        name: query.name
-                      });
+    <Box whiteSpace="nowrap">
+      <IconButton
+        variant="ghost"
+        icon={<CopyIcon />}
+        aria-label={`Copy ${query.name}`}
+        size="sm"
+        colorScheme="gray"
+        onClick={() => {
+          onQueryChange({
+            value: query.value,
+            parameter: query.parameter || {},
+            name: query.name
+          });
 
-                      setCurrentView("editor");
-                    }}
-                    title="Copy"
-                  />
-                  <IconButton
-                    variant="ghost"
-                    icon={<InfoCircle width="16px" height="16px" />}
-                    aria-label={`Explain ${query.name}`}
-                    size="sm"
-                    colorScheme="gray"
-                    onClick={() => {
-                      onExplain({
-                        queryValue: query.value,
-                        queryBindParams: query.parameter
-                      });
-                    }}
-                    title="Explain"
-                  />
-                  <IconButton
-                    variant="ghost"
-                    icon={<PlayArrow width="16px" height="16px" />}
-                    aria-label={`Execute ${query.name}`}
-                    size="sm"
-                    colorScheme="green"
-                    onClick={() => {
-                      onExecute({
-                        queryValue: query.value,
-                        queryBindParams: query.parameter
-                      });
-                    }}
-                    title="Execute"
-                  />
-                  <IconButton
-                    variant="ghost"
-                    icon={<DeleteIcon />}
-                    aria-label={`Delete ${query.name}`}
-                    size="sm"
-                    colorScheme="red"
-                    title="Delete"
-                    onClick={onOpenDeleteModal}
-                  />
-                </Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </TableContainer>
-      <QueryPreview query={selectedQuery} />
+          setCurrentView("editor");
+        }}
+        title="Copy"
+      />
+      <IconButton
+        variant="ghost"
+        icon={<InfoCircle width="16px" height="16px" />}
+        aria-label={`Explain ${query.name}`}
+        size="sm"
+        colorScheme="gray"
+        onClick={() => {
+          onExplain({
+            queryValue: query.value,
+            queryBindParams: query.parameter
+          });
+        }}
+        title="Explain"
+      />
+      <IconButton
+        variant="ghost"
+        icon={<PlayArrow width="16px" height="16px" />}
+        aria-label={`Execute ${query.name}`}
+        size="sm"
+        colorScheme="green"
+        onClick={() => {
+          onExecute({
+            queryValue: query.value,
+            queryBindParams: query.parameter
+          });
+        }}
+        title="Execute"
+      />
+      <IconButton
+        variant="ghost"
+        icon={<DeleteIcon />}
+        aria-label={`Delete ${query.name}`}
+        size="sm"
+        colorScheme="red"
+        title="Delete"
+        onClick={onOpenDeleteModal}
+      />
       <DeleteQueryModal
-        query={selectedQuery}
+        query={info.row.getIsSelected() ? query : null}
         isOpen={isDeleteModalOpen}
         onClose={onCloseDeleteModal}
       />
+    </Box>
+  );
+};
+
+const TABLE_COLUMNS = [
+  columnHelper.accessor("name", {
+    header: "Name",
+    id: "name"
+  }),
+  columnHelper.accessor("modified_at", {
+    header: "Modified At",
+    id: "modified_at",
+    cell: info => {
+      const cellValue = info.cell.getValue();
+      return cellValue
+        ? momentMin(cellValue).format("YYYY-MM-DD HH:mm:ss")
+        : "-";
+    }
+  }),
+  columnHelper.accessor("actions" as any, {
+    header: "Actions",
+    id: "actions",
+    enableSorting: false,
+    cell: ActionCell
+  })
+];
+
+const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
+  const tableInstance = useSortableReactTable<QueryType>({
+    columns: TABLE_COLUMNS,
+    data: savedQueries.reverse(),
+    initialRowSelection: {
+      0: true
+    },
+    enableRowSelection: true,
+    enableMultiRowSelection: false
+  });
+  const selectedRowModel = tableInstance.getSelectedRowModel();
+  const selectedQuery = selectedRowModel.rows[0]?.original;
+  return (
+    <>
+      <ReactTable
+        table={tableInstance}
+        onRowSelect={row => {
+          if (!row.getIsSelected()) {
+            row.toggleSelected();
+          }
+        }}
+      />
+      <QueryPreview query={selectedQuery} />
     </>
   );
 };
