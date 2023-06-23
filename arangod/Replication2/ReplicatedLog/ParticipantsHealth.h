@@ -73,6 +73,10 @@ struct ParticipantsHealth {
     return n;
   }
 
+  auto update(ParticipantId const& p, RebootId id, bool live) {
+    _health.emplace(p, ParticipantHealth{id, live});
+  }
+
   friend auto operator==(ParticipantsHealth const& s,
                          ParticipantsHealth const& s2) noexcept
       -> bool = default;

@@ -355,6 +355,16 @@ class ClusterInfo final {
       std::string_view databaseID);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Generate Collection Stubs during Database buiding
+  /// These stubs are no real collection, use this API with care
+  /// and only if the database is in building state.
+  //////////////////////////////////////////////////////////////////////////////
+
+  [[nodiscard]] std::unordered_map<std::string,
+                                   std::shared_ptr<LogicalCollection>>
+  generateCollectionStubs(TRI_vocbase_t& database);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a view
   /// If it is not found in the cache, the cache is reloaded once. The second
   /// argument can be a collection ID or a view name (both cluster-wide).
@@ -421,6 +431,14 @@ class ClusterInfo final {
 
   cluster::RebootTracker& rebootTracker() noexcept;
   cluster::RebootTracker const& rebootTracker() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Test if all names (Collection & Views) are available  in the given
+  /// database and return the planVersion this can be guaranteed on.
+  //////////////////////////////////////////////////////////////////////////////
+
+  ResultT<uint64_t> checkDataSourceNamesAvailable(
+      std::string_view databaseName, std::vector<std::string> const& names);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
@@ -675,14 +693,8 @@ class ClusterInfo final {
   /// an error.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std::vector<ServerID> const> getResponsibleServer(
+  std::shared_ptr<std::pmr::vector<pmr::ServerID> const> getResponsibleServer(
       std::string_view shardID);
-
-  std::shared_ptr<std::pmr::vector<pmr::ServerID> const>
-  getResponsibleServerReplication1(std::string_view shardID);
-
-  std::shared_ptr<std::pmr::vector<pmr::ServerID> const>
-  getResponsibleServerReplication2(std::string_view shardID);
 
   enum class ShardLeadership { kLeader, kFollower, kUnclear };
   ShardLeadership getShardLeadership(ServerID const& server,
@@ -699,14 +711,6 @@ class ClusterInfo final {
 
   containers::FlatHashMap<ShardID, ServerID> getResponsibleServers(
       containers::FlatHashSet<ShardID> const&);
-
-  void getResponsibleServersReplication1(
-      containers::FlatHashSet<ShardID> const& shardIds,
-      containers::FlatHashMap<ShardID, ServerID>& result);
-
-  bool getResponsibleServersReplication2(
-      containers::FlatHashSet<ShardID> const& shardIds,
-      containers::FlatHashMap<ShardID, ServerID>& result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
@@ -843,6 +847,10 @@ class ClusterInfo final {
       -> ResultT<
           std::unordered_map<replication2::LogId, std::vector<std::string>>>;
 
+  auto getCollectionGroupById(replication2::agency::CollectionGroupId)
+      -> std::shared_ptr<
+          replication2::agency::CollectionGroupPlanSpecification const>;
+
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
    *
@@ -873,6 +881,14 @@ class ClusterInfo final {
   }
 
   ArangodServer& server() const;
+
+  AgencyCallbackRegistry& agencyCallbackRegistry() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the poll interval
+  //////////////////////////////////////////////////////////////////////////////
+
+  static double getPollInterval() { return 5.0; }
 
  private:
   /// @brief worker function for dropIndexCoordinator
@@ -914,12 +930,6 @@ class ClusterInfo final {
   void triggerWaiting(
       std::pmr::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
       uint64_t commitIndex);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the poll interval
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double getPollInterval() { return 5.0; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the timeout for reloading the server list
@@ -1165,7 +1175,10 @@ class ClusterInfo final {
 
   using CollectionGroupMap = AssocUnorderedContainer<
       replication2::agency::CollectionGroupId,
-      std::shared_ptr<replication2::agency::CollectionGroup const>>;
+      std::shared_ptr<
+          replication2::agency::CollectionGroupPlanSpecification const>>;
+  // note: protected by _planProt
+  CollectionGroupMap _collectionGroups;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence

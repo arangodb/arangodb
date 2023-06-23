@@ -65,6 +65,24 @@ std::ostream& operator<<(std::ostream& o, ServerHealthState const& r);
 
 using ServersKnown = containers::FlatHashMap<ServerID, ServerHealthState>;
 
+struct PeerState {
+  std::string serverId;
+  RebootId rebootId{0};
+
+  friend auto operator==(PeerState const&, PeerState const&) noexcept
+      -> bool = default;
+
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, PeerState& x) {
+    return f.object(x).fields(f.field("serverId", x.serverId),
+                              f.field("rebootId", x.rebootId));
+  }
+};
+
+auto to_string(PeerState const& peerState) -> std::string;
+auto operator<<(std::ostream& ostream, PeerState const& peerState)
+    -> std::ostream&;
+
 namespace velocypack {
 class Builder;
 class Slice;

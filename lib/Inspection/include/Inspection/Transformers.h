@@ -36,17 +36,16 @@ namespace arangodb::inspection {
 struct TimeStampTransformer {
   using SerializedType = std::string;
   using clock = std::chrono::system_clock;
-  static constexpr std::string_view formatString = "%FT%TZ";
+  static constexpr const char* formatString = "%FT%TZ";
   auto toSerialized(clock::time_point source, std::string& target) const
       -> inspection::Status {
-    target =
-        date::format(formatString.data(), floor<std::chrono::seconds>(source));
+    target = date::format(formatString, floor<std::chrono::seconds>(source));
     return {};
   }
   auto fromSerialized(std::string const& source,
                       clock::time_point& target) const -> inspection::Status {
     auto in = std::istringstream{source};
-    in >> date::parse(formatString.data(), target);
+    in >> date::parse(formatString, target);
 
     if (in.fail()) {
       return inspection::Status(
