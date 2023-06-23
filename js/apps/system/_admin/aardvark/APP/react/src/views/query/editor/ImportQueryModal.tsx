@@ -93,7 +93,6 @@ export const ImportQueryModal = ({
               }
             }}
           />
-          <Text>test</Text>
         </Stack>
       </ModalBody>
       <ModalFooter>

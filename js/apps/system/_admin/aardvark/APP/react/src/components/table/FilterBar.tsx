@@ -32,6 +32,9 @@ export const FilterBar = <Data extends object>({
     return null;
   }
   const filterOptions = columns.filter(column => {
+    if (column.enableColumnFilter === false) {
+      return false;
+    }
     return !currentFilterColumns.find(
       currentFilter => currentFilter?.id === column.id
     );

@@ -14,6 +14,7 @@ import { InfoCircle } from "styled-icons/boxicons-solid";
 import { PlayArrow } from "styled-icons/material";
 import momentMin from "../../../../../frontend/js/lib/moment.min";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
+import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { download } from "../../../utils/downloadHelper";
@@ -139,11 +140,15 @@ const ActionCell = (info: CellContext<QueryType, unknown>) => {
 const TABLE_COLUMNS = [
   columnHelper.accessor("name", {
     header: "Name",
-    id: "name"
+    id: "name",
+    meta: {
+      filterType: "text"
+    }
   }),
   columnHelper.accessor("modified_at", {
     header: "Modified At",
     id: "modified_at",
+    enableColumnFilter: false,
     cell: info => {
       const cellValue = info.cell.getValue();
       return cellValue
@@ -155,7 +160,8 @@ const TABLE_COLUMNS = [
     header: "Actions",
     id: "actions",
     enableSorting: false,
-    cell: ActionCell
+    cell: ActionCell,
+    enableColumnFilter: false
   })
 ];
 
@@ -173,7 +179,9 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
   const selectedQuery = selectedRowModel.rows[0]?.original;
   return (
     <>
-      <ReactTable
+      <Stack>
+        <FiltersList<QueryType> columns={TABLE_COLUMNS} table={tableInstance} />
+        <ReactTable<QueryType>
         table={tableInstance}
         onRowSelect={row => {
           if (!row.getIsSelected()) {
@@ -181,6 +189,7 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
           }
         }}
       />
+      </Stack>
       <QueryPreview query={selectedQuery} />
     </>
   );
