@@ -53,7 +53,7 @@ export const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
           </Tbody>
           {Object.keys(queryBindParams).length === 0 ? (
             <Tr>
-              <Td colSpan={2}>No bind parameters found in query</Td>
+              <Td colSpan={2}>No bind parameters found in query.</Td>
             </Tr>
           ) : null}
         </Table>
