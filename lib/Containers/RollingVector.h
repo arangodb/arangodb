@@ -24,6 +24,7 @@
 #pragma once
 
 #include <type_traits>
+#include <memory_resource>
 
 #include "Basics/debugging.h"
 
@@ -43,6 +44,13 @@ class RollingVector {
  public:
   RollingVector() : _start(0) {}
   explicit RollingVector(size_t size) : RollingVector() { _data.resize(size); }
+
+  explicit RollingVector(std::pmr::memory_resource* memory_resource)
+      : _start(0), _data{memory_resource} {}
+  RollingVector(size_t size, std::pmr::memory_resource* memory_resource)
+      : RollingVector(memory_resource) {
+    _data.resize(size);
+  }
 
   RollingVector(RollingVector const& other)
       : _start(other._start), _data(other._data) {}
@@ -70,15 +78,19 @@ class RollingVector {
 
   ~RollingVector() = default;
 
-  typename std::vector<T>::iterator begin() { return _data.begin() + _start; }
+  typename std::pmr::vector<T>::iterator begin() {
+    return _data.begin() + _start;
+  }
 
-  typename std::vector<T>::iterator end() { return _data.end(); }
+  typename std::pmr::vector<T>::iterator end() { return _data.end(); }
 
-  typename std::vector<T>::const_iterator begin() const {
+  typename std::pmr::vector<T>::const_iterator begin() const {
     return _data.begin();
   }
 
-  typename std::vector<T>::const_iterator end() const { return _data.end(); }
+  typename std::pmr::vector<T>::const_iterator end() const {
+    return _data.end();
+  }
 
   T& operator[](size_t position) { return _data[_start + position]; }
 
@@ -149,7 +161,7 @@ class RollingVector {
 
  private:
   size_t _start;
-  std::vector<T> _data;
+  std::pmr::vector<T> _data;
 };
 
 }  // namespace containers

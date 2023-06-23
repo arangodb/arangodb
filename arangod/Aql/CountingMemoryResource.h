@@ -24,6 +24,7 @@
 #pragma once
 
 #include <memory_resource>
+
 #include "Basics/ResourceUsage.h"
 
 namespace arangodb::aql {

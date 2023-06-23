@@ -23,7 +23,6 @@
 
 #include "Optimizer.h"
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRules.h"
@@ -36,8 +35,13 @@
 
 using namespace arangodb::aql;
 
-Optimizer::Optimizer(size_t maxNumberOfPlans)
-    : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {}
+Optimizer::Optimizer(size_t maxNumberOfPlans,
+                     std::pmr::memory_resource* memory_resource)
+    : _plans(memory_resource),
+      _newPlans(memory_resource),
+      _maxNumberOfPlans(maxNumberOfPlans),
+      _runOnlyRequiredRules(false),
+      _memory_resource(memory_resource) {}
 
 void Optimizer::disableRules(
     ExecutionPlan* plan,
