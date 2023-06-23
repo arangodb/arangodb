@@ -1,0 +1,66 @@
+import { ArrowBackIcon, DeleteIcon } from "@chakra-ui/icons";
+import { Button, Flex, Heading, IconButton, Stack } from "@chakra-ui/react";
+import React from "react";
+import { useHistory, useRouteMatch } from "react-router-dom";
+import { DatabaseInfo } from "./DatabaseInfo";
+import { DeleteDatabaseModal } from "./DeleteDatabaseModal";
+import { useFetchDatabase } from "../useFetchDatabase";
+
+export const SingleDatabaseView = () => {
+  const { params } = useRouteMatch<{ databaseName: string }>();
+  const { database: currentDatabase } = useFetchDatabase(params.databaseName);
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const history = useHistory();
+  if (!currentDatabase) {
+    return null;
+  }
+  const currentDbName = window.frontendConfig.db;
+  const isSystem = currentDatabase.name === "_system";
+  const isSameDb = currentDatabase.name === currentDbName;
+  const showDeleteButton = !isSystem && !isSameDb;
+
+  return (
+    <Stack padding="6" width="100%" height="calc(100vh - 120px)">
+      <Flex direction="row" alignItems="center">
+        <IconButton
+          aria-label="Back"
+          variant="ghost"
+          size="sm"
+          icon={<ArrowBackIcon width="24px" height="24px" />}
+          onClick={() => {
+            history.push("/databases");
+          }}
+        />
+        <Heading marginLeft="2" as="h1" size="lg">
+          Database: {params.databaseName}
+        </Heading>
+        {showDeleteButton && (
+          <Button
+            size="xs"
+            marginLeft="auto"
+            leftIcon={<DeleteIcon />}
+            colorScheme="red"
+            onClick={() => {
+              setShowDeleteModal(true);
+            }}
+          >
+            Delete
+          </Button>
+        )}
+      </Flex>
+      <DatabaseInfo database={currentDatabase} />
+
+      {showDeleteModal && (
+        <DeleteDatabaseModal
+          database={currentDatabase}
+          onSuccess={() => {
+            history.push("/databases");
+          }}
+          onClose={() => {
+            setShowDeleteModal(false);
+          }}
+        />
+      )}
+    </Stack>
+  );
+};
