@@ -80,6 +80,6 @@ def start(args, cfg):
           }
         ]'''
 
-    process = Feed.start(cfg, smallAdvancedOperations)
+    process = Feed.start(cfg, bigAdvancedOperations)
     print('--> Started test: "RocksDBCacheSizeTest". Output file is: "' + cfg["feed"]["jsonOutputFile"] + '"')
     return process
