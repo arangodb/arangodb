@@ -321,8 +321,6 @@ workflows:
           name: run-poc-test
           requires:
             - compile-linux
-          size: small
-          buckets: 1
   enterprise-pr:
     jobs:
       - compile-linux:
