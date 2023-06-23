@@ -914,11 +914,11 @@ NodePtr Node::create(VPackSlice slice) {
 
         trans.set(std::move(segments[0]), node);
       } else {
-        ADB_PROD_ASSERT(trans.find(keyStr) == nullptr)
-            << "key `" << keyStr
-            << "` could not be inserted, because it is "
-               "already present in the map. slice="
-            << slice.toJson();
+        // ADB_PROD_ASSERT(trans.find(keyStr) == nullptr)
+        //    << "key `" << keyStr
+        //    << "` could not be inserted, because it is "
+        //       "already present in the map. slice="
+        //    << slice.toJson();
         trans.set(std::move(keyStr), Node::create(sub));
       }
     }

@@ -359,7 +359,8 @@ bool MoveShard::start(bool&) {
   // Look at Plan:
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  Slice planned = _snapshot.hasAsSlice(planPath).value();
+  auto plannedBuilder = _snapshot.hasAsBuilder(planPath).value();
+  Slice planned = plannedBuilder.slice();
 
   int found = -1;
   int foundTo = -1;
@@ -576,9 +577,9 @@ bool MoveShard::start(bool&) {
             // "failoverCandidates":
             std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
             foCandsPath += StaticStrings::FailoverCandidates;
-            auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+            auto foCands = this->_snapshot.hasAsBuilder(foCandsPath);
             if (foCands) {
-              addPreconditionUnchanged(pending, foCandsPath, *foCands);
+              addPreconditionUnchanged(pending, foCandsPath, foCands->slice());
             }
           });
       addPreconditionShardNotBlocked(pending, _shard);
@@ -811,7 +812,8 @@ JOB_STATUS MoveShard::pendingLeader() {
   // in the Plan:
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  Slice plan = _snapshot.hasAsSlice(planPath).value();
+  auto planBuilder = _snapshot.hasAsBuilder(planPath).value();
+  Slice plan = planBuilder.slice();
   Builder trx;
   Builder pre;  // precondition
   bool finishedAfterTransaction = false;
@@ -1154,7 +1156,8 @@ JOB_STATUS MoveShard::pendingFollower() {
   // we abort:
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  Slice plan = _snapshot.hasAsSlice(planPath).value();
+  auto planBuilder = _snapshot.hasAsBuilder(planPath).value();
+  Slice plan = planBuilder.slice();
   if (plan.isArray() &&
       Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
     LOG_TOPIC("f8c22", DEBUG, Logger::SUPERVISION)
