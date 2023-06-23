@@ -127,7 +127,7 @@ ResultT<graph::Graph const*> QueryContext::lookupGraphByName(
 
 void QueryContext::addDataSource(  // track DataSource
     std::shared_ptr<arangodb::LogicalDataSource> const&
-        ds                         // DataSource to track
+        ds  // DataSource to track
 ) {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
   _queryDataSources.try_emplace(ds->guid(), ds->name());

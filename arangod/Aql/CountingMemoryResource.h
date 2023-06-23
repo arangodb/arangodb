@@ -56,4 +56,4 @@ struct CountingMemoryResource : std::pmr::memory_resource {
   /// @brief current resources and limits used by query
   ResourceMonitor& _resourceMonitor;
 };
-} // namespace arangodb::aql
+}  // namespace arangodb::aql
