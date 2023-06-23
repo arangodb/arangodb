@@ -1,6 +1,7 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+* Attempt to avoid busy looping when locking collections with a timeout
 
 * FE-240: disable JSON editor when viewing inverted index.
 
