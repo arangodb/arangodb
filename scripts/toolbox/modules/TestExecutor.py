@@ -5,6 +5,8 @@ from tests import HotBackupSystemCollectionRestoreTest
 from modules import MetricsTracker
 from modules import Feed
 
+# TODO: TO BE REMOVED SOON and replaced by a better runner.
+
 def start(args, cfg):
     if args.devFlag:
         # This area is for development purposes only. It is not used in production.
