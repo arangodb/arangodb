@@ -320,7 +320,7 @@ workflows:
       - run-poc-test:
           name: run-poc-test
           requires:
-            - compile-linux
+            - build-ce
   enterprise-pr:
     jobs:
       - compile-linux:
