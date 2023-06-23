@@ -20,7 +20,8 @@ arangodb = {
         "javascript.module-directory": "../../enterprise/js",
         "javascript.startup-directory": "../../js"
     },
-    "executable": "../../build/bin/arangod"
+    "executable": "../../build/bin/arangod",
+    "pocDirectory": "../../tests/js/transform/poc/"
 }
 
 # ArangoDB Feed tool based configuration parameters

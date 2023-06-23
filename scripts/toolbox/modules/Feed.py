@@ -9,8 +9,19 @@ def start(cfg, operations):
     with open(fileName, "w") as textFile:
         textFile.write(operations)
 
-    parameters = ["go", "run", "main.go", "--endpoints", cfg["feed"]["endpoints"], "--execute", "../" + fileName, "--jsonOutputFile",
+    parameters = ["go", "run", "main.go", "--endpoints", cfg["feed"]["endpoints"], "--execute", "../" + fileName,
+                  "--jsonOutputFile",
                   "../" + cfg["feed"]["jsonOutputFile"]]
+    process = subprocess.Popen(parameters, cwd="feed", stdout=subprocess.DEVNULL)
+    # TODO: instead of just putting it into DEVNULL, we can write output in a special verbose folder.
+    return process
+
+
+def startFromFile(cfg, fileName):
+    parameters = ["go", "run", "main.go", "--endpoints", cfg["feed"]["endpoints"], "--execute", "../" + fileName,
+                  "--jsonOutputFile",
+                  "../" + cfg["feed"]["jsonOutputFile"]]
+    print(parameters)
     process = subprocess.Popen(parameters, cwd="feed", stdout=subprocess.DEVNULL)
     # TODO: instead of just putting it into DEVNULL, we can write output in a special verbose folder.
     return process
