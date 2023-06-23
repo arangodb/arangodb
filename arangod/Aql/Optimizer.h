@@ -54,10 +54,15 @@ class Optimizer {
 
     ::arangodb::containers::RollingVector<Entry> list;
 
-    PlanList() { list.reserve(8); }
+    explicit PlanList(std::pmr::memory_resource* memory_resource)
+        : list{memory_resource} {
+      list.reserve(8);
+    }
 
     /// @brief constructor with a plan
-    PlanList(std::unique_ptr<ExecutionPlan> p, RuleDatabase::iterator rule) {
+    PlanList(std::unique_ptr<ExecutionPlan> p, RuleDatabase::iterator rule,
+             std::pmr::memory_resource* memory_resource)
+        : list{memory_resource} {
       push_back(std::move(p), rule);
     }
 
@@ -107,7 +112,8 @@ class Optimizer {
   /// @brief constructor, this will initialize the rules database
   /// the .cpp file includes Aql/OptimizerRules.h
   /// and add all methods there to the rules database
-  explicit Optimizer(size_t maxNumberOfPlans);
+  explicit Optimizer(size_t maxNumberOfPlans,
+                     std::pmr::memory_resource* memory_resource);
 
   ~Optimizer() = default;
 
@@ -206,6 +212,8 @@ class Optimizer {
 
   /// @brief run only the required optimizer rules
   bool _runOnlyRequiredRules;
+
+  std::pmr::memory_resource* _memory_resource;
 };
 
 }  // namespace arangodb::aql

@@ -73,6 +73,7 @@ class QueryContext {
 
   ResourceMonitor& resourceMonitor() noexcept { return _resourceMonitor; }
 
+  std::pmr::memory_resource* memory_resource() { return _memoryResource.get(); }
   ResourceMonitor const& resourceMonitor() const noexcept {
     return _resourceMonitor;
   }
