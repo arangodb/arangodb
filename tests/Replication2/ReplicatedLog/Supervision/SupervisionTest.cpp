@@ -47,7 +47,7 @@ using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::test;
 
 struct LeaderElectionCampaignTest : ::testing::Test {
-  CleanOracle defaultCleanOracle{};
+  tests::MockCleanOracle mrProper{};
 };
 
 TEST_F(LeaderElectionCampaignTest, test_computeReason) {
@@ -110,7 +110,7 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
           {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}}};
 
   auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1},
-                                      true, defaultCleanOracle);
+                                      true, mrProper);
 
   EXPECT_EQ(campaign.participantsVoting, 3U) << campaign;
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}))
@@ -151,7 +151,7 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
           {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}}};
 
   auto campaign = runElectionCampaign(localStates, config, health, LogTerm{2},
-                                      true, defaultCleanOracle);
+                                      true, mrProper);
 
   EXPECT_EQ(campaign.participantsVoting, 1U);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{2}, LogIndex{1}}));
@@ -193,7 +193,7 @@ TEST_F(LeaderElectionCampaignTest,
           {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}}};
 
   auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1},
-                                      true, defaultCleanOracle);
+                                      true, mrProper);
 
   EXPECT_EQ(campaign.participantsVoting, 2U);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
@@ -236,10 +236,7 @@ TEST_F(LeaderElectionCampaignTest,
           {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       }};
 
-  auto mrProper = tests::MockCleanOracle{};
-  EXPECT_CALL(mrProper, serverIsCleanWfsFalse)
-      .Times(3)
-      .WillRepeatedly([](auto const& participant) { return false; });
+  EXPECT_CALL(mrProper, serverIsCleanWfsFalse).Times(3);
 
   auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1},
                                       false, mrProper);
@@ -288,7 +285,6 @@ TEST_F(LeaderElectionCampaignTest,
           {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       }};
 
-  auto mrProper = tests::MockCleanOracle{};
   EXPECT_CALL(mrProper, serverIsCleanWfsFalse)
       .Times(2)
       .WillRepeatedly([](auto const& participant) {
@@ -364,7 +360,6 @@ TEST_F(LeaderElectionCampaignTest,
           {"E", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       }};
 
-  auto mrProper = tests::MockCleanOracle{};
   EXPECT_CALL(mrProper, serverIsCleanWfsFalse)
       .Times(4)
       .WillRepeatedly([](auto const& participant) {
