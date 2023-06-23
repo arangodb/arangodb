@@ -33,12 +33,27 @@ const db = require("@arangodb").db;
 
 function POCTestSuite() {
   const collectionName = "UnitTestCollection";
+  const dbName = "UnitTestDatabase";
   return {
+
+    setUpAll() {
+      db._useDatabase(dbName);
+    },
+
+    tearDownAll() {
+      db._useDatabase("_system");
+    },
+
     testCollectionMetaData: function () {
       const c = db._collection(collectionName);
       const props = c.properties();
-      assertTrue(props.hasOwnProperty("id"));
-      assertEqual(props.name, collectionName);
+      assertTrue(props.hasOwnProperty("globallyUniqueId"));
+      assertEqual(c.name(), collectionName);
+    },
+
+    testCollectionContainsData: function() {
+      const c = db._collection(collectionName);
+      assertEqual(c.count(), 10000);
     }
   };
 }
