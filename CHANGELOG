@@ -1,6 +1,8 @@
 devel
 -----
 
+* BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
+
 * If a startup option has a dynamic default value (e.g. if the default value
   depends on the amount of available RAM), display a "dynamic default" hint
   when invoking `--help`.
