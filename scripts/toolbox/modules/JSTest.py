@@ -33,5 +33,7 @@ def start(options, cfg):
         parameters.append("--" + key + "=" + value)
 
     parameters.append("--javascript.execute=" + dummyTestFile)
+    os.makedirs(workDir, exist_ok=True)
     process = subprocess.Popen(parameters, stdout=subprocess.DEVNULL)
+    process.wait()
     return process

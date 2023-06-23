@@ -4,7 +4,7 @@ import json
 
 import modules.ArangoDBInstanceManager as ArangoDBInstanceManager
 import modules.Feed as Feed
-import modules.ArgumentParser as ArgumentParser
+import modules.JSTest as JSTest
 
 def executePipeline(cfg, args, fileName):
     if fileName is None:
@@ -31,6 +31,11 @@ def executePipeline(cfg, args, fileName):
             # Feed Data Insertion Component
             elif element["component"] == "feed":
                 assert ("folderName" in parameters)
-                folderName = parameters["folderName"]
+                folderName = parameters["folderName"] + "/input.feed"
                 Feed.startFromFile(cfg, folderName)
+
+            # JSTest Component
+            elif element["component"] == "test":
+                assert ("folderName" in parameters)
+                JSTest.start(parameters, cfg)
 

@@ -124,7 +124,7 @@ def startCluster(options=None, performUpgrade=False):
 
         # Set upgrade environment variable
         os.environ.update(oldEnvironment)
-        parameters = ["./scripts/startLocalCluster.sh"]
+        parameters = ["./scripts/startLocalCluster.sh", "-b", "-1"]
         subprocess.Popen(parameters).wait()
 
 

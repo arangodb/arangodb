@@ -23,4 +23,5 @@ def startFromFile(cfg, fileName):
                   "../" + cfg["feed"]["jsonOutputFile"]]
     process = subprocess.Popen(parameters, cwd="feed", stdout=subprocess.DEVNULL)
     # TODO: instead of just putting it into DEVNULL, we can write output in a special verbose folder.
+    process.wait()
     return process

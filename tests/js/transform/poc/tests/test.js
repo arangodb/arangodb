@@ -54,6 +54,10 @@ function POCTestSuite() {
     testCollectionContainsData: function() {
       const c = db._collection(collectionName);
       assertEqual(c.count(), 10000);
+    },
+    testThatFails: function() {
+      const c = db._collection(collectionName);
+      assertEqual(c.count(), 20000, `Using a special message`);
     }
   };
 }
