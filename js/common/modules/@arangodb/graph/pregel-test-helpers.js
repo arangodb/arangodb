@@ -311,21 +311,19 @@ const pregelRunSmallInstanceGetComponents = function (algName, graphName, parame
 };
 
 const makeSetUp = function (smart, smartAttribute, numberOfShards) {
-    return function () {
-        if (smart) {
-            smart_graph_module._create(graphName, [smart_graph_module._relation(eColl, vColl, vColl)], [],
-                {smartGraphAttribute: smartAttribute, numberOfShards: numberOfShards});
-        } else {
-            db._create(vColl, {numberOfShards: numberOfShards});
-            db._createEdgeCollection(eColl, {
-                numberOfShards: numberOfShards,
-                replicationFactor: 1,
-                shardKeys: ["vertex"],
-                distributeShardsLike: vColl
-            });
-            general_graph_module._create(graphName, [general_graph_module._relation(eColl, vColl, vColl)], []);
-        }
-    };
+  return function () {
+    if (smart) {
+      smart_graph_module._create(graphName, [smart_graph_module._relation(eColl, vColl, vColl)], [],
+        {smartGraphAttribute: smartAttribute, numberOfShards: numberOfShards});
+    } else {
+      db._create(vColl, {numberOfShards: numberOfShards});
+      db._createEdgeCollection(eColl, {
+        shardKeys: ["vertex"],
+        distributeShardsLike: vColl
+      });
+      general_graph_module._create(graphName, [general_graph_module._relation(eColl, vColl, vColl)], []);
+    }
+  };
 };
 
 const makeTearDown = function (smart) {

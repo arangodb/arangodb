@@ -85,9 +85,9 @@ class Node : public std::enable_shared_from_this<Node> {
   using PathTypeView = std::span<std::string const>;
 
   /// @brief Child nodes
-  using Children = immer::map<std::string, NodePtr>;
+  using Children = ::immer::map<std::string, NodePtr>;
 
-  using Array = immer::flex_vector<velocypack::String>;
+  using Array = ::immer::flex_vector<velocypack::String>;
 
   using VariantType = std::variant<Children, Array, velocypack::String>;
 

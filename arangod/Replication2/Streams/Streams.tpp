@@ -85,12 +85,6 @@ struct StreamGenericImplementation<Implementation, Descriptor, ProducerStream>
     return static_cast<Implementation*>(this)
         ->template insertInternal<Descriptor>(t);
   }
-
-  auto insertDeferred(ValueType const& t)
-      -> std::pair<LogIndex, DeferredAction> override {
-    return static_cast<Implementation*>(this)
-        ->template insertInternalDeferred<Descriptor>(t);
-  }
 };
 
 template<typename Implementation, typename Descriptor>

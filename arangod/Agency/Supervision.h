@@ -43,6 +43,9 @@ namespace arangodb {
 namespace velocypack {
 class Slice;
 }
+namespace replication2::replicated_log {
+struct ParticipantsHealth;
+}
 
 namespace consensus {
 
@@ -133,7 +136,7 @@ class Supervision : public arangodb::Thread {
   }
 
   static std::string serverHealthFunctional(Node const& snapshot,
-                                            std::string const&);
+                                            std::string_view);
 
   static bool verifyServerRebootID(Node const& snapshot,
                                    std::string const& serverID,
@@ -224,11 +227,11 @@ class Supervision : public arangodb::Thread {
   /// @brief Check replicated logs
   void checkReplicatedLogs();
 
+  /// @brief Check collection groups
+  void checkCollectionGroups();
+
   /// @brief Clean up replicated logs
   void cleanupReplicatedLogs();
-
-  /// @brief Clean up replicated states
-  void cleanupReplicatedStates();
 
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node const> const& resource;
@@ -288,6 +291,9 @@ class Supervision : public arangodb::Thread {
 
   void updateDBServerMaintenance();
 
+  replication2::replicated_log::ParticipantsHealth collectParticipantsHealth()
+      const;
+
   void handleJobs();
 
   void restoreBrokenAnalyzersRevision(
@@ -321,7 +327,7 @@ class Supervision : public arangodb::Thread {
   std::atomic<bool> _upgraded;
   std::chrono::system_clock::time_point _nextServerCleanup;
 
-  std::string serverHealth(std::string const&);
+  std::string serverHealth(std::string_view) const;
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature
 

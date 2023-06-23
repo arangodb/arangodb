@@ -182,6 +182,13 @@ struct NodeLoadInspectorImpl
 
   consensus::Node const* node() const noexcept { return _node; }
 
+  VPackSlice slice() {
+    if (_node->isPrimitiveValue()) {
+      return _node->slice();
+    }
+    return VPackSlice::noneSlice();
+  }
+
  private:
   template<class>
   friend struct detail::EmbeddedFields;

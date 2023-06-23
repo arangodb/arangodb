@@ -353,7 +353,7 @@ void AgencyCache::run() {
     // This is intentionally 61s timeout to avoid a client timeout, since
     // the server returns after 60s by default. This avoids broken
     // connections.
-    return AsyncAgencyComm().poll(61s, commitIndex);
+    return AsyncAgencyComm().withSkipScheduler(true).poll(61s, commitIndex);
   };
 
   // while not stopping
@@ -386,119 +386,107 @@ void AgencyCache::run() {
       //   {..., result:{commitIndex:X, log:[]}}
 
       if (server().getFeature<NetworkFeature>().prepared()) {
-        auto ret =
-            sendTransaction()
-                .thenValue([&](AsyncAgencyCommResult&& rb) {
-                  if (!rb.ok() ||
-                      rb.statusCode() != arangodb::fuerte::StatusOK) {
-                    // Error response, this includes client timeout
-                    increaseWaitTime();
-                    LOG_TOPIC("9a93e", DEBUG, Logger::CLUSTER)
-                        << "Failed to get poll result from agency.";
-                    return futures::makeFuture();
-                  }
-                  // Correct response:
-                  index_t curIndex = 0;
-                  {
-                    std::lock_guard g(_storeLock);
-                    curIndex = _commitIndex;
-                  }
-                  auto slc = rb.slice();
-                  wait = 0.;
-                  TRI_ASSERT(slc.hasKey("result"));
-                  VPackSlice rs = slc.get("result");
-                  TRI_ASSERT(rs.hasKey("commitIndex"));
-                  TRI_ASSERT(rs.get("commitIndex").isNumber());
-                  index_t commitIndex =
-                      rs.get("commitIndex").getNumber<uint64_t>();
-                  VPackSlice firstIndexSlice = rs.get("firstIndex");
-                  if (!firstIndexSlice.isNumber()) {
-                    // Nothing happened at all, server timeout
-                    return futures::makeFuture();
-                  }
-                  index_t firstIndex = firstIndexSlice.getNumber<uint64_t>();
-                  if (firstIndex > 0) {
-                    // No snapshot, this is actually some log continuation
-                    TRI_ASSERT(_initialized);
-                    // Do incoming logs match our cache's index?
-                    if (firstIndex != curIndex + 1) {
-                      LOG_TOPIC("a9a09", WARN, Logger::CLUSTER)
-                          << "Logs from poll start with index " << firstIndex
-                          << " we requested logs from and including "
-                          << curIndex << " retrying.";
-                      LOG_TOPIC("457e9", TRACE, Logger::CLUSTER)
-                          << "Incoming: " << rs.toJson();
-                      increaseWaitTime();
-                      return futures::makeFuture();
-                    }
-                    TRI_ASSERT(rs.hasKey("log"));
-                    TRI_ASSERT(rs.get("log").isArray());
-                    LOG_TOPIC("4579e", TRACE, Logger::CLUSTER)
-                        << "Applying to cache " << rs.get("log").toJson();
-                    for (auto const& i : VPackArrayIterator(rs.get("log"))) {
-                      pc.clear();
-                      cc.clear();
-                      {
-                        std::lock_guard g(_storeLock);
-                        _readDB.applyTransaction(i);  // apply logs
-                        _commitIndex = i.get("index").getNumber<uint64_t>();
+        try {
+          auto rb = sendTransaction().get();
+          if (!rb.ok() || rb.statusCode() != arangodb::fuerte::StatusOK) {
+            // Error response, this includes client timeout
+            increaseWaitTime();
+            LOG_TOPIC("9a93e", DEBUG, Logger::CLUSTER)
+                << "Failed to get poll result from agency.";
+            continue;
+          }
+          // Correct response:
+          index_t curIndex = 0;
+          {
+            std::lock_guard g(_storeLock);
+            curIndex = _commitIndex;
+          }
+          auto slc = rb.slice();
+          wait = 0.;
+          TRI_ASSERT(slc.hasKey("result"));
+          VPackSlice rs = slc.get("result");
+          TRI_ASSERT(rs.hasKey("commitIndex"));
+          TRI_ASSERT(rs.get("commitIndex").isNumber());
+          index_t commitIndex = rs.get("commitIndex").getNumber<uint64_t>();
+          VPackSlice firstIndexSlice = rs.get("firstIndex");
+          if (!firstIndexSlice.isNumber()) {
+            // Nothing happened at all, server timeout
+            continue;
+          }
+          index_t firstIndex = firstIndexSlice.getNumber<uint64_t>();
+          if (firstIndex > 0) {
+            // No snapshot, this is actually some log continuation
+            TRI_ASSERT(_initialized);
+            // Do incoming logs match our cache's index?
+            if (firstIndex != curIndex + 1) {
+              LOG_TOPIC("a9a09", WARN, Logger::CLUSTER)
+                  << "Logs from poll start with index " << firstIndex
+                  << " we requested logs from and including " << curIndex
+                  << " retrying.";
+              LOG_TOPIC("457e9", TRACE, Logger::CLUSTER)
+                  << "Incoming: " << rs.toJson();
+              increaseWaitTime();
+              continue;
+            }
+            TRI_ASSERT(rs.hasKey("log"));
+            TRI_ASSERT(rs.get("log").isArray());
+            LOG_TOPIC("4579e", TRACE, Logger::CLUSTER)
+                << "Applying to cache " << rs.get("log").toJson();
+            for (auto const& i : VPackArrayIterator(rs.get("log"))) {
+              pc.clear();
+              cc.clear();
+              {
+                std::lock_guard g(_storeLock);
+                _readDB.applyTransaction(i);  // apply logs
+                _commitIndex = i.get("index").getNumber<uint64_t>();
 
-                        {
-                          std::lock_guard g(_callbacksLock);
-                          handleCallbacksNoLock(i.get("query"), uniq, toCall,
-                                                pc, cc);
-                        }
+                {
+                  std::lock_guard g(_callbacksLock);
+                  handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
+                }
 
-                        for (auto const& i : pc) {
-                          _planChanges.emplace(_commitIndex, i);
-                        }
-                        for (auto const& i : cc) {
-                          _currentChanges.emplace(_commitIndex, i);
-                        }
-                      }
-                    }
-                  } else {
-                    // firstIndex == 0, we got a snapshot:
-                    TRI_ASSERT(rs.hasKey("readDB"));
-                    std::lock_guard g(_storeLock);
-                    LOG_TOPIC("4579f", TRACE, Logger::CLUSTER)
-                        << "Fresh start: overwriting agency cache with "
-                        << rs.toJson();
-                    _readDB.setNodeValue(rs);  // overwrite
-                    std::unordered_set<std::string> pc = reInitPlan();
-                    for (auto const& i : pc) {
-                      _planChanges.emplace(_commitIndex, i);
-                    }
-                    // !! Check documentation of the function before making
-                    // changes here !!
-                    _commitIndex = commitIndex;
-                    _lastSnapshot = commitIndex;
-                    _initialized.store(true, std::memory_order_relaxed);
-                  }
-                  triggerWaiting(commitIndex);
-                  if (firstIndex > 0) {
-                    if (!toCall.empty()) {
-                      invokeCallbacks(toCall);
-                    }
-                  } else {
-                    invokeAllCallbacks();
-                  }
-                  return futures::makeFuture();
-                })
-                .thenError<VPackException>(
-                    [&increaseWaitTime](VPackException const& e) {
-                      LOG_TOPIC("9a9f3", ERR, Logger::CLUSTER)
-                          << "Failed to parse poll result from agency: "
-                          << e.what();
-                      increaseWaitTime();
-                    })
-                .thenError<std::exception>([&increaseWaitTime](
-                                               std::exception const& e) {
-                  LOG_TOPIC("9a9e3", ERR, Logger::CLUSTER)
-                      << "Failed to get poll result from agency: " << e.what();
-                  increaseWaitTime();
-                });
-        ret.wait();
+                for (auto const& i : pc) {
+                  _planChanges.emplace(_commitIndex, i);
+                }
+                for (auto const& i : cc) {
+                  _currentChanges.emplace(_commitIndex, i);
+                }
+              }
+            }
+          } else {
+            // firstIndex == 0, we got a snapshot:
+            TRI_ASSERT(rs.hasKey("readDB"));
+            std::lock_guard g(_storeLock);
+            LOG_TOPIC("4579f", TRACE, Logger::CLUSTER)
+                << "Fresh start: overwriting agency cache with " << rs.toJson();
+            _readDB.setNodeValue(rs);  // overwrite
+            std::unordered_set<std::string> pc = reInitPlan();
+            for (auto const& i : pc) {
+              _planChanges.emplace(_commitIndex, i);
+            }
+            // !! Check documentation of the function before making
+            // changes here !!
+            _commitIndex = commitIndex;
+            _lastSnapshot = commitIndex;
+            _initialized.store(true, std::memory_order_relaxed);
+          }
+          triggerWaiting(commitIndex);
+          if (firstIndex > 0) {
+            if (!toCall.empty()) {
+              invokeCallbacks(toCall);
+            }
+          } else {
+            invokeAllCallbacks();
+          }
+        } catch (VPackException const& e) {
+          LOG_TOPIC("9a9f3", ERR, Logger::CLUSTER)
+              << "Failed to parse poll result from agency: " << e.what();
+          increaseWaitTime();
+        } catch (std::exception const& e) {
+          LOG_TOPIC("9a9e3", ERR, Logger::CLUSTER)
+              << "Failed to get poll result from agency: " << e.what();
+          increaseWaitTime();
+        }
       } else {
         increaseWaitTime();
         LOG_TOPIC("9393e", DEBUG, Logger::CLUSTER)

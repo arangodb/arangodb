@@ -218,7 +218,7 @@ struct SaveInspectorBase : InspectorBase<Derived, Context> {
     if constexpr (Idx < End) {
       return process(this->self(), std::get<Idx>(data))  //
              | [&]() {
-                 return this->self().processTuple<Idx + 1, End>(data);
+                 return this->self().template processTuple<Idx + 1, End>(data);
                };  //
     } else {
       return Status::Success{};

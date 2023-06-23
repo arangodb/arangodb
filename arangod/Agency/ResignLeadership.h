@@ -50,6 +50,8 @@ struct ResignLeadership : public Job {
   // Check if all shards' have a follower
   bool checkFeasibility();
   bool scheduleMoveShards(std::shared_ptr<velocypack::Builder>& trx);
+  void scheduleJobsR2(std::shared_ptr<velocypack::Builder>& trx,
+                      DatabaseID const& database, size_t&);
 
   std::string _server;
   bool _undoMoves{true};

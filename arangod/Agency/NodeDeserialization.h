@@ -48,6 +48,13 @@ void deserialize(Inspector& inspector, T& result) {
 template<class Inspector, class T>
 void deserialize(NodePtr const& node, T& result,
                  inspection::ParseOptions options) {
+  Inspector inspector(node, options);
+  deserialize(inspector, result);
+}
+
+template<class Inspector, class T>
+void deserialize(Node const& node, T& result,
+                 inspection::ParseOptions options) {
   Inspector inspector(&node, options);
   deserialize(inspector, result);
 }
@@ -61,6 +68,13 @@ void deserialize(NodePtr const& node, T& result,
 
 template<class Inspector, class T>
 T deserialize(NodePtr const& node, inspection::ParseOptions options) {
+  T result;
+  detail::deserialize<Inspector, T>(node, result, options);
+  return result;
+}
+
+template<class Inspector, class T>
+T deserialize(Node const& node, inspection::ParseOptions options) {
   T result;
   detail::deserialize<Inspector, T>(node, result, options);
   return result;
@@ -136,6 +150,11 @@ void deserializeUnsafe(Node const& node, T& result,
 
 template<class T>
 T deserialize(NodePtr const& node, inspection::ParseOptions options = {}) {
+  return detail::deserialize<inspection::NodeLoadInspector<>, T>(node, options);
+}
+
+template<class T>
+T deserialize(Node const& node, inspection::ParseOptions options = {}) {
   return detail::deserialize<inspection::NodeLoadInspector<>, T>(node, options);
 }
 
