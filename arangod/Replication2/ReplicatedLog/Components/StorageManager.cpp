@@ -100,40 +100,55 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
         [slice = std::move(slice), iter = std::move(iter),
          weakManager = manager.weak_from_this(), waitForSync](
             StorageManager::IStorageEngineMethods& methods) mutable noexcept {
-          auto&& fut = methods.insert(std::move(iter), {.waitForSync = waitForSync});
+          auto lastIndex = slice.getLastIndex();
+          auto&& fut =
+              methods.insert(std::move(iter), {.waitForSync = waitForSync});
+
           if (waitForSync) {
-            return std::move(fut).thenValue([](auto&& res) { return res.result(); });
+            return std::move(fut).thenValue(
+                [lastIndex, weakManager = std::move(weakManager)](auto&& res) {
+                  if (auto mngr = weakManager.lock(); res.ok() && mngr) {
+                    mngr->syncIndex.doUnderLock([lastIndex](auto&& syncIndex) {
+                      if (syncIndex < lastIndex) {
+                        syncIndex = lastIndex;
+                      }
+                    });
+                  }
+                  return res.result();
+                });
           }
-          return std::move(fut).thenValue([lastIndex = slice.getLastIndex(),
-                          weakManager = std::move(weakManager), &methods](auto&& res) mutable {
-                // We're done writing to the WAL. That doesn't necessarily
-                // mean the data is synced to disk.
-                if (auto mngr = weakManager.lock(); res.ok() && mngr) {
-                  // Methods are available as long as the manager is not
-                  // destroyed.
-                  mngr->scheduler->queue(
-                      [lastIndex, weakManager = std::move(weakManager),
-                       wfs = methods.waitForSync(res.get())]() mutable {
-                        auto syncRes = wfs.get();
-                        if (auto mngr = weakManager.lock()) {
-                          if (syncRes.fail()) {
-                            LOG_CTX("6e64c", INFO, mngr->loggerContext)
-                                << "Will not update syncIndex from "
-                                << mngr->syncIndex.getLockedGuard().get()
-                                << " to " << lastIndex << ": " << syncRes;
-                            return;
-                          }
-                          mngr->syncIndex.doUnderLock(
-                              [lastIndex](auto&& syncIndex) {
-                                if (syncIndex < lastIndex) {
-                                  syncIndex = lastIndex;
-                                }
-                              });
-                        }
-                      });
-                }
-                return res.result();
-              });
+
+          return std::move(fut).thenValue([lastIndex,
+                                           weakManager = std::move(weakManager),
+                                           &methods](auto&& res) mutable {
+            // We're done writing to the WAL. That doesn't necessarily
+            // mean the data is synced to disk.
+            if (auto mngr = weakManager.lock(); res.ok() && mngr) {
+              // Methods are available as long as the manager is not
+              // destroyed.
+              mngr->scheduler->queue(
+                  [lastIndex, weakManager = std::move(weakManager),
+                   wfs = methods.waitForSync(res.get())]() mutable {
+                    auto syncRes = wfs.get();
+                    if (auto mngr = weakManager.lock()) {
+                      if (syncRes.fail()) {
+                        LOG_CTX("6e64c", INFO, mngr->loggerContext)
+                            << "Will not update syncIndex from "
+                            << mngr->syncIndex.getLockedGuard().get() << " to "
+                            << lastIndex << ": " << syncRes;
+                        return;
+                      }
+                      mngr->syncIndex.doUnderLock(
+                          [lastIndex](auto&& syncIndex) {
+                            if (syncIndex < lastIndex) {
+                              syncIndex = lastIndex;
+                            }
+                          });
+                    }
+                  });
+            }
+            return res.result();
+          });
         });
   }
 

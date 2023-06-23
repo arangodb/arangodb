@@ -228,7 +228,7 @@ struct RocksDBAsyncLogWriteBatcher final
   auto waitForSync(SequenceNumber seq) -> futures::Future<Result> override;
   auto queue(AsyncLogWriteContext& ctx, Action action, WriteOptions const& wo)
       -> futures::Future<ResultT<SequenceNumber>>;
-  void onSync(SequenceNumber sequenceNumber) noexcept override;
+  void onSync(SequenceNumber seq) noexcept override;
 
   struct Lane {
     Lane() = delete;
@@ -256,8 +256,14 @@ struct RocksDBAsyncLogWriteBatcher final
   std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> const
       _options;
   std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> const _metrics;
-  Guarded<std::multimap<SequenceNumber, futures::Promise<Result>>>
-      _waitForSyncPromises;
+
+  struct SyncGuard {
+    explicit SyncGuard() = default;
+
+    SequenceNumber syncedSequenceNumber{0};
+    std::multimap<SequenceNumber, futures::Promise<Result>> promises{};
+  };
+  Guarded<SyncGuard> _syncGuard;
 };
 
 struct RocksDBReplicatedStateInfo {

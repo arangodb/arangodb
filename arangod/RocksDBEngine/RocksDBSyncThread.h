@@ -63,7 +63,7 @@ class RocksDBSyncThread final : public Thread {
     /// @brief called when the RocksDB WAL has been synced and the last sequence
     /// number has been updated. It should schedule a separate thread to do the
     /// actual work.
-    virtual void onSync(rocksdb::SequenceNumber sequence) noexcept = 0;
+    virtual void onSync(rocksdb::SequenceNumber seq) noexcept = 0;
   };
   void registerSyncListener(std::shared_ptr<ISyncListener> listener);
 
