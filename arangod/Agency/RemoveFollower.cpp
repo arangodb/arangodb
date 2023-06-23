@@ -151,7 +151,8 @@ bool RemoveFollower::start(bool&) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.hasAsSlice(planPath).value();
+  auto plannedBuilder = _snapshot.get(planPath)->toBuilder();
+  Slice planned = plannedBuilder.slice();
 
   TRI_ASSERT(planned.isArray());
 
