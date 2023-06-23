@@ -1,6 +1,9 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+
+* FE-285: Fix query download - use post request for query.
+
 * Fixed Github issue #19175.
   This fixes a problem in traversal query optimization that was introduced
   in 3.11 and that can lead to traversal queries being aborted with an error
