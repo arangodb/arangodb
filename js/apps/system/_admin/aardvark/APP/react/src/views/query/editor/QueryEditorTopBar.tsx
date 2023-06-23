@@ -1,5 +1,6 @@
-import { Button, Stack } from "@chakra-ui/react";
+import { Button, Flex, Icon, IconButton } from "@chakra-ui/react";
 import React from "react";
+import { MagicWand } from "styled-icons/boxicons-solid";
 import { useQueryContext } from "../QueryContextProvider";
 
 export const QueryEditorTopBar = () => {
@@ -18,9 +19,10 @@ export const QueryEditorTopBar = () => {
     queryValue !== "" ||
     JSON.stringify(queryBindParams) !== "{}";
   return (
-    <Stack
+    <Flex
+      gap="2"
       direction="row"
-      padding="2"
+      paddingY="2"
       borderBottom="1px solid"
       borderBottomColor="gray.300"
     >
@@ -49,6 +51,9 @@ export const QueryEditorTopBar = () => {
           New
         </Button>
       )}
-    </Stack>
+      <Flex marginLeft="auto">
+        <IconButton icon={<Icon as={MagicWand} />} aria-label={"Spotlight"} />
+      </Flex>
+    </Flex>
   );
 };

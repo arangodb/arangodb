@@ -6,6 +6,8 @@ import {
   AccordionPanel,
   Box,
   FormLabel,
+  Grid,
+  Input,
   Spacer,
   Stack,
   Tag
@@ -13,6 +15,7 @@ import {
 import { useField } from "formik";
 import React from "react";
 import { FormField } from "../../../components/form/FormField";
+import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { IndexInfoTooltip } from "../../collections/indices/addIndex/IndexInfoTooltip";
 import { useEditViewContext } from "../editView/EditViewContext";
 import { PrimarySortType, StoredValueType } from "../searchView.types";
@@ -106,11 +109,33 @@ const GeneralAccordionItem = () => {
   );
 };
 
+const generalGraphFields = [
+  {
+    name: "name",
+    type: "string",
+    label: "Name",
+    tooltip: "Name of the graph.",
+    isRequired: true
+  }
+];
+const GeneralGraphPanel = () => {
+  return (
+    <Grid gridTemplateColumns={"200px 1fr 40px"}>
+      {generalGraphFields.map(field => {
+        return <FormField field={field} key={field.name} />;
+      })}
+      <FormLabel>name</FormLabel>
+      <Input />
+      <InfoTooltip title="fafddsaf" />
+    </Grid>
+  );
+};
 const ConsolidationPolicyAccordionItem = () => {
   const { tierConsolidationPolicyFields, bytesAccumConsolidationPolicyFields } =
     useArangoSearchFieldsData();
   const [policyTypeField] = useField("consolidationPolicy.type");
   const { isAdminUser } = useEditViewContext();
+  return <GeneralGraphPanel />;
   return (
     <AccordionItem>
       <AccordionButton>
