@@ -1,6 +1,8 @@
 v3.9.12 (XXXX-X-XX)
 --------------------
 
+* FE-287: fix number validation for replicationFactor and writeConcern.
+
 * Updated arangosync to v2.18.1.
 
 * SEARCH-476: Fix bug in fst builder.
