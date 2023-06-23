@@ -81,7 +81,7 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
         });
   }
 
-  auto appendEntries(InMemoryLog slice) noexcept
+  auto appendEntries(InMemoryLog slice, bool waitForSync) noexcept
       -> futures::Future<Result> override {
     LOG_CTX("eb8da", TRACE, manager.loggerContext)
         << "scheduling append, range = " << slice.getIndexRange();
@@ -98,15 +98,16 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
     return scheduleOperation(
         std::move(mapping),
         [slice = std::move(slice), iter = std::move(iter),
-         weakManager = manager.weak_from_this()](
+         weakManager = manager.weak_from_this(), waitForSync](
             StorageManager::IStorageEngineMethods& methods) mutable noexcept {
-          return methods.insert(std::move(iter), {.waitForSync = true})
-              .thenValue([lastIndex = slice.getLastIndex(),
-                          weakManager = std::move(weakManager),
-                          &methods](auto&& res) mutable {
+          auto&& fut = methods.insert(std::move(iter), {.waitForSync = waitForSync});
+          if (waitForSync) {
+            return std::move(fut).thenValue([](auto&& res) { return res.result(); });
+          }
+          return std::move(fut).thenValue([lastIndex = slice.getLastIndex(),
+                          weakManager = std::move(weakManager), &methods](auto&& res) mutable {
                 // We're done writing to the WAL. That doesn't necessarily
                 // mean the data is synced to disk.
-                // TODO only take this action for WFS=false
                 if (auto mngr = weakManager.lock(); res.ok() && mngr) {
                   // Methods are available as long as the manager is not
                   // destroyed.

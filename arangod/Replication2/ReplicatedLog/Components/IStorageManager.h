@@ -57,7 +57,7 @@ struct IStorageTransaction {
       -> futures::Future<Result> = 0;
   virtual auto removeBack(LogIndex start) noexcept
       -> futures::Future<Result> = 0;
-  virtual auto appendEntries(InMemoryLog) noexcept
+  virtual auto appendEntries(InMemoryLog, bool waitForSync) noexcept
       -> futures::Future<Result> = 0;
 };
 
