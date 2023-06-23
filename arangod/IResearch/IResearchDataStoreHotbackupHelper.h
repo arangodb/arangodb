@@ -30,11 +30,36 @@
 namespace arangodb::iresearch {
 
 struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
-  IResearchDataStoreHotbackupHelper(std::string path, Index* originalIndex)
+  template<typename Link>
+  IResearchDataStoreHotbackupHelper(std::string destinationPath,
+                                    Link& sourceDataStore)
       : IResearchDataStore(IResearchDataStore::DefaultConstructKey{}),
-        _originalIndex(originalIndex) {
-    _dataStore._path = path;
-  }
+        _destinationPath(destinationPath),
+        _sourceDataStore(sourceDataStore),
+        _meta(&sourceDataStore.meta()) {}
+
+  arangodb::Result initDataStore() {
+    return std::visit(
+        overload{[&](iresearch::IResearchInvertedIndexMeta const* meta) {
+                   return initDataStore(
+                       _destinationPath, static_cast<uint32_t>(meta->_version),
+                       not meta->_sort.empty(), meta->hasNested(),
+                       meta->_storedValues.columns(),
+                       meta->_sort.sortCompression(),
+                       irs::IndexReaderOptions{});
+                 },
+                 [&](iresearch::IResearchLinkMeta const* meta) {
+                   return initDataStore(
+                       _destinationPath, static_cast<uint32_t>(meta->_version),
+                       not meta->_sort.empty(), meta->hasNested(),
+                       meta->_storedValues.columns(), meta->_sortCompression,
+                       irs::IndexReaderOptions{});
+                 }
+
+        },
+        _meta);
+  };
+
   arangodb::Result initDataStore(
       std::string path, uint32_t version, bool sorted, bool nested,
       std::span<const IResearchViewStoredValues::StoredColumn> storedColumns,
@@ -43,34 +68,34 @@ struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
 
   void unload() { _dataStore.resetDataStore(); }
 
-#if 0
-  template<typename MetaType>
   void hotbackupInsert(uint64_t tick, LocalDocumentId documentId,
-                       velocypack::Slice doc, MetaType const& meta) {
-    IResearchDataStore::recoveryInsert<FieldIterator<MetaType>, MetaType>(
-        tick, documentId, doc, meta);
-  }
-#endif
+                       velocypack::Slice doc) {
+    std::visit(
+        overload{[&](iresearch::IResearchLinkMeta const* meta) {
+                   IResearchDataStore::recoveryInsert<FieldIterator<FieldMeta>,
+                                                      IResearchLinkMeta>(
+                       tick, documentId, doc, *meta);
+                 },
+                 [&](IResearchInvertedIndexMeta const* meta) {
+                   IResearchDataStore::recoveryInsert<
+                       FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
+                       IResearchInvertedIndexMetaIndexingContext>(
+                       tick, documentId, doc, *meta->_indexingContext);
+                 }
 
-  void hotbackupInsert(uint64_t tick, LocalDocumentId documentId,
-                       velocypack::Slice doc, IResearchLinkMeta const& meta) {
-    IResearchDataStore::recoveryInsert<FieldIterator<FieldMeta>,
-                                       IResearchLinkMeta>(tick, documentId, doc,
-                                                          meta);
-  }
-
-  void hotbackupInsert(uint64_t tick, LocalDocumentId documentId,
-                       velocypack::Slice doc,
-                       IResearchInvertedIndexMeta const& meta) {
-    IResearchDataStore::recoveryInsert<
-        FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
-        IResearchInvertedIndexMetaIndexingContext>(tick, documentId, doc,
-                                                   *meta._indexingContext);
+        },
+        _meta);
   }
 
-  [[nodiscard]] Index& index() noexcept final { return *_originalIndex; }
+  void hotbackupRemove(LocalDocumentId documentId) {
+    IResearchDataStore::recoveryRemove(documentId);
+  }
+
+  [[nodiscard]] Index& index() noexcept final {
+    return _sourceDataStore.index();
+  }
   [[nodiscard]] Index const& index() const noexcept final {
-    return *_originalIndex;
+    return _sourceDataStore.index();
   }
   [[nodiscard]] AnalyzerPool::ptr findAnalyzer(
       AnalyzerPool const& analyzer) const final {
@@ -83,7 +108,12 @@ struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
     return {};
   }
 
-  Index* _originalIndex;
+  std::string _destinationPath;
+  IResearchDataStore& _sourceDataStore;
+
+  using Meta = std::variant<iresearch::IResearchInvertedIndexMeta const*,
+                            iresearch::IResearchLinkMeta const*>;
+  Meta _meta;
 };
 
 }  // namespace arangodb::iresearch
