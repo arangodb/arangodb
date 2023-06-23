@@ -1060,7 +1060,9 @@ function CreateCollectionsSuite() {
       try {
         const res = tryCreate({name: systemName, isSystem: true});
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        validateProperties({isSystem: true}, systemName, 2);
+        // ReplicationFactor is inherited by the _system replicationFactor
+        // hard-coded to 2
+        validateProperties({isSystem: true, replicationFactor: 2}, systemName, 2);
       } finally {
         db._drop(systemName, {isSystem: true});
       }
@@ -1287,11 +1289,16 @@ function CreateCollectionsInOneShardSuite() {
         // all are numeric values. None of them can be modified in one shard.
         const res = tryCreate({name: collname, [v]: 2});
         try {
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           if (isCluster) {
-            validateProperties(getOneShardShardingValues(), collname, 2);
+            if ((v === "minReplicationFactor" || v === "writeConcern") && isWindows) {
+              isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {[v]: 2});
+            } else {
+              assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+              validateProperties(getOneShardShardingValues(), collname, 2);
+	    }
           } else {
             // OneShard has no meaning in single server, just assert values are taken
+            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
             validateProperties({}, collname, 2);
           }
         } finally {
