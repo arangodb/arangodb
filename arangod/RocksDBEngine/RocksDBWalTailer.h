@@ -19,10 +19,25 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
-
+///
+/// This WalTailer was primarily written to enable HotBackup consistency in
+/// conjunction with ArangoSearch.
+///
+/// In the HotBackup code, the RocksDB WAL between a point where an ArangoSearch
+/// snapshot was taken and a point between a RocksDB snapshot was taken is
+/// applied to the ArangoSearch snapshot.
+///
+/// This application process did not require any of the complications
+/// implemented in `WalAccess`, and in particular it seemed counter-productive
+/// to use WalAccess seeing as it did not have some information needed, such as
+/// LocalDocumentIds
+///
+/// Nothing speaks against extending this WalTailer to become more sophisticated
+/// (with the caveat that it should not become too complicated).
 #pragma once
 
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "Basics/ErrorT.h"
 
 namespace arangodb {
 
@@ -40,12 +55,14 @@ class RocksDBWalTailer {
     VPackSlice document;
   };
   struct DeleteMarker {
+    TRI_voc_tick_t tick;
     DataSourceId datasourceId;
     LocalDocumentId documentId;
   };
   using Marker = std::variant<PutMarker, DeleteMarker>;
 
-  void tail(std::function<void(Marker const&)> const&) const;
+  using TailingResult = errors::ErrorT<rocksdb::Status, std::monostate>;
+  auto tail(std::function<void(Marker const&)> const&) const -> TailingResult;
 
   RocksDBEngine& _engine;
   TRI_voc_tick_t _startTick{0};

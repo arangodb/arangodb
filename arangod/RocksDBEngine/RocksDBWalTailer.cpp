@@ -47,32 +47,26 @@ namespace {
 class RocksDBTailingWALDumper final : public rocksdb::WriteBatch::Handler {
  public:
   RocksDBTailingWALDumper(
-      RocksDBEngine& engine,
+      RocksDBEngine& engine, rocksdb::SequenceNumber tick,
       std::function<void(RocksDBWalTailer::Marker const&)> const& callback)
       : _engine(engine),
-        _definitionsCF(RocksDBColumnFamilyManager::get(
-                           RocksDBColumnFamilyManager::Family::Definitions)
-                           ->GetID()),
         _documentsCF(RocksDBColumnFamilyManager::get(
                          RocksDBColumnFamilyManager::Family::Documents)
                          ->GetID()),
         _primaryCF(RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::PrimaryIndex)
                        ->GetID()),
-        _currentSequence(0),
+        _tick(tick),
         _callback(callback) {}
 
   rocksdb::Status PutCF(uint32_t column_family_id, rocksdb::Slice const& key,
                         rocksdb::Slice const& value) override {
-    // TODO: needed?
-    _currentSequence++;
-
     if (column_family_id == _documentsCF) {
       auto objectId = RocksDBKey::objectId(key);
       auto [_, datasourceId] = _engine.mapObjectToCollection(objectId);
 
       _callback(
-          RocksDBWalTailer::PutMarker{.tick = _currentSequence,
+          RocksDBWalTailer::PutMarker{.tick = _tick,
                                       .datasourceId = datasourceId,
                                       .documentId = RocksDBKey::documentId(key),
                                       // TODO: lifetime?
@@ -83,8 +77,6 @@ class RocksDBTailingWALDumper final : public rocksdb::WriteBatch::Handler {
 
   // for Delete / SingleDelete
   void handleDeleteCF(uint32_t cfId, rocksdb::Slice const& key) {
-    _currentSequence++;
-
     if (cfId != _primaryCF) {
       return;  // ignore all document operations
     }
@@ -93,6 +85,7 @@ class RocksDBTailingWALDumper final : public rocksdb::WriteBatch::Handler {
     auto [_, datasourceId] = _engine.mapObjectToCollection(objectId);
 
     _callback(RocksDBWalTailer::DeleteMarker{
+        .tick = _tick,
         .datasourceId = datasourceId,
         .documentId = RocksDBKey::documentId(key)});
   }
@@ -112,7 +105,6 @@ class RocksDBTailingWALDumper final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
                                 const rocksdb::Slice& begin_key,
                                 const rocksdb::Slice& end_key) override {
-    _currentSequence++;
     return rocksdb::Status();
   }
 
@@ -122,72 +114,53 @@ class RocksDBTailingWALDumper final : public rocksdb::WriteBatch::Handler {
 
  private:
   RocksDBEngine& _engine;
-  uint32_t const _definitionsCF;
   uint32_t const _documentsCF;
   uint32_t const _primaryCF;
 
-  // rocksdb::SequenceNumber _startSequence;
-  rocksdb::SequenceNumber _currentSequence;
-  //  rocksdb::SequenceNumber _lastWrittenSequence;
+  rocksdb::SequenceNumber _tick;
 
   std::function<void(RocksDBWalTailer::Marker const&)> const& _callback;
 };
 
 }  // namespace
 
-void RocksDBWalTailer::tail(
-    std::function<void(Marker const&)> const& func) const {
-  rocksdb::TransactionDB* db = _engine.db();
+auto RocksDBWalTailer::tail(
+    std::function<void(Marker const&)> const& func) const -> TailingResult {
+  auto* db = _engine.db();
+  auto const since = _startTick;
 
-  RocksDBTailingWALDumper dumper(_engine, func);
-  const uint64_t since = _startTick;
+  auto purgePreventer = RocksDBFilePurgePreventer(_engine.disallowPurging());
 
-  uint64_t firstTick = UINT64_MAX;   // first tick to actually print (exclusive)
-  uint64_t lastScannedTick = since;  // last (begin) tick of batch we looked at
-  uint64_t latestTick = db->GetLatestSequenceNumber();
+  auto iterator = std::unique_ptr<rocksdb::TransactionLogIterator>(nullptr);
+  auto readOptions = rocksdb::TransactionLogIterator::ReadOptions(false);
 
-  RocksDBFilePurgePreventer purgePreventer(_engine.disallowPurging());
-
-  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
-  rocksdb::TransactionLogIterator::ReadOptions ro(false);
-  rocksdb::Status s = db->GetUpdatesSince(since, &iterator, ro);
-  if (!s.ok()) {
-    ADB_PROD_ASSERT(false) << "TODO: opening RocksDB iterator";
+  auto status = db->GetUpdatesSince(since, &iterator, readOptions);
+  if (!status.ok()) {
+    return TailingResult::error(status);
   }
 
-  while (iterator->Valid() && lastScannedTick <= _endTick) {
-    rocksdb::BatchResult batch = iterator->GetBatch();
-    // record the first tick we are actually considering
-    if (firstTick == UINT64_MAX) {
-      firstTick = batch.sequence;
-    }
-
+  while (iterator->Valid()) {
+    auto batch = iterator->GetBatch();
     if (batch.sequence > _endTick) {
       break;
     }
-    lastScannedTick = batch.sequence;
 
     if (batch.sequence < since) {
       iterator->Next();
       continue;
     }
 
-    s = batch.writeBatchPtr->Iterate(&dumper);
+    auto dumper = RocksDBTailingWALDumper(_engine, batch.sequence, func);
+    auto iterateStatus = batch.writeBatchPtr->Iterate(&dumper);
 
-    if (!s.ok()) {
-      LOG_TOPIC("57d54", ERR, Logger::REPLICATION)
-          << "error during WAL scan: " << s.ToString();
-      //  break;
+    if (!iterateStatus.ok()) {
+      return TailingResult::error(iterateStatus);
     }
-
-    lastScannedTick = batch.sequence;
-    TRI_ASSERT(lastScannedTick <= db->GetLatestSequenceNumber());
-
     iterator->Next();
+
+    if (batch.sequence > _endTick) {
+      break;
+    }
   }
-
-  latestTick = db->GetLatestSequenceNumber();
-  TRI_ASSERT(lastScannedTick <= latestTick);
-
-  // ADB_PROD_ASSERT(s.ok()) << "TODO: error handling";
+  return TailingResult::ok();
 }
