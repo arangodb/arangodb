@@ -2,7 +2,6 @@
 
 from modules import Pipeline
 import config as cfg
-import modules.ArangoDBInstanceManager as ArangoDBInstanceManager
 from modules import ArgumentParser
 
 def main():
