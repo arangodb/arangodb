@@ -32,11 +32,14 @@ namespace arangodb::iresearch {
 struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
   template<typename Link>
   IResearchDataStoreHotbackupHelper(std::string destinationPath,
-                                    Link& sourceDataStore)
+                                    Link const& sourceDataStore)
       : IResearchDataStore(IResearchDataStore::DefaultConstructKey{}),
         _destinationPath(destinationPath),
         _sourceDataStore(sourceDataStore),
-        _meta(&sourceDataStore.meta()) {}
+        _meta(&sourceDataStore.meta()) {
+    _engine = sourceDataStore.engine();
+    _asyncFeature = sourceDataStore.getIResearchFeature();
+  }
 
   arangodb::Result initDataStore() {
     return std::visit(
@@ -45,15 +48,14 @@ struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
                        _destinationPath, static_cast<uint32_t>(meta->_version),
                        not meta->_sort.empty(), meta->hasNested(),
                        meta->_storedValues.columns(),
-                       meta->_sort.sortCompression(),
-                       irs::IndexReaderOptions{});
+                       meta->_sort.sortCompression(), _indexReaderOptions);
                  },
                  [&](iresearch::IResearchLinkMeta const* meta) {
                    return initDataStore(
                        _destinationPath, static_cast<uint32_t>(meta->_version),
                        not meta->_sort.empty(), meta->hasNested(),
                        meta->_storedValues.columns(), meta->_sortCompression,
-                       irs::IndexReaderOptions{});
+                       _indexReaderOptions);
                  }
 
         },
@@ -66,6 +68,10 @@ struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
       irs::type_info::type_id primarySortCompression,
       irs::IndexReaderOptions const& readerOptions);
 
+  void commitHotbackupTransaction(uint64_t tick) {
+    recoveryCommit(tick);
+    _dataStore._writer->Commit({.tick = tick});
+  }
   void unload() { _dataStore.resetDataStore(); }
 
   void hotbackupInsert(uint64_t tick, LocalDocumentId documentId,
@@ -91,9 +97,8 @@ struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
     IResearchDataStore::recoveryRemove(documentId);
   }
 
-  [[nodiscard]] Index& index() noexcept final {
-    return _sourceDataStore.index();
-  }
+  [[nodiscard]] Index& index() noexcept final { TRI_ASSERT(false); }
+
   [[nodiscard]] Index const& index() const noexcept final {
     return _sourceDataStore.index();
   }
@@ -105,15 +110,17 @@ struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
   void invalidateQueryCache(TRI_vocbase_t*) final { TRI_ASSERT(false); }
   irs::Comparer const* getComparator() const noexcept final {
     TRI_ASSERT(false);
-    return {};
+    return nullptr;
+    //   return _sourceDataStore.getComparator();
   }
 
   std::string _destinationPath;
-  IResearchDataStore& _sourceDataStore;
+  IResearchDataStore const& _sourceDataStore;
 
   using Meta = std::variant<iresearch::IResearchInvertedIndexMeta const*,
                             iresearch::IResearchLinkMeta const*>;
   Meta _meta;
+  irs::IndexReaderOptions _indexReaderOptions;
 };
 
 }  // namespace arangodb::iresearch

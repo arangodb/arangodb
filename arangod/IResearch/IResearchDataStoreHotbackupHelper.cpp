@@ -99,8 +99,7 @@ arangodb::Result IResearchDataStoreHotbackupHelper::initDataStore(
   // Reset together with '_asyncSelf'
   // _flushSubscription.reset();
 
-  // ???
-  // _hasNestedFields = nested;
+  _hasNestedFields = nested;
 
   /// ???
   auto const formatId = getFormat(LinkVersion{version});
@@ -119,6 +118,8 @@ arangodb::Result IResearchDataStoreHotbackupHelper::initDataStore(
     ADB_PROD_ASSERT(false) << "BOOM";
   }
 
+  // Thes initCallback is needed (ref to IResearchDataSTore.cpp) to setup
+  // encryption of the store
   _dataStore._directory = std::make_unique<irs::MMapDirectory>(
       _dataStore._path, irs::directory_attributes{});
 
@@ -156,6 +157,8 @@ arangodb::Result IResearchDataStoreHotbackupHelper::initDataStore(
   _dataStore._meta._writebufferActive = options.segment_count_max;
   _dataStore._meta._writebufferIdle = options.segment_pool_size;
   _dataStore._meta._writebufferSizeMax = options.segment_memory_max;
+
+  _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
 
   // TODO: mpf is this needed?
   _recoveryRemoves = makePrimaryKeysFilter(_hasNestedFields);

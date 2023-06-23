@@ -450,6 +450,8 @@ class IResearchDataStore {
 
   void recoveryCommit(uint64_t tick);
 
+  IResearchFeature* getIResearchFeature() const { return _asyncFeature; }
+
  protected:
   enum class DataStoreError : uint8_t {
     // data store has no issues
