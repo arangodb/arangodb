@@ -103,10 +103,7 @@ void RocksDBSyncThread::beginShutdown() {
 
 void RocksDBSyncThread::registerSyncListener(
     std::shared_ptr<ISyncListener> listener) {
-  _syncListeners.doUnderLock(
-      [listener = std::move(listener)](auto& listeners) mutable {
-        listeners.emplace_back(std::move(listener));
-      });
+  _syncListeners.emplace_back(std::move(listener));
 }
 
 void RocksDBSyncThread::run() {
@@ -207,9 +204,7 @@ void RocksDBSyncThread::run() {
 
 void RocksDBSyncThread::notifySyncListeners(
     rocksdb::SequenceNumber seq) noexcept {
-  _syncListeners.doUnderLock([seq](auto&& listeners) {
-    for (auto& listener : listeners) {
-      listener->onSync(seq);
-    }
-  });
+  for (auto& listener : _syncListeners) {
+    listener->onSync(seq);
+  }
 }

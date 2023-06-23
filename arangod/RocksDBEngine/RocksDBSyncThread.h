@@ -25,7 +25,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Guarded.h"
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
 
@@ -93,8 +92,9 @@ class RocksDBSyncThread final : public Thread {
   arangodb::basics::ConditionVariable _condition;
 
   /// @brief listeners to be notified when _lastSequenceNumber is updated after
-  /// a sync
-  Guarded<std::vector<std::shared_ptr<ISyncListener>>> _syncListeners;
+  /// a sync. We don't need to protect this vector because it is only
+  /// modified once after the syncer thread is started.
+  std::vector<std::shared_ptr<ISyncListener>> _syncListeners;
 
   /// @brief notify listeners about the sequence number update
   void notifySyncListeners(rocksdb::SequenceNumber seq) noexcept;
