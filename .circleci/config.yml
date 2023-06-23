@@ -47,10 +47,9 @@ jobs:
 workflows:
   setup:
     when:
-      and:
+      or:
         - equal: [ api, << pipeline.trigger_source >> ]
         - equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
-        - equal: [1, 0]
     jobs:
       - generate-config:
           definitions: "tests/test-definitions.txt"
