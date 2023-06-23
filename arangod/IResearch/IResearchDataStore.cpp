@@ -1388,16 +1388,20 @@ Result IResearchDataStore::initDataStore(
         const auto recoveryTick = linkLock->_engine->recoveryTick();
 
         bool isOutOfSync = linkLock->isOutOfSync();
+        auto const dataStoreTick =
+            dataStore._recoveryTickHigh != std::numeric_limits<uint64_t>::max()
+                ? dataStore._recoveryTickHigh
+                : dataStore._recoveryTickLow;
         if (isOutOfSync) {
           LOG_TOPIC("2721a", WARN, iresearch::TOPIC)
               << "Marking ArangoSearch index '" << index.id().id()
               << "' as out of sync, consider to drop and re-create the index "
                  "in order to synchronize it";
 
-        } else if (dataStore._recoveryTickHigh > recoveryTick) {
+        } else if (dataStoreTick > recoveryTick) {
           LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
               << "ArangoSearch index: " << index.id()
-              << " is recovered at tick " << dataStore._recoveryTickHigh
+              << " is recovered at tick " << dataStoreTick
               << " greater than storage engine tick " << recoveryTick
               << ", it seems WAL tail was lost and index is out of sync with "
                  "the underlying collection: "
