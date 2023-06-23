@@ -3,7 +3,7 @@ version: 2.1
 setup: true
 
 orbs:
-  continuation: circleci/continuation@0.3.1
+  continuation: circleci/continuation@0.4.0
 
 parameters:
   enterprise-branch:
@@ -15,7 +15,7 @@ parameters:
 
 # our defined job, and its steps
 jobs:
-  setup:
+  generate-config:
     docker:
       - image: cimg/python:3.11.1
     executor: continuation/default
@@ -48,22 +48,8 @@ workflows:
   setup:
     when:
       or:
-        - equal: [ staging/replication-2.0, << pipeline.git.branch >> ]
         - equal: [ api, << pipeline.trigger_source >> ]
         - equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
     jobs:
-      - setup:
+      - generate-config:
           definitions: "tests/test-definitions.txt"
-  setup-rlog:
-    when:
-      and:
-        - matches:
-            pattern: /^(bug-fix|feature|chore)\/cinfra-.*$/
-            value: << pipeline.git.branch >>
-        - not:
-            equal: [ api, << pipeline.trigger_source >> ]
-    jobs:
-      - setup:
-          name: Prepare CINFRA test set
-          definitions: "tests/test-definitions-rlog.txt"
-          default-enterprise-branch: "staging/replication-2.0"
