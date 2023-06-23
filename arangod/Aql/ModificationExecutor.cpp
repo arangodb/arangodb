@@ -114,10 +114,8 @@ ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
 
   auto stats = ModificationStats{};
 
-  auto const maxRows = std::invoke([&] {
-    return std::min(produceOrSkipData.maxOutputRows(),
-                    _modifier->getBatchSize());
-  });
+  auto const maxRows =
+      std::min(produceOrSkipData.maxOutputRows(), _modifier->getBatchSize());
 
   // Read as much input as possible
   while (input.hasDataRow() && _modifier->nrOfOperations() < maxRows) {
