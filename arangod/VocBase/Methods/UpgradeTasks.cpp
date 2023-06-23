@@ -317,6 +317,32 @@ Result createSystemStatisticsCollections(
   return {TRI_ERROR_NO_ERROR};
 }
 
+Result createSystemPregelCollection(TRI_vocbase_t& vocbase) {
+  auto const& cname = StaticStrings::PregelCollection;
+  std::shared_ptr<LogicalCollection> col;
+  auto res = methods::Collections::lookup(vocbase, cname, col);
+
+  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    // if not found, create it
+
+    VPackBuilder options;
+    methods::Collections::createSystemCollectionProperties(cname, options,
+                                                           vocbase);
+    CollectionCreationInfo info{cname, TRI_COL_TYPE_DOCUMENT, options.slice()};
+    std::vector<std::shared_ptr<LogicalCollection>> cols;
+
+    OperationOptions operationOptions(ExecContext::current());
+    return methods::Collections::create(
+        vocbase, operationOptions, {info}, true, true, true,
+        nullptr /*nullptr on purpose, distributeShardsLike is defined by
+                   createSystemCollectionProperties */
+        ,
+        cols, true /* allow system collection creation */);
+  }
+
+  return {TRI_ERROR_NO_ERROR};
+}
+
 Result createIndex(
     std::string const& name, Index::IndexType type,
     std::vector<std::string> const& fields, bool unique, bool sparse,
@@ -513,6 +539,26 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(
     return res.ok();
   }
   return res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates '_pregel_queries' system collection
+////////////////////////////////////////////////////////////////////////////////
+bool UpgradeTasks::createHistoricPregelSystemCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  // This vector should after the call to ::createSystemCollections contain
+  // a LogicalCollection for *every* (required) system collection.
+  Result res = ::createSystemPregelCollection(vocbase);
+
+  if (res.fail()) {
+    LOG_TOPIC("2824f", ERR, Logger::STARTUP)
+        << "could not create Pregel system collection"
+        << ": error: " << res.errorMessage();
+    return false;
+  }
+
+  return true;
 }
 
 bool UpgradeTasks::addDefaultUserOther(

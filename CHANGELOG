@@ -1,7 +1,48 @@
-v3.11.1 (XXXX-XX-XX)
+v3.11.2 (XXXX-XX-XX)
 --------------------
 
 * FE-287: fix number validation for replicationFactor and writeConcern.
+
+* FE-285: Fix query download - use post request for query.
+
+* Fixed Github issue #19175.
+  This fixes a problem in traversal query optimization that was introduced
+  in 3.11 and that can lead to traversal queries being aborted with an error
+  `AQL: cannot and-combine normalized condition`.
+
+* Fixed two possible deadlocks which could occur if all medium priority
+  threads are busy. One is that in this case the AgencyCache could no longer
+  receive updates from the agency and another that queries could no longer
+  be finished. This fixes BTS-1475 and BTS-1486.
+
+
+
+v3.11.1 (2023-06-12)
+--------------------
+
+* Updated arangosync to v2.18.1.
+
+* SEARCH-480: Speedup ArangoSearch recovery.
+
+* SEARCH-476: Fix bug in fst builder.
+
+* BTS-1325: AQL: Fixed a possible deadlock with multiple parallel traversals.
+
+* Updated OpenSSL to 3.0.9.
+
+* BTS-1435: fixed invalid AQL optimization and added a safeguard.
+
+* APM-766, SEARCH-479: Reduce memory overhead for ArangoSearch removes.
+
+* Improve precision for ArangoSearch GEO_IN_RANGE function.
+
+* Updated ArangoDB Starter to 0.15.8.
+
+* OASIS-25262: Fixed undefined behavior in IN lookup in unique indexes when the
+  lookup array had to be rebuilt in memory.
+
+* Invalid keys are now reported as individual errors for batch insert operations
+  and no longer abort the whole batch.
 
 * BTS-1255: Fix sporadic memory usage accounting underflows in in-memory cache
   subsystem.
@@ -72,6 +113,8 @@ v3.11.0-rc.2 (2023-05-17)
 
 v3.11.0-rc.1 (2023-05-13)
 -------------------------
+
+* FE-211: Allow admins to edit gravatar email
 
 * Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
 

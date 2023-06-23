@@ -125,7 +125,7 @@ class Search final : public LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
   //////////////////////////////////////////////////////////////////////////////
-  void open() final;
+  void open() final {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invoke visitor on all collections that a view will return
@@ -170,7 +170,6 @@ class Search final : public LogicalView {
   AsyncSearchPtr _asyncSelf;
   std::function<void(transaction::Methods& trx, transaction::Status status)>
       _trxCallback;  // for snapshot(...)
-  // std::atomic_bool _inRecovery{false};
 
   std::shared_ptr<SearchMeta const> _meta;
 

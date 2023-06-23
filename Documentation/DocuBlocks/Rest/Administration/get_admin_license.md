@@ -1,8 +1,7 @@
 
 @startDocuBlock get_admin_license
-@brief Get license information
 
-@RESTHEADER{GET /_admin/license, Return information about the current license, getLicense}
+@RESTHEADER{GET /_admin/license, Get information about the current license, getLicense}
 
 @RESTDESCRIPTION
 View the license information and status of an Enterprise Edition instance.

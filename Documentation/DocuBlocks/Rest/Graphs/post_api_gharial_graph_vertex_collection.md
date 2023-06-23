@@ -1,5 +1,4 @@
 @startDocuBlock post_api_gharial_graph_vertex_collection
-@brief create a new vertex
 
 @RESTHEADER{POST /_api/gharial/{graph}/vertex/{collection}, Create a vertex, createVertex}
 

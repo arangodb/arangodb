@@ -1,5 +1,4 @@
 @startDocuBlock get_api_gharial_graph_vertex
-@brief Lists all vertex collections used in this graph.
 
 @RESTHEADER{GET /_api/gharial/{graph}/vertex, List vertex collections, listVertexCollections}
 
