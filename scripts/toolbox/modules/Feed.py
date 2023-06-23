@@ -21,7 +21,6 @@ def startFromFile(cfg, fileName):
     parameters = ["go", "run", "main.go", "--endpoints", cfg["feed"]["endpoints"], "--execute", "../" + fileName,
                   "--jsonOutputFile",
                   "../" + cfg["feed"]["jsonOutputFile"]]
-    print(parameters)
     process = subprocess.Popen(parameters, cwd="feed", stdout=subprocess.DEVNULL)
     # TODO: instead of just putting it into DEVNULL, we can write output in a special verbose folder.
     return process

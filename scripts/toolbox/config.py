@@ -24,6 +24,17 @@ arangodb = {
     "pocDirectory": "../../tests/js/transform/poc/"
 }
 
+arangosh = {
+    "startupParameters": {
+        "server.authentication": "false",
+        "configuration": "../../etc/relative/arangosh.conf",
+        "javascript.module-directory": "../../enterprise/js",
+        "javascript.startup-directory": "../../js",
+        "server.endpoint": "http://" + arangodb["host"] + ":" + arangodb["port"]
+    },
+    "executable": "../../build/bin/arangosh",
+}
+
 # ArangoDB Feed tool based configuration parameters
 feed = {
     "endpoints": "http://" + arangodb["host"] + ":" + arangodb["port"],
@@ -46,6 +57,7 @@ hotBackup = {
 class CalculatedConfig:
     def __init__(self, args):
         self.arangodb = arangodb
+        self.arangosh = arangosh
         self.feed = feed
         self.globals = globals
         self.metrics = metrics
@@ -70,6 +82,7 @@ class CalculatedConfig:
     def getConfig(self):
         return {
             "arangodb": self.arangodb,
+            "arangosh": self.arangosh,
             "feed": self.feed,
             "globals": self.globals,
             "metrics": self.metrics

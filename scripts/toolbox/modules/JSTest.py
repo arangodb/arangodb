@@ -2,16 +2,36 @@
 
 import subprocess
 import os
+from contextlib import contextmanager
 
-def start(cfg, options):
+
+@contextmanager
+def cwd(path):
+    oldPwd = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(oldPwd)
+
+def start(options, cfg):
     folderName = options["folderName"] + "/tests"
-    for filename in os.listdir(folderName):
-        // arangosh
-        parameter = [cfg["arangosh"]["executable"], "--server.endpoint", cfg["endpoint"],
-                     "--javascript.execute-string",
-                     "const res = require('jsunity').runTest('", filename, "false);",
-                     "require('@arangodb/testutils/result-processing').analyze.saveToJunitXML({testXmlOutputDirectory: '",
-                     cfg["junitDirectory"], "'}, {transform: {poc: res}});"]
-        print(parameter)
-        process = subprocess.Popen(parameter, cwd="arangosh", stdout=subprocess.DEVNULL)
-        return process
+    dummyTestFile = cfg["globals"]["workDir"] + "/schmutz.js"
+    # for fileName in os.listdir(folderName):
+    ## dirty hack to only run one test
+    fileName = folderName + "/test.js"
+    workDir = os.getcwd() + "/" + cfg["globals"]["workDir"] + "/junit"
+
+    with open(dummyTestFile, "w") as textFile:
+        textFile.write(f'''const res = require('jsunity').runTest('{fileName}', true);''')
+        textFile.write(f'''require('@arangodb/testutils/result-processing')''')
+        textFile.write(f'''.analyze.saveToJunitXML({{testXmlOutputDirectory: '{workDir}'}}, {{transform: {{poc: res}}}});''')
+
+    parameters = [cfg["arangosh"]["executable"]]
+
+    for key, value in cfg["arangosh"]["startupParameters"].items():
+        parameters.append("--" + key + "=" + value)
+
+    parameters.append("--javascript.execute=" + dummyTestFile)
+    process = subprocess.Popen(parameters, stdout=subprocess.DEVNULL)
+    return process
