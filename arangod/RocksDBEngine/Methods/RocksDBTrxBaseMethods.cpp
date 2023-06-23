@@ -196,8 +196,7 @@ Result RocksDBTrxBaseMethods::addOperation(
     return Result(TRI_ERROR_RESOURCE_LIMIT);
   }
 
-  size_t currentSize =
-      _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
+  size_t currentSize = currentWriteBatchSize();
   if (currentSize > _state->options().maxTransactionSize) {
     // we hit the transaction size limit
     std::string message =
