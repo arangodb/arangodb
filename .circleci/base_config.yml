@@ -259,6 +259,37 @@ jobs:
           path: ./work/
       - store_test_results:
           path: ./test-results/
+  run-poc-test:
+    docker:
+      - image: cimg/python:3.11.1
+    parameters:
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install dependencies
+          command: |
+            pip install -r ./scripts/toolbox/requirements.txt
+            sudo apt update
+            sudo apt install golang
+      - run:
+          name: Run poc test
+          command: |
+            cd scripts/toolbox
+            python3 pipelineRunner.py
+            cd -
+      - run:
+          name: Copy test results
+          when: always
+          command: |
+            mkdir test-results
+            find ./scripts/toolbox/work/junit/ -iname *xml -exec cp "{}" --target-directory=./test-results \;
+      - store_artifacts:
+          destination: poc_test
+          path: ./scripts/toolbox/work/
+      - store_test_results:
+          path: ./test-results/
 
 workflows:
   lint:
@@ -286,6 +317,12 @@ workflows:
           preset: community-pr
           edition: x64-community
           enterprise: false
+      - run-poc-test:
+          name: run-poc-test
+          requires:
+            - compile-linux
+          size: small
+          buckets: 1
   enterprise-pr:
     jobs:
       - compile-linux:
