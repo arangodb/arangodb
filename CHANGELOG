@@ -2,6 +2,8 @@ v3.11.2 (XXXX-XX-XX)
 --------------------
 
 
+* FE-20: fix UI placeholder format for locale when creating analyzers.
+
 * FE-240: disable JSON editor when viewing inverted index.
 
 * FE-287: fix number validation for replicationFactor and writeConcern.

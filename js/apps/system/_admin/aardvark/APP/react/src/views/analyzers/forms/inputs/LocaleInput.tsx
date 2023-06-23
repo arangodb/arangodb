@@ -3,7 +3,13 @@ import { FormProps } from "../../../../utils/constants";
 import Textbox from "../../../../components/pure-css/form/Textbox";
 import { LocaleProperty } from "../../constants";
 
-const LocaleInput = ({ formState, dispatch, disabled }: FormProps<LocaleProperty>) => {
+type LocaleFormProps = FormProps<LocaleProperty>;
+
+type LocaleInputProps = LocaleFormProps & {
+  placeholder?: string;
+};
+
+const LocaleInput = ({ formState, dispatch, disabled, placeholder }: LocaleInputProps) => {
   const updateLocale = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -14,7 +20,7 @@ const LocaleInput = ({ formState, dispatch, disabled }: FormProps<LocaleProperty
     });
   };
 
-  return <Textbox label={'Locale'} type={'text'} placeholder="language[_COUNTRY][.encoding][@variant]"
+  return <Textbox label={'Locale'} type={'text'} placeholder={placeholder}
                   required={true} disabled={disabled} value={formState.properties.locale || ''}
                   onChange={updateLocale}/>;
 };
