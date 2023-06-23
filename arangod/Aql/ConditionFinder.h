@@ -55,7 +55,7 @@ class ConditionFinder final
  protected:
   bool handleFilterCondition(ExecutionNode* en,
                              std::unique_ptr<Condition> const& condition,
-                             bool& isAllCoveredByIndex);
+                             bool& noRemoves);
   void handleSortCondition(ExecutionNode* en, Variable const* outVar,
                            std::unique_ptr<Condition> const& condition,
                            std::unique_ptr<SortCondition>& sortCondition);

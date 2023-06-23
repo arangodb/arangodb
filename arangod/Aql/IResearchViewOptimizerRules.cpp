@@ -212,8 +212,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
     auto const& varsValid = viewNode.getVarsValid();
 
     // remove all invalid variables from the condition
-    [[maybe_unused]] bool wasRemoval = false;
-    if (searchCondition.removeInvalidVariables(varsValid, wasRemoval)) {
+    [[maybe_unused]] bool noRemoves = true;
+    if (searchCondition.removeInvalidVariables(varsValid, noRemoves)) {
       // removing left a previously non-empty OR block empty...
       // this means we can't use the index to restrict the results
       return false;

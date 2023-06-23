@@ -197,7 +197,7 @@ bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 
 bool ConditionFinder::handleFilterCondition(
     ExecutionNode* en, std::unique_ptr<Condition> const& condition,
-    bool& isAllCoveredByIndex) {
+    bool& noRemoves) {
   bool foundCondition = false;
 
   for (auto& it : _variableDefinitions) {
@@ -261,7 +261,7 @@ bool ConditionFinder::handleFilterCondition(
   auto const& varsValid = en->getVarsValid();
 
   // remove all invalid variables from the condition
-  if (condition->removeInvalidVariables(varsValid, isAllCoveredByIndex)) {
+  if (condition->removeInvalidVariables(varsValid, noRemoves)) {
     // removing left a previously non-empty OR block empty...
     // this means we can't use the index to restrict the results
     return false;

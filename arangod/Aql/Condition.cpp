@@ -1094,7 +1094,7 @@ AstNode* Condition::removeCondition(ExecutionPlan const* plan,
 
 /// @brief remove (now) invalid variables from the condition
 bool Condition::removeInvalidVariables(VarSet const& validVars,
-                                       bool& isAllCoveredByIndex) {
+                                       bool& noRemoves) {
   if (_root == nullptr) {
     return false;
   }
@@ -1135,7 +1135,7 @@ bool Condition::removeInvalidVariables(VarSet const& validVars,
       }
 
       if (invalid) {
-        isAllCoveredByIndex = false;
+        noRemoves = false;
         andNode->removeMemberUncheckedUnordered(j);
         // repeat with some member index
         TRI_ASSERT(nAnd > 0);
