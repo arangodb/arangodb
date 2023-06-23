@@ -42,6 +42,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
 #include "Containers/NodeHashMap.h"
+#include "Containers/NodeHashSet.h"
 #include "Metrics/Fwd.h"
 #include "Network/types.h"
 #include "Replication2/AgencyCollectionSpecification.h"
@@ -1211,7 +1212,7 @@ class ClusterInfo final {
   static constexpr double checkAnalyzersPreconditionTimeout = 10.0;
 
   mutable std::mutex _failedServersMutex;
-  std::pmr::unordered_set<pmr::ServerID> _failedServers;
+  containers::pmr::NodeHashSet<pmr::ServerID> _failedServers;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief plan and current update threads
