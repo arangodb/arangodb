@@ -1,6 +1,7 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+* BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
 
 * FE-240: disable JSON editor when viewing inverted index.
 
@@ -17,7 +18,6 @@ v3.11.2 (XXXX-XX-XX)
   threads are busy. One is that in this case the AgencyCache could no longer
   receive updates from the agency and another that queries could no longer
   be finished. This fixes BTS-1475 and BTS-1486.
-
 
 
 v3.11.1 (2023-06-12)
