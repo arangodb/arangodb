@@ -1,6 +1,7 @@
 devel
 -----
 
+* Attempt to avoid busy looping when locking collections with a timeout
 * If a startup option has a dynamic default value (e.g. if the default value
   depends on the amount of available RAM), display a "dynamic default" hint
   when invoking `--help`.
