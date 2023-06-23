@@ -1,6 +1,16 @@
 devel
 -----
 
+* Don't show "write query options" for AQL write queries in the explain and
+  profile output. The write query options normally don't produce any valuable
+  insights and only take up screen real estate.
+
+* If a startup option has a dynamic default value (e.g. if the default value
+  depends on the amount of available RAM), display a "dynamic default" hint
+  when invoking `--help`.
+
+* FE-229: Improve shard rebalancing UI.
+
 * FE-20: fix UI placeholder format for locale when creating analyzers.
 
 * Fixed Github issue #19175.
