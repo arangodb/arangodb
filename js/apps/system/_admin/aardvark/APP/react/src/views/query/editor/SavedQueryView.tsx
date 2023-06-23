@@ -20,14 +20,11 @@ import { InfoCircle } from "styled-icons/boxicons-solid";
 import { PlayArrow } from "styled-icons/material";
 import momentMin from "../../../../../frontend/js/lib/moment.min";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
-import {
-  Modal,
-  ModalBody,
-  ModalFooter,
-  ModalHeader
-} from "../../../components/modal";
+import { download } from "../../../utils/downloadHelper";
 import { useQueryContext } from "../QueryContextProvider";
 import { AQLEditor } from "./AQLEditor";
+import { DeleteQueryModal } from "./DeleteQueryModal";
+import { ImportQueryModal } from "./ImportQueryModal";
 import { QueryType } from "./useFetchUserSavedQueries";
 
 export const SavedQueryView = () => {
@@ -180,43 +177,6 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
   );
 };
 
-const DeleteQueryModal = ({
-  query,
-  isOpen,
-  onClose
-}: {
-  query: QueryType | null;
-  isOpen: boolean;
-  onClose: () => void;
-}) => {
-  const { onDelete } = useQueryContext();
-  if (!query) return null;
-  return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalHeader>Delete Query</ModalHeader>
-      <ModalBody>
-        Are you sure you want to delete the query: {query.name}?
-      </ModalBody>
-      <ModalFooter>
-        <Stack direction="row">
-          <Button colorScheme="gray" onClick={() => onClose()}>
-            Cancel
-          </Button>
-          <Button
-            colorScheme="red"
-            onClick={async () => {
-              await onDelete(query.name);
-              onClose();
-            }}
-          >
-            Delete
-          </Button>
-        </Stack>
-      </ModalFooter>
-    </Modal>
-  );
-};
-
 const QueryPreview = ({ query }: { query: QueryType | null }) => {
   if (!query) {
     return <Box>Select a query to view</Box>;
@@ -250,19 +210,33 @@ const QueryPreview = ({ query }: { query: QueryType | null }) => {
 };
 
 const SavedQueryBottomBar = () => {
+  const {
+    isOpen: isImportModalOpen,
+    onOpen: onOpenImportModal,
+    onClose: onCloseImportModal
+  } = useDisclosure();
+  const onDownload = () => {
+    download(`query/download/${window.App.currentUser}`);
+  };
   return (
-    <Stack
-      padding="2"
-      direction="row"
-      justifyContent="flex-end"
-      alignItems="center"
-    >
-      <Button size="sm" colorScheme="gray">
-        Import Queries
-      </Button>
-      <Button size="sm" colorScheme="gray">
-        Export Queries
-      </Button>
-    </Stack>
+    <>
+      <ImportQueryModal
+        isOpen={isImportModalOpen}
+        onClose={onCloseImportModal}
+      />
+      <Stack
+        padding="2"
+        direction="row"
+        justifyContent="flex-end"
+        alignItems="center"
+      >
+        <Button size="sm" colorScheme="gray" onClick={onOpenImportModal}>
+          Import Queries
+        </Button>
+        <Button size="sm" colorScheme="gray" onClick={onDownload}>
+          Export Queries
+        </Button>
+      </Stack>
+    </>
   );
 };
