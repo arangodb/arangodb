@@ -30,8 +30,9 @@
 namespace arangodb::iresearch {
 
 struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
-  IResearchDataStoreHotbackupHelper(std::string path)
-      : IResearchDataStore(IResearchDataStore::DefaultConstructKey{}) {
+  IResearchDataStoreHotbackupHelper(std::string path, Index* originalIndex)
+      : IResearchDataStore(IResearchDataStore::DefaultConstructKey{}),
+        _originalIndex(originalIndex) {
     _dataStore._path = path;
   }
   arangodb::Result initDataStore(
@@ -67,8 +68,10 @@ struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
                                                    *meta._indexingContext);
   }
 
-  [[nodiscard]] Index& index() noexcept final { TRI_ASSERT(false); }
-  [[nodiscard]] Index const& index() const noexcept final { TRI_ASSERT(false); }
+  [[nodiscard]] Index& index() noexcept final { return *_originalIndex; }
+  [[nodiscard]] Index const& index() const noexcept final {
+    return *_originalIndex;
+  }
   [[nodiscard]] AnalyzerPool::ptr findAnalyzer(
       AnalyzerPool const& analyzer) const final {
     TRI_ASSERT(false);
@@ -79,6 +82,8 @@ struct IResearchDataStoreHotbackupHelper : public IResearchDataStore {
     TRI_ASSERT(false);
     return {};
   }
+
+  Index* _originalIndex;
 };
 
 }  // namespace arangodb::iresearch
