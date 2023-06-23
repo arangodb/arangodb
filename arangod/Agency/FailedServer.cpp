@@ -112,9 +112,9 @@ bool FailedServer::start(bool& aborts) {
     return true;
   };
 
-  auto dbserverLock = _snapshot.hasAsSlice(blockedServersPrefix + _server);
+  auto dbserverLock = _snapshot.hasAsBuilder(blockedServersPrefix + _server);
   if (dbserverLock) {
-    auto s = *dbserverLock;
+    auto s = dbserverLock->slice();
     if (s.isArray()) {
       for (auto const& m : VPackArrayIterator(s)) {
         if (m.isString()) {
@@ -220,7 +220,7 @@ bool FailedServer::start(bool& aborts) {
             for (auto const& shard : *collection.hasAsChildren("shards")) {
               size_t pos = 0;
 
-              for (VPackSlice it : VPackArrayIterator(shard.second->slice())) {
+              for (auto it : *shard.second->getArray()) {
                 auto dbs = it.copyString();
 
                 if (dbs == _server || dbs == "_" + _server) {
