@@ -137,7 +137,6 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       if (result.fail()) {
         LOG_CTX("7cb3d", ERR, lctx)
             << "failed to persist new entries: " << result;
-        LOG_DEVEL << ADB_HERE << " snapshot=" << std::hex << &guard->snapshot;
         co_return AppendEntriesResult::withPersistenceError(
             termInfo->term, request.messageId, result,
             guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
