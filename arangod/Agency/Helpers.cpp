@@ -32,13 +32,13 @@ namespace arangodb::consensus {
 bool isReplicationTwoDB(Node::Children const& databases,
                         std::string const& dbName) {
   auto it = databases.find(dbName);
-  if (it == databases.end()) {
+  if (it == nullptr) {
     // this should actually never happen, but if it does we simply claim that
     // this is an old replication 1 DB.
     return false;
   }
 
-  if (auto v = it->second->hasAsString(StaticStrings::ReplicationVersion); v) {
+  if (auto v = (*it)->hasAsString(StaticStrings::ReplicationVersion); v) {
     auto res = replication::parseVersion(v.value());
     return res.ok() && res.get() == replication::Version::TWO;
   }

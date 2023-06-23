@@ -545,7 +545,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
          ClusterHelpers::isCoordinatorName(machine.first)) ||
         (type == "Singles" && machine.first.starts_with("SNGL"))) {
       // Put only those on list which are no longer planned:
-      if (machinesPlanned.find(machine.first) == machinesPlanned.end()) {
+      if (machinesPlanned.find(machine.first) == nullptr) {
         todelete.push_back(machine.first);
       }
     }
@@ -2088,6 +2088,7 @@ void Supervision::workJobs() {
   auto todos = *snapshot().hasAsChildren(toDoPrefix);
   auto it = todos.begin();
   static std::string const FAILED = "failed";
+  auto actualTodos = todos;
 
   // In the case that there are a lot of jobs in ToDo or in Pending we cannot
   // afford to run through all of them before we do another Supervision round.
@@ -2123,8 +2124,7 @@ void Supervision::workJobs() {
           .run(_haveAborts);
       LOG_TOPIC("98115", TRACE, Logger::SUPERVISION)
           << "Finish JobContext::run()";
-      auto copy_it = it++;
-      todos.erase(copy_it);
+      actualTodos = actualTodos.erase(it->first);
       doneFailedJob = true;
     } else {
       ++it;

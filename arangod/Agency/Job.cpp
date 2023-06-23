@@ -451,9 +451,9 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
         }
         // Now look up this server:
         auto it = healthData.find(serverStr);
-        if (it != healthData.end()) {
+        if (it != nullptr) {
           // Only check if found
-          NodePtr healthNode = it->second;
+          NodePtr healthNode = *it;
           // Check its status:
 
           if (auto status = healthNode->hasAsString("Status");
@@ -461,7 +461,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
                          status.value() == Supervision::HEALTH_STATUS_BAD)) {
             ++count;
             // check is server is maintenance mode, if so, consider as good
-          } else if (maintenanceSet && maintenanceSet->contains(serverStr)) {
+          } else if (maintenanceSet &&
+                     maintenanceSet->find(serverStr) != nullptr) {
             ++count;
           }
         }
@@ -483,9 +484,9 @@ size_t Job::countGoodOrBadServersInList(
     for (auto& serverStr : serverList) {
       // Now look up this server:
       auto it = healthData.find(serverStr);
-      if (it != healthData.end()) {
+      if (it != nullptr) {
         // Only check if found
-        auto healthNode = it->second;
+        auto& healthNode = *it;
         // Check its status:
         if (auto status = healthNode->hasAsString("Status");
             status && (status.value() == Supervision::HEALTH_STATUS_GOOD ||

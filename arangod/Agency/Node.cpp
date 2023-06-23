@@ -35,6 +35,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <immer/flex_vector_transient.hpp>
+#include <immer/map_transient.hpp>
+
 #include <deque>
 #include <boost/algorithm/string/find_iterator.hpp>
 #include <boost/algorithm/string/finder.hpp>
@@ -92,8 +95,7 @@ bool Node::operator==(VPackSlice const& rhs) const {
   return VPackNormalizedCompare::equals(toBuilder().slice(), rhs);
 }
 
-/// @brief rh-value at path vector. Check if TTL has expired.
-NodePtr Node::get(std::vector<std::string> const& pv) const {
+NodePtr Node::get(PathTypeView pv) const {
   NodePtr current = shared_from_this();
   for (std::string const& key : pv) {
     auto children = std::get_if<Children>(&current->_value);
@@ -102,23 +104,31 @@ NodePtr Node::get(std::vector<std::string> const& pv) const {
       return nullptr;
     }
 
-    if (auto const child = children->find(key); child == children->end()) {
+    if (auto const child = children->find(key); child == nullptr) {
       return nullptr;
     } else {
-      current = child->second;
+      current = *child;
     }
   }
 
   return current;
 }
 
+NodePtr Node::get(std::initializer_list<std::string> const& pv) const {
+  return get(std::span<std::string const>{pv.begin(), pv.end()});
+}
+
 NodePtr Node::get(
     std::shared_ptr<cluster::paths::Path const> const& path) const {
-  return get(path->vec(cluster::paths::SkipComponents{1}));
+  auto pathVec = path->vec(cluster::paths::SkipComponents{1});
+  return get(pathVec);
 }
 
 /// @brief rh-value at path
-NodePtr Node::get(std::string_view path) const { return get(split(path)); }
+NodePtr Node::get(std::string_view path) const {
+  auto pathVec = split(path);
+  return get(pathVec);
+}
 
 /// Set value
 template<>
@@ -185,7 +195,7 @@ ResultT<NodePtr> Node::handle<PUSH>(Node const* target,
     array = *target->getArray();
   }
 
-  array.emplace_back(v);
+  array = array.push_back(v);
   return Node::create(std::move(array));
 }
 
@@ -224,17 +234,17 @@ ResultT<NodePtr> Node::handle<ERASE>(Node const* target,
   }
 
   if (haveVal) {
-    array.erase(std::remove_if(array.begin(), array.end(),
-                               [&](auto const& slice) {
-                                 return VelocyPackHelper::equal(
-                                     slice, valToErase,
-                                     /*useUTF8*/ true);
-                               }),
-                array.end());
+    auto trans = immer::flex_vector_transient<VPackString>{};
+    for (auto const& value : array) {
+      if (!VelocyPackHelper::equal(value, valToErase, true)) {
+        trans.push_back(value);
+      }
+    }
+    array = trans.persistent();
   } else {
     size_t pos = posSlice.getNumber<size_t>();
     if (pos < array.size()) {
-      array.erase(array.begin() + pos);
+      array = array.erase(pos);
     }
   }
   return Node::create(std::move(array));
@@ -266,13 +276,10 @@ ResultT<NodePtr> Node::handle<PUSH_QUEUE>(Node const* target,
   if (ol == 0) {
     return Node::create(array);
   }
-  array.reserve(ol);
-  array.emplace_back(v);
   if (target && target->isArray()) {
-    auto other = target->getArray();
-    std::copy_n(other->begin(), std::min(ol - 1, other->size()),
-                std::back_inserter(array));
+    array = *target->getArray();
   }
+  array = array.push_front(v);
   return Node::create(std::move(array));
 }
 
@@ -295,14 +302,17 @@ ResultT<NodePtr> Node::handle<REPLACE>(Node const* target,
     array = *target->getArray();
   }
   VPackSlice valToRepl = slice.get("val");
-  std::replace_if(
-      array.begin(), array.end(),
-      [&](auto const& old) {
-        return VelocyPackHelper::equal(old, valToRepl, /*useUTF8*/ true);
-      },
-      slice.get("new"));
+  auto trans = array.transient();
 
-  return Node::create(std::move(array));
+  std::size_t idx = 0;
+  for (auto const& value : array) {
+    if (VelocyPackHelper::equal(value, valToRepl, /*useUTF8*/ true)) {
+      trans.set(idx, slice.get("new"));
+    }
+    ++idx;
+  }
+
+  return Node::create(trans.persistent());
 }
 
 /// Remove element from end of array.
@@ -314,7 +324,7 @@ ResultT<NodePtr> Node::handle<POP>(Node const* target,
     array = *target->getArray();
   }
   if (!array.empty()) {
-    array.erase(array.rbegin().base());
+    array = array.erase(array.size() - 1);
   }
   return Node::create(std::move(array));
 }
@@ -332,11 +342,7 @@ ResultT<NodePtr> Node::handle<PREPEND>(Node const* target,
   if (target && target->isArray()) {
     array = *target->getArray();
   }
-  if (!array.empty()) {
-    array.insert(array.begin(), slice.get("new"));
-  } else {
-    array.emplace_back(slice.get("new"));
-  }
+  array = array.push_front(slice.get("new"));
   return Node::create(std::move(array));
 }
 
@@ -349,7 +355,7 @@ ResultT<NodePtr> Node::handle<SHIFT>(Node const* target,
     array = *target->getArray();
   }
   if (!array.empty()) {
-    array.erase(array.begin());
+    array = array.erase(0);
   }
   return Node::create(std::move(array));
 }
@@ -371,7 +377,7 @@ ResultT<NodePtr> Node::handle<READ_LOCK>(Node const* target,
   if (target && target->isArray()) {
     array = *target->getArray();
   }
-  array.emplace_back(user);
+  array = array.push_back(user);
   return Node::create(std::move(array));
 }
 
@@ -389,11 +395,13 @@ ResultT<NodePtr> Node::handle<READ_UNLOCK>(Node const* target,
     {
       // isReadUnlockable ensured that `this->slice()` is always an array of
       // strings
+      auto trans = array.transient();
       for (auto const& i : *target->getArray()) {
         if (!i.isEqualString(user.stringView())) {
-          array.emplace_back(i);
+          trans.push_back(i);
         }
       }
+      array = trans.persistent();
     }
     if (array.empty()) {
       return nullptr;
@@ -489,19 +497,20 @@ ResultT<NodePtr> buildPathAndExecute(Node const* node, Iter begin, Iter end,
   } else {
     // dig deeper. If `node` is nullptr we have to create a new node with a
     // single child, otherwise lookup the child.
+    // TODO when we add transparent hasing to the immer::map, this code can
+    // get away with a std::string_view.
     auto key = [](auto const& begin) {
       if constexpr (std::is_same_v<boost::split_iterator<const char*>, Iter>) {
-        return boost::copy_range<std::string_view>(*begin);
+        return boost::copy_range<std::string>(*begin);
       } else {
-        return *begin;
+        return std::string{*begin};
       }
     }(begin);
 
     Node const* child = nullptr;
     if (node && node->isObject()) {
-      auto const& children = node->children();
-      if (auto iter = node->children().find(key); iter != children.end()) {
-        child = iter->second.get();
+      if (auto iter = node->children().find(key); iter != nullptr) {
+        child = iter->get();
       }
     }
 
@@ -517,9 +526,9 @@ ResultT<NodePtr> buildPathAndExecute(Node const* node, Iter begin, Iter end,
     }
 
     if (updated == nullptr) {
-      newChildren.erase(key);
+      newChildren = newChildren.erase(key);
     } else {
-      newChildren[key] = std::move(updated.get());
+      newChildren = newChildren.set(key, updated.get());
     }
     return Node::create(std::move(newChildren));
   }
@@ -558,12 +567,17 @@ NodePtr Node::placeAt(std::string_view path, NodePtr node) const {
   return std::move(res.get());
 }
 
-NodePtr Node::placeAt(PathType const& path, NodePtr node) const {
+NodePtr Node::placeAt(PathTypeView path, NodePtr node) const {
   auto res = buildPathAndExecute(
       this, path.begin(), path.end(),
       [&](Node const*) -> ResultT<NodePtr> { return node; });
   TRI_ASSERT(res.ok());
   return std::move(res.get());
+}
+
+NodePtr Node::placeAt(std::initializer_list<std::string> const& path,
+                      NodePtr node) const {
+  return placeAt(PathTypeView{path.begin(), path.end()}, std::move(node));
 }
 
 bool Node::isReadLockable(std::string_view by) const {
@@ -661,8 +675,8 @@ std::vector<std::string> Node::exists(
   Node const* cur = this;
   for (auto const& sub : rel) {
     auto it = cur->children().find(sub);
-    if (it != cur->children().end()) {
-      cur = it->second.get();
+    if (it != nullptr) {
+      cur = it->get();
       result.push_back(sub);
     } else {
       break;
@@ -879,26 +893,45 @@ NodePtr Node::create(VPackSlice slice) {
     if (slice.isEmptyObject()) {
       return emptyObjectValue();
     }
-    Children c;
-    c.reserve(slice.length());
+    immer::map_transient<std::string, NodePtr> trans;
     for (auto const& [key, sub] : VPackObjectIterator(slice)) {
-      auto [iter, inserted] = c.emplace(key.copyString(), Node::create(sub));
-      ADB_PROD_ASSERT(inserted) << "key `" << key.stringView()
-                                << "` could not be inserted, because it is "
-                                   "already present in the map. slice="
-                                << slice.toJson();
+      auto keyStr = key.copyString();
+      if (keyStr.find("/") != std::string::npos) {
+        // now slow path
+        auto segments = split(keyStr);
+        if (segments.empty()) {
+          return Node::create(sub);
+        }
+        NodePtr node = [&] {
+          if (auto x = trans.find(segments[0]); x) {
+            return *x;
+          }
+          return Node::create();
+        }();
+
+        node = node->placeAt(
+            std::span<std::string>{segments.begin() + 1, segments.end()}, sub);
+
+        trans.set(std::move(segments[0]), node);
+      } else {
+        ADB_PROD_ASSERT(trans.find(keyStr) == nullptr)
+            << "key `" << keyStr
+            << "` could not be inserted, because it is "
+               "already present in the map. slice="
+            << slice.toJson();
+        trans.set(std::move(keyStr), Node::create(sub));
+      }
     }
-    return std::make_shared<NodeWrapper>(std::move(c));
+    return std::make_shared<NodeWrapper>(trans.persistent());
   } else if (slice.isArray()) {
     if (slice.isEmptyArray()) {
       return emptyArrayValue();
     }
-    Array a;
-    a.reserve(slice.length());
+    immer::flex_vector_transient<VPackString> a;
     for (auto const& elem : VPackArrayIterator(slice)) {
-      a.emplace_back(elem);
+      a.push_back(elem);
     }
-    return std::make_shared<NodeWrapper>(std::move(a));
+    return std::make_shared<NodeWrapper>(a.persistent());
   } else {
     if (slice.isTrue()) {
       return trueValue();

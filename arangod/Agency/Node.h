@@ -37,7 +37,10 @@
 
 #include <velocypack/String.h>
 #include <velocypack/Slice.h>
-#include "Containers/FlatHashMap.h"
+
+#include <immer/flex_vector.hpp>
+#include <immer/map.hpp>
+#include <span>
 
 namespace arangodb::cluster::paths {
 class Path;
@@ -79,11 +82,12 @@ class Node : public std::enable_shared_from_this<Node> {
  public:
   /// @brief Slash-segmented path
   using PathType = std::vector<std::string>;
+  using PathTypeView = std::span<std::string const>;
 
   /// @brief Child nodes
-  using Children = containers::FlatHashMap<std::string, NodePtr>;
+  using Children = immer::map<std::string, NodePtr>;
 
-  using Array = std::vector<velocypack::String>;
+  using Array = immer::flex_vector<velocypack::String>;
 
   using VariantType = std::variant<Children, Array, velocypack::String>;
 
@@ -98,7 +102,8 @@ class Node : public std::enable_shared_from_this<Node> {
   bool operator==(arangodb::velocypack::Slice const&) const;
 
   /// @brief Get node specified by path vector
-  NodePtr get(std::vector<std::string> const& pv) const;
+  NodePtr get(PathTypeView pv) const;
+  NodePtr get(std::initializer_list<std::string> const& pv) const;
 
   /// @brief Get node specified by path
   NodePtr get(std::shared_ptr<cluster::paths::Path const> const& path) const;
@@ -239,7 +244,9 @@ class Node : public std::enable_shared_from_this<Node> {
   [[nodiscard]] ResultT<NodePtr> applyOp(std::string_view path,
                                          VPackSlice slice) const;
   [[nodiscard]] NodePtr placeAt(std::string_view path, NodePtr) const;
-  [[nodiscard]] NodePtr placeAt(PathType const& path, NodePtr) const;
+  [[nodiscard]] NodePtr placeAt(PathTypeView path, NodePtr) const;
+  [[nodiscard]] NodePtr placeAt(std::initializer_list<std::string> const& path,
+                                NodePtr) const;
 
   template<Operation Op>
   [[nodiscard]] NodePtr perform(std::string_view path,
@@ -251,7 +258,7 @@ class Node : public std::enable_shared_from_this<Node> {
     return placeAt(path, res.get());
   }
   template<Operation Op>
-  [[nodiscard]] ResultT<NodePtr> perform(PathType const& path,
+  [[nodiscard]] ResultT<NodePtr> perform(PathTypeView path,
                                          velocypack::Slice op) const {
     auto res = Node::handle<Op>(get(path).get(), op);
     if (res.fail()) {
@@ -259,13 +266,24 @@ class Node : public std::enable_shared_from_this<Node> {
     }
     return placeAt(path, res.get());
   }
+  template<Operation Op>
+  [[nodiscard]] ResultT<NodePtr> perform(
+      std::initializer_list<std::string> const& path,
+      velocypack::Slice op) const {
+    return perform<Op>(PathTypeView{path.begin(), path.end()}, op);
+  }
 
   template<typename T>
   [[nodiscard]] NodePtr placeAt(std::string_view path, T&& value) const {
     return placeAt(path, Node::create(std::forward<T>(value)));
   }
   template<typename T>
-  [[nodiscard]] NodePtr placeAt(PathType const& path, T&& value) const {
+  [[nodiscard]] NodePtr placeAt(PathTypeView path, T&& value) const {
+    return placeAt(path, Node::create(std::forward<T>(value)));
+  }
+  template<typename T>
+  [[nodiscard]] NodePtr placeAt(std::initializer_list<std::string> const& path,
+                                T&& value) const {
     return placeAt(path, Node::create(std::forward<T>(value)));
   }
 

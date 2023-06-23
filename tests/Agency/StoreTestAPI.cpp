@@ -40,10 +40,9 @@ namespace store_test_api {
 
 class StoreTestAPI : public ::testing::Test {
  public:
-  StoreTestAPI() : _server("CRDN_0001"), _store() {}
+  StoreTestAPI() : _store() {}
 
  protected:
-  arangodb::tests::mocks::MockCoordinator _server;
   arangodb::consensus::Store _store;
 
   std::shared_ptr<VPackBuilder> read(std::string const& json) {
