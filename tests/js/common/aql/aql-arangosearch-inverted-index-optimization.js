@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, print */
+/*global assertEqual, assertNotEqual, assertTrue, print, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -62,22 +62,21 @@ function testOptimizeFilterCondition() {
         FOR d IN dates
           FILTER contribution.main_dimension_key == "pui"
           FILTER IN_RANGE(d, contribution.FromDT, contribution.ToDT, true, false)
-          RETURN [contribution, d]`
+          RETURN [contribution, d]`;
       let docs = db._query(query).toArray();
       assertEqual(docs.length, 5);
 
       if (isServer) {
-        const helper = require("@arangodb/aql-helper");
         let plan = AQL_EXPLAIN(query);
-        plan = helper.getCompactPlan(plan);
+        plan = require("@arangodb/aql-helper").getCompactPlan(plan);
         let hasInRangeCalculationNode = false;
         let hasFilter = false;
         for (let node of plan) {
           if (!hasInRangeCalculationNode) {
-            if (node.type == "CalculationNode" && node.expression.includes("IN_RANGE")) {
+            if (node.type === "CalculationNode" && node.expression.includes("IN_RANGE")) {
               hasInRangeCalculationNode = true;
             }
-          } else if (node.type == "FilterNode") {
+          } else if (node.type === "FilterNode") {
             hasFilter = true;
           }
         }
@@ -107,9 +106,8 @@ function testOptimizeFilterCondition() {
       assertEqual(docs.length, 1);
 
       if (isServer) {
-        const helper = require("@arangodb/aql-helper");
         let plan = AQL_EXPLAIN(query);
-        plan = helper.getLinearizedPlan(plan);
+        plan = require("@arangodb/aql-helper").getLinearizedPlan(plan);
 
         let hasFilter = false;
         for (let node of plan) {
