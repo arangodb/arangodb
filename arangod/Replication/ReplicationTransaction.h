@@ -36,8 +36,10 @@ namespace arangodb {
 class ReplicationTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction
-  explicit ReplicationTransaction(TRI_vocbase_t& vocbase)
+  explicit ReplicationTransaction(TRI_vocbase_t& vocbase,
+                                  transaction::Hints::Hint const& trxTypeHint)
       : transaction::Methods(transaction::StandaloneContext::Create(vocbase),
+                             trxTypeHint,
                              transaction::Options::replicationDefaults()),
         _guard(vocbase) {
     TRI_ASSERT(state() != nullptr);

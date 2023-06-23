@@ -580,7 +580,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     }
     auto tmp = std::make_unique<SingleCollectionTransaction>(
         transaction::StandaloneContext::Create(_vocbase), collectionName, type,
-        std::move(trxOpts));
+        transaction::Hints::Hint::REST, std::move(trxOpts));
     if (!opOptions.isSynchronousReplicationFrom.empty() &&
         ServerState::instance()->isDBServer()) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);

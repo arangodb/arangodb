@@ -38,6 +38,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/system-functions.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Transaction/Hints.h"
 #include "V8Server/V8Context.h"
 
 #include <velocypack/Builder.h>
@@ -89,14 +90,16 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
         QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
-        QueryOptions options, std::shared_ptr<SharedQueryState> sharedState);
+        QueryOptions options, std::shared_ptr<SharedQueryState> sharedState,
+        transaction::Hints::Hint const& trxTypeHint);
 
   /// Used to construct a full query. the constructor is protected to ensure
   /// that call sites only create Query objects using the `create` factory
   /// method
   Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
-        QueryOptions options, Query::SchedulerT* scheduler);
+        QueryOptions options, Query::SchedulerT* scheduler,
+        transaction::Hints::Hint const& trxTypeHint);
 
   ~Query() override;
 
@@ -111,7 +114,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   static std::shared_ptr<Query> create(
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,
-      QueryOptions options = {},
+      transaction::Hints::Hint const& trxTypeHint, QueryOptions options = {},
       Query::SchedulerT* scheduler = SchedulerFeature::SCHEDULER);
 
   constexpr static uint64_t DontCache = 0;
@@ -372,6 +375,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief user that started the query
   std::string _user;
+
+  transaction::Hints::Hint _trxTypeHint;
 
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;

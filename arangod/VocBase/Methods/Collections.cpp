@@ -420,7 +420,8 @@ transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
   if (_responsibleForTrx && _trx == nullptr) {
     auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(),
                                                           embeddable);
-    auto trx = std::make_unique<SingleCollectionTransaction>(ctx, *_coll, type);
+    auto trx = std::make_unique<SingleCollectionTransaction>(
+        ctx, *_coll, type, transaction::Hints::Hint::REST);
 
     Result res = trx->begin();
 
@@ -1094,9 +1095,10 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   return TRI_ERROR_NO_ERROR;
 }
 
-Result Collections::updateProperties(LogicalCollection& collection,
-                                     velocypack::Slice props,
-                                     OperationOptions const& options) {
+Result Collections::updateProperties(
+    LogicalCollection& collection, velocypack::Slice props,
+    OperationOptions const& options,
+    transaction::Hints::Hint const& trxTypeHint) {
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
 
@@ -1156,7 +1158,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
     auto ctx =
         transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
     SingleCollectionTransaction trx(ctx, collection,
-                                    AccessMode::Type::EXCLUSIVE);
+                                    AccessMode::Type::EXCLUSIVE, trxTypeHint);
     Result res = trx.begin();
 
     if (res.ok()) {
@@ -1401,7 +1403,8 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
   auto ctx =
       transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
-  SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
+  SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ,
+                                  transaction::Hints::Hint::REST);
   Result res = trx.begin();
 
   if (res.fail()) {

@@ -96,7 +96,8 @@ constexpr std::string_view countFalse("count:false");
 Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
              QueryString queryString,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
-             std::shared_ptr<SharedQueryState> sharedState)
+             std::shared_ptr<SharedQueryState> sharedState,
+             transaction::Hints::Hint const& trxTypeHint)
     : QueryContext(ctx->vocbase(), id),
       _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(std::move(queryString)),
@@ -113,6 +114,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _shutdownState(ShutdownState::None),
       _executionPhase(ExecutionPhase::INITIALIZE),
       _resultCode(std::nullopt),
+      _trxTypeHint(trxTypeHint),
       _contextOwnedByExterior(_transactionContext->isV8Context() &&
                               v8::Isolate::GetCurrent() != nullptr),
       _embeddedQuery(_transactionContext->isV8Context() &&
@@ -178,11 +180,13 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 /// method
 Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
-             Query::SchedulerT* scheduler)
+             Query::SchedulerT* scheduler,
+             transaction::Hints::Hint const& trxTypeHint)
     : Query(0, ctx, std::move(queryString), std::move(bindParameters),
             std::move(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server(),
-                                               scheduler)) {}
+                                               scheduler),
+            trxTypeHint) {}
 
 Query::~Query() {
   if (_planSliceCopy != nullptr) {
@@ -250,16 +254,21 @@ void Query::destroy() {
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options,
-    Query::SchedulerT* scheduler) {
+    transaction::Hints::Hint const& trxTypeHint, Query::SchedulerT* scheduler) {
   TRI_ASSERT(ctx != nullptr);
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : Query {
     MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
                     QueryString queryString,
                     std::shared_ptr<velocypack::Builder> bindParameters,
+                    transaction::Hints::Hint const& trxTypeHint,
                     QueryOptions options, Query::SchedulerT* scheduler)
-        : Query{std::move(ctx), std::move(queryString),
-                std::move(bindParameters), std::move(options), scheduler} {}
+        : Query{std::move(ctx),
+                std::move(queryString),
+                std::move(bindParameters),
+                std::move(options),
+                scheduler,
+                trxTypeHint} {}
 
     ~MakeSharedQuery() final {
       // Destroy this query, otherwise it's still
@@ -392,7 +401,7 @@ void Query::prepareQuery(SerializationFormat format) {
 /// to be able to only prepare a query from VelocyPack and then store it in the
 /// QueryRegistry.
 std::unique_ptr<ExecutionPlan> Query::preparePlan() {
-  TRI_ASSERT(!_queryString.empty());
+  preparePlan TRI_ASSERT(!_queryString.empty());
   LOG_TOPIC("9625e", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::prepare"
       << " this: " << (uintptr_t)this;
@@ -423,10 +432,10 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 #endif
 
   _trx = AqlTransaction::create(_transactionContext, _collections,
-                                _queryOptions.transactionOptions,
+                                _queryOptions.transactionOptions, _trxTypeHint,
                                 std::move(inaccessibleCollections));
-
-  bool isSystem;
+  // option 1
+  bool isSystem = false;
   _collections.visit(
       [&isSystem](std::string const& name, Collection& coll) -> bool {
         if (coll.getCollection()->system()) {
@@ -1024,8 +1033,9 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
     // create the transaction object, but do not start it yet
-    _trx = AqlTransaction::create(_transactionContext, _collections,
-                                  _queryOptions.transactionOptions);
+    _trx =
+        AqlTransaction::create(_transactionContext, _collections,
+                               _queryOptions.transactionOptions, _trxTypeHint);
     bool isSystem;
     _collections.visit(
         [&isSystem](std::string const& name, Collection& coll) -> bool {
@@ -1563,7 +1573,7 @@ void Query::initForTests() {
 
 void Query::initTrxForTests() {
   _trx = AqlTransaction::create(_transactionContext, _collections,
-                                _queryOptions.transactionOptions,
+                                _queryOptions.transactionOptions, _trxTypeHint,
                                 std::unordered_set<std::string>{});
   // create the transaction object, but do not start it yet
   _trx->addHint(

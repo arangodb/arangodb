@@ -55,7 +55,8 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
         MemoryUsageTracker>(static_cast<metrics::Gauge<uint64_t>*>(
         _state->vocbase().server().getFeature<metrics::MetricsFeature>().get(
             {"arangodb_transaction_memory_rest", ""})));
-  } else if (resourceMonitor.has_value()) {
+  } else if (_state->hasHint(transaction::Hints::Hint::AQL)) {
+    TRI_ASSERT(resourceMonitor.has_value());
     LOG_DEVEL << "AQL TRANSACTION";
     _memoryTracker = std::make_unique<AqlMemoryUsageTracker>(
         static_cast<metrics::Gauge<uint64_t>*>(
@@ -65,6 +66,7 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
                 .get({"arangodb_aql_global_memory_usage", ""})),
         resourceMonitor.value().get());
   } else {
+    TRI_ASSERT(_state->hasHint(transaction::Hints::Hint::INTERNAL));
     LOG_DEVEL << "INTERNAL TRANSACTION";
     _memoryTracker = std::make_unique<
         MemoryUsageTracker>(static_cast<metrics::Gauge<uint64_t>*>(
@@ -75,8 +77,6 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
   TRI_ASSERT(!_state->isReadOnlyTransaction());
   _readOptions.prefix_same_as_start = true;  // should always be true
   _readOptions.fill_cache = _state->options().fillBlockCache;
-
-  _memoryTracker = std::make_unique<TestMemoryTracker>();
 }
 
 RocksDBTrxBaseMethods::~RocksDBTrxBaseMethods() {

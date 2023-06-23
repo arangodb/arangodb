@@ -44,6 +44,8 @@
 
 #include <velocypack/Slice.h>
 
+#include "Logger/LogMacros.h"
+
 namespace arangodb {
 
 bool allowTransactions(v8::Isolate* isolate) {
@@ -64,6 +66,7 @@ bool allowTransactions(v8::Isolate* isolate) {
 Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
                           std::atomic<bool>& canceled, VPackSlice slice,
                           std::string const& portType, VPackBuilder& builder) {
+  LOG_DEVEL << "executeTranscation";
   // YOU NEED A TRY CATCH BLOCK like:
   //    TRI_V8_TRY_CATCH_BEGIN(isolate);
   //    TRI_V8_TRY_CATCH_END
@@ -152,6 +155,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
                             v8::Handle<v8::Value> const& arg,
                             v8::Handle<v8::Value>& result,
                             v8::TryCatch& tryCatch) {
+  LOG_DEVEL << "executeTranscationJS";
   Result rv;
 
   if (!allowTransactions(isolate)) {
@@ -404,7 +408,8 @@ Result executeTransactionJS(v8::Isolate* isolate,
   transaction::Methods trx(std::shared_ptr<transaction::Context>(
                                std::shared_ptr<transaction::Context>(), &ctx),
                            readCollections, writeCollections,
-                           exclusiveCollections, trxOptions);
+                           exclusiveCollections, trxOptions,
+                           transaction::Hints::Hint::REST);
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (ServerState::instance()->isCoordinator()) {
     // No one knows our Transaction ID yet, so we an run FAST_LOCK_ROUND and

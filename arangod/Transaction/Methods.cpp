@@ -1677,6 +1677,7 @@ static bool findRefusal(
 }
 
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
+                              transaction::Hints::Hint const& trxTypeHint,
                               transaction::Options const& options)
     : _state(nullptr), _transactionContext(ctx), _mainTransaction(false) {
   TRI_ASSERT(_transactionContext != nullptr);
@@ -1686,6 +1687,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction context pointer");
   }
+  this->addHint(trxTypeHint);
 
   // initialize the transaction
   _state = _transactionContext->acquireState(options, _mainTransaction);
@@ -1693,9 +1695,11 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
 }
 
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
+                              transaction::Hints::Hint const& trxTypeHint,
                               std::string const& collectionName,
                               AccessMode::Type type)
-    : transaction::Methods(std::move(ctx), transaction::Options{}) {
+    : transaction::Methods(std::move(ctx), trxTypeHint,
+                           transaction::Options{}) {
   TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
   Result res = Methods::addCollection(collectionName, type);
   if (res.fail()) {
@@ -1709,8 +1713,9 @@ transaction::Methods::Methods(
     std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections,
-    transaction::Options const& options)
-    : transaction::Methods(ctx, options) {
+    transaction::Options const& options,
+    transaction::Hints::Hint const& trxTypeHint)
+    : transaction::Methods(ctx, trxTypeHint, options) {
   Result res;
   for (auto const& it : exclusiveCollections) {
     res = Methods::addCollection(it, AccessMode::Type::EXCLUSIVE);

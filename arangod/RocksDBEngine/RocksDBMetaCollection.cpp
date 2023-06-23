@@ -777,7 +777,8 @@ RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
   auto ctxt =
       transaction::StandaloneContext::Create(_logicalCollection.vocbase());
   SingleCollectionTransaction trx(ctxt, _logicalCollection,
-                                  AccessMode::Type::READ);
+                                  AccessMode::Type::READ,
+                                  transaction::Hints::Hint::INTERNAL);
 
   Result res = trx.begin();
   if (res.fail()) {

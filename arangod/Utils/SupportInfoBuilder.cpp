@@ -638,8 +638,8 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
           size_t planId = coll->planId().id();
           result.add("plan_id", VPackValue(planId));
 
-          SingleCollectionTransaction trx(ctx, collName,
-                                          AccessMode::Type::READ);
+          SingleCollectionTransaction trx(ctx, collName, AccessMode::Type::READ,
+                                          transaction::Hints::Hint::INTERNAL);
 
           Result res = trx.begin();
 
@@ -700,7 +700,8 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             }
 
             VPackBuilder output;
-            std::ignore = methods::Indexes::getAll(*coll, flags, true, output);
+            std::ignore = methods::Indexes::getAll(
+                *coll, flags, true, output, transaction::Hints::Hint::INTERNAL);
             velocypack::Slice outSlice = output.slice();
 
             result.add("idxs", VPackValue(VPackValueType::Array));

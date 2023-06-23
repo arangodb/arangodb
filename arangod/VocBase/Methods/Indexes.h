@@ -28,6 +28,7 @@
 
 #include "Basics/Result.h"
 #include "Indexes/Index.h"
+#include "Transaction/Hints.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
@@ -43,6 +44,7 @@ struct Indexes {
   static arangodb::Result getIndex(LogicalCollection const& collection,
                                    velocypack::Slice indexId,
                                    velocypack::Builder&,
+                                   transaction::Hints::Hint const& trxTypeHint,
                                    transaction::Methods* trx = nullptr);
 
   /// @brief get all indexes, skips view links
@@ -50,6 +52,7 @@ struct Indexes {
                                  std::underlying_type<Index::Serialize>::type,
                                  bool withHidden,
                                  arangodb::velocypack::Builder&,
+                                 transaction::Hints::Hint const& trxTypeHint,
                                  transaction::Methods* trx = nullptr);
 
   static arangodb::Result createIndex(LogicalCollection&, Index::IndexType,
@@ -61,7 +64,8 @@ struct Indexes {
                                       velocypack::Builder& output);
 
   static arangodb::Result drop(LogicalCollection& collection,
-                               velocypack::Slice indexArg);
+                               velocypack::Slice indexArg,
+                               transaction::Hints::Hint const& trxTypeHint);
 
   static arangodb::Result extractHandle(LogicalCollection const& collection,
                                         CollectionNameResolver const* resolver,

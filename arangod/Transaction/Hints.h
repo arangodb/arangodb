@@ -51,6 +51,8 @@ class Hints {
         2048,  // allow the coordinator to try a fast-lock path (parallel on all
                // DBServers), and if that fails revert to slow-lock path
     REST = 4096,
+    AQL = 8192,
+    INTERNAL = 16384
   };
 
   Hints() : _value(0) {}

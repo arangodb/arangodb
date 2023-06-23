@@ -27,6 +27,7 @@
 #include "Aql/QueryResult.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Common.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/Cursor.h"
 #include "VocBase/vocbase.h"
@@ -91,7 +92,8 @@ class QueryResultCursor final : public arangodb::Cursor {
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
   QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize, double ttl,
-                    bool isRetriable);
+                    bool isRetriable,
+                    transaction::Hints::Hint const& trxTypeHint);
 
   ~QueryStreamCursor();
 

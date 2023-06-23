@@ -44,7 +44,6 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
-#include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
@@ -66,6 +65,8 @@
 #include <string_view>
 
 #include <absl/strings/str_cat.h>
+
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -138,6 +139,7 @@ Result extractIndexHandle(velocypack::Slice arg, bool extendedNames,
 
 Result Indexes::getIndex(LogicalCollection const& collection,
                          VPackSlice indexId, VPackBuilder& out,
+                         transaction::Hints::Hint const& trxTypeHint,
                          transaction::Methods* trx) {
   // do some magic to parse the iid
   std::string
@@ -182,7 +184,7 @@ Result Indexes::getIndex(LogicalCollection const& collection,
   VPackBuilder tmp;
   Result res =
       Indexes::getAll(collection, Index::makeFlags(Index::Serialize::Estimates),
-                      /*withHidden*/ true, tmp, trx);
+                      /*withHidden*/ true, tmp, trxTypeHint, trx);
   if (res.ok()) {
     for (VPackSlice index : VPackArrayIterator(tmp.slice())) {
       if ((index.hasKey(StaticStrings::IndexId) &&
@@ -201,7 +203,8 @@ Result Indexes::getIndex(LogicalCollection const& collection,
 arangodb::Result Indexes::getAll(
     LogicalCollection const& collection,
     std::underlying_type<Index::Serialize>::type flags, bool withHidden,
-    VPackBuilder& result, transaction::Methods* inputTrx) {
+    VPackBuilder& result, transaction::Hints::Hint const& trxTypeHint,
+    transaction::Methods* inputTrx) {
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = collection.vocbase().name();
@@ -266,7 +269,7 @@ arangodb::Result Indexes::getAll(
     } else {
       trx = std::make_shared<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(collection.vocbase()),
-          collection, AccessMode::Type::READ);
+          collection, AccessMode::Type::READ, trxTypeHint);
 
       Result res = trx->begin();
       if (!res.ok()) {
@@ -680,8 +683,9 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const& collection,
   return {};
 }
 
-Result Indexes::drop(LogicalCollection& collection,
-                     velocypack::Slice indexArg) {
+Result Indexes::drop(LogicalCollection& collection, velocypack::Slice indexArg,
+                     transaction::Hints::Hint const& trxTypeHint) {
+  LOG_DEVEL << "drop index";
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
     if (exec.databaseAuthLevel() != auth::Level::RW ||
@@ -694,7 +698,7 @@ Result Indexes::drop(LogicalCollection& collection,
 
   IndexId iid = IndexId::none();
   std::string name;
-  auto getHandle = [&collection, &indexArg, &iid, &name](
+  auto getHandle = [&collection, &indexArg, &iid, &name, &trxTypeHint](
                        CollectionNameResolver const* resolver,
                        transaction::Methods* trx = nullptr) -> Result {
     Result res =
@@ -708,7 +712,8 @@ Result Indexes::drop(LogicalCollection& collection,
 
     if (iid.empty() && !name.empty()) {
       VPackBuilder builder;
-      res = methods::Indexes::getIndex(collection, indexArg, builder, trx);
+      res = methods::Indexes::getIndex(collection, indexArg, builder,
+                                       trxTypeHint, trx);
       if (!res.ok()) {
         events::DropIndex(collection.vocbase().name(), collection.name(), "",
                           res.errorNumber());
@@ -758,7 +763,7 @@ Result Indexes::drop(LogicalCollection& collection,
     trxOpts.requiresReplication = false;
     SingleCollectionTransaction trx(
         transaction::V8Context::CreateWhenRequired(collection.vocbase(), false),
-        collection, AccessMode::Type::EXCLUSIVE, trxOpts);
+        collection, AccessMode::Type::EXCLUSIVE, trxTypeHint, trxOpts);
     Result res = trx.begin();
 
     if (!res.ok()) {

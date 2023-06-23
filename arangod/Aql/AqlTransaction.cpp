@@ -40,6 +40,7 @@ using namespace arangodb::aql;
 std::unique_ptr<AqlTransaction> AqlTransaction::create(
     std::shared_ptr<transaction::Context> transactionContext,
     aql::Collections const& collections, transaction::Options const& options,
+    transaction::Hints::Hint const& trxTypeHint,
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (!inaccessibleCollections.empty()) {
@@ -49,13 +50,15 @@ std::unique_ptr<AqlTransaction> AqlTransaction::create(
   }
 #endif
   return std::make_unique<AqlTransaction>(std::move(transactionContext),
-                                          collections, options);
+                                          collections, options, trxTypeHint);
 }
 
 AqlTransaction::AqlTransaction(
     std::shared_ptr<transaction::Context> transactionContext,
-    transaction::Options const& options)
-    : transaction::Methods(std::move(transactionContext), options) {
+    transaction::Options const& options,
+    transaction::Hints::Hint const& trxTypeHint)
+    : transaction::Methods(std::move(transactionContext), trxTypeHint,
+                           options) {
   if (options.isIntermediateCommitEnabled()) {
     addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
   }
@@ -64,8 +67,10 @@ AqlTransaction::AqlTransaction(
 /// protected so we can create different subclasses
 AqlTransaction::AqlTransaction(
     std::shared_ptr<transaction::Context> transactionContext,
-    aql::Collections const& collections, transaction::Options const& options)
-    : transaction::Methods(std::move(transactionContext), options) {
+    aql::Collections const& collections, transaction::Options const& options,
+    transaction::Hints::Hint const& trxTypeHint)
+    : transaction::Methods(std::move(transactionContext), trxTypeHint,
+                           options) {
   TRI_ASSERT(state() != nullptr);
   if (options.isIntermediateCommitEnabled()) {
     addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);

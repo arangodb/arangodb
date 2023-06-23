@@ -515,7 +515,7 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // If we execute an AQL query from V8 we need to unset the nolock headers
   auto query = arangodb::aql::Query::create(
       transaction::V8Context::Create(vocbase, true),
-      aql::QueryString(queryString), nullptr);
+      aql::QueryString(queryString), nullptr, transaction::Hints::Hint::AQL);
   auto parseResult = query->parse();
 
   if (parseResult.result.fail()) {
@@ -662,7 +662,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto query = arangodb::aql::Query::create(
       transaction::V8Context::Create(vocbase, true),
       aql::QueryString(std::move(queryString)), std::move(bindVars),
-      aql::QueryOptions(options.slice()));
+      transaction::Hints::Hint::AQL, aql::QueryOptions(options.slice()));
   auto queryResult = query->explain();
 
   if (queryResult.result.fail()) {
@@ -857,6 +857,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  LOG_DEVEL << "JS_ExecuteAQL";
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
@@ -908,7 +909,8 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   auto query = arangodb::aql::Query::create(
       std::move(v8Context), aql::QueryString(std::move(queryString)),
-      std::move(bindVars), aql::QueryOptions(options.slice()));
+      std::move(bindVars), transaction::Hints::Hint::AQL,
+      aql::QueryOptions(options.slice()));
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
 

@@ -25,6 +25,7 @@
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
+#include "Transaction/Hints.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/RevisionId.h"
@@ -143,7 +144,8 @@ struct Collections {
   static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection& collection,
                                  velocypack::Slice props,
-                                 OperationOptions const& options);
+                                 OperationOptions const& options,
+                                 transaction::Hints::Hint const& trxTypeHint);
 
   static Result rename(LogicalCollection& collection,
                        std::string const& newName, bool doOverride);

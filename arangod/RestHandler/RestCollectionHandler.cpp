@@ -504,7 +504,6 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE, opts);
     _activeTrx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     _activeTrx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-    _activeTrx->addHint(transaction::Hints::Hint::REST);
     res = _activeTrx->begin();
     if (res.fail()) {
       generateError(res);
@@ -580,7 +579,8 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     VPackBuilder props = VPackCollection::keep(body, keep);
 
     OperationOptions options(_context);
-    res = methods::Collections::updateProperties(*coll, props.slice(), options);
+    res = methods::Collections::updateProperties(
+        *coll, props.slice(), options, transaction::Hints::Hint::REST);
     if (res.fail()) {
       generateError(res);
       return RestStatus::DONE;
@@ -820,7 +820,6 @@ void RestCollectionHandler::initializeTransaction(LogicalCollection& coll) {
   try {
     _activeTrx = createTransaction(coll.name(), AccessMode::Type::READ,
                                    OperationOptions());
-    _activeTrx->addHint(transaction::Hints::Hint::REST);
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
       // this will happen if the tid of a managed transaction is passed in,
@@ -829,7 +828,7 @@ void RestCollectionHandler::initializeTransaction(LogicalCollection& coll) {
       // collection
       _activeTrx = std::make_unique<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(_vocbase), coll.name(),
-          AccessMode::Type::READ);
+          AccessMode::Type::READ, transaction::Hints::Hint::REST);
     } else {
       throw;
     }

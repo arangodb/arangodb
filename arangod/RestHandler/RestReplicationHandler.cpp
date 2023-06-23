@@ -1148,7 +1148,8 @@ Result RestReplicationHandler::processRestoreCollection(
             // Try to truncate.
             auto ctx = transaction::StandaloneContext::Create(_vocbase);
             SingleCollectionTransaction trx(ctx, *col,
-                                            AccessMode::Type::EXCLUSIVE);
+                                            AccessMode::Type::EXCLUSIVE,
+                                            transaction::Hints::Hint::REST);
 
             trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
@@ -1498,8 +1499,8 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::REST);
+  SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE,
+                                  transaction::Hints::Hint::REST);
 
   Result res = trx.begin();
 
@@ -1681,8 +1682,8 @@ Result RestReplicationHandler::parseBatchForSystemCollection(
   // this "fake" transaction here is only needed to get access to the underlying
   // system collection. we will not write anything into the collection here
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
-  trx.addHint(transaction::Hints::Hint::REST);
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ,
+                                  transaction::Hints::Hint::REST);
 
   Result res = trx.begin();
   if (res.ok()) {
@@ -1741,7 +1742,8 @@ Result RestReplicationHandler::processRestoreUsersBatch(
 
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(_vocbase),
-      arangodb::aql::QueryString(aql), std::move(bindVars));
+      arangodb::aql::QueryString(aql), std::move(bindVars),
+      transaction::Hints::Hint::REST);
   aql::QueryResult queryResult = query->executeSync();
 
   // neither agency nor dbserver should get here
@@ -2509,7 +2511,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
     LOG_TOPIC("aaff2", DEBUG, Logger::REPLICATION)
         << "Try add follower fast-path (no documents)";
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
+    SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE,
+                                    transaction::Hints::Hint::REST);
     trx.addHint(transaction::Hints::Hint::REST);
     auto res = trx.begin();
 
@@ -2602,7 +2605,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     auto trxCtxtLease =
         mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true);
     if (trxCtxtLease) {
-      transaction::Methods trx{trxCtxtLease};
+      transaction::Methods trx{trxCtxtLease, transaction::Hints::Hint::REST};
       if (!trx.isLocked(col.get(), AccessMode::Type::EXCLUSIVE)) {
         referenceChecksum =
             ResultT<std::string>::success("ThisCannotBeMatched");
@@ -3770,7 +3773,7 @@ Result RestReplicationHandler::createBlockingTransaction(
                 "read transaction was cancelled"};
       }
 
-      transaction::Methods trx{ctx};
+      transaction::Methods trx{ctx, transaction::Hints::Hint::REST};
 
       void* key = this;  // simon: not important to get it again
       trx.state()->cookie(key, std::move(rGuard));
@@ -3853,7 +3856,7 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
                                          "read transaction was cancelled");
     }
 
-    transaction::Methods trx(ctx);
+    transaction::Methods trx(ctx, transaction::Hints::Hint::REST);
     TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
 
     uint64_t num = col->getPhysical()->numberDocuments(&trx);

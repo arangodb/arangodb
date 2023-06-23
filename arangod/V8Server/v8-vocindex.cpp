@@ -152,7 +152,8 @@ static void JS_DropIndexVocbaseCol(
   VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
-  auto res = methods::Indexes::drop(*collection, builder.slice());
+  auto res = methods::Indexes::drop(*collection, builder.slice(),
+                                    transaction::Hints::Hint::REST);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -190,7 +191,8 @@ static void JS_GetIndexesVocbaseCol(
   }
 
   VPackBuilder output;
-  auto res = methods::Indexes::getAll(*collection, flags, withHidden, output);
+  auto res = methods::Indexes::getAll(*collection, flags, withHidden, output,
+                                      transaction::Hints::Hint::REST);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

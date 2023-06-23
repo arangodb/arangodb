@@ -519,7 +519,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     // update the apply tick for all standalone operations
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(*vocbase), *coll,
-        AccessMode::Type::EXCLUSIVE);
+        AccessMode::Type::EXCLUSIVE, transaction::Hints::Hint::INTERNAL);
 
     // we will always check if the target document already exists and then
     // either carry out an insert or a replace. so we will be carrying out
@@ -580,7 +580,7 @@ Result TailingSyncer::removeSingleDocument(LogicalCollection* coll,
                                            std::string const& key) {
   SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(coll->vocbase()), *coll,
-      AccessMode::Type::EXCLUSIVE);
+      AccessMode::Type::EXCLUSIVE, transaction::Hints::Hint::INTERNAL);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -863,7 +863,7 @@ Result TailingSyncer::truncateCollection(
   {
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(*vocbase), *col,
-        AccessMode::Type::EXCLUSIVE);
+        AccessMode::Type::EXCLUSIVE, transaction::Hints::Hint::INTERNAL);
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     Result res = trx.begin();

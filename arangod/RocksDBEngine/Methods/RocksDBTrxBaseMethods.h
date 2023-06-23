@@ -52,7 +52,7 @@ class MemoryUsageTracker : public IMemoryTracker {
       : _memoryTrackerMetric(memoryTrackerMetric) {}
   ~MemoryUsageTracker() { TRI_ASSERT(_memoryTrackerMetric->load() == 0); }
   void reset() noexcept override {
-    _memoryTrackerMetric->store(0);
+    _memoryTrackerMetric->store(0, std::memory_order_relaxed);
     _savePoints.clear();
   }
   void increaseMemoryUsage(std::uint64_t valueInBytes) override {
@@ -78,7 +78,7 @@ class MemoryUsageTracker : public IMemoryTracker {
   void rollbackToSavePoint() noexcept override {
     //  LOG_DEVEL << "ROLLING BACK TO SAVEPOINT";
     TRI_ASSERT(!_savePoints.empty());
-    _memoryTrackerMetric->store(_savePoints.back());
+    _memoryTrackerMetric->store(_savePoints.back(), std::memory_order_relaxed);
     _savePoints.pop_back();
   }
 
@@ -102,7 +102,7 @@ class AqlMemoryUsageTracker : public IMemoryTracker {
   ~AqlMemoryUsageTracker() { TRI_ASSERT(_memoryTrackerMetric->load() == 0); }
 
   void reset() noexcept override {
-    _memoryTrackerMetric->store(0);
+    _memoryTrackerMetric->store(0, std::memory_order_relaxed);
     _savePoints.clear();
     _resourceMonitor.clear();
   }
@@ -129,13 +129,13 @@ class AqlMemoryUsageTracker : public IMemoryTracker {
 
   void setSavePoint() override {
     //  LOG_DEVEL << "ADDING SAVEPOINT";
-    _savePoints.push_back(_memoryUsage);
+    _savePoints.push_back(_memoryTrackerMetric->load());
   }
 
   void rollbackToSavePoint() noexcept override {
     //  LOG_DEVEL << "ROLLING BACK TO SAVEPOINT";
     TRI_ASSERT(!_savePoints.empty());
-    _memoryTrackerMetric->store(_savePoints.back());
+    _memoryTrackerMetric->store(_savePoints.back(), std::memory_order_relaxed);
     _savePoints.pop_back();
     _resourceMonitor.clear();
     _resourceMonitor.increaseMemoryUsage(_savePoints.back());
