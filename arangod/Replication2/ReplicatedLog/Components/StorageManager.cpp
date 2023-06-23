@@ -101,35 +101,38 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
          weakManager = manager.weak_from_this()](
             StorageManager::IStorageEngineMethods& methods) mutable noexcept {
           return methods.insert(std::move(iter), {.waitForSync = true})
-              .thenValue(
-                  [lastIndex = slice.getLastIndex(),
-                   weakManager = std::move(weakManager)](auto&& res) mutable {
-                    // We're done writing to the WAL. That doesn't necessarily
-                    // mean the data is synced to disk. We'll update the
-                    // syncIndex, only after the inner Future is ready.
-                    if (auto mngr = weakManager.lock(); res.ok() && mngr) {
-                      mngr->scheduler->queue(
-                          [lastIndex, weakManager = std::move(weakManager),
-                           diskSynced = std::move(res.get())]() mutable {
-                            if (auto mngr = weakManager.lock()) {
-                              auto diskSyncedRes = diskSynced.get();
-                              if (diskSyncedRes.fail()) {
-                                LOG_CTX("de1bb", WARN, mngr->loggerContext)
-                                    << "failed syncing to disk, lastIndex = "
-                                    << lastIndex;
-                                return;
-                              }
-                              mngr->syncIndex.doUnderLock(
-                                  [lastIndex](auto&& syncIndex) {
-                                    if (syncIndex < lastIndex) {
-                                      syncIndex = lastIndex;
-                                    }
-                                  });
-                            }
-                          });
-                    }
-                    return res.result();
-                  });
+              .thenValue([lastIndex = slice.getLastIndex(),
+                          weakManager = std::move(weakManager),
+                          &methods](auto&& res) mutable {
+                // We're done writing to the WAL. That doesn't necessarily
+                // mean the data is synced to disk.
+                // TODO only take this action for WFS=false
+                if (auto mngr = weakManager.lock(); res.ok() && mngr) {
+                  // Methods are available as long as the manager is not
+                  // destroyed.
+                  mngr->scheduler->queue(
+                      [lastIndex, weakManager = std::move(weakManager),
+                       wfs = methods.waitForSync(res.get())]() mutable {
+                        auto syncRes = wfs.get();
+                        if (auto mngr = weakManager.lock()) {
+                          if (syncRes.fail()) {
+                            LOG_CTX("6e64c", INFO, mngr->loggerContext)
+                                << "Will not update syncIndex from "
+                                << mngr->syncIndex.getLockedGuard().get()
+                                << " to " << lastIndex << ": " << syncRes;
+                            return;
+                          }
+                          mngr->syncIndex.doUnderLock(
+                              [lastIndex](auto&& syncIndex) {
+                                if (syncIndex < lastIndex) {
+                                  syncIndex = lastIndex;
+                                }
+                              });
+                        }
+                      });
+                }
+                return res.result();
+              });
         });
   }
 

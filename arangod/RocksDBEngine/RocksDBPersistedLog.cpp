@@ -126,6 +126,22 @@ RocksDBAsyncLogWriteBatcher::RocksDBAsyncLogWriteBatcher(
   _lanes[1]._numWorkerMetrics = _metrics->numWorkerThreadsNoWaitForSync;
 }
 
+RocksDBAsyncLogWriteBatcher::~RocksDBAsyncLogWriteBatcher() {
+  // We need to make sure that all pending requests are finished before we are
+  // destroyed. This should not happen normally, but if it does, we'll handle it
+  // gracefully.
+  auto& promises = _waitForSyncPromises.getLockedGuard().get();
+  if (!promises.empty()) {
+    LOG_TOPIC("5f6f9", ERR, Logger::REPLICATION2)
+        << promises.size()
+        << " wait-for-sync promises remaining in RocksDBAsyncLogWriteBatcher "
+           "destructor";
+    for (auto&& [_, promise] : promises) {
+      promise.setValue(Result{TRI_ERROR_SHUTTING_DOWN});
+    }
+  }
+}
+
 void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
   // This function is noexcept so in case an exception bubbles up we
   // rather crash instead of losing one thread.
@@ -198,27 +214,16 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
           }
         }
 
-        // Promise used to signal that data has been synced to disk up to
-        // the last sequence number.
-        futures::Promise<Result> syncedToDisk;
         auto seq = _db->GetLatestSequenceNumber();
 
         // resolve all promises in [nextReqToResolve, nextReqToWrite)
         for (; nextReqToResolve != nextReqToWrite; ++nextReqToResolve) {
           _executor->operator()(
-              [reqToResolve = std::move(*nextReqToResolve),
-               syncedToDiskFuture =
-                   syncedToDisk.getFuture()]() mutable noexcept {
-                reqToResolve.promise.setValue(
-                    ResultT{std::move(syncedToDiskFuture)});
+              [seq,
+               reqToResolve = std::move(*nextReqToResolve)]() mutable noexcept {
+                reqToResolve.promise.setValue(ResultT{seq});
               });
         }
-
-        _waitForSyncPromises.doUnderLock([&](auto& promises) {
-          auto [_, inserted] = promises.emplace(seq, std::move(syncedToDisk));
-          TRI_ASSERT(inserted) << "Duplicate sequence number " << seq
-                               << " in waitForSyncPromises";
-        });
       }
 
       return Result{TRI_ERROR_NO_ERROR};
@@ -245,7 +250,7 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
 auto RocksDBAsyncLogWriteBatcher::queue(AsyncLogWriteContext& ctx,
                                         Action action,
                                         WriteOptions const& options)
-    -> futures::Future<ResultT<futures::Future<Result>>> {
+    -> futures::Future<ResultT<SequenceNumber>> {
   auto const startNewThread = [&](Lane& lane) {
     size_t num_retries = 0;
     while (true) {
@@ -276,7 +281,7 @@ auto RocksDBAsyncLogWriteBatcher::queue(AsyncLogWriteContext& ctx,
   };
 
   auto queueRequest = [&](Lane& lane)
-      -> std::pair<futures::Future<ResultT<futures::Future<Result>>>, bool> {
+      -> std::pair<futures::Future<ResultT<SequenceNumber>>, bool> {
     std::unique_lock guard(lane._persistorMutex);
     auto& req =
         lane._pendingPersistRequests.emplace_back(ctx, std::move(action));
@@ -338,29 +343,29 @@ auto RocksDBAsyncLogWriteBatcher::prepareRequest(Request const& req,
 auto RocksDBAsyncLogWriteBatcher::queueInsert(
     AsyncLogWriteContext& ctx,
     std::unique_ptr<replication2::PersistedLogIterator> iter,
-    WriteOptions const& opts)
-    -> futures::Future<ResultT<futures::Future<Result>>> {
+    WriteOptions const& opts) -> futures::Future<ResultT<SequenceNumber>> {
   return queue(ctx, InsertEntries{.iter = std::move(iter)}, opts);
 }
 
 auto RocksDBAsyncLogWriteBatcher::queueRemoveFront(AsyncLogWriteContext& ctx,
                                                    replication2::LogIndex stop,
                                                    WriteOptions const& opts)
-    -> futures::Future<ResultT<futures::Future<Result>>> {
+    -> futures::Future<ResultT<SequenceNumber>> {
   return queue(ctx, RemoveFront{.stop = stop}, opts);
 }
 
 auto RocksDBAsyncLogWriteBatcher::queueRemoveBack(AsyncLogWriteContext& ctx,
                                                   replication2::LogIndex start,
                                                   WriteOptions const& opts)
-    -> futures::Future<ResultT<futures::Future<Result>>> {
+    -> futures::Future<ResultT<SequenceNumber>> {
   return queue(ctx, RemoveBack{.start = start}, opts);
 }
 
 void RocksDBAsyncLogWriteBatcher::onSync(
     SequenceNumber sequenceNumber) noexcept {
-  try {
-    // Will post a request on the scheduler
+  // Schedule a task to notify all the futures waiting for the sequence number
+  // to be synced.
+  auto res = basics::catchVoidToResult([&]() {
     _executor->operator()(
         [self = shared_from_this(), sequenceNumber]() noexcept {
           std::vector<futures::Promise<Result>> promises;
@@ -377,15 +382,20 @@ void RocksDBAsyncLogWriteBatcher::onSync(
             promise.setValue(Result{});
           }
         });
-  } catch (std::exception const& e) {
-    LOG_TOPIC("282be", FATAL, Logger::REPLICATION2)
+  });
+  if (res.fail()) {
+    LOG_TOPIC("282be", ERR, Logger::REPLICATION2)
         << "Could not schedule an update after syncing log entries to disk: "
-        << e.what() << " Sequence number: " << sequenceNumber;
-  } catch (...) {
-    LOG_TOPIC("5572a", FATAL, Logger::REPLICATION2)
-        << "Could not schedule an update after syncing log entries to disk."
-        << " Sequence number: " << sequenceNumber;
+        << res << " Sequence number: " << sequenceNumber;
   }
+}
+
+auto RocksDBAsyncLogWriteBatcher::waitForSync(SequenceNumber seq)
+    -> futures::Future<Result> {
+  return _waitForSyncPromises.doUnderLock([&](auto& promises) {
+    auto promise = promises.emplace(seq, futures::Promise<Result>{});
+    return promise->second.getFuture();
+  });
 }
 
 Result RocksDBLogStorageMethods::updateMetadata(
@@ -436,7 +446,7 @@ std::unique_ptr<PersistedLogIterator> RocksDBLogStorageMethods::read(
 
 auto RocksDBLogStorageMethods::removeFront(LogIndex stop,
                                            WriteOptions const& opts)
-    -> futures::Future<ResultT<futures::Future<Result>>> {
+    -> futures::Future<ResultT<SequenceNumber>> {
   IRocksDBAsyncLogWriteBatcher::WriteOptions wo;
   MeasureTimeGuard timeGuard(*_metrics->operationLatencyRemoveFront);
   wo.waitForSync = opts.waitForSync;
@@ -449,7 +459,7 @@ auto RocksDBLogStorageMethods::removeFront(LogIndex stop,
 
 auto RocksDBLogStorageMethods::removeBack(LogIndex start,
                                           WriteOptions const& opts)
-    -> futures::Future<ResultT<futures::Future<Result>>> {
+    -> futures::Future<ResultT<SequenceNumber>> {
   IRocksDBAsyncLogWriteBatcher::WriteOptions wo;
   MeasureTimeGuard timeGuard(*_metrics->operationLatencyRemoveBack);
   wo.waitForSync = opts.waitForSync;
@@ -462,7 +472,7 @@ auto RocksDBLogStorageMethods::removeBack(LogIndex start,
 
 auto RocksDBLogStorageMethods::insert(
     std::unique_ptr<PersistedLogIterator> iter, WriteOptions const& opts)
-    -> futures::Future<ResultT<futures::Future<Result>>> {
+    -> futures::Future<ResultT<SequenceNumber>> {
   IRocksDBAsyncLogWriteBatcher::WriteOptions wo;
   wo.waitForSync = opts.waitForSync;
   MeasureTimeGuard timeGuard(*_metrics->operationLatencyInsert);
@@ -494,9 +504,8 @@ auto RocksDBLogStorageMethods::getSyncedSequenceNumber() -> SequenceNumber {
 }
 
 auto RocksDBLogStorageMethods::waitForSync(
-    IStorageEngineMethods::SequenceNumber number)
-    -> futures::Future<futures::Unit> {
-  FATAL_ERROR_ABORT();  // TODO not implemented
+    IStorageEngineMethods::SequenceNumber number) -> futures::Future<Result> {
+  return batcher->waitForSync(number);
 }
 
 auto RocksDBLogStorageMethods::drop() -> Result {
