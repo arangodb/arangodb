@@ -19,10 +19,10 @@ Ignore system collections in the rebalance plan. (Default: `false`)
 @RESTSTRUCT{piFactor,rebalance_compute,number,optional,}
 A weighting factor that should remain untouched. (Default: `256e6`)
 
-If a collection has more shards than there are DB-Servers, then some DB-Servers
-could be responsible for more shards of the collection as leader than others.
-This is another, subtle form of leader imbalance. The `piFactor` adjusts how
-much weight such imbalances get in the overall imbalance score.
+If a collection has more shards than there are DB-Servers, there can be a subtle
+form of leader imbalance. Some DB-Servers may be responsible for more shards as
+leader than others. The `piFactor` adjusts how much weight such imbalances get
+in the overall imbalance score.
 
 @RESTSTRUCT{databasesExcluded,rebalance_compute,array,optional,string}
 A list of database names to exclude from the analysis. (Default: `[]`)
