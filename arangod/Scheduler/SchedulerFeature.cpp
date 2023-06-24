@@ -29,6 +29,7 @@
 #include "SchedulerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/asio_ns.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Basics/signals.h"
@@ -85,10 +86,17 @@ std::atomic<pid_t> processIdRequestingLogRotate{processIdUnspecified};
 
 namespace arangodb {
 
-SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
+Scheduler* SchedulerFeature::SCHEDULER = nullptr;
+
+struct SchedulerFeature::AsioHandler {
+  std::shared_ptr<asio_ns::signal_set> _exitSignals;
+  std::shared_ptr<asio_ns::signal_set> _hangupSignals;
+};
 
 SchedulerFeature::SchedulerFeature(Server& server)
-    : ArangodFeature{server, *this}, _scheduler(nullptr) {
+    : ArangodFeature{server, *this},
+      _scheduler(nullptr),
+      _asioHandler(std::make_unique<AsioHandler>()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
   if constexpr (Server::contains<FileDescriptorsFeature>()) {
@@ -397,16 +405,16 @@ void SchedulerFeature::signalStuffInit() {
 
 void SchedulerFeature::signalStuffDeinit() {
   // cancel signals
-  if (_exitSignals != nullptr) {
-    auto exitSignals = _exitSignals;
-    _exitSignals.reset();
+  if (_asioHandler->_exitSignals != nullptr) {
+    auto exitSignals = _asioHandler->_exitSignals;
+    _asioHandler->_exitSignals.reset();
     exitSignals->cancel();
   }
 
 #ifndef _WIN32
-  if (_hangupSignals != nullptr) {
-    _hangupSignals->cancel();
-    _hangupSignals.reset();
+  if (_asioHandler->_hangupSignals != nullptr) {
+    _asioHandler->_hangupSignals->cancel();
+    _asioHandler->_hangupSignals.reset();
   }
 #endif
 }
