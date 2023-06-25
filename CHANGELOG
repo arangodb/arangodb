@@ -1,6 +1,8 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+* Attempt to avoid busy looping when locking collections with a timeout
+
 * Add a `description` field to OptimizerRule and dump the explanations via the
   `GET /_api/query/rules` endpoint.
 
