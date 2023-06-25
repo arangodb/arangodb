@@ -1,6 +1,9 @@
 devel
 -----
 
+* Add a `description` field to OptimizerRule and dump the explanations via the
+  `GET /_api/query/rules` endpoint.
+
 * Don't show "write query options" for AQL write queries in the explain and
   profile output. The write query options normally don't produce any valuable
   insights and only take up screen real estate.
