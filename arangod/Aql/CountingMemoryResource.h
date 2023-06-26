@@ -36,7 +36,14 @@ struct CountingMemoryResource : std::pmr::memory_resource {
  private:
   void* do_allocate(size_t bytes, size_t alignment) override {
     void* mem = base->allocate(bytes, alignment);
-    _resourceMonitor.increaseMemoryUsage(bytes);
+
+    try {
+      _resourceMonitor.increaseMemoryUsage(bytes);
+    } catch (...) {
+      base->deallocate(mem, bytes, alignment);
+
+      throw;
+    }
 
     return mem;
   }
