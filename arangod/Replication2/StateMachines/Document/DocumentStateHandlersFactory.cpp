@@ -85,7 +85,7 @@ auto DocumentStateHandlersFactory::createTransaction(
   auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
 
   auto methods = std::make_unique<transaction::Methods>(
-      std::move(ctx), transaction::Hints::Hint::INTERNAL, shard, accessType);
+      std::move(ctx), shard, accessType, transaction::Hints::Hint::INTERNAL);
   methods->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
 
   // TODO Why is GLOBAL_MANAGED necessary?

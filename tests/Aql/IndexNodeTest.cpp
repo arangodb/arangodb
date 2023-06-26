@@ -32,6 +32,7 @@
 #include "Mocks/Servers.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
@@ -72,6 +73,7 @@ arangodb::aql::QueryResult executeQuery(
     std::string const& optionsString = "{}") {
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
+      arangodb::transaction::Hints::Hint::INTERNAL,
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -104,7 +106,8 @@ TEST_F(IndexNodeTest, objectQuery) {
   std::vector<std::string> const EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-      {collection->name()}, EMPTY, arangodb::transaction::Options());
+      {collection->name()}, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::Hint::INTERNAL);
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -184,7 +187,8 @@ TEST_F(IndexNodeTest, expansionQuery) {
   std::vector<std::string> const EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-      {collection->name()}, EMPTY, arangodb::transaction::Options());
+      {collection->name()}, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::Hint::INTERNAL);
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -237,7 +241,8 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   std::vector<std::string> const EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-      {collection->name()}, EMPTY, arangodb::transaction::Options());
+      {collection->name()}, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::Hint::INTERNAL);
 
   EXPECT_TRUE(trx.begin().ok());
 
@@ -278,7 +283,8 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
   std::vector<std::string> const EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-      {collection->name()}, EMPTY, arangodb::transaction::Options());
+      {collection->name()}, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::Hint::INTERNAL);
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;

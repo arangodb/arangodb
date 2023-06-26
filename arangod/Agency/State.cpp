@@ -130,7 +130,7 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
-      "log", AccessMode::Type::WRITE);
+      "log", AccessMode::Type::WRITE, transaction::Hints::Hint::INTERNAL);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -218,7 +218,8 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
   transaction::Methods trx(std::shared_ptr<transaction::Context>(
                                std::shared_ptr<transaction::Context>(), &ctx),
                            {}, {"log", "configuration"}, {},
-                           transaction::Options());
+                           transaction::Options(),
+                           transaction::Hints::Hint::INTERNAL);
 
   Result res = trx.begin();
   if (!res.ok()) {
@@ -1125,7 +1126,8 @@ bool State::loadOrPersistConfiguration() {
     SingleCollectionTransaction trx(
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),
-        "configuration", AccessMode::Type::WRITE);
+        "configuration", AccessMode::Type::WRITE,
+        transaction::Hints::Hint::INTERNAL);
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -1488,7 +1490,7 @@ bool State::persistCompactionSnapshot(index_t cind,
     SingleCollectionTransaction trx(
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),
-        "compact", AccessMode::Type::WRITE);
+        "compact", AccessMode::Type::WRITE, transaction::Hints::Hint::INTERNAL);
 
     Result res = trx.begin();
 
@@ -1592,7 +1594,8 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
-      "configuration", AccessMode::Type::WRITE);
+      "configuration", AccessMode::Type::WRITE,
+      transaction::Hints::Hint::INTERNAL);
   Result res = trx.begin();
 
   if (!res.ok()) {

@@ -253,8 +253,9 @@ void Query::destroy() {
 /// ensure that Query objects are always created using shared_ptrs.
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
-    std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options,
-    transaction::Hints::Hint const& trxTypeHint, Query::SchedulerT* scheduler) {
+    std::shared_ptr<velocypack::Builder> bindParameters,
+    transaction::Hints::Hint const& trxTypeHint, QueryOptions options,
+    Query::SchedulerT* scheduler) {
   TRI_ASSERT(ctx != nullptr);
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : Query {
@@ -280,7 +281,7 @@ std::shared_ptr<Query> Query::create(
   TRI_ASSERT(ctx != nullptr);
   return std::make_shared<MakeSharedQuery>(
       std::move(ctx), std::move(queryString), std::move(bindParameters),
-      std::move(options), scheduler);
+      trxTypeHint, std::move(options), scheduler);
 }
 
 /// @brief return the user that started the query
@@ -401,7 +402,7 @@ void Query::prepareQuery(SerializationFormat format) {
 /// to be able to only prepare a query from VelocyPack and then store it in the
 /// QueryRegistry.
 std::unique_ptr<ExecutionPlan> Query::preparePlan() {
-  preparePlan TRI_ASSERT(!_queryString.empty());
+  TRI_ASSERT(!_queryString.empty());
   LOG_TOPIC("9625e", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::prepare"
       << " this: " << (uintptr_t)this;
@@ -434,18 +435,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions, _trxTypeHint,
                                 std::move(inaccessibleCollections));
-  // option 1
-  bool isSystem = false;
-  _collections.visit(
-      [&isSystem](std::string const& name, Collection& coll) -> bool {
-        if (coll.getCollection()->system()) {
-          isSystem = true;
-          return false;  // returns false for early aborting and not continue
-                         // the traversal, as it's already enough
-        }
-        return true;
-      });
-  if (!isSystem) {
+
+  if (_trxTypeHint == transaction::Hints::Hint::AQL) {
     _trx->state()->setResourceMonitor(_resourceMonitor);
   }
 
@@ -1036,17 +1027,8 @@ QueryResult Query::explain() {
     _trx =
         AqlTransaction::create(_transactionContext, _collections,
                                _queryOptions.transactionOptions, _trxTypeHint);
-    bool isSystem;
-    _collections.visit(
-        [&isSystem](std::string const& name, Collection& coll) -> bool {
-          if (coll.getCollection()->system()) {
-            isSystem = true;
-            return false;  // returns false for early aborting and not continue
-                           // the traversal, as it's already enough
-          }
-          return true;
-        });
-    if (!isSystem) {
+
+    if (_trxTypeHint == transaction::Hints::Hint::AQL) {
       _trx->state()->setResourceMonitor(_resourceMonitor);
     }
 

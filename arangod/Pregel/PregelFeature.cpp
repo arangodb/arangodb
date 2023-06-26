@@ -125,7 +125,8 @@ auto PregelRunUser::authorized(ExecContext const& userContext) const -> bool {
 
 Result PregelFeature::persistExecution(TRI_vocbase_t& vocbase,
                                        ExecutionNumber en) {
-  statuswriter::CollectionStatusWriter cWriter{vocbase, en};
+  statuswriter::CollectionStatusWriter cWriter{vocbase, en,
+                                               transaction::Hints::Hint::REST};
 
   // TODO: Here we should also write the Coordinator's ServerID into the
   // collection

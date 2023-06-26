@@ -109,7 +109,8 @@ void MockGraph::storeVertexData(
   arangodb::OperationOptions options;
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      vertexShardName, arangodb::AccessMode::Type::WRITE);
+      vertexShardName, arangodb::AccessMode::Type::WRITE,
+      transaction::Hints::Hint::INTERNAL);
   EXPECT_TRUE((trx.begin().ok()));
 
   size_t added = 0;
@@ -132,7 +133,7 @@ void MockGraph::storeEdgeData(TRI_vocbase_t& vocbase,
   arangodb::OperationOptions options;
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), edgeShardName,
-      arangodb::AccessMode::Type::WRITE);
+      arangodb::AccessMode::Type::WRITE, transaction::Hints::Hint::REST);
   EXPECT_TRUE((trx.begin().ok()));
   size_t added = 0;
   velocypack::Builder b;

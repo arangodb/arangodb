@@ -60,6 +60,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Transaction/Hints.h"
 
 struct TRI_vocbase_t;  // forward declaration
 
@@ -491,6 +492,12 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   bool visit(std::function<bool(AnalyzerPool::ptr const&)> const& visitor,
              TRI_vocbase_t const* vocbase) const;
 
+  transaction::Hints::Hint const& getTrxTypeHint() { return _trxTypeHint; }
+
+  void setTrxTypeHint(transaction::Hints::Hint const& trxTypeHint) noexcept {
+    _trxTypeHint = trxTypeHint;
+  }
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief removes analyzers for specified database from cache
   /// @param vocbase  database to invalidate analyzers
@@ -586,6 +593,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   std::function<void(bool)> _gcfunc;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
+  transaction::Hints::Hint _trxTypeHint;
 };
 
 }  // namespace iresearch

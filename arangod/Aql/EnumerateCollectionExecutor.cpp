@@ -117,7 +117,8 @@ EnumerateCollectionExecutorInfos::getFilterVarsToRegister() const noexcept {
 
 EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher,
                                                          Infos& infos)
-    : _trx(infos.getQuery().newTrxContext()),
+    : _trx(infos.getQuery().newTrxContext(),
+           transaction::Hints::Hint::INTERNAL),
       _infos(infos),
       _documentProducingFunctionContext(_trx, _currentRow, infos),
       _state(ExecutionState::HASMORE),

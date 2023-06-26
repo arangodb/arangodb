@@ -139,7 +139,7 @@ template<class FinderType>
 EnumeratePathsExecutor<FinderType>::EnumeratePathsExecutor(Fetcher& fetcher,
                                                            Infos& infos)
     : _infos(infos),
-      _trx(infos.query().newTrxContext()),
+      _trx(infos.query().newTrxContext(), transaction::Hints::Hint::INTERNAL),
       _inputRow{CreateInvalidInputRowHint{}},
       _rowState(ExecutionState::HASMORE),
       _finder{infos.finder()},

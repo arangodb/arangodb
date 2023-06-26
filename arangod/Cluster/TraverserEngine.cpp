@@ -142,7 +142,8 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
 #endif
   if (_trx == nullptr) {
     _trx = std::make_unique<transaction::Methods>(
-        _query.newTrxContext(), _query.queryOptions().transactionOptions);
+        _query.newTrxContext(), transaction::Hints::Hint::INTERNAL,
+        _query.queryOptions().transactionOptions);
   }
 }
 

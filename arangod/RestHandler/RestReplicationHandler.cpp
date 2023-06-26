@@ -1134,9 +1134,13 @@ Result RestReplicationHandler::processRestoreCollection(
           // properly notified analyzers are gone.
           // The single server and DBServer case is handled after restore of
           // data.
-          return server()
-              .getFeature<iresearch::IResearchAnalyzerFeature>()
-              .removeAllAnalyzers(_vocbase);
+          auto& analyzers =
+              server().getFeature<iresearch::IResearchAnalyzerFeature>();
+          auto const originalTrxTypeHint = analyzers.getTrxTypeHint();
+          analyzers.setTrxTypeHint(transaction::Hints::Hint::REST);
+          Result res = analyzers.removeAllAnalyzers(_vocbase);
+          analyzers.setTrxTypeHint(originalTrxTypeHint);
+          return res;
         }
 
         auto dropResult = methods::Collections::drop(*col, true, true);
@@ -1153,7 +1157,6 @@ Result RestReplicationHandler::processRestoreCollection(
 
             trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-            trx.addHint(transaction::Hints::Hint::REST);
             auto trxRes = trx.begin();
 
             if (!trxRes.ok()) {
@@ -1520,9 +1523,12 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   if (res.ok() && colName == StaticStrings::AnalyzersCollection &&
       ServerState::instance()->isSingleServer() &&
       _vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
-    _vocbase.server()
-        .getFeature<iresearch::IResearchAnalyzerFeature>()
-        .invalidate(_vocbase);
+    auto& analyzers =
+        server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto const originalTrxTypeHint = analyzers.getTrxTypeHint();
+    analyzers.setTrxTypeHint(transaction::Hints::Hint::REST);
+    analyzers.invalidate(_vocbase);
+    analyzers.setTrxTypeHint(originalTrxTypeHint);
   }
   return res;
 }
@@ -1705,7 +1711,12 @@ Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(
   if (res.ok() && !documentsToInsert.slice().isEmptyArray()) {
     auto& analyzersFeature =
         _vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>();
-    return analyzersFeature.bulkEmplace(_vocbase, documentsToInsert.slice());
+    auto const originalTrxTypeHint = analyzersFeature.getTrxTypeHint();
+    analyzersFeature.setTrxTypeHint(transaction::Hints::Hint::REST);
+    Result res2 =
+        analyzersFeature.bulkEmplace(_vocbase, documentsToInsert.slice());
+    analyzersFeature.setTrxTypeHint(originalTrxTypeHint);
+    return res2;
   }
   return res;
 }

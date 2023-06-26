@@ -88,7 +88,7 @@ SingleServerProvider<Step>::SingleServerProvider(
     arangodb::ResourceMonitor& resourceMonitor)
     : _monitor(resourceMonitor),
       _trx(std::make_unique<arangodb::transaction::Methods>(
-          queryContext.newTrxContext())),
+          queryContext.newTrxContext(), transaction::Hints::Hint::INTERNAL)),
       _opts(std::move(opts)),
       _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
              _opts.collectionToShardMap(), _opts.getVertexProjections(),

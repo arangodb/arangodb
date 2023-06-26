@@ -142,6 +142,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     auto const bindParamVpack = VPackParser::fromJson(bindParameters);
     auto splicedQuery = arangodb::aql::Query::create(
         ctx, arangodb::aql::QueryString(querystring), bindParamVpack,
+        transaction::Hints::Hint::INTERNAL,
         arangodb::aql::QueryOptions(ruleOptions(additionalOptions)->slice()));
     splicedQuery->prepareQuery(SerializationFormat::SHADOWROWS);
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0)
@@ -499,7 +500,8 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   transaction::Options opts;
   auto ctx = transaction::StandaloneContext::Create(server.getSystemDatabase());
   auto trx = std::make_unique<arangodb::transaction::Methods>(
-      ctx, readCollection, noCollections, noCollections, opts);
+      ctx, readCollection, noCollections, noCollections, opts,
+      arangodb::transaction::Hints::Hint::INTERNAL);
   ASSERT_EQ(1, collection->getPhysical()->numberDocuments(trx.get()));
   bool called = false;
   auto result = collection->getPhysical()->read(

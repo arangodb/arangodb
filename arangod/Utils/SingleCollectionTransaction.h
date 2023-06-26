@@ -42,13 +42,16 @@ class SingleCollectionTransaction final : public transaction::Methods {
   SingleCollectionTransaction(
       std::shared_ptr<transaction::Context> const& transactionContext,
       LogicalDataSource const& collection, AccessMode::Type accessType,
-      transaction::Hints::Hint const& trxTypeHint,
+      transaction::Hints::Hint const& trxTypeHint =
+          transaction::Hints::Hint::INTERNAL,
       transaction::Options const& options = transaction::Options());
 
   /// @brief create the transaction, using a collection name
   SingleCollectionTransaction(
       std::shared_ptr<transaction::Context> const&, std::string const&,
-      AccessMode::Type, transaction::Hints::Hint const& trxTypeHint,
+      AccessMode::Type,
+      transaction::Hints::Hint const& trxTypeHint =
+          transaction::Hints::Hint::INTERNAL,
       transaction::Options const& options = transaction::Options());
 
   /// @brief end the transaction

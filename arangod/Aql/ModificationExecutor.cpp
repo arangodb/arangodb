@@ -92,7 +92,7 @@ AqlValue const& ModifierOutput::getNewValue() const {
 template<typename FetcherType, typename ModifierType>
 ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(
     Fetcher& fetcher, Infos& infos)
-    : _trx(infos._query.newTrxContext()),
+    : _trx(infos._query.newTrxContext(), transaction::Hints::Hint::INTERNAL),
       _infos(infos),
       _modifier(std::make_shared<ModifierType>(infos)) {}
 

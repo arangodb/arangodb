@@ -599,7 +599,8 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     }
 
     std::string const newName = newNameSlice.copyString();
-    res = methods::Collections::rename(*coll, newName, false);
+    res = methods::Collections::rename(*coll, newName, false,
+                                       transaction::Hints::Hint::REST);
 
     if (res.ok()) {
       collectionRepresentation(newName, /*showProperties*/ false,

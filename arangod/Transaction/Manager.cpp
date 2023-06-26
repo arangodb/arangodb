@@ -90,7 +90,7 @@ namespace {
 struct MGMethods final : arangodb::transaction::Methods {
   MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
             arangodb::transaction::Options const& opts)
-      : Methods(ctx, opts) {}
+      : Methods(ctx, Hints::Hint::INTERNAL, opts) {}
 };
 }  // namespace
 

@@ -39,9 +39,12 @@ struct ExecutionNumber;
 
 namespace arangodb::pregel::statuswriter {
 
-CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase,
-                                               ExecutionNumber& executionNumber)
-    : _vocbaseGuard(vocbase), _executionNumber(executionNumber) {
+CollectionStatusWriter::CollectionStatusWriter(
+    TRI_vocbase_t& vocbase, ExecutionNumber& executionNumber,
+    transaction::Hints::Hint const& trxTypeHint)
+    : _vocbaseGuard(vocbase),
+      _executionNumber(executionNumber),
+      _trxTypeHint(trxTypeHint) {
   CollectionNameResolver resolver(_vocbaseGuard.database());
   auto logicalCollection =
       resolver.getCollection(StaticStrings::PregelCollection);
@@ -55,8 +58,9 @@ CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase,
   }
 };
 
-CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase)
-    : _vocbaseGuard(vocbase) {
+CollectionStatusWriter::CollectionStatusWriter(
+    TRI_vocbase_t& vocbase, transaction::Hints::Hint const& trxTypeHint)
+    : _vocbaseGuard(vocbase), _trxTypeHint(trxTypeHint) {
   CollectionNameResolver resolver(_vocbaseGuard.database());
   auto logicalCollection =
       resolver.getCollection(StaticStrings::PregelCollection);
@@ -79,7 +83,7 @@ auto CollectionStatusWriter::createResult(velocypack::Slice data)
 
   auto accessModeType = AccessMode::Type::WRITE;
   SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType);
+                                  accessModeType, _trxTypeHint);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
   options.waitForSync = false;
@@ -195,7 +199,7 @@ auto CollectionStatusWriter::updateResult(velocypack::Slice data)
 
   auto accessModeType = AccessMode::Type::WRITE;
   SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType);
+                                  accessModeType, _trxTypeHint);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
 
@@ -217,7 +221,7 @@ auto CollectionStatusWriter::deleteResult() -> OperationResult {
 
   auto accessModeType = AccessMode::Type::WRITE;
   SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType);
+                                  accessModeType, _trxTypeHint);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
 
@@ -234,7 +238,7 @@ auto CollectionStatusWriter::deleteResult() -> OperationResult {
 auto CollectionStatusWriter::deleteAllResults() -> OperationResult {
   auto accessModeType = AccessMode::Type::WRITE;
   SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType);
+                                  accessModeType, _trxTypeHint);
   trx.addHint(transaction::Hints::Hint::NONE);
   OperationOptions options(ExecContext::current());
 
@@ -257,7 +261,8 @@ auto CollectionStatusWriter::executeQuery(
   }
 
   auto query = arangodb::aql::Query::create(
-      ctx(), arangodb::aql::QueryString(std::move(queryString)), bindParams);
+      ctx(), arangodb::aql::QueryString(std::move(queryString)), bindParams,
+      _trxTypeHint);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
   if (queryResult.result.fail()) {

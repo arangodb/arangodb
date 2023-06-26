@@ -178,7 +178,8 @@ RestStatus RestIndexHandler::getIndexes() {
     bool withHidden = _request->parsedValue("withHidden", false);
 
     VPackBuilder indexes;
-    Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes);
+    Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes,
+                                          transaction::Hints::Hint::REST);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(),
                     res.errorMessage());
@@ -221,7 +222,8 @@ RestStatus RestIndexHandler::getIndexes() {
     tmp.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
     VPackBuilder output;
-    Result res = methods::Indexes::getIndex(*coll, tmp.slice(), output);
+    Result res = methods::Indexes::getIndex(*coll, tmp.slice(), output,
+                                            transaction::Hints::Hint::REST);
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -267,7 +269,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
       // collection
       trx = std::make_unique<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(_vocbase), cName,
-          AccessMode::Type::READ);
+          AccessMode::Type::READ, transaction::Hints::Hint::REST);
       trx->addHint(transaction::Hints::Hint::REST);
     } else {
       throw;
@@ -441,7 +443,8 @@ RestStatus RestIndexHandler::dropIndex() {
     idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
   }
 
-  Result res = methods::Indexes::drop(*coll, idBuilder.slice());
+  Result res = methods::Indexes::drop(*coll, idBuilder.slice(),
+                                      transaction::Hints::Hint::REST);
   if (res.ok()) {
     VPackBuilder b;
     b.openObject();

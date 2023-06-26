@@ -645,7 +645,8 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   TRI_ASSERT(countOngoingTransactions(slice) == 0);
 #endif
 
-  auto trx = std::make_unique<ReplicationTransaction>(*vocbase);
+  auto trx = std::make_unique<ReplicationTransaction>(
+      *vocbase, transaction::Hints::Hint::INTERNAL);
   Result res = trx->begin();
 
   if (res.ok()) {

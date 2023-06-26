@@ -120,6 +120,7 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
               LOG_PREGEL("8682a", WARN)
                   << fmt::format("vertex loader number {} caught exception: {}",
                                  futureN, ex.what());
+
               break;
             } catch (std::exception const& ex) {
               LOG_PREGEL("c87c9", WARN)
@@ -171,7 +172,8 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
   trxOpts.waitForSync = false;
   trxOpts.allowImplicitCollectionsForRead = true;
   auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
-  transaction::Methods trx(ctx, {}, {}, {}, trxOpts);
+  transaction::Methods trx(ctx, {}, {}, {}, trxOpts,
+                           transaction::Hints::Hint::INTERNAL);
   Result res = trx.begin();
 
   if (!res.ok()) {

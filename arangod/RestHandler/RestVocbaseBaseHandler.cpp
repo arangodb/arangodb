@@ -650,10 +650,11 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     // a write request from synchronous replication
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     // inject at least the required collection name
-    trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName,
-                                                 type);
+    trx = std::make_unique<transaction::Methods>(
+        std::move(ctx), collectionName, type, transaction::Hints::Hint::REST);
   } else {
-    trx = std::make_unique<transaction::Methods>(std::move(ctx));
+    trx = std::make_unique<transaction::Methods>(
+        std::move(ctx), transaction::Hints::Hint::REST);
     if (isSideUser) {
       // this is a call from the DOCUMENT() AQL function into an existing AQL
       // query. locks are already acquired by the AQL transaction.

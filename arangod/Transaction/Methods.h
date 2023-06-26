@@ -109,14 +109,16 @@ class Methods {
   /// @brief create the transaction
   explicit Methods(
       std::shared_ptr<transaction::Context> const& ctx,
-      transaction::Hints::Hint const& trxTypeHint,
+      transaction::Hints::Hint const& trxTypeHint =
+          transaction::Hints::Hint::INTERNAL,
       transaction::Options const& options = transaction::Options());
 
   /// @brief create the transaction, and add a collection to it.
   /// use on followers only!
   Methods(std::shared_ptr<transaction::Context> ctx,
-          transaction::Hints::Hint const& trxTypeHint,
-          std::string const& collectionName, AccessMode::Type type);
+          std::string const& collectionName, AccessMode::Type type,
+          transaction::Hints::Hint const& trxTypeHint =
+              transaction::Hints::Hint::INTERNAL);
 
   /// @brief create the transaction, used to be UserTransaction
   Methods(std::shared_ptr<transaction::Context> const& ctx,
@@ -124,7 +126,8 @@ class Methods {
           std::vector<std::string> const& writeCollections,
           std::vector<std::string> const& exclusiveCollections,
           transaction::Options const& options,
-          transaction::Hints::Hint const& trxTypeHint);
+          transaction::Hints::Hint const& trxTypeHint =
+              transaction::Hints::Hint::INTERNAL);
 
   /// @brief destroy the transaction
   virtual ~Methods();

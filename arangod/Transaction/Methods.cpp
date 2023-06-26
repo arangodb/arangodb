@@ -1695,9 +1695,9 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
 }
 
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
-                              transaction::Hints::Hint const& trxTypeHint,
                               std::string const& collectionName,
-                              AccessMode::Type type)
+                              AccessMode::Type type,
+                              transaction::Hints::Hint const& trxTypeHint)
     : transaction::Methods(std::move(ctx), trxTypeHint,
                            transaction::Options{}) {
   TRI_ASSERT(AccessMode::isWriteOrExclusive(type));

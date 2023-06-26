@@ -46,6 +46,7 @@ namespace graph {
 class GraphManager {
  private:
   TRI_vocbase_t& _vocbase;
+  transaction::Hints::Hint _trxTypeHint;
 
   std::shared_ptr<transaction::Context> ctx() const;
 
@@ -56,7 +57,10 @@ class GraphManager {
                           bool waitForSyncReplication, VPackSlice options);
 
  public:
-  explicit GraphManager(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {}
+  explicit GraphManager(TRI_vocbase_t& vocbase,
+                        transaction::Hints::Hint const& trxTypeHint =
+                            transaction::Hints::Hint::INTERNAL)
+      : _vocbase(vocbase), _trxTypeHint(trxTypeHint) {}
 
   Result readGraphs(velocypack::Builder& builder) const;
 

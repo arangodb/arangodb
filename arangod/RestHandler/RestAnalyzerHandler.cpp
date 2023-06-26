@@ -37,6 +37,7 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Transaction/Hints.h"
 #include "Utilities/NameValidator.h"
 
 namespace arangodb {
@@ -203,6 +204,7 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
   }
 
   auto& analyzers = server().getFeature<IResearchAnalyzerFeature>();
+  analyzers.setTrxTypeHint(transaction::Hints::Hint::REST);
 
   auto& suffixes = _request->suffixes();
 

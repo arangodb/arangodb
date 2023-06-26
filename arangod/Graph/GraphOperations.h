@@ -50,6 +50,7 @@ class GraphOperations {
  private:
   Graph& _graph;
   TRI_vocbase_t& _vocbase;
+  transaction::Hints::Hint _trxTypeHint;
   std::shared_ptr<transaction::Context> _ctx;
 
   Graph const& graph() const { return _graph; };
@@ -58,8 +59,12 @@ class GraphOperations {
  public:
   GraphOperations() = delete;
   GraphOperations(Graph& graph_, TRI_vocbase_t& vocbase,
+                  transaction::Hints::Hint const& trxTypeHint,
                   std::shared_ptr<transaction::Context> const& ctx = nullptr)
-      : _graph(graph_), _vocbase(vocbase), _ctx(ctx) {}
+      : _graph(graph_),
+        _vocbase(vocbase),
+        _trxTypeHint(trxTypeHint),
+        _ctx(ctx) {}
 
   // TODO I added the complex result type for the get* methods to exactly
   // reproduce (in the RestGraphHandler) the behavior of the similar methods

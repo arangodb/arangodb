@@ -60,7 +60,7 @@ std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
 template<typename Modifier>
 SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(
     Fetcher& fetcher, Infos& info)
-    : _trx(info._query.newTrxContext()),
+    : _trx(info._query.newTrxContext(), transaction::Hints::Hint::INTERNAL),
       _info(info),
       _upstreamState(ExecutionState::HASMORE) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());

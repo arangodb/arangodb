@@ -677,7 +677,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
     if (col->system()) {
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(vocbase), *col,
-          AccessMode::Type::WRITE);
+          AccessMode::Type::WRITE, transaction::Hints::Hint::INTERNAL);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
       Result res = trx.begin();

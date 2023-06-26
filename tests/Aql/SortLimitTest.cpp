@@ -111,6 +111,7 @@ class SortLimitTest
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     auto query = arangodb::aql::Query::create(
         ctx, arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::transaction::Hints::Hint::INTERNAL,
         arangodb::aql::QueryOptions(options->slice()));
 
     auto result = query->explain();
@@ -140,6 +141,7 @@ class SortLimitTest
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     auto query = arangodb::aql::Query::create(
         ctx, arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::transaction::Hints::Hint::INTERNAL,
         arangodb::aql::QueryOptions(options->slice()));
     arangodb::aql::QueryResult result;
 

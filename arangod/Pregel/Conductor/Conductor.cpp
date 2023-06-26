@@ -669,8 +669,9 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
 
 void Conductor::persistPregelState(ExecutionState state) {
   // Persist current pregel state into historic pregel system collection.
-  statuswriter::CollectionStatusWriter cWriter{_vocbaseGuard.database(),
-                                               _specifications.executionNumber};
+  statuswriter::CollectionStatusWriter cWriter{
+      _vocbaseGuard.database(), _specifications.executionNumber,
+      transaction::Hints::Hint::INTERNAL};
   VPackBuilder stateBuilder;
 
   auto addMinimalOutputToBuilder = [&](VPackBuilder& stateBuilder) -> void {

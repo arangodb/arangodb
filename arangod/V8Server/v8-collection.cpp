@@ -1351,7 +1351,8 @@ static void JS_RenameVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::rename(*collection, name, doOverride);
+  auto res = methods::Collections::rename(*collection, name, doOverride,
+                                          transaction::Hints::Hint::REST);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

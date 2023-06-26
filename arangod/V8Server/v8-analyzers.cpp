@@ -39,6 +39,7 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
 #include "Utilities/NameValidator.h"
 #include "V8/v8-conv.h"
@@ -294,6 +295,8 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& analyzers =
       v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
+  analyzers.setTrxTypeHint(arangodb::transaction::Hints::Hint::REST);
+
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName =
       arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(
@@ -434,6 +437,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
   auto& analyzers =
       v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  analyzers.setTrxTypeHint(arangodb::transaction::Hints::Hint::REST);
 
   auto name = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
       TRI_ObjectToString(isolate, args[0]), vocbase.name());
@@ -506,6 +510,7 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
   auto& analyzers =
       v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  analyzers.setTrxTypeHint(arangodb::transaction::Hints::Hint::REST);
   auto sysVocbase =
       v8g->server().hasFeature<arangodb::SystemDatabaseFeature>()
           ? v8g->server().getFeature<arangodb::SystemDatabaseFeature>().use()
@@ -526,6 +531,7 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   };
 
   try {
+    analyzers.setTrxTypeHint(arangodb::transaction::Hints::Hint::REST);
     analyzers.visit(visitor, nullptr);  // include static analyzers
 
     if (arangodb::iresearch::IResearchAnalyzerFeature::canUse(
@@ -589,6 +595,7 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
   auto& analyzers =
       v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  analyzers.setTrxTypeHint(arangodb::transaction::Hints::Hint::REST);
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName =

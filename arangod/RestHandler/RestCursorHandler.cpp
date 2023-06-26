@@ -152,7 +152,8 @@ void RestCursorHandler::cancel() {
 ///
 /// return If true, we need to continue processing,
 ///        If false we are done (error or stream)
-RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
+RestStatus RestCursorHandler::registerQueryOrCursor(
+    VPackSlice const& slice, transaction::Hints::Hint const& trxTypeHint) {
   TRI_ASSERT(_query == nullptr);
 
   if (!slice.isObject()) {
@@ -197,10 +198,10 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 
   // simon: access mode can always be write on the coordinator
   const AccessMode::Type mode = AccessMode::Type::WRITE;
-  auto query =
-      aql::Query::create(createTransactionContext(mode),
-                         arangodb::aql::QueryString(querySlice.stringView()),
-                         std::move(bindVarsBuilder), aql::QueryOptions(opts));
+  auto query = aql::Query::create(
+      createTransactionContext(mode),
+      arangodb::aql::QueryString(querySlice.stringView()),
+      std::move(bindVarsBuilder), trxTypeHint, aql::QueryOptions(opts));
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -639,7 +640,7 @@ RestStatus RestCursorHandler::createQueryCursor() {
   }
 
   TRI_ASSERT(_query == nullptr);
-  return registerQueryOrCursor(body);
+  return registerQueryOrCursor(body, transaction::Hints::Hint::AQL);
 }
 
 /// @brief shows the batch given by <batch-id> if it's the last cached batch

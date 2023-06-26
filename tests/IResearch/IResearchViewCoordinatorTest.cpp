@@ -5936,11 +5936,13 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     }
 
     // drop link
-    EXPECT_TRUE((arangodb::methods::Indexes::drop(
-                     *logicalCollection, arangodb::velocypack::Parser::fromJson(
-                                             std::to_string(linkId.id()))
-                                             ->slice())
-                     .ok()));
+    EXPECT_TRUE(
+        (arangodb::methods::Indexes::drop(
+             *logicalCollection,
+             arangodb::velocypack::Parser::fromJson(std::to_string(linkId.id()))
+                 ->slice(),
+             arangodb::transaction::Hints::Hint::INTERNAL)
+             .ok()));
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(
                                   server.server()));  // plan version changed
     planVersion = arangodb::tests::getCurrentPlanVersion(server.server());

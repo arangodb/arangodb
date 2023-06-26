@@ -138,7 +138,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
   }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE);
+                                  AccessMode::Type::WRITE, _trxTypeHint);
   res = trx.begin();
 
   if (!res.ok()) {
@@ -311,7 +311,7 @@ bool GraphManager::graphExists(std::string const& graphName) const {
   }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::READ);
+                                  AccessMode::Type::READ, _trxTypeHint);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -329,7 +329,7 @@ bool GraphManager::graphExists(std::string const& graphName) const {
 ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
     std::string const& name) const {
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::READ);
+                                  AccessMode::Type::READ, _trxTypeHint);
 
   Result res = trx.begin();
 
@@ -430,7 +430,7 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
   // If now someone has created a graph with the same name
   // in the meanwhile, sorry bad luck.
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE);
+                                  AccessMode::Type::WRITE, _trxTypeHint);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   OperationOptions options(ExecContext::current());
@@ -966,7 +966,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
 
     Result res;
     SingleCollectionTransaction trx{ctx(), StaticStrings::GraphCollection,
-                                    AccessMode::Type::WRITE};
+                                    AccessMode::Type::WRITE, _trxTypeHint};
 
     res = trx.begin();
     if (res.fail()) {

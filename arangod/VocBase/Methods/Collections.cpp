@@ -1180,12 +1180,12 @@ Result Collections::updateProperties(
 /// @brief helper function to rename collections in _graphs as well
 ////////////////////////////////////////////////////////////////////////////////
 
-static ErrorCode RenameGraphCollections(TRI_vocbase_t& vocbase,
-                                        std::string const& oldName,
-                                        std::string const& newName) {
+static ErrorCode RenameGraphCollections(
+    TRI_vocbase_t& vocbase, std::string const& oldName,
+    std::string const& newName, transaction::Hints::Hint const& trxTypeHint) {
   ExecContextSuperuserScope exscope;
 
-  graph::GraphManager gmngr{vocbase};
+  graph::GraphManager gmngr{vocbase, trxTypeHint};
   bool r = gmngr.renameGraphCollection(oldName, newName);
   if (!r) {
     return TRI_ERROR_FAILED;
@@ -1194,7 +1194,8 @@ static ErrorCode RenameGraphCollections(TRI_vocbase_t& vocbase,
 }
 
 Result Collections::rename(LogicalCollection& collection,
-                           std::string const& newName, bool doOverride) {
+                           std::string const& newName, bool doOverride,
+                           transaction::Hints::Hint const& trxTypeHint) {
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     return {TRI_ERROR_CLUSTER_UNSUPPORTED};
@@ -1246,7 +1247,8 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   // rename collection inside _graphs as well
-  return RenameGraphCollections(collection.vocbase(), oldName, newName);
+  return RenameGraphCollections(collection.vocbase(), oldName, newName,
+                                trxTypeHint);
 }
 
 #ifndef USE_ENTERPRISE

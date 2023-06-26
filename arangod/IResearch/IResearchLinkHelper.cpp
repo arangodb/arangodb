@@ -230,7 +230,8 @@ Result dropLink<IResearchViewCoordinator>(LogicalCollection& collection,
               velocypack::Value(link.index().id().id()));
   builder.close();
 
-  return methods::Indexes::drop(collection, builder.slice());
+  return methods::Indexes::drop(collection, builder.slice(),
+                                transaction::Hints::Hint::INTERNAL);
 }
 
 struct State {

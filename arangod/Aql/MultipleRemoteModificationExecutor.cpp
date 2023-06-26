@@ -53,12 +53,17 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
   opts.waitForSync = info._options.waitForSync;
   if (info._isExclusive) {
     // exclusive transaction
-    return {std::move(ctx), /*read*/ {}, /*write*/ {},
-            /*exclusive*/ {info._aqlCollection->name()}, opts};
+    return {std::move(ctx),
+            /*read*/ {},
+            /*write*/ {},
+            /*exclusive*/ {info._aqlCollection->name()},
+            opts,
+            transaction::Hints::Hint::INTERNAL};
   }
   // write transaction
-  return {std::move(ctx), /*read*/ {}, /*write*/ {info._aqlCollection->name()},
-          /*exclusive*/ {}, opts};
+  return {
+      std::move(ctx),   /*read*/ {}, /*write*/ {info._aqlCollection->name()},
+      /*exclusive*/ {}, opts,        transaction::Hints::Hint::INTERNAL};
 }
 
 [[nodiscard]] auto MultipleRemoteModificationExecutor::produceRows(

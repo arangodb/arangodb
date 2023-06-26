@@ -36,7 +36,8 @@ class ClusterQuery : public Query {
   /// that call sites only create ClusterQuery objects using the `create`
   /// factory method
   ClusterQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
-               QueryOptions options);
+               QueryOptions options,
+               transaction::Hints::Hint const& trxTypeHint);
 
   ~ClusterQuery() override;
 
@@ -45,7 +46,9 @@ class ClusterQuery : public Query {
   /// ensure that ClusterQuery objects are always created using shared_ptrs.
   static std::shared_ptr<ClusterQuery> create(
       QueryId id, std::shared_ptr<transaction::Context> ctx,
-      QueryOptions options);
+      QueryOptions options,
+      transaction::Hints::Hint const& trxTypeHint =
+          transaction::Hints::Hint::INTERNAL);
 
   auto const& traversers() const { return _traversers; }
 

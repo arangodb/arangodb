@@ -146,7 +146,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   builder.close();
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE);
+                                  AccessMode::Type::WRITE, _trxTypeHint);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   res = trx.begin();
@@ -296,7 +296,7 @@ OperationResult GraphOperations::editEdgeDefinition(
   }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE);
+                                  AccessMode::Type::WRITE, _trxTypeHint);
 
   res = trx.begin();
 
@@ -420,7 +420,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
   builder.close();
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE);
+                                  AccessMode::Type::WRITE, _trxTypeHint);
 
   res = trx.begin();
 
@@ -492,7 +492,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
   OperationResult result(Result(), options);
   {
     SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                    AccessMode::Type::WRITE);
+                                    AccessMode::Type::WRITE, _trxTypeHint);
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
     res = trx.begin();
@@ -607,8 +607,8 @@ OperationResult GraphOperations::getDocument(std::string const& collectionName,
   VPackSlice search{searchBuffer->data()};
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(ctx(), collectionName,
-                                  AccessMode::Type::READ);
+  SingleCollectionTransaction trx(ctx(), collectionName, AccessMode::Type::READ,
+                                  _trxTypeHint);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -776,7 +776,7 @@ GraphOperations::validateEdge(std::string const& definitionName,
 
   auto trx = std::make_unique<transaction::Methods>(
       ctx(), readCollections, writeCollections, exclusiveCollections,
-      trxOptions);
+      trxOptions, _trxTypeHint);
 
   Result tRes = trx->begin();
 
@@ -929,7 +929,8 @@ OperationResult GraphOperations::updateVertex(std::string const& collectionName,
 
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
+  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions,
+                           _trxTypeHint);
 
   Result tRes = trx.begin();
 
@@ -950,7 +951,8 @@ OperationResult GraphOperations::replaceVertex(
 
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
+  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions,
+                           _trxTypeHint);
 
   Result tRes = trx.begin();
 
@@ -977,7 +979,8 @@ OperationResult GraphOperations::createVertex(std::string const& collectionName,
 
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(collectionName);
-  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
+  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions,
+                           _trxTypeHint);
 
   Result res = trx.begin();
 
@@ -1038,7 +1041,8 @@ OperationResult GraphOperations::removeEdgeOrVertex(
 
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  transaction::Methods trx{ctx(), {}, trxCollections, {}, trxOptions};
+  transaction::Methods trx{ctx(), {},         trxCollections,
+                           {},    trxOptions, _trxTypeHint};
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   res = trx.begin();

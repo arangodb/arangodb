@@ -46,7 +46,7 @@ std::unique_ptr<AqlTransaction> AqlTransaction::create(
   if (!inaccessibleCollections.empty()) {
     return std::make_unique<transaction::IgnoreNoAccessAqlTransaction>(
         std::move(transactionContext), collections, options,
-        std::move(inaccessibleCollections));
+        std::move(inaccessibleCollections), trxTypeHint);
   }
 #endif
   return std::make_unique<AqlTransaction>(std::move(transactionContext),

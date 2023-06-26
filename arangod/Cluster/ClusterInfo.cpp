@@ -376,7 +376,8 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
           res = Result{TRI_ERROR_DEBUG};
         }
         else {
-          res = methods::Indexes::drop(*coll, builder.slice());
+          res = methods::Indexes::drop(*coll, builder.slice(),
+                                       transaction::Hints::Hint::INTERNAL);
         }
         if (res.fail() && res.isNot(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
           // we should have internal superuser

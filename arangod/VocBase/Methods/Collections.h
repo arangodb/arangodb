@@ -100,7 +100,8 @@ struct Collections {
       bool createWaitsForSyncReplication,             // replication wait flag
       bool enforceReplicationFactor,                  // replication factor flag
       bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
-      bool isRestore = false);  // whether this is being called during restore
+      bool isRestore = false);  // whether this is being called
+                                // during restore
 
   /// Create collection, ownership of collection in callback is
   /// transferred to callee
@@ -116,7 +117,8 @@ struct Collections {
       std::shared_ptr<LogicalCollection>& ret,  // invoke on collection creation
       bool allowSystem = false,
       bool allowEnterpriseCollectionsOnSingleServer = false,
-      bool isRestore = false);  // whether this is being called during restore
+      bool isRestore = false);  // whether this is being called
+                                // during restore
 
   /// Create many collections, ownership of collections in callback is
   /// transferred to callee
@@ -145,10 +147,13 @@ struct Collections {
   static Result updateProperties(LogicalCollection& collection,
                                  velocypack::Slice props,
                                  OperationOptions const& options,
-                                 transaction::Hints::Hint const& trxTypeHint);
+                                 transaction::Hints::Hint const& trxTypeHint =
+                                     transaction::Hints::Hint::INTERNAL);
 
   static Result rename(LogicalCollection& collection,
-                       std::string const& newName, bool doOverride);
+                       std::string const& newName, bool doOverride,
+                       transaction::Hints::Hint const& trxTypeHint =
+                           transaction::Hints::Hint::INTERNAL);
 
   static arangodb::Result drop(           // drop collection
       arangodb::LogicalCollection& coll,  // collection to drop

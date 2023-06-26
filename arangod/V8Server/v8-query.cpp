@@ -308,7 +308,6 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   SingleCollectionTransaction trx(transactionContext, *col,
                                   AccessMode::Type::READ,
                                   transaction::Hints::Hint::REST);
-  trx.addHint(transaction::Hints::Hint::REST);
 
   Result res = trx.begin();
 

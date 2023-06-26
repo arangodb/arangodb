@@ -260,9 +260,10 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     auto const indexArg =
         arangodb::velocypack::Parser::fromJson("{\"id\": \"42\"}");
-    EXPECT_TRUE(
-        arangodb::methods::Indexes::drop(*logicalCollection, indexArg->slice())
-            .ok());
+    EXPECT_TRUE(arangodb::methods::Indexes::drop(
+                    *logicalCollection, indexArg->slice(),
+                    arangodb::transaction::Hints::Hint::INTERNAL)
+                    .ok());
 
     // get new version from plan
     auto updatedCollection1 = ci.getCollection(

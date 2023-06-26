@@ -320,7 +320,8 @@ void RestQueryHandler::parseQuery() {
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
   auto query = Query::create(transaction::StandaloneContext::Create(_vocbase),
-                             QueryString(queryString), nullptr);
+                             QueryString(queryString), nullptr,
+                             transaction::Hints::Hint::AQL);
   auto parseResult = query->parse();
 
   if (parseResult.result.fail()) {

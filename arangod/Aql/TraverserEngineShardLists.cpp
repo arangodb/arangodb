@@ -44,7 +44,8 @@ TraverserEngineShardLists::TraverserEngineShardLists(
   }
   auto const& restrictToShards = query.queryOptions().restrictToShards;
 #ifdef USE_ENTERPRISE
-  transaction::Methods trx{query.newTrxContext()};
+  transaction::Methods trx{query.newTrxContext(),
+                           transaction::Hints::Hint::INTERNAL};
 #endif
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
