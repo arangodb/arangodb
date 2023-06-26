@@ -47,7 +47,7 @@ struct NetworkAttachedFollower : AbstractFollower {
   ParticipantId id;
   DatabaseID database;
   LogId logId;
-  std::shared_ptr<ReplicatedLogGlobalSettings const> options
+  std::shared_ptr<ReplicatedLogGlobalSettings const> options;
 };
 
 struct NetworkLeaderCommunicator : ILeaderCommunicator {
