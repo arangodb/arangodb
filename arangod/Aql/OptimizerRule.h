@@ -407,11 +407,17 @@ struct OptimizerRule {
   RuleFunction func;
   RuleLevel level;
   std::underlying_type<Flags>::type flags;
+  std::string_view description;
 
   OptimizerRule() = delete;
   OptimizerRule(std::string_view name, RuleFunction const& ruleFunc,
-                RuleLevel level, std::underlying_type<Flags>::type flags)
-      : name(name), func(ruleFunc), level(level), flags(flags) {}
+                RuleLevel level, std::underlying_type<Flags>::type flags,
+                std::string_view description)
+      : name(name),
+        func(ruleFunc),
+        level(level),
+        flags(flags),
+        description(description) {}
 
   OptimizerRule(OptimizerRule&& other) = default;
   OptimizerRule& operator=(OptimizerRule&& other) = default;

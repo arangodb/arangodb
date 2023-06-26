@@ -42,7 +42,6 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
-#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
