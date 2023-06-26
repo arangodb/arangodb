@@ -57,7 +57,7 @@ Store& Store::operator=(Store const& rhs) {
   if (&rhs != this) {
     std::lock_guard otherLock{rhs._storeLock};
     std::lock_guard lock{_storeLock};
-    _node = std::make_shared<Node>(*rhs._node);
+    _node = rhs._node;
   }
   return *this;
 }
