@@ -1661,7 +1661,6 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
 
 /// @brief lock a collection, with a timeout
 ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
-  uint64_t waitTime = 0;  // indicates that time is uninitialized
   double startTime = 0.0;
 
   // user read operations don't require any lock in RocksDB, so we won't get
@@ -1671,9 +1670,9 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
 
   bool gotLock = false;
   if (mode == AccessMode::Type::WRITE) {
-    gotLock = _exclusiveLock.try_lock_for(timeout);
+    gotLock = _exclusiveLock.try_lock_for(std::chrono::duration<double>(timeout));
   } else if (mode == AccessMode::Type::READ) {
-    gotLock = _exclusiveLock.try_shared_lock_for(timeout);
+    gotLock = _exclusiveLock.try_lock_shared_for(std::chrono::duration<double>(timeout));
   } else {
     // we should never get here
     TRI_ASSERT(false);
