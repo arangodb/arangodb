@@ -25,13 +25,13 @@
 
 #include "Basics/Result.h"
 #include "Replication2/ReplicatedLog/Components/SnapshotManager.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
 #include "Replication2/ReplicatedLog/Components/TermInformation.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 
 #include "Replication2/Mocks/LeaderCommunicatorMock.h"
 #include "Replication2/Mocks/StateHandleManagerMock.h"

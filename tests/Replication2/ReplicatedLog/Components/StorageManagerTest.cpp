@@ -26,7 +26,8 @@
 
 #include "Basics/Result.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
+
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/StorageEngineMethodsMock.h"

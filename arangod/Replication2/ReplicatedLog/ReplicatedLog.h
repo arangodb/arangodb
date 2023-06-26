@@ -32,7 +32,6 @@
 #include "Replication2/ReplicatedLog/Components/ISnapshotManager.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/IScheduler.h"
 
 #include <iosfwd>
@@ -197,8 +196,7 @@ struct alignas(64) ReplicatedLog {
   struct GuardedData {
     explicit GuardedData(
         std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
-        agency::ServerInstanceReference myself)
-        : methods(std::move(methods)), _myself(std::move(myself)) {}
+        agency::ServerInstanceReference myself);
 
     struct LatestConfig {
       explicit LatestConfig(agency::LogPlanTermSpecification term,

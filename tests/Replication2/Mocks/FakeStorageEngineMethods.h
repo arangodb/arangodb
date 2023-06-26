@@ -22,7 +22,7 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 #include "RocksDBEngine/RocksDBPersistedLog.h"
 
 namespace arangodb::replication2::test {

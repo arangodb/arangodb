@@ -55,7 +55,7 @@
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabaseFeature.h"

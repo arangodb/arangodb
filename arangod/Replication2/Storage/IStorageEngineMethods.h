@@ -21,38 +21,25 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedState/StateCommon.h"
+
+#include "Replication2/Storage/PersistedStateInfo.h"
 
 namespace arangodb {
 template<typename T>
 class ResultT;
 }
+
 namespace arangodb::futures {
 struct Unit;
 template<typename T>
 class Future;
 }  // namespace arangodb::futures
+
 namespace arangodb::replication2 {
 struct PersistedLogIterator;
 }
 
 namespace arangodb::replication2::replicated_state {
-
-struct PersistedStateInfo {
-  LogId stateId;  // could be removed
-  SnapshotInfo snapshot;
-  StateGeneration generation;
-  replication2::agency::ImplementationSpec specification;
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, PersistedStateInfo& x) {
-  return f.object(x).fields(f.field("stateId", x.stateId),
-                            f.field("snapshot", x.snapshot),
-                            f.field("generation", x.generation),
-                            f.field("specification", x.specification));
-}
 
 struct IStorageEngineMethods {
   virtual ~IStorageEngineMethods() = default;

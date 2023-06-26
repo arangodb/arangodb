@@ -35,6 +35,7 @@
 #include "Replication2/ReplicatedLog/Components/StateHandleManager.h"
 #include "Replication2/ReplicatedLog/Components/MethodsProvider.h"
 #include "Replication2/ReplicatedLog/Components/MessageIdManager.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

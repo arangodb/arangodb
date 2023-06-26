@@ -40,7 +40,6 @@
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/LazyDeserializingIterator.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/Streams/StreamSpecification.h"

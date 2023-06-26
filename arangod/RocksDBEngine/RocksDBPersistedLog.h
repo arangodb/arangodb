@@ -26,7 +26,7 @@
 #include <rocksdb/db.h>
 
 #include "Replication2/ReplicatedLog/LogEntries.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"

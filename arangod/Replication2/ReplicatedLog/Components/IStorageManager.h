@@ -34,7 +34,6 @@ class Future;
 }
 class Result;
 namespace replication2::replicated_state {
-struct IStorageEngineMethods;
 struct PersistedStateInfo;
 }  // namespace replication2::replicated_state
 namespace replication2 {

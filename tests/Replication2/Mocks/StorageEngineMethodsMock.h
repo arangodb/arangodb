@@ -28,7 +28,7 @@
 #include "immer/flex_vector_transient.hpp"
 #include "Basics/Result.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 

@@ -30,7 +30,6 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "TermInformation.h"

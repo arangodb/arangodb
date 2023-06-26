@@ -25,8 +25,8 @@
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>

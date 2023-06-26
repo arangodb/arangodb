@@ -25,9 +25,9 @@
 #include <Futures/Future.h>
 
 #include <utility>
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/coro-helper.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Basics/Guarded.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/IScheduler.h"

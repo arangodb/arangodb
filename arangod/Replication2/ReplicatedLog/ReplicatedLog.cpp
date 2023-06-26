@@ -23,23 +23,23 @@
 
 #include "ReplicatedLog.h"
 
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/LogContextKeys.h"
+#include "Replication2/IScheduler.h"
+#include "Replication2/ReplicatedLog/IRebootIdCache.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/Components/LogFollower.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Metrics/Counter.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Metrics/Gauge.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
 
 #include <optional>
 #include <utility>
-#include "Metrics/Gauge.h"
-#include "Logger/LogContextKeys.h"
-#include "Replication2/IScheduler.h"
-#include "Replication2/ReplicatedLog/IRebootIdCache.h"
 
 namespace arangodb::replication2::replicated_log {
 struct AbstractFollower;
@@ -289,6 +289,11 @@ auto ReplicatedLog::getStatus() const -> LogStatus {
   auto guard = _guarded.getLockedGuard();
   return maintenance::LogStatus{guard->getQuickStatus(), guard->_myself};
 }
+
+ReplicatedLog::GuardedData::GuardedData(
+    std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+    agency::ServerInstanceReference myself)
+    : methods(std::move(methods)), _myself(std::move(myself)) {}
 
 auto ReplicatedLog::GuardedData::getQuickStatus() const -> QuickLogStatus {
   if (participant) {

@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 #include "Basics/Guarded.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"

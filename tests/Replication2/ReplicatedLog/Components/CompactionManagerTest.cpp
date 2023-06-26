@@ -26,7 +26,6 @@
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/Mocks/StorageManagerMock.h"
 
 #include <Futures/Future.h>

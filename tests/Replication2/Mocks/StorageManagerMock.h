@@ -26,6 +26,7 @@
 
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 
 namespace arangodb::replication2::test {
 

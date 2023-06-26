@@ -23,19 +23,20 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
+
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/Mocks/ParticipantsFactoryMock.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/types.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Replication2/ReplicatedLog/NetworkMessages.h"
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

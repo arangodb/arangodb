@@ -38,7 +38,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"

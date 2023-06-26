@@ -85,7 +85,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Replication2/IScheduler.h"
 #include "Replication2/Version.h"
 #include "Metrics/Counter.h"

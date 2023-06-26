@@ -60,6 +60,7 @@
 #include "Metrics/LogScale.h"
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Replication2/IScheduler.h"
 #include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
@@ -67,9 +68,9 @@
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Replication2/IScheduler.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
