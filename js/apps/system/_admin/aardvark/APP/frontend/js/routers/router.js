@@ -44,6 +44,7 @@
       'services/install/remote': 'installUrlService',
       'service/:mount': 'applicationDetail',
       'store/:name': 'storeDetail',
+      'graphsold': 'graphManagementOld',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
       'graphs-v2/:name': 'showV2Graph',
@@ -1097,7 +1098,7 @@
       });
     },
 
-    graphManagement: function () {
+    graphManagementOld: function () {
       this.checkUser();
 
       this.init.then(() => {
@@ -1113,6 +1114,13 @@
           );
         this.graphManagementView.render();
       });
+    },
+
+    graphManagement: function () {
+      this.checkUser();
+
+      this.init.then(() => ReactDOM.render(React.createElement(window.GraphsReactView),
+        document.getElementById('content-react')));
     },
 
     showGraph: function (name) {

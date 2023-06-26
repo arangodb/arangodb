@@ -14,6 +14,7 @@ require('../../frontend/js/arango/arangoValidationHelper.js');
 // import new react views
 // require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');
+require('./views/graphV2/GraphsReactView');
 require('./views/graphV2/GraphV2ReactView');
 require('./views/views/ViewSettingsReactView');
 require('./views/views/ViewsListReactView');
