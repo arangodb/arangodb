@@ -62,7 +62,7 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
 
 const readAgencyValueAt = function (key) {
   const response = serverHelper.agency.get(key);
-  const path = ['arango', ...key.split('/')];
+  const path = ['arango', ...key.split('/').filter(i => i)];
   let result = response;
   for (const p of path) {
     if (result === undefined) {
@@ -75,6 +75,14 @@ const readAgencyValueAt = function (key) {
 
 const getServerRebootId = function (serverId) {
   return readAgencyValueAt(`Current/ServersKnown/${serverId}/rebootId`);
+};
+
+const bumpServerRebootId = function (serverId) {
+  const response = serverHelper.agency.increaseVersion(`Current/ServersKnown/${serverId}/rebootId`);
+  if (response !== true) {
+    return undefined;
+  }
+  return getServerRebootId(serverId);
 };
 
 const getParticipantsObjectForServers = function (servers) {
@@ -151,7 +159,7 @@ const coordinators = (function () {
  *         },
  *         currentTerm?: {
  *           term: number,
- *           leader: {
+ *           leader?: {
  *             serverId: string,
  *             rebootId: number
  *           }
@@ -161,7 +169,8 @@ const coordinators = (function () {
  *         localStatus: Object<string, Object>,
  *         localState: Object,
  *         supervision?: Object,
- *         leader?: Object
+ *         leader?: Object,
+ *         safeRebootIds?: Object<string, number>
  *       }
  *   }}
  */
@@ -215,6 +224,20 @@ const replicatedLogSetPlanTerm = function (database, logId, term) {
   serverHelper.agency.increaseVersion(`Plan/Version`);
 };
 
+const triggerLeaderElection = function (database, logId) {
+  // This operation has to be in one envelope. Otherwise we violate the assumption
+  // that they are only modified as a unit.
+  serverHelper.agency.transact([[{
+    [`/arango/Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`]: {
+      'op': 'increment',
+    },
+    [`/arango/Plan/ReplicatedLogs/${database}/${logId}/currentTerm/leader`]: {
+      'op': 'delete'
+    }
+  }]]);
+  serverHelper.agency.increaseVersion(`Plan/Version`);
+};
+
 const replicatedLogSetPlanTermConfig = function (database, logId, term) {
   serverHelper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm`, term);
   serverHelper.agency.increaseVersion(`Plan/Version`);
@@ -238,6 +261,16 @@ const replicatedLogDeletePlan = function (database, logId) {
 const replicatedLogDeleteTarget = function (database, logId) {
   serverHelper.agency.remove(`Target/ReplicatedLogs/${database}/${logId}`);
   serverHelper.agency.increaseVersion(`Target/Version`);
+};
+
+const createReconfigureJob = function (database, logId, ops) {
+  const jobId = nextUniqueLogId();
+  serverHelper.agency.set(`Target/ToDo/${jobId}`, {
+    type: "reconfigureReplicatedLog",
+    database, logId, jobId: "" + jobId,
+    operations: ops,
+  });
+  return jobId;
 };
 
 const waitForReplicatedLogAvailable = function (id) {
@@ -350,19 +383,12 @@ const checkRequestResult = function (requestResult, expectingError=false) {
     throw new ArangoError({
       'error': true,
       'code': requestResult.json.code,
-      'errorNum': arangodb.ERROR_INTERNAL,
-      'errorMessage': 'Error during request'
+      'errorNum': requestResult.json.errorNum,
+      'errorMessage': requestResult.json.errorMessage,
     });
   }
 
   return requestResult;
-};
-
-const getLocalStatus = function (database, logId, serverId) {
-  let url = getServerUrl(serverId);
-  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
-  checkRequestResult(res);
-  return res.json.result;
 };
 
 const getReplicatedLogLeaderPlan = function (database, logId, nothrow = false) {
@@ -556,10 +582,14 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   };
 };
 
-const getSupervisionActionTypes = function (database, logId) {
+const getSupervisionActions = function (database, logId) {
   const {current} = readReplicatedLogAgency(database, logId);
   // filter out all empty actions
-  const actions = _.filter(current.actions, (a) => a.desc.type !== "EmptyAction");
+  return _.filter(current.actions, (a) => a.desc.type !== "EmptyAction");
+};
+
+const getSupervisionActionTypes = function (database, logId) {
+  const actions = getSupervisionActions(database, logId);
   return _.map(actions, (a) => a.desc.type);
 };
 
@@ -584,6 +614,15 @@ const updateReplicatedLogTarget = function(database, id, callback) {
   replicatedLogSetTarget(database, id, result);
 };
 
+const increaseTargetVersion = function (database, id) {
+  const {target} = readReplicatedLogAgency(database, id);
+  if (target) {
+    target.version = 1 + (target.version || 0);
+    replicatedLogSetTarget(database, id, target);
+    return target.version;
+  }
+};
+
 const sortedArrayEqualOrError = (left, right) => {
   if (_.isEqual(left, right)) {
     return true;
@@ -596,9 +635,30 @@ const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
 
-const dumpShardLog = function (shardId, limit=1000) {
-  let log = db._replicatedLog(shardIdToLogId(shardId));
+const dumpLogHead = function (logId, limit=1000) {
+  let log = db._replicatedLog(logId);
   return log.head(limit);
+};
+
+const getShardsToLogsMapping = function (dbName, colId) {
+  const colPlan = readAgencyValueAt(`Plan/Collections/${dbName}/${colId}`);
+  let mapping = {};
+  if (colPlan.hasOwnProperty("groupId")) {
+    const groupId = colPlan.groupId;
+    const shards = colPlan.shardsR2;
+    const colGroup = readAgencyValueAt(`Plan/CollectionGroups/${dbName}/${groupId}`);
+    const shardSheaves = colGroup.shardSheaves;
+    for (let idx = 0; idx < shards.length; ++idx) {
+      mapping[shards[idx]] = shardSheaves[idx].replicatedLog;
+    }
+  } else {
+    // Legacy code, supporting system collections
+    const shards = colPlan.shards;
+    for (const [shardId, _] of Object.entries(shards)) {
+      mapping[shardId] = shardIdToLogId(shardId);
+    }
+  }
+  return mapping;
 };
 
 const setLeader = (database, logId, newLeader) => {
@@ -622,19 +682,44 @@ const unsetLeader = (database, logId) => {
  */
 const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
   const shards = col.shards();
-  const stateMachineIds = shards.map(s => s.replace(/^s/, ''));
+  const shardsToLogs = getShardsToLogsMapping(dbn, col._id);
+  const stateMachineIds = shards.map(s => shardsToLogs[s]);
 
-  const terms = Object.fromEntries(
-    stateMachineIds.map(stateId => [stateId, readReplicatedLogAgency(dbn, stateId).plan.currentTerm.term]),
+  const increaseTerm = (stateId) => triggerLeaderElection(dbn, stateId);
+
+  stateMachineIds.forEach(increaseTerm);
+
+  const leaderReady = (stateId) => lpreds.replicatedLogLeaderEstablished(dbn, stateId, undefined, []);
+
+  stateMachineIds.forEach(x => waitFor(leaderReady(x)));
+};
+
+const getLocalStatus = function (serverId, database, logId) {
+  let url = getServerUrl(serverId);
+  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
+  checkRequestResult(res);
+  return res.json.result;
+};
+
+const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
+  const url = getServerUrl(_.sample(coordinators));
+  const res = request.post(
+      `${url}/_db/${database}/_api/log/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
   );
+  checkRequestResult(res);
+  const {json: {result}} = res;
+  return result;
+};
 
-  const increaseTerm = ([stateId, term]) => replicatedLogSetPlanTerm(dbn, stateId, term + 1);
-
-  Object.entries(terms).forEach(increaseTerm);
-
-  const leaderReady = ([stateId, term]) => lpreds.replicatedLogLeaderEstablished(dbn, stateId, term + 1, []);
-
-  Object.entries(terms).forEach(x => waitFor(leaderReady(x)));
+const getAgencyJobStatus = function (jobId) {
+  const places = ["ToDo", "Pending", "Failed", "Finished"];
+  for (const p of places) {
+    const job = readAgencyValueAt(`Target/${p}/${jobId}`);
+    if (job !== undefined) {
+      return p;
+    }
+  }
+  return "NotFound";
 };
 
 exports.checkRequestResult = checkRequestResult;
@@ -654,8 +739,10 @@ exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
 exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
+exports.bumpServerRebootId = bumpServerRebootId;
 exports.getServerUrl = getServerUrl;
 exports.getSupervisionActionTypes = getSupervisionActionTypes;
+exports.getSupervisionActions = getSupervisionActions;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.readAgencyValueAt = readAgencyValueAt;
 exports.readReplicatedLogAgency = readReplicatedLogAgency;
@@ -678,8 +765,14 @@ exports.waitFor = waitFor;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
 exports.sortedArrayEqualOrError = sortedArrayEqualOrError;
 exports.shardIdToLogId = shardIdToLogId;
-exports.dumpShardLog = dumpShardLog;
+exports.dumpLogHead = dumpLogHead;
 exports.setLeader = setLeader;
 exports.unsetLeader = unsetLeader;
 exports.createReplicatedLogWithState = createReplicatedLogWithState;
 exports.bumpTermOfLogsAndWaitForConfirmation = bumpTermOfLogsAndWaitForConfirmation;
+exports.getShardsToLogsMapping = getShardsToLogsMapping;
+exports.replaceParticipant = replaceParticipant;
+exports.createReconfigureJob = createReconfigureJob;
+exports.getAgencyJobStatus = getAgencyJobStatus;
+exports.increaseTargetVersion = increaseTargetVersion;
+exports.triggerLeaderElection = triggerLeaderElection;

@@ -26,7 +26,9 @@
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Transaction/Manager.h"
 
 #include <Basics/voc-errors.h>
@@ -59,17 +61,17 @@ auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
       std::move(core), _handlersFactory, _transactionManager);
 }
 
-auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
+auto DocumentFactory::constructCore(TRI_vocbase_t& vocbase,
+                                    GlobalLogIdentifier gid,
                                     DocumentCoreParameters coreParameters)
     -> std::unique_ptr<DocumentCore> {
   LoggerContext logContext =
       LoggerContext(Logger::REPLICATED_STATE)
           .with<logContextKeyStateImpl>(DocumentState::NAME)
           .with<logContextKeyDatabaseName>(gid.database)
-          .with<logContextKeyCollectionId>(coreParameters.collectionId)
           .with<logContextKeyLogId>(gid.id);
   return std::make_unique<DocumentCore>(
-      std::move(gid), std::move(coreParameters), _handlersFactory,
+      vocbase, std::move(gid), std::move(coreParameters), _handlersFactory,
       std::move(logContext));
 }
 

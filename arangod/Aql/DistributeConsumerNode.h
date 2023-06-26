@@ -50,6 +50,9 @@ class DistributeConsumerNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override { return DISTRIBUTE_CONSUMER; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,

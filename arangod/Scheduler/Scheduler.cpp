@@ -36,7 +36,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Metrics/GaugeBuilder.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
 #include "Scheduler/SchedulerFeature.h"

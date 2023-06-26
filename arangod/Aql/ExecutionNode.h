@@ -237,6 +237,9 @@ class ExecutionNode {
   /// @brief return the type of the node
   virtual NodeType getType() const = 0;
 
+  /// @brief return the amount of bytes used
+  virtual size_t getMemoryUsedBytes() const = 0;
+
   /// @brief resolve nodeType to a string.
   static std::string const& getTypeString(NodeType type);
 
@@ -614,6 +617,9 @@ class SingletonNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -655,6 +661,9 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -717,6 +726,9 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -770,6 +782,9 @@ class LimitNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -827,6 +842,9 @@ class CalculationNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -888,6 +906,9 @@ class SubqueryNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
 
   /// @brief invalidate the cost estimate for the node and its dependencies
   void invalidateCost() override;
@@ -962,6 +983,9 @@ class FilterNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -1026,6 +1050,9 @@ class ReturnNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief tell the node to count the returned values
   void setCount();
 
@@ -1079,6 +1106,9 @@ class NoResultsNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -1111,6 +1141,9 @@ class AsyncNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -1142,6 +1175,9 @@ class MaterializeNode : public ExecutionNode {
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return ExecutionNode::MATERIALIZE; }
+
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

@@ -145,8 +145,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
     testFns[test] = x => gtestRunner(test, test, x);
   }
   testFns['gtest'] = x => gtestRunner('arangodbtests', 'arangodbtests', x);
-
-  testFns['gtest_replication2'] = x => gtestRunner('arangodbtests_replication2', 'gtest-replication2', x);
   
   let iresearch_filter = ['gtest_filter=IResearch*'];
   testFns['gtest_iresearch'] = x => gtestRunner('arangodbtests', 'gtest-iresearch', x, iresearch_filter);

@@ -39,7 +39,6 @@
 #include "RestServer/SharedPRNGFeature.h"
 
 #include "Mocks/Servers.h"
-#include "MockScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
