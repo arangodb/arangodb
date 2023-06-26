@@ -81,9 +81,6 @@ std::string currentUser() { return arangodb::ExecContext::current().user(); }
 
 namespace arangodb {
 
-DECLARE_GAUGE(arangodb_transaction_memory_internal, uint64_t,
-              "Memory accounting for ongoing transactions");
-
 namespace transaction {
 
 namespace {
@@ -101,12 +98,7 @@ Manager::Manager(ManagerFeature& feature)
       _disallowInserts(false),
       _writeLockHeld(false),
       _streamingLockTimeout(feature.streamingLockTimeout()),
-      _softShutdownOngoing(false)
-/*
-_metricsTransactionMemoryInternal(
-    _feature.server().getFeature<metrics::MetricsFeature>().add(
-        arangodb_transaction_memory_internal{})) */
-{}
+      _softShutdownOngoing(false) {}
 
 void Manager::registerTransaction(TransactionId transactionId,
                                   bool isReadOnlyTransaction,
