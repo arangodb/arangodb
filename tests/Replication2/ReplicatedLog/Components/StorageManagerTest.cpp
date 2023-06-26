@@ -148,8 +148,8 @@ auto makeRange(LogTerm term, LogRange range) -> InMemoryLog {
 
 TEST_F(StorageManagerTest, transaction_append) {
   auto trx = storageManager->transaction();
-  auto f =
-      trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}));
+  auto f = trx->appendEntries(
+      makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}), true);
 
   EXPECT_FALSE(f.isReady());
   executor->runOnce();
@@ -175,8 +175,8 @@ TEST_F(StorageManagerTest, transaction_remove_back_append) {
   }
 
   auto trx = storageManager->transaction();
-  auto f =
-      trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}));
+  auto f = trx->appendEntries(
+      makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}), true);
 
   EXPECT_FALSE(f.isReady());
   executor->runOnce();
