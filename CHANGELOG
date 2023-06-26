@@ -1,6 +1,16 @@
 devel
 -----
 
+* Added new startup options `--cache.ideal-lower-fill-ratio` and 
+  `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
+  ratios for cache tables that trigger shrinking and growing of the table
+  by the cache rebalancer. The default values are:
+
+  - `0.04` (i.e. 4%) for the lower bound that triggers shrinking
+  - `0.25` (i.e. 25%) for the upper bound that triggers growing
+
+  These values were hard-coded in previous versions of ArangoDB.
+
 * Attempt to avoid busy looping when locking collections with a timeout
 
 * Add a `description` field to OptimizerRule and dump the explanations via the
