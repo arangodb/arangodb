@@ -31,63 +31,96 @@
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/CalculationExecutor.h"
-#include "Aql/ConstFetcher.h"
-#include "Aql/ConstrainedSortExecutor.h"
-#include "Aql/CountCollectExecutor.h"
-#include "Aql/DistinctCollectExecutor.h"
-#include "Aql/EnumerateCollectionExecutor.h"
-#include "Aql/EnumerateListExecutor.h"
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/FilterExecutor.h"
-#include "Aql/HashedCollectExecutor.h"
-#include "Aql/IdExecutor.h"
-#include "Aql/IndexExecutor.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/EnumeratePathsExecutor.h"
-#include "Aql/LimitExecutor.h"
-#include "Aql/MaterializeExecutor.h"
-#include "Aql/ModificationExecutor.h"
-#include "Aql/MultiDependencySingleRowFetcher.h"
-#include "Aql/NoResultsExecutor.h"
-#include "Aql/ParallelUnsortedGatherExecutor.h"
-#include "Aql/Query.h"
+#include "Aql/IResearchViewExecutor.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/ReturnExecutor.h"
 #include "Aql/ShadowAqlItemRow.h"
-#include "Aql/ShortestPathExecutor.h"
-#include "Aql/SimpleModifier.h"
-#include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SkipResult.h"
-#include "Aql/SortExecutor.h"
-#include "Aql/SortRegister.h"
-#include "Aql/SortedCollectExecutor.h"
-#include "Aql/SortingGatherExecutor.h"
-#include "Aql/SubqueryEndExecutor.h"
-#include "Aql/SubqueryStartExecutor.h"
-#include "Aql/TraversalExecutor.h"
-#include "Aql/UnsortedGatherExecutor.h"
+#include "Aql/SimpleModifier.h"
 #include "Aql/UpsertModifier.h"
-#include "Aql/WindowExecutor.h"
-#include "Basics/system-functions.h"
-#include "Graph/Steps/ClusterProviderStep.h"
+#include "Basics/ScopeGuard.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Transaction/Context.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/IResearch/OffsetInfoMaterializeExecutor.h"
-#endif
-#include "Graph/Enumerators/TwoSidedEnumerator.h"
-#include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
-#include "Graph/Queues/FifoQueue.h"
-#include "Graph/Queues/QueueTracer.h"
+#include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/algorithm-aliases.h"
 
 #include <type_traits>
+
+namespace arangodb {
+namespace aql {
+class MultiDependencySingleRowFetcher;
+class MultiAqlItemBlockInputRange;
+
+// These tags are used to instantiate SingleRemoteModificationExecutor
+// for the different use cases
+struct IndexTag;
+struct Insert;
+struct Remove;
+struct Replace;
+struct Update;
+struct Upsert;
+
+template<typename Modifier>
+struct SingleRemoteModificationExecutor;
+
+class SortedCollectExecutor;
+class SubqueryEndExecutor;
+class SubqueryStartExecutor;
+
+class FilterExecutor;
+class HashedCollectExecutor;
+class NoResultsExecutor;
+
+class ConstFetcher;
+template<class UsedFetcher>
+class IdExecutor;
+class IndexExecutor;
+template<typename T, bool localDocumentId>
+class MaterializeExecutor;
+template<typename FetcherType, typename ModifierType>
+class ModificationExecutor;
+
+class LimitExecutor;
+class ReturnExecutor;
+class SortExecutor;
+class AccuWindowExecutor;
+class WindowExecutor;
+
+class TraversalExecutor;
+template<class FinderType>
+class EnumeratePathsExecutor;
+template<class FinderType>
+class ShortestPathExecutor;
+
+class SortingGatherExecutor;
+class UnsortedGatherExecutor;
+class ParallelUnsortedGatherExecutor;
+
+enum class CalculationType;
+template<CalculationType calculationType>
+class CalculationExecutor;
+
+class ConstrainedSortExecutor;
+class CountCollectExecutor;
+class DistinctCollectExecutor;
+class EnumerateCollectionExecutor;
+class EnumerateListExecutor;
+}  // namespace aql
+
+namespace graph {
+class KShortestPathsFinderInterface;
+}
+
+namespace iresearch {
+// only available in Enterprise
+class OffsetMaterializeExecutor;
+}  // namespace iresearch
+}  // namespace arangodb
 
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
@@ -754,9 +787,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   SingleRemoteModificationExecutor<Replace>,
                   SingleRemoteModificationExecutor<Upsert>,
                   MultipleRemoteModificationExecutor, SortExecutor,
-#ifdef USE_ENTERPRISE
+                  // only available in Enterprise
                   arangodb::iresearch::OffsetMaterializeExecutor,
-#endif
                   MaterializeExecutor<void, false>,
                   MaterializeExecutor<std::string const&, true>,
                   MaterializeExecutor<std::string const&, false>>) ||

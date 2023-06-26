@@ -596,6 +596,7 @@ exports.agency = {
   },
 
   call: callAgency,
+  transact: (body) => callAgency("transact", body),
 
   increaseVersion: function (path) {
     callAgency('write', [[{

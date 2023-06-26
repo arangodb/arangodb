@@ -18,7 +18,10 @@ export const TextConfig = ({
 
   return (
     <Grid templateColumns={"1fr 1fr 1fr"} columnGap="4" rowGap="4">
-      <LocaleInput basePropertiesPath={basePropertiesPath} />
+      <LocaleInput
+        basePropertiesPath={basePropertiesPath}
+        placeholder="language[_COUNTRY][_VARIANT]"
+      />
       <InputControl
         isDisabled={isDisabled}
         name={`${basePropertiesPath}.stopwordsPath`}
