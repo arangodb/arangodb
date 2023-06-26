@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
+#include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
@@ -68,11 +69,17 @@
 #include <array>
 #include <cmath>
 
+#include <lz4.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
 constexpr bool EdgeIndexFillBlockCache = false;
+
+// values >= this value will be stored LZ4-compressed in the in-memory
+// edge cache
+constexpr size_t minValueSizeForCompression = 100;
 
 using EdgeIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
 
@@ -355,7 +362,28 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
             incrCacheHits();
             needRocksLookup = false;
             // We got sth. in the cache
-            VPackSlice cachedData(finding.value()->value());
+            uint8_t const* data = finding.value()->value();
+            if (data[0] == 0xffU) {
+              TRI_ASSERT(finding.value()->size() >= 5);
+              // Custom type. this means the data is lz4-compressed
+              uint32_t uncompressedSize;
+              memcpy(&uncompressedSize, data + 1, sizeof(uncompressedSize));
+              uncompressedSize = basics::bigToHost<uint32_t>(uncompressedSize);
+              if (_lz4CompressBuffer.size() < uncompressedSize) {
+                _lz4CompressBuffer.resize(uncompressedSize);
+              }
+              // this should not go wrong if we have a big enough output buffer
+              int size = LZ4_decompress_safe(
+                  reinterpret_cast<char const*>(data) + 5,
+                  _lz4CompressBuffer.data(),
+                  static_cast<int>(finding.value()->valueSize() - 5),
+                  _lz4CompressBuffer.size());
+              TRI_ASSERT(uncompressedSize == static_cast<size_t>(size));
+              data =
+                  reinterpret_cast<uint8_t const*>(_lz4CompressBuffer.data());
+            }
+
+            VPackSlice cachedData(data);
             TRI_ASSERT(cachedData.isArray());
             VPackArrayIterator cachedIterator(cachedData);
             TRI_ASSERT(cachedIterator.size() % 2 == 0);
@@ -479,13 +507,47 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       std::string_view key = cacheKey.empty() ? fromTo : cacheKey;
       // the value we store in the cache may be an empty array or a non-empty
       // one. we don't care and cache both.
-      cache::Cache::SimpleInserter<EdgeIndexCacheType>{
-          static_cast<EdgeIndexCacheType&>(*_cache), key.data(),
-          static_cast<uint32_t>(key.size()), _builder.slice().start(),
-          static_cast<uint64_t>(_builder.slice().byteSize())};
+      insertIntoCache(key, _builder.slice());
     }
     TRI_ASSERT(_builder.slice().isArray());
     _builderIterator = VPackArrayIterator(_builder.slice());
+  }
+
+  void insertIntoCache(std::string_view key, velocypack::Slice slice) {
+    TRI_ASSERT(_cache != nullptr);
+
+    char const* data = slice.startAs<char>();
+    size_t size = slice.byteSize();
+
+    if (size >= ::minValueSizeForCompression) {
+      int maxLength = LZ4_compressBound(static_cast<int>(size));
+      if (maxLength > 0) {
+        if (_lz4CompressBuffer.size() < 5 + static_cast<size_t>(maxLength)) {
+          _lz4CompressBuffer.resize(5 + static_cast<size_t>(maxLength));
+        }
+        uint32_t uncompressedSize =
+            basics::hostToBig(static_cast<uint32_t>(size));
+        // store compressed value using a velocypack Custom type
+        _lz4CompressBuffer[0] = 0xffU;
+        memcpy(_lz4CompressBuffer.data() + 1, &uncompressedSize,
+               sizeof(uncompressedSize));
+        int compressedSize = LZ4_compress_fast(
+            data, _lz4CompressBuffer.data() + 5, static_cast<int>(size),
+            static_cast<int>(_lz4CompressBuffer.size() - 5), 1);
+        if (compressedSize > 0 &&
+            (static_cast<size_t>(compressedSize) + 5) < size * 3 / 4) {
+          // only store the compressed version if it saves at least 25%
+          data = _lz4CompressBuffer.data();
+          size = static_cast<size_t>(compressedSize + 5);
+          TRI_ASSERT(reinterpret_cast<uint8_t const*>(data)[0] == 0xffU);
+          TRI_ASSERT(size <= _lz4CompressBuffer.size());
+        }
+      }
+    }
+
+    cache::Cache::SimpleInserter<EdgeIndexCacheType>{
+        static_cast<EdgeIndexCacheType&>(*_cache), key.data(),
+        static_cast<uint32_t>(key.size()), data, static_cast<uint64_t>(size)};
   }
 
   // expected number of bytes that a RocksDB iterator will use.
@@ -507,6 +569,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   velocypack::Builder _builder;
   velocypack::ArrayIterator _builderIterator;
   velocypack::Slice _lastKey;
+
+  // reusable buffer for lz4 compression
+  std::string _lz4CompressBuffer;
   size_t _memoryUsage;
 };
 
