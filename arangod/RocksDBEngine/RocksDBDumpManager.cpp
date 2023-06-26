@@ -107,15 +107,9 @@ void RocksDBDumpManager::remove(std::string const& id,
 void RocksDBDumpManager::dropDatabase(TRI_vocbase_t& vocbase) {
   std::lock_guard mutexLocker{_lock};
 
-  for (auto it = _contexts.begin(); it != _contexts.end();
-       /* no hoisting */) {
-    auto& context = it->second;
-    if (context->database() == vocbase.name()) {
-      it = _contexts.erase(it);
-    } else {
-      ++it;
-    }
-  }
+  std::erase_if(_contexts, [&](auto const& x) {
+    return x.second->database() == vocbase.name();
+  });
 }
 
 void RocksDBDumpManager::garbageCollect(bool force) {
@@ -123,16 +117,9 @@ void RocksDBDumpManager::garbageCollect(bool force) {
 
   std::lock_guard mutexLocker{_lock};
 
-  for (auto it = _contexts.begin(); it != _contexts.end();
-       /* no hoisting */) {
-    auto& context = it->second;
-
-    if (force || context->expires() < now) {
-      it = _contexts.erase(it);
-    } else {
-      ++it;
-    }
-  }
+  std::erase_if(_contexts, [&](auto const& x) {
+    return force || x.second->expires() < now;
+  });
 }
 
 void RocksDBDumpManager::beginShutdown() { garbageCollect(true); }

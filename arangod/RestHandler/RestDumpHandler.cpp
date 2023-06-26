@@ -182,7 +182,6 @@ void RestDumpHandler::handleCommandDumpNext() {
   // find() will throw in case the context cannot be found or the user does not
   // match.
   auto context = manager->find(id, database, user);
-  context->extendLifetime();
 
   auto batch = context->next(*batchId, lastBatch);
   auto counts = context->getBlockCounts();
