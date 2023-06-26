@@ -112,8 +112,8 @@ class Optimizer {
   /// @brief constructor, this will initialize the rules database
   /// the .cpp file includes Aql/OptimizerRules.h
   /// and add all methods there to the rules database
-  explicit Optimizer(size_t maxNumberOfPlans,
-                     std::pmr::memory_resource* memory_resource);
+  Optimizer(size_t maxNumberOfPlans,
+            std::pmr::memory_resource* memory_resource);
 
   ~Optimizer() = default;
 
