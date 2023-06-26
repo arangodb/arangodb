@@ -124,9 +124,7 @@ ErrorCode RocksDBMetaCollection::lockWrite(double timeout) {
 }
 
 /// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() noexcept {
-  _exclusiveLock.unlock();
-}
+void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlock(); }
 
 /// @brief read locks a collection, with a timeout
 ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
@@ -1650,9 +1648,11 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
 
   bool gotLock = false;
   if (mode == AccessMode::Type::WRITE) {
-    gotLock = _exclusiveLock.try_lock_for(std::chrono::duration<double>(timeout));
+    gotLock =
+        _exclusiveLock.try_lock_for(std::chrono::duration<double>(timeout));
   } else if (mode == AccessMode::Type::READ) {
-    gotLock = _exclusiveLock.try_lock_shared_for(std::chrono::duration<double>(timeout));
+    gotLock = _exclusiveLock.try_lock_shared_for(
+        std::chrono::duration<double>(timeout));
   } else {
     // we should never get here
     TRI_ASSERT(false);
@@ -1667,12 +1667,11 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   TRI_ASSERT(startTime > 0.0);
 
   LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
-    << "timed out after " << timeout << " s waiting for "
-    << AccessMode::typeString(mode) << " lock on collection '"
-    << _logicalCollection.name() << "'";
+      << "timed out after " << timeout << " s waiting for "
+      << AccessMode::typeString(mode) << " lock on collection '"
+      << _logicalCollection.name() << "'";
 
   return TRI_ERROR_LOCK_TIMEOUT;
-
 }
 
 bool RocksDBMetaCollection::haveBufferedOperations(
