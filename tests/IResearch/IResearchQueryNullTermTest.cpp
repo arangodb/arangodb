@@ -24,6 +24,8 @@
 
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchViewSort.h"
+#include "IResearch/VelocyPackHelper.h"
+#include "VocBase/LogicalCollection.h"
 #include "IResearchQueryCommon.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
