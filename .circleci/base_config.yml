@@ -158,6 +158,8 @@ jobs:
             git submodule init
             git submodule update --recursive --depth 1 --jobs 8
       - checkout-enterprise:
+          when:
+            condition: << parameters.enterprise >>
           destination: "/root/project/enterprise"
       - run:
           name: Print SCCache Settings
