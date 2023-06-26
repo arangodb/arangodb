@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
 #include "Containers/MerkleTree.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -168,7 +167,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
  protected:
   RocksDBMetadata _meta;  /// collection metadata
   /// @brief collection lock used for write access
-  mutable basics::ReadWriteLock _exclusiveLock;
+  mutable std::shared_timed_mutex _exclusiveLock;
+  //mutable basics::ReadWriteLock _exclusiveLock;
   /// @brief collection lock used for recalculation count values
   mutable std::mutex _recalculationLock;
 
