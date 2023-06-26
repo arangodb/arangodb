@@ -168,7 +168,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
   RocksDBMetadata _meta;  /// collection metadata
   /// @brief collection lock used for write access
   mutable std::shared_timed_mutex _exclusiveLock;
-  // mutable basics::ReadWriteLock _exclusiveLock;
   /// @brief collection lock used for recalculation count values
   mutable std::mutex _recalculationLock;
 
