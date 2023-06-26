@@ -77,6 +77,8 @@ class RocksDBMethods {
                                        RocksDBKey const&) = 0;
 
   virtual void PutLogData(rocksdb::Slice const&) = 0;
+
+  virtual void SetSkipConcurrencyControl(bool) {}
 };
 
 // INDEXING MAY ONLY BE DISABLED IN TOPLEVEL AQL TRANSACTIONS
@@ -138,6 +140,32 @@ struct IndexingEnabler {
 
  private:
   RocksDBMethods* _meth;
+};
+
+class ConcurrencyControlToggler {
+ public:
+  ConcurrencyControlToggler(ConcurrencyControlToggler const&) = delete;
+  ConcurrencyControlToggler& operator=(ConcurrencyControlToggler const&) =
+      delete;
+
+  explicit ConcurrencyControlToggler(RocksDBMethods* meth, bool isExclusive)
+      : _meth(meth), _exclusive(isExclusive) {}
+
+  ~ConcurrencyControlToggler() {
+    if (!_exclusive) {
+      _meth->SetSkipConcurrencyControl(false);
+    }
+  }
+
+  void setConcurrencyControl(bool value) {
+    if (!_exclusive) {
+      _meth->SetSkipConcurrencyControl(!value);
+    }
+  }
+
+ private:
+  RocksDBMethods* _meth;
+  bool const _exclusive;
 };
 
 }  // namespace arangodb

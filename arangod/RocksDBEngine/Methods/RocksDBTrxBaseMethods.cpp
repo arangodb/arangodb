@@ -277,6 +277,10 @@ void RocksDBTrxBaseMethods::PopSavePoint() {
 #endif
 }
 
+void RocksDBTrxBaseMethods::SetSkipConcurrencyControl(bool value) {
+  _rocksTransaction->SetSkipConcurrencyControl(value);
+}
+
 void RocksDBTrxBaseMethods::cleanupTransaction() {
   delete _rocksTransaction;
   _rocksTransaction = nullptr;

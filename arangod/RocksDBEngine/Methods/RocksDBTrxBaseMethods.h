@@ -47,6 +47,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
     return _indexingDisabled;
   }
 
+  void SetSkipConcurrencyControl(bool value) final override;
+
   /// @brief returns true if indexing was disabled by this call
   bool DisableIndexing() final override;
 

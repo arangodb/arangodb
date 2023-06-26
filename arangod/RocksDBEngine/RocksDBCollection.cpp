@@ -1399,6 +1399,9 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
     return res.reset(TRI_ERROR_DEBUG);
   }
 
+  ConcurrencyControlToggler cct(mthds, state->isOnlyExclusiveTransaction());
+  cct.setConcurrencyControl(false);
+
   rocksdb::Status s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Documents),
@@ -1443,11 +1446,14 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
         }
       }
       auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());
+
+      cct.setConcurrencyControl(rIdx.unique());
       // if we already performed the preflight checks,
       // there is no need to repeat the checks once again here
       res = rIdx.insert(*trx, mthds, documentId, doc, options,
                         /*performChecks*/ !performPreflightChecks);
       if (!res.ok()) {
+        cct.setConcurrencyControl(true);
         reverse(it);
         break;
       }
