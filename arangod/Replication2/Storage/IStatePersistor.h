@@ -22,14 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/Storage/ILogPersistor.h"
-#include "Replication2/Storage/IStatePersistor.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 
 namespace arangodb::replication2::replicated_state {
 
-// TODO - cleanup usage and remove this interface
-struct IStorageEngineMethods : replicated_log::ILogPersistor, IStatePersistor {
-  virtual ~IStorageEngineMethods() = default;
+struct IStatePersistor {
+  virtual ~IStatePersistor() = default;
+  [[nodiscard]] virtual auto updateMetadata(PersistedStateInfo) -> Result = 0;
+  [[nodiscard]] virtual auto readMetadata() -> ResultT<PersistedStateInfo> = 0;
 };
 
 }  // namespace arangodb::replication2::replicated_state
