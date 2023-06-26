@@ -466,7 +466,6 @@ ResultT<uint64_t> ServerState::readRebootIdFromAgency(AgencyComm& comm) {
   auto valueSlice = result.slice()[0].get(slicePath);
 
   if (!valueSlice.isInteger()) {
-    LOG_DEVEL << result.slice().toJson();
     LOG_TOPIC("38a4a", WARN, Logger::CLUSTER) << "rebootId is not an integer";
 
     return ResultT<uint64_t>::error(TRI_ERROR_INTERNAL,
