@@ -1,4 +1,4 @@
-v3.10.8 (XXXX-XX-XX)
+v3.10.9 (XXXX-XX-XX)
 --------------------
 
 * Added startup option `--replication.active-failover-leader-grace-period`.
@@ -20,11 +20,19 @@ v3.10.8 (XXXX-XX-XX)
   keep the existing behavior, in which a disconnected leader will not refuse
   incoming write operations.
 
+* Add a `description` field to OptimizerRule and dump the explanations via the
+  `GET /_api/query/rules` endpoint.
+
+
+v3.10.8 (XXXX-XX-XX)
+--------------------
+
+* Attempt to avoid busy looping when locking collections with a timeout
+
 * Fixed two possible deadlocks which could occur if all medium priority
   threads are busy. One is that in this case the AgencyCache could no longer
   receive updates from the agency and another that queries could no longer
   be finished. This fixes BTS-1475 and BTS-1486.
-
 
 v3.10.7 (2023-06-12)
 --------------------
