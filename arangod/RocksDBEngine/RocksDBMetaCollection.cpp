@@ -1684,8 +1684,6 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  TRI_ASSERT(startTime > 0.0);
-
   LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
       << "timed out after " << timeout << " s waiting for "
       << AccessMode::typeString(mode) << " lock on collection '"

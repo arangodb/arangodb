@@ -37,6 +37,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <type_traits>
 
 namespace arangodb {
