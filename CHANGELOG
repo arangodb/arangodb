@@ -1,6 +1,15 @@
 devel
 -----
 
+* Attempt to avoid busy looping when locking collections with a timeout
+
+* Add a `description` field to OptimizerRule and dump the explanations via the
+  `GET /_api/query/rules` endpoint.
+
+* Don't show "write query options" for AQL write queries in the explain and
+  profile output. The write query options normally don't produce any valuable
+  insights and only take up screen real estate.
+
 * If a startup option has a dynamic default value (e.g. if the default value
   depends on the amount of available RAM), display a "dynamic default" hint
   when invoking `--help`.
