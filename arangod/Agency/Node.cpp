@@ -262,7 +262,7 @@ ResultT<NodePtr> Node::handle<PUSH_QUEUE>(Node const* target,
                   std::string("Operator push-queue without new value: ") +
                       slice.toJson());
   }
-  if (l.isInteger()) {
+  if (!l.isNumber<uint64_t>()) {
     // key "len" not present or not integer
     return Result(
         TRI_ERROR_FAILED,
@@ -279,7 +279,11 @@ ResultT<NodePtr> Node::handle<PUSH_QUEUE>(Node const* target,
   if (target && target->isArray()) {
     array = *target->getArray();
   }
-  array = array.push_front(v);
+  array = std::move(array).push_back(v);
+  auto size = array.size();
+  if (size > ol) {
+    array = std::move(array).drop(size - ol);
+  }
   return Node::create(std::move(array));
 }
 
@@ -724,9 +728,6 @@ VPackSlice Node::slice() const noexcept {
   if (auto slice = std::get_if<VPackString>(&_value); slice) {
     return slice->slice();
   }
-
-  ADB_PROD_ASSERT(!isArray())
-      << "node was actually an array but called with slice()";
   return VPackSlice::noneSlice();
 }
 
