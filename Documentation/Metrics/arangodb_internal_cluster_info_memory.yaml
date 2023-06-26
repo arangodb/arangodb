@@ -4,7 +4,8 @@ help: |
   Amount of memory spent in ClusterInfo.
 unit: byte
 type: gauge
-category: Memory Usage
+# all other categories are to specific
+category: Statistics
 complexity: high
 exposedBy:
   - coordinator
