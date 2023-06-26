@@ -304,7 +304,6 @@ class Supervision : public arangodb::Thread {
 
   std::mutex _lock;  // guards snapshot, _jobId, jobIdMax, _selfShutdown
   Agent* _agent;     /**< @brief My agent */
-  Store _spearhead;
   mutable std::shared_ptr<Node const> _snapshot;
   std::shared_ptr<Node const> _transient;
 

@@ -265,7 +265,6 @@ void Supervision::upgradeOne(Builder& builder) {
 
 void Supervision::upgradeZero(Builder& builder) {
   // "/arango/Target/FailedServers" is still an array
-  LOG_DEVEL << "snapshot: " << snapshot().toJson();
   Slice fails = snapshot().hasAsSlice(failedServersPrefix).value();
   if (fails.isArray()) {
     {
@@ -898,31 +897,11 @@ bool Supervision::updateSnapshot() {
   // Furthermore, _snapshot must never be changed without considering its
   // consequences for _lastconfirmed!
 
-  // Update once from agency's spearhead and keep updating using RAFT log from
-  // there.
-  if (_lastUpdateIndex == 0) {
-    _agent->executeLockedRead([&]() {
-      if (_agent->spearhead().has(_agencyPrefix)) {
-        _spearhead = _agent->spearhead();
-        if (_spearhead.has(_agencyPrefix)) {
-          _lastUpdateIndex = _agent->confirmed();
-          _snapshot = _spearhead.nodePtr(_agencyPrefix);
-        } else {
-          _lastUpdateIndex = 0;
-          _snapshot = _spearhead.nodePtr();
-        }
-      }
-    });
-  } else {
-    std::vector<log_t> logs;
-    _agent->executeLockedRead(
-        [&]() { logs = _agent->logs(_lastUpdateIndex + 1); });
-    if (!logs.empty() &&
-        !(logs.size() == 1 && _lastUpdateIndex == logs.front().index)) {
-      _lastUpdateIndex = _spearhead.applyTransactions(logs);
-      _snapshot = _spearhead.nodePtr(_agencyPrefix);
+  _agent->executeLockedRead([&]() {
+    if (_agent->spearhead().has(_agencyPrefix)) {
+      _snapshot = _agent->spearhead().get(_agencyPrefix);
     }
-  }
+  });
   // ***************************************************************************
 
   _agent->executeTransientLocked([&]() {
@@ -2134,6 +2113,7 @@ void Supervision::workJobs() {
           << "Finish JobContext::run()";
       actualTodos = actualTodos.erase(it->first);
       doneFailedJob = true;
+      ++it;
     } else {
       ++it;
     }
@@ -3468,9 +3448,7 @@ void Supervision::beginShutdown() {
 
 Node const& Supervision::snapshot() const {
   if (_snapshot == nullptr) {
-    _snapshot = (_spearhead.has(_agencyPrefix))
-                    ? _spearhead.nodePtr(_agencyPrefix)
-                    : _spearhead.nodePtr();
+    _snapshot = Node::create();
   }
   return *_snapshot;
 }
