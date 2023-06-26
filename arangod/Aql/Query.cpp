@@ -462,7 +462,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   Optimizer opt(_queryOptions.maxNumberOfPlans, _memoryResource.get());
   // get enabled/disabled rules
   opt.createPlans(std::move(plan), _queryOptions, false);
-  resourceMonitor();
   // Now plan and all derived plans belong to the optimizer
   plan = opt.stealBest();  // Now we own the best one again
 

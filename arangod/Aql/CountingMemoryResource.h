@@ -29,8 +29,8 @@
 
 namespace arangodb::aql {
 struct CountingMemoryResource : std::pmr::memory_resource {
-  explicit CountingMemoryResource(memory_resource* base,
-                                  ResourceMonitor& resourceMonitor)
+  CountingMemoryResource(memory_resource* base,
+                         ResourceMonitor& resourceMonitor)
       : base(base), _resourceMonitor(resourceMonitor) {}
 
  private:
