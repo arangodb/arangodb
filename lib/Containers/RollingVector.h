@@ -24,7 +24,13 @@
 #pragma once
 
 #include <type_traits>
+
+#ifdef __APPLE__
+#include <experimental/memory_resource>
+#include <experimental/vector>
+#else
 #include <memory_resource>
+#endif
 
 #include "Basics/debugging.h"
 
@@ -39,15 +45,32 @@ namespace containers {
 /// the elements popped with pop_front() will also not be destructed when
 /// popped. this means this container can only be used for managing trivial
 /// types (e.g. integers or pointers) that do not require ad-hoc destruction
+
+#ifdef __APPLE__
+typedef std::experimental::pmr::memory_resource memory_resource_t;
+
+template<typename T>
+struct pmr_vector_t {
+  typedef std::experimental::pmr::vector<T> type;
+};
+#else
+typedef std::pmr::memory_resource memory_resource_t;
+
+template<typename T>
+struct pmr_vector_t {
+  typedef std::pmr::vector<T> type;
+};
+#endif
+
 template<typename T>
 class RollingVector {
  public:
   RollingVector() : _start(0) {}
   explicit RollingVector(size_t size) : RollingVector() { _data.resize(size); }
 
-  explicit RollingVector(std::pmr::memory_resource* memory_resource)
+  explicit RollingVector(memory_resource_t* memory_resource)
       : _start(0), _data{memory_resource} {}
-  RollingVector(size_t size, std::pmr::memory_resource* memory_resource)
+  RollingVector(size_t size, memory_resource_t* memory_resource)
       : RollingVector(memory_resource) {
     _data.resize(size);
   }
@@ -78,17 +101,17 @@ class RollingVector {
 
   ~RollingVector() = default;
 
-  typename std::pmr::vector<T>::iterator begin() {
+  typename pmr_vector_t<T>::type::iterator begin() {
     return _data.begin() + _start;
   }
 
-  typename std::pmr::vector<T>::iterator end() { return _data.end(); }
+  typename pmr_vector_t<T>::type::iterator end() { return _data.end(); }
 
-  typename std::pmr::vector<T>::const_iterator begin() const {
+  typename pmr_vector_t<T>::type::const_iterator begin() const {
     return _data.begin();
   }
 
-  typename std::pmr::vector<T>::const_iterator end() const {
+  typename pmr_vector_t<T>::type::const_iterator end() const {
     return _data.end();
   }
 
@@ -161,7 +184,7 @@ class RollingVector {
 
  private:
   size_t _start;
-  std::pmr::vector<T> _data;
+  typename pmr_vector_t<T>::type _data;
 };
 
 }  // namespace containers

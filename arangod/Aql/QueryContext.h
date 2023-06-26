@@ -35,7 +35,12 @@
 #include "Basics/ResultT.h"
 #include "VocBase/voc-types.h"
 #include <velocypack/Builder.h>
+
+#ifdef __APPLE__
+#include <experimental/memory_resource>
+#else
 #include <memory_resource>
+#endif
 
 struct TRI_vocbase_t;
 
@@ -62,6 +67,12 @@ class Ast;
 
 /// @brief an AQL query basic interface
 class QueryContext {
+#ifdef __APPLE__
+  typedef std::experimental::pmr::memory_resource memory_resource_t;
+#else
+  typedef std::pmr::memory_resource memory_resource_t;
+#endif
+
  private:
   QueryContext(QueryContext const&) = delete;
   QueryContext& operator=(QueryContext const&) = delete;
@@ -73,7 +84,7 @@ class QueryContext {
 
   ResourceMonitor& resourceMonitor() noexcept { return _resourceMonitor; }
 
-  std::pmr::memory_resource* memory_resource() { return _memoryResource.get(); }
+  memory_resource_t* memory_resource() { return _memoryResource.get(); }
   ResourceMonitor const& resourceMonitor() const noexcept {
     return _resourceMonitor;
   }
@@ -157,7 +168,7 @@ class QueryContext {
   constexpr static std::size_t baseMemoryUsage = 8192;
 
  protected:
-  std::unique_ptr<std::pmr::memory_resource> _memoryResource;
+  std::unique_ptr<memory_resource_t> _memoryResource;
 
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;

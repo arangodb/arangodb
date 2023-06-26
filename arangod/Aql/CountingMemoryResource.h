@@ -23,12 +23,23 @@
 
 #pragma once
 
+#ifdef __APPLE__
+#include <experimental/memory_resource>
+#else
 #include <memory_resource>
+#endif
 
 #include "Basics/ResourceUsage.h"
 
 namespace arangodb::aql {
-struct CountingMemoryResource : std::pmr::memory_resource {
+
+#ifdef __APPLE__
+typedef std::experimental::pmr::memory_resource memory_resource_t;
+#else
+typedef std::pmr::memory_resource memory_resource_t;
+#endif
+
+struct CountingMemoryResource : memory_resource_t {
   CountingMemoryResource(memory_resource* base,
                          ResourceMonitor& resourceMonitor)
       : base(base), _resourceMonitor(resourceMonitor) {}
@@ -58,7 +69,7 @@ struct CountingMemoryResource : std::pmr::memory_resource {
     return false;
   }
 
-  std::pmr::memory_resource* base;
+  memory_resource_t* base;
 
   /// @brief current resources and limits used by query
   ResourceMonitor& _resourceMonitor;
