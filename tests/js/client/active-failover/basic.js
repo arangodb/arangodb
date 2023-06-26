@@ -831,7 +831,8 @@ function LeaderInactivitySuite() {
       // must drop again here
       db._drop(cname);
 
-      // wait for things to settle
+      // wait for things to settle. we need to do this so all follow-up tests
+      // (in other files) find the server to be ready again.
       internal.wait(15.0);
     },
 
