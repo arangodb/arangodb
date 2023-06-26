@@ -35,8 +35,19 @@ namespace arangodb::aql {
 
 #ifdef __APPLE__
 typedef std::experimental::pmr::memory_resource memory_resource_t;
+struct new_delete_resource_t {
+  static memory_resource_t* new_delete_resource() {
+    return std::experimental::pmr::new_delete_resource();
+  }
+};
+
 #else
 typedef std::pmr::memory_resource memory_resource_t;
+struct new_delete_resource_t {
+  static memory_resource_t* new_delete_resource() {
+    return std::pmr::new_delete_resource();
+  }
+};
 #endif
 
 struct CountingMemoryResource : memory_resource_t {
