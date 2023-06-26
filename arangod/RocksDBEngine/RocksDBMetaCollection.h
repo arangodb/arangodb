@@ -33,6 +33,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <functional>
+#include <shared_mutex>
 
 namespace arangodb {
 class RevisionReplicationIterator;

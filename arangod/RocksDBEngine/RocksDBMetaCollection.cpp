@@ -1639,8 +1639,6 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
 
 /// @brief lock a collection, with a timeout
 ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
-  double startTime = 0.0;
-
   // user read operations don't require any lock in RocksDB, so we won't get
   // here. user write operations will acquire the R/W lock in read mode, and
   // user exclusive operations will acquire the R/W lock in write mode.
@@ -1663,8 +1661,6 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
     // keep the lock and exit the loop
     return TRI_ERROR_NO_ERROR;
   }
-
-  TRI_ASSERT(startTime > 0.0);
 
   LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
       << "timed out after " << timeout << " s waiting for "
