@@ -1658,7 +1658,7 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   }
 
   if (gotLock) {
-    // keep the lock and exit the loop
+    // keep the lock and exit
     return TRI_ERROR_NO_ERROR;
   }
 
