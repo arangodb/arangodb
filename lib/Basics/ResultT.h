@@ -156,8 +156,11 @@ class ResultT {
 
   template<typename U>
   ResultT(U&& val) requires(std::is_convertible_v<U, T> &&
+                            !std::is_same_v<std::decay_t<U>, std::nullopt_t> &&
                             !std::is_convertible_v<U, Result>)
-      : ResultT(std::forward<U>(val), TRI_ERROR_NO_ERROR) {}
+      : ResultT(std::forward<U>(val), TRI_ERROR_NO_ERROR) {
+    TRI_ASSERT(_val.has_value());
+  }
 
   // Default constructor calls default constructor of T
   // If T is not default constructable, ResultT cannot be default constructable
