@@ -1712,7 +1712,7 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
     if (now - startTime < 0.001) {
       std::this_thread::yield();
     } else {
-      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
+      std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
 
       if (waitTime < 32) {
         waitTime *= 2;

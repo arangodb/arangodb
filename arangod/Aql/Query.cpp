@@ -51,7 +51,6 @@
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -180,8 +179,12 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 /// method
 Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
+<<<<<<< HEAD
              Query::SchedulerT* scheduler,
              transaction::Hints::Hint const& trxTypeHint)
+=======
+             Scheduler* scheduler)
+>>>>>>> d0abdd44ee10c03d130a4fd910617c09e68621f0
     : Query(0, ctx, std::move(queryString), std::move(bindParameters),
             std::move(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server(),
@@ -253,15 +256,21 @@ void Query::destroy() {
 /// ensure that Query objects are always created using shared_ptrs.
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
+<<<<<<< HEAD
     std::shared_ptr<velocypack::Builder> bindParameters,
     transaction::Hints::Hint const& trxTypeHint, QueryOptions options,
     Query::SchedulerT* scheduler) {
+=======
+    std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options,
+    Scheduler* scheduler) {
+>>>>>>> d0abdd44ee10c03d130a4fd910617c09e68621f0
   TRI_ASSERT(ctx != nullptr);
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : Query {
     MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
                     QueryString queryString,
                     std::shared_ptr<velocypack::Builder> bindParameters,
+<<<<<<< HEAD
                     transaction::Hints::Hint const& trxTypeHint,
                     QueryOptions options, Query::SchedulerT* scheduler)
         : Query{std::move(ctx),
@@ -270,6 +279,11 @@ std::shared_ptr<Query> Query::create(
                 std::move(options),
                 scheduler,
                 trxTypeHint} {}
+=======
+                    QueryOptions options, Scheduler* scheduler)
+        : Query{std::move(ctx), std::move(queryString),
+                std::move(bindParameters), std::move(options), scheduler} {}
+>>>>>>> d0abdd44ee10c03d130a4fd910617c09e68621f0
 
     ~MakeSharedQuery() final {
       // Destroy this query, otherwise it's still

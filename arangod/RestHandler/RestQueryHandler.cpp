@@ -87,6 +87,7 @@ void RestQueryHandler::handleAvailableOptimizerRules() {
   for (auto const& optimizerRule : optimizerRules) {
     builder.openObject();
     builder.add("name", VPackValue(optimizerRule.name));
+    builder.add("description", VPackValue(optimizerRule.description));
     builder.add(velocypack::Value("flags"));
     builder.openObject();
     builder.add("hidden", VPackValue(optimizerRule.isHidden()));

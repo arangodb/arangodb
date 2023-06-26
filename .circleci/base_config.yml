@@ -169,7 +169,7 @@ jobs:
       - run:
           name: Build
           command: |
-            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest arangodbtests_replication2
+            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest
             if [ << parameters.enterprise >> = true ]; then
               cmake --build --preset << parameters.preset >> --parallel 8 --target arangobackup
             fi
