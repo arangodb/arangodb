@@ -1659,7 +1659,6 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
 
 /// @brief lock a collection, with a timeout
 ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
-
   // user read operations don't require any lock in RocksDB, so we won't get
   // here. user write operations will acquire the R/W lock in read mode, and
   // user exclusive operations will acquire the R/W lock in write mode.
