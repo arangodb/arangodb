@@ -25,4 +25,4 @@
 	url = https://github.com/arangodb/rta-makedata
 [submodule "scripts/toolbox/feed"]
 	path = scripts/toolbox/feed
-	url = git@github.com:arangodb/feed.git
+	url = https://github.com/arangodb/feed.git
