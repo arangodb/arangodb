@@ -49,83 +49,13 @@ const database = "replication2_supervision_test_db";
 const IS_FAILED = true;
 const IS_NOT_FAILED = false;
 
-const getFailureOracleServerStatusOn = (oracleServerId) => {
-  const endpoint = getServerUrl(oracleServerId);
-  const status = request.get(`${endpoint}/_admin/cluster/failureOracle/status`);
-  checkRequestResult(status);
-  return status.json.result;
-};
-
-// `oracleServerId` is the server whose oracle is queried;
-// `queriedServerId` is the server which status is looked at;
-// `desiredStatus` is the "isFailed" status to wait for:
-//                 pass IS_FAILED or IS_NOT_FAILED as `desiredStatus`.
-const waitForFailureOracleServerStatusOn = (oracleServerId) => (queriedServerId, desiredStatus) => {
-  const seconds = (x) => x * 1000;
-  let queriedStatus;
-  for (const start = Date.now(); Date.now() < start + seconds(10); sleep(1)) {
-    const statuses = getFailureOracleServerStatusOn(oracleServerId);
-    queriedStatus = statuses.isFailed[queriedServerId];
-    if (queriedStatus === desiredStatus) {
-      return;
-    }
-  }
-  throw new Error(`Timeout while waiting for ${oracleServerId} to observe 'isFailed' of ${queriedServerId} to equal ${desiredStatus}. The last observed status was ${queriedStatus} instead.`);
-};
-
-
 const replicatedLogRegressionSuite = function () {
-  const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} = (function () {
-    let previousDatabase;
-    let databaseExisted = true;
-    const stoppedServers = {};
 
-    return {
-      setUpAll: function () {
-        previousDatabase = db._name();
-        if (!_.includes(db._databases(), database)) {
-          db._createDatabase(database);
-          databaseExisted = false;
-        }
-        db._useDatabase(database);
-      },
-
-      tearDownAll: function () {
-        db._useDatabase(previousDatabase);
-        if (!databaseExisted) {
-          db._dropDatabase(database);
-        }
-      },
-      stopServer: function (serverId) {
-        if (stoppedServers[serverId] !== undefined) {
-          throw Error(`${serverId} already stopped`);
-        }
-        stoppedServers[serverId] = true;
-        helper.stopServer(serverId);
-      },
-      continueServer: function (serverId) {
-        if (stoppedServers[serverId] === undefined) {
-          throw Error(`${serverId} not stopped`);
-        }
-        helper.continueServer(serverId);
-        delete stoppedServers[serverId];
-      },
-      resumeAll: function () {
-        Object.keys(stoppedServers).forEach(function (key) {
-          continueServer(key);
-        });
-      }
-    };
-  }());
+  const {setUpAll, tearDownAll, stopServerWait, continueServerWait, setUp, tearDown} =
+    helper.testHelperFunctions(database, {replicationVersion: "2"});
 
   return {
-    setUpAll, tearDownAll,
-    setUp: registerAgencyTestBegin,
-    tearDown: function (test) {
-      resumeAll();
-      waitFor(allServersHealthy());
-      registerAgencyTestEnd(test);
-    },
+    setUpAll, tearDownAll, setUp, tearDown,
 
     // Regression test for CINFRA-263.
     // Previously, while a server was marked as failed, it was not allowed to
@@ -137,12 +67,10 @@ const replicatedLogRegressionSuite = function () {
         waitForSync: false,
       };
       const {logId, followers, leader} = helper.createReplicatedLog(database, targetConfig);
-      const waitForFailureOracleServerStatus = waitForFailureOracleServerStatusOn(leader);
       waitForReplicatedLogAvailable(logId);
       const log = db._replicatedLog(logId);
       // stop one server
-      stopServer(followers[0]);
-      waitForFailureOracleServerStatus(followers[0], IS_FAILED);
+      stopServerWait(followers[0]);
 
       log.insert({foo: "bar"}, {dontWaitForCommit: true});
       // we have to insert two log entries here, reason:
@@ -153,6 +81,9 @@ const replicatedLogRegressionSuite = function () {
       // is the only server that has received log index 2.
       const {index: logIdx} = log.insert({foo: "baz"}, {dontWaitForCommit: true});
 
+      const spearheadOf = (follower) => {
+        return log.status().participants[leader].response.follower[follower].spearhead.index;
+      };
       waitFor(() => {
             // As followers[0] is stopped and writeConcern=3, the log cannot currently commit.
             const {participants: {[leader]: {response: status}}} = log.status();
@@ -168,39 +99,43 @@ const replicatedLogRegressionSuite = function () {
 
       // wait for followers[1] to have received the log entries, and the leader to take note of that
       waitFor(() => {
-        const followerSpearhead = log.status().participants[leader].response.follower[followers[1]].spearhead.index;
-        return logIdx === followerSpearhead
-            || new Error(`Expected spearhead of ${followers[1]} to be ${logIdx}, but is ${followerSpearhead}.`);
+        const followerSpearhead = spearheadOf(followers[1]);
+        return logIdx <= followerSpearhead
+          || new Error(`Expected spearhead of ${followers[1]} to be at least ${logIdx}, but is ${followerSpearhead}.`);
       });
 
       // stop the other follower as well
-      stopServer(followers[1]);
-      waitForFailureOracleServerStatus(followers[1], IS_FAILED);
+      stopServerWait(followers[1]);
 
       // resume the other follower
-      continueServer(followers[0]);
-      waitForFailureOracleServerStatus(followers[0], IS_NOT_FAILED);
+      continueServerWait(followers[0]);
 
       // wait for followers[0] to have received the log entries, and the leader to take note of that
       waitFor(() => {
-        const followerSpearhead = log.status().participants[leader].response.follower[followers[0]].spearhead.index;
-        return logIdx === followerSpearhead
-            || new Error(`Expected spearhead of ${followers[0]} to be ${logIdx}, but is ${followerSpearhead}.`);
+        const followerSpearhead = spearheadOf(followers[0]);
+        return logIdx <= followerSpearhead
+          || new Error(`Expected spearhead of ${followers[0]} to be at least ${logIdx}, but is ${followerSpearhead}.`);
       });
 
       { // followers[1] got the log entry before it was stopped, and followers[0] just got it now, so it should be committed.
         const status = log.status().participants[leader].response;
-        assertIdentical(status.lastCommitStatus.reason, "NothingToCommit");
-        assertIdentical(status.local.commitIndex, logIdx, `Commit index is ${status.local.commitIndex}, but should be exactly ${logIdx}`);
+        assertTrue(logIdx <= status.local.commitIndex, `Commit index is ${status.local.commitIndex}, but should be at least ${logIdx}`);
       }
 
-      continueServer(followers[1]);
-      waitForFailureOracleServerStatus(followers[1], IS_NOT_FAILED);
-      {
-        const status = log.status().participants[leader].response;
-        assertIdentical(status.lastCommitStatus.reason, "NothingToCommit");
-        assertIdentical(status.local.commitIndex, logIdx, `Commit index is ${status.local.commitIndex}, but should be exactly ${logIdx}`);
-      }
+      continueServerWait(followers[1]);
+      waitFor(() => {
+        const status = log.status();
+        const {participants: {[leader]: {response: {lastCommitStatus: {reason: commitReason}, local: {spearhead: {index: spearhead}, commitIndex}}}}}
+          = status;
+        if (commitReason !== 'NothingToCommit') {
+          return Error(`Expected everything to be committed, but last commit reason is ${commitReason}. Status: ${JSON.stringify(status)}`);
+        }
+        if (commitIndex !== spearhead) {
+          return Error(`Commit index is ${commitIndex}, but should be equal to the spearhead ${spearhead}. Status: ${JSON.stringify(status)}`);
+        }
+        return true;
+      });
+
       replicatedLogDeleteTarget(database, logId);
     },
 
@@ -243,6 +178,7 @@ const replicatedLogRegressionSuite = function () {
         target.config.writeConcern = 2;
       });
       waitFor(preds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
+      replicatedLogDeleteTarget(database, logId);
     },
 
     testWriteConcernBiggerThanReplicationFactor: function () {
@@ -279,9 +215,8 @@ const replicatedLogRegressionSuite = function () {
       });
 
       waitFor(preds.replicatedLogTargetVersion(database, logId, lastVersion));
+      replicatedLogDeleteTarget(database, logId);
     },
-
-
   };
 };
 

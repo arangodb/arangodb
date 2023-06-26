@@ -90,7 +90,6 @@
 #include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
-#include "RestHandler/RestPrototypeStateHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -728,9 +727,6 @@ void GeneralServerFeature::defineRemainingHandlers(
     f.addPrefixHandler(
         std::string{StaticStrings::ApiLogInternal},
         RestHandlerCreator<RestLogInternalHandler>::createNoData);
-    f.addPrefixHandler(
-        "/_api/prototype-state",
-        RestHandlerCreator<RestPrototypeStateHandler>::createNoData);
     f.addPrefixHandler(
         std::string{StaticStrings::ApiDocumentStateExternal},
         RestHandlerCreator<RestDocumentStateHandler>::createNoData);

@@ -41,9 +41,13 @@ class Result;
 struct LoggerContext;
 }  // namespace arangodb
 
+namespace arangodb::replication2::replicated_state {
+struct IStorageEngineMethods;
+}
+
 namespace arangodb::replication2::replicated_log {
 
-struct LogCore;
+struct IReplicatedStateHandle;
 struct LogStatus;
 struct QuickLogStatus;
 struct InMemoryLog;
@@ -72,8 +76,9 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
   [[nodiscard]] virtual auto getQuickStatus() const -> QuickLogStatus = 0;
   virtual ~ILogParticipant() = default;
-  [[nodiscard]] virtual auto
-  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
+  [[nodiscard]] virtual auto resign() && -> std::tuple<
+      std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      std::unique_ptr<IReplicatedStateHandle>, DeferredAction> = 0;
 
   using WaitForPromise = futures::Promise<WaitForResult>;
   using WaitForFuture = futures::Future<WaitForResult>;
@@ -85,7 +90,10 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture = 0;
 
-  [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
+  // Passing no bounds means everything.
+  [[nodiscard]] virtual auto getInternalLogIterator(
+      std::optional<LogRange> bounds = std::nullopt) const
+      -> std::unique_ptr<PersistedLogIterator> = 0;
   [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
   [[nodiscard]] virtual auto compact() -> ResultT<CompactionResult> = 0;
 };

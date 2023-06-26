@@ -27,16 +27,20 @@
 #include <Basics/debugging.h>
 #include <Basics/application-exit.h>
 #include <Logger/LogMacros.h>
-#include <Replication2/ReplicatedLog/PersistedLog.h>
 #include <Basics/ResultT.h>
 #include <Inspection/VPack.h>
 #include <memory>
+#include "Metrics/Gauge.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/Histogram.h"
 
 #include <utility>
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBKey.h"
 #include "RocksDBPersistedLog.h"
 #include "RocksDBValue.h"
+#include "RocksDBKeyBounds.h"
+#include "Replication2/MetricsHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -111,15 +115,21 @@ struct RocksDBLogIterator : PersistedLogIterator {
 RocksDBAsyncLogWriteBatcher::RocksDBAsyncLogWriteBatcher(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::DB* db,
     std::shared_ptr<IAsyncExecutor> executor,
-    std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options)
+    std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options,
+    std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> metrics)
     : _cf(cf),
       _db(db),
       _executor(std::move(executor)),
-      _options(std::move(options)) {}
+      _options(std::move(options)),
+      _metrics(std::move(metrics)) {
+  _lanes[0]._numWorkerMetrics = _metrics->numWorkerThreadsWaitForSync;
+  _lanes[1]._numWorkerMetrics = _metrics->numWorkerThreadsNoWaitForSync;
+}
 
 void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
   // This function is noexcept so in case an exception bubbles up we
   // rather crash instead of losing one thread.
+  GaugeScopedCounter metricsCounter(*lane._numWorkerMetrics);
   while (true) {
     std::vector<Request> pendingRequests;
     {
@@ -132,6 +142,7 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
         return;
       }
       std::swap(pendingRequests, lane._pendingPersistRequests);
+      _metrics->queueLength->operator-=(pendingRequests.size());
     }
 
     auto nextReqToWrite = pendingRequests.begin();
@@ -167,16 +178,22 @@ void RocksDBAsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
           ++nextReqToWrite;
         }
         {
-          if (auto s = _db->Write({}, &wb); !s.ok()) {
-            return rocksutils::convertStatus(s);
-          }
-
-          if (lane._waitForSync) {
-            if (auto s = _db->SyncWAL(); !s.ok()) {
-              // At this point we have to make sure that every previous log
-              // entry is synced as well. Otherwise we might get holes in the
-              // log.
+          _metrics->writeBatchSize->count(wb.GetDataSize());
+          {
+            MeasureTimeGuard metricsGuard(*_metrics->rocksdbWriteTimeInUs);
+            if (auto s = _db->Write({}, &wb); !s.ok()) {
               return rocksutils::convertStatus(s);
+            }
+          }
+          if (lane._waitForSync) {
+            {
+              MeasureTimeGuard metricsGuard(*_metrics->rocksdbSyncTimeInUs);
+              if (auto s = _db->SyncWAL(); !s.ok()) {
+                // At this point we have to make sure that every previous log
+                // entry is synced as well. Otherwise we might get holes in the
+                // log.
+                return rocksutils::convertStatus(s);
+              }
             }
           }
         }
@@ -255,6 +272,10 @@ auto RocksDBAsyncLogWriteBatcher::queue(AsyncLogWriteContext& ctx,
     bool const wantNewThread = lane._activePersistorThreads == 0 ||
                                (lane._pendingPersistRequests.size() > 100 &&
                                 lane._activePersistorThreads < 2);
+    if (wantNewThread) {
+      lane._activePersistorThreads += 1;
+    }
+    _metrics->queueLength->operator++();
     return std::make_pair(req.promise.getFuture(), wantNewThread);
   };
 
@@ -264,7 +285,6 @@ auto RocksDBAsyncLogWriteBatcher::queue(AsyncLogWriteContext& ctx,
 
   auto [future, wantNewThread] = queueRequest(lane);
   if (wantNewThread) {
-    lane._activePersistorThreads += 1;
     startNewThread(lane);
   }
   return std::move(future);
@@ -375,16 +395,26 @@ auto RocksDBLogStorageMethods::removeFront(LogIndex stop,
                                            WriteOptions const& opts)
     -> futures::Future<ResultT<SequenceNumber>> {
   IRocksDBAsyncLogWriteBatcher::WriteOptions wo;
+  MeasureTimeGuard timeGuard(*_metrics->operationLatencyRemoveFront);
   wo.waitForSync = opts.waitForSync;
-  return batcher->queueRemoveFront(ctx, stop, wo);
+  return batcher->queueRemoveFront(ctx, stop, wo)
+      .then([timeGuard = std::move(timeGuard)](auto&& tryResult) mutable {
+        timeGuard.fire();
+        return std::move(tryResult).get();
+      });
 }
 
 auto RocksDBLogStorageMethods::removeBack(LogIndex start,
                                           WriteOptions const& opts)
     -> futures::Future<ResultT<SequenceNumber>> {
   IRocksDBAsyncLogWriteBatcher::WriteOptions wo;
+  MeasureTimeGuard timeGuard(*_metrics->operationLatencyRemoveBack);
   wo.waitForSync = opts.waitForSync;
-  return batcher->queueRemoveBack(ctx, start, wo);
+  return batcher->queueRemoveBack(ctx, start, wo)
+      .then([timeGuard = std::move(timeGuard)](auto&& tryResult) mutable {
+        timeGuard.fire();
+        return std::move(tryResult).get();
+      });
 }
 
 auto RocksDBLogStorageMethods::insert(
@@ -392,7 +422,12 @@ auto RocksDBLogStorageMethods::insert(
     -> futures::Future<ResultT<SequenceNumber>> {
   IRocksDBAsyncLogWriteBatcher::WriteOptions wo;
   wo.waitForSync = opts.waitForSync;
-  return batcher->queueInsert(ctx, std::move(iter), wo);
+  MeasureTimeGuard timeGuard(*_metrics->operationLatencyInsert);
+  return batcher->queueInsert(ctx, std::move(iter), wo)
+      .then([timeGuard = std::move(timeGuard)](auto&& tryResult) mutable {
+        timeGuard.fire();
+        return std::move(tryResult).get();
+      });
 }
 
 uint64_t RocksDBLogStorageMethods::getObjectId() { return ctx.objectId; }
@@ -401,22 +436,24 @@ LogId RocksDBLogStorageMethods::getLogId() { return logId; }
 RocksDBLogStorageMethods::RocksDBLogStorageMethods(
     uint64_t objectId, std::uint64_t vocbaseId, replication2::LogId logId,
     std::shared_ptr<IRocksDBAsyncLogWriteBatcher> persistor, rocksdb::DB* db,
-    rocksdb::ColumnFamilyHandle* metaCf, rocksdb::ColumnFamilyHandle* logCf)
+    rocksdb::ColumnFamilyHandle* metaCf, rocksdb::ColumnFamilyHandle* logCf,
+    std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> metrics)
     : logId(logId),
       batcher(std::move(persistor)),
       db(db),
       metaCf(metaCf),
       logCf(logCf),
-      ctx(vocbaseId, objectId) {}
+      ctx(vocbaseId, objectId),
+      _metrics(std::move(metrics)) {}
 
 auto RocksDBLogStorageMethods::getSyncedSequenceNumber() -> SequenceNumber {
-  FATAL_ERROR_ABORT();
+  FATAL_ERROR_ABORT();  // TODO not implemented
 }
 
 auto RocksDBLogStorageMethods::waitForSync(
     IStorageEngineMethods::SequenceNumber number)
     -> futures::Future<futures::Unit> {
-  FATAL_ERROR_ABORT();
+  FATAL_ERROR_ABORT();  // TODO not implemented
 }
 
 auto RocksDBLogStorageMethods::drop() -> Result {
@@ -429,6 +466,7 @@ auto RocksDBLogStorageMethods::drop() -> Result {
   }
 
   auto range = RocksDBKeyBounds::LogRange(ctx.objectId);
+  // TODO should we remove using rocksutils::removeLargeRange instead?
   auto start = range.start();
   auto end = range.end();
   if (auto s = batch.DeleteRange(logCf, start, end); !s.ok()) {
@@ -450,4 +488,8 @@ auto RocksDBLogStorageMethods::compact() -> Result {
                                    .allow_write_stall = false},
       logCf, &start, &end);
   return rocksutils::convertStatus(res);
+}
+
+void RocksDBLogStorageMethods::waitForCompletion() noexcept {
+  ctx.waitForCompletion();
 }

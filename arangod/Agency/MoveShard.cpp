@@ -23,6 +23,7 @@
 
 #include "MoveShard.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
 #include "Agency/Node.h"
@@ -616,7 +617,12 @@ bool MoveShard::startReplication2() {
   // Preconditions:
   //  - target version is as expected
   using namespace replication2;
-  auto stateId = LogicalCollection::shardIdToStateId(_shard);
+
+  // The old mapping between stateId and shard is still used in ClusterInfo,
+  // hence the value_or alternative.
+  auto stateId = getReplicatedStateId(_snapshot, _database, _collection, _shard)
+                     .value_or(LogicalCollection::shardIdToStateId(_shard));
+
   auto targetPath = targetRepStatePrefix + _database + "/" + to_string(stateId);
   auto target = readStateTarget(_snapshot, _database, stateId).value();
 
@@ -737,7 +743,10 @@ JOB_STATUS MoveShard::status() {
 std::optional<std::uint64_t> MoveShard::getShardSupervisionVersion() {
   // read
   // arango/Current/ReplicatedLogs/<database>/<replicated-state-id>/supervision/targetVersion
-  auto stateId = LogicalCollection::shardIdToStateId(_shard);
+  // The old mapping between stateId and shard is still used in ClusterInfo,
+  // hence the value_or alternative.
+  auto stateId = getReplicatedStateId(_snapshot, _database, _collection, _shard)
+                     .value_or(LogicalCollection::shardIdToStateId(_shard));
   using namespace cluster::paths;
   auto path = aliases::current()
                   ->replicatedLogs()

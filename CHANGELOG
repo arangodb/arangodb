@@ -1,6 +1,49 @@
 devel
 -----
 
+* Attempt to avoid busy looping when locking collections with a timeout
+
+* Add a `description` field to OptimizerRule and dump the explanations via the
+  `GET /_api/query/rules` endpoint.
+
+* Don't show "write query options" for AQL write queries in the explain and
+  profile output. The write query options normally don't produce any valuable
+  insights and only take up screen real estate.
+
+* If a startup option has a dynamic default value (e.g. if the default value
+  depends on the amount of available RAM), display a "dynamic default" hint
+  when invoking `--help`.
+
+* FE-229: Improve shard rebalancing UI.
+
+* FE-20: fix UI placeholder format for locale when creating analyzers.
+
+* Fixed Github issue #19175.
+  This fixes a problem in traversal query optimization that was introduced
+  in 3.11 and that can lead to traversal queries being aborted with an error
+  `AQL: cannot and-combine normalized condition`.
+
+* FE-240: disable JSON editor when viewing inverted index.
+
+* FE-262: Improve Analyzer table UI.
+
+* FE-287: fix number validation for replicationFactor and writeConcern.
+
+* FE-285: Fix query download - use post request for query.
+
+* FE-223: refactor arangosearch, handle nested fields special characters.
+
+* Fixed two possible deadlocks which could occur if all medium priority
+  threads are busy. One is that in this case the AgencyCache could no longer
+  receive updates from the agency and another that queries could no longer
+  be finished. This fixes BTS-1475 and BTS-1486.
+
+* FE-166: Handle a space separated list to display multiple node labels in the
+  Graph Viewer.
+
+* FE-15: Removed green checkmark next to the version number and made
+  keyboard shortcuts button easier to discover.
+
 * Whenever there is a query request timeout in AQL (e.g., a server died)
   which causes the query to fail, the DBServers will now all directly kill
   their potentially ongoing parts of the query and not wait for garbage collection.
