@@ -125,14 +125,17 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   Result doCommit();
   Result doCommitImpl();
 
-  /// @brief assumed additional overhead for each entry in a
+  /// @brief assumed additional indexing overhead for each entry in a
   /// WriteBatchWithIndex. this is in addition to the actual WriteBuffer entry.
+  /// the WriteBatchWithIndex keeps all entries (which are pointers) in a
+  /// skiplist. it is unclear from the outside how much memory the skiplist
+  /// will use per entry, so this value here is just a guess.
   static constexpr size_t fixedIndexingEntryOverhead = 32;
 
   /// @brief assumed additional overhead for each lock that is held by the
   /// transaction. the overhead is computed as follows:
   /// locks are stored in rocksdb in a hash table, which maps from the locked
-  /// key to a LockInfo struct. The lockInfo struct is 120 bytes big.
+  /// key to a LockInfo struct. The LockInfo struct is 120 bytes big.
   /// we also assume some more overhead for the hash table entries and some
   /// general overhead because the hash table is never assumed to be completely
   /// full (load factor < 1). thus we assume 64 bytes of overhead for each
