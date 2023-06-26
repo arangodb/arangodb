@@ -143,7 +143,7 @@ const replicatedLogWaitForSyncFalseSupervisionSuite = function () {
       lh.waitFor(() => {
         let foo;
         const {supervision: {response: {StatusReport}}} = foo = log.status();
-        if (!StatusReport instanceof Array || StatusReport.length < 1) {
+        if (!(StatusReport instanceof Array) || StatusReport.length < 1) {
           return Error('Still waiting for StatusReport to appear');
         }
         const type = StatusReport[StatusReport.length - 1].type;
