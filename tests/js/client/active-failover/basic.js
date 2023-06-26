@@ -832,7 +832,7 @@ function LeaderInactivitySuite() {
       db._drop(cname);
 
       // wait for things to settle
-      internal.wait(5.0);
+      internal.wait(15.0);
     },
 
     testLeaderCannotSendToAgency: function () {
