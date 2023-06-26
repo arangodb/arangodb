@@ -31,7 +31,6 @@
 
 namespace arangodb {
 class Scheduler;
-class SupervisedScheduler;
 namespace application_features {
 class ApplicationServer;
 }
@@ -39,21 +38,12 @@ namespace aql {
 
 class SharedQueryState final
     : public std::enable_shared_from_this<SharedQueryState> {
-// Use the SupervisedScheduler in production to allow for easier
-// devirtualization. Use the Scheduler in google tests so it can be mocked or
-// faked.
-#ifndef ARANGODB_USE_GOOGLE_TESTS
-  using SchedulerT = arangodb::SupervisedScheduler;
-#else
-  using SchedulerT = arangodb::Scheduler;
-#endif
  public:
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
   SharedQueryState(ArangodServer& server);
-  SharedQueryState(ArangodServer& server,
-                   SharedQueryState::SchedulerT* scheduler);
+  SharedQueryState(ArangodServer& server, Scheduler* scheduler);
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
@@ -154,7 +144,7 @@ class SharedQueryState final
 
  private:
   ArangodServer& _server;
-  SharedQueryState::SchedulerT* _scheduler;
+  Scheduler* _scheduler;
   mutable std::mutex _mutex;
   std::condition_variable _cv;
 
