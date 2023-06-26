@@ -5,14 +5,17 @@ import os
 from contextlib import contextmanager
 
 
-@contextmanager
-def cwd(path):
-    oldPwd = os.getcwd()
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(oldPwd)
+'''
+This is a small wrapper around or arangosh jsunity test runner
+It basically starts an arangosh and runs the following script:
+
+const res = require('jsunity').runTest('${fileName}', true);
+const proc = require('@arangodb/testutils/result-processing');
+proc.analyze.saveToJunitXML({testXmlOutputDirectory: '${workDir}'}, {transform: {poc: res}});
+
+
+Where fileName and workDir are the input parameters generated in the Python code below.
+'''
 
 def start(options, cfg):
     folderName = options["folderName"] + "/tests"
