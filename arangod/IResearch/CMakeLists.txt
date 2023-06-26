@@ -21,8 +21,6 @@ add_library(arango_iresearch STATIC
   IResearchCompression.h
   IResearchDataStore.cpp
   IResearchDataStore.h
-  IResearchDataStoreHotbackupHelper.cpp
-  IResearchDataStoreHotbackupHelper.h
   IResearchDataStoreMeta.cpp
   IResearchDataStoreMeta.h
   IResearchDocument.cpp
