@@ -1,6 +1,8 @@
 v3.10.9 (XXXX-XX-XX)
 --------------------
 
+* Optimise runtime performance of exclusive locks.
+
 * Add a `description` field to OptimizerRule and dump the explanations via the
   `GET /_api/query/rules` endpoint.
 
