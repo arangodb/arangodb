@@ -77,6 +77,14 @@ const getServerRebootId = function (serverId) {
   return readAgencyValueAt(`Current/ServersKnown/${serverId}/rebootId`);
 };
 
+const bumpServerRebootId = function (serverId) {
+  const response = serverHelper.agency.increaseVersion(`Current/ServersKnown/${serverId}/rebootId`);
+  if (response !== true) {
+    return undefined;
+  }
+  return getServerRebootId(serverId);
+};
+
 const getParticipantsObjectForServers = function (servers) {
   return _.reduce(servers, (a, v) => {
     a[v] = {allowedInQuorum: true, allowedAsLeader: true, forced: false};
@@ -161,7 +169,8 @@ const coordinators = (function () {
  *         localStatus: Object<string, Object>,
  *         localState: Object,
  *         supervision?: Object,
- *         leader?: Object
+ *         leader?: Object,
+ *         safeRebootIds?: Object<string, number>
  *       }
  *   }}
  */
@@ -216,8 +225,16 @@ const replicatedLogSetPlanTerm = function (database, logId, term) {
 };
 
 const triggerLeaderElection = function (database, logId) {
-  serverHelper.agency.increaseVersion(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`);
-  serverHelper.agency.remove(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/leader`);
+  // This operation has to be in one envelope. Otherwise we violate the assumption
+  // that they are only modified as a unit.
+  serverHelper.agency.transact([[{
+    [`/arango/Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`]: {
+      'op': 'increment',
+    },
+    [`/arango/Plan/ReplicatedLogs/${database}/${logId}/currentTerm/leader`]: {
+      'op': 'delete'
+    }
+  }]]);
   serverHelper.agency.increaseVersion(`Plan/Version`);
 };
 
@@ -722,6 +739,7 @@ exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
 exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
+exports.bumpServerRebootId = bumpServerRebootId;
 exports.getServerUrl = getServerUrl;
 exports.getSupervisionActionTypes = getSupervisionActionTypes;
 exports.getSupervisionActions = getSupervisionActions;
@@ -757,3 +775,4 @@ exports.replaceParticipant = replaceParticipant;
 exports.createReconfigureJob = createReconfigureJob;
 exports.getAgencyJobStatus = getAgencyJobStatus;
 exports.increaseTargetVersion = increaseTargetVersion;
+exports.triggerLeaderElection = triggerLeaderElection;

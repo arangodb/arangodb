@@ -70,6 +70,9 @@ class SortNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return SORT; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief whether or not the sort is stable
   inline bool isStable() const { return _stable; }
 

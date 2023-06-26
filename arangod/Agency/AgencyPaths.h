@@ -1671,6 +1671,37 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
             std::shared_ptr<Leader const> leader() const {
               return Leader::make_shared(shared_from_this());
             }
+
+            class SafeRebootIds : public StaticComponent<SafeRebootIds, Log> {
+             public:
+              constexpr char const* component() const noexcept {
+                return "safeRebootIds";
+              }
+
+              using BaseType::StaticComponent;
+
+              class Participant
+                  : public DynamicComponent<Participant, SafeRebootIds,
+                                            ServerID> {
+               public:
+                char const* component() const noexcept {
+                  return value().c_str();
+                }
+
+                using BaseType::DynamicComponent;
+              };
+
+              std::shared_ptr<Participant const> participant(
+                  std::string value) const {
+                return Participant::make_shared(shared_from_this(),
+                                                std::move(value));
+              }
+            };
+
+            std::shared_ptr<SafeRebootIds const> safeRebootIds() const {
+              return SafeRebootIds::make_shared(shared_from_this());
+            }
+
             class Actions : public StaticComponent<Actions, Log> {
              public:
               constexpr char const* component() const noexcept {

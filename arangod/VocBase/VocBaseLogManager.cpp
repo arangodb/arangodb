@@ -33,6 +33,7 @@
 #include "Metrics/Gauge.h"
 #include "Network/NetworkFeature.h"
 #include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/DefaultRebootIdCache.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
@@ -381,13 +382,15 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
     throw basics::Exception(std::move(maybeMetadata).result(), ADB_HERE);
   }
 
+  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
   auto& log = stateAndLog.log = std::invoke([&]() {
     return std::make_shared<
         arangodb::replication2::replicated_log::ReplicatedLog>(
         std::move(storage), server.getFeature<ReplicatedLogFeature>().metrics(),
         server.getFeature<ReplicatedLogFeature>().options(),
         std::make_shared<replicated_log::DefaultParticipantsFactory>(
-            std::make_shared<NetworkFollowerFactory>(vocbase, id), sched),
+            std::make_shared<NetworkFollowerFactory>(vocbase, id), sched,
+            std::make_shared<replicated_log::DefaultRebootIdCache>(ci)),
         logContext, myself);
   });
 
