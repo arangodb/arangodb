@@ -1,48 +1,42 @@
 import { AddIcon, DeleteIcon } from "@chakra-ui/icons";
 import {
   Button,
-  FormLabel,
   Grid,
   GridItem,
   IconButton,
-  Spacer,
   Stack,
   Text
 } from "@chakra-ui/react";
-import { CollectionType } from "arangojs";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import useSWR from "swr";
-import { CreatableSingleSelectControl } from "../../../components/form/CreatableSingleSelectControl";
 import { FormField } from "../../../components/form/FormField";
-import { getCurrentDB } from "../../../utils/arangoClient";
-import { IndexInfoTooltip } from "../../collections/indices/addIndex/IndexInfoTooltip";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
+import { useCollectionOptions } from "./useEdgeCollectionOptions";
+import { useResetFromAndToValues } from "./useResetFromAndToValues";
 
 const graphRelationFieldsMap = {
   collection: {
     name: "collection",
-    type: "custom",
+    type: "creatableSingleSelect",
     label: "edgeDefinition",
     tooltip: "An edge definition defines a relation of the graph.",
     isRequired: true
   },
   from: {
     name: "from",
-    type: "custom",
+    type: "creatableMultiSelect",
     label: "fromCollections",
     tooltip: "The collections that contain the start vertices of the relation.",
     isRequired: true
   },
   to: {
     name: "to",
-    type: "custom",
+    type: "creatableMultiSelect",
     label: "toCollections",
     tooltip: "The collections that contain the end vertices of the relation.",
     isRequired: true
   }
 };
-
 
 /**
  * behaviour required
@@ -50,8 +44,16 @@ const graphRelationFieldsMap = {
  * - If an edge def already exists, fill from/to & disable the inputs
  * - autocomplete edge defs
  */
-export const EdgeDefinitionsField = () => {
+
+export const EdgeDefinitionsField = ({
+  allowExistingCollections = true
+}: {
+  allowExistingCollections?: boolean;
+}) => {
   const { values } = useFormikContext<GeneralGraphCreateValues>();
+  const { isFromAndToDisabled } = useResetFromAndToValues();
+  const { edgeCollectionOptions, documentCollectionOptions } =
+    useCollectionOptions();
   return (
     <GridItem colSpan={3}>
       <FieldArray name="edgeDefinitions">
@@ -87,17 +89,34 @@ export const EdgeDefinitionsField = () => {
                       )}
                     </Stack>
                     <Grid gridTemplateColumns={"200px 1fr 40px"} gap="4">
-                      <CollectionField index={index} />
+                      <FormField
+                        field={{
+                          ...graphRelationFieldsMap.collection,
+                          options: allowExistingCollections
+                            ? edgeCollectionOptions
+                            : [],
+                          isClearable: true,
+                          name: `edgeDefinitions[${index}]${graphRelationFieldsMap.collection.name}`
+                        }}
+                      />
                       <FormField
                         field={{
                           ...graphRelationFieldsMap.from,
-                          name: `edgeDefinitions[${index}]${graphRelationFieldsMap.from.name}`
+                          name: `edgeDefinitions[${index}]${graphRelationFieldsMap.from.name}`,
+                          isDisabled: isFromAndToDisabled[index],
+                          options: allowExistingCollections
+                            ? documentCollectionOptions
+                            : []
                         }}
                       />
                       <FormField
                         field={{
                           ...graphRelationFieldsMap.to,
-                          name: `edgeDefinitions[${index}]${graphRelationFieldsMap.to.name}`
+                          name: `edgeDefinitions[${index}]${graphRelationFieldsMap.to.name}`,
+                          isDisabled: isFromAndToDisabled[index],
+                          options: allowExistingCollections
+                            ? documentCollectionOptions
+                            : []
                         }}
                       />
                     </Grid>
@@ -107,8 +126,8 @@ export const EdgeDefinitionsField = () => {
               <Button
                 onClick={() => {
                   push({
-                    from: "",
-                    to: "",
+                    from: [],
+                    to: [],
                     collection: ""
                   });
                 }}
@@ -123,66 +142,5 @@ export const EdgeDefinitionsField = () => {
         }}
       </FieldArray>
     </GridItem>
-  );
-};
-
-const useFetchCollections = () => {
-  const currentDB = getCurrentDB();
-  const fetchCollections = async () => {
-    const collections = await currentDB.listCollections();
-    return collections;
-  };
-
-  const { data } = useSWR("/collections", fetchCollections);
-  return { collections: data };
-};
-
-const useEdgeCollectionOptions = () => {
-  const { collections } = useFetchCollections()
-  const edgeCollectionOptions = collections
-  ?.filter(collection => {
-    return collection.type === CollectionType.EDGE_COLLECTION;
-  })
-  .map(collection => {
-    return {
-      value: collection.name,
-      label: collection.name
-    };
-  });
-
-  return edgeCollectionOptions
-
-}
-const CollectionField = ({ index }: { index: number }) => {
-  const edgeCollectionOptions = useEdgeCollectionOptions()
-  return (
-    <FormField
-      field={{
-        ...graphRelationFieldsMap.collection,
-        name: `edgeDefinitions[${index}]${graphRelationFieldsMap.collection.name}`
-      }}
-      render={props => {
-        const { field } = props;
-        return (
-          <>
-            <FormLabel margin="0" htmlFor={field.name}>
-              {field.label}
-            </FormLabel>
-            <CreatableSingleSelectControl
-              selectProps={{
-                isClearable: true,
-                options: edgeCollectionOptions
-              }}
-              name={field.name}
-            />
-            {field.tooltip ? (
-              <IndexInfoTooltip label={field.tooltip} />
-            ) : (
-              <Spacer />
-            )}
-          </>
-        );
-      }}
-    />
   );
 };

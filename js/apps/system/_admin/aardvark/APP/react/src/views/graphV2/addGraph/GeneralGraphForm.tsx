@@ -32,8 +32,8 @@ const INITIAL_VALUES: GeneralGraphCreateValues = {
   name: "",
   edgeDefinitions: [
     {
-      from: "",
-      to: "",
+      from: [],
+      to: [],
       collection: ""
     }
   ],

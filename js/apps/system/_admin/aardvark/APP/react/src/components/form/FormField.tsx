@@ -1,12 +1,15 @@
 import { FormLabel, Spacer } from "@chakra-ui/react";
-import React from "react";
+import React, { ReactNode } from "react";
+import { IndexInfoTooltip } from "../../views/collections/indices/addIndex/IndexInfoTooltip";
+import { OptionType } from "../select/SelectBase";
+import { CreatableMultiSelectControl } from "./CreatableMultiSelectControl";
+import { CreatableSingleSelectControl } from "./CreatableSingleSelectControl";
 import { InputControl } from "./InputControl";
 import { MultiSelectControl } from "./MultiSelectControl";
 import { SwitchControl } from "./SwitchControl";
-import { OptionType } from "../select/SelectBase";
-import { IndexInfoTooltip } from "../../views/collections/indices/addIndex/IndexInfoTooltip";
 
 export type FormFieldProps = {
+  noOptionsMessage?: ((obj: { inputValue: string; }) => ReactNode) | undefined;
   label: string;
   name: string;
   type: string;
@@ -15,6 +18,7 @@ export type FormFieldProps = {
   group?: string;
   isRequired?: boolean;
   isDisabled?: boolean;
+  isClearable?: boolean;
 };
 
 export const FormField = ({
@@ -81,6 +85,53 @@ export const FormField = ({
           <MultiSelectControl
             isDisabled={field.isDisabled}
             selectProps={{
+              autoFocus,
+              options: field.options,
+              noOptionsMessage: field.noOptionsMessage
+            }}
+            isRequired={field.isRequired}
+            name={field.name}
+          />
+          {field.tooltip ? (
+            <IndexInfoTooltip label={field.tooltip} />
+          ) : (
+            <Spacer />
+          )}
+        </>
+      );
+    case "creatableSingleSelect":
+      return (
+        <>
+          <FormLabel margin="0" htmlFor={field.name}>
+            {field.label}
+          </FormLabel>
+          <CreatableSingleSelectControl
+            isDisabled={field.isDisabled}
+            selectProps={{
+              isClearable: field.isClearable,
+              autoFocus,
+              options: field.options
+            }}
+            isRequired={field.isRequired}
+            name={field.name}
+          />
+          {field.tooltip ? (
+            <IndexInfoTooltip label={field.tooltip} />
+          ) : (
+            <Spacer />
+          )}
+        </>
+      );
+    case "creatableMultiSelect":
+      return (
+        <>
+          <FormLabel margin="0" htmlFor={field.name}>
+            {field.label}
+          </FormLabel>
+          <CreatableMultiSelectControl
+            isDisabled={field.isDisabled}
+            selectProps={{
+              isClearable: field.isClearable,
               autoFocus,
               options: field.options
             }}
