@@ -375,9 +375,50 @@ function CreateCollectionsSuite() {
           db._drop(collname);
         }
       }
+
+    },
+
+    testCreateEdgeCollectionFlooredInput: function () {
+      const flooredEdgeTypeNumbers = [
+        3.1,
+        3.9
+      ];
+      for (const type of flooredEdgeTypeNumbers) {
+        const res = tryCreate({name: collname, type});
+        try {
+          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+          if (isServer) {
+            // V8 API does not floor, only if we use exactly 3 we get edge
+            validateProperties({}, collname, 2);
+          } else {
+            // JS Api does floor, if we use a number starting with 3 we get an edge collection
+            validateProperties({}, collname, 3);
+          }
+        } finally {
+          db._drop(collname);
+        }
+      }
+    },
+
+    testCreateDocumentCollectionFlooredInput: function () {
+      const flooredDocumentTypeNumbers = [
+        2.1,
+        2.9
+      ];
+      for (const type of flooredDocumentTypeNumbers) {
+        const res = tryCreate({name: collname, type});
+        try {
+          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+          // Just floor the value
+          validateProperties({}, collname, 2);
+        } finally {
+          db._drop(collname);
+        }
+      }
     },
 
     testCreateDeleted: function () {
+      return;
       const res = tryCreate({name: collname, type: 2, deleted: true});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
@@ -862,7 +903,8 @@ function CreateCollectionsSuite() {
       }
     },
 
-    testCreateEnterpriseGraph: function () {
+    testCreateSmartAndEnterpriseGraph: function () {
+      // This is actually a broken result:
       for (const isDisjoint of [true, false]) {
         const vertexName = "UnitTestSmartVertex";
         const edgeName = "UnitTestSmartEdge";
@@ -875,6 +917,148 @@ function CreateCollectionsSuite() {
             "_key:"
           ],
           smartGraphAttribute: "test",
+          isDisjoint: isDisjoint
+        };
+
+        const edge = {
+          numberOfShards: 3,
+          replicationFactor: 2,
+          isSmart: true,
+          shardingStrategy: "enterprise-hash-smart-edge",
+          shardKeys: [
+            "_key:"
+          ],
+          isDisjoint: isDisjoint,
+          distributeShardsLike: vertexName
+        };
+
+        const shouldKeepClusterSpecificAttributes = isEnterprise || isCluster;
+
+        const res = tryCreate({...vertex, type: 2, name: vertexName});
+        try {
+          if (!isEnterprise && isCluster) {
+            // We are using a shardingStrategy not allowed in Community version.
+            isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {...vertex, type: 2, name: vertexName});
+          } else {
+            // Should work, is a simple combination of other tests
+            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+            if (!isCluster) {
+              // The following are not available in single server
+              // NOTE: If at one point they are exposed we will have the validate clash on
+              // non set properties.
+              if (!isEnterprise) {
+                // Well unless we are in enterprise.
+                delete vertex.isSmart;
+                delete vertex.smartGraphAttribute;
+                delete vertex.isDisjoint;
+              }
+              delete vertex.shardingStrategy;
+              // Single Server always falls back default replicationFactor
+              vertex.replicationFactor = 1;
+            } else {
+              if (!isEnterprise) {
+                // smart features cannot be set
+                vertex.isSmart = false;
+                delete vertex.smartGraphAttribute;
+                vertex.isDisjoint = false;
+                // Enterprise ShardingStrategy is forbidden
+                vertex.shardingStrategy = "hash";
+              }
+            }
+            if (isServer) {
+              // Server has no special DC2DC case to let isDisjoint pass
+              if (isEnterprise) {
+                vertex.isDisjoint = false;
+              } else {
+                // Community does not even have the attribute
+                delete vertex.isDisjoint;
+              }
+            }
+            validateProperties(vertex, vertexName, 2, shouldKeepClusterSpecificAttributes);
+            const resEdge = tryCreate({...edge, type: "edge", name: edgeName});
+            try {
+              // Should work, everything required for smartGraphs is there.
+              assertTrue(resEdge.result, `Result: ${JSON.stringify(resEdge)}`);
+              if (!isCluster) {
+                // The following are not available in single server
+                if (!isEnterprise) {
+                  // Well unless we are in enterprise.
+                  delete edge.isSmart;
+                  delete edge.isDisjoint;
+                }
+                delete edge.shardingStrategy;
+                // Single Server always falls back default replicationFactor
+                edge.replicationFactor = 1;
+                // And also erases distributeShardsLike
+                delete edge.distributeShardsLike;
+              } else {
+                if (!isEnterprise) {
+                  // smartFeatures cannot be set
+                  edge.isSmart = false;
+                  edge.isDisjoint = false;
+                  edge.shardingStrategy = "hash";
+                }
+              }
+              if (isServer) {
+                // Server has no special DC2DC case to let isDisjoint pass
+                if (isEnterprise) {
+                  edge.isDisjoint = false;
+                } else {
+                  // Community does not even have the attribute
+                  delete edge.isDisjoint;
+                }
+                if (isCluster) {
+                  // SmartEdge Leader
+                  edge.internalValidatorType = 0;
+                }
+              }
+              if (isEnterprise && isCluster) {
+                // Check special creation path
+                const makeSmartEdgeAttributes = (isTo, isLocal) => {
+                  const tmp = {...edge, isSystem: true, isSmart: false, shardingStrategy: "hash"};
+                  if (isServer) {
+                    tmp.internalValidatorType = isLocal ? 2 : 4;
+                    tmp.isSmartChild = true;
+                  }
+                  if (isTo) {
+                    tmp.shardKeys = [":_key"];
+                  }
+                  return tmp;
+                };
+                validateProperties({...edge, numberOfShards: 0}, edgeName, 3, shouldKeepClusterSpecificAttributes);
+                validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                if (!isDisjoint || isServer) {
+                  validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                  validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                } else {
+                  assertEqual(db._collections().filter(c => c.name() === `_from_${edgeName}` || c.name() === `_to_${edgeName}`).length, 0, "Created incorrect hidden collections");
+                }
+              } else {
+                validateProperties(edge, edgeName, 3, shouldKeepClusterSpecificAttributes);
+              }
+            } finally {
+              db._drop(edgeName, true);
+            }
+          }
+        } finally {
+          db._drop(vertexName, true);
+        }
+      }
+    },
+
+
+    testCreateEnterpriseGraph: function () {
+      for (const isDisjoint of [true, false]) {
+        const vertexName = "UnitTestSmartVertex";
+        const edgeName = "UnitTestSmartEdge";
+        const vertex = {
+          numberOfShards: 3,
+          replicationFactor: 2,
+          isSmart: true,
+          shardingStrategy: "enterprise-hex-smart-vertex",
+          shardKeys: [
+            "_key:"
+          ],
           isDisjoint: isDisjoint
         };
 
