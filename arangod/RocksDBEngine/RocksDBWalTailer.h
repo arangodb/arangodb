@@ -34,6 +34,13 @@
 ///
 /// Nothing speaks against extending this WalTailer to become more sophisticated
 /// (with the caveat that it should not become too complicated).
+///
+/// One detail that took some time to establish was the role of ticks/rocksdb
+/// sequence numbers;
+///
+/// The rocksdb::WriteBatch::Handler only gets the initial sequence number for
+/// a batch, and we have to count every operation; this is done using incTick()
+///
 #pragma once
 
 #include "RocksDBEngine/RocksDBEngine.h"

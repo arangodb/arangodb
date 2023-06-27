@@ -71,7 +71,10 @@ class RocksDBTailingWALDumper final : public rocksdb::WriteBatch::Handler {
                                       .documentId = RocksDBKey::documentId(key),
                                       // TODO: lifetime?
                                       .document = RocksDBValue::data(value)});
+
+      incTick();
     }
+
     return rocksdb::Status();
   }
 
@@ -93,18 +96,22 @@ class RocksDBTailingWALDumper final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status DeleteCF(uint32_t column_family_id,
                            rocksdb::Slice const& key) override {
     handleDeleteCF(column_family_id, key);
+
+    incTick();
     return rocksdb::Status();
   }
 
   rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
                                  rocksdb::Slice const& key) override {
     handleDeleteCF(column_family_id, key);
+    incTick();
     return rocksdb::Status();
   }
 
   rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
                                 const rocksdb::Slice& begin_key,
                                 const rocksdb::Slice& end_key) override {
+    incTick();
     return rocksdb::Status();
   }
 
@@ -113,6 +120,8 @@ class RocksDBTailingWALDumper final : public rocksdb::WriteBatch::Handler {
   }
 
  private:
+  void incTick() { ++_tick; }
+
   RocksDBEngine& _engine;
   uint32_t const _documentsCF;
   uint32_t const _primaryCF;
