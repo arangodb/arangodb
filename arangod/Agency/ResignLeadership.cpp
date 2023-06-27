@@ -439,7 +439,7 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         // Only shards, which are affected
         int found = -1;
         int count = 0;
-        for (VPackSlice dbserver : VPackArrayIterator(shard.second->slice())) {
+        for (VPackSlice dbserver : *shard.second->getArray()) {
           if (dbserver.stringView() == _server) {
             found = count;
             break;

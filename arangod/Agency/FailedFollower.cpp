@@ -311,9 +311,9 @@ bool FailedFollower::start(bool& aborts) {
               // "failoverCandidates":
               std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
               foCandsPath += StaticStrings::FailoverCandidates;
-              auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+              auto foCands = this->_snapshot.hasAsBuilder(foCandsPath);
               if (foCands) {
-                addPreconditionUnchanged(job, foCandsPath, foCands.value());
+                addPreconditionUnchanged(job, foCandsPath, foCands->slice());
               }
             });
         // toServer not blocked
@@ -370,7 +370,7 @@ bool FailedFollower::start(bool& aborts) {
 
   slice = result.get(std::vector<std::string>(
       {agencyPrefix, "Supervision", "Health", _to, "Status"}));
-  if (!slice.isString() ||
+  if (slice.isString() ||
       slice.stringView() != Supervision::HEALTH_STATUS_GOOD) {
     LOG_TOPIC("4785b", INFO, Logger::SUPERVISION)
         << "Destination server " << _to << " is no longer in good condition";
