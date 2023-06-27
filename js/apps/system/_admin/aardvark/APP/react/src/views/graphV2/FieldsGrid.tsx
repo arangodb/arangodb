@@ -1,11 +1,12 @@
-import { Box } from "@chakra-ui/react";
+import { Box, BoxProps } from "@chakra-ui/react";
 import React from "react";
 
 export const FieldsGrid = ({
   children,
   backgroundColor,
-  verticalPadding
-}: {
+  verticalPadding,
+  ...rest
+}: BoxProps & {
   children: React.ReactNode;
   backgroundColor?: string;
   verticalPadding?: string;
@@ -24,6 +25,7 @@ export const FieldsGrid = ({
       alignItems="center"
       marginTop="4"
       bg={backgroundColor}
+      {...rest}
     >
       {children}
     </Box>
