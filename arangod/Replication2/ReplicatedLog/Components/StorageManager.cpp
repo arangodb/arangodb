@@ -35,6 +35,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::replication2::replicated_state;
 
 struct comp::StorageManager::StorageOperation {
   virtual ~StorageOperation() = default;
@@ -81,7 +82,8 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
         });
   }
 
-  auto appendEntries(InMemoryLog slice, bool waitForSync) noexcept
+  auto appendEntries(InMemoryLog slice,
+                     IStorageEngineMethods::WriteOptions writeOptions) noexcept
       -> futures::Future<Result> override {
     LOG_CTX("eb8da", TRACE, manager.loggerContext)
         << "scheduling append, range = " << slice.getIndexRange();
@@ -98,13 +100,12 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
     return scheduleOperation(
         std::move(mapping),
         [slice = std::move(slice), iter = std::move(iter),
-         weakManager = manager.weak_from_this(), waitForSync](
+         weakManager = manager.weak_from_this(), writeOptions](
             StorageManager::IStorageEngineMethods& methods) mutable noexcept {
           auto lastIndex = slice.getLastIndex();
-          auto&& fut =
-              methods.insert(std::move(iter), {.waitForSync = waitForSync});
+          auto&& fut = methods.insert(std::move(iter), writeOptions);
 
-          if (waitForSync) {
+          if (writeOptions.waitForSync) {
             return std::move(fut).thenValue(
                 [lastIndex, weakManager = std::move(weakManager)](auto&& res) {
                   if (auto mngr = weakManager.lock(); res.ok() && mngr) {

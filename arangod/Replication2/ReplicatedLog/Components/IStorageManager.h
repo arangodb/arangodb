@@ -26,6 +26,7 @@
 #include <memory>
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 
 namespace arangodb {
 namespace futures {
@@ -33,10 +34,6 @@ template<typename T>
 class Future;
 }
 class Result;
-namespace replication2::replicated_state {
-struct IStorageEngineMethods;
-struct PersistedStateInfo;
-}  // namespace replication2::replicated_state
 namespace replication2 {
 struct LogRange;
 struct LogIndex;
@@ -57,7 +54,9 @@ struct IStorageTransaction {
       -> futures::Future<Result> = 0;
   virtual auto removeBack(LogIndex start) noexcept
       -> futures::Future<Result> = 0;
-  virtual auto appendEntries(InMemoryLog, bool waitForSync) noexcept
+  virtual auto appendEntries(
+      InMemoryLog,
+      replicated_state::IStorageEngineMethods::WriteOptions) noexcept
       -> futures::Future<Result> = 0;
 };
 

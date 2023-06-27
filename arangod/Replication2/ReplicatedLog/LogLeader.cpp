@@ -1300,7 +1300,9 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
   // Note that the beginning of iter here is always (and must be) exactly
   // the next index after the last one in the LogCore.
   auto trx = _storageManager->transaction();
-  return trx->appendEntries(InMemoryLog{request.entries}, request.waitForSync)
+  return trx
+      ->appendEntries(InMemoryLog{request.entries},
+                      {.waitForSync = request.waitForSync})
       .thenValue(std::move(returnAppendEntriesResult));
 }
 

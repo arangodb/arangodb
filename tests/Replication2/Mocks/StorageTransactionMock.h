@@ -35,6 +35,8 @@ struct StorageTransactionMock : replicated_log::IStorageTransaction {
   MOCK_METHOD(futures::Future<Result>, removeBack, (LogIndex),
               (noexcept, override));
   MOCK_METHOD(futures::Future<Result>, appendEntries,
-              (replicated_log::InMemoryLog, bool), (noexcept, override));
+              (replicated_log::InMemoryLog,
+               replicated_state::IStorageEngineMethods::WriteOptions),
+              (noexcept, override));
 };
 }  // namespace arangodb::replication2::test

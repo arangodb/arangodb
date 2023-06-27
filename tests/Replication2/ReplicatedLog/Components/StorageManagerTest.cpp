@@ -157,8 +157,9 @@ auto makeRange(LogTerm term, LogRange range) -> InMemoryLog {
 TEST_F(StorageManagerTest, transaction_append) {
   auto trx = storageManager->transaction();
   auto syncIndexBefore = storageManager->getSyncIndex();
-  auto f = trx->appendEntries(
-      makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}), true);
+  auto f =
+      trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
+                         {.waitForSync = true});
 
   EXPECT_FALSE(f.isReady());
   executor->runOnce();
@@ -189,8 +190,9 @@ TEST_F(StorageManagerTest, transaction_remove_back_append) {
   }
 
   auto trx = storageManager->transaction();
-  auto f = trx->appendEntries(
-      makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}), true);
+  auto f =
+      trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
+                         {.waitForSync = true});
 
   EXPECT_FALSE(f.isReady());
   executor->runOnce();
@@ -372,8 +374,9 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_index_update) {
    */
 
   auto trx1 = storageManager->transaction();
-  auto f1 = trx1->appendEntries(
-      makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}), false);
+  auto f1 =
+      trx1->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
+                          {.waitForSync = false});
 
   // Resolve the appendEntries future, but not the waitForSync future
   EXPECT_TRUE(f1.isReady());
@@ -388,8 +391,9 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_index_update) {
         return higherIndex.getFuture();
       });
   auto trx2 = storageManager->transaction();
-  auto f2 = trx2->appendEntries(
-      makeRange(LogTerm{1}, {LogIndex{120}, LogIndex{140}}), false);
+  auto f2 =
+      trx2->appendEntries(makeRange(LogTerm{1}, {LogIndex{120}, LogIndex{140}}),
+                          {.waitForSync = false});
   EXPECT_TRUE(f2.isReady());
   higherIndex.setValue(Result{});
   auto syncIndex3 = storageManager->getSyncIndex();
@@ -422,7 +426,7 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_update_fails) {
 
   auto trx = storageManager->transaction();
   trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
-                     false);
+                     {.waitForSync = false});
   auto syncIndex2 = storageManager->getSyncIndex();
   EXPECT_EQ(syncIndex2, syncIndex1);
 }
@@ -446,7 +450,7 @@ TEST_F(StorageManagerSyncIndexTest, manager_unavailable_during_update) {
 
   auto trx = storageManager->transaction();
   trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
-                     false);
+                     {.waitForSync = false});
   // In case the manager is unavailable, we should not panic.
   storageManager.reset();
   wfsPromise.setValue(Result{});
@@ -463,5 +467,5 @@ TEST_F(StorageManagerSyncIndexTest, methods_insertion_fails) {
   EXPECT_CALL(*methods, waitForSync(testing::_)).Times(0);
   auto trx = storageManager->transaction();
   trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
-                     false);
+                     {.waitForSync = false});
 }

@@ -127,7 +127,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
           << ", range = [" << request.entries.front().entry().logIndex() << ", "
           << request.entries.back().entry().logIndex() + 1 << ")";
       auto f = store->appendEntries(InMemoryLog{request.entries},
-                                    request.waitForSync);
+                                    {.waitForSync = request.waitForSync});
       guard.unlock();
       auto result = co_await asResult(std::move(f));
       guard = self->guarded.getLockedGuard();
