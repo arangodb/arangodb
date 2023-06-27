@@ -5383,8 +5383,18 @@ class RemoveToEnumCollFinder final
           toRemove =
               ExecutionNode::castTo<ReplaceNode const*>(en)->inKeyVariable();
         } else if (en->getType() == EN::UPDATE) {
+          // first try if we have the pattern UPDATE <key> WITH <doc> IN
+          // collection. if so, then toRemove will contain <key>.
           toRemove =
               ExecutionNode::castTo<UpdateNode const*>(en)->inKeyVariable();
+
+          if (toRemove == nullptr) {
+            // if we don't have that pattern, we can if instead have
+            // UPDATE <doc> IN collection.
+            // in this case toRemove will contain <doc>.
+            toRemove =
+                ExecutionNode::castTo<UpdateNode const*>(en)->inDocVariable();
+          }
         } else if (en->getType() == EN::REMOVE) {
           toRemove = ExecutionNode::castTo<RemoveNode const*>(en)->inVariable();
         } else {
@@ -5440,8 +5450,8 @@ class RemoveToEnumCollFinder final
             for (auto const& it : shardKeys) {
               toFind.emplace(it);
             }
-            // for REMOVE, we must also know the _key value, otherwise
-            // REMOVE will not work
+            // for UPDATE/REPLACE/REMOVE, we must also know the _key value,
+            // otherwise they will not work.
             toFind.emplace(arangodb::StaticStrings::KeyString);
 
             // go through the input object attribute by attribute
@@ -5456,14 +5466,17 @@ class RemoveToEnumCollFinder final
                 continue;
               }
 
-              auto it = toFind.find(sub->getString());
+              std::string attributeName = sub->getString();
+              auto it = toFind.find(attributeName);
 
               if (it != toFind.end()) {
                 // we found one of the shard keys!
                 // remove the attribute from our to-do list
                 auto value = sub->getMember(0);
 
-                if (value->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+                // check if we have something like: { key: source.key }
+                if (value->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+                    value->getStringView() == attributeName) {
                   // check if all values for the shard keys are referring to
                   // the same FOR loop variable
                   auto var = value->getMember(0);

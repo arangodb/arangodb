@@ -50,7 +50,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -100,7 +100,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -243,7 +243,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -427,7 +427,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 

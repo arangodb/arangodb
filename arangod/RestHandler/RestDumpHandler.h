@@ -18,44 +18,47 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/Common.h"
+#include "Basics/Result.h"
+#include "Basics/ResultT.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-
-#include "Maskings/AttributeMasking.h"
-#include "Maskings/CollectionFilter.h"
-#include "Maskings/CollectionSelection.h"
-#include "Maskings/ParseResult.h"
+#include <string>
+#include <utility>
 
 namespace arangodb {
-namespace maskings {
-class Collection {
+class ClusterInfo;
+class RocksDBEngine;
+
+class RestDumpHandler : public RestVocbaseBaseHandler {
  public:
-  static ParseResult<Collection> parse(Maskings* maskings, VPackSlice const&);
+  RestDumpHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
- public:
-  Collection() {}
+  char const* name() const override final { return "RestDumpHandler"; }
 
-  Collection(CollectionSelection selection,
-             std::vector<AttributeMasking> const& maskings)
-      : _selection(selection), _maskings(maskings) {}
+  RequestLane lane() const override final;
 
-  CollectionSelection selection() const noexcept { return _selection; }
+  RestStatus execute() override;
 
-  MaskingFunction* masking(std::vector<std::string> const& path) const;
+ protected:
+  ResultT<std::pair<std::string, bool>> forwardingTarget() override final;
 
  private:
-  CollectionSelection _selection;
-  // LATER: CollectionFilter _filter;
-  std::vector<AttributeMasking> _maskings;
+  void handleCommandDumpStart();
+
+  void handleCommandDumpNext();
+
+  void handleCommandDumpFinished();
+
+  std::string getAuthorizedUser() const;
+
+  Result validateRequest();
+
+  RocksDBEngine& _engine;
+  ClusterInfo& _clusterInfo;
 };
-}  // namespace maskings
 }  // namespace arangodb
