@@ -1,6 +1,8 @@
 v3.10.9 (XXXX-XX-XX)
 --------------------
 
+* Remove temporary `CREATING_{number}` directories from hot backup in case a
+  hot backup runs into an error.
 
 * BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in 
   case the update AQL is of the pattern 
@@ -31,6 +33,7 @@ v3.10.9 (XXXX-XX-XX)
 * Attempt to avoid busy looping when locking collections with a timeout
 
 * BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
+
 
 v3.10.8 (2023-06-23)
 --------------------
