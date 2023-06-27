@@ -351,7 +351,7 @@ void RestCollectionHandler::handleCommandPost() {
   }
   std::vector<CreateCollectionBody> collections{
       std::move(planCollection.get())};
-  
+
   OperationOptions options(_context);
   auto result = methods::Collections::create(
       _vocbase,  // collection vocbase
