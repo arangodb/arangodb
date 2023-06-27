@@ -1,7 +1,15 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+
 * BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
+
+* Attempt to avoid busy looping when locking collections with a timeout
+
+* Add a `description` field to OptimizerRule and dump the explanations via the
+  `GET /_api/query/rules` endpoint.
+
+* FE-20: fix UI placeholder format for locale when creating analyzers.
 
 * FE-240: disable JSON editor when viewing inverted index.
 
