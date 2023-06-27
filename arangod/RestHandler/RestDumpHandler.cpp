@@ -47,7 +47,9 @@ using namespace arangodb::rest;
 
 RestDumpHandler::RestDumpHandler(ArangodServer& server, GeneralRequest* request,
                                  GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response),
+      _engine(
+          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>()) {}
 
 // main function that dispatches the different routes and commands
 RestStatus RestDumpHandler::execute() {
@@ -148,9 +150,7 @@ void RestDumpHandler::handleCommandDumpStart() {
   RocksDBDumpContextOptions opts;
   velocypack::deserializeUnsafe(body, opts);
 
-  auto& engine =
-      server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  auto* manager = engine.dumpManager();
+  auto* manager = _engine.dumpManager();
   auto guard = manager->createContext(std::move(opts), user, database);
 
   resetResponse(rest::ResponseCode::CREATED);
@@ -176,9 +176,7 @@ void RestDumpHandler::handleCommandDumpNext() {
 
   auto lastBatch = _request->parsedValue<uint64_t>("lastBatch");
 
-  auto& engine =
-      server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  auto* manager = engine.dumpManager();
+  auto* manager = _engine.dumpManager();
   // find() will throw in case the context cannot be found or the user does not
   // match.
   auto context = manager->find(id, database, user);
@@ -219,9 +217,7 @@ void RestDumpHandler::handleCommandDumpFinished() {
   auto database = _request->databaseName();
   auto user = getAuthorizedUser();
 
-  auto& engine =
-      server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  auto* manager = engine.dumpManager();
+  auto* manager = _engine.dumpManager();
   // will throw if dump context is not found or cannot be accessed
   manager->remove(id, database, user);
 

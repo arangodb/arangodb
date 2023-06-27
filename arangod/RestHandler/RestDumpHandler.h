@@ -31,6 +31,7 @@
 #include <utility>
 
 namespace arangodb {
+class RocksDBEngine;
 
 class RestDumpHandler : public RestVocbaseBaseHandler {
  public:
@@ -55,5 +56,7 @@ class RestDumpHandler : public RestVocbaseBaseHandler {
   std::string getAuthorizedUser() const;
 
   Result validateRequest();
+
+  RocksDBEngine& _engine;
 };
 }  // namespace arangodb
