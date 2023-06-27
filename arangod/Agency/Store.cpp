@@ -87,14 +87,10 @@ index_t Store::applyTransactions(std::vector<log_t> const& queries) {
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
 std::vector<apply_ret_t> Store::applyTransactions(
-    VPackSlice query, Agent::WriteMode const& wmode,
-    std::vector<std::shared_ptr<Node const>>* states) {
+    VPackSlice query, Agent::WriteMode const& wmode) {
   std::vector<apply_ret_t> success;
 
   if (query.isArray()) {
-    if (states) {
-      states->reserve(query.length());
-    }
     try {
       for (auto const& i : VPackArrayIterator(query)) {
         if (!wmode.privileged()) {
@@ -111,27 +107,16 @@ std::vector<apply_ret_t> Store::applyTransactions(
             continue;
           }
         }
-        bool ok;
+
         std::lock_guard storeLocker{_storeLock};
-        if (states) {
-          states->emplace_back(nullptr);
-        }
         switch (i.length()) {
           case 1:  // No precondition
-            ok = applies(i[0]);
-            success.push_back(ok ? APPLIED : UNKNOWN_ERROR);
-            if (states) {
-              states->back() = _node;
-            }
+            success.push_back(applies(i[0]) ? APPLIED : UNKNOWN_ERROR);
             break;
           case 2:  // precondition + uuid
           case 3:
             if (check(i[1]).successful()) {
-              ok = applies(i[0]);
-              success.push_back(ok ? APPLIED : UNKNOWN_ERROR);
-              if (states) {
-                states->back() = _node;
-              }
+              success.push_back(applies(i[0]) ? APPLIED : UNKNOWN_ERROR);
             } else {  // precondition failed
               LOG_TOPIC("f6873", TRACE, Logger::AGENCY)
                   << "Precondition failed!";
@@ -777,9 +762,4 @@ void Store::registerPrefixTrigger(std::string const& prefix,
 
 std::vector<std::string> Store::split(std::string_view str) {
   return Node::split(str);
-}
-
-void Store::setRootNode(std::shared_ptr<const Node> root) noexcept {
-  std::lock_guard storeLocker{_storeLock};
-  _node = std::move(root);
 }

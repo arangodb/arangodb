@@ -30,7 +30,6 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/AgentCallback.h"
-#include "Agency/Node.h"
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
@@ -949,6 +948,8 @@ void Agent::advanceCommitIndex() {
   std::sort(temp.begin(), temp.end());
   index_t index = temp[temp.size() - quorum];
 
+  term_t t = _constituent.term();
+
   auto ci = _commitIndex.load(std::memory_order_relaxed);
   auto slices = _state.slices(ci + 1, index);
   {
@@ -960,11 +961,8 @@ void Agent::advanceCommitIndex() {
           << "Critical mass for commiting " << ci + 1 << " through " << index
           << " to read db";
 
-      auto node = _inflightNodes.find(index);
-      ADB_PROD_ASSERT(node != _inflightNodes.end())
-          << "inflight did not contain index " << index;
-      _readDB.setRootNode(node->second);
-      _inflightNodes.erase(_inflightNodes.begin(), ++node);
+      // Change _readDB and _commitIndex atomically together:
+      _readDB.applyLogEntries(slices, ci, t);
 
       LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
           << "Critical mass for commiting " << ci + 1 << " through " << index
@@ -1124,15 +1122,17 @@ void Agent::load() {
     _supervision->start(this);
   }
 
-  if (size() > 1) {  // resilient agency only
-    TRI_ASSERT(_inception != nullptr);
+  if (_inception != nullptr) {  // resilient agency only
     _inception->start();
-    _loaded = true;
   } else {
     std::lock_guard guard{_ioLock};  // need this for callback to set _spearhead
     READ_LOCKER(guard2, _outputLock);
+    _spearhead = _readDB;
     activateAgency();
-    _loaded = true;
+  }
+
+  _loaded = true;
+  if (size() == 1) {
     endPrepareLeadership();
   }
 }
@@ -1293,9 +1293,6 @@ trans_ret_t Agent::transact(velocypack::Slice qs) {
                        ? _state.logLeaderSingle(query[0], currentTerm,
                                                 query[2].copyString())
                        : _state.logLeaderSingle(query[0], currentTerm);
-          ADB_PROD_ASSERT(_inflightNodes.empty() ||
-                          _inflightNodes.rbegin()->first < maxind);
-          _inflightNodes.emplace(maxind, _spearhead.nodePtr());
           ret->add(VPackValue(maxind));
         } else {
           _spearhead.read(res.failed->slice(), *ret);
@@ -1487,23 +1484,9 @@ write_ret_t Agent::write(velocypack::Slice query, WriteMode const& wmode) {
 
       std::lock_guard ioLocker{_ioLock};
 
-      std::vector<std::shared_ptr<Node const>> states;
-      applied = _spearhead.applyTransactions(chunk.slice(), wmode, &states);
-      auto indexes = _state.logLeaderMulti(chunk.slice(), applied, currentTerm);
-      ADB_PROD_ASSERT(states.size() == indexes.size())
-          << "produced " << states.size() << " states, but got "
-          << indices.size() << " indexes.";
-      for (std::size_t k = 0; k < states.size(); k++) {
-        if (indexes[k] == 0) {
-          continue;
-        }
-        ADB_PROD_ASSERT(_inflightNodes.empty() ||
-                        _inflightNodes.rbegin()->first < indexes[k]);
-        auto [iter, inserted] =
-            _inflightNodes.emplace(indexes[k], std::move(states[k]));
-        ADB_PROD_ASSERT(inserted) << "duplicated log index " << indexes[k];
-      }
-      indices.insert(indices.end(), indexes.begin(), indexes.end());
+      applied = _spearhead.applyTransactions(chunk.slice(), wmode);
+      auto tmp = _state.logLeaderMulti(chunk.slice(), applied, currentTerm);
+      indices.insert(indices.end(), tmp.begin(), tmp.end());
     }
     _write_hist_msec.count(
         duration<float, std::milli>(high_resolution_clock::now() - start)
