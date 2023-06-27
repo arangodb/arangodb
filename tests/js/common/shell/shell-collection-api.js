@@ -136,7 +136,6 @@ const tryCreate = (parameters) => {
     }
     return err;
   }
-  // if (param === "force" || param === "overwrite" || param === "ignoreDistributeShardsLikeErrors")
 };
 
 const defaultProps = getDefaultProps();
@@ -215,12 +214,57 @@ const validatePropertiesDoNotExist = (colName, illegalProperties) => {
   }
 };
 
+const clearLogs = () => {
+  if (isServer) {
+    // Only client reported so far
+    return;
+  }
+  arango.DELETE("/_admin/log/entries");
+};
+
+const validateDeprecationLogEntryWritten = () => {
+  if (isServer) {
+    // Only client reported so far
+    return;
+  }
+  try {
+    const expectedTopic = "deprecation";
+    const expectedLogId = "ee638";
+    // Note we ask for 2 entries here.
+    // This way we can assert that we produce exactly one line per error (which we discard after we asserted it)
+    let res = arango.GET("/_admin/log/entries?upto=warning&size=2");
+    assertEqual(res.total, 1, `Expecting exactly one message, instead found ${JSON.stringify(res)}.`);
+    assertEqual(res.messages[0].topic, expectedTopic, `Expecting specific log topic, instead found ${JSON.stringify(res)}.`);
+    assertTrue(res.messages[0].message.startsWith(`[${expectedLogId}]`), `Expected specific logID, instead found ${JSON.stringify(res)}.`)
+  } finally {
+    // Erase the log we have just read, so the next test is clean.
+    clearLogs();
+  }
+};
+
+const validateNoLogsLeftBehind = () => {
+  if (isServer) {
+    // Only client reported so far
+    return;
+  }
+  try {
+    let res = arango.GET("/_admin/log/entries?upto=warning&size=1");
+    assertEqual(res.total, 0, `Expecting no additional logs, every test that expects a log entry needs to run cleanup after itself`);
+  } finally {
+    clearLogs();
+  }
+};
+
 function CreateCollectionsSuite() {
 
   const collname = "UnitTestRestore";
   const leaderName = "UnitTestLeader";
 
   return {
+
+    tearDown() {
+      validateNoLogsLeftBehind();
+    },
 
     testCreateNonObject: function () {
       const illegalBodies = [
@@ -300,6 +344,7 @@ function CreateCollectionsSuite() {
         try {
           // Illegal numeric types are allowed and default to document.
           const res = tryCreate({name: collname, type});
+          validateDeprecationLogEntryWritten();
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           validateProperties({}, collname, 2);
         } finally {
@@ -358,6 +403,7 @@ function CreateCollectionsSuite() {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
         // The list of Shards is just ignored
         validateProperties({}, collname, 2);
+        validateDeprecationLogEntryWritten();
       } finally {
         db._drop(collname);
       }
@@ -387,14 +433,13 @@ function CreateCollectionsSuite() {
             }
           } else {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+            if (replicationFactor === 0) {
+              validateDeprecationLogEntryWritten();
+            }
             // MinReplicationFactor is forced to 0 on satellites
             // NOTE: SingleServer Enterprise for some reason this create returns MORE properties, then the others.
             if (!isCluster) {
-              if (replicationFactor === 0) {
-                validateProperties({replicationFactor: "satellite", writeConcern: 1}, collname, 2);
-              } else {
-                validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0, isSmart: false, shardKeys: ["_key"], numberOfShards: 1, isDisjoint: false}, collname, 2, true);
-              }
+              validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0, isSmart: false, shardKeys: ["_key"], numberOfShards: 1, isDisjoint: false}, collname, 2, true);
             } else {
               validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0}, collname, 2);
             }
@@ -409,12 +454,7 @@ function CreateCollectionsSuite() {
       const res = tryCreate({name: collname, writeConcern: 2, replicationFactor: 3});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        if (isCluster) {
-          validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
-        } else {
-          // WriteConcern on SingleServe has no meaning, it is returned but as default value.
-          validateProperties({replicationFactor: 3, writeConcern: 1}, collname, 2);
-        }
+        validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
       } finally {
         db._drop(collname);
       }
@@ -424,12 +464,7 @@ function CreateCollectionsSuite() {
       const res = tryCreate({name: collname, minReplicationFactor: 2, replicationFactor: 3});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        if (isCluster) {
-          validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
-        } else {
-          // WriteConcern on SingleServe has no meaning, it is returned but as default value.
-          validateProperties({replicationFactor: 3, writeConcern: 1}, collname, 2);
-        }
+        validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
       } finally {
         db._drop(collname);
       }
