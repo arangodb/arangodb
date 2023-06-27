@@ -29,6 +29,33 @@
 
 using namespace arangodb;
 
+[[nodiscard]] auto
+UserInputCollectionProperties::Invariants::isSmartConfiguration(
+    UserInputCollectionProperties const& props) -> inspection::Status {
+  if (props.smartGraphAttribute.has_value()) {
+    if (props.getType() != TRI_COL_TYPE_DOCUMENT) {
+      return {"Only document collections can have a smartGraphAttribute."};
+    }
+    if (!props.isSmart) {
+      return {
+          "A smart vertex collection needs to be "
+          "marked with \"isSmart: true\"."};
+    }
+    if (props.shardKeys->size() != 1 || props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString) {
+      return {"A smart vertex collection needs to have \"shardKeys\": [\"_key:\"]."};
+    }
+  } else if (props.isSmart) {
+    if (props.getType() != TRI_COL_TYPE_DOCUMENT) {
+      return {"Only document collections can have a smartGraphAttribute."};
+    }
+    if (props.shardKeys->size() != 1 || props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString) {
+      return {"A smart vertex collection needs to have \"shardKeys\": [\"_key:\"]."};
+    }
+  }
+
+  return inspection::Status::Success{};
+}
+
 [[nodiscard]] Result
 UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
     DatabaseConfiguration const& config) {
