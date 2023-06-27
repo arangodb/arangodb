@@ -11,6 +11,8 @@ v3.10.9 (XXXX-XX-XX)
 v3.10.8 (2023-06-23)
 --------------------
 
+* BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
+
 * Fixed two possible deadlocks which could occur if all medium priority
   threads are busy. One is that in this case the AgencyCache could no longer
   receive updates from the agency and another that queries could no longer
