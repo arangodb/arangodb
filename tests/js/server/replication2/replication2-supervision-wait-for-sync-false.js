@@ -102,56 +102,76 @@ const replicatedLogWaitForSyncFalseSupervisionSuite = function () {
       const servers = Object.keys(plan.participantsConfig.participants);
       const followers = _.without(servers, leader);
 
+      require("internal").print("trigger stopServersWait");
       stopServersWait(followers);
+      require("internal").print("done stopServersWait");
       const logIndex = log.insert({'I will': 'be missed'}, {dontWaitForCommit: true}).index;
+      require("internal").print("trigger waitToIdentify that quorum is unreachable");
       lh.waitFor(() => {
           // As both followers are stopped and writeConcern=2, the log cannot currently commit.
           const {participants: {[leader]: {response: status}}} = log.status();
           if (status.lastCommitStatus.reason !== 'QuorumSizeNotReached') {
+            require("internal").print(`Got other status: ${status.lastCommitStatus.reason}, full: ${JSON.stringify(status)}`);
             return new Error(`Expected status to be QuorumSizeNotReached, but is ${status.lastCommitStatus.reason}. Full status is: ${JSON.stringify(status)}`);
           }
           if (!(status.local.commitIndex < logIndex)) {
+            require("internal").print(`Got to high commitindex: ${status.local.commitIndex} should be lower than ${JSON.stringify(logIndex)}`);
             return new Error(`Commit index is ${status.local.commitIndex}, but should be lower than ${JSON.stringify(logIndex)}.`);
           }
+          require("internal").print("We should return true now");
           return true;
-        },
+        }
       );
+      require("internal").print("done waitToIdentify that quorum is unreachable");
       const {participants: {[leader]: {response: status}}} = log.status();
       assertEqual(status.local.spearhead.index, logIndex);
       assertTrue(status.local.commitIndex < logIndex);
 
+      require("internal").print("trigger leader election");
       lh.triggerLeaderElection(database, log.id());
+      require("internal").print("done electing leader");
 
+      require("internal").print("trigger wait for StatusReport");
       lh.waitFor(() => {
         const {supervision: {response: {StatusReport}}} = log.status();
         if (!(StatusReport instanceof Array) || StatusReport.length < 1) {
+          require("internal").print(`Still waiting for StatusReport to appear`);
           return Error('Still waiting for StatusReport to appear');
         }
         const type = StatusReport[StatusReport.length - 1].type;
         if (type !== 'LeaderElectionQuorumNotReached') {
-          return Error('Expected LeaderElectionQuorumNotReached, but got ' + StatusReport.type);
+          require("internal").print(`Expected LeaderElectionQuorumNotReached, but got ${type}, Full report: ${JSON.stringify(StatusReport)}`);
+          return Error('Expected LeaderElectionQuorumNotReached, but got ' + type);
         }
+        require("internal").print("We should return true now");
         return true;
       });
+      require("internal").print("done wait for StatusReport");
 
       continueServerWait(followers[0]);
+      require("internal").print("done continueServerWait for follower[0]");
+
 
       // Give the Supervision a little time. The result should *still* be
       // LeaderElectionQuorumNotReached, even with 2 servers online, as one of
       // them doesn't have a safe RebootId.
       internal.sleep(2);
+      require("internal").print("woke up after 2 sec sleep");
       lh.waitFor(() => {
-        let foo;
-        const {supervision: {response: {StatusReport}}} = foo = log.status();
+        const {supervision: {response: {StatusReport}}} = log.status();
         if (!(StatusReport instanceof Array) || StatusReport.length < 1) {
+          require("internal").print(`Still waiting for StatusReport to appear`);
           return Error('Still waiting for StatusReport to appear');
         }
         const type = StatusReport[StatusReport.length - 1].type;
         if (type !== 'LeaderElectionQuorumNotReached') {
-          return Error('Expected LeaderElectionQuorumNotReached, but got ' + StatusReport.type);
+          require("internal").print(`Expected LeaderElectionQuorumNotReached, but got ${type}`);
+          return Error('Expected LeaderElectionQuorumNotReached, but got ' + type);
         }
+        require("internal").print("We should return true now");
         return true;
       });
+      require("internal").print("done waiting again");
 
       let success = false;
       try {
@@ -165,9 +185,12 @@ const replicatedLogWaitForSyncFalseSupervisionSuite = function () {
       }
       assertFalse(success);
 
+      require("internal").print("start continueServerWait for follower[1]");
       continueServerWait(followers[1]);
+      require("internal").print("done continueServerWait for follower[1]");
 
       lh.waitFor(lp.replicatedLogLeaderEstablished(database, log.id(), undefined, servers));
+      require("internal").print("done establishing leader");
 
       // insert a log entry
       const {
