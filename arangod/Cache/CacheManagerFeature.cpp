@@ -51,8 +51,8 @@ namespace arangodb {
 
 CacheManagerFeature::CacheManagerFeature(Server& server)
     : ArangodFeature{server, *this},
-      _manager(nullptr),
-      _rebalancer(nullptr),
+      _idealLowerFillRatio(0.04),
+      _idealUpperFillRatio(0.25),
       _cacheSize(
           (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30))
               ? static_cast<std::uint64_t>(
@@ -95,6 +95,32 @@ If there is more, the default is `(system RAM size - 2 GiB) * 0.25`.)");
 across many different cache tables. In order to provide intelligent internal
 memory management, the system periodically reclaims memory from caches which are
 used less often and reallocates it to caches which get more activity.)");
+
+  options
+      ->addOption("--cache.ideal-lower-fill-ratio",
+                  "The lower bound fill ratio value for a cache table.",
+                  new DoubleParameter(&_idealLowerFillRatio, /*base*/ 1.0,
+                                      /*minValue*/ 0.0, /*maxValue*/ 1.0),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setLongDescription(R"(Cache tables with a fill ratio lower than this
+value will be shrunk by the cache rebalancer.)")
+      .setIntroducedIn(31200);
+
+  options
+      ->addOption("--cache.ideal-upper-fill-ratio",
+                  "The upper bound fill ratio value for a cache table.",
+                  new DoubleParameter(&_idealUpperFillRatio, /*base*/ 1.0,
+                                      /*minValue*/ 0.0, /*maxValue*/ 1.0),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setLongDescription(R"(Cache tables with a fill ratio higher than this
+value will be inflated in size by the cache rebalancer.)")
+      .setIntroducedIn(31200);
 }
 
 void CacheManagerFeature::validateOptions(
@@ -103,6 +129,13 @@ void CacheManagerFeature::validateOptions(
     LOG_TOPIC("75778", FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.size', need at least "
         << Manager::kMinSize;
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_idealLowerFillRatio >= _idealUpperFillRatio) {
+    LOG_TOPIC("5fd67", FATAL, arangodb::Logger::FIXME)
+        << "invalid values for `--cache.ideal-lower-fill-ratio' and "
+           "`--cache.ideal-upper-fill-ratio`";
     FATAL_ERROR_EXIT();
   }
 }
@@ -128,8 +161,9 @@ void CacheManagerFeature::start() {
   };
 
   SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
-  _manager =
-      std::make_unique<Manager>(sharedPRNG, std::move(postFn), _cacheSize);
+  _manager = std::make_unique<Manager>(
+      sharedPRNG, std::move(postFn), _cacheSize, /*enableWindowedStats*/ true,
+      _idealLowerFillRatio, _idealUpperFillRatio);
 
   _rebalancer = std::make_unique<CacheRebalancerThread>(
       server(), _manager.get(), _rebalancingInterval);
