@@ -286,7 +286,9 @@ class QueryOptimization : public QueryTestMulti {
     {
       auto collectionJson =
           VPackParser::fromJson("{ \"name\": \"collection_1\" }");
-      logicalCollection1 = vocbase().createCollection(collectionJson->slice());
+      logicalCollection1 = vocbase().createCollection(
+          collectionJson->slice(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, logicalCollection1);
     }
 
@@ -328,8 +330,8 @@ class QueryOptimization : public QueryTestMulti {
       static std::vector<std::string> const EMPTY;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          {logicalCollection1->name()}, EMPTY,
-          arangodb::transaction::Options());
+          {logicalCollection1->name()}, EMPTY, arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection

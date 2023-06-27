@@ -65,7 +65,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testCollection0\","
         "  \"usesRevisionsAsDocumentIds\": true }");
-    collection = vocbase.createCollection(createJson->slice());
+    collection = vocbase.createCollection(
+        createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_NE(nullptr, collection);
   }
 
@@ -110,7 +111,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -129,7 +131,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
-          *collection, arangodb::AccessMode::Type::WRITE);
+          *collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
@@ -154,7 +157,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       options.isRestore = true;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
-          *collection, arangodb::AccessMode::Type::WRITE);
+          *collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
@@ -192,7 +196,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testCollection0\","
         "  \"usesRevisionsAsDocumentIds\": true }");
-    collection = vocbase.createCollection(createJson->slice());
+    collection = vocbase.createCollection(
+        createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_NE(nullptr, collection);
   }
 
@@ -237,7 +242,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -256,7 +262,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
-          *collection, arangodb::AccessMode::Type::WRITE);
+          *collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
@@ -280,7 +287,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
-          *collection, arangodb::AccessMode::Type::WRITE);
+          *collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -297,7 +305,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
-          *collection, arangodb::AccessMode::Type::WRITE);
+          *collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : extraDocs) {
@@ -316,7 +325,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       options.isRestore = true;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
-          *collection, arangodb::AccessMode::Type::WRITE);
+          *collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
@@ -353,7 +363,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testCollection0\","
         "  \"usesRevisionsAsDocumentIds\": true }");
-    collection = vocbase.createCollection(createJson->slice());
+    collection = vocbase.createCollection(
+        createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_NE(nullptr, collection);
   }
 
@@ -396,7 +407,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
 
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {

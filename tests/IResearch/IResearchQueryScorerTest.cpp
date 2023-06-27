@@ -63,8 +63,9 @@ class QueryScorer : public QueryTest {
     {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_1\" }");
-      auto logicalCollection1 =
-          _vocbase.createCollection(collectionJson->slice());
+      auto logicalCollection1 = _vocbase.createCollection(
+          collectionJson->slice(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, logicalCollection1);
     }
 
@@ -72,8 +73,9 @@ class QueryScorer : public QueryTest {
     {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_2\" }");
-      auto logicalCollection2 =
-          _vocbase.createCollection(collectionJson->slice());
+      auto logicalCollection2 = _vocbase.createCollection(
+          collectionJson->slice(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, logicalCollection2);
     }
 
@@ -81,8 +83,9 @@ class QueryScorer : public QueryTest {
     {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_3\" }");
-      auto logicalCollection3 =
-          _vocbase.createCollection(collectionJson->slice());
+      auto logicalCollection3 = _vocbase.createCollection(
+          collectionJson->slice(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, logicalCollection3);
     }
   }
@@ -102,7 +105,8 @@ class QueryScorer : public QueryTest {
           arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
-          kEmpty, arangodb::transaction::Options());
+          kEmpty, arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections

@@ -57,7 +57,9 @@ class QueryStringTerm : public QueryTest {
     {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_1\" }");
-      logicalCollection1 = _vocbase.createCollection(collectionJson->slice());
+      logicalCollection1 = _vocbase.createCollection(
+          collectionJson->slice(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, logicalCollection1);
     }
 
@@ -65,7 +67,9 @@ class QueryStringTerm : public QueryTest {
     {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_2\" }");
-      logicalCollection2 = _vocbase.createCollection(collectionJson->slice());
+      logicalCollection2 = _vocbase.createCollection(
+          collectionJson->slice(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, logicalCollection2);
     }
   }
@@ -81,7 +85,8 @@ class QueryStringTerm : public QueryTest {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
         {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-        arangodb::transaction::Options());
+        arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -223,7 +228,8 @@ class QueryStringTerm : public QueryTest {
     {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-          kEmpty, kEmpty, arangodb::transaction::Options());
+          kEmpty, kEmpty, arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       auto const id =
           trx.extractIdString(VPackSlice(_insertedDocs.front()->data()));

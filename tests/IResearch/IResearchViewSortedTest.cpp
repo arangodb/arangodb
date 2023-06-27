@@ -163,7 +163,9 @@ TEST_P(IResearchViewSortedTest, SingleField) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_1\" }");
-    logicalCollection1 = vocbase.createCollection(collectionJson->slice());
+    logicalCollection1 = vocbase.createCollection(
+        collectionJson->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_NE(nullptr, logicalCollection1);
   }
 
@@ -171,7 +173,9 @@ TEST_P(IResearchViewSortedTest, SingleField) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_2\" }");
-    logicalCollection2 = vocbase.createCollection(collectionJson->slice());
+    logicalCollection2 = vocbase.createCollection(
+        collectionJson->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_NE(nullptr, logicalCollection2);
   }
 
@@ -226,7 +230,8 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
         {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
-        arangodb::transaction::Options());
+        arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -468,7 +473,9 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_1\" }");
-    logicalCollection1 = vocbase.createCollection(collectionJson->slice());
+    logicalCollection1 = vocbase.createCollection(
+        collectionJson->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_NE(nullptr, logicalCollection1);
   }
 
@@ -476,7 +483,9 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_2\" }");
-    logicalCollection2 = vocbase.createCollection(collectionJson->slice());
+    logicalCollection2 = vocbase.createCollection(
+        collectionJson->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_NE(nullptr, logicalCollection2);
   }
 
@@ -531,7 +540,8 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
         {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
-        arangodb::transaction::Options());
+        arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections

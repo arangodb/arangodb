@@ -54,16 +54,18 @@ class QuerySelectAll : public QueryTest {
     {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_1\" }");
-      auto logicalCollection1 =
-          _vocbase.createCollection(collectionJson->slice());
+      auto logicalCollection1 = _vocbase.createCollection(
+          collectionJson->slice(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, logicalCollection1);
     }
     // add collection_2
     {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_2\" }");
-      auto logicalCollection2 =
-          _vocbase.createCollection(collectionJson->slice());
+      auto logicalCollection2 = _vocbase.createCollection(
+          collectionJson->slice(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, logicalCollection2);
     }
   }
@@ -79,7 +81,8 @@ class QuerySelectAll : public QueryTest {
 
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-        {logicalCollection1->name()}, kEmpty, arangodb::transaction::Options());
+        {logicalCollection1->name()}, kEmpty, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
 
     size_t i = 0;
