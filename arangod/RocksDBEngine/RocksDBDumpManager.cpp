@@ -113,13 +113,15 @@ void RocksDBDumpManager::dropDatabase(TRI_vocbase_t& vocbase) {
 }
 
 void RocksDBDumpManager::garbageCollect(bool force) {
-  auto const now = TRI_microtime();
-
   std::lock_guard mutexLocker{_lock};
 
-  std::erase_if(_contexts, [&](auto const& x) {
-    return force || x.second->expires() < now;
-  });
+  if (force) {
+    _contexts.clear();
+  } else {
+    auto const now = TRI_microtime();
+    std::erase_if(_contexts,
+                  [&](auto const& x) { return x.second->expires() < now; });
+  }
 }
 
 void RocksDBDumpManager::beginShutdown() { garbageCollect(true); }
