@@ -39,7 +39,7 @@ struct BuilderTrx : public transaction::Methods {
              LogicalDataSource const& collection, AccessMode::Type type,
              transaction::Options options = transaction::Options())
       : transaction::Methods(transactionContext,
-                             transaction::Hints::Hint::INTERNAL, options),
+                             transaction::Hints::TrxType::INTERNAL, options),
         _cid(collection.id()) {
     // add the (sole) data-source
     addCollection(collection.id(), collection.name(), type);

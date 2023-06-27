@@ -180,6 +180,7 @@ bool CreateCollection::first() {
     std::shared_ptr<LogicalCollection> col;
     OperationOptions options(ExecContext::current());
     res.reset(Collections::create(vocbase, options, shard, type, docket.slice(),
+                                  transaction::Hints::TrxType::INTERNAL,
                                   waitForRepl, enforceReplFact,
                                   /*isNewDatabase*/ false, col));
     result(res);

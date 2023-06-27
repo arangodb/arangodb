@@ -360,7 +360,7 @@ void RestCollectionHandler::handleCommandPost() {
   OperationOptions options(_context);
   auto result = methods::Collections::create(
       _vocbase,  // collection vocbase
-      options, collections,
+      options, collections, transaction::Hints::TrxType::REST,
       waitForSyncReplication,    // replication wait flag
       enforceReplicationFactor,  // replication factor flag
       /*isNewDatabase*/ false    // here always false
@@ -580,7 +580,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
 
     OperationOptions options(_context);
     res = methods::Collections::updateProperties(
-        *coll, props.slice(), options, transaction::Hints::Hint::REST);
+        *coll, props.slice(), options, transaction::Hints::TrxType::REST);
     if (res.fail()) {
       generateError(res);
       return RestStatus::DONE;
@@ -600,7 +600,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
 
     std::string const newName = newNameSlice.copyString();
     res = methods::Collections::rename(*coll, newName, false,
-                                       transaction::Hints::Hint::REST);
+                                       transaction::Hints::TrxType::REST);
 
     if (res.ok()) {
       collectionRepresentation(newName, /*showProperties*/ false,
@@ -829,7 +829,7 @@ void RestCollectionHandler::initializeTransaction(LogicalCollection& coll) {
       // collection
       _activeTrx = std::make_unique<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(_vocbase), coll.name(),
-          AccessMode::Type::READ, transaction::Hints::Hint::REST);
+          AccessMode::Type::READ, transaction::Hints::TrxType::REST);
     } else {
       throw;
     }

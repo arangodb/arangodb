@@ -48,7 +48,7 @@ using namespace arangodb::aql;
 ClusterQuery::ClusterQuery(QueryId id,
                            std::shared_ptr<transaction::Context> ctx,
                            QueryOptions options,
-                           transaction::Hints::Hint const& trxTypeHint)
+                           transaction::Hints::TrxType const& trxTypeHint)
     : Query{id,
             ctx,
             {},
@@ -73,12 +73,12 @@ ClusterQuery::~ClusterQuery() {
 /// ensure that ClusterQuery objects are always created using shared_ptrs.
 std::shared_ptr<ClusterQuery> ClusterQuery::create(
     QueryId id, std::shared_ptr<transaction::Context> ctx, QueryOptions options,
-    transaction::Hints::Hint const& trxTypeHint) {
+    transaction::Hints::TrxType const& trxTypeHint) {
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : ClusterQuery {
     MakeSharedQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
                     QueryOptions options,
-                    transaction::Hints::Hint const& trxTypeHint)
+                    transaction::Hints::TrxType const& trxTypeHint)
         : ClusterQuery{id, std::move(ctx), std::move(options), trxTypeHint} {}
 
     ~MakeSharedQuery() final {
@@ -143,17 +143,7 @@ void ClusterQuery::prepareClusterQuery(
   _trx = AqlTransaction::create(
       _transactionContext, _collections, _queryOptions.transactionOptions,
       this->_trxTypeHint, std::move(inaccessibleCollections));
-  bool isSystem;
-  _collections.visit(
-      [&isSystem](std::string const& name, Collection& coll) -> bool {
-        if (coll.getCollection()->system()) {
-          isSystem = true;
-          return false;  // returns false for early aborting and not continue
-                         // the traversal, as it's already enough
-        }
-        return true;
-      });
-  if (!isSystem) {
+  if (_trxTypeHint == transaction::Hints::TrxType::AQL) {
     _trx->state()->setResourceMonitor(_resourceMonitor);
   }
   // create the transaction object, but do not start it yet

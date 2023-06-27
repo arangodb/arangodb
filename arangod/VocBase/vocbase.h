@@ -42,6 +42,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
+#include "Transaction/Hints.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
@@ -380,12 +381,14 @@ struct TRI_vocbase_t {
   /// registered after initial validation).
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> createCollections(
       arangodb::velocypack::Slice infoSlice,
+      arangodb::transaction::Hints::TrxType const& trxTypeHint,
       bool allowEnterpriseCollectionsOnSingleServer);
 
   [[nodiscard]] arangodb::ResultT<
       std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
   createCollections(std::vector<arangodb::CreateCollectionBody> const&
                         parametersOfCollections,
+                    arangodb::transaction::Hints::TrxType const& trxTypeHint,
                     bool allowEnterpriseCollectionsOnSingleServer);
 
   /// @brief creates a new collection from parameter set
@@ -394,7 +397,8 @@ struct TRI_vocbase_t {
   /// using a cid of > 0 is supported to import dumps from other servers etc.
   /// but the functionality is not advertised
   std::shared_ptr<arangodb::LogicalCollection> createCollection(
-      arangodb::velocypack::Slice parameters);
+      arangodb::velocypack::Slice parameters,
+      arangodb::transaction::Hints::TrxType const& trxTypeHint);
 
   /// @brief drops a collection.
   arangodb::Result dropCollection(arangodb::DataSourceId cid,
@@ -429,7 +433,8 @@ struct TRI_vocbase_t {
   /// the isAStub flag should be set to true for collections created by
   /// ClusterInfo.
   std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
-      arangodb::velocypack::Slice data, bool isAStub);
+      arangodb::velocypack::Slice data,
+      arangodb::transaction::Hints::TrxType const& trxTypeHints, bool isAStub);
 
   /// @brief creates a collection object (of type LogicalCollection or one of
   /// the SmartGraph-specific subtypes) for storage. The object is augmented
@@ -439,7 +444,8 @@ struct TRI_vocbase_t {
   /// before!) and not on coordinators (coordinators are not expected to store
   /// any collections).
   std::shared_ptr<arangodb::LogicalCollection> createCollectionObjectForStorage(
-      arangodb::velocypack::Slice parameters);
+      arangodb::velocypack::Slice parameters,
+      arangodb::transaction::Hints::TrxType const& trxTypeHint);
 
  private:
   /// @brief adds further SmartGraph-specific sub-collections to the vector of

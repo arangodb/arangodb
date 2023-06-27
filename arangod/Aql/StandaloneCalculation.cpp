@@ -36,7 +36,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Hints.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/Status.h"
 #include "Utils/CollectionNameResolver.h"
@@ -175,14 +174,16 @@ struct CalculationTransactionContext final
 
 class CalculationQueryContext final : public arangodb::aql::QueryContext {
  public:
-  explicit CalculationQueryContext(TRI_vocbase_t& vocbase)
-      : QueryContext(vocbase),
+  explicit CalculationQueryContext(
+      TRI_vocbase_t& vocbase, transaction::Hints::TrxType const& trxTypeHint)
+      : QueryContext(vocbase, trxTypeHint),
         _resolver(vocbase),
         _transactionContext(vocbase) {
     _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
-    _trx = AqlTransaction::create(
-        newTrxContext(), _collections, _queryOptions.transactionOptions,
-        transaction::Hints::Hint::INTERNAL, std::unordered_set<std::string>{});
+    _trx = AqlTransaction::create(newTrxContext(), _collections,
+                                  _queryOptions.transactionOptions,
+                                  transaction::Hints::TrxType::INTERNAL,
+                                  std::unordered_set<std::string>{});
     _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
     _trx->addHint(arangodb::transaction::Hints::Hint::
                       SINGLE_OPERATION);  // to avoid taking db snapshot
@@ -254,17 +255,16 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
 namespace arangodb::aql {
 
 std::unique_ptr<QueryContext> StandaloneCalculation::buildQueryContext(
-    TRI_vocbase_t& vocbase) {
-  return std::make_unique<::CalculationQueryContext>(vocbase);
+    TRI_vocbase_t& vocbase, transaction::Hints::TrxType const& trxTypeHint) {
+  return std::make_unique<::CalculationQueryContext>(vocbase, trxTypeHint);
 }
 
-Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
-                                            std::string_view queryString,
-                                            std::string_view parameterName,
-                                            std::string_view errorContext,
-                                            bool isComputedValue) {
+Result StandaloneCalculation::validateQuery(
+    TRI_vocbase_t& vocbase, std::string_view queryString,
+    std::string_view parameterName, std::string_view errorContext,
+    transaction::Hints::TrxType const& trxTypeHint, bool isComputedValue) {
   try {
-    CalculationQueryContext queryContext(vocbase);
+    CalculationQueryContext queryContext(vocbase, trxTypeHint);
     auto ast = queryContext.ast();
     TRI_ASSERT(ast);
     auto qs = arangodb::aql::QueryString(queryString);

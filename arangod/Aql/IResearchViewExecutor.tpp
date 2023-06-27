@@ -511,8 +511,7 @@ void IndexReadBuffer<ValueType, copyStored>::assertSizeCoherence()
 template<typename Impl, typename ExecutionTraits>
 IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
     Fetcher&, Infos& infos)
-    : _trx(infos.getQuery().newTrxContext(),
-           transaction::Hints::Hint::INTERNAL),
+    : _trx(infos.getQuery().newTrxContext(), infos.getQuery().getTrxTypeHint()),
       _infos(infos),
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
       _indexReadBuffer(_infos.getScoreRegisters().size(),

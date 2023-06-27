@@ -361,8 +361,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto ctx = transaction::V8Context::Create(*vocbase, true);
   SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection,
                                   AccessMode::Type::EXCLUSIVE,
-                                  transaction::Hints::Hint::REST);
-  trx.addHint(transaction::Hints::Hint::REST);
+                                  transaction::Hints::TrxType::REST);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -414,9 +413,8 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto ctx = transaction::V8Context::Create(*vocbase, true);
   SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection,
                                   AccessMode::Type::WRITE,
-                                  transaction::Hints::Hint::INTERNAL);
+                                  transaction::Hints::TrxType::REST);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  trx.addHint(transaction::Hints::Hint::REST);
   Result res = trx.begin();
 
   if (!res.ok()) {

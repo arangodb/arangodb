@@ -109,16 +109,18 @@ class Methods {
   /// @brief create the transaction
   explicit Methods(
       std::shared_ptr<transaction::Context> const& ctx,
-      transaction::Hints::Hint const& trxTypeHint =
-          transaction::Hints::Hint::INTERNAL,
+      transaction::Hints::TrxType const& trxTypeHint,
+      //   transaction::Hints::TrxType const& trxTypeHint =
+      //      transaction::Hints::TrxType::INTERNAL,
       transaction::Options const& options = transaction::Options());
 
   /// @brief create the transaction, and add a collection to it.
   /// use on followers only!
   Methods(std::shared_ptr<transaction::Context> ctx,
           std::string const& collectionName, AccessMode::Type type,
-          transaction::Hints::Hint const& trxTypeHint =
-              transaction::Hints::Hint::INTERNAL);
+          transaction::Hints::TrxType const& trxTypeHint);
+  //   transaction::Hints::TrxType const& trxTypeHint =
+  //       transaction::Hints::TrxType::INTERNAL);
 
   /// @brief create the transaction, used to be UserTransaction
   Methods(std::shared_ptr<transaction::Context> const& ctx,
@@ -126,8 +128,9 @@ class Methods {
           std::vector<std::string> const& writeCollections,
           std::vector<std::string> const& exclusiveCollections,
           transaction::Options const& options,
-          transaction::Hints::Hint const& trxTypeHint =
-              transaction::Hints::Hint::INTERNAL);
+          transaction::Hints::TrxType const& trxTypeHint);
+  //  transaction::Hints::TrxType const& trxTypeHint =
+  //     transaction::Hints::TrxType::INTERNAL);
 
   /// @brief destroy the transaction
   virtual ~Methods();
@@ -200,6 +203,10 @@ class Methods {
 
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
+
+  void addTrxTypeHint(transaction::Hints::TrxType const& hint) {
+    _trxTypeHint = hint;
+  }
 
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;
@@ -582,6 +589,8 @@ class Methods {
 
   /// @brief transaction hints
   transaction::Hints _localHints;
+
+  transaction::Hints::TrxType _trxTypeHint;
 
   /// @brief name-to-cid lookup cache for last collection seen
   struct {

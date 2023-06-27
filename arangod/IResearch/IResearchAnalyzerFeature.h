@@ -482,9 +482,9 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   bool visit(std::function<bool(AnalyzerPool::ptr const&)> const& visitor,
              TRI_vocbase_t const* vocbase) const;
 
-  transaction::Hints::Hint const& getTrxTypeHint() { return _trxTypeHint; }
+  transaction::Hints::TrxType const& getTrxTypeHint() { return _trxTypeHint; }
 
-  void setTrxTypeHint(transaction::Hints::Hint const& trxTypeHint) noexcept {
+  void setTrxTypeHint(transaction::Hints::TrxType const& trxTypeHint) noexcept {
     _trxTypeHint = trxTypeHint;
   }
 
@@ -583,7 +583,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   std::function<void(bool)> _gcfunc;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
-  transaction::Hints::Hint _trxTypeHint;
+  transaction::Hints::TrxType _trxTypeHint;
 };
 
 }  // namespace iresearch

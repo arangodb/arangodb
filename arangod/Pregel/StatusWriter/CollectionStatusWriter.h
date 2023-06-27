@@ -51,9 +51,9 @@ namespace arangodb::pregel::statuswriter {
 struct CollectionStatusWriter : StatusWriterInterface {
   CollectionStatusWriter(TRI_vocbase_t& vocbase,
                          ExecutionNumber& executionNumber,
-                         transaction::Hints::Hint const& trxTypeHint);
+                         transaction::Hints::TrxType const& trxTypeHint);
   CollectionStatusWriter(TRI_vocbase_t& vocbase,
-                         transaction::Hints::Hint const& trxTypeHint);
+                         transaction::Hints::TrxType const& trxTypeHint);
 
   [[nodiscard]] auto createResult(VPackSlice data) -> OperationResult override;
   [[nodiscard]] auto readResult() -> OperationResult override;
@@ -89,7 +89,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
  private:
   DatabaseGuard _vocbaseGuard;
   ExecutionNumber _executionNumber;
-  transaction::Hints::Hint _trxTypeHint;
+  transaction::Hints::TrxType _trxTypeHint;
   std::optional<std::string> _user;
   std::shared_ptr<LogicalCollection> _logicalCollection;
 };

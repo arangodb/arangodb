@@ -113,7 +113,8 @@ bool ResignShardLeadership::first() {
     SingleCollectionTransaction trx{
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),
-        *col, AccessMode::Type::EXCLUSIVE, transaction::Hints::Hint::INTERNAL};
+        *col, AccessMode::Type::EXCLUSIVE,
+        transaction::Hints::TrxType::INTERNAL};
 
     Result res = trx.begin();
 

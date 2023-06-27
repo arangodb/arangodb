@@ -454,7 +454,7 @@ bool equalAnalyzer(AnalyzerPool const& pool, std::string_view type,
 ////////////////////////////////////////////////////////////////////////////////
 Result visitAnalyzers(TRI_vocbase_t& vocbase,
                       std::function<Result(VPackSlice)> const& visitor,
-                      transaction::Hints::Hint const& trxTypeHint) {
+                      transaction::Hints::TrxType const& trxTypeHint) {
   auto const resultVisitor =
       [](std::function<Result(VPackSlice)> const& visitor,
          TRI_vocbase_t const& vocbase, VPackSlice slice) -> Result {
@@ -1088,7 +1088,7 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
     : ArangodFeature{server, *this},
-      _trxTypeHint(transaction::Hints::Hint::INTERNAL) {
+      _trxTypeHint(transaction::Hints::TrxType::INTERNAL) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   // used for registering IResearch analyzer functions

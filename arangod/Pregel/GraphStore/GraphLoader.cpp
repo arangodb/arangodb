@@ -173,7 +173,7 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
   trxOpts.allowImplicitCollectionsForRead = true;
   auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
   transaction::Methods trx(ctx, {}, {}, {}, trxOpts,
-                           transaction::Hints::Hint::INTERNAL);
+                           transaction::Hints::TrxType::INTERNAL);
   Result res = trx.begin();
 
   if (!res.ok()) {

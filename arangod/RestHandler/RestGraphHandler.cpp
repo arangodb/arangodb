@@ -293,7 +293,7 @@ void RestGraphHandler::vertexActionRead(Graph& graph,
   auto maybeRev = handleRevision();
 
   auto ctx = createTransactionContext(AccessMode::Type::READ);
-  GraphOperations gops{graph, _vocbase, transaction::Hints::Hint::REST, ctx};
+  GraphOperations gops{graph, _vocbase, transaction::Hints::TrxType::REST, ctx};
   OperationResult result = gops.getVertex(collectionName, key, maybeRev);
 
   if (!result.ok()) {
@@ -565,7 +565,7 @@ void RestGraphHandler::edgeActionRead(Graph& graph,
   auto maybeRev = handleRevision();
 
   auto ctx = createTransactionContext(AccessMode::Type::READ);
-  GraphOperations gops{graph, _vocbase, transaction::Hints::Hint::REST, ctx};
+  GraphOperations gops{graph, _vocbase, transaction::Hints::TrxType::REST, ctx};
   OperationResult result = gops.getEdge(definitionName, key, maybeRev);
 
   if (result.fail()) {
@@ -612,7 +612,7 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph,
   auto maybeRev = handleRevision();
 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
-  GraphOperations gops{graph, _vocbase, transaction::Hints::Hint::REST, ctx};
+  GraphOperations gops{graph, _vocbase, transaction::Hints::TrxType::REST, ctx};
 
   OperationResult result =
       gops.removeEdge(definitionName, key, maybeRev, waitForSync, returnOld);
@@ -726,7 +726,7 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph,
 
   // simon: why is this part of el-cheapo ??
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
-  GraphOperations gops{graph, _vocbase, transaction::Hints::Hint::REST, ctx};
+  GraphOperations gops{graph, _vocbase, transaction::Hints::TrxType::REST, ctx};
   OperationOptions options(_context);
   OperationResult result(Result(), options);
 
@@ -789,7 +789,7 @@ Result RestGraphHandler::modifyVertexDefinition(
       _request->parsedValue(StaticStrings::GraphCreateCollection, true);
 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
-  GraphOperations gops{graph, _vocbase, transaction::Hints::Hint::REST, ctx};
+  GraphOperations gops{graph, _vocbase, transaction::Hints::TrxType::REST, ctx};
   OperationOptions options(_context);
   OperationResult result(Result(), options);
 
@@ -853,7 +853,7 @@ Result RestGraphHandler::documentModify(graph::Graph& graph,
   auto maybeRev = handleRevision();
 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
-  GraphOperations gops{graph, _vocbase, transaction::Hints::Hint::REST, ctx};
+  GraphOperations gops{graph, _vocbase, transaction::Hints::TrxType::REST, ctx};
 
   OperationOptions options(_context);
   OperationResult result(Result(), options);
@@ -917,7 +917,7 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph,
   bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
-  GraphOperations gops{graph, _vocbase, transaction::Hints::Hint::REST, ctx};
+  GraphOperations gops{graph, _vocbase, transaction::Hints::TrxType::REST, ctx};
 
   OperationOptions options(_context);
   OperationResult result(Result(), options);
@@ -961,7 +961,7 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
   auto maybeRev = handleRevision();
 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
-  GraphOperations gops{graph, _vocbase, transaction::Hints::Hint::REST, ctx};
+  GraphOperations gops{graph, _vocbase, transaction::Hints::TrxType::REST, ctx};
 
   OperationResult result =
       gops.removeVertex(collectionName, key, maybeRev, waitForSync, returnOld);

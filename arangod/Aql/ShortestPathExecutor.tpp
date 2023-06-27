@@ -131,7 +131,7 @@ graph::TraverserCache* ShortestPathExecutorInfos<FinderType>::cache() const {
 template<class FinderType>
 ShortestPathExecutor<FinderType>::ShortestPathExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
-      _trx(infos.query().newTrxContext(), transaction::Hints::Hint::INTERNAL),
+      _trx(infos.query().newTrxContext(), infos.query().getTrxTypeHint()),
       _inputRow{CreateInvalidInputRowHint{}},
       _finder{infos.finder()},
       _pathBuilder{&_trx},

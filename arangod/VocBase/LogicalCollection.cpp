@@ -118,8 +118,9 @@ std::string readGloballyUniqueId(velocypack::Slice info) {
 
 // The Slice contains the part of the plan that
 // is relevant for this collection.
-LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
-                                     bool isAStub)
+LogicalCollection::LogicalCollection(
+    TRI_vocbase_t& vocbase, VPackSlice info,
+    transaction::Hints::TrxType const& trxTypeHint, bool isAStub)
     : LogicalDataSource(
           *this, vocbase, DataSourceId{Helper::extractIdValue(info)},
           ::readGloballyUniqueId(info),
@@ -138,6 +139,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(
           info, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT)),
+      _trxTypeHint(trxTypeHint),
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
       _isDisjoint(
@@ -287,8 +289,8 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
 
 Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
   if (!computedValues.isNone()) {
-    auto result =
-        ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
+    auto result = ComputedValues::buildInstance(vocbase(), shardKeys(),
+                                                computedValues, _trxTypeHint);
 
     if (result.fail()) {
       return result.result();

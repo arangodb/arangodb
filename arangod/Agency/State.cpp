@@ -130,7 +130,7 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
-      "log", AccessMode::Type::WRITE, transaction::Hints::Hint::INTERNAL);
+      "log", AccessMode::Type::WRITE, transaction::Hints::TrxType::INTERNAL);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -219,7 +219,7 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
                                std::shared_ptr<transaction::Context>(), &ctx),
                            {}, {"log", "configuration"}, {},
                            transaction::Options(),
-                           transaction::Hints::Hint::INTERNAL);
+                           transaction::Hints::TrxType::INTERNAL);
 
   Result res = trx.begin();
   if (!res.ok()) {
@@ -871,7 +871,8 @@ bool State::ensureCollection(std::string const& name, bool drop) {
     dropCollection(name);
   }
 
-  auto collection = _vocbase->createCollection(body.slice());
+  auto collection = _vocbase->createCollection(
+      body.slice(), transaction::Hints::TrxType::INTERNAL);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
@@ -1127,7 +1128,7 @@ bool State::loadOrPersistConfiguration() {
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),
         "configuration", AccessMode::Type::WRITE,
-        transaction::Hints::Hint::INTERNAL);
+        transaction::Hints::TrxType::INTERNAL);
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -1490,7 +1491,8 @@ bool State::persistCompactionSnapshot(index_t cind,
     SingleCollectionTransaction trx(
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),
-        "compact", AccessMode::Type::WRITE, transaction::Hints::Hint::INTERNAL);
+        "compact", AccessMode::Type::WRITE,
+        transaction::Hints::TrxType::INTERNAL);
 
     Result res = trx.begin();
 
@@ -1595,7 +1597,7 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
       "configuration", AccessMode::Type::WRITE,
-      transaction::Hints::Hint::INTERNAL);
+      transaction::Hints::TrxType::INTERNAL);
   Result res = trx.begin();
 
   if (!res.ok()) {

@@ -65,7 +65,7 @@ MaterializeExecutor<T, localDocumentId>::ReadContext::copyDocumentCallback(
 template<typename T, bool localDocumentId>
 MaterializeExecutor<T, localDocumentId>::MaterializeExecutor(
     MaterializeExecutor<T, localDocumentId>::Fetcher& /*fetcher*/, Infos& infos)
-    : _trx(infos.query().newTrxContext(), transaction::Hints::Hint::INTERNAL),
+    : _trx(infos.query().newTrxContext(), infos.query().getTrxTypeHint()),
       _readDocumentContext(infos),
       _infos(infos),
       _memoryTracker(_infos.query().resourceMonitor()) {

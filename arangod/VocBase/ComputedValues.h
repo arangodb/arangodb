@@ -31,6 +31,7 @@
 #include "Basics/ResultT.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
+#include "Transaction/Hints.h"
 
 #include <cstdint>
 #include <span>
@@ -131,6 +132,7 @@ class ComputedValues {
    public:
     ComputedValue(TRI_vocbase_t& vocbase, std::string_view name,
                   std::string_view expressionString,
+                  transaction::Hints::TrxType const& trxTypeHint,
                   ComputeValuesOn mustComputeOn, bool overwrite,
                   bool failOnWarning, bool keepNull);
     ComputedValue(ComputedValue const&) = delete;
@@ -169,7 +171,8 @@ class ComputedValues {
  public:
   explicit ComputedValues(TRI_vocbase_t& vocbase,
                           std::span<std::string const> shardKeys,
-                          velocypack::Slice params);
+                          velocypack::Slice params,
+                          transaction::Hints::TrxType const& trxTypeHint);
   ComputedValues(ComputedValues const&) = delete;
   ComputedValues& operator=(ComputedValues const&) = delete;
   ~ComputedValues();
@@ -188,7 +191,8 @@ class ComputedValues {
 
   static ResultT<std::shared_ptr<ComputedValues>> buildInstance(
       TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
-      velocypack::Slice computedValues);
+      velocypack::Slice computedValues,
+      transaction::Hints::TrxType const& trxTypeHint);
 
  private:
   void mergeComputedAttributes(
@@ -200,7 +204,8 @@ class ComputedValues {
 
   Result buildDefinitions(TRI_vocbase_t& vocbase,
                           std::span<std::string const> shardKeys,
-                          velocypack::Slice params);
+                          velocypack::Slice params,
+                          transaction::Hints::TrxType const& trxTypeHint);
 
   // individual instructions for computed values
   std::vector<ComputedValue> _values;

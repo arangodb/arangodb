@@ -41,7 +41,7 @@ namespace arangodb::pregel::statuswriter {
 
 CollectionStatusWriter::CollectionStatusWriter(
     TRI_vocbase_t& vocbase, ExecutionNumber& executionNumber,
-    transaction::Hints::Hint const& trxTypeHint)
+    transaction::Hints::TrxType const& trxTypeHint)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _trxTypeHint(trxTypeHint) {
@@ -59,7 +59,7 @@ CollectionStatusWriter::CollectionStatusWriter(
 };
 
 CollectionStatusWriter::CollectionStatusWriter(
-    TRI_vocbase_t& vocbase, transaction::Hints::Hint const& trxTypeHint)
+    TRI_vocbase_t& vocbase, transaction::Hints::TrxType const& trxTypeHint)
     : _vocbaseGuard(vocbase), _trxTypeHint(trxTypeHint) {
   CollectionNameResolver resolver(_vocbaseGuard.database());
   auto logicalCollection =

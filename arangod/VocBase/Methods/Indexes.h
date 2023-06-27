@@ -41,18 +41,17 @@ namespace methods {
 
 /// Common code for ensureIndexes and api-index.js
 struct Indexes {
-  static arangodb::Result getIndex(LogicalCollection const& collection,
-                                   velocypack::Slice indexId,
-                                   velocypack::Builder&,
-                                   transaction::Hints::Hint const& trxTypeHint,
-                                   transaction::Methods* trx = nullptr);
+  static arangodb::Result getIndex(
+      LogicalCollection const& collection, velocypack::Slice indexId,
+      velocypack::Builder&, transaction::Hints::TrxType const& trxTypeHint,
+      transaction::Methods* trx = nullptr);
 
   /// @brief get all indexes, skips view links
   static arangodb::Result getAll(LogicalCollection const& collection,
                                  std::underlying_type<Index::Serialize>::type,
                                  bool withHidden,
                                  arangodb::velocypack::Builder&,
-                                 transaction::Hints::Hint const& trxTypeHint,
+                                 transaction::Hints::TrxType const& trxTypeHint,
                                  transaction::Methods* trx = nullptr);
 
   static arangodb::Result createIndex(LogicalCollection&, Index::IndexType,
@@ -65,7 +64,7 @@ struct Indexes {
 
   static arangodb::Result drop(LogicalCollection& collection,
                                velocypack::Slice indexArg,
-                               transaction::Hints::Hint const& trxTypeHint);
+                               transaction::Hints::TrxType const& trxTypeHint);
 
   static arangodb::Result extractHandle(LogicalCollection const& collection,
                                         CollectionNameResolver const* resolver,

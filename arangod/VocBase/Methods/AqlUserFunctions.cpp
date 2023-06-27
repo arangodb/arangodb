@@ -99,7 +99,7 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase,
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
     SingleCollectionTransaction trx(ctx, StaticStrings::AqlFunctionsCollection,
                                     AccessMode::Type::WRITE,
-                                    transaction::Hints::Hint::REST);
+                                    transaction::Hints::TrxType::REST);
 
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -160,7 +160,7 @@ Result arangodb::unregisterUserFunctionsGroup(
     auto query = arangodb::aql::Query::create(
         transaction::V8Context::CreateWhenRequired(vocbase, true),
         arangodb::aql::QueryString(aql), std::move(binds),
-        transaction::Hints::Hint::INTERNAL);
+        transaction::Hints::TrxType::INTERNAL);
     aql::QueryResult queryResult = query->executeSync();
 
     if (queryResult.result.fail()) {
@@ -310,7 +310,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
     SingleCollectionTransaction trx(ctx, StaticStrings::AqlFunctionsCollection,
                                     AccessMode::Type::WRITE,
-                                    transaction::Hints::Hint::REST);
+                                    transaction::Hints::TrxType::REST);
 
     res = trx.begin();
     if (res.fail()) {
@@ -371,7 +371,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
   auto query = arangodb::aql::Query::create(
       transaction::V8Context::CreateWhenRequired(vocbase, true),
       arangodb::aql::QueryString(aql), std::move(binds),
-      transaction::Hints::Hint::INTERNAL);
+      transaction::Hints::TrxType::INTERNAL);
   aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {

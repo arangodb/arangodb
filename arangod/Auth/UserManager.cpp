@@ -296,7 +296,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
   SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
                                   AccessMode::Type::WRITE,
-                                  transaction::Hints::Hint::INTERNAL);
+                                  transaction::Hints::TrxType::INTERNAL);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -682,7 +682,7 @@ static Result RemoveUserInternal(ArangodServer& server,
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
   SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
                                   AccessMode::Type::WRITE,
-                                  transaction::Hints::Hint::INTERNAL);
+                                  transaction::Hints::TrxType::INTERNAL);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 

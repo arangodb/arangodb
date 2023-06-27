@@ -162,12 +162,12 @@ void ComputedValuesExpressionContext::clearVariable(
   _variables.erase(variable);
 }
 
-ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
-                                             std::string_view name,
-                                             std::string_view expressionString,
-                                             ComputeValuesOn mustComputeOn,
-                                             bool overwrite, bool failOnWarning,
-                                             bool keepNull)
+ComputedValues::ComputedValue::ComputedValue(
+    TRI_vocbase_t& vocbase, std::string_view name,
+    std::string_view expressionString,
+    transaction::Hints::TrxType const& trxTypeHint,
+    ComputeValuesOn mustComputeOn, bool overwrite, bool failOnWarning,
+    bool keepNull)
     : _vocbase(vocbase),
       _name(name),
       _expressionString(expressionString),
@@ -175,7 +175,8 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
       _overwrite(overwrite),
       _failOnWarning(failOnWarning),
       _keepNull(keepNull),
-      _queryContext(aql::StandaloneCalculation::buildQueryContext(_vocbase)),
+      _queryContext(
+          aql::StandaloneCalculation::buildQueryContext(_vocbase, trxTypeHint)),
       _rootNode(nullptr) {
   aql::Ast* ast = _queryContext->ast();
 
@@ -312,8 +313,9 @@ void ComputedValues::ComputedValue::computeAttribute(
 
 ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
                                std::span<std::string const> shardKeys,
-                               velocypack::Slice params) {
-  Result res = buildDefinitions(vocbase, shardKeys, params);
+                               velocypack::Slice params,
+                               transaction::Hints::TrxType const& trxTypeHint) {
+  Result res = buildDefinitions(vocbase, shardKeys, params, trxTypeHint);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -409,9 +411,9 @@ void ComputedValues::mergeComputedAttributes(
   output.close();
 }
 
-Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
-                                        std::span<std::string const> shardKeys,
-                                        velocypack::Slice params) {
+Result ComputedValues::buildDefinitions(
+    TRI_vocbase_t& vocbase, std::span<std::string const> shardKeys,
+    velocypack::Slice params, transaction::Hints::TrxType const& trxTypeHint) {
   if (params.isNone() || params.isNull()) {
     return {};
   }
@@ -517,7 +519,7 @@ Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
     // validate the actual expression
     Result res = aql::StandaloneCalculation::validateQuery(
         vocbase, expression.stringView(), ::docParameter,
-        " in computation expression", /*isComputedValue*/ true);
+        " in computation expression", trxTypeHint, /*isComputedValue*/ true);
     if (res.fail()) {
       return {
           TRI_ERROR_BAD_PARAMETER,
@@ -544,8 +546,8 @@ Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
 
     try {
       _values.emplace_back(vocbase, name.stringView(), expression.stringView(),
-                           mustComputeOn, overwrite.getBoolean(), failOnWarning,
-                           keepNull);
+                           trxTypeHint, mustComputeOn, overwrite.getBoolean(),
+                           failOnWarning, keepNull);
     } catch (std::exception const& ex) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("invalid 'computedValues' entry: ", ex.what())};
@@ -557,7 +559,8 @@ Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
 
 ResultT<std::shared_ptr<ComputedValues>> ComputedValues::buildInstance(
     TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
-    velocypack::Slice computedValues) {
+    velocypack::Slice computedValues,
+    transaction::Hints::TrxType const& trxTypeHint) {
   if (!computedValues.isNone()) {
     if (computedValues.isNull()) {
       computedValues = VPackSlice::emptyArraySlice();
@@ -578,7 +581,7 @@ ResultT<std::shared_ptr<ComputedValues>> ComputedValues::buildInstance(
             vocbase.server()
                 .getFeature<DatabaseFeature>()
                 .getCalculationVocbase(),
-            std::span(shardKeys), computedValues);
+            std::span(shardKeys), computedValues, trxTypeHint);
       } catch (std::exception const& ex) {
         return Result{
             TRI_ERROR_BAD_PARAMETER,

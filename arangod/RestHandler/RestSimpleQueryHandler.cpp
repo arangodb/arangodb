@@ -151,7 +151,7 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   data.close();
 
   // now run the actual query and handle the result
-  return registerQueryOrCursor(data.slice(), transaction::Hints::Hint::REST);
+  return registerQueryOrCursor(data.slice(), transaction::Hints::TrxType::REST);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -218,7 +218,7 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice(), transaction::Hints::Hint::REST);
+  return registerQueryOrCursor(data.slice(), transaction::Hints::TrxType::REST);
 }
 
 static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
@@ -315,5 +315,5 @@ RestStatus RestSimpleQueryHandler::byExample() {
   data.add("count", VPackSlice::trueSlice());
   data.close();
 
-  return registerQueryOrCursor(data.slice(), transaction::Hints::Hint::REST);
+  return registerQueryOrCursor(data.slice(), transaction::Hints::TrxType::REST);
 }

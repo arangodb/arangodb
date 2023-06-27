@@ -1677,7 +1677,7 @@ static bool findRefusal(
 }
 
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
-                              transaction::Hints::Hint const& trxTypeHint,
+                              transaction::Hints::TrxType const& trxTypeHint,
                               transaction::Options const& options)
     : _state(nullptr), _transactionContext(ctx), _mainTransaction(false) {
   TRI_ASSERT(_transactionContext != nullptr);
@@ -1687,7 +1687,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction context pointer");
   }
-  this->addHint(trxTypeHint);
+  this->addTrxTypeHint(trxTypeHint);
 
   // initialize the transaction
   _state = _transactionContext->acquireState(options, _mainTransaction);
@@ -1697,7 +1697,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
                               std::string const& collectionName,
                               AccessMode::Type type,
-                              transaction::Hints::Hint const& trxTypeHint)
+                              transaction::Hints::TrxType const& trxTypeHint)
     : transaction::Methods(std::move(ctx), trxTypeHint,
                            transaction::Options{}) {
   TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
@@ -1714,7 +1714,7 @@ transaction::Methods::Methods(
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections,
     transaction::Options const& options,
-    transaction::Hints::Hint const& trxTypeHint)
+    transaction::Hints::TrxType const& trxTypeHint)
     : transaction::Methods(ctx, trxTypeHint, options) {
   Result res;
   for (auto const& it : exclusiveCollections) {
@@ -1817,6 +1817,7 @@ Result transaction::Methods::begin() {
     TRI_ASSERT(!(a && b));
 #endif
 
+    _state->setTrxTypeHint(_trxTypeHint);
     res = _state->beginTransaction(_localHints);
     if (res.ok()) {
       res = applyStatusChangeCallbacks(*this, Status::RUNNING);

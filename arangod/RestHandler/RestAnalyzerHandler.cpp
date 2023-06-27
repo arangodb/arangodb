@@ -204,7 +204,7 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
   }
 
   auto& analyzers = server().getFeature<IResearchAnalyzerFeature>();
-  analyzers.setTrxTypeHint(transaction::Hints::Hint::REST);
+  analyzers.setTrxTypeHint(transaction::Hints::TrxType::REST);
 
   auto& suffixes = _request->suffixes();
 

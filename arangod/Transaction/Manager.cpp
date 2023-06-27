@@ -87,7 +87,7 @@ namespace {
 struct MGMethods final : arangodb::transaction::Methods {
   MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
             arangodb::transaction::Options const& opts)
-      : Methods(ctx, Hints::Hint::INTERNAL, opts) {}
+      : Methods(ctx, Hints::TrxType::REST, opts) {}
 };
 }  // namespace
 
@@ -405,7 +405,6 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
 transaction::Hints Manager::ensureHints(transaction::Options& options) const {
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  hints.set(transaction::Hints::Hint::REST);
   if (isFollowerTransactionOnDBServer(options)) {
     hints.set(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     if (options.isIntermediateCommitEnabled()) {
@@ -421,6 +420,7 @@ Result Manager::beginTransaction(transaction::Hints hints,
                                  std::shared_ptr<TransactionState>& state) {
   Result res;
   try {
+    state->setTrxTypeHint(transaction::Hints::TrxType::REST);
     res = state->beginTransaction(hints);  // registers with transaction manager
   } catch (basics::Exception const& ex) {
     res.reset(ex.code(), ex.what());

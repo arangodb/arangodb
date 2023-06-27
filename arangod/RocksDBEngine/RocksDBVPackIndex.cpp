@@ -1303,7 +1303,7 @@ Result RocksDBVPackIndex::warmup() {
 
   auto ctx = transaction::StandaloneContext::Create(_collection.vocbase());
   SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ,
-                                  transaction::Hints::Hint::INTERNAL);
+                                  transaction::Hints::TrxType::INTERNAL);
   Result res = trx.begin();
 
   if (res.fail()) {

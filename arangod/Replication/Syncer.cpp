@@ -677,7 +677,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
     if (col->system()) {
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(vocbase), *col,
-          AccessMode::Type::WRITE, transaction::Hints::Hint::INTERNAL);
+          AccessMode::Type::WRITE, transaction::Hints::TrxType::INTERNAL);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
       Result res = trx.begin();
@@ -725,7 +725,8 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
   auto stripped = rocksutils::stripObjectIds(merged.slice());
 
   try {
-    col = vocbase.createCollection(stripped.first);
+    col = vocbase.createCollection(stripped.first,
+                                   transaction::Hints::TrxType::INTERNAL);
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

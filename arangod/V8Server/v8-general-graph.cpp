@@ -294,7 +294,7 @@ static void JS_AddEdgeDefinitions(
   TRI_ASSERT(graph.get() != nullptr);
 
   auto ctx = transaction::V8Context::Create(vocbase, true);
-  GraphOperations gops{*graph.get(), vocbase, transaction::Hints::Hint::REST,
+  GraphOperations gops{*graph.get(), vocbase, transaction::Hints::TrxType::REST,
                        ctx};
   OperationResult r =
       gops.addEdgeDefinition(edgeDefinition.slice(), options.slice(), false);
@@ -360,7 +360,7 @@ static void JS_EditEdgeDefinitions(
   TRI_ASSERT(graph.get() != nullptr);
 
   auto ctx = transaction::V8Context::Create(vocbase, true);
-  GraphOperations gops{*graph.get(), vocbase, transaction::Hints::Hint::REST,
+  GraphOperations gops{*graph.get(), vocbase, transaction::Hints::TrxType::REST,
                        ctx};
   OperationResult r = gops.editEdgeDefinition(
       edgeDefinition.slice(), options.slice(), false,
@@ -429,7 +429,7 @@ static void JS_RemoveVertexCollection(
   builder.close();
 
   auto ctx = transaction::V8Context::Create(vocbase, true);
-  GraphOperations gops{*graph.get(), vocbase, transaction::Hints::Hint::REST,
+  GraphOperations gops{*graph.get(), vocbase, transaction::Hints::TrxType::REST,
                        ctx};
   OperationResult r =
       gops.eraseOrphanCollection(false, vertexName, dropCollection);
@@ -493,7 +493,7 @@ static void JS_AddVertexCollection(
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  GraphOperations gops{*graph.get(), vocbase, transaction::Hints::Hint::REST,
+  GraphOperations gops{*graph.get(), vocbase, transaction::Hints::TrxType::REST,
                        ctx};
 
   VPackBuilder builder;
@@ -572,7 +572,7 @@ static void JS_DropEdgeDefinition(
   TRI_ASSERT(graph.get() != nullptr);
 
   auto ctx = transaction::V8Context::Create(vocbase, true);
-  GraphOperations gops{*graph.get(), vocbase, transaction::Hints::Hint::REST,
+  GraphOperations gops{*graph.get(), vocbase, transaction::Hints::TrxType::REST,
                        ctx};
   OperationResult r =
       gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections);

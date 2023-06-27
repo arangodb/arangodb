@@ -37,7 +37,7 @@ class ClusterQuery : public Query {
   /// factory method
   ClusterQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
                QueryOptions options,
-               transaction::Hints::Hint const& trxTypeHint);
+               transaction::Hints::TrxType const& trxTypeHint);
 
   ~ClusterQuery() override;
 
@@ -47,8 +47,8 @@ class ClusterQuery : public Query {
   static std::shared_ptr<ClusterQuery> create(
       QueryId id, std::shared_ptr<transaction::Context> ctx,
       QueryOptions options,
-      transaction::Hints::Hint const& trxTypeHint =
-          transaction::Hints::Hint::INTERNAL);
+      transaction::Hints::TrxType const& trxTypeHint =
+          transaction::Hints::TrxType::INTERNAL);
 
   auto const& traversers() const { return _traversers; }
 

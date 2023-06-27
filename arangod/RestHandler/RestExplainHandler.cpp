@@ -109,7 +109,7 @@ void RestExplainHandler::explainQuery() {
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(_vocbase),
       aql::QueryString(queryString), std::move(bindBuilder),
-      transaction::Hints::Hint::AQL, aql::QueryOptions(optionsSlice));
+      transaction::Hints::TrxType::AQL, aql::QueryOptions(optionsSlice));
   auto queryResult = query->explain();
 
   if (queryResult.result.fail()) {

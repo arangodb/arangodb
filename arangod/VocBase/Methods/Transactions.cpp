@@ -409,7 +409,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
                                std::shared_ptr<transaction::Context>(), &ctx),
                            readCollections, writeCollections,
                            exclusiveCollections, trxOptions,
-                           transaction::Hints::Hint::REST);
+                           transaction::Hints::TrxType::REST);
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (ServerState::instance()->isCoordinator()) {
     // No one knows our Transaction ID yet, so we an run FAST_LOCK_ROUND and

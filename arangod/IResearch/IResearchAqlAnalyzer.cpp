@@ -50,6 +50,7 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Transaction/Hints.h"
 #include "Transaction/SmartContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -223,6 +224,7 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
     auto validationRes = arangodb::aql::StandaloneCalculation::validateQuery(
         arangodb::DatabaseFeature::getCalculationVocbase(), options.queryString,
         CALCULATION_PARAMETER_NAME, " in aql analyzer",
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         /*isComputedValue*/ false);
     if (validationRes.ok()) {
       return std::make_unique<arangodb::iresearch::AqlAnalyzer>(options);
@@ -344,7 +346,8 @@ bool AqlAnalyzer::isOptimized() const {
 AqlAnalyzer::AqlAnalyzer(Options const& options)
     : _options(options),
       _query(arangodb::aql::StandaloneCalculation::buildQueryContext(
-          arangodb::DatabaseFeature::getCalculationVocbase())),
+          arangodb::DatabaseFeature::getCalculationVocbase(),
+          transaction::Hints::TrxType::INTERNAL)),
       _itemBlockManager(_query->resourceMonitor(),
                         SerializationFormat::SHADOWROWS),
       _engine(0, *_query, _itemBlockManager, SerializationFormat::SHADOWROWS,
@@ -355,7 +358,8 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
   TRI_ASSERT(arangodb::aql::StandaloneCalculation::validateQuery(
                  arangodb::DatabaseFeature::getCalculationVocbase(),
                  _options.queryString, CALCULATION_PARAMETER_NAME,
-                 " in aql analyzer", /*isComputedValue*/ false)
+                 " in aql analyzer", transaction::Hints::TrxType::INTERNAL,
+                 /*isComputedValue*/ false)
                  .ok());
 }
 

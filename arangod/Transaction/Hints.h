@@ -48,11 +48,15 @@ class Hints {
     IS_FOLLOWER_TRX =
         1024,  // transaction used to replicate something on a follower
     ALLOW_FAST_LOCK_ROUND_CLUSTER =
-        2048,  // allow the coordinator to try a fast-lock path (parallel on all
-               // DBServers), and if that fails revert to slow-lock path
-    REST = 4096,
-    AQL = 8192,
-    INTERNAL = 16384
+        2048  // allow the coordinator to try a fast-lock path (parallel on all
+              // DBServers), and if that fails revert to slow-lock path
+  };
+
+  enum class TrxType : ValueType {
+    REST = 0,
+    AQL = 1,
+    INTERNAL = 2,
+    DEFAULT = 4
   };
 
   Hints() : _value(0) {}

@@ -50,7 +50,7 @@ class GraphOperations {
  private:
   Graph& _graph;
   TRI_vocbase_t& _vocbase;
-  transaction::Hints::Hint _trxTypeHint;
+  transaction::Hints::TrxType _trxTypeHint;
   std::shared_ptr<transaction::Context> _ctx;
 
   Graph const& graph() const { return _graph; };
@@ -59,7 +59,7 @@ class GraphOperations {
  public:
   GraphOperations() = delete;
   GraphOperations(Graph& graph_, TRI_vocbase_t& vocbase,
-                  transaction::Hints::Hint const& trxTypeHint,
+                  transaction::Hints::TrxType const& trxTypeHint,
                   std::shared_ptr<transaction::Context> const& ctx = nullptr)
       : _graph(graph_),
         _vocbase(vocbase),

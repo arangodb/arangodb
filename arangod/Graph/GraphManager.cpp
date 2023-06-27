@@ -112,6 +112,7 @@ Result GraphManager::createCollection(std::string const& name,
       name,     // collection name
       colType,  // collection type
       options,  // collection properties
+      _trxTypeHint,
       /*createWaitsForSyncReplication*/ waitForSyncReplication,
       /*enforceReplicationFactor*/ true,
       /*isNewDatabase*/ false, coll);
@@ -707,7 +708,7 @@ Result GraphManager::ensureCollections(
 
   OperationOptions opOptions(ExecContext::current());
   auto finalResult = methods::Collections::create(
-      ctx()->vocbase(), opOptions, std::move(createRequests),
+      ctx()->vocbase(), opOptions, std::move(createRequests), _trxTypeHint,
       waitForSyncReplication, true, false,
       allowEnterpriseCollectionsOnSingleServer);
   // We do not care for the Collections here, just forward the result

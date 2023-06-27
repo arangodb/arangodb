@@ -179,7 +179,7 @@ RestStatus RestIndexHandler::getIndexes() {
 
     VPackBuilder indexes;
     Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes,
-                                          transaction::Hints::Hint::REST);
+                                          transaction::Hints::TrxType::REST);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(),
                     res.errorMessage());
@@ -223,7 +223,7 @@ RestStatus RestIndexHandler::getIndexes() {
 
     VPackBuilder output;
     Result res = methods::Indexes::getIndex(*coll, tmp.slice(), output,
-                                            transaction::Hints::Hint::REST);
+                                            transaction::Hints::TrxType::REST);
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -260,7 +260,6 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
 
   try {
     trx = createTransaction(cName, AccessMode::Type::READ, OperationOptions());
-    trx->addHint(transaction::Hints::Hint::REST);
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
       // this will happen if the tid of a managed transaction is passed in,
@@ -269,8 +268,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
       // collection
       trx = std::make_unique<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(_vocbase), cName,
-          AccessMode::Type::READ, transaction::Hints::Hint::REST);
-      trx->addHint(transaction::Hints::Hint::REST);
+          AccessMode::Type::READ, transaction::Hints::TrxType::REST);
     } else {
       throw;
     }
@@ -444,7 +442,7 @@ RestStatus RestIndexHandler::dropIndex() {
   }
 
   Result res = methods::Indexes::drop(*coll, idBuilder.slice(),
-                                      transaction::Hints::Hint::REST);
+                                      transaction::Hints::TrxType::REST);
   if (res.ok()) {
     VPackBuilder b;
     b.openObject();

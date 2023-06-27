@@ -1223,7 +1223,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
 
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase()), *coll,
-        AccessMode::Type::EXCLUSIVE, transaction::Hints::Hint::INTERNAL);
+        AccessMode::Type::EXCLUSIVE, transaction::Hints::TrxType::INTERNAL);
 
     // do not index the operations in our own transaction
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
@@ -1561,7 +1561,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase()), *coll,
-        AccessMode::Type::EXCLUSIVE, transaction::Hints::Hint::INTERNAL);
+        AccessMode::Type::EXCLUSIVE, transaction::Hints::TrxType::INTERNAL);
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     Result res = trx.begin();
@@ -1764,7 +1764,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       // remote collection has no documents. now truncate our local collection
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(vocbase()), *coll,
-          AccessMode::Type::EXCLUSIVE, transaction::Hints::Hint::INTERNAL);
+          AccessMode::Type::EXCLUSIVE, transaction::Hints::TrxType::INTERNAL);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
       Result res = trx.begin();
@@ -1822,7 +1822,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
   try {
     trx = std::make_unique<SingleCollectionTransaction>(
         context, *coll, AccessMode::Type::EXCLUSIVE,
-        transaction::Hints::Hint::INTERNAL, options);
+        transaction::Hints::TrxType::INTERNAL, options);
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       if (coll->deleted()) {
@@ -2393,7 +2393,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
             SingleCollectionTransaction trx(
                 transaction::StandaloneContext::Create(vocbase()), *col,
                 AccessMode::Type::EXCLUSIVE,
-                transaction::Hints::Hint::INTERNAL);
+                transaction::Hints::TrxType::INTERNAL);
             trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
             Result res = trx.begin();

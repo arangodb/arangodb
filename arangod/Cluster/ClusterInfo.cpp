@@ -377,7 +377,7 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
         }
         else {
           res = methods::Indexes::drop(*coll, builder.slice(),
-                                       transaction::Hints::Hint::INTERNAL);
+                                       transaction::Hints::TrxType::INTERNAL);
         }
         if (res.fail() && res.isNot(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
           // we should have internal superuser
@@ -1036,7 +1036,8 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   if (collection == nullptr) {
     // no previous version of the collection exists, or its hash value has
     // changed
-    collection = vocbase.createCollectionObject(data, /*isAStub*/ true);
+    collection = vocbase.createCollectionObject(
+        data, transaction::Hints::TrxType::INTERNAL, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
     if (!isBuilding) {
       auto indexes = collection->getIndexes();
@@ -2417,8 +2418,8 @@ ClusterInfo::generateCollectionStubs(TRI_vocbase_t& database) {
   std::ignore = agencyCache.get(collectionsBuilder, collectionsPath);
   auto collectionsSlice = collectionsBuilder.slice();
   for (auto const& [cid, colData] : VPackObjectIterator(collectionsSlice)) {
-    auto collection =
-        database.createCollectionObject(colData, /*isAStub*/ true);
+    auto collection = database.createCollectionObject(
+        colData, transaction::Hints::TrxType::INTERNAL, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
     result.emplace(collection->name(), collection);
   }

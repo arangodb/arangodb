@@ -125,7 +125,7 @@ auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
           transaction::StandaloneContext::Create(vocbaseGuard.database());
       trx = std::make_unique<SingleCollectionTransaction>(
           ctx, shard, AccessMode::Type::WRITE,
-          transaction::Hints::Hint::INTERNAL);
+          transaction::Hints::TrxType::INTERNAL);
       trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
       res = trx->begin();
