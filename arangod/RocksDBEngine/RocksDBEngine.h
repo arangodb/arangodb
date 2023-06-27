@@ -740,10 +740,10 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Counter& _metricsTreeResurrections;
 
   // total size of uncompressed values for the edge cache
-  metrics::Gauge<uint64_t>& _metricsCachedSizeInitial;
+  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeInitial;
   // total size of values stored in the edge cache (can be smaller than the
   // initial size because of compression)
-  metrics::Gauge<uint64_t>& _metricsCachedSizeEffective;
+  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeEffective;
 
   // @brief persistor for replicated logs
   std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> _logMetrics;

@@ -21,12 +21,15 @@ devel
   The following new metrics can be used to determine the usefulness of 
   compression:
 
-  - `arangodb_edge_cache_uncompressed_payload`: will return the total number of
-    bytes of all entries that were stored in the in-memory edge cache, before
-    compression was applied.
-  - `arangodb_edge_cache_effective_payload`: will return the total number of
-    bytes of all entries that were stored in the in-memory edge cache, after
-    compression was applied.
+  - `arangodb_edge_cache_uncompressed_entries_size_total`: will return the 
+    total number of bytes of all entries that were ever stored in the 
+    in-memory edge cache, before compression was applied.
+  - `arangodb_edge_cache_effective_entries_size_total`: will return the total
+    number of bytes of all entries that were stored in the in-memory edge cache,
+    after compression was applied.
+
+  Note that these metrics will be increased upon every insertion into the
+  edge cache, but not decreased when data gets evicted from the cache.
 
 * Added new startup options `--cache.ideal-lower-fill-ratio` and 
   `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill

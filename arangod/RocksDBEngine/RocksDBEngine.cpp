@@ -175,10 +175,10 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
                 "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
-DECLARE_GAUGE(arangodb_edge_cache_uncompressed_payload, uint64_t,
+DECLARE_GAUGE(arangodb_edge_cache_uncompressed_entries_size_total, uint64_t,
               "Total gross memory size of all edge cache entries ever stored "
               "in the cache");
-DECLARE_GAUGE(arangodb_edge_cache_effective_payload, uint64_t,
+DECLARE_GAUGE(arangodb_edge_cache_effective_entries_size_total, uint64_t,
               "Total effective memory size of all edge cache entries ever "
               "stored in the cache");
 
@@ -315,12 +315,12 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _metricsTreeResurrections(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_revision_tree_resurrections_total{})),
-      _metricsCachedSizeInitial(
+      _metricsEdgeCacheEntriesSizeInitial(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_edge_cache_uncompressed_payload{})),
-      _metricsCachedSizeEffective(
+              arangodb_edge_cache_uncompressed_entries_size_total{})),
+      _metricsEdgeCacheEntriesSizeEffective(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_edge_cache_effective_payload{})) {
+              arangodb_edge_cache_effective_entries_size_total{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
@@ -4016,8 +4016,8 @@ std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
 
 void RocksDBEngine::addCacheMetrics(uint64_t initial,
                                     uint64_t effective) noexcept {
-  _metricsCachedSizeInitial.fetch_add(initial);
-  _metricsCachedSizeEffective.fetch_add(effective);
+  _metricsEdgeCacheEntriesSizeInitial.fetch_add(initial);
+  _metricsEdgeCacheEntriesSizeEffective.fetch_add(effective);
 }
 
 size_t RocksDBEngine::minValueSizeForEdgeCompression() const noexcept {
