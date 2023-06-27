@@ -20,9 +20,9 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+
 #include "Replication2/IScheduler.h"
 #include <deque>
-#include <thread>
 
 namespace arangodb::replication2::test {
 
@@ -38,6 +38,44 @@ struct SyncScheduler : IScheduler {
   }
   void queue(fu2::unique_function<void()> function) noexcept override {
     function();
+  }
+};
+
+struct AsyncScheduler : IScheduler {
+  std::deque<fu2::unique_function<void()>> tasks;
+
+  auto delayedFuture(std::chrono::nanoseconds duration, std::string_view name)
+      -> futures::Future<futures::Unit> override {
+    std::abort();  // not implemented
+  }
+  auto queueDelayed(std::string_view name, std::chrono::nanoseconds delay,
+                    fu2::unique_function<void(bool canceled)> handler) noexcept
+      -> WorkItemHandle override {
+    std::abort();  // not implemented
+  }
+  void queue(fu2::unique_function<void()> function) noexcept override {
+    tasks.emplace_back(std::move(function));
+  }
+
+  void runAll() {
+    while (!tasks.empty()) {
+      std::invoke(tasks.front());
+      tasks.pop_front();
+    }
+  }
+
+  void runFromFront() {
+    if (!tasks.empty()) {
+      std::invoke(tasks.front());
+      tasks.pop_front();
+    }
+  }
+
+  void runFromBack() {
+    if (!tasks.empty()) {
+      std::invoke(tasks.back());
+      tasks.pop_back();
+    }
   }
 };
 
