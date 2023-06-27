@@ -175,10 +175,10 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
                 "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
-DECLARE_GAUGE(arangodb_edge_cache_uncompressed_entries_size_total, uint64_t,
+DECLARE_GAUGE(arangodb_edge_cache_uncompressed_entries_size, uint64_t,
               "Total gross memory size of all edge cache entries ever stored "
               "in the cache");
-DECLARE_GAUGE(arangodb_edge_cache_effective_entries_size_total, uint64_t,
+DECLARE_GAUGE(arangodb_edge_cache_effective_entries_size, uint64_t,
               "Total effective memory size of all edge cache entries ever "
               "stored in the cache");
 
@@ -317,10 +317,10 @@ RocksDBEngine::RocksDBEngine(Server& server,
               arangodb_revision_tree_resurrections_total{})),
       _metricsEdgeCacheEntriesSizeInitial(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_edge_cache_uncompressed_entries_size_total{})),
+              arangodb_edge_cache_uncompressed_entries_size{})),
       _metricsEdgeCacheEntriesSizeEffective(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_edge_cache_effective_entries_size_total{})) {
+              arangodb_edge_cache_effective_entries_size{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
