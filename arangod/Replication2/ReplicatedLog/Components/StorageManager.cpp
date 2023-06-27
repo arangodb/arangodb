@@ -108,11 +108,7 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
             return std::move(fut).thenValue(
                 [lastIndex, weakManager = std::move(weakManager)](auto&& res) {
                   if (auto mngr = weakManager.lock(); res.ok() && mngr) {
-                    mngr->syncIndex.doUnderLock([lastIndex](auto&& syncIndex) {
-                      if (syncIndex < lastIndex) {
-                        syncIndex = lastIndex;
-                      }
-                    });
+                    mngr->updateSyncIndex(lastIndex);
                   }
                   return res.result();
                 });
@@ -121,29 +117,24 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
           return std::move(fut).thenValue([lastIndex,
                                            weakManager = std::move(weakManager),
                                            &methods](auto&& res) mutable {
-            // We're done writing to the WAL. That doesn't necessarily
-            // mean the data is synced to disk.
             if (auto mngr = weakManager.lock(); res.ok() && mngr) {
               // Methods are available as long as the manager is not
               // destroyed.
-              mngr->scheduler->queue(
-                  [lastIndex, weakManager = std::move(weakManager),
-                   wfs = methods.waitForSync(res.get())]() mutable {
-                    auto syncRes = wfs.get();
+              methods.waitForSync(res.get()).thenFinal(
+                  [lastIndex,
+                   weakManager = std::move(weakManager)](auto&& tryRes) {
+                    auto res = basics::catchToResult([&] {
+                      return std::forward<decltype(tryRes)>(tryRes).get();
+                    });
                     if (auto mngr = weakManager.lock()) {
-                      if (syncRes.fail()) {
+                      if (res.fail()) {
                         LOG_CTX("6e64c", TRACE, mngr->loggerContext)
                             << "Will not update syncIndex from "
                             << mngr->syncIndex.getLockedGuard().get() << " to "
-                            << lastIndex << ": " << syncRes;
+                            << lastIndex << ": " << res;
                         return;
                       }
-                      mngr->syncIndex.doUnderLock(
-                          [lastIndex](auto&& syncIndex) {
-                            if (syncIndex < lastIndex) {
-                              syncIndex = lastIndex;
-                            }
-                          });
+                      mngr->updateSyncIndex(lastIndex);
                     }
                   });
             }
@@ -453,6 +444,12 @@ auto StorageManager::getCommittedLogIterator(
 
 auto StorageManager::getSyncIndex() const -> LogIndex {
   return syncIndex.getLockedGuard().get();
+}
+
+void StorageManager::updateSyncIndex(LogIndex index) {
+  syncIndex.doUnderLock([index](auto& currentIndex) {
+    currentIndex = std::max(currentIndex, index);
+  });
 }
 
 StorageManager::StorageRequest::StorageRequest(

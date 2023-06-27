@@ -100,6 +100,7 @@ struct StorageManager : IStorageManager,
   auto scheduleOperationLambda(GuardType&&, TermIndexMapping mapResult, F&&)
       -> futures::Future<Result>;
   void triggerQueueWorker(GuardType) noexcept;
+  void updateSyncIndex(LogIndex index);
 };
 
 }  // namespace comp

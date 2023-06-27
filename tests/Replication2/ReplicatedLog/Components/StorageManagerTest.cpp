@@ -328,8 +328,8 @@ TEST_F(StorageManagerGMockTest, resign_calls_barrier) {
 
 struct StorageManagerSyncIndexTest : ::testing::Test {
   StorageEngineMethodsMockFactory methods;
-  std::shared_ptr<test::AsyncScheduler> scheduler =
-      std::make_shared<test::AsyncScheduler>();
+  std::shared_ptr<test::SyncScheduler> scheduler =
+      std::make_shared<test::SyncScheduler>();
 
   std::shared_ptr<StorageManager> storageManager;
 
@@ -365,14 +365,10 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_index_update) {
 
   /*
    * appendEntries works by calling scheduleOperation.
-   * 1. This returns a Future<Result> that is supposed to be resolved once
+   * This returns a Future<Result> that is supposed to be resolved once
    * methods->insert is resolved. However, after the insert is resolved, a new
    * lambda is scheduled, eventually resolving the appendEntries future at a
    * later time.
-   * 2. Note that, in case of waitForSync=false, methods->insert has a thenValue
-   * chain, scheduling another lambda whose purpose is to wait for sync. This
-   * is resolved when methods->waitForSync returns.
-   * Be aware that 2 is enqueued on the scheduler before 1.
    */
 
   auto trx1 = storageManager->transaction();
@@ -380,8 +376,6 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_index_update) {
       makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}), false);
 
   // Resolve the appendEntries future, but not the waitForSync future
-  EXPECT_FALSE(f1.isReady());
-  scheduler->runFromBack();
   EXPECT_TRUE(f1.isReady());
   ++seqNumber;
   auto syncIndex2 = storageManager->getSyncIndex();
@@ -396,16 +390,13 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_index_update) {
   auto trx2 = storageManager->transaction();
   auto f2 = trx2->appendEntries(
       makeRange(LogTerm{1}, {LogIndex{120}, LogIndex{140}}), false);
-  scheduler->runFromBack();
   EXPECT_TRUE(f2.isReady());
   higherIndex.setValue(Result{});
-  scheduler->runFromBack();
   auto syncIndex3 = storageManager->getSyncIndex();
   EXPECT_GT(syncIndex3, syncIndex1);
 
   // Since this is a lower index, it should not have any effect on the syncIndex
   lowerIndex.setValue(Result{});
-  scheduler->runFromBack();
   auto syncIndex4 = storageManager->getSyncIndex();
   EXPECT_EQ(syncIndex4, syncIndex3);
 }
@@ -432,7 +423,6 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_update_fails) {
   auto trx = storageManager->transaction();
   trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
                      false);
-  scheduler->runAll();
   auto syncIndex2 = storageManager->getSyncIndex();
   EXPECT_EQ(syncIndex2, syncIndex1);
 }
@@ -448,11 +438,10 @@ TEST_F(StorageManagerSyncIndexTest, manager_unavailable_during_update) {
         return promise.getFuture();
       });
 
+  futures::Promise<Result> wfsPromise;
   EXPECT_CALL(*methods, waitForSync(seqNumber))
       .WillOnce([&](IStorageEngineMethods::SequenceNumber number) {
-        futures::Promise<Result> promise;
-        promise.setValue(Result{TRI_ERROR_WAS_ERLAUBE});
-        return promise.getFuture();
+        return wfsPromise.getFuture();
       });
 
   auto trx = storageManager->transaction();
@@ -460,7 +449,7 @@ TEST_F(StorageManagerSyncIndexTest, manager_unavailable_during_update) {
                      false);
   // In case the manager is unavailable, we should not panic.
   storageManager.reset();
-  scheduler->runAll();
+  wfsPromise.setValue(Result{});
 }
 
 TEST_F(StorageManagerSyncIndexTest, methods_insertion_fails) {
@@ -475,6 +464,4 @@ TEST_F(StorageManagerSyncIndexTest, methods_insertion_fails) {
   auto trx = storageManager->transaction();
   trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}),
                      false);
-  EXPECT_EQ(scheduler->tasks.size(), 1);
-  scheduler->runAll();
 }
