@@ -746,7 +746,15 @@ const replicatedStateSnapshotTransferSuite = function () {
       let rebootId = lh.getServerRebootId(follower);
       let result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId);
       lh.checkRequestResult(result);
+
+      // Stop the server and wait for its rebootId to change.
       stopServerWait(follower);
+      lh.waitFor(() => {
+        if (lh.getServerRebootId(follower) !== rebootId) {
+          return true;
+        }
+        return Error("follower rebootId did not change");
+      });
 
       // The snapshot should no longer be available.
       let snapshotId = result.json.result.snapshotId;
@@ -756,12 +764,6 @@ const replicatedStateSnapshotTransferSuite = function () {
 
       // Pretending again to be the same follower, start a snapshot, but with a lower rebootId
       continueServerWait(follower);
-      lh.waitFor(() => {
-        if (lh.getServerRebootId(follower) > rebootId) {
-          return true;
-        }
-        return Error("follower rebootId did not increase");
-      });
       rebootId = lh.getServerRebootId(follower);
       result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId - 1);
       if (result.json.error) {
