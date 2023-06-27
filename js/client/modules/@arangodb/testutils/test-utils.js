@@ -389,6 +389,7 @@ class runOnArangodRunner extends testRunnerBase{
                 (reply.message.search('timeout during read') >= 0 ) ||
                 (reply.message.search('Connection closed by remote') >= 0 )
             )) {
+          this.instanceManager.dumpAgency();
           print(RED + Date() + " request timeout reached (" + reply.message +
                 "), aborting test execution" + RESET);
           return {
