@@ -41,7 +41,7 @@ RestGraphHandler::RestGraphHandler(ArangodServer& server,
                                    GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
-      _graphManager(_vocbase) {}
+      _graphManager(_vocbase, transaction::Hints::TrxType::REST) {}
 
 RestStatus RestGraphHandler::execute() {
   Result res = executeGharial();

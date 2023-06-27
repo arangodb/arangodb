@@ -551,7 +551,8 @@ size_t State::removeConflicts(VPackSlice transactions, bool gotSnapshot) {
             _vocbase);  // this check was previously in the Query constructor
         auto query = arangodb::aql::Query::create(
             transaction::StandaloneContext::Create(*_vocbase),
-            aql::QueryString(aql), std::move(bindVars));
+            aql::QueryString(aql), std::move(bindVars),
+            transaction::Hints::TrxType::REST);
 
         aql::QueryResult queryResult = query->executeSync();
         if (queryResult.result.fail()) {
@@ -964,7 +965,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
   TRI_ASSERT(nullptr != _vocbase);
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+      nullptr, transaction::Hints::TrxType::REST);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1006,7 +1007,7 @@ index_t State::loadCompacted() {
              _vocbase);  // this check was previously in the Query constructor
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+      nullptr, transaction::Hints::TrxType::REST);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1051,7 +1052,7 @@ bool State::loadOrPersistConfiguration() {
              _vocbase);  // this check was previously in the Query constructor
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+      nullptr, transaction::Hints::TrxType::REST);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1194,7 +1195,7 @@ bool State::loadRemaining(index_t cind) {
              _vocbase);  // this check was previously in the Query constructor
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      std::move(bindVars));
+      std::move(bindVars), transaction::Hints::TrxType::REST);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1411,7 +1412,7 @@ bool State::compactPersisted(index_t cind, index_t keep) {
 
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      std::move(bindVars));
+      std::move(bindVars), transaction::Hints::TrxType::INTERNAL);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1454,7 +1455,8 @@ bool State::removeObsolete(index_t cind) {
                _vocbase);  // this check was previously in the Query constructor
     auto query = arangodb::aql::Query::create(
         transaction::StandaloneContext::Create(*_vocbase),
-        aql::QueryString(aql), std::move(bindVars));
+        aql::QueryString(aql), std::move(bindVars),
+        transaction::Hints::TrxType::INTERNAL);
 
     aql::QueryResult queryResult = query->executeSync();
 
@@ -1557,7 +1559,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
              _vocbase);  // this check was previously in the Query constructor
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+      nullptr, transaction::Hints::TrxType::INTERNAL);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1630,10 +1632,10 @@ query_t State::allLogs() const {
 
   auto compq = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(comp),
-      nullptr);
+      nullptr, transaction::Hints::TrxType::INTERNAL);
   auto logsq = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(logs),
-      nullptr);
+      nullptr, transaction::Hints::TrxType::INTERNAL);
 
   aql::QueryResult compqResult = compq->executeSync();
 
@@ -1727,7 +1729,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   std::string aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(vocbase), aql::QueryString(aql),
-      nullptr);
+      nullptr, transaction::Hints::TrxType::REST);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1755,7 +1757,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   aql = "FOR l IN log SORT l._key RETURN l";
   auto query2 = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(vocbase), aql::QueryString(aql),
-      nullptr);
+      nullptr, transaction::Hints::TrxType::REST);
 
   aql::QueryResult queryResult2 = query2->executeSync();
 
@@ -1830,7 +1832,8 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
              _vocbase);  // this check was previously in the Query constructor
   auto logQuery = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*_vocbase),
-      aql::QueryString(logQueryStr), std::move(bindVars));
+      aql::QueryString(logQueryStr), std::move(bindVars),
+      transaction::Hints::TrxType::REST);
 
   aql::QueryResult logQueryResult = logQuery->executeSync();
 
@@ -1883,7 +1886,8 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
     auto compQuery = arangodb::aql::Query::create(
         transaction::StandaloneContext::Create(*_vocbase),
-        aql::QueryString(compQueryStr), std::move(bindVars));
+        aql::QueryString(compQueryStr), std::move(bindVars),
+        transaction::Hints::TrxType::REST);
 
     aql::QueryResult compQueryResult = compQuery->executeSync();
 

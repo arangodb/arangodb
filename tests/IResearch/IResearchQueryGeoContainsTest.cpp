@@ -71,7 +71,8 @@ class QueryGeoContains : public QueryTest {
 
   void createCollections() {
     auto createJson = VPackParser::fromJson(R"({ "name": "testCollection0" })");
-    auto collection = _vocbase.createCollection(createJson->slice());
+    auto collection = _vocbase.createCollection(
+        createJson->slice(), transaction::Hints::TrxType::INTERNAL);
     ASSERT_TRUE(collection);
   }
 
@@ -122,7 +123,8 @@ class QueryGeoContains : public QueryTest {
       options.returnNew = true;
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -504,7 +506,8 @@ class QueryGeoContains : public QueryTest {
       };
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::READ);
+          AccessMode::Type::READ,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_TRUE(trx.begin().ok());
       ASSERT_TRUE(trx.state());
       auto* snapshot =

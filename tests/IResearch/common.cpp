@@ -772,7 +772,8 @@ void assertExpressionFilter(
   auto ctx =
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), nullptr);
+      ctx, arangodb::aql::QueryString(queryString), nullptr,
+      transaction::Hints::TrxType::INTERNAL);
 
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -912,7 +913,8 @@ void buildActualFilter(
   auto ctx =
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), bindVars);
+      ctx, arangodb::aql::QueryString(queryString), bindVars,
+      transaction::Hints::TrxType::INTERNAL);
 
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -1010,7 +1012,8 @@ void assertFilter(
                << " execOk:" << execOk);
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
-  auto query = aql::Query::create(ctx, aql::QueryString(queryString), bindVars);
+  auto query = aql::Query::create(ctx, aql::QueryString(queryString), bindVars,
+                                  transaction::Hints::TrxType::INTERNAL);
 
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -1152,7 +1155,8 @@ void assertFilterParseFail(
   SCOPED_TRACE(testing::Message("assertFilterParseFail failed for query:<")
                << queryString << ">");
   auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
-  auto query = aql::Query::create(ctx, aql::QueryString(queryString), bindVars);
+  auto query = aql::Query::create(ctx, aql::QueryString(queryString), bindVars,
+                                  transaction::Hints::TrxType::INTERNAL);
 
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.fail());

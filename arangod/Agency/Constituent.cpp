@@ -605,7 +605,8 @@ void Constituent::run() {
         "FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
     auto query = arangodb::aql::Query::create(
         transaction::StandaloneContext::Create(*_vocbase),
-        arangodb::aql::QueryString(aql), nullptr);
+        arangodb::aql::QueryString(aql), nullptr,
+        transaction::Hints::TrxType::INTERNAL);
 
     aql::QueryResult queryResult = query->executeSync();
 

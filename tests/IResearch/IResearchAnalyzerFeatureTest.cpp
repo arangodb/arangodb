@@ -1793,7 +1793,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
-          collection, arangodb::AccessMode::Type::WRITE);
+          collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       trx.begin();
       trx.truncate(collection, options);
       trx.insert(collection, VPackParser::fromJson("{}")->slice(), options);
@@ -1863,7 +1864,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
-          collection, arangodb::AccessMode::Type::WRITE);
+          collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       trx.begin();
       trx.truncate(collection, options);
       trx.insert(collection,
@@ -1900,7 +1902,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
-          collection, arangodb::AccessMode::Type::WRITE);
+          collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       trx.begin();
       trx.truncate(collection, options);
       trx.insert(collection,
@@ -2012,7 +2015,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
-          collection, arangodb::AccessMode::Type::WRITE);
+          collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       trx.begin();
       trx.truncate(collection, options);
@@ -2158,7 +2162,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
-          collection, arangodb::AccessMode::Type::WRITE);
+          collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       trx.begin();
       trx.truncate(collection, options);
       auto res = trx.commit();
@@ -2185,7 +2190,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         arangodb::tests::AnalyzerCollectionName,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE((trx.begin().ok()));
     auto queryResult =
         trx.all(arangodb::tests::AnalyzerCollectionName, 0, 2, options);
@@ -3178,7 +3184,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(*vocbase),
       arangodb::tests::AnalyzerCollectionName,
-      arangodb::AccessMode::Type::WRITE);
+      arangodb::AccessMode::Type::WRITE,
+      arangodb::transaction::Hints::TrxType::INTERNAL);
   ExpressionContextMock exprCtx;
   exprCtx.setTrx(&trx);
 
@@ -3800,7 +3807,8 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         arangodb::tests::AnalyzerCollectionName,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
         (true ==
@@ -3903,7 +3911,8 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         arangodb::tests::AnalyzerCollectionName,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
         (true ==
@@ -3953,8 +3962,9 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
     auto system = sysDatabase.use();
     auto collection = system->lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
     ASSERT_FALSE(collection);
-    ASSERT_FALSE(
-        !system->createCollection(createLegacyCollectionJson->slice()));
+    ASSERT_FALSE(!system->createCollection(
+        createLegacyCollectionJson->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL));
   }
 
   // add document to legacy collection after feature start
@@ -3963,7 +3973,8 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
     auto system = sysDatabase.use();
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(*system),
-        LEGACY_ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE);
+        LEGACY_ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
         (true ==
@@ -4024,7 +4035,8 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         arangodb::tests::AnalyzerCollectionName,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
         (true ==

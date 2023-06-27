@@ -205,7 +205,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     _edgeColls.reserve(edgeCollectionCount);
     _directions.reserve(edgeCollectionCount);
 
-    determineEnterpriseFlags(graph);
+    determineEnterpriseFlags(graph, plan->getAst()->query().getTrxTypeHint());
 
     std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
     CollectionNameResolver const& resolver = plan->getAst()->query().resolver();

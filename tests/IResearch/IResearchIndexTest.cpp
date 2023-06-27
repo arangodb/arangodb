@@ -248,9 +248,13 @@ TEST_F(IResearchIndexTest, test_analyzer) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto collection0 = vocbase().createCollection(createCollection0->slice());
+  auto collection0 = vocbase().createCollection(
+      createCollection0->slice(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase().createCollection(createCollection1->slice());
+  auto collection1 = vocbase().createCollection(
+      createCollection1->slice(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase().createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -266,7 +270,8 @@ TEST_F(IResearchIndexTest, test_analyzer) {
                                          collection1->name()};
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        collections, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -526,9 +531,13 @@ TEST_F(IResearchIndexTest, test_async_index) {
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 =
+      vocbase.createCollection(createCollection0->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 =
+      vocbase.createCollection(createCollection1->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -579,7 +588,8 @@ TEST_F(IResearchIndexTest, test_async_index) {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(
               collection0->vocbase()),
-          *collection0, arangodb::AccessMode::Type::WRITE);
+          *collection0, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       resThread0 = trx.begin().ok();
       if (!resThread0) return;
 
@@ -621,7 +631,8 @@ TEST_F(IResearchIndexTest, test_async_index) {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(
               collection1->vocbase()),
-          *collection1, arangodb::AccessMode::Type::WRITE);
+          *collection1, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       resThread1 = trx.begin().ok();
       if (!resThread1) return;
 
@@ -879,9 +890,13 @@ TEST_F(IResearchIndexTest, test_fields) {
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 =
+      vocbase.createCollection(createCollection0->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 =
+      vocbase.createCollection(createCollection1->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -897,7 +912,8 @@ TEST_F(IResearchIndexTest, test_fields) {
                                          collection1->name()};
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        collections, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -980,9 +996,13 @@ TEST_F(IResearchIndexTest, test_pkCached) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 =
+      vocbase.createCollection(createCollection0->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 =
+      vocbase.createCollection(createCollection1->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -998,7 +1018,8 @@ TEST_F(IResearchIndexTest, test_pkCached) {
                                          collection1->name()};
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        collections, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1042,7 +1063,9 @@ TEST_F(IResearchIndexTest, test_pkCachedInverted) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 =
+      vocbase.createCollection(createCollection0->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
 
   {
@@ -1054,7 +1077,8 @@ TEST_F(IResearchIndexTest, test_pkCachedInverted) {
     std::vector<std::string> collections{collection0->name()};
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        collections, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1101,9 +1125,13 @@ TEST_F(IResearchIndexTest, test_pkCachedRestricted) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10);
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 =
+      vocbase.createCollection(createCollection0->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 =
+      vocbase.createCollection(createCollection1->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -1119,7 +1147,8 @@ TEST_F(IResearchIndexTest, test_pkCachedRestricted) {
                                          collection1->name()};
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        collections, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1170,9 +1199,13 @@ TEST_F(IResearchIndexTest, test_sortCached) {
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 =
+      vocbase.createCollection(createCollection0->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 =
+      vocbase.createCollection(createCollection1->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -1188,7 +1221,8 @@ TEST_F(IResearchIndexTest, test_sortCached) {
                                          collection1->name()};
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        collections, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1232,7 +1266,9 @@ TEST_F(IResearchIndexTest, test_sortCachedInverted) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 =
+      vocbase.createCollection(createCollection0->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
 
   {
@@ -1244,7 +1280,8 @@ TEST_F(IResearchIndexTest, test_sortCachedInverted) {
     std::vector<std::string> collections{collection0->name()};
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        collections, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1293,9 +1330,13 @@ TEST_F(IResearchIndexTest, test_sortCachedRestricted) {
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10);
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 =
+      vocbase.createCollection(createCollection0->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
-  auto collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 =
+      vocbase.createCollection(createCollection1->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection1);
   auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
@@ -1311,7 +1352,8 @@ TEST_F(IResearchIndexTest, test_sortCachedRestricted) {
                                          collection1->name()};
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        collections, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1359,7 +1401,9 @@ TEST_F(IResearchIndexTest, test_geoCached) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 =
+      vocbase.createCollection(createCollection0->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
   auto viewImpl = vocbase.createView(createView->slice(), true);
   ASSERT_NE(nullptr, viewImpl);
@@ -1381,7 +1425,8 @@ TEST_F(IResearchIndexTest, test_geoCached) {
     std::vector<std::string> collections{collection0->name()};
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        collections, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1422,7 +1467,9 @@ TEST_F(IResearchIndexTest, test_geoCachedInverted) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 =
+      vocbase.createCollection(createCollection0->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
   auto viewImpl = vocbase.createView(createView->slice(), true);
   ASSERT_NE(nullptr, viewImpl);
@@ -1444,7 +1491,8 @@ TEST_F(IResearchIndexTest, test_geoCachedInverted) {
     std::vector<std::string> collections{collection0->name()};
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        collections, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1492,7 +1540,9 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
       "{\"id\":1, \"name\": \"testCollection0\" }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 =
+      vocbase.createCollection(createCollection0->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
   std::vector<std::pair<std::string, std::string>> shards{
       {collection0->name(), "PRMR_0002"}};
@@ -1509,7 +1559,8 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
     std::vector<std::string> collections{collection0->name()};
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        collections, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1567,7 +1618,9 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
       "{\"id\":1, \"name\": \"testCollection0\" }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
-  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 =
+      vocbase.createCollection(createCollection0->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, collection0);
   std::vector<std::pair<std::string, std::string>> shards{
       {collection0->name(), "PRMR_0001"}};
@@ -1584,7 +1637,8 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
     std::vector<std::string> collections{collection0->name()};
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        collections, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())

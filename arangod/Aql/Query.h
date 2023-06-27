@@ -106,9 +106,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   static std::shared_ptr<Query> create(
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,
-      transaction::Hints::TrxType const& trxTypeHint =
-          transaction::Hints::TrxType::INTERNAL,
-      QueryOptions options = {},
+      transaction::Hints::TrxType const& trxTypeHint, QueryOptions options = {},
       Scheduler* scheduler = SchedulerFeature::SCHEDULER);
 
   constexpr static uint64_t DontCache = 0;

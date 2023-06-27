@@ -1107,7 +1107,8 @@ Result StatisticsFeature::getClusterSystemStatistics(
     buildBindVars(StaticStrings::Statistics15Collection);
     auto query = arangodb::aql::Query::create(
         transaction::StandaloneContext::Create(*sysVocbase),
-        arangodb::aql::QueryString(stats15Query), bindVars);
+        arangodb::aql::QueryString(stats15Query), bindVars,
+        transaction::Hints::TrxType::REST);
 
     query->queryOptions().cache = false;
     query->queryOptions().skipAudit = true;
@@ -1125,7 +1126,8 @@ Result StatisticsFeature::getClusterSystemStatistics(
     buildBindVars(StaticStrings::StatisticsCollection);
     auto query = arangodb::aql::Query::create(
         transaction::StandaloneContext::Create(*sysVocbase),
-        arangodb::aql::QueryString(statsSamplesQuery), bindVars);
+        arangodb::aql::QueryString(statsSamplesQuery), bindVars,
+        transaction::Hints::TrxType::INTERNAL);
 
     query->queryOptions().cache = false;
     query->queryOptions().skipAudit = true;

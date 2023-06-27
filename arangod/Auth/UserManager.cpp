@@ -127,7 +127,8 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
   return result;
 }
 
-static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
+static std::shared_ptr<VPackBuilder> QueryAllUsers(
+    ArangodServer& server, transaction::Hints::TrxType const& trxTypeHint) {
   TRI_IF_FAILURE("QueryAllUsers") {
     // simulates the case that the _users collection is not yet available
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -148,7 +149,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   std::string const queryStr("FOR user IN _users RETURN user");
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*vocbase),
-      arangodb::aql::QueryString(queryStr), nullptr);
+      arangodb::aql::QueryString(queryStr), nullptr,
+      transaction::Hints::TrxType::REST);
 
   query->queryOptions().cache = false;
   query->queryOptions().ttl = 30;
@@ -221,7 +223,8 @@ void auth::UserManager::loadFromDB() {
   }
 
   try {
-    std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_server);
+    std::shared_ptr<VPackBuilder> builder =
+        QueryAllUsers(_server, transaction::Hints::TrxType::REST);
     if (builder) {
       VPackSlice usersSlice = builder->slice();
       if (usersSlice.length() != 0) {
@@ -406,7 +409,8 @@ void auth::UserManager::createRootUser() {
 
 VPackBuilder auth::UserManager::allUsers() {
   // will query db directly, no need for _userCacheLock
-  std::shared_ptr<VPackBuilder> users = QueryAllUsers(_server);
+  std::shared_ptr<VPackBuilder> users =
+      QueryAllUsers(_server, transaction::Hints::TrxType::REST);
 
   VPackBuilder result;
   {

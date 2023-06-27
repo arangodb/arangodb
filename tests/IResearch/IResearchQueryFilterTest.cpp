@@ -37,15 +37,15 @@ class QueryFilter : public QueryTest {
     {
       auto collectionJson =
           velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
-      auto logicalCollection1 =
-          _vocbase.createCollection(collectionJson->slice());
+      auto logicalCollection1 = _vocbase.createCollection(
+          collectionJson->slice(), transaction::Hints::TrxType::INTERNAL);
       ASSERT_TRUE(logicalCollection1);
     }
     {
       auto collectionJson =
           velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
-      auto logicalCollection2 =
-          _vocbase.createCollection(collectionJson->slice());
+      auto logicalCollection2 = _vocbase.createCollection(
+          collectionJson->slice(), transaction::Hints::TrxType::INTERNAL);
       ASSERT_TRUE(logicalCollection2);
     }
   }
@@ -65,7 +65,7 @@ class QueryFilter : public QueryTest {
       transaction::Methods trx(
           transaction::StandaloneContext::Create(_vocbase), EMPTY,
           {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
-          transaction::Options());
+          transaction::Options(), transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections

@@ -58,8 +58,7 @@ class GraphManager {
 
  public:
   explicit GraphManager(TRI_vocbase_t& vocbase,
-                        transaction::Hints::TrxType const& trxTypeHint =
-                            transaction::Hints::TrxType::INTERNAL)
+                        transaction::Hints::TrxType const& trxTypeHint)
       : _vocbase(vocbase), _trxTypeHint(trxTypeHint) {}
 
   Result readGraphs(velocypack::Builder& builder) const;

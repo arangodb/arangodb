@@ -57,12 +57,9 @@ using namespace arangodb::rest;
 RestCollectionHandler::RestCollectionHandler(ArangodServer& server,
                                              GeneralRequest* request,
                                              GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {
-  LOG_DEVEL << "RestCollectionHandler constructor";
-}
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestCollectionHandler::execute() {
-  LOG_DEVEL << "request " << _request->rawPayload();
   switch (_request->requestType()) {
     case rest::RequestType::GET:
       return handleCommandGet();
@@ -92,9 +89,7 @@ void RestCollectionHandler::shutdownExecute(bool isFinalized) noexcept {
 }
 
 RestStatus RestCollectionHandler::handleCommandGet() {
-  LOG_DEVEL << "handleCommandGet";
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-  LOG_DEVEL << "suffixes " << suffixes;
 
   // /_api/collection
   if (suffixes.empty()) {
@@ -491,7 +486,6 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     }
 
   } else if (sub == "truncate") {
-    LOG_DEVEL << "REST truncate";
     OperationOptions opts(_context);
 
     opts.waitForSync =

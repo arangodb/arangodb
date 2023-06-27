@@ -185,7 +185,6 @@ ErrorCode RestImportHandler::handleSingleDocument(
     SingleCollectionTransaction& trx, VPackBuilder& tempBuilder,
     RestImportResult& result, VPackBuilder& babies, VPackSlice slice,
     bool isEdgeCollection, size_t i) {
-  LOG_DEVEL << "handleSingleDocument";
   if (!slice.isObject()) {
     std::string part = VPackDumper::toString(slice);
     if (part.size() > 255) {
@@ -525,7 +524,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 }
 
 bool RestImportHandler::createFromVPack(std::string const& type) {
-  LOG_DEVEL << "createFromVPack";
   if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request");
   }
@@ -878,7 +876,6 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
                                         VPackBuilder const& babies,
                                         bool complete,
                                         OperationOptions const& opOptions) {
-  LOG_DEVEL << "performImport";
   auto makeError = [&](size_t i, ErrorCode res, VPackSlice const& slice,
                        RestImportResult& result) {
     VPackOptions options(VPackOptions::Defaults);

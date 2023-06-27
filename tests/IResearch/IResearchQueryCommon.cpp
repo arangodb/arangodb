@@ -172,7 +172,8 @@ void QueryTest::createCollections() {
   // testCollection0
   {
     auto createJson = VPackParser::fromJson(R"({ "name": "testCollection0" })");
-    auto collection = _vocbase.createCollection(createJson->slice());
+    auto collection = _vocbase.createCollection(
+        createJson->slice(), transaction::Hints::TrxType::INTERNAL);
     ASSERT_TRUE(collection);
 
     std::vector<std::shared_ptr<VPackBuilder>> docs{
@@ -189,7 +190,8 @@ void QueryTest::createCollections() {
     options.returnNew = true;
     SingleCollectionTransaction trx{
         transaction::StandaloneContext::Create(_vocbase), *collection,
-        AccessMode::Type::WRITE};
+        AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL};
     {
       auto r = trx.begin();
       EXPECT_TRUE(r.ok()) << r.errorMessage();
@@ -207,7 +209,8 @@ void QueryTest::createCollections() {
   // testCollection1
   {
     auto createJson = VPackParser::fromJson(R"({ "name": "testCollection1" })");
-    auto collection = _vocbase.createCollection(createJson->slice());
+    auto collection = _vocbase.createCollection(
+        createJson->slice(), transaction::Hints::TrxType::INTERNAL);
     ASSERT_TRUE(collection);
 
     std::filesystem::path resource;
@@ -222,7 +225,8 @@ void QueryTest::createCollections() {
     options.returnNew = true;
     SingleCollectionTransaction trx{
         transaction::StandaloneContext::Create(_vocbase), *collection,
-        AccessMode::Type::WRITE};
+        AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL};
     {
       auto r = trx.begin();
       EXPECT_TRUE(r.ok()) << r.errorMessage();

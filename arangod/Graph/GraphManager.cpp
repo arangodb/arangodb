@@ -457,7 +457,7 @@ Result GraphManager::applyOnAllGraphs(
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(_vocbase),
-      arangodb::aql::QueryString{queryStr}, nullptr);
+      arangodb::aql::QueryString{queryStr}, nullptr, _trxTypeHint);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
 
@@ -768,7 +768,7 @@ Result GraphManager::readGraphKeys(velocypack::Builder& builder) const {
 Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
                                       std::string const& queryStr) const {
   auto query = arangodb::aql::Query::create(
-      ctx(), arangodb::aql::QueryString(queryStr), nullptr);
+      ctx(), arangodb::aql::QueryString(queryStr), nullptr, _trxTypeHint);
   query->queryOptions().skipAudit = true;
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)

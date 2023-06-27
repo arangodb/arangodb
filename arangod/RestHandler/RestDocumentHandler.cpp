@@ -160,7 +160,6 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestDocumentHandler::insertDocument() {
-  LOG_DEVEL << "RestDocumentHandler::insertDocument";
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 1) {

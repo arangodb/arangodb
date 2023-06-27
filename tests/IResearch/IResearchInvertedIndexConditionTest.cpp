@@ -131,7 +131,8 @@ class IResearchInvertedIndexConditionTest
         arangodb::iresearch::IResearchInvertedIndex::fields(index->meta());
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
-    auto query = Query::create(ctx, QueryString(queryString), bindVars);
+    auto query = Query::create(ctx, QueryString(queryString), bindVars,
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
 
     ASSERT_NE(query.get(), nullptr);
     auto const parseResult = query->parse();
@@ -173,7 +174,8 @@ class IResearchInvertedIndexConditionTest
       // We use this noop transaction because query transaction is empty
       // TODO(MBkkt) Needs ability to create empty transaction
       //  with failed begin but correct in other
-      arangodb::transaction::Methods trx{ctx};
+      arangodb::transaction::Methods trx{
+          ctx, arangodb::transaction::Hints::TrxType::INTERNAL};
       auto costs = index->supportsFilterCondition(trx, id, indexFields, {},
                                                   filterNode, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
@@ -209,7 +211,8 @@ class IResearchInvertedIndexConditionTest
 
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
-    auto query = Query::create(ctx, QueryString(queryString), bindVars);
+    auto query = Query::create(ctx, QueryString(queryString), bindVars,
+                               arangodb::transaction::Hints::TrxType::INTERNAL);
 
     ASSERT_NE(query.get(), nullptr);
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);

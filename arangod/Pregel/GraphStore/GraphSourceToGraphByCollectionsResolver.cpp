@@ -56,7 +56,7 @@ auto resolveGraphSourceToGraphByCollections(TRI_vocbase_t& vocbase,
           Result{TRI_ERROR_BAD_PARAMETER, "expecting graphName as string"});
     }
 
-    graph::GraphManager gmngr{vocbase};
+    graph::GraphManager gmngr{vocbase, transaction::Hints::TrxType::REST};
     auto maybeGraph = gmngr.lookupGraphByName(graphName.graph);
     if (maybeGraph.fail()) {
       return errors::ErrorT<Result, GraphByCollections>::error(

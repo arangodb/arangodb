@@ -685,7 +685,6 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const& collection,
 
 Result Indexes::drop(LogicalCollection& collection, velocypack::Slice indexArg,
                      transaction::Hints::TrxType const& trxTypeHint) {
-  LOG_DEVEL << "drop index";
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
     if (exec.databaseAuthLevel() != auth::Level::RW ||

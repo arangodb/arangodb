@@ -39,12 +39,14 @@ class QueryJoin : public QueryTest {
   void createCollections1() {
     {
       auto json = VPackParser::fromJson(R"({ "name": "entities" })");
-      auto collection = _vocbase.createCollection(json->slice());
+      auto collection = _vocbase.createCollection(
+          json->slice(), transaction::Hints::TrxType::INTERNAL);
       ASSERT_TRUE(collection);
     }
     {
       auto json = VPackParser::fromJson(R"({ "name": "links", "type": 3 })");
-      auto collection = _vocbase.createCollection(json->slice());
+      auto collection = _vocbase.createCollection(
+          json->slice(), transaction::Hints::TrxType::INTERNAL);
       ASSERT_TRUE(collection);
     }
   }
@@ -52,17 +54,20 @@ class QueryJoin : public QueryTest {
   void createCollections23() {
     {
       auto json = VPackParser::fromJson(R"({ "name": "testCollection0" })");
-      auto collection = _vocbase.createCollection(json->slice());
+      auto collection = _vocbase.createCollection(
+          json->slice(), transaction::Hints::TrxType::INTERNAL);
       ASSERT_TRUE(collection);
     }
     {
       auto json = VPackParser::fromJson(R"({ "name": "testCollection1" })");
-      auto collection = _vocbase.createCollection(json->slice());
+      auto collection = _vocbase.createCollection(
+          json->slice(), transaction::Hints::TrxType::INTERNAL);
       ASSERT_TRUE(collection);
     }
     {
       auto json = VPackParser::fromJson(R"({ "name": "testCollection2" })");
-      auto collection = _vocbase.createCollection(json->slice());
+      auto collection = _vocbase.createCollection(
+          json->slice(), transaction::Hints::TrxType::INTERNAL);
       ASSERT_TRUE(collection);
     }
   }
@@ -86,7 +91,8 @@ class QueryJoin : public QueryTest {
 
       transaction::Methods trx(transaction::StandaloneContext::Create(_vocbase),
                                collections, collections, collections,
-                               transaction::Options());
+                               transaction::Options(),
+                               transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into entities collection
@@ -221,7 +227,8 @@ class QueryJoin : public QueryTest {
       auto collectionJson = VPackParser::fromJson("{ \"name\": \"testView\" }");
       // TRI_vocbase_t::createCollection(...) throws exception instead of
       // returning a nullptr
-      EXPECT_ANY_THROW(_vocbase.createCollection(collectionJson->slice()));
+      EXPECT_ANY_THROW(_vocbase.createCollection(
+          collectionJson->slice(), transaction::Hints::TrxType::INTERNAL));
     }
 
     // populate view with the data
@@ -232,7 +239,7 @@ class QueryJoin : public QueryTest {
           transaction::StandaloneContext::Create(_vocbase), EMPTY,
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
-          EMPTY, transaction::Options());
+          EMPTY, transaction::Options(), transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
@@ -331,7 +338,7 @@ class QueryJoin : public QueryTest {
           transaction::StandaloneContext::Create(_vocbase), EMPTY,
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
-          EMPTY, transaction::Options());
+          EMPTY, transaction::Options(), transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections

@@ -46,9 +46,7 @@ class ClusterQuery : public Query {
   /// ensure that ClusterQuery objects are always created using shared_ptrs.
   static std::shared_ptr<ClusterQuery> create(
       QueryId id, std::shared_ptr<transaction::Context> ctx,
-      QueryOptions options,
-      transaction::Hints::TrxType const& trxTypeHint =
-          transaction::Hints::TrxType::INTERNAL);
+      QueryOptions options, transaction::Hints::TrxType const& trxTypeHint);
 
   auto const& traversers() const { return _traversers; }
 

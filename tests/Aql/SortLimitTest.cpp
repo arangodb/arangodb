@@ -201,7 +201,8 @@ class SortLimitTest
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(*vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {

@@ -96,7 +96,6 @@ std::shared_ptr<arangodb::LogicalCollection> GetCollectionFromArgument(
 void addTransactionHints(arangodb::LogicalCollection& col,
                          arangodb::SingleCollectionTransaction& trx,
                          bool isMultiple, bool isOverwritingInsert) {
-  LOG_DEVEL << "addTransactionHints";
   if (arangodb::ServerState::instance()->isCoordinator()) {
     if (col.isSmartEdgeCollection()) {
       // Smart Edge Collections hit multiple shards with dependent requests,
@@ -1260,7 +1259,6 @@ static void JS_PlanIdVocbaseCol(
 
 static void JS_PropertiesVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  LOG_DEVEL << "BEFORE";
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
@@ -1778,7 +1776,6 @@ static void JS_RevisionVocbaseCol(
 static void InsertVocbaseCol(v8::Isolate* isolate,
                              v8::FunctionCallbackInfo<v8::Value> const& args,
                              std::string* attachment) {
-  LOG_DEVEL << "InsertVocbaseCol";
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
@@ -2023,7 +2020,6 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
 
 static void JS_InsertVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  LOG_DEVEL << "JS_InsertVocbaseCol";
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   InsertVocbaseCol(isolate, args, nullptr);
   TRI_V8_TRY_CATCH_END
@@ -2031,7 +2027,6 @@ static void JS_InsertVocbaseCol(
 
 static void JS_BinaryInsertVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  LOG_DEVEL << "JS_BinaryInsertVocbaseCol";
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -2125,7 +2120,6 @@ static void JS_StatusVocbaseCol(
 
 static void JS_TruncateVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  LOG_DEVEL << "JS_TruncateVocbaseCol";
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 

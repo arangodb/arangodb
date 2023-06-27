@@ -1026,7 +1026,8 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      _logicalCollection, arangodb::AccessMode::Type::WRITE);
+      _logicalCollection, arangodb::AccessMode::Type::WRITE,
+      arangodb::transaction::Hints::TrxType::INTERNAL);
   auto res = trx.begin();
   TRI_ASSERT(res.ok());
 

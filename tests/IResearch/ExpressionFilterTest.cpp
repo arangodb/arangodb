@@ -445,7 +445,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+        arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -525,7 +526,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+        arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -602,7 +604,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+        arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -701,7 +704,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+        arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -800,7 +804,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+        arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -898,7 +903,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+        arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -977,7 +983,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+        arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1056,7 +1063,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+        arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1200,7 +1208,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr);
+        arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1329,7 +1338,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), bindVars);
+        arangodb::aql::QueryString(queryString), bindVars,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;

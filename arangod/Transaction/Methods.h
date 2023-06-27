@@ -110,8 +110,6 @@ class Methods {
   explicit Methods(
       std::shared_ptr<transaction::Context> const& ctx,
       transaction::Hints::TrxType const& trxTypeHint,
-      //   transaction::Hints::TrxType const& trxTypeHint =
-      //      transaction::Hints::TrxType::INTERNAL,
       transaction::Options const& options = transaction::Options());
 
   /// @brief create the transaction, and add a collection to it.
@@ -119,8 +117,6 @@ class Methods {
   Methods(std::shared_ptr<transaction::Context> ctx,
           std::string const& collectionName, AccessMode::Type type,
           transaction::Hints::TrxType const& trxTypeHint);
-  //   transaction::Hints::TrxType const& trxTypeHint =
-  //       transaction::Hints::TrxType::INTERNAL);
 
   /// @brief create the transaction, used to be UserTransaction
   Methods(std::shared_ptr<transaction::Context> const& ctx,
@@ -129,8 +125,6 @@ class Methods {
           std::vector<std::string> const& exclusiveCollections,
           transaction::Options const& options,
           transaction::Hints::TrxType const& trxTypeHint);
-  //  transaction::Hints::TrxType const& trxTypeHint =
-  //     transaction::Hints::TrxType::INTERNAL);
 
   /// @brief destroy the transaction
   virtual ~Methods();

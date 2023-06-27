@@ -107,7 +107,7 @@ ResultT<graph::Graph const*> QueryContext::lookupGraphByName(
     return it->second.get();
   }
 
-  graph::GraphManager graphManager{_vocbase};
+  graph::GraphManager graphManager{_vocbase, _trxTypeHint};
 
   auto g = graphManager.lookupGraphByName(name);
 

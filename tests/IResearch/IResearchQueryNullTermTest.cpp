@@ -40,7 +40,8 @@ class QueryNullTerm : public QueryTest {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection0\" }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto collection = _vocbase.createCollection(
+          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, collection);
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -63,7 +64,8 @@ class QueryNullTerm : public QueryTest {
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          *collection, arangodb::AccessMode::Type::WRITE);
+          *collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -79,7 +81,8 @@ class QueryNullTerm : public QueryTest {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection1\" }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto collection = _vocbase.createCollection(
+          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, collection);
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -98,7 +101,8 @@ class QueryNullTerm : public QueryTest {
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          *collection, arangodb::AccessMode::Type::WRITE);
+          *collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {

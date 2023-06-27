@@ -60,7 +60,9 @@ class QueryLateMaterialization : public QueryTest {
     {
       auto collectionJson =
           VPackParser::fromJson(R"({"name": "collection_1" })");
-      logicalCollection1 = vocbase().createCollection(collectionJson->slice());
+      logicalCollection1 = vocbase().createCollection(
+          collectionJson->slice(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, logicalCollection1);
     }
     // add collection_2
@@ -68,7 +70,9 @@ class QueryLateMaterialization : public QueryTest {
     {
       auto collectionJson =
           VPackParser::fromJson(R"({"name": "collection_2" })");
-      logicalCollection2 = vocbase().createCollection(collectionJson->slice());
+      logicalCollection2 = vocbase().createCollection(
+          collectionJson->slice(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, logicalCollection2);
     }
     createView();
@@ -79,7 +83,8 @@ class QueryLateMaterialization : public QueryTest {
       transaction::Methods trx(
           transaction::StandaloneContext::Create(vocbase()), kEmpty,
           {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-          transaction::Options());
+          transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
       // insert into collection_1
       {

@@ -2295,7 +2295,6 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
                                                velocypack::Slice indexes,
                                                bool incremental,
                                                SyncPhase phase) {
-  LOG_DEVEL << "DatabaseInitialSyncer::handleCollection";
   using basics::StringUtils::itoa;
 
   if (isAborted()) {

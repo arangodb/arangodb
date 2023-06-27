@@ -37,7 +37,8 @@ class QueryBooleanTerm : public QueryTest {
     {
       auto createJson =
           VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto collection = _vocbase.createCollection(
+          createJson->slice(), transaction::Hints::TrxType::INTERNAL);
       ASSERT_TRUE(collection);
 
       std::vector<std::shared_ptr<VPackBuilder>> docs{
@@ -55,7 +56,8 @@ class QueryBooleanTerm : public QueryTest {
       options.returnNew = true;
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -70,7 +72,8 @@ class QueryBooleanTerm : public QueryTest {
     {
       auto createJson =
           VPackParser::fromJson("{ \"name\": \"testCollection1\" }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto collection = _vocbase.createCollection(
+          createJson->slice(), transaction::Hints::TrxType::INTERNAL);
       ASSERT_TRUE(collection);
 
       std::vector<std::shared_ptr<VPackBuilder>> docs{
@@ -86,7 +89,8 @@ class QueryBooleanTerm : public QueryTest {
       options.returnNew = true;
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {

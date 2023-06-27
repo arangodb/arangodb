@@ -524,7 +524,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       arangodb::aql::QueryString(
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
-      nullptr);
+      nullptr, arangodb::transaction::Hints::TrxType::INTERNAL);
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   {
@@ -584,7 +584,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
             std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
         auto queryClone = arangodb::aql::Query::create(
             ctx, arangodb::aql::QueryString(std::string_view("RETURN 1")),
-            nullptr);
+            nullptr, arangodb::transaction::Hints::TrxType::INTERNAL);
         queryClone->prepareQuery(
             arangodb::aql::SerializationFormat::SHADOWROWS);
         indNode.invalidateVarUsage();
@@ -629,7 +629,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       arangodb::aql::QueryString(
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
-      nullptr);
+      nullptr, arangodb::transaction::Hints::TrxType::INTERNAL);
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   auto vars = query->plan()->getAst()->variables();

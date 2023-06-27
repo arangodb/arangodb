@@ -537,7 +537,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();
@@ -643,7 +644,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();
@@ -754,7 +756,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();
@@ -864,7 +867,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();
@@ -975,7 +979,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();
@@ -1086,7 +1091,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();
@@ -1207,7 +1213,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();
@@ -1318,7 +1325,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();
@@ -1405,7 +1413,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();
@@ -1494,7 +1503,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();
@@ -1614,7 +1624,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();
@@ -1703,7 +1714,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();
@@ -1787,7 +1799,8 @@ class QueryScorer : public QueryTest {
 
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          arangodb::aql::QueryString(queryString), nullptr);
+          arangodb::aql::QueryString(queryString), nullptr,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
       auto* plan = query->plan();

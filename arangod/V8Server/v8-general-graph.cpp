@@ -72,7 +72,7 @@ static void JS_DropGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto ctx = transaction::V8Context::Create(vocbase, false);
 
-  GraphManager gmngr{vocbase};
+  GraphManager gmngr{vocbase, transaction::Hints::TrxType::REST};
   auto graph = gmngr.lookupGraphByName(graphName);
   if (graph.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());
@@ -106,7 +106,7 @@ static void JS_GraphExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& vocbase = GetContextVocBase(isolate);
   // check if graph already exists
-  GraphManager gmngr{vocbase};
+  GraphManager gmngr{vocbase, transaction::Hints::TrxType::REST};
   bool r = gmngr.graphExists(graphName);
 
   TRI_V8_RETURN(r);
@@ -130,7 +130,7 @@ static void JS_GetGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& vocbase = GetContextVocBase(isolate);
 
-  GraphManager gmngr{vocbase};
+  GraphManager gmngr{vocbase, transaction::Hints::TrxType::REST};
   auto graph = gmngr.lookupGraphByName(graphName);
   if (graph.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());
@@ -153,7 +153,7 @@ static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& vocbase = GetContextVocBase(isolate);
 
-  GraphManager gmngr{vocbase};
+  GraphManager gmngr{vocbase, transaction::Hints::TrxType::REST};
   VPackBuilder result;
   Result r = gmngr.readGraphs(result);
 
@@ -177,7 +177,7 @@ static void JS_GetGraphKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& vocbase = GetContextVocBase(isolate);
 
-  GraphManager gmngr{vocbase};
+  GraphManager gmngr{vocbase, transaction::Hints::TrxType::REST};
   VPackBuilder result;
   Result r = gmngr.readGraphKeys(result);
 
@@ -230,7 +230,7 @@ static void JS_CreateGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& vocbase = GetContextVocBase(isolate);
 
-  GraphManager gmngr{vocbase};
+  GraphManager gmngr{vocbase, transaction::Hints::TrxType::REST};
   OperationResult r = gmngr.createGraph(builder.slice(), false);
 
   if (r.fail()) {
@@ -286,7 +286,7 @@ static void JS_AddEdgeDefinitions(
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  GraphManager gmngr{vocbase};
+  GraphManager gmngr{vocbase, transaction::Hints::TrxType::REST};
   auto graph = gmngr.lookupGraphByName(graphName);
   if (graph.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());
@@ -352,7 +352,7 @@ static void JS_EditEdgeDefinitions(
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  GraphManager gmngr{vocbase};
+  GraphManager gmngr{vocbase, transaction::Hints::TrxType::REST};
   auto graph = gmngr.lookupGraphByName(graphName);
   if (graph.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());
@@ -416,7 +416,7 @@ static void JS_RemoveVertexCollection(
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  GraphManager gmngr{vocbase};
+  GraphManager gmngr{vocbase, transaction::Hints::TrxType::REST};
   auto graph = gmngr.lookupGraphByName(graphName);
   if (graph.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());
@@ -486,7 +486,7 @@ static void JS_AddVertexCollection(
   auto& vocbase = GetContextVocBase(isolate);
   auto ctx = transaction::V8Context::Create(vocbase, true);
 
-  GraphManager gmngr{vocbase};
+  GraphManager gmngr{vocbase, transaction::Hints::TrxType::REST};
   auto graph = gmngr.lookupGraphByName(graphName);
   if (graph.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());
@@ -564,7 +564,7 @@ static void JS_DropEdgeDefinition(
 
   auto& vocbase = GetContextVocBase(isolate);
 
-  GraphManager gmngr{vocbase};
+  GraphManager gmngr{vocbase, transaction::Hints::TrxType::REST};
   auto graph = gmngr.lookupGraphByName(graphName);
   if (graph.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());

@@ -47,7 +47,6 @@ SingleCollectionTransaction::SingleCollectionTransaction(
       _trxCollection(nullptr),
       _documentCollection(nullptr),
       _accessType(accessType) {
-  LOG_DEVEL << "SingleCollectionTransaction constructor";
   // add the (sole) data-source
   Result res = addCollection(dataSource.id(), dataSource.name(), _accessType);
   if (res.fail()) {

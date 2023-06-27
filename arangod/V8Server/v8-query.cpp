@@ -62,7 +62,6 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate,
                             arangodb::LogicalCollection const* col,
                             std::string const& aql,
                             std::shared_ptr<VPackBuilder> const& bindVars) {
-  LOG_DEVEL << "AqlQuery";
   TRI_ASSERT(col != nullptr);
 
   auto query = arangodb::aql::Query::create(

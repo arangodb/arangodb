@@ -35,7 +35,8 @@ class QueryInRange : public QueryTest {
     {
       auto createJson =
           velocypack::Parser::fromJson(R"({ "name": "testCollection0" })");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto collection = _vocbase.createCollection(
+          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_TRUE(collection);
       std::vector<std::shared_ptr<velocypack::Builder>> docs{
           velocypack::Parser::fromJson(R"({ "seq": -6, "value": null })"),
@@ -53,7 +54,8 @@ class QueryInRange : public QueryTest {
       options.returnNew = true;
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -67,7 +69,8 @@ class QueryInRange : public QueryTest {
     {
       auto createJson =
           velocypack::Parser::fromJson(R"({ "name": "testCollection1" })");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto collection = _vocbase.createCollection(
+          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_TRUE(collection);
 
       std::filesystem::path resource;
@@ -83,7 +86,8 @@ class QueryInRange : public QueryTest {
       options.returnNew = true;
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (velocypack::ArrayIterator it{slice}; it.valid(); ++it) {

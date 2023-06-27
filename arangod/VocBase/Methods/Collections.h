@@ -150,13 +150,11 @@ struct Collections {
   static Result updateProperties(
       LogicalCollection& collection, velocypack::Slice props,
       OperationOptions const& options,
-      transaction::Hints::TrxType const& trxTypeHint =
-          transaction::Hints::TrxType::INTERNAL);
+      transaction::Hints::TrxType const& trxTypeHint);
 
   static Result rename(LogicalCollection& collection,
                        std::string const& newName, bool doOverride,
-                       transaction::Hints::TrxType const& trxTypeHint =
-                           transaction::Hints::TrxType::INTERNAL);
+                       transaction::Hints::TrxType const& trxTypeHint);
 
   static arangodb::Result drop(           // drop collection
       arangodb::LogicalCollection& coll,  // collection to drop

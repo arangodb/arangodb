@@ -857,7 +857,6 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  LOG_DEVEL << "JS_ExecuteAQL";
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;

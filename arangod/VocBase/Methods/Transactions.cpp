@@ -66,7 +66,6 @@ bool allowTransactions(v8::Isolate* isolate) {
 Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
                           std::atomic<bool>& canceled, VPackSlice slice,
                           std::string const& portType, VPackBuilder& builder) {
-  LOG_DEVEL << "executeTranscation";
   // YOU NEED A TRY CATCH BLOCK like:
   //    TRI_V8_TRY_CATCH_BEGIN(isolate);
   //    TRI_V8_TRY_CATCH_END
@@ -155,7 +154,6 @@ Result executeTransactionJS(v8::Isolate* isolate,
                             v8::Handle<v8::Value> const& arg,
                             v8::Handle<v8::Value>& result,
                             v8::TryCatch& tryCatch) {
-  LOG_DEVEL << "executeTranscationJS";
   Result rv;
 
   if (!allowTransactions(isolate)) {
