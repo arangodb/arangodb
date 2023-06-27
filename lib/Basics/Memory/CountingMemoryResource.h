@@ -23,32 +23,10 @@
 
 #pragma once
 
-#ifdef __APPLE__
-#include <experimental/memory_resource>
-#else
-#include <memory_resource>
-#endif
-
+#include "MemoryTypes.h"
 #include "Basics/ResourceUsage.h"
 
-namespace arangodb::aql {
-
-#ifdef __APPLE__
-typedef std::experimental::pmr::memory_resource memory_resource_t;
-struct new_delete_resource_t {
-  static memory_resource_t* new_delete_resource() {
-    return std::experimental::pmr::new_delete_resource();
-  }
-};
-
-#else
-typedef std::pmr::memory_resource memory_resource_t;
-struct new_delete_resource_t {
-  static memory_resource_t* new_delete_resource() {
-    return std::pmr::new_delete_resource();
-  }
-};
-#endif
+namespace arangodb {
 
 struct CountingMemoryResource : memory_resource_t {
   CountingMemoryResource(memory_resource* base,
@@ -85,4 +63,4 @@ struct CountingMemoryResource : memory_resource_t {
   /// @brief current resources and limits used by query
   ResourceMonitor& _resourceMonitor;
 };
-}  // namespace arangodb::aql
+}  // namespace arangodb

@@ -25,13 +25,7 @@
 
 #include <type_traits>
 
-#ifdef __APPLE__
-#include <experimental/memory_resource>
-#include <experimental/vector>
-#else
-#include <memory_resource>
-#endif
-
+#include "Basics/Memory/MemoryTypes.h"
 #include "Basics/debugging.h"
 
 namespace arangodb {
@@ -45,22 +39,6 @@ namespace containers {
 /// the elements popped with pop_front() will also not be destructed when
 /// popped. this means this container can only be used for managing trivial
 /// types (e.g. integers or pointers) that do not require ad-hoc destruction
-
-#ifdef __APPLE__
-typedef std::experimental::pmr::memory_resource memory_resource_t;
-
-template<typename T>
-struct pmr_vector_t {
-  typedef std::experimental::pmr::vector<T> type;
-};
-#else
-typedef std::pmr::memory_resource memory_resource_t;
-
-template<typename T>
-struct pmr_vector_t {
-  typedef std::pmr::vector<T> type;
-};
-#endif
 
 template<typename T>
 class RollingVector {
@@ -101,19 +79,15 @@ class RollingVector {
 
   ~RollingVector() = default;
 
-  typename pmr_vector_t<T>::type::iterator begin() {
-    return _data.begin() + _start;
-  }
+  typename pmr_vector_t<T>::iterator begin() { return _data.begin() + _start; }
 
-  typename pmr_vector_t<T>::type::iterator end() { return _data.end(); }
+  typename pmr_vector_t<T>::iterator end() { return _data.end(); }
 
-  typename pmr_vector_t<T>::type::const_iterator begin() const {
+  typename pmr_vector_t<T>::const_iterator begin() const {
     return _data.begin();
   }
 
-  typename pmr_vector_t<T>::type::const_iterator end() const {
-    return _data.end();
-  }
+  typename pmr_vector_t<T>::const_iterator end() const { return _data.end(); }
 
   T& operator[](size_t position) { return _data[_start + position]; }
 
@@ -184,7 +158,7 @@ class RollingVector {
 
  private:
   size_t _start;
-  typename pmr_vector_t<T>::type _data;
+  pmr_vector_t<T> _data;
 };
 
 }  // namespace containers

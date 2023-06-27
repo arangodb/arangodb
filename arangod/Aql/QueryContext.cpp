@@ -34,7 +34,6 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "CountingMemoryResource.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
@@ -43,7 +42,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "CountingMemoryResource.h"
 
 #include <velocypack/Iterator.h>
 

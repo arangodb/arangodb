@@ -25,7 +25,6 @@
 
 #include "Aql/ExecutionPlan.h"
 #include "Containers/RollingVector.h"
-#include "Aql/CountingMemoryResource.h"
 
 #include <velocypack/Builder.h>
 
@@ -34,12 +33,6 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#ifdef __APPLE__
-#include <experimental/memory_resource>
-#else
-#include <memory_resource>
-#endif
 
 namespace arangodb::aql {
 

@@ -33,14 +33,9 @@
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
+#include "Basics/Memory/CountingMemoryResource.h"
 #include "VocBase/voc-types.h"
 #include <velocypack/Builder.h>
-
-#ifdef __APPLE__
-#include <experimental/memory_resource>
-#else
-#include <memory_resource>
-#endif
 
 struct TRI_vocbase_t;
 
@@ -67,11 +62,6 @@ class Ast;
 
 /// @brief an AQL query basic interface
 class QueryContext {
-#ifdef __APPLE__
-  typedef std::experimental::pmr::memory_resource memory_resource_t;
-#else
-  typedef std::pmr::memory_resource memory_resource_t;
-#endif
 
  private:
   QueryContext(QueryContext const&) = delete;
