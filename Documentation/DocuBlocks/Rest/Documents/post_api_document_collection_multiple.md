@@ -66,11 +66,11 @@ This option supersedes `overwrite` and offers the following modes:
 
 @RESTQUERYPARAM{keepNull,boolean,optional}
 If the intention is to delete existing attributes with the update-insert
-command, the URL query parameter `keepNull` can be used with a value of
-`false`. This modifies the behavior of the patch command to remove any
-attributes from the existing document that are contained in the patch document
-with an attribute value of `null`.
-This option controls the update-insert behavior only.
+command, set the `keepNull` URL query parameter to `false`. This modifies the
+behavior of the patch command to remove top-level attributes and sub-attributes
+from the existing document that are contained in the patch document with an
+attribute value of `null` (but not attributes of objects that are nested inside
+of arrays). This option controls the update-insert behavior only.
 
 @RESTQUERYPARAM{mergeObjects,boolean,optional}
 Controls whether objects (not arrays) are merged if present in both, the

@@ -27,8 +27,10 @@
 #include "IResearch/IResearchInvertedIndexMeta.h"
 #include "Indexes/Index.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "VocBase/LogicalCollection.h"
 
+namespace arangodb {
+class LogicalCollection;
+}
 namespace arangodb::iresearch {
 
 class IResearchInvertedIndexMock final : public Index,
