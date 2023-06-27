@@ -25,19 +25,11 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "immer/flex_vector_transient.hpp"
-#include "Basics/Result.h"
-#include "Replication2/ReplicatedLog/Components/StorageManager.h"
+#include "Basics/ResultT.h"
+#include "Futures/Future.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
-#include "Replication2/Mocks/FakeStorageEngineMethods.h"
-#include "Replication2/Mocks/FakeAsyncExecutor.h"
 
-namespace arangodb::replication2::tests {
-
-using namespace arangodb;
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::replicated_log;
-using namespace arangodb::replication2::replicated_state;
+namespace arangodb::replication2::storage::tests {
 
 struct StorageEngineMethodsGMock : IStorageEngineMethods {
   MOCK_METHOD(Result, updateMetadata, (PersistedStateInfo), (override));
@@ -59,4 +51,4 @@ struct StorageEngineMethodsGMock : IStorageEngineMethods {
   MOCK_METHOD(void, waitForCompletion, (), (noexcept, override));
 };
 
-}  // namespace arangodb::replication2::tests
+}  // namespace arangodb::replication2::storage::tests

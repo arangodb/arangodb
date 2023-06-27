@@ -73,8 +73,7 @@ auto VocBaseLogManager::getReplicatedStateById(replication2::LogId id)
 
 void VocBaseLogManager::registerReplicatedState(
     replication2::LogId id,
-    std::unique_ptr<
-        arangodb::replication2::replicated_state::IStorageEngineMethods>
+    std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
         methods) {
   auto meta = methods->readMetadata();
   if (meta.fail()) {
@@ -286,8 +285,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
     replication2::replicated_state::ReplicatedStateAppFeature& feature,
     LoggerContext const& logContext, ArangodServer& server,
     TRI_vocbase_t& vocbase,
-    std::unique_ptr<
-        arangodb::replication2::replicated_state::IStorageEngineMethods>
+    std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
         storage)
     -> ResultT<std::shared_ptr<
         replication2::replicated_state::ReplicatedStateBase>> try {

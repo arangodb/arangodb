@@ -29,8 +29,8 @@ namespace arangodb::replication2::replicated_state {
 
 struct PersistedStateInfo {
   LogId stateId;  // could be removed
-  SnapshotInfo snapshot;
-  StateGeneration generation;
+  replicated_state::SnapshotInfo snapshot;
+  replicated_state::StateGeneration generation;
   replication2::agency::ImplementationSpec specification;
 };
 
@@ -43,3 +43,9 @@ auto inspect(Inspector& f, PersistedStateInfo& x) {
 }
 
 }  // namespace arangodb::replication2::replicated_state
+
+namespace arangodb::replication2::storage {
+// TODO - update usages, move type to namespace storage, and remove this alias
+using PersistedStateInfo =
+    ::arangodb::replication2::replicated_state::PersistedStateInfo;
+}  // namespace arangodb::replication2::storage

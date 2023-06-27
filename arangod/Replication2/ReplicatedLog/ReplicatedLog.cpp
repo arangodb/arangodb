@@ -48,7 +48,7 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 replicated_log::ReplicatedLog::ReplicatedLog(
-    std::unique_ptr<replicated_state::IStorageEngineMethods> storage,
+    std::unique_ptr<storage::IStorageEngineMethods> storage,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<IParticipantsFactory> participantsFactory,
@@ -262,7 +262,7 @@ auto ReplicatedLog::getParticipant() const -> std::shared_ptr<ILogParticipant> {
 }
 
 auto ReplicatedLog::resign() && -> std::unique_ptr<
-    replicated_state::IStorageEngineMethods> {
+    storage::IStorageEngineMethods> {
   auto guard = _guarded.getLockedGuard();
   LOG_CTX("79025", DEBUG, _logContext) << "replicated log resigned";
   ADB_PROD_ASSERT(not guard->resigned)
@@ -291,7 +291,7 @@ auto ReplicatedLog::getStatus() const -> LogStatus {
 }
 
 ReplicatedLog::GuardedData::GuardedData(
-    std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+    std::unique_ptr<storage::IStorageEngineMethods> methods,
     agency::ServerInstanceReference myself)
     : methods(std::move(methods)), _myself(std::move(myself)) {}
 
@@ -313,7 +313,7 @@ ReplicatedLogConnection::ReplicatedLogConnection(ReplicatedLog* log)
     : _log(log) {}
 
 auto DefaultParticipantsFactory::constructFollower(
-    std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+    std::unique_ptr<storage::IStorageEngineMethods>&& methods,
     FollowerTermInfo info, ParticipantContext context)
     -> std::shared_ptr<ILogFollower> {
   std::shared_ptr<ILeaderCommunicator> leaderComm;
@@ -332,7 +332,7 @@ auto DefaultParticipantsFactory::constructFollower(
 }
 
 auto DefaultParticipantsFactory::constructLeader(
-    std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+    std::unique_ptr<storage::IStorageEngineMethods>&& methods,
     LeaderTermInfo info, ParticipantContext context)
     -> std::shared_ptr<ILogLeader> {
   return LogLeader::construct(

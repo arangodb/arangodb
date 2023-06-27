@@ -70,8 +70,7 @@ struct VocBaseLogManager {
 
   void registerReplicatedState(
       replication2::LogId id,
-      std::unique_ptr<
-          arangodb::replication2::replicated_state::IStorageEngineMethods>
+      std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
           methods);
 
   void resignAll() noexcept;
@@ -127,8 +126,7 @@ struct VocBaseLogManager {
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
         LoggerContext const& logContext, ArangodServer& server,
         TRI_vocbase_t& vocbase,
-        std::unique_ptr<
-            arangodb::replication2::replicated_state::IStorageEngineMethods>
+        std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
             storage)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>>;

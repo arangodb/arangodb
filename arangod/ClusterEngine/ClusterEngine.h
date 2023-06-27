@@ -194,14 +194,13 @@ class ClusterEngine final : public StorageEngine {
 
   auto dropReplicatedState(
       TRI_vocbase_t& vocbase,
-      std::unique_ptr<
-          arangodb::replication2::replicated_state::IStorageEngineMethods>& ptr)
+      std::unique_ptr<replication2::storage::IStorageEngineMethods>& ptr)
       -> Result override;
   auto createReplicatedState(
       TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
       const replication2::replicated_state::PersistedStateInfo& info)
-      -> ResultT<std::unique_ptr<arangodb::replication2::replicated_state::
-                                     IStorageEngineMethods>> override;
+      -> ResultT<std::unique_ptr<
+          replication2::storage::IStorageEngineMethods>> override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;

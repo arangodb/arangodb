@@ -18,18 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Replication2/Storage/ILogPersistor.h"
-#include "Replication2/Storage/IStatePersistor.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 
-namespace arangodb::replication2::storage {
+namespace arangodb::replication2::storage::rocksdb {
 
-// TODO - cleanup usage and remove this interface
-struct IStorageEngineMethods : ILogPersistor, IStatePersistor {
-  virtual ~IStorageEngineMethods() = default;
+struct ReplicatedStateInfo {
+  replication2::LogId stateId;
+  std::uint64_t objectId{0};
+  std::uint64_t dataSourceId{0};
+  replication2::replicated_state::PersistedStateInfo state;
 };
 
-}  // namespace arangodb::replication2::storage
+template<class Inspector>
+auto inspect(Inspector& f, ReplicatedStateInfo& x) {
+  return f.object(x).fields(
+      f.field("stateId", x.stateId),
+      f.field(StaticStrings::ObjectId, x.objectId),
+      f.field(StaticStrings::DataSourceId, x.dataSourceId),
+      f.field("state", x.state));
+}
+
+}  // namespace arangodb::replication2::storage::rocksdb

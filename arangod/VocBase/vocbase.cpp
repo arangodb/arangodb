@@ -1654,8 +1654,7 @@ auto TRI_vocbase_t::getReplicatedStateById(LogId id)
 
 void TRI_vocbase_t::registerReplicatedState(
     replication2::LogId id,
-    std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>
-        methods) {
+    std::unique_ptr<replication2::storage::IStorageEngineMethods> methods) {
   _logManager->registerReplicatedState(id, std::move(methods));
 }
 

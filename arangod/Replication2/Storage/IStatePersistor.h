@@ -24,7 +24,7 @@
 
 #include "Replication2/Storage/PersistedStateInfo.h"
 
-namespace arangodb::replication2::replicated_state {
+namespace arangodb::replication2::storage {
 
 struct IStatePersistor {
   virtual ~IStatePersistor() = default;
@@ -32,4 +32,4 @@ struct IStatePersistor {
   [[nodiscard]] virtual auto readMetadata() -> ResultT<PersistedStateInfo> = 0;
 };
 
-}  // namespace arangodb::replication2::replicated_state
+}  // namespace arangodb::replication2::storage

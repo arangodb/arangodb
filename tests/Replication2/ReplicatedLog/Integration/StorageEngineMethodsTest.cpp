@@ -25,22 +25,25 @@
 #include "Basics/Exceptions.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/files.h"
-#include "RocksDBEngine/RocksDBFormat.h"
-#include "RocksDBEngine/RocksDBPersistedLog.h"
-
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
+#include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
+#include "Replication2/Storage/RocksDB/PersistedLog.h"
+#include "RocksDBEngine/RocksDBFormat.h"
+
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-namespace arangodb::replication2::test {
+namespace arangodb::replication2::storage::rocksdb::test {
+
 struct RocksDBInstance {
   explicit RocksDBInstance(std::string path) : _path(std::move(path)) {
-    rocksdb::Options options;
+    ::rocksdb::Options options;
     options.create_if_missing = true;
-    if (auto s = rocksdb::DB::Open(options, _path, &_db); !s.ok()) {
+    if (auto s = ::rocksdb::DB::Open(options, _path, &_db); !s.ok()) {
       auto res = rocksutils::convertStatus(s);
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
@@ -51,10 +54,10 @@ struct RocksDBInstance {
     TRI_RemoveDirectory(_path.c_str());
   }
 
-  [[nodiscard]] auto getDatabase() const -> rocksdb::DB* { return _db; }
+  [[nodiscard]] auto getDatabase() const -> ::rocksdb::DB* { return _db; }
 
  private:
-  rocksdb::DB* _db = nullptr;
+  ::rocksdb::DB* _db = nullptr;
   std::string _path;
 };
 
@@ -78,7 +81,7 @@ template<typename C, typename Iter = typename C::const_iterator>
 auto make_iterator(C const& c) -> std::unique_ptr<SimpleIterator<Iter>> {
   return std::make_unique<SimpleIterator<Iter>>(c.begin(), c.end());
 }
-}  // namespace arangodb::replication2::test
+}  // namespace arangodb::replication2::storage::rocksdb::test
 
 template<typename Factory>
 struct StorageEngineMethodsTest : ::testing::Test {
@@ -93,21 +96,22 @@ struct StorageEngineMethodsTest : ::testing::Test {
     SetUp();
   }
 
-  std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor =
-      std::make_shared<test::ThreadAsyncExecutor>();
+  std::shared_ptr<arangodb::replication2::storage::rocksdb::
+                      AsyncLogWriteBatcher::IAsyncExecutor>
+      executor = std::make_shared<arangodb::replication2::storage::rocksdb::
+                                      test::ThreadAsyncExecutor>();
 
   static constexpr std::uint64_t objectId = 1;
   static constexpr std::uint64_t vocbaseId = 1;
   static constexpr LogId logId = LogId{1};
 
-  std::unique_ptr<replicated_state::IStorageEngineMethods> methods;
+  std::unique_ptr<storage::IStorageEngineMethods> methods;
 };
 
-namespace arangodb::replication2::test {
+namespace arangodb::replication2::storage::rocksdb::tests {
 
-struct RocksDBAsyncLogWriteBatcherMetricsMock
-    : RocksDBAsyncLogWriteBatcherMetrics {
-  RocksDBAsyncLogWriteBatcherMetricsMock() {
+struct AsyncLogWriteBatcherMetricsMock : AsyncLogWriteBatcherMetrics {
+  AsyncLogWriteBatcherMetricsMock() {
     numWorkerThreadsWaitForSync =
         makeMetric<arangodb_replication2_rocksdb_num_persistor_worker>();
     numWorkerThreadsNoWaitForSync =
@@ -145,8 +149,7 @@ struct RocksDBFactory {
 
   static void TearDown() { rocksdb.reset(); }
 
-  static void Drop(
-      std::unique_ptr<replicated_state::IStorageEngineMethods> methods) {
+  static void Drop(std::unique_ptr<IStorageEngineMethods> methods) {
     auto& rocksdbMethods = dynamic_cast<RocksDBLogStorageMethods&>(*methods);
     rocksdbMethods.ctx.waitForCompletion();
     auto res = rocksdbMethods.drop();
@@ -155,12 +158,12 @@ struct RocksDBFactory {
 
   static auto BuildMethods(
       std::uint64_t objectId, std::uint64_t vocbaseId, LogId logId,
-      std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor)
-      -> std::unique_ptr<replicated_state::IStorageEngineMethods> {
-    auto metrics = std::make_shared<RocksDBAsyncLogWriteBatcherMetricsMock>();
+      std::shared_ptr<AsyncLogWriteBatcher::IAsyncExecutor> executor)
+      -> std::unique_ptr<IStorageEngineMethods> {
+    auto metrics = std::make_shared<AsyncLogWriteBatcherMetricsMock>();
 
-    std::shared_ptr<RocksDBAsyncLogWriteBatcher> writeBatcher =
-        std::make_shared<RocksDBAsyncLogWriteBatcher>(
+    std::shared_ptr<AsyncLogWriteBatcher> writeBatcher =
+        std::make_shared<AsyncLogWriteBatcher>(
             rocksdb->getDatabase()->DefaultColumnFamily(),
             rocksdb->getDatabase(), std::move(executor), settings, metrics);
 
@@ -182,25 +185,28 @@ struct FakeFactory {
 
   static void TearDown() {}
 
-  static void Drop(
-      std::unique_ptr<replicated_state::IStorageEngineMethods> methods) {}
+  static void Drop(std::unique_ptr<IStorageEngineMethods> methods) {}
 
   static auto BuildMethods(
       std::uint64_t objectId, std::uint64_t vocbaseId, LogId logId,
-      std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor)
-      -> std::unique_ptr<replicated_state::IStorageEngineMethods> {
-    context = std::make_shared<test::FakeStorageEngineMethodsContext>(
+      std::shared_ptr<rocksdb::AsyncLogWriteBatcher::IAsyncExecutor> executor)
+      -> std::unique_ptr<IStorageEngineMethods> {
+    context = std::make_shared<storage::test::FakeStorageEngineMethodsContext>(
         objectId, logId, std::move(executor));
     return context->getMethods();
   };
 
-  static std::shared_ptr<test::FakeStorageEngineMethodsContext> context;
+  static std::shared_ptr<storage::test::FakeStorageEngineMethodsContext>
+      context;
 };
 
-std::shared_ptr<test::FakeStorageEngineMethodsContext> FakeFactory::context;
-}  // namespace arangodb::replication2::test
+std::shared_ptr<storage::test::FakeStorageEngineMethodsContext>
+    FakeFactory::context;
+}  // namespace arangodb::replication2::storage::rocksdb::tests
 
-using MyTypes = ::testing::Types<test::RocksDBFactory, test::FakeFactory>;
+using MyTypes = ::testing::Types<
+    arangodb::replication2::storage::rocksdb::tests::RocksDBFactory,
+    arangodb::replication2::storage::rocksdb::tests::FakeFactory>;
 TYPED_TEST_SUITE(StorageEngineMethodsTest, MyTypes);
 
 TYPED_TEST(StorageEngineMethodsTest, read_meta_data_not_found) {
@@ -272,7 +278,7 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries) {
   };
 
   {
-    auto iter = test::make_iterator(entries);
+    auto iter = storage::rocksdb::test::make_iterator(entries);
     auto res = this->methods->insert(std::move(iter), {}).get();
     EXPECT_TRUE(res.ok());
   }
@@ -299,7 +305,7 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries_remove_front_back) {
   };
 
   {
-    auto iter = test::make_iterator(entries);
+    auto iter = storage::rocksdb::test::make_iterator(entries);
     auto res = this->methods->insert(std::move(iter), {}).get();
     EXPECT_TRUE(res.ok());
   }
@@ -336,7 +342,7 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries_iter_after_remove) {
   };
 
   {
-    auto iter = test::make_iterator(entries);
+    auto iter = storage::rocksdb::test::make_iterator(entries);
     auto res = this->methods->insert(std::move(iter), {}).get();
     EXPECT_TRUE(res.ok());
   }

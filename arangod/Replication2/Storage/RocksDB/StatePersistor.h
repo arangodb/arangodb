@@ -20,16 +20,35 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Replication2/Storage/ILogPersistor.h"
 #include "Replication2/Storage/IStatePersistor.h"
 
-namespace arangodb::replication2::storage {
+namespace rocksdb {
+class DB;
+class ColumnFamilyHandle;
+}  // namespace rocksdb
 
-// TODO - cleanup usage and remove this interface
-struct IStorageEngineMethods : ILogPersistor, IStatePersistor {
-  virtual ~IStorageEngineMethods() = default;
+namespace arangodb::replication2::storage::rocksdb {
+
+struct AsyncLogWriteContext;
+
+struct StatePersistor final : IStatePersistor {
+  StatePersistor(LogId logId, AsyncLogWriteContext& ctx,
+                 ::rocksdb::DB* const db,
+                 ::rocksdb::ColumnFamilyHandle* const metaCf);
+  [[nodiscard]] auto updateMetadata(
+      replication2::replicated_state::PersistedStateInfo info)
+      -> Result override;
+  [[nodiscard]] auto readMetadata()
+      -> ResultT<replication2::replicated_state::PersistedStateInfo> override;
+
+ private:
+  LogId const logId;
+  AsyncLogWriteContext& ctx;
+  ::rocksdb::DB* const db;
+  ::rocksdb::ColumnFamilyHandle* const metaCf;
 };
 
-}  // namespace arangodb::replication2::storage
+}  // namespace arangodb::replication2::storage::rocksdb

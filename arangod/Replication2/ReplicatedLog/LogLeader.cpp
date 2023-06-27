@@ -331,7 +331,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 }
 
 auto replicated_log::LogLeader::construct(
-    std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+    std::unique_ptr<storage::IStorageEngineMethods>&& methods,
     std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
@@ -1300,7 +1300,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
 
   // Note that the beginning of iter here is always (and must be) exactly
   // the next index after the last one in the LogCore.
-  replicated_state::IStorageEngineMethods::WriteOptions opts;
+  storage::IStorageEngineMethods::WriteOptions opts;
   opts.waitForSync = request.waitForSync;
   auto trx = _storageManager->transaction();
   return trx->appendEntries(InMemoryLog{request.entries})
@@ -1505,7 +1505,7 @@ auto replicated_log::LogLeader::ping(std::optional<std::string> message)
   return index;
 }
 auto replicated_log::LogLeader::resign() && -> std::tuple<
-    std::unique_ptr<replicated_state::IStorageEngineMethods>,
+    std::unique_ptr<storage::IStorageEngineMethods>,
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
   auto [actionOuter, leaderEstablished, stateHandle] =
       _guardedLeaderData.doUnderLock([this, &localFollower = *_localFollower,

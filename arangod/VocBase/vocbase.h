@@ -84,8 +84,10 @@ namespace replicated_state {
 struct ReplicatedStateBase;
 struct StateStatus;
 struct PersistedStateInfo;
-struct IStorageEngineMethods;
 }  // namespace replicated_state
+namespace storage {
+struct IStorageEngineMethods;
+}
 }  // namespace replication2
 namespace velocypack {
 class Builder;
@@ -505,8 +507,7 @@ struct TRI_vocbase_t {
   /// methods to access the storage engine
   void registerReplicatedState(
       arangodb::replication2::LogId,
-      std::unique_ptr<
-          arangodb::replication2::replicated_state::IStorageEngineMethods>);
+      std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>);
 };
 
 /// @brief sanitize an object, given as slice, builder must contain an

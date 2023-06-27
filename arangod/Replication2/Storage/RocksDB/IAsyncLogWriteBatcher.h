@@ -18,56 +18,47 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
+
+namespace arangodb::futures {
+template<typename T>
+class Future;
+}  // namespace arangodb::futures
 
 namespace arangodb {
 template<typename T>
 class ResultT;
 }
 
-namespace arangodb::futures {
-struct Unit;
-template<typename T>
-class Future;
-}  // namespace arangodb::futures
+namespace arangodb::replication2::storage::rocksdb {
 
-namespace arangodb::replication2 {
-struct PersistedLogIterator;
-}
-namespace arangodb::replication2::storage {
+struct AsyncLogWriteContext;
 
-struct ILogPersistor {
-  virtual ~ILogPersistor() = default;
-
-  [[nodiscard]] virtual auto read(LogIndex first)
-      -> std::unique_ptr<PersistedLogIterator> = 0;
+struct IAsyncLogWriteBatcher {
+  virtual ~IAsyncLogWriteBatcher() = default;
 
   struct WriteOptions {
     bool waitForSync = false;
   };
 
-  using SequenceNumber = std::uint64_t;
+  using SequenceNumber = IStorageEngineMethods::SequenceNumber;
 
-  virtual auto insert(std::unique_ptr<PersistedLogIterator>,
-                      WriteOptions const&)
+  virtual auto queueInsert(AsyncLogWriteContext& ctx,
+                           std::unique_ptr<PersistedLogIterator> iter,
+                           WriteOptions const& opts)
       -> futures::Future<ResultT<SequenceNumber>> = 0;
-  virtual auto removeFront(LogIndex stop, WriteOptions const&)
-      -> futures::Future<ResultT<SequenceNumber>> = 0;
-  virtual auto removeBack(LogIndex start, WriteOptions const&)
-      -> futures::Future<ResultT<SequenceNumber>> = 0;
-  virtual auto getObjectId() -> std::uint64_t = 0;
-  virtual auto getLogId() -> LogId = 0;
 
-  virtual auto getSyncedSequenceNumber() -> SequenceNumber = 0;
-  virtual auto waitForSync(SequenceNumber)
-      -> futures::Future<futures::Unit> = 0;
+  virtual auto queueRemoveFront(AsyncLogWriteContext& ctx, LogIndex stop,
+                                WriteOptions const& opts)
+      -> futures::Future<ResultT<SequenceNumber>> = 0;
 
-  // waits for all ongoing requests to be done
-  virtual void waitForCompletion() noexcept = 0;
+  virtual auto queueRemoveBack(AsyncLogWriteContext& ctx, LogIndex start,
+                               WriteOptions const& opts)
+      -> futures::Future<ResultT<SequenceNumber>> = 0;
 };
-
-}  // namespace arangodb::replication2::storage
+}  // namespace arangodb::replication2::storage::rocksdb

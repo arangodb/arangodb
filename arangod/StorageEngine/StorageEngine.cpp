@@ -136,8 +136,7 @@ void StorageEngine::registerView(
 
 void StorageEngine::registerReplicatedState(
     TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    std::unique_ptr<
-        arangodb::replication2::replicated_state::IStorageEngineMethods>
+    std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
         methods) {
   vocbase.registerReplicatedState(id, std::move(methods));
 }

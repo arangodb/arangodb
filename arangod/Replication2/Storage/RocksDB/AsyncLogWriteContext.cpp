@@ -18,18 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include "Replication2/Storage/ILogPersistor.h"
-#include "Replication2/Storage/IStatePersistor.h"
+#include "AsyncLogWriteContext.h"
 
-namespace arangodb::replication2::storage {
+namespace arangodb::replication2::storage::rocksdb {
 
-// TODO - cleanup usage and remove this interface
-struct IStorageEngineMethods : ILogPersistor, IStatePersistor {
-  virtual ~IStorageEngineMethods() = default;
-};
+void AsyncLogWriteContext::waitForCompletion() {
+  while (true) {
+    auto c = _pendingAsyncOperations.load(std::memory_order_acquire);
+    if (c == 0) {
+      break;
+    }
+    _pendingAsyncOperations.wait(c, std::memory_order_acquire);
+  }
+}
 
-}  // namespace arangodb::replication2::storage
+void AsyncLogWriteContext::finishPendingAsyncOperation() {
+  auto c = _pendingAsyncOperations.fetch_sub(1, std::memory_order_release);
+  if (c == 1) {
+    _pendingAsyncOperations.notify_all();
+  }
+}
+
+void AsyncLogWriteContext::addPendingAsyncOperation() {
+  _pendingAsyncOperations.fetch_add(1, std::memory_order_release);
+}
+
+}  // namespace arangodb::replication2::storage::rocksdb

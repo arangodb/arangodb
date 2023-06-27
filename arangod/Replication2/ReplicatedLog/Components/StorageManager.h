@@ -38,7 +38,7 @@ struct StorageManagerTransaction;
 struct StateInfoTransaction;
 struct StorageManager : IStorageManager,
                         std::enable_shared_from_this<StorageManager> {
-  using IStorageEngineMethods = replicated_state::IStorageEngineMethods;
+  using IStorageEngineMethods = storage::IStorageEngineMethods;
 
   StorageManager(std::unique_ptr<IStorageEngineMethods> core,
                  LoggerContext const& loggerContext,

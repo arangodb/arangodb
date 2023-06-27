@@ -22,35 +22,34 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/Storage/PersistedStateInfo.h"
-#include "RocksDBEngine/RocksDBPersistedLog.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
+#include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
 
-namespace arangodb::replication2::test {
+namespace arangodb::replication2::storage::test {
 
 struct FakeStorageEngineMethodsContext {
   using LogContainerType = std::map<LogIndex, PersistingLogEntry>;
-  using SequenceNumber =
-      replicated_state::IStorageEngineMethods::SequenceNumber;
+  using SequenceNumber = IStorageEngineMethods::SequenceNumber;
 
   FakeStorageEngineMethodsContext(
       std::uint64_t objectId, LogId logId,
-      std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor,
+      std::shared_ptr<rocksdb::AsyncLogWriteBatcher::IAsyncExecutor> executor,
       LogRange range = {},
       std::optional<replicated_state::PersistedStateInfo> = {});
 
-  auto getMethods() -> std::unique_ptr<replicated_state::IStorageEngineMethods>;
+  auto getMethods() -> std::unique_ptr<IStorageEngineMethods>;
   void emplaceLogRange(LogRange, LogTerm term = LogTerm{1});
 
   std::uint64_t const objectId;
   LogId const logId;
-  std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> const executor;
+  std::shared_ptr<rocksdb::AsyncLogWriteBatcher::IAsyncExecutor> const executor;
   std::optional<replicated_state::PersistedStateInfo> meta;
   LogContainerType log;
   std::unordered_set<LogIndex> writtenWithWaitForSync;
   SequenceNumber lastSequenceNumber{0};
 };
 
-struct FakeStorageEngineMethods : replicated_state::IStorageEngineMethods {
+struct FakeStorageEngineMethods : IStorageEngineMethods {
   auto updateMetadata(replicated_state::PersistedStateInfo info)
       -> Result override;
 
@@ -80,4 +79,4 @@ struct FakeStorageEngineMethods : replicated_state::IStorageEngineMethods {
   FakeStorageEngineMethodsContext& _self;
 };
 
-}  // namespace arangodb::replication2::test
+}  // namespace arangodb::replication2::storage::test
