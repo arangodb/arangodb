@@ -3,15 +3,39 @@ v3.10.9 (XXXX-XX-XX)
 
 * Optimise runtime performance of exclusive locks.
 
+* BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in
+  case the update AQL is of the pattern
+
+      FOR doc IN collection
+        UPDATE <doc> IN collection
+
+  Previously the optimization was only possible if the update AQL was of the
+  pattern
+
+      FOR doc IN collection
+        UPDATE <key> WITH <doc> IN collection
+
+  Both <key> and <doc> refer to data from the collection enumeration variable
+  `doc` here.
+
+  Also fix the optimization in case a shard key attribute is updated with a
+  value from a different attribute, e.g.
+
+     FOR doc IN collection
+       UPDATE { _key: doc.abc, abc: doc._key } IN collection
+
+  In this case the optimization was previously applied although it shouldn't.
+>>>>>>> b85a99d5e19 (Fixes second issue of BTS-1490 (#19308))
+
 * Add a `description` field to OptimizerRule and dump the explanations via the
   `GET /_api/query/rules` endpoint.
 
 * Attempt to avoid busy looping when locking collections with a timeout
 
+* BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
+
 v3.10.8 (2023-06-23)
 --------------------
-
-* BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
 
 * Fixed two possible deadlocks which could occur if all medium priority
   threads are busy. One is that in this case the AgencyCache could no longer
