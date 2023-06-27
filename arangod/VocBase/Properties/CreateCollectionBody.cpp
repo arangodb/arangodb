@@ -25,11 +25,93 @@
 
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
+
+namespace {
+
+auto makeAllowList() -> std::unordered_set<std::string_view> {
+  return {// CollectionConstantProperties
+          StaticStrings::DataSourceSystem, StaticStrings::IsSmart,
+          StaticStrings::IsDisjoint, StaticStrings::CacheEnabled,
+          StaticStrings::GraphSmartGraphAttribute,
+          StaticStrings::SmartJoinAttribute, StaticStrings::DataSourceType,
+          StaticStrings::KeyOptions,
+
+          // CollectionMutableProperties
+          StaticStrings::DataSourceName, StaticStrings::Schema,
+          StaticStrings::ComputedValues,
+
+          // CollectionInternalProperties,
+          StaticStrings::Id, StaticStrings::SyncByRevision,
+          StaticStrings::UsesRevisionsAsDocumentIds,
+          StaticStrings::IsSmartChild, StaticStrings::DataSourceDeleted,
+          StaticStrings::InternalValidatorTypes,
+
+          // ClusteringMutableProperties
+          StaticStrings::WaitForSyncString, StaticStrings::ReplicationFactor,
+          StaticStrings::MinReplicationFactor, StaticStrings::WriteConcern,
+
+          // ClusteringConstantProperties
+          StaticStrings::NumberOfShards, StaticStrings::ShardingStrategy,
+          StaticStrings::ShardKeys, StaticStrings::DistributeShardsLike,
+
+          // Collection Create Options
+          "avoidServers"};
+}
+
+/**
+ * Transform an illegal inbound body into a legal one, honoring the exact behaviour
+ * of 3.11 version.
+ *
+ * @param body The original body
+ * @param parsingResult The error result returned by
+ * @return
+ */
+auto transformFromBackwardsCompatibleBody(VPackSlice body, Result parsingResult) -> ResultT<VPackBuilder> {
+  TRI_ASSERT(parsingResult.fail());
+  VPackBuilder result;
+  {
+    VPackObjectBuilder objectGuard(&result);
+    auto keyAllowList = makeAllowList();
+    for (auto const& [key, value] : VPackObjectIterator(body)) {
+
+      if (keyAllowList.find(key.stringView()) == keyAllowList.end()) {
+        // We ignore all keys we are not aware of
+        continue;
+      }
+      if (key.isEqualString(StaticStrings::DataSourceType)) {
+        if (value.isString() && value.isEqualString("edge")) {
+          // String edge translates to edge type
+          result.add(key.stringView(), VPackValue(TRI_COL_TYPE_EDGE));
+        } else if (value.isNumber() && value.getNumericValue<TRI_col_type_e>() == TRI_COL_TYPE_EDGE) {
+          // Transform correct value for Edge to edge type
+          result.add(key.stringView(), VPackValue(TRI_COL_TYPE_EDGE));
+        } else {
+          // Just default copy original value, should be safe
+          result.add(key.stringView(), VPackValue(TRI_COL_TYPE_DOCUMENT));
+        }
+      } else if (key.isEqualString(StaticStrings::ReplicationFactor)) {
+        if (value.isNumber() && value.getNumericValue<uint64_t>() == 0) {
+          // LOG_DEVEL << "New reset : " << value.toJson();
+          result.add(key.stringView(), VPackValue(StaticStrings::Satellite));
+        } else {
+          // Just forward
+          result.add(key.stringView(), value);
+        }
+      } else {
+        // Just default copy original value, should be safe
+        result.add(key.stringView(), value);
+      }
+    }
+  }
+  return result;
+}
+}
 
 CreateCollectionBody::CreateCollectionBody() {}
 
@@ -81,7 +163,23 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  return ::parseAndValidate(config, input, [](CreateCollectionBody& col) {});
+  auto res =
+      ::parseAndValidate(config, input, [](CreateCollectionBody& col) {});
+  if (res.fail()) {
+    auto newBody = transformFromBackwardsCompatibleBody(input, res.result());
+    if (newBody.fail()) {
+      return newBody.result();
+    }
+    auto compatibleRes = ::parseAndValidate(config, newBody->slice(), [](CreateCollectionBody& col) {});
+    if (compatibleRes.ok()) {
+        LOG_TOPIC("ee638", ERR, arangodb::Logger::DEPRECATION)
+            << "The createCollection request contains an illegal combination and "
+               "will be rejected in the future: "
+            << res.result();
+    }
+    return compatibleRes;
+  }
+  return res;
 }
 
 ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
