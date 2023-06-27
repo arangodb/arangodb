@@ -377,7 +377,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
                   reinterpret_cast<char const*>(data) + 5,
                   _lz4CompressBuffer.data(),
                   static_cast<int>(finding.value()->valueSize() - 5),
-                  _lz4CompressBuffer.size());
+                  static_cast<int>(_lz4CompressBuffer.size()));
               TRI_ASSERT(uncompressedSize == static_cast<size_t>(size));
               data =
                   reinterpret_cast<uint8_t const*>(_lz4CompressBuffer.data());
