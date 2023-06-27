@@ -132,7 +132,7 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
                     auto syncRes = wfs.get();
                     if (auto mngr = weakManager.lock()) {
                       if (syncRes.fail()) {
-                        LOG_CTX("6e64c", INFO, mngr->loggerContext)
+                        LOG_CTX("6e64c", TRACE, mngr->loggerContext)
                             << "Will not update syncIndex from "
                             << mngr->syncIndex.getLockedGuard().get() << " to "
                             << lastIndex << ": " << syncRes;
