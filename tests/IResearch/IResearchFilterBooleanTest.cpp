@@ -1467,7 +1467,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
@@ -1565,7 +1566,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
@@ -1660,7 +1662,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
@@ -1754,7 +1757,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>();
@@ -1851,7 +1855,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
@@ -1945,7 +1950,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
@@ -2042,7 +2048,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
@@ -3082,7 +3089,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::Or>();
@@ -3185,7 +3193,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::Or>();
@@ -3560,7 +3569,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();
@@ -3995,7 +4005,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();
@@ -4094,7 +4105,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();
@@ -4466,7 +4478,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();
@@ -4655,7 +4668,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();
@@ -6754,7 +6768,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     {
       arangodb::transaction ::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();

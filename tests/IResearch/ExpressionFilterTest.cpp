@@ -490,7 +490,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     ;
 
@@ -569,7 +570,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -645,7 +647,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -743,7 +746,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -841,7 +845,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -938,7 +943,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1016,7 +1022,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1089,7 +1096,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1232,7 +1240,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1360,7 +1369,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);

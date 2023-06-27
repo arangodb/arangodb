@@ -63,7 +63,8 @@ class TraverserCacheTest : public ::testing::Test {
   TraverserCacheTest() : gdb(s.server, "testVocbase") {
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{});
     queryContext = query.get()->newTrxContext();
-    trx = std::make_unique<arangodb::transaction::Methods>(queryContext);
+    trx = std::make_unique<arangodb::transaction::Methods>(
+        queryContext, transaction::Hints::TrxType::INTERNAL);
     _monitor = &query->resourceMonitor();
     traverserCache = std::make_unique<RefactoredTraverserCache>(
         trx.get(), query.get(), query->resourceMonitor(), stats,

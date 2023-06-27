@@ -231,7 +231,7 @@ bool findEmptyNodes(
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       arangodb::aql::QueryString(queryString), bindVars,
-      arangodb::transaction::Hints::Hint::INTERNAL,
+      arangodb::transaction::Hints::TrxType::INTERNAL,
       arangodb::aql::QueryOptions(options->slice()));
 
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);

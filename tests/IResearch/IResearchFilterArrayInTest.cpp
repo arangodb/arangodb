@@ -1824,7 +1824,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       {
         arangodb::transaction::Methods trx(
             arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options());
+            {}, arangodb::transaction::Options(),
+            arangodb::transaction::Hints::TrxType::INTERNAL);
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);
@@ -1970,7 +1971,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       {
         arangodb::transaction::Methods trx(
             arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options());
+            {}, arangodb::transaction::Options(),
+            arangodb::transaction::Hints::TrxType::INTERNAL);
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);
@@ -2115,7 +2117,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       {
         arangodb::transaction::Methods trx(
             arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options());
+            {}, arangodb::transaction::Options(),
+            arangodb::transaction::Hints::TrxType::INTERNAL);
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);
@@ -2259,7 +2262,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       {
         arangodb::transaction::Methods trx(
             arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options());
+            {}, arangodb::transaction::Options(),
+            arangodb::transaction::Hints::TrxType::INTERNAL);
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);
@@ -3827,7 +3831,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       {
         arangodb::transaction::Methods trx(
             arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options());
+            {}, arangodb::transaction::Options(),
+            arangodb::transaction::Hints::TrxType::INTERNAL);
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);
@@ -3970,7 +3975,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       {
         arangodb::transaction::Methods trx(
             arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options());
+            {}, arangodb::transaction::Options(),
+            arangodb::transaction::Hints::TrxType::INTERNAL);
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);
@@ -4113,7 +4119,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       {
         arangodb::transaction::Methods trx(
             arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options());
+            {}, arangodb::transaction::Options(),
+            arangodb::transaction::Hints::TrxType::INTERNAL);
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);

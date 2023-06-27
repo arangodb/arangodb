@@ -262,7 +262,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         arangodb::velocypack::Parser::fromJson("{\"id\": \"42\"}");
     EXPECT_TRUE(arangodb::methods::Indexes::drop(
                     *logicalCollection, indexArg->slice(),
-                    arangodb::transaction::Hints::Hint::INTERNAL)
+                    arangodb::transaction::Hints::TrxType::INTERNAL)
                     .ok());
 
     // get new version from plan

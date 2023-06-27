@@ -61,7 +61,8 @@ class InsertExecutorTest : public ::testing::Test {
   void SetUp() override {
     SCOPED_TRACE("SetUp");
     auto info = VPackParser::fromJson("{\"name\": \"" + collectionName + "\"}");
-    auto collection = vocbase.createCollection(info->slice());
+    auto collection = vocbase.createCollection(
+        info->slice(), transaction::Hints::TrxType::INTERNAL);
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
   }
 };

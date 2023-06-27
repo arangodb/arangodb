@@ -142,7 +142,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     auto const bindParamVpack = VPackParser::fromJson(bindParameters);
     auto splicedQuery = arangodb::aql::Query::create(
         ctx, arangodb::aql::QueryString(querystring), bindParamVpack,
-        transaction::Hints::Hint::INTERNAL,
+        transaction::Hints::TrxType::INTERNAL,
         arangodb::aql::QueryOptions(ruleOptions(additionalOptions)->slice()));
     splicedQuery->prepareQuery(SerializationFormat::SHADOWROWS);
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0)
@@ -476,7 +476,8 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_empty_subqueries) {
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   TRI_vocbase_t& vocbase{server.getSystemDatabase()};
   auto const info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
-  auto const collection = vocbase.createCollection(info->slice());
+  auto const collection = vocbase.createCollection(
+      info->slice(), transaction::Hints::TrxType::INTERNAL);
   auto const queryString = R"aql(
     LET new_id = (
         UPSERT { _key: @key }
@@ -501,7 +502,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   auto ctx = transaction::StandaloneContext::Create(server.getSystemDatabase());
   auto trx = std::make_unique<arangodb::transaction::Methods>(
       ctx, readCollection, noCollections, noCollections, opts,
-      arangodb::transaction::Hints::Hint::INTERNAL);
+      arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_EQ(1, collection->getPhysical()->numberDocuments(trx.get()));
   bool called = false;
   auto result = collection->getPhysical()->read(

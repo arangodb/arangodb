@@ -480,7 +480,8 @@ TEST(ProjectionsTest, toVelocyPackFromIndexSimple) {
   mocks::MockAqlServer server;
   auto& vocbase = server.getSystemDatabase();
   auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto logicalCollection = vocbase.createCollection(
+      collectionJson->slice(), transaction::Hints::TrxType::INTERNAL);
 
   bool created;
   auto indexJson = velocypack::Parser::fromJson(
@@ -528,7 +529,8 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex1) {
   mocks::MockAqlServer server;
   auto& vocbase = server.getSystemDatabase();
   auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto logicalCollection = vocbase.createCollection(
+      collectionJson->slice(), transaction::Hints::TrxType::INTERNAL);
 
   bool created;
   auto indexJson = velocypack::Parser::fromJson(
@@ -571,7 +573,8 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex2) {
   mocks::MockAqlServer server;
   auto& vocbase = server.getSystemDatabase();
   auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto logicalCollection = vocbase.createCollection(
+      collectionJson->slice(), transaction::Hints::TrxType::INTERNAL);
 
   bool created;
   auto indexJson = velocypack::Parser::fromJson(

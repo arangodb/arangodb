@@ -1,0 +1,19 @@
+name: arangodb_transaction_memory_internal
+introducedIn: "3.12.0"
+help: |
+  Global value of accumulated memory consumption for internal transactions.
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - coordinator
+  - agent
+  - single
+description: |
+  This metric reflects the current amount of memory in bytes consumed by
+internal transactions in arangod, i.e. transactions that weren't triggered
+by a user command or transaction. It's considered to be in the RocksDB category
+because its value is increased/decreased whenever there's an insertion or 
+deletion into RocksDB memory table.

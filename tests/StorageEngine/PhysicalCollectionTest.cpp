@@ -129,7 +129,7 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   arangodb::transaction::BatchOptions batchOptions;
   auto trx = std::make_shared<arangodb::transaction::Methods>(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      arangodb::transaction::Hints::Hint::INTERNAL,
+      arangodb::transaction::Hints::TrxType::INTERNAL,
       arangodb::transaction::Options());
   Result res = transaction::helpers::newObjectForInsert(
       *trx, *collection, "dummy", doc->slice(), revisionId, builder, options,

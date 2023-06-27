@@ -548,7 +548,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_construct) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   EXPECT_FALSE(it.valid());
@@ -561,7 +562,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_empty_object) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = true;  // include all fields
@@ -616,7 +618,8 @@ TEST_F(IResearchDocumentTest,
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
@@ -700,7 +703,8 @@ TEST_F(IResearchDocumentTest,
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
@@ -811,7 +815,8 @@ TEST_F(IResearchDocumentTest,
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   IResearchLinkIterator doc(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   doc.reset(slice, linkMeta);
@@ -871,7 +876,8 @@ TEST_F(IResearchDocumentTest,
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
@@ -929,7 +935,8 @@ TEST_F(IResearchDocumentTest,
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
@@ -968,7 +975,8 @@ TEST_F(IResearchDocumentTest,
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
@@ -1012,7 +1020,8 @@ TEST_F(IResearchDocumentTest,
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
@@ -1263,7 +1272,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(json0->slice(), linkMeta);
@@ -1406,7 +1416,8 @@ TEST_F(
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
@@ -1487,7 +1498,8 @@ TEST_F(IResearchDocumentTest,
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
@@ -1901,7 +1913,8 @@ TEST_F(
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   std::function<AssertFieldFunc> const assertFields[] = {
       [](auto& server, auto const& it) {
@@ -2177,7 +2190,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-        EMPTY, EMPTY, arangodb::transaction::Options());
+        EMPTY, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
     it.reset(slice, linkMeta);
@@ -2252,7 +2266,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-        EMPTY, EMPTY, arangodb::transaction::Options());
+        EMPTY, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
     it.reset(slice, linkMeta);
@@ -2310,7 +2325,8 @@ TEST_F(IResearchDocumentTest,
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \
@@ -2824,7 +2840,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = true;  // include all fields
@@ -2882,7 +2899,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = true;  // include all fields
@@ -2965,7 +2983,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
   IResearchLinkIterator it1(irs::kEmptyStringView<char>, arangodb::IndexId(0));
 
   auto json = arangodb::velocypack::Parser::fromJson("{\"value\":\"3\"}");
@@ -3052,7 +3071,8 @@ TEST_F(
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({
@@ -3120,7 +3140,8 @@ TEST_F(
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({
@@ -3251,7 +3272,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({
@@ -3379,7 +3401,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_not_array_expansion) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"keys": "not_an_array", "boost": 10})");
@@ -3409,7 +3432,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_array_no_expansion) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"boost": 10, "keys": [1,2,3]})");
@@ -3438,7 +3462,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_searchField) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"boost": 10, "keys": [1,2,3]})");
@@ -3493,7 +3518,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_object) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"boost": 10, "keys": { "a":1, "b":2, "c":3}})");
@@ -3521,7 +3547,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"not_keys": { "a":1, "b":2, "c":3}, "some_boost": 10})");
@@ -3567,7 +3594,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_partial_path_match) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"boost": { "fo":2, "foo":1, "b":2, "c":3}, "booster": 10})");
@@ -3613,7 +3641,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_IncludeAllFields_simple) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"boost": { "fo":2, "foo":1, "b":2, "c":3}, "booster": 10})");
@@ -3659,7 +3688,8 @@ TEST_F(IResearchDocumentTest,
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"boost": { "fo":2, "foo":1, "b":2, "c":3}, "booster": { "fo":"2", "foo":"1"}})");
@@ -3711,7 +3741,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_choose_closer_path_match) {
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
-      EMPTY, EMPTY, arangodb::transaction::Options());
+      EMPTY, EMPTY, arangodb::transaction::Options(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"boost": { "foo":{"bar":{"bas":{"a":"1"}}}}})");

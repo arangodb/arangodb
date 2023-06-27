@@ -73,7 +73,7 @@ arangodb::aql::QueryResult executeQuery(
     std::string const& optionsString = "{}") {
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
-      arangodb::transaction::Hints::Hint::INTERNAL,
+      arangodb::transaction::Hints::TrxType::INTERNAL,
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -94,7 +94,8 @@ TEST_F(IndexNodeTest, objectQuery) {
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto collection = vocbase.createCollection(
+      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"obj.a\", \"obj.b\", \"obj.c\"]}");
@@ -107,7 +108,7 @@ TEST_F(IndexNodeTest, objectQuery) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
       {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::Hints::Hint::INTERNAL);
+      arangodb::transaction::Hints::TrxType::INTERNAL);
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -174,7 +175,8 @@ TEST_F(IndexNodeTest, expansionQuery) {
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto collection = vocbase.createCollection(
+      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", "
@@ -188,7 +190,7 @@ TEST_F(IndexNodeTest, expansionQuery) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
       {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::Hints::Hint::INTERNAL);
+      arangodb::transaction::Hints::TrxType::INTERNAL);
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -228,7 +230,8 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto collection = vocbase.createCollection(
+      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", "
@@ -242,7 +245,7 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
       {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::Hints::Hint::INTERNAL);
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   EXPECT_TRUE(trx.begin().ok());
 
@@ -271,7 +274,8 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto collection = vocbase.createCollection(
+      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags[*]\"]}");
@@ -284,7 +288,7 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
       {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::Hints::Hint::INTERNAL);
+      arangodb::transaction::Hints::TrxType::INTERNAL);
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -331,7 +335,8 @@ TEST_F(IndexNodeTest, constructIndexNode) {
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto collection = vocbase.createCollection(
+      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_FALSE(!collection);
   // create an index node
   auto indexJson = arangodb::velocypack::Parser::fromJson(
@@ -613,7 +618,8 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(collectionJson->slice());
+  auto collection = vocbase.createCollection(
+      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_FALSE(!collection);
 
   auto ctx =

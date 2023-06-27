@@ -194,7 +194,8 @@ struct MockGraphDatabase {
     auto createJson = velocypack::Parser::fromJson("{ \"name\": \"" + name +
                                                    "\", \"type\": 3 }");
     std::shared_ptr<arangodb::LogicalCollection> edges =
-        vocbase.createCollection(createJson->slice());
+        vocbase.createCollection(createJson->slice(),
+                                 transaction::Hints::TrxType::INTERNAL);
     TRI_ASSERT(nullptr != edges);
 
     auto indexJson = velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
@@ -210,7 +211,8 @@ struct MockGraphDatabase {
     auto createJson = velocypack::Parser::fromJson("{ \"name\": \"" + name +
                                                    "\", \"type\": 2 }");
     std::shared_ptr<arangodb::LogicalCollection> vertices =
-        vocbase.createCollection(createJson->slice());
+        vocbase.createCollection(createJson->slice(),
+                                 transaction::Hints::TrxType::INTERNAL);
     TRI_ASSERT(nullptr != vertices);
     return vertices;
   }

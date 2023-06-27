@@ -423,7 +423,7 @@ std::shared_ptr<transaction::Methods> MockAqlServer::createFakeTransaction()
   auto ctx = transaction::StandaloneContext::Create(getSystemDatabase());
   return std::make_shared<transaction::Methods>(
       ctx, noCollections, noCollections, noCollections, opts,
-      transaction::Hints::Hint::INTERNAL);
+      transaction::Hints::TrxType::INTERNAL);
 }
 
 std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
@@ -449,7 +449,7 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
   auto query = aql::Query::create(
       transaction::StandaloneContext::Create(getSystemDatabase()),
       aql::QueryString(queryString), nullptr,
-      transaction::Hints::Hint::INTERNAL,
+      transaction::Hints::TrxType::INTERNAL,
       aql::QueryOptions(queryOptions.slice()), scheduler);
   callback(*query);
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
@@ -586,7 +586,7 @@ std::shared_ptr<aql::Query> MockClusterServer::createFakeQuery(
   auto query = aql::Query::create(
       transaction::StandaloneContext::Create(getSystemDatabase()),
       aql::QueryString(queryString), nullptr,
-      transaction::Hints::Hint::INTERNAL,
+      transaction::Hints::TrxType::INTERNAL,
       aql::QueryOptions(queryOptions.slice()));
   callback(*query);
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
@@ -776,7 +776,8 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
   VPackBuilder props;
   buildCollectionProperties(props, collectionName, cid, type,
                             additionalProperties);
-  LogicalCollection dummy(*vocbase, props.slice(), true);
+  LogicalCollection dummy(*vocbase, props.slice(),
+                          transaction::Hints::TrxType::INTERNAL, true);
 
   auto shards = std::make_shared<ShardMap>();
   for (auto const& [shard, server] : shardNameToServerNamePairs) {

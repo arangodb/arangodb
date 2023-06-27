@@ -5943,7 +5943,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
              *logicalCollection,
              arangodb::velocypack::Parser::fromJson(std::to_string(linkId.id()))
                  ->slice(),
-             arangodb::transaction::Hints::Hint::INTERNAL)
+             arangodb::transaction::Hints::TrxType::INTERNAL)
              .ok()));
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(
                                   server.server()));  // plan version changed

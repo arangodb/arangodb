@@ -1966,7 +1966,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_add_new_records) {
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          EMPTY, EMPTY, arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       bool usedRangeDelete;
       EXPECT_TRUE(collection->truncate(trx, options, usedRangeDelete).ok());
     }
@@ -3789,7 +3790,9 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   TRI_vocbase_t* vocbase;
   EXPECT_TRUE(
       dbFeature.createDatabase(testDBInfo(server.server()), vocbase).ok());
-  EXPECT_FALSE(!vocbase->createCollection(createCollectionJson->slice()));
+  EXPECT_FALSE(!vocbase->createCollection(
+      createCollectionJson->slice(),
+      arangodb::transaction::Hints::TrxType::INTERNAL));
 
   // add document to collection
   {
@@ -3890,7 +3893,9 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   TRI_vocbase_t* vocbase;
   EXPECT_TRUE(
       dbFeature.createDatabase(testDBInfo(server.server()), vocbase).ok());
-  EXPECT_FALSE(!vocbase->createCollection(createCollectionJson->slice()));
+  EXPECT_FALSE(!vocbase->createCollection(
+      createCollectionJson->slice(),
+      arangodb::transaction::Hints::TrxType::INTERNAL));
 
   // add document to collection
   {
@@ -4009,7 +4014,9 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   TRI_vocbase_t* vocbase;
   EXPECT_TRUE(
       dbFeature.createDatabase(testDBInfo(server.server()), vocbase).ok());
-  EXPECT_FALSE(!vocbase->createCollection(createCollectionJson->slice()));
+  EXPECT_FALSE(!vocbase->createCollection(
+      createCollectionJson->slice(),
+      arangodb::transaction::Hints::TrxType::INTERNAL));
 
   // add document to collection
   {

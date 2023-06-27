@@ -111,7 +111,7 @@ class SortLimitTest
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     auto query = arangodb::aql::Query::create(
         ctx, arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::Hint::INTERNAL,
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::aql::QueryOptions(options->slice()));
 
     auto result = query->explain();
@@ -141,7 +141,7 @@ class SortLimitTest
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     auto query = arangodb::aql::Query::create(
         ctx, arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::Hint::INTERNAL,
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::aql::QueryOptions(options->slice()));
     arangodb::aql::QueryResult result;
 
@@ -184,7 +184,8 @@ class SortLimitTest
   void CreateCollection() {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection0\" }");
-    auto collection = vocbase->createCollection(createJson->slice());
+    auto collection = vocbase->createCollection(
+        createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_NE(nullptr, collection);
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs;

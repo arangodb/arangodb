@@ -97,9 +97,11 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
-        collection(vocbase.lookupCollection("UnitTestCollection")
-                       ? vocbase.lookupCollection("UnitTestCollection")
-                       : vocbase.createCollection(json->slice())),
+        collection(
+            vocbase.lookupCollection("UnitTestCollection")
+                ? vocbase.lookupCollection("UnitTestCollection")
+                : vocbase.createCollection(
+                      json->slice(), transaction::Hints::TrxType::INTERNAL)),
         outVariable("name", 1, false),
         varUsedLater(false),
         engine(fakedQuery->rootEngine()),
@@ -284,9 +286,11 @@ class EnumerateCollectionExecutorTestProduce
       : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
-        collection(vocbase.lookupCollection("UnitTestCollection")
-                       ? vocbase.lookupCollection("UnitTestCollection")
-                       : vocbase.createCollection(json->slice())),
+        collection(
+            vocbase.lookupCollection("UnitTestCollection")
+                ? vocbase.lookupCollection("UnitTestCollection")
+                : vocbase.createCollection(
+                      json->slice(), transaction::Hints::TrxType::INTERNAL)),
         outVariable("name", 1, false),
         varUsedLater(true),
         engine(fakedQuery.get()->rootEngine()),

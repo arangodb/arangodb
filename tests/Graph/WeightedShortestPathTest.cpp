@@ -79,7 +79,8 @@ class WeightedShortestPathTest
   aql::Variable _tmpVar{"tmp", 0, false};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
 
-  arangodb::transaction::Methods _trx{_query->newTrxContext()};
+  arangodb::transaction::Methods _trx{_query->newTrxContext(),
+                                      transaction::Hints::TrxType::INTERNAL};
   arangodb::aql::FixedVarExpressionContext _expressionContext{
       _trx, *_query.get(), _functionsCache};
   WeightedShortestPathTest() {
