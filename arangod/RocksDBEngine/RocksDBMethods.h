@@ -24,6 +24,7 @@
 #pragma once
 
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "Basics/debugging.h"
 
 #include <memory>
 
@@ -86,60 +87,57 @@ class RocksDBMethods {
 // OR (XOR) WRITE TO A COLLECTION. IF THIS PRECONDITION IS
 // VIOLATED THE DISABLED INDEXING WILL BREAK GET OPERATIONS.
 struct IndexingDisabler {
-  // will only be active if condition is true
-
-  IndexingDisabler() = delete;
-  IndexingDisabler(IndexingDisabler&&) = delete;
   IndexingDisabler(IndexingDisabler const&) = delete;
   IndexingDisabler& operator=(IndexingDisabler const&) = delete;
-  IndexingDisabler& operator=(IndexingDisabler&&) = delete;
 
-  IndexingDisabler(RocksDBMethods* meth, bool condition) : _meth(nullptr) {
+  // will only be active if condition is true
+  IndexingDisabler(RocksDBMethods* methods, bool condition)
+      : _methods(nullptr) {
+    TRI_ASSERT(methods != nullptr);
+
     if (condition) {
-      bool disabledHere = meth->DisableIndexing();
+      bool disabledHere = methods->DisableIndexing();
       if (disabledHere) {
-        _meth = meth;
+        _methods = methods;
       }
     }
   }
 
   ~IndexingDisabler() {
-    if (_meth) {
-      _meth->EnableIndexing();
+    if (_methods != nullptr) {
+      _methods->EnableIndexing();
     }
   }
 
  private:
-  RocksDBMethods* _meth;
+  RocksDBMethods* _methods;
 };
 
 // if only single indices should be enabled during operations
 struct IndexingEnabler {
-  // will only be active if condition is true
-
-  IndexingEnabler() = delete;
-  IndexingEnabler(IndexingEnabler&&) = delete;
   IndexingEnabler(IndexingEnabler const&) = delete;
   IndexingEnabler& operator=(IndexingEnabler const&) = delete;
-  IndexingEnabler& operator=(IndexingEnabler&&) = delete;
 
-  IndexingEnabler(RocksDBMethods* meth, bool condition) : _meth(nullptr) {
+  // will only be active if condition is true
+  IndexingEnabler(RocksDBMethods* methods, bool condition) : _methods(nullptr) {
+    TRI_ASSERT(methods != nullptr);
+
     if (condition) {
-      bool enableHere = meth->EnableIndexing();
+      bool enableHere = methods->EnableIndexing();
       if (enableHere) {
-        _meth = meth;
+        _methods = methods;
       }
     }
   }
 
   ~IndexingEnabler() {
-    if (_meth) {
-      _meth->DisableIndexing();
+    if (_methods != nullptr) {
+      _methods->DisableIndexing();
     }
   }
 
  private:
-  RocksDBMethods* _meth;
+  RocksDBMethods* _methods;
 };
 
 class ConcurrencyControlToggler {
@@ -148,23 +146,29 @@ class ConcurrencyControlToggler {
   ConcurrencyControlToggler& operator=(ConcurrencyControlToggler const&) =
       delete;
 
-  explicit ConcurrencyControlToggler(RocksDBMethods* meth, bool isExclusive)
-      : _meth(meth), _exclusive(isExclusive) {}
+  explicit ConcurrencyControlToggler(RocksDBMethods* methods, bool isExclusive)
+      : _methods(methods), _exclusive(isExclusive) {
+    TRI_ASSERT(methods != nullptr);
+  }
 
   ~ConcurrencyControlToggler() {
+    // nothing to do for exclusive transactions, as they already have the
+    // concurrency control disabled for the entire transaction
     if (!_exclusive) {
-      _meth->SetSkipConcurrencyControl(false);
+      _methods->SetSkipConcurrencyControl(false);
     }
   }
 
   void setConcurrencyControl(bool value) {
+    // nothing to do for exclusive transactions, as they already have the
+    // concurrency control disabled for the entire transaction
     if (!_exclusive) {
-      _meth->SetSkipConcurrencyControl(!value);
+      _methods->SetSkipConcurrencyControl(!value);
     }
   }
 
  private:
-  RocksDBMethods* _meth;
+  RocksDBMethods* _methods;
   bool const _exclusive;
 };
 
