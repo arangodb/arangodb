@@ -31,6 +31,7 @@
 #include <utility>
 
 namespace arangodb {
+class ClusterInfo;
 class RocksDBEngine;
 
 class RestDumpHandler : public RestVocbaseBaseHandler {
@@ -58,5 +59,6 @@ class RestDumpHandler : public RestVocbaseBaseHandler {
   Result validateRequest();
 
   RocksDBEngine& _engine;
+  ClusterInfo& _clusterInfo;
 };
 }  // namespace arangodb

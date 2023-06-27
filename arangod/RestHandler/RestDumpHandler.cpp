@@ -49,7 +49,8 @@ RestDumpHandler::RestDumpHandler(ArangodServer& server, GeneralRequest* request,
                                  GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _engine(
-          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>()) {}
+          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>()),
+      _clusterInfo(server.getFeature<ClusterFeature>().clusterInfo()) {}
 
 // main function that dispatches the different routes and commands
 RestStatus RestDumpHandler::execute() {
@@ -264,13 +265,12 @@ Result RestDumpHandler::validateRequest() {
       RocksDBDumpContextOptions opts;
       velocypack::deserializeUnsafe(body, opts);
 
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
       ExecContext& exec =
           *static_cast<ExecContext*>(_request->requestContext());
 
       for (auto const& it : opts.shards) {
         // get collection name
-        auto collectionName = ci.getCollectionNameForShard(it);
+        auto collectionName = _clusterInfo.getCollectionNameForShard(it);
         if (!exec.canUseCollection(_request->databaseName(), collectionName,
                                    auth::Level::RO)) {
           return {TRI_ERROR_FORBIDDEN};
