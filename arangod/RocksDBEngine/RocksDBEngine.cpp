@@ -175,6 +175,12 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
                 "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
+DECLARE_GAUGE(arangodb_edge_cache_uncompressed_payload, uint64_t,
+              "Total gross memory size of all edge cache entries ever stored "
+              "in the cache");
+DECLARE_GAUGE(arangodb_edge_cache_effective_payload, uint64_t,
+              "Total effective memory size of all edge cache entries ever "
+              "stored in the cache");
 
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
@@ -245,6 +251,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
       _maxParallelCompactions(2),
+      _minValueSizeForEdgeCompression(100),
       _pruneWaitTime(10.0),
       _pruneWaitTimeInitial(60.0),
       _maxWalArchiveSizeLimit(0),
@@ -307,7 +314,13 @@ RocksDBEngine::RocksDBEngine(Server& server,
           arangodb_revision_tree_hibernations_total{})),
       _metricsTreeResurrections(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_revision_tree_resurrections_total{})) {
+              arangodb_revision_tree_resurrections_total{})),
+      _metricsCachedSizeInitial(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_edge_cache_uncompressed_payload{})),
+      _metricsCachedSizeEffective(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_edge_cache_effective_payload{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
@@ -766,6 +779,20 @@ replication doing a resync, however.)");
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
+
+  options
+      ->addOption("--rocksdb.min-value-size-for-edge-compression",
+                  "The size threshold (in bytes) from which on payloads in the "
+                  "edge index transparently get LZ4-compressed.",
+                  new SizeTParameter(&_minValueSizeForEdgeCompression))
+      .setLongDescription(
+          R"(By transparently compressing values in the in-memory
+edge index, more data can be held in memory than without compression.  
+Storing compressed values can increase CPU usage for the on-the-fly compression 
+and decompression. In case compression is undesired, this option can be set to a 
+very high value, which will effectively disable it. 
+It is normally not that useful to compress values that are smaller than 100 bytes.)")
+      .setIntroducedIn(31200);
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -3985,6 +4012,16 @@ std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
   } else {
     return nullptr;
   }
+}
+
+void RocksDBEngine::addCacheMetrics(uint64_t initial,
+                                    uint64_t effective) noexcept {
+  _metricsCachedSizeInitial.fetch_add(initial);
+  _metricsCachedSizeEffective.fetch_add(effective);
+}
+
+size_t RocksDBEngine::minValueSizeForEdgeCompression() const noexcept {
+  return _minValueSizeForEdgeCompression;
 }
 
 }  // namespace arangodb

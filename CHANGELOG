@@ -1,6 +1,33 @@
 devel
 -----
 
+* Added transparent LZ4 compression for values in the in-memory edge cache if
+  their size exceeds a configurable threshold.
+
+  LZ4 compression of edge index cache values allows to store more data in main
+  memory than without compression, so the available memory can be used more
+  efficiently. The compression is transparent and does not require any change
+  to queries or applications. 
+  The compression can add CPU overhead for compressing values when storing them
+  in the cache, and for decompressing values when fetching them from the cache.
+  
+  The new startup option `--rocksdb.min-value-size-for-edge-compression` can be
+  used to set a threshold value size for compression edge index cache payload
+  values. The default value is `100`, i.e. values with a payload size of at 
+  least 100 bytes will be LZ4-compressed. 
+  To turn compression off, it is enough to set the option to a very large
+  value.
+
+  The following new metrics can be used to determine the usefulness of 
+  compression:
+
+  - `arangodb_edge_cache_uncompressed_payload`: will return the total number of
+    bytes of all entries that were stored in the in-memory edge cache, before
+    compression was applied.
+  - `arangodb_edge_cache_effective_payload`: will return the total number of
+    bytes of all entries that were stored in the in-memory edge cache, after
+    compression was applied.
+
 * Attempt to avoid busy looping when locking collections with a timeout
 
 * Add a `description` field to OptimizerRule and dump the explanations via the

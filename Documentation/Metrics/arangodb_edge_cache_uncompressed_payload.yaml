@@ -1,0 +1,16 @@
+name: arangodb_edge_cache_uncompressed_payload
+introducedIn: "3.12.0"
+help: |
+  Total gross memory size of all edge cache entries ever stored in the edge cache.
+unit: bytes
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Total gross memory size of all edge cache data that were ever stored in
+  the edge cache of any collection/shard. The size is calculated before any
+  potential compression.
