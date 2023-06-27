@@ -195,7 +195,7 @@ ResultT<NodePtr> Node::handle<PUSH>(Node const* target,
     array = *target->getArray();
   }
 
-  array = array.push_back(v);
+  array = std::move(array).push_back(v);
   return Node::create(std::move(array));
 }
 
@@ -244,7 +244,7 @@ ResultT<NodePtr> Node::handle<ERASE>(Node const* target,
   } else {
     size_t pos = posSlice.getNumber<size_t>();
     if (pos < array.size()) {
-      array = array.erase(pos);
+      array = std::move(array).erase(pos);
     }
   }
   return Node::create(std::move(array));
@@ -328,7 +328,7 @@ ResultT<NodePtr> Node::handle<POP>(Node const* target,
     array = *target->getArray();
   }
   if (!array.empty()) {
-    array = array.erase(array.size() - 1);
+    array = std::move(array).erase(array.size() - 1);
   }
   return Node::create(std::move(array));
 }
