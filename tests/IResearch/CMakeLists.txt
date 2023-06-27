@@ -30,6 +30,7 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryAggregateTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryAndTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryBooleanTermTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryCommon.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryComplexBooleanTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryExistsTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryFilterTest.cpp

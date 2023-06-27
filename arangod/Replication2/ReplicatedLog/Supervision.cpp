@@ -239,8 +239,8 @@ auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
 // For waitForSync=true, all servers are always clean.
 // False negatives may inhibit leader election and thus stall the log, until
 // either all servers report back or the unclean server(s) are replaced.
-auto CleanOracle::serverIsClean(ServerInstanceReference const& participant,
-                                bool const assumedWaitForSync) -> bool {
+auto ICleanOracle::serverIsClean(ServerInstanceReference const& participant,
+                                 bool const assumedWaitForSync) -> bool {
   if (assumedWaitForSync) {
     return true;
   } else {
@@ -248,19 +248,27 @@ auto CleanOracle::serverIsClean(ServerInstanceReference const& participant,
   }
 }
 
-auto CleanOracle::serverIsCleanWfsFalse(ServerInstanceReference const&)
-    -> bool {
+CleanOracle::CleanOracle(
+    std::unordered_map<ParticipantId, RebootId> const* const safeRebootIds)
+    : _safeRebootIds(*safeRebootIds) {}
+
+auto CleanOracle::serverIsCleanWfsFalse(
+    ServerInstanceReference const& serverInstance) -> bool {
   // Trivial implementation. It is safe, but maximally pessimistic.
   // To be improved later: see
   // https://arangodb.atlassian.net/wiki/spaces/CInfra/pages/2061369370/Concept+Conservative+leader+election
   // for details.
+  if (auto it = _safeRebootIds.find(serverInstance.serverId);
+      it != _safeRebootIds.end()) {
+    return it->second == serverInstance.rebootId;
+  }
   return false;
 }
 
 auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsConfig const& participantsConfig,
                          ParticipantsHealth const& health, LogTerm const term,
-                         bool const assumedWaitForSync, CleanOracle& mrProper)
+                         bool const assumedWaitForSync, ICleanOracle& mrProper)
     -> LogCurrentSupervisionElection {
   auto election = LogCurrentSupervisionElection();
   election.term = term;
@@ -402,7 +410,7 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
       current.supervision->assumedWriteConcern;
 
   // Find the participants that are healthy and that have the best LogTerm
-  auto cleanOracle = CleanOracle{};
+  auto cleanOracle = CleanOracle(&current.safeRebootIds);
   auto election = runElectionCampaign(
       current.localState, plan.participantsConfig, health, currentTerm.term,
       current.supervision->assumedWaitForSync, cleanOracle);
