@@ -667,7 +667,7 @@ Node::Children const& Node::children() const {
 
 Builder Node::toBuilder() const {
   Builder builder;
-  toBuilder(builder);
+  toBuilder(builder, true);
   return builder;
 }
 

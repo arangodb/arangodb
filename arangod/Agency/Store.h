@@ -100,7 +100,8 @@ class Store {
   /// in the next method.
   std::vector<apply_ret_t> applyTransactions(
       arangodb::velocypack::Slice query,
-      AgentInterface::WriteMode const& wmode = AgentInterface::WriteMode());
+      AgentInterface::WriteMode const& wmode = AgentInterface::WriteMode(),
+      std::vector<std::shared_ptr<Node const>>* states = nullptr);
 
   index_t applyTransactions(std::vector<log_t> const& queries);
 
@@ -165,6 +166,8 @@ class Store {
       std::function<void(std::string_view path, VPackSlice trx)>;
 
   void registerPrefixTrigger(std::string const& prefix, AgencyTriggerCallback);
+
+  void setRootNode(std::shared_ptr<Node const>) noexcept;
 
  private:
   /// @brief Apply single slice

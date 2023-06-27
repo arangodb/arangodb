@@ -416,6 +416,9 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief Committed (read) kv-store
   Store _readDB;
 
+  // TODO use a deque instead?
+  std::map<index_t, std::shared_ptr<Node const>> _inflightNodes;
+
   /// @brief Committed (read) kv-store for transient data. This is
   /// protected by the _transientLock mutex.
   Store _transient;
