@@ -4046,7 +4046,8 @@ class QueryPhrase : public QueryTest {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection0\" }");
-      auto collection = vocbase.createCollection(createJson->slice());
+      auto collection = vocbase.createCollection(
+          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, collection);
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -4084,7 +4085,8 @@ class QueryPhrase : public QueryTest {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection1\" }");
-      auto collection = vocbase.createCollection(createJson->slice());
+      auto collection = vocbase.createCollection(
+          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, collection);
 
       std::filesystem::path resource;
@@ -4118,7 +4120,8 @@ class QueryPhrase : public QueryTest {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection0\" }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto collection = _vocbase.createCollection(
+          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, collection);
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -4156,7 +4159,8 @@ class QueryPhrase : public QueryTest {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection1\" }");
-      auto collection = _vocbase.createCollection(createJson->slice());
+      auto collection = _vocbase.createCollection(
+          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, collection);
 
       std::filesystem::path resource;
@@ -4172,7 +4176,8 @@ class QueryPhrase : public QueryTest {
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
-          *collection, arangodb::AccessMode::Type::WRITE);
+          *collection, arangodb::AccessMode::Type::WRITE,
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {

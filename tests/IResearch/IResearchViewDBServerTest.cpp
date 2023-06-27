@@ -546,7 +546,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
-        arangodb::transaction::Options());
+        arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links;

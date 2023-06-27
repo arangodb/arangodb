@@ -257,7 +257,9 @@ class QueryNoMaterialization : public QueryTestMulti {
     {
       auto collectionJson = VPackParser::fromJson(std::string("{\"name\": \"") +
                                                   collectionName1 + "\"}");
-      logicalCollection1 = vocbase().createCollection(collectionJson->slice());
+      logicalCollection1 = vocbase().createCollection(
+          collectionJson->slice(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, logicalCollection1);
     }
 
@@ -266,7 +268,9 @@ class QueryNoMaterialization : public QueryTestMulti {
     {
       auto collectionJson = VPackParser::fromJson(std::string("{\"name\": \"") +
                                                   collectionName2 + "\"}");
-      logicalCollection2 = vocbase().createCollection(collectionJson->slice());
+      logicalCollection2 = vocbase().createCollection(
+          collectionJson->slice(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       ASSERT_NE(nullptr, logicalCollection2);
     }
 
@@ -359,7 +363,8 @@ class QueryNoMaterialization : public QueryTestMulti {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
           {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
-          arangodb::transaction::Options());
+          arangodb::transaction::Options(),
+          arangodb::transaction::Hints::TrxType::INTERNAL);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -432,7 +437,8 @@ class QueryNoMaterialization : public QueryTestMulti {
 
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase()),
-        arangodb::aql::QueryString(queryString), nullptr);
+        arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     auto const res = query->explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();
@@ -636,7 +642,8 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecord) {
   std::string collectionName("testCollection");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\":\"" + collectionName + "\"}");
-  auto logicalCollection = vocbase().createCollection(collectionJson->slice());
+  auto logicalCollection = vocbase().createCollection(
+      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_TRUE(logicalCollection);
   size_t const columnsCount = 6;  // PK + storedValues
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -690,7 +697,8 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecord) {
   {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        EMPTY, EMPTY, arangodb::transaction::Options());
+        EMPTY, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *logicalCollection, *view);
@@ -797,7 +805,8 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecordWithCompression) {
   std::string collectionName("testCollection");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\":\"" + collectionName + "\"}");
-  auto logicalCollection = vocbase().createCollection(collectionJson->slice());
+  auto logicalCollection = vocbase().createCollection(
+      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_TRUE(logicalCollection);
   size_t const columnsCount = 6;  // PK + storedValues
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -851,7 +860,8 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecordWithCompression) {
   {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        EMPTY, EMPTY, arangodb::transaction::Options());
+        EMPTY, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *logicalCollection, *view);
@@ -965,7 +975,8 @@ TEST_P(QueryNoMaterialization, matchSortButNotEnoughAttributes) {
 
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(vocbase()),
-      arangodb::aql::QueryString(queryString), nullptr);
+      arangodb::aql::QueryString(queryString), nullptr,
+      arangodb::transaction::Hints::TrxType::INTERNAL);
   auto const res = query->explain();  // this should not crash!
   ASSERT_TRUE(res.data);
   auto const explanation = res.data->slice();
