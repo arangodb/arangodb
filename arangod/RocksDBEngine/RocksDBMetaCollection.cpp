@@ -1665,14 +1665,14 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   // here. user write operations will acquire the R/W lock in read mode, and
   // user exclusive operations will acquire the R/W lock in write mode.
   TRI_ASSERT(mode == AccessMode::Type::READ || mode == AccessMode::Type::WRITE);
-  auto tous = std::chrono::duration_cast<std::chrono::microseconds>(
+  auto timeout_us = std::chrono::duration_cast<std::chrono::microseconds>(
       std::chrono::duration<double>(timeout));
 
   bool gotLock = false;
   if (mode == AccessMode::Type::WRITE) {
-    gotLock = _exclusiveLock.tryLockWriteFor(tous);
+    gotLock = _exclusiveLock.tryLockWriteFor(timeout_us);
   } else if (mode == AccessMode::Type::READ) {
-    gotLock = _exclusiveLock.tryLockReadFor(tous);
+    gotLock = _exclusiveLock.tryLockReadFor(timeout_us);
   } else {
     // we should never get here
     TRI_ASSERT(false);
