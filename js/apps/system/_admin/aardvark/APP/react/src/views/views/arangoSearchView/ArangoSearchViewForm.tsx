@@ -5,17 +5,13 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
-  FormLabel,
-  Grid,
-  Input,
-  Spacer,
+  FormLabel, Spacer,
   Stack,
   Tag
 } from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
 import { FormField } from "../../../components/form/FormField";
-import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { IndexInfoTooltip } from "../../collections/indices/addIndex/IndexInfoTooltip";
 import { useEditViewContext } from "../editView/EditViewContext";
 import { PrimarySortType, StoredValueType } from "../searchView.types";
@@ -118,24 +114,11 @@ const generalGraphFields = [
     isRequired: true
   }
 ];
-const GeneralGraphPanel = () => {
-  return (
-    <Grid gridTemplateColumns={"200px 1fr 40px"}>
-      {generalGraphFields.map(field => {
-        return <FormField field={field} key={field.name} />;
-      })}
-      <FormLabel>name</FormLabel>
-      <Input />
-      <InfoTooltip title="fafddsaf" />
-    </Grid>
-  );
-};
 const ConsolidationPolicyAccordionItem = () => {
   const { tierConsolidationPolicyFields, bytesAccumConsolidationPolicyFields } =
     useArangoSearchFieldsData();
   const [policyTypeField] = useField("consolidationPolicy.type");
   const { isAdminUser } = useEditViewContext();
-  return <GeneralGraphPanel />;
   return (
     <AccordionItem>
       <AccordionButton>
