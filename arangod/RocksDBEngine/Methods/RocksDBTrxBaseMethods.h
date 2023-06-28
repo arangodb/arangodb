@@ -29,7 +29,7 @@
 #include <memory>
 
 namespace arangodb {
-struct IRocksDBTrxMemoryTracker;
+struct RocksDBMethodsMemoryTracker;
 
 struct IRocksDBTransactionCallback {
   virtual ~IRocksDBTransactionCallback() = default;
@@ -185,7 +185,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   TRI_voc_tick_t _lastWrittenOperationTick{0};
 
   /// @brief object used for tracking memory usage
-  std::unique_ptr<IRocksDBTrxMemoryTracker> _memoryTracker;
+  std::unique_ptr<RocksDBMethodsMemoryTracker> _memoryTracker;
 
   bool _indexingDisabled{false};
 };

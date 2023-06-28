@@ -27,8 +27,8 @@
 
 namespace arangodb {
 
-struct IRocksDBTrxMemoryTracker {
-  virtual ~IRocksDBTrxMemoryTracker() {}
+struct RocksDBMethodsMemoryTracker {
+  virtual ~RocksDBMethodsMemoryTracker() {}
   virtual void reset() noexcept = 0;
   virtual void increaseMemoryUsage(std::uint64_t value) = 0;
   virtual void decreaseMemoryUsage(std::uint64_t value) noexcept = 0;

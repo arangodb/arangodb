@@ -31,7 +31,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "RocksDBEngine/RocksDBTrxMemoryTracker.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
@@ -40,13 +40,16 @@
 
 using namespace arangodb;
 
-class TestMemoryTracker final : public IRocksDBTrxMemoryTracker {
+// dummy implementation to track memory allocations during a
+// transaction. currently only counts memory. will be replaced
+// with an alternative implementation that will count memory
+// against different sinks (depending on transaction invocation type),
+// e.g. the current AQL query's ResourceMonitor instance or different
+// metrics for non-AQL transactions.
+class TrxMemoryTracker final : public RocksDBMethodsMemoryTracker {
  public:
-  TestMemoryTracker() : _memoryUsage(0) {}
-  ~TestMemoryTracker() {
-    // LOG_DEVEL << "DTOR: " << _memoryUsage;
-    TRI_ASSERT(_memoryUsage == 0);
-  }
+  TrxMemoryTracker() : _memoryUsage(0) {}
+  ~TrxMemoryTracker() { TRI_ASSERT(_memoryUsage == 0); }
 
   void reset() noexcept override {
     _memoryUsage = 0;
@@ -54,32 +57,23 @@ class TestMemoryTracker final : public IRocksDBTrxMemoryTracker {
   }
 
   void increaseMemoryUsage(std::uint64_t value) override {
-    //  LOG_DEVEL << "INCREASING BY " << value << " TO: " << _memoryUsage +
-    //  value;
     _memoryUsage += value;
   }
 
   void decreaseMemoryUsage(std::uint64_t value) noexcept override {
-    //  LOG_DEVEL << "DECREASING BY " << value << " TO: " << _memoryUsage -
-    //  value;
     TRI_ASSERT(_memoryUsage >= value);
     _memoryUsage -= value;
   }
 
-  void setSavePoint() override {
-    //  LOG_DEVEL << "ADDING SAVEPOINT";
-    _savePoints.push_back(_memoryUsage);
-  }
+  void setSavePoint() override { _savePoints.push_back(_memoryUsage); }
 
   void rollbackToSavePoint() noexcept override {
-    //  LOG_DEVEL << "ROLLING BACK TO SAVEPOINT";
     TRI_ASSERT(!_savePoints.empty());
     _memoryUsage = _savePoints.back();
     _savePoints.pop_back();
   }
 
   void popSavePoint() noexcept override {
-    //  LOG_DEVEL << "POPPING SAVEPOINT";
     TRI_ASSERT(!_savePoints.empty());
     _savePoints.pop_back();
   }
@@ -99,7 +93,7 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
   _readOptions.prefix_same_as_start = true;  // should always be true
   _readOptions.fill_cache = _state->options().fillBlockCache;
 
-  _memoryTracker = std::make_unique<TestMemoryTracker>();
+  _memoryTracker = std::make_unique<TrxMemoryTracker>();
 }
 
 RocksDBTrxBaseMethods::~RocksDBTrxBaseMethods() {
