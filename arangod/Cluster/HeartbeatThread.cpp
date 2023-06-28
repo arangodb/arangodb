@@ -1419,7 +1419,6 @@ void HeartbeatThread::notify() {
 
 bool HeartbeatThread::sendServerState() {
   LOG_TOPIC("3369a", TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
-  LOG_DEVEL << "I am still alive!";
 
   auto const start = std::chrono::steady_clock::now();
   ScopeGuard sg([&]() noexcept {
