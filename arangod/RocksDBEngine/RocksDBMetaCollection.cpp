@@ -127,7 +127,7 @@ ErrorCode RocksDBMetaCollection::lockWrite(double timeout) {
 }
 
 /// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlock(); }
+void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlockWrite(); }
 
 /// @brief read locks a collection, with a timeout
 ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
@@ -135,7 +135,7 @@ ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
 }
 
 /// @brief read unlocks a collection
-void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlock_shared(); }
+void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlockRead(); }
 
 // rescans the collection to update document count
 uint64_t RocksDBMetaCollection::recalculateCounts() {
