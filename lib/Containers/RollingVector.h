@@ -46,9 +46,9 @@ class RollingVector {
   RollingVector() : _start(0) {}
   explicit RollingVector(size_t size) : RollingVector() { _data.resize(size); }
 
-  explicit RollingVector(pmr::memory_resource_t* memory_resource)
+  explicit RollingVector(pmr::memory_resource* memory_resource)
       : _start(0), _data{memory_resource} {}
-  RollingVector(size_t size, pmr::memory_resource_t* memory_resource)
+  RollingVector(size_t size, pmr::memory_resource* memory_resource)
       : RollingVector(memory_resource) {
     _data.resize(size);
   }
@@ -79,15 +79,15 @@ class RollingVector {
 
   ~RollingVector() = default;
 
-  typename pmr::vector_t<T>::iterator begin() { return _data.begin() + _start; }
+  typename pmr::vector<T>::iterator begin() { return _data.begin() + _start; }
 
-  typename pmr::vector_t<T>::iterator end() { return _data.end(); }
+  typename pmr::vector<T>::iterator end() { return _data.end(); }
 
-  typename pmr::vector_t<T>::const_iterator begin() const {
+  typename pmr::vector<T>::const_iterator begin() const {
     return _data.begin();
   }
 
-  typename pmr::vector_t<T>::const_iterator end() const { return _data.end(); }
+  typename pmr::vector<T>::const_iterator end() const { return _data.end(); }
 
   T& operator[](size_t position) { return _data[_start + position]; }
 
@@ -158,7 +158,7 @@ class RollingVector {
 
  private:
   size_t _start;
-  pmr::vector_t<T> _data;
+  pmr::vector<T> _data;
 };
 
 }  // namespace containers

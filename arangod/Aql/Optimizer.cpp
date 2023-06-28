@@ -36,7 +36,7 @@
 using namespace arangodb::aql;
 
 Optimizer::Optimizer(size_t maxNumberOfPlans,
-                     pmr::memory_resource_t* memory_resource)
+                     pmr::memory_resource* memory_resource)
     : _plans(memory_resource),
       _newPlans(memory_resource),
       _maxNumberOfPlans(maxNumberOfPlans),

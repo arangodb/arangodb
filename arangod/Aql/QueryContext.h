@@ -73,7 +73,7 @@ class QueryContext {
 
   ResourceMonitor& resourceMonitor() noexcept { return _resourceMonitor; }
 
-  pmr::memory_resource_t* memory_resource() { return _memoryResource.get(); }
+  pmr::memory_resource* memory_resource() { return _memoryResource.get(); }
   ResourceMonitor const& resourceMonitor() const noexcept {
     return _resourceMonitor;
   }
@@ -157,7 +157,7 @@ class QueryContext {
   constexpr static std::size_t baseMemoryUsage = 8192;
 
  protected:
-  std::unique_ptr<pmr::memory_resource_t> _memoryResource;
+  std::unique_ptr<pmr::memory_resource> _memoryResource;
 
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;
