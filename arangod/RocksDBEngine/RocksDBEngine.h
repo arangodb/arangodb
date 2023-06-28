@@ -66,6 +66,7 @@ struct RocksDBAsyncLogWriteBatcher;
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
+class RocksDBDumpManager;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -441,6 +442,11 @@ class RocksDBEngine final : public StorageEngine {
     return _replicationManager.get();
   }
 
+  RocksDBDumpManager* dumpManager() const {
+    TRI_ASSERT(_dumpManager);
+    return _dumpManager.get();
+  }
+
   /// @brief returns a pointer to the sync thread
   /// note: returns a nullptr if automatic syncing is turned off!
   RocksDBSyncThread* syncThread() const { return _syncThread.get(); }
@@ -726,6 +732,8 @@ class RocksDBEngine final : public StorageEngine {
   // this is for when encryption is enabled, sha files will be created
   // after the encryption of the .sst and .blob files
   std::unique_ptr<rocksdb::Env> _checksumEnv;
+
+  std::unique_ptr<RocksDBDumpManager> _dumpManager;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";
