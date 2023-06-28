@@ -34,6 +34,7 @@ namespace arangodb::pmr {
 
 using boost::container::pmr::memory_resource;
 using boost::container::pmr::new_delete_resource;
+using boost::container::pmr::polymorphic_allocator;
 
 template<class T>
 using vector = std::vector<T, boost::container::pmr::polymorphic_allocator<T>>;

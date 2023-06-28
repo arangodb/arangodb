@@ -2404,10 +2404,10 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   return en;
 }
 
-template<WalkerUniqueness U>
 /// @brief find nodes of certain types
+template<typename SmallVectorType, WalkerUniqueness U>
 void ExecutionPlan::findNodesOfType(
-    containers::SmallVector<ExecutionNode*, 8>& result,
+    SmallVectorType& result,
     std::initializer_list<ExecutionNode::NodeType> const& types,
     bool enterSubqueries) {
   // check if any of the node types is actually present in the plan
@@ -2423,26 +2423,31 @@ void ExecutionPlan::findNodesOfType(
 }
 
 /// @brief find nodes of a certain type
-void ExecutionPlan::findNodesOfType(
-    containers::SmallVector<ExecutionNode*, 8>& result,
-    ExecutionNode::NodeType type, bool enterSubqueries) {
-  findNodesOfType<WalkerUniqueness::NonUnique>(result, {type}, enterSubqueries);
+template<typename T>
+void ExecutionPlan::findNodesOfType(T& result, ExecutionNode::NodeType type,
+                                    bool enterSubqueries) {
+  findNodesOfType<T, WalkerUniqueness::NonUnique>(result, {type},
+                                                  enterSubqueries);
 }
 
 /// @brief find nodes of certain types
+template<typename SmallVectorType>
 void ExecutionPlan::findNodesOfType(
-    containers::SmallVector<ExecutionNode*, 8>& result,
+    SmallVectorType& result,
     std::initializer_list<ExecutionNode::NodeType> const& types,
     bool enterSubqueries) {
-  findNodesOfType<WalkerUniqueness::NonUnique>(result, types, enterSubqueries);
+  findNodesOfType<SmallVectorType, WalkerUniqueness::NonUnique>(
+      result, types, enterSubqueries);
 }
 
 /// @brief find nodes of certain types
+template<typename SmallVectorType>
 void ExecutionPlan::findUniqueNodesOfType(
-    containers::SmallVector<ExecutionNode*, 8>& result,
+    SmallVectorType& result,
     std::initializer_list<ExecutionNode::NodeType> const& types,
     bool enterSubqueries) {
-  findNodesOfType<WalkerUniqueness::Unique>(result, types, enterSubqueries);
+  findNodesOfType<SmallVectorType, WalkerUniqueness::Unique>(result, types,
+                                                             enterSubqueries);
 }
 
 /// @brief find all end nodes in a plan
@@ -2930,3 +2935,107 @@ void ExecutionPlan::show() const {
 }
 
 #endif
+
+/*
+using alloc_t =
+    arangodb::pmr::polymorphic_allocator<arangodb::aql::ExecutionNode*>;
+
+// First findNodesOfType instantiation
+
+template<>
+void ExecutionPlan::findNodesOfType<
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8,
+                                      alloc_t>,
+    WalkerUniqueness::Unique>(
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8,
+                                      alloc_t>& result,
+    std::initializer_list<ExecutionNode::NodeType> const& types,
+    bool enterSubqueries);
+
+template<>
+void ExecutionPlan::findNodesOfType<
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8,
+                                      alloc_t>,
+    WalkerUniqueness::NonUnique>(
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8,
+                                      alloc_t>& result,
+    std::initializer_list<ExecutionNode::NodeType> const& types,
+    bool enterSubqueries);
+
+template<>
+void ExecutionPlan::findNodesOfType<
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8>,
+    WalkerUniqueness::Unique>(
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8>& result,
+    std::initializer_list<ExecutionNode::NodeType> const& types,
+    bool enterSubqueries);
+
+template<>
+void ExecutionPlan::findNodesOfType<
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8>,
+    WalkerUniqueness::NonUnique>(
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8>& result,
+    std::initializer_list<ExecutionNode::NodeType> const& types,
+    bool enterSubqueries);
+
+// Second findNodesOfType instantiation
+
+template<>
+void ExecutionPlan::findNodesOfType<arangodb::containers::SmallVector<
+    arangodb::aql::ExecutionNode*, 8, alloc_t>>(
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8,
+                                      alloc_t>&,
+    ExecutionNode::NodeType, bool);
+
+template<>
+void ExecutionPlan::findNodesOfType<
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8>>(
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8>&,
+    ExecutionNode::NodeType, bool);
+
+// Third findNodesOfType instantiation
+
+template<>
+void ExecutionPlan::findNodesOfType<arangodb::containers::SmallVector<
+    arangodb::aql::ExecutionNode*, 8, alloc_t>>(
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8,
+                                      alloc_t>& result,
+    std::initializer_list<ExecutionNode::NodeType> const& types,
+    bool enterSubqueries);
+
+// remove me
+/// @brief find nodes of certain types
+template<typename SmallVectorType>
+void ExecutionPlan::findNodesOfType(
+    SmallVectorType& result,
+    std::initializer_list<ExecutionNode::NodeType> const& types,
+    bool enterSubqueries) {
+  findNodesOfType<SmallVectorType, WalkerUniqueness::NonUnique>(
+      result, types, enterSubqueries);
+} // remov eme
+
+
+ template<>
+void ExecutionPlan::findNodesOfType<
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8>>(
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8>& result,
+    std::initializer_list<ExecutionNode::NodeType> const& types,
+    bool enterSubqueries);
+
+// findUniqueNodesOfType instantiation
+template<>
+void ExecutionPlan::findUniqueNodesOfType<arangodb::containers::SmallVector<
+    arangodb::aql::ExecutionNode*, 8, alloc_t>>(
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8,
+                                      alloc_t>& result,
+    std::initializer_list<ExecutionNode::NodeType> const& types,
+    bool enterSubqueries);
+
+template<>
+void ExecutionPlan::findUniqueNodesOfType<
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8>>(
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8>& result,
+    std::initializer_list<ExecutionNode::NodeType> const& types,
+    bool enterSubqueries);
+
+*/

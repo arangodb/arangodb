@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/NodeFinder.h"
+#include "Aql/ExecutionNode.h"
+#include "Basics/Memory/MemoryTypes.h"
 
 namespace arangodb {
 namespace aql {
@@ -93,12 +95,14 @@ bool NodeFinder<std::initializer_list<ExecutionNode::NodeType>,
 }
 
 /// @brief node finder for one node type
-EndNodeFinder::EndNodeFinder(containers::SmallVector<ExecutionNode*, 8>& out,
-                             bool enterSubqueries)
+template<typename SmallVectorType>
+EndNodeFinder<SmallVectorType>::EndNodeFinder(SmallVectorType& out,
+                                              bool enterSubqueries)
     : _out(out), _found({false}), _enterSubqueries(enterSubqueries) {}
 
 /// @brief before method for one node type
-bool EndNodeFinder::before(ExecutionNode* en) {
+template<typename SmallVectorType>
+bool EndNodeFinder<SmallVectorType>::before(ExecutionNode* en) {
   TRI_ASSERT(!_found.empty());
   if (!_found.back()) {
     // no node found yet. note that we found one on this level
@@ -113,3 +117,14 @@ bool EndNodeFinder::before(ExecutionNode* en) {
 
 }  // namespace aql
 }  // namespace arangodb
+// TEST
+using alloc_t =
+    arangodb::pmr::polymorphic_allocator<arangodb::aql::ExecutionNode*>;
+
+template<>
+class arangodb::aql::EndNodeFinder<arangodb::containers::SmallVector<
+    arangodb::aql::ExecutionNode*, 8, alloc_t>>;
+
+template<>
+class arangodb::aql::EndNodeFinder<
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8>>;

@@ -183,6 +183,7 @@ target_link_libraries(arango_aql
   arango_iresearch
   arango_network
   immer
+  boost_boost
   boost_container)
 
 target_include_directories(arango_aql PRIVATE

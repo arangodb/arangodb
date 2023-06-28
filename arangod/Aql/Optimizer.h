@@ -164,6 +164,10 @@ class Optimizer {
     return _plans.size() + _newPlans.size() + 1;
   }
 
+  [[nodiscard]] pmr::memory_resource* memory_resource() const {
+    return _memory_resource;
+  }
+
  private:
   /// @brief disable a specific rule
   void disableRule(ExecutionPlan* plan, int level);

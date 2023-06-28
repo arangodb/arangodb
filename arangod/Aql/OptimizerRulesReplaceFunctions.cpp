@@ -35,6 +35,7 @@
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Aql/Variable.h"
+#include "Basics/Memory/MemoryTypes.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -573,7 +574,11 @@ void arangodb::aql::replaceNearWithinFulltextRule(
     OptimizerRule const& rule) {
   bool modified = false;
 
-  containers::SmallVector<ExecutionNode*, 8> nodes;
+  using alloc_t = pmr::polymorphic_allocator<ExecutionNode*>;
+  using vector_t = containers::SmallVector<ExecutionNode*, 8, alloc_t>;
+  auto alloc = alloc_t(opt->memory_resource());
+  auto nodes = vector_t(vector_t::allocator_type(alloc));
+
   plan->findNodesOfType(nodes, ExecutionNode::CALCULATION, true);
 
   for (auto const& node : nodes) {

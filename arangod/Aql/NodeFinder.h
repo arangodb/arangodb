@@ -50,16 +50,17 @@ class NodeFinder final : public WalkerWorker<ExecutionNode, U> {
   }
 };
 
+template<typename SmallVectorType>
 class EndNodeFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-  containers::SmallVector<ExecutionNode*, 8>& _out;
+  SmallVectorType& _out;
 
   std::vector<bool> _found;
 
   bool _enterSubqueries;
 
  public:
-  EndNodeFinder(containers::SmallVector<ExecutionNode*, 8>&,
+  EndNodeFinder(SmallVectorType&,
                 bool enterSubqueries);
 
   bool before(ExecutionNode*) override final;

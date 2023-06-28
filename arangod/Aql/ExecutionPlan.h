@@ -32,6 +32,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/Memory/MemoryTypes.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
@@ -196,17 +197,20 @@ class ExecutionPlan {
   }
 
   /// @brief find nodes of a certain type
-  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
-                       ExecutionNode::NodeType, bool enterSubqueries);
+  template<typename SmallVectorType> // implemented
+  void findNodesOfType(SmallVectorType& result, ExecutionNode::NodeType,
+                       bool enterSubqueries);
 
   /// @brief find nodes of certain types
-  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
+  template <typename SmallVectorType> // implemented
+  void findNodesOfType(SmallVectorType& result,
                        std::initializer_list<ExecutionNode::NodeType> const&,
                        bool enterSubqueries);
 
-  /// @brief find unique nodes of certain types
+  /// @brief find unique nodes of certain
+  template<typename SmallVectorType> // implemented
   void findUniqueNodesOfType(
-      containers::SmallVector<ExecutionNode*, 8>& result,
+      SmallVectorType& result,
       std::initializer_list<ExecutionNode::NodeType> const&,
       bool enterSubqueries);
 
@@ -315,9 +319,9 @@ class ExecutionPlan {
                                      char const* name, size_t length);
 
  private:
-  template<WalkerUniqueness U>
   /// @brief find nodes of certain types
-  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
+  template<typename SmallVectorType, WalkerUniqueness U> //implemented
+  void findNodesOfType(SmallVectorType& result,
                        std::initializer_list<ExecutionNode::NodeType> const&,
                        bool enterSubqueries);
 
