@@ -89,6 +89,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
     : ApplicationFeature(server, "Replication"),
       _connectTimeout(10.0),
       _requestTimeout(600.0),
+      _activeFailoverLeaderGracePeriod(120.0),
       _forceConnectTimeout(false),
       _forceRequestTimeout(false),
       _replicationApplierAutoStart(true),
@@ -185,6 +186,15 @@ void ReplicationFeature::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer))
       .setIntroducedIn(30911);
+
+  options
+      ->addOption(
+          "--replication.active-failover-leader-grace-period",
+          "The amount of time (in seconds) for which the current leader will "
+          "continue to assume its leadership even if it lost connection to the "
+          "agency (0 = unlimited)",
+          new DoubleParameter(&_activeFailoverLeaderGracePeriod))
+      .setIntroducedIn(30912);
 }
 
 void ReplicationFeature::validateOptions(
@@ -378,6 +388,10 @@ double ReplicationFeature::connectTimeout() const { return _connectTimeout; }
 
 /// @brief returns the request timeout for replication requests
 double ReplicationFeature::requestTimeout() const { return _requestTimeout; }
+
+double ReplicationFeature::activeFailoverLeaderGracePeriod() const {
+  return _activeFailoverLeaderGracePeriod;
+}
 
 /// @brief set the x-arango-endpoint header
 void ReplicationFeature::setEndpointHeader(GeneralResponse* res,
