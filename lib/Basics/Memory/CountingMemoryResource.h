@@ -29,7 +29,7 @@
 
 namespace arangodb {
 
-struct CountingMemoryResource : memory_resource_t {
+struct CountingMemoryResource : pmr::memory_resource_t {
   CountingMemoryResource(memory_resource* base,
                          ResourceMonitor& resourceMonitor)
       : base(base), _resourceMonitor(resourceMonitor) {}
@@ -60,7 +60,7 @@ struct CountingMemoryResource : memory_resource_t {
     return false;
   }
 
-  memory_resource_t* base;
+  pmr::memory_resource_t* base;
 
   /// @brief current resources and limits used by query
   ResourceMonitor& _resourceMonitor;

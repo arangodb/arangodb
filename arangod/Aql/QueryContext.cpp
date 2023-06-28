@@ -57,7 +57,7 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase, QueryId id)
       _execState(QueryExecutionState::ValueType::INVALID_STATE),
       _numRequests(0) {
   _memoryResource = std::make_unique<CountingMemoryResource>(
-      new_delete_resource_t::new_delete_resource(), _resourceMonitor);
+      pmr::new_delete_resource(), _resourceMonitor);
 
   // aql analyzers should be able to run even during recovery when AqlFeature
   // is not started. And as optimization - these queries do not need
