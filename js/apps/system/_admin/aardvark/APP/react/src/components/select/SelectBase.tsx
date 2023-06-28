@@ -58,11 +58,13 @@ export const getSelectBase = <IsMulti extends boolean = false>(
               textOverflow: "ellipsis"
             }),
             menuPortal: base => ({ ...base, zIndex: 9999 }),
-          input: baseStyles => ({
+            input: (baseStyles, inputProps) => ({
               ...baseStyles,
               "> input": {
-              background: "transparent !important"
-            }
+                background: "transparent !important",
+                boxShadow: "none !important"
+              },
+              ...props.styles?.input?.(baseStyles, inputProps)
             })
           }}
         />
