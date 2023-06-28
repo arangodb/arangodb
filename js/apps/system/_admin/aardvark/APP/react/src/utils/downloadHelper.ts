@@ -7,18 +7,25 @@ export const downloadPost = async ({
   body: any;
 }) => {
   const route = getAardvarkRouteForCurrentDb(url);
-  const response = await route.request({
-    expectBinary: true,
-    method: "POST",
-    body
-  });
-  const blobUrl = window.URL.createObjectURL(response.body);
-  const filename =
-    response.headers?.["content-disposition"]?.replace(
-      /.* filename="([^")]*)"/,
-      "$1"
-    ) || "";
-  downloadBlob(blobUrl, filename);
+  try {
+    const response = await route.request({
+      expectBinary: true,
+      method: "POST",
+      body
+    });
+    const blobUrl = window.URL.createObjectURL(response.body);
+    const filename =
+      response.headers?.["content-disposition"]?.replace(
+        /.* filename="([^")]*)"/,
+        "$1"
+      ) || "";
+    downloadBlob(blobUrl, filename);
+  } catch (e: any) {
+    window.arangoHelper.arangoError(
+      "Error",
+      `Could not download: ${e.message} `
+    );
+  }
 };
 
 export const download = async (url: string) => {
