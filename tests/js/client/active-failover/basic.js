@@ -39,6 +39,7 @@ const arango = internal.arango;
 const db = internal.db;
 const wait = internal.wait;
 const compareTicks = require("@arangodb/replication").compareTicks;
+const { suspendExternal, continueExternal } = internal;
 
 const jwtSecret = 'haxxmann';
 const jwtSuperuser = crypto.jwtEncode(jwtSecret, {
@@ -65,6 +66,20 @@ function baseUrl() {
 function connectToServer(leader) {
   arango.reconnect(leader, "_system", "root", "");
   db._flushCache();
+}
+
+function getInstanceManager() {
+  if (global.instanceMananger) {
+    return;
+  }
+  // fake an on-the-fly instance manager
+  let im = JSON.parse(require('internal').env.INSTANCEINFO);
+  // hack suspend() and resume() functions into it
+  im.arangods.forEach((arangod) => {
+    arangod.suspend = () => { return suspendExternal(arangod.pid); };
+    arangod.resume = () => { return continueExternal(arangod.pid); };
+  });
+  return im;
 }
 
 // getEndponts works with any server
@@ -174,7 +189,7 @@ function checkData(server, allowDirty = false) {
 }
 
 function readAgencyValue(path) {
-  let agents = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "agent");
+  let agents = getInstanceManager().arangods.filter(arangod => arangod.instanceRole === "agent");
   assertTrue(agents.length > 0, "No agents present");
   print("Querying agency... (", path, ")");
   var res = request.post({
@@ -495,7 +510,7 @@ function ActiveFailoverSuite() {
       let suspended;
       let oldLead = currentLead;
       try {
-        suspended = global.instanceManager.arangods.filter(arangod => arangod.endpoint === currentLead);
+        suspended = getInstanceManager().arangods.filter(arangod => arangod.endpoint === currentLead);
         suspended.forEach(arangod => {
           print(`${Date()} Suspending Leader: ${arangod.name} ${arangod.pid}`);
           assertTrue(arangod.suspend());
@@ -524,7 +539,7 @@ function ActiveFailoverSuite() {
         });
         assertTrue(checkInSync(currentLead, servers));
         // after its in sync, halt all others so it becomes the leader again
-        suspended = global.instanceManager.arangods.filter(arangod =>
+        suspended = getInstanceManager().arangods.filter(arangod =>
           (arangod.endpoint !== oldLead) && (arangod.instanceRole === 'activefailover'));
         suspended.forEach(arangod => {
           print(`${Date()} Suspending all but old Leader: ${arangod.name} ${arangod.pid}`);
@@ -585,7 +600,7 @@ function ActiveFailoverSuite() {
       let nextLead = endpoints[2]; // could be any one of them
       // suspend remaining followers
       print("Suspending followers, except one");
-      suspended = global.instanceManager.arangods.filter(arangod => arangod.instanceRole !== 'agent' &&
+      suspended = getInstanceManager().arangods.filter(arangod => arangod.instanceRole !== 'agent' &&
         arangod.endpoint !== currentLead &&
         arangod.endpoint !== nextLead);
       suspended.forEach(arangod => {
@@ -627,7 +642,7 @@ function ActiveFailoverSuite() {
 
       print("Leader inserted ", upper, " documents so far desired follower has " , atLeast);
       print("Suspending leader ", currentLead);
-      global.instanceManager.arangods.forEach(arangod => {
+      getInstanceManager().arangods.forEach(arangod => {
         if (arangod.endpoint === currentLead) {
           print(`${Date()} Suspending: ${arangod.name} ${arangod.pid}`);
           suspended.push(arangod);
@@ -668,7 +683,7 @@ function ActiveFailoverSuite() {
       assertEqual(checkData(currentLead), 10000);
 
       print("Suspending followers, except original leader");
-      suspended = global.instanceManager.arangods.filter(arangod => arangod.instanceRole !== 'agent' &&
+      suspended = getInstanceManager().arangods.filter(arangod => arangod.instanceRole !== 'agent' &&
         arangod.endpoint !== firstLeader);
       suspended.forEach(arangod => {
         print(`${Date()} Suspending: ${arangod.name} ${arangod.pid}`);
