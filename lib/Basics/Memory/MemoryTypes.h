@@ -28,7 +28,7 @@
 #include <boost/container/pmr/polymorphic_allocator.hpp>
 #include <boost/container/pmr/global_resource.hpp>
 
-namespace arangodb {
+namespace arangodb::pmr {
 
 typedef boost::container::pmr::memory_resource memory_resource_t;
 
