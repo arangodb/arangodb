@@ -147,7 +147,9 @@ ErrorCode RocksDBMetaCollection::lockWrite(double timeout) {
 }
 
 /// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlockWrite(); }
+void RocksDBMetaCollection::unlockWrite() noexcept {
+  _exclusiveLock.unlockWrite();
+}
 
 /// @brief read locks a collection, with a timeout
 ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
@@ -1664,15 +1666,13 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   // user exclusive operations will acquire the R/W lock in write mode.
   TRI_ASSERT(mode == AccessMode::Type::READ || mode == AccessMode::Type::WRITE);
   auto tous = std::chrono::duration_cast<std::chrono::microseconds>(
-    std::chrono::duration<double>(timeout));
+      std::chrono::duration<double>(timeout));
 
   bool gotLock = false;
   if (mode == AccessMode::Type::WRITE) {
-    gotLock =
-      _exclusiveLock.tryLockWriteFor(tous);
+    gotLock = _exclusiveLock.tryLockWriteFor(tous);
   } else if (mode == AccessMode::Type::READ) {
-    gotLock =
-      _exclusiveLock.tryLockReadFor(tous);
+    gotLock = _exclusiveLock.tryLockReadFor(tous);
   } else {
     // we should never get here
     TRI_ASSERT(false);
