@@ -23,6 +23,7 @@
 #pragma once
 
 #include <absl/container/node_hash_set.h>
+#include <Basics/pmr.h>
 
 namespace arangodb::containers {
 
@@ -36,7 +37,7 @@ namespace pmr {
 template<class T, class Hash = typename absl::node_hash_set<T>::hasher,
          class Eq = typename absl::node_hash_set<T, Hash>::key_equal>
 using NodeHashSet =
-    absl::node_hash_set<T, Hash, Eq, std::pmr::polymorphic_allocator<T>>;
+    absl::node_hash_set<T, Hash, Eq, std_pmr::polymorphic_allocator<T>>;
 }
 
 }  // namespace arangodb::containers

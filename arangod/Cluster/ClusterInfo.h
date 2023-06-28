@@ -48,6 +48,10 @@
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/Version.h"
 
+#include <boost/container/pmr/map.hpp>
+#include <boost/container/pmr/vector.hpp>
+#include <boost/container/pmr/string.hpp>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -694,7 +698,7 @@ class ClusterInfo final {
   /// an error.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std::pmr::vector<pmr::ServerID> const> getResponsibleServer(
+  std::shared_ptr<std_pmr::vector<pmr::ServerID> const> getResponsibleServer(
       std::string_view shardID);
 
   enum class ShardLeadership { kLeader, kFollower, kUnclear };
@@ -747,7 +751,7 @@ class ClusterInfo final {
   /// shard
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std::pmr::vector<pmr::ServerID> const>
+  std::shared_ptr<std_pmr::vector<pmr::ServerID> const>
   getCurrentServersForShard(std::string_view shardId);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -929,7 +933,7 @@ class ClusterInfo final {
   void loadClusterId();
 
   void triggerWaiting(
-      std::pmr::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
+      std_pmr::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
       uint64_t commitIndex);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -980,7 +984,7 @@ class ClusterInfo final {
       std::vector<replication2::LogId> const& replicatedStatesIds)
       -> futures::Future<Result>;
 
-  std::unique_ptr<std::pmr::memory_resource> _memoryResource;
+  std::unique_ptr<std_pmr::memory_resource> _memoryResource;
 
   /// underlying application server
   ArangodServer& _server;
@@ -1027,13 +1031,13 @@ class ClusterInfo final {
   ErrorCode const _syncerShutdownCode;
 
   // The servers, first all, we only need Current here:
-  AssocUnorderedContainer<pmr::ServerID, std::pmr::string>
+  AssocUnorderedContainer<pmr::ServerID, std_pmr::string>
       _servers;  // from Current/ServersRegistered
-  AssocUnorderedContainer<pmr::ServerID, std::pmr::string>
+  AssocUnorderedContainer<pmr::ServerID, std_pmr::string>
       _serverAliases;  // from Current/ServersRegistered
-  AssocUnorderedContainer<pmr::ServerID, std::pmr::string>
+  AssocUnorderedContainer<pmr::ServerID, std_pmr::string>
       _serverAdvertisedEndpoints;  // from Current/ServersRegistered
-  AssocUnorderedContainer<pmr::ServerID, std::pmr::string>
+  AssocUnorderedContainer<pmr::ServerID, std_pmr::string>
       _serverTimestamps;  // from Current/ServersRegistered
   ProtectionData _serversProt;
 
@@ -1104,7 +1108,7 @@ class ClusterInfo final {
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
   // planned shard => servers map
-  AssocUnorderedContainer<pmr::ShardID, std::pmr::vector<pmr::ServerID>>
+  AssocUnorderedContainer<pmr::ShardID, std_pmr::vector<pmr::ServerID>>
       _shardsToPlanServers;
   // planned shard ID => collection name
   AssocUnorderedContainer<pmr::ShardID, pmr::CollectionID> _shardToName;
@@ -1145,7 +1149,7 @@ class ClusterInfo final {
   // In the following map we store for each shard group leader the list
   // of shards in the group, including the leader.
   AssocUnorderedContainer<pmr::ShardID,
-                          std::shared_ptr<std::pmr::vector<pmr::ShardID>>>
+                          std::shared_ptr<std_pmr::vector<pmr::ShardID>>>
       _shardGroups;
 
   AllViews _plannedViews;     // from Plan/Views/
@@ -1160,8 +1164,8 @@ class ClusterInfo final {
 
   // The Current state:
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
-  AssocUnorderedContainer<
-      pmr::ShardID, std::shared_ptr<std::pmr::vector<pmr::ServerID> const>>
+  AssocUnorderedContainer<pmr::ShardID,
+                          std::shared_ptr<std_pmr::vector<pmr::ServerID> const>>
       _shardsToCurrentServers;  // from Current/Collections/
 
   struct NewStuffByDatabase;
@@ -1221,7 +1225,7 @@ class ClusterInfo final {
   std::unique_ptr<SyncerThread> _curSyncer;
 
   template<typename K, typename V>
-  using AssocMultiMap = std::pmr::multimap<K, V>;
+  using AssocMultiMap = std_pmr::multimap<K, V>;
 
   mutable std::mutex _waitPlanLock;
   AssocMultiMap<uint64_t, futures::Promise<arangodb::Result>> _waitPlan;

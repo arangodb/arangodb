@@ -157,3 +157,14 @@ target_link_libraries(boost_thread PUBLIC boost_boost) #this will add required i
 target_link_libraries(boost_locale PUBLIC boost_thread)
 target_compile_definitions(boost_thread PRIVATE "BOOST_SYSTEM_STATIC_LINK=1")
 target_compile_definitions(boost_thread PUBLIC  "BOOST_ALL_NO_LIB=1")
+
+add_library(boost_container STATIC
+        ${boost_src}/libs/container/src/alloc_lib.c
+        ${boost_src}/libs/container/src/dlmalloc.cpp
+        ${boost_src}/libs/container/src/global_resource.cpp
+        ${boost_src}/libs/container/src/monotonic_buffer_resource.cpp
+        ${boost_src}/libs/container/src/pool_resource.cpp
+        ${boost_src}/libs/container/src/synchronized_pool_resource.cpp
+        ${boost_src}/libs/container/src/unsynchronized_pool_resource.cpp
+        )
+target_link_libraries(boost_boost INTERFACE boost_container)

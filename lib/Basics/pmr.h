@@ -18,7 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
+#include <boost/container/pmr/memory_resource.hpp>
 
-// TODO same dance for clang using std::experimental::pmr
-#include <memory_resource>
-namespace std_pmr = std::pmr;
+namespace std_pmr {
+using namespace boost::container::pmr;
+
+using string =
+    std::basic_string<char, std::char_traits<char>,
+                      boost::container::pmr::polymorphic_allocator<char>>;
+}  // namespace std_pmr
+
+#include <absl/container/internal/hash_function_defaults.h>
+
+namespace absl::container_internal {
+template<>
+struct HashEq<std_pmr::string> : BasicStringHashEq<char> {};
+}  // namespace absl::container_internal

@@ -23,10 +23,7 @@
 #pragma once
 
 #include <absl/container/flat_hash_map.h>
-namespace std::pmr {
-template<class T>
-class polymorphic_allocator;
-}
+#include <Basics/pmr.h>
 
 namespace arangodb::containers {
 namespace detail {
@@ -69,19 +66,7 @@ template<class K, class V,
          class Hash = typename absl::flat_hash_map<K, V>::hasher,
          class Eq = typename absl::flat_hash_map<K, V, Hash>::key_equal>
 using FlatHashMap = arangodb::containers::FlatHashMap<
-    K, V, Hash, Eq, std::pmr::polymorphic_allocator<std::pair<const K, V>>>;
+    K, V, Hash, Eq, std_pmr::polymorphic_allocator<std::pair<const K, V>>>;
 }
 
 }  // namespace arangodb::containers
-
-// THIS IS JUST TEMPORARY!
-namespace absl::container_internal {
-template<>
-struct HashEq<std::pmr::string> : BasicStringHashEq<char> {};
-template<>
-struct HashEq<std::pmr::wstring> : BasicStringHashEq<wchar_t> {};
-template<>
-struct HashEq<std::pmr::u16string> : BasicStringHashEq<char16_t> {};
-template<>
-struct HashEq<std::pmr::u32string> : BasicStringHashEq<char32_t> {};
-}  // namespace absl::container_internal

@@ -552,7 +552,7 @@ DECLARE_GAUGE(arangodb_internal_cluster_info_memory, std::size_t,
               "Memory cluster info");
 
 namespace {
-struct CountingMemoryResource : std::pmr::memory_resource {
+struct CountingMemoryResource : std_pmr::memory_resource {
   explicit CountingMemoryResource(memory_resource* base,
                                   metrics::Gauge<std::size_t>& metric)
       : base(base), metric(metric) {}
@@ -574,7 +574,7 @@ struct CountingMemoryResource : std::pmr::memory_resource {
   }
 
  public:
-  std::pmr::memory_resource* base;
+  std_pmr::memory_resource* base;
   metrics::Gauge<std::size_t>& metric;
 };
 }  // namespace
@@ -583,7 +583,7 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)
     : _memoryResource(std::make_unique<CountingMemoryResource>(
-          std::pmr::new_delete_resource(),
+          std_pmr::new_delete_resource(),
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_internal_cluster_info_memory{}))),
       _server(server),
@@ -1121,7 +1121,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
 }
 
 struct ClusterInfo::NewStuffByDatabase {
-  using allocator_type = std::pmr::polymorphic_allocator<NewStuffByDatabase>;
+  using allocator_type = std_pmr::polymorphic_allocator<NewStuffByDatabase>;
 
   NewStuffByDatabase(allocator_type alloc)
       : replicatedLogs(alloc), collectionGroups(alloc) {}
@@ -1558,7 +1558,7 @@ void ClusterInfo::loadPlan() {
 
   auto allocate = [&]<typename T, typename... Args>(Args && ... args) {
     return std::allocate_shared<T>(
-        std::pmr::polymorphic_allocator<T>(_memoryResource.get()),
+        std_pmr::polymorphic_allocator<T>(_memoryResource.get()),
         std::forward<Args>(args)...);
   };
 
@@ -1730,7 +1730,7 @@ void ClusterInfo::loadPlan() {
     }
 
     auto databaseCollections = std::allocate_shared<DatabaseCollections>(
-        std::pmr::polymorphic_allocator<DatabaseCollections>(
+        std_pmr::polymorphic_allocator<DatabaseCollections>(
             _memoryResource.get()));
 
     // an iterator to all collections in the current database (from the previous
@@ -1855,7 +1855,7 @@ void ClusterInfo::loadPlan() {
         for (auto const& p : *shardIDs) {
           TRI_ASSERT(p.first.size() >= 2);
           shards->push_back(p.first);
-          auto v = std::pmr::vector<pmr::ServerID>{};
+          auto v = std_pmr::vector<pmr::ServerID>{};
           v.assign(p.second.begin(), p.second.end());
           newShardsToPlanServers.insert_or_assign(pmr::ShardID{p.first},
                                                   std::move(v));
@@ -1928,11 +1928,9 @@ void ClusterInfo::loadPlan() {
               auto it = newShardGroups.find(groupLeaderCol->second->at(i));
               if (it == newShardGroups.end()) {
                 // Need to create a new list:
-                auto list =
-                    std::allocate_shared<std::pmr::vector<pmr::ShardID>>(
-                        std::pmr::polymorphic_allocator<
-                            std::pmr::vector<pmr::ShardID>>{
-                            _memoryResource.get()});
+                auto list = std::allocate_shared<std_pmr::vector<pmr::ShardID>>(
+                    std_pmr::polymorphic_allocator<
+                        std_pmr::vector<pmr::ShardID>>{_memoryResource.get()});
                 list->reserve(2);
                 // group leader as well as member:
                 list->emplace_back(groupLeaderCol->second->at(i));
@@ -2172,7 +2170,7 @@ void ClusterInfo::loadCurrent() {
       }
     }
 
-    newDatabases.insert_or_assign(std::pmr::string{databaseName},
+    newDatabases.insert_or_assign(std_pmr::string{databaseName},
                                   std::move(serverList));
     swapDatabases = true;
   }
@@ -2235,7 +2233,7 @@ void ClusterInfo::loadCurrent() {
 
       for (auto const& shardSlice :
            velocypack::ObjectIterator(collectionSlice.value)) {
-        std::pmr::string shardID{shardSlice.key.copyString()};
+        std_pmr::string shardID{shardSlice.key.copyString()};
 
         collectionDataCurrent->add(shardID, shardSlice.value);
 
@@ -2248,7 +2246,7 @@ void ClusterInfo::loadCurrent() {
 
         // Now take note of this shard and its responsible server:
         auto const& xx = collectionDataCurrent->servers(shardID);
-        auto servers = std::make_shared<std::pmr::vector<pmr::ServerID>>(
+        auto servers = std::make_shared<std_pmr::vector<pmr::ServerID>>(
             xx.begin(), xx.end());
 
         newShardsToCurrentServers.insert_or_assign(std::move(shardID),
@@ -6360,7 +6358,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 /// it is still not there an empty string is returned as an error.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std::pmr::vector<pmr::ServerID> const>
+std::shared_ptr<std_pmr::vector<pmr::ServerID> const>
 ClusterInfo::getResponsibleServer(std::string_view shardID) {
   int tries = 0;
 
@@ -6422,7 +6420,7 @@ ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(
   }
   auto const& front = serverList->front();
   TRI_ASSERT(!front.empty());
-  if (front.starts_with('_')) {
+  if (front[0] == '_') {
     // This is a temporary situation in which the leader has already resigned,
     // so we don't know exactly right now.
     return ShardLeadership::kUnclear;
@@ -6529,7 +6527,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
   return std::make_shared<std::vector<ShardID>>();
 }
 
-std::shared_ptr<std::pmr::vector<pmr::ServerID> const>
+std::shared_ptr<std_pmr::vector<pmr::ServerID> const>
 ClusterInfo::getCurrentServersForShard(std::string_view shardId) {
   READ_LOCKER(readLocker, _currentProt.lock);
 
@@ -6721,7 +6719,7 @@ void ClusterInfo::setShardGroups(
   WRITE_LOCKER(writeLocker, _planProt.lock);
   _shardGroups.clear();
   for (auto const& [k, v] : shardGroups) {
-    auto vv = std::make_shared<std::pmr::vector<pmr::ShardID>>();
+    auto vv = std::make_shared<std_pmr::vector<pmr::ShardID>>();
     vv->assign(v->begin(), v->end());
     _shardGroups.emplace(k, std::move(vv));
   }
@@ -6734,7 +6732,7 @@ void ClusterInfo::setShardIds(
   WRITE_LOCKER(writeLocker, _currentProt.lock);
   _shardsToCurrentServers.clear();
   for (auto const& [k, v] : shardIds) {
-    auto vv = std::make_shared<std::pmr::vector<pmr::ShardID>>();
+    auto vv = std::make_shared<std_pmr::vector<pmr::ShardID>>();
     vv->assign(v->begin(), v->end());
     _shardsToCurrentServers.emplace(k, std::move(vv));
   }
@@ -7696,7 +7694,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
 }
 
 void ClusterInfo::triggerWaiting(
-    std::pmr::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
+    std_pmr::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
     uint64_t commitIndex) {
   auto* scheduler = SchedulerFeature::SCHEDULER;
   auto pit = mm.begin();
