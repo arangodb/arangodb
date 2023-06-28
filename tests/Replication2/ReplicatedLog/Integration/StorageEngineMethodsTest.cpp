@@ -28,7 +28,8 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
-#include "Replication2/Storage/RocksDB/PersistedLog.h"
+#include "Replication2/Storage/RocksDB/LogStorageMethods.h"
+#include "Replication2/Storage/RocksDB/Metrics.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
@@ -112,6 +113,7 @@ namespace arangodb::replication2::storage::rocksdb::tests {
 
 struct AsyncLogWriteBatcherMetricsMock : AsyncLogWriteBatcherMetrics {
   AsyncLogWriteBatcherMetricsMock() {
+    using namespace arangodb::replication2::storage::rocksdb;
     numWorkerThreadsWaitForSync =
         makeMetric<arangodb_replication2_rocksdb_num_persistor_worker>();
     numWorkerThreadsNoWaitForSync =

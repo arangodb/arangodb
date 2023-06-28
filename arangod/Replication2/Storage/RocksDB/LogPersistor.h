@@ -33,7 +33,7 @@ struct AsyncLogWriteBatcherMetrics;
 struct AsyncLogWriteContext;
 struct IAsyncLogWriteBatcher;
 
-struct LogPersistor final : ILogPersistor {
+struct LogPersistor final : storage::ILogPersistor {
   LogPersistor(LogId logId, AsyncLogWriteContext& ctx, ::rocksdb::DB* const db,
                ::rocksdb::ColumnFamilyHandle* const logCf,
                std::shared_ptr<IAsyncLogWriteBatcher> batcher,

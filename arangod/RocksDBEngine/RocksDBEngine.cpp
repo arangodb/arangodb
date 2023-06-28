@@ -69,7 +69,8 @@
 #include "RestServer/ServerIdFeature.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
-#include "Replication2/Storage/RocksDB/PersistedLog.h"
+#include "Replication2/Storage/RocksDB/LogStorageMethods.h"
+#include "Replication2/Storage/RocksDB/Metrics.h"
 #include "Replication2/Storage/RocksDB/ReplicatedStateInfo.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
@@ -873,6 +874,7 @@ struct RocksDBAsyncLogWriteBatcherMetricsImpl
     : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
   explicit RocksDBAsyncLogWriteBatcherMetricsImpl(
       metrics::MetricsFeature* metricsFeature) {
+    using namespace arangodb::replication2::storage::rocksdb;
     numWorkerThreadsWaitForSync = &metricsFeature->add(
         arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
                                                                        "true"));

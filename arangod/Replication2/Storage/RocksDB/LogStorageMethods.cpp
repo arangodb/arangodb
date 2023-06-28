@@ -21,29 +21,18 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PersistedLog.h"
+#include "LogStorageMethods.h"
 
-#include <Basics/Exceptions.h>
 #include <Basics/RocksDBUtils.h>
-#include <Basics/ScopeGuard.h>
-#include <Basics/debugging.h>
-#include <Basics/application-exit.h>
-#include <Logger/LogMacros.h>
-#include <Basics/ResultT.h>
-#include <Inspection/VPack.h>
+#include <Basics/Result.h>
+#include <Futures/Future.h>
 
-#include "Metrics/Gauge.h"
-#include "Metrics/LogScale.h"
-#include "Metrics/Histogram.h"
-#include "Replication2/MetricsHelper.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/Storage/RocksDB/LogPersistor.h"
 #include "Replication2/Storage/RocksDB/StatePersistor.h"
 #include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 
-#include <memory>
 #include <utility>
 
 using namespace arangodb::replication2::replicated_log;

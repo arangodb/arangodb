@@ -34,7 +34,7 @@ namespace arangodb::replication2::storage::rocksdb {
 
 struct AsyncLogWriteContext;
 
-struct StatePersistor final : IStatePersistor {
+struct StatePersistor final : storage::IStatePersistor {
   StatePersistor(LogId logId, AsyncLogWriteContext& ctx,
                  ::rocksdb::DB* const db,
                  ::rocksdb::ColumnFamilyHandle* const metaCf);
