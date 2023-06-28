@@ -1,5 +1,5 @@
 import { aql } from "arangojs";
-import React from "react";
+import React, { useCallback } from "react";
 import { getCurrentDB } from "../../utils/arangoClient";
 import { QueryResultType, QueryExecutionOptions } from "./QueryContextProvider";
 
@@ -13,34 +13,34 @@ export const useQueryExecutors = (
       return newResults;
     });
   };
-  const onExecute = async ({
-    queryValue,
-    queryBindParams
-  }: QueryExecutionOptions) => {
-    const currentDB = getCurrentDB();
-    try {
-      const cursor = await currentDB.query(
-        // An AQL literal created from a normal multi-line string
-        aql.literal(queryValue),
-        queryBindParams
-      );
-      const result = await cursor.all();
-      const extra = cursor.extra;
-      setQueryResults(queryResults => [
-        {
-          type: "query",
-          result,
-          extra
-        },
-        ...queryResults
-      ]);
-    } catch (e: any) {
-      const message = e.message || e.response.body.errorMessage;
-      window.arangoHelper.arangoError(
-        `Could not execute query. Error - ${message}`
-      );
-    }
-  };
+  const onExecute = useCallback(
+    async ({ queryValue, queryBindParams }: QueryExecutionOptions) => {
+      const currentDB = getCurrentDB();
+      try {
+        const cursor = await currentDB.query(
+          // An AQL literal created from a normal multi-line string
+          aql.literal(queryValue),
+          queryBindParams
+        );
+        const result = await cursor.all();
+        const extra = cursor.extra;
+        setQueryResults(queryResults => [
+          {
+            type: "query",
+            result,
+            extra
+          },
+          ...queryResults
+        ]);
+      } catch (e: any) {
+        const message = e.message || e.response.body.errorMessage;
+        window.arangoHelper.arangoError(
+          `Could not execute query. Error - ${message}`
+        );
+      }
+    },
+    [setQueryResults]
+  );
 
   const onProfile = async ({
     queryValue,
@@ -62,25 +62,32 @@ export const useQueryExecutors = (
       ...queryResults
     ]);
   };
-  const onExplain = async ({
-    queryValue,
-    queryBindParams
-  }: QueryExecutionOptions) => {
-    const currentDB = getCurrentDB();
-    const literal = aql.literal(queryValue);
-    const path = `/_admin/aardvark/query/explain`;
-    const route = currentDB.route(path);
-    const explainResult = await route.post({
-      query: literal.toAQL(),
-      bindVars: queryBindParams
-    });
-    setQueryResults(queryResults => [
-      {
-        type: "explain",
-        result: explainResult.body.msg
-      },
-      ...queryResults
-    ]);
-  };
+  const onExplain = useCallback(
+    async ({ queryValue, queryBindParams }: QueryExecutionOptions) => {
+      const currentDB = getCurrentDB();
+      const literal = aql.literal(queryValue);
+      const path = `/_admin/aardvark/query/explain`;
+      const route = currentDB.route(path);
+      try {
+        const explainResult = await route.post({
+          query: literal.toAQL(),
+          bindVars: queryBindParams
+        });
+        setQueryResults(queryResults => [
+          {
+            type: "explain",
+            result: explainResult.body.msg
+          },
+          ...queryResults
+        ]);
+      } catch (e: any) {
+        const message = e.message || e.response.body.errorMessage;
+        window.arangoHelper.arangoError(
+          `Could not execute query. Error - ${message}`
+        );
+      }
+    },
+    [setQueryResults]
+  );
   return { onExecute, onProfile, onExplain, onRemoveResult };
 };
