@@ -21,58 +21,72 @@ type ControlledJSONEditorProps = Omit<JsonEditorProps, "value"> & {
   defaultValue?: any;
 };
 
-export const ControlledJSONEditor = ({
-  value,
-  onChange,
-  schema,
-  isDisabled,
-  isReadOnly,
-  htmlElementProps,
-  mainMenuBar,
-  defaultValue,
-  ...rest
-}: ControlledJSONEditorProps) => {
-  const jsonEditorRef = useRef(null);
-  useResetSchema({ schema, ajv: rest.ajv });
-  useSetupReadOnly({ jsonEditorRef, isDisabled, isReadOnly });
-  useSetupValueUpdate({ jsonEditorRef, value });
-  useSetupDefaultValueUpdate({ jsonEditorRef, defaultValue });
-  return (
-    <ClassNames>
-      {({ css }) => (
-        <JsonEditor
-          schema={schema}
-          ref={jsonEditorRef}
-          value={value || {}}
-          onChange={onChange}
-          htmlElementProps={{
-            ...htmlElementProps,
-            className: isDisabled
-              ? css`
-                  opacity: 0.6;
-                `
-              : ""
-          }}
-          {...rest}
-          // @ts-ignore
-          mainMenuBar={mainMenuBar}
-        />
-      )}
-    </ClassNames>
-  );
-};
+export const ControlledJSONEditor = React.forwardRef(
+  (
+    {
+      value,
+      onChange,
+      schema,
+      isDisabled,
+      isReadOnly,
+      htmlElementProps,
+      mainMenuBar,
+      defaultValue,
+      ...rest
+    }: ControlledJSONEditorProps,
+    ref: React.ForwardedRef<JsonEditor>
+  ) => {
+    const jsonEditorRef = useRef<JsonEditor | undefined>();
+    useResetSchema({ schema, ajv: rest.ajv });
+    useSetupReadOnly({ jsonEditorRef, isDisabled, isReadOnly });
+    useSetupValueUpdate({ jsonEditorRef, value });
+    useSetupDefaultValueUpdate({ jsonEditorRef, defaultValue });
+    return (
+      <ClassNames>
+        {({ css }) => (
+          <JsonEditor
+            schema={schema}
+            ref={node => {
+              if (node) {
+                jsonEditorRef.current = node;
+              }
+              if (typeof ref === "function") {
+                ref(node);
+              } else if (ref) {
+                ref.current = node;
+              }
+            }}
+            value={value || {}}
+            onChange={onChange}
+            htmlElementProps={{
+              ...htmlElementProps,
+              className: isDisabled
+                ? css`
+                    opacity: 0.6;
+                  `
+                : ""
+            }}
+            {...rest}
+            // @ts-ignore
+            mainMenuBar={mainMenuBar}
+          />
+        )}
+      </ClassNames>
+    );
+  }
+);
 
 const useSetupReadOnly = ({
   jsonEditorRef,
   isDisabled,
   isReadOnly
 }: {
-  jsonEditorRef: React.MutableRefObject<null>;
+  jsonEditorRef?: React.MutableRefObject<JsonEditor | undefined>;
   isDisabled: boolean | undefined;
   isReadOnly: boolean | undefined;
 }) => {
   useEffect(() => {
-    const editor = (jsonEditorRef.current as any)?.jsonEditor;
+    const editor = (jsonEditorRef?.current as any)?.jsonEditor;
     const ace = editor?.aceEditor;
     if (!editor || !ace) return;
     if (isDisabled || isReadOnly) {
@@ -87,11 +101,11 @@ const useSetupDefaultValueUpdate = ({
   jsonEditorRef,
   defaultValue
 }: {
-  jsonEditorRef: React.MutableRefObject<null>;
+  jsonEditorRef?: React.MutableRefObject<JsonEditor | undefined>;
   defaultValue: any;
 }) => {
   useEffect(() => {
-    const editor = (jsonEditorRef.current as any)?.jsonEditor;
+    const editor = (jsonEditorRef?.current as any)?.jsonEditor;
     if (editor && defaultValue) {
       editor.update(defaultValue);
     }
@@ -103,11 +117,11 @@ const useSetupValueUpdate = ({
   jsonEditorRef,
   value
 }: {
-  jsonEditorRef: React.MutableRefObject<null>;
+  jsonEditorRef: React.MutableRefObject<JsonEditor | undefined>;
   value: any;
 }) => {
   useEffect(() => {
-    const editor = (jsonEditorRef.current as any)?.jsonEditor;
+    const editor = (jsonEditorRef?.current as any)?.jsonEditor;
     if (
       editor &&
       value &&
