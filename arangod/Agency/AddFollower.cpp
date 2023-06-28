@@ -350,9 +350,9 @@ bool AddFollower::start(bool&) {
             // "failoverCandidates":
             std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
             foCandsPath += StaticStrings::FailoverCandidates;
-            auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+            auto foCands = this->_snapshot.hasAsBuilder(foCandsPath);
             if (foCands) {
-              addPreconditionUnchanged(trx, foCandsPath, foCands.value());
+              addPreconditionUnchanged(trx, foCandsPath, foCands->slice());
             }
           });
       addPreconditionShardNotBlocked(trx, _shard);
