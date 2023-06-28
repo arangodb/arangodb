@@ -33,7 +33,7 @@ void ReadWriteLock::lockWrite() {
     return;
   }
 
-  // the lock is either hold by another writer or we have active readers
+  // the lock is either held by another writer or we have active readers
   // -> announce that we want to write
   _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
@@ -59,12 +59,12 @@ void ReadWriteLock::lockWrite() {
 }
 
 /// @brief lock for writes with microsecond timeout
-bool ReadWriteLock::lockWrite(std::chrono::microseconds timeout) {
+bool ReadWriteLock::tryLockWriteFor(std::chrono::microseconds timeout) {
   if (tryLockWrite()) {
     return true;
   }
 
-  // the lock is either hold by another writer or we have active readers
+  // the lock is either held by another writer or we have active readers
   // -> announce that we want to write
   _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
@@ -130,7 +130,7 @@ void ReadWriteLock::lockRead() {
   }
 }
 
-bool ReadWriteLock::trylockReadFor(std::chrono::microseconds timeout) {
+bool ReadWriteLock::tryLockReadFor(std::chrono::microseconds timeout) {
   auto end = std::chrono::high_resolution_clock::now() + timeout;
   if (tryLockRead()) {
     return true;

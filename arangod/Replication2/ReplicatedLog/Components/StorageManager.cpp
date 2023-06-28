@@ -35,6 +35,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::replication2::replicated_state;
 
 struct comp::StorageManager::StorageOperation {
   virtual ~StorageOperation() = default;
@@ -81,7 +82,8 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
         });
   }
 
-  auto appendEntries(InMemoryLog slice) noexcept
+  auto appendEntries(InMemoryLog slice,
+                     IStorageEngineMethods::WriteOptions writeOptions) noexcept
       -> futures::Future<Result> override {
     LOG_CTX("eb8da", TRACE, manager.loggerContext)
         << "scheduling append, range = " << slice.getIndexRange();
@@ -97,10 +99,48 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
     mapping.append(sliceMapping);
     return scheduleOperation(
         std::move(mapping),
-        [slice = std::move(slice), iter = std::move(iter)](
+        [slice = std::move(slice), iter = std::move(iter),
+         weakManager = manager.weak_from_this(), writeOptions](
             StorageManager::IStorageEngineMethods& methods) mutable noexcept {
-          return methods.insert(std::move(iter), {.waitForSync = true})
-              .thenValue([](auto&& res) { return res.result(); });
+          auto lastIndex = slice.getLastIndex();
+          auto&& fut = methods.insert(std::move(iter), writeOptions);
+
+          if (writeOptions.waitForSync) {
+            return std::move(fut).thenValue(
+                [lastIndex, weakManager = std::move(weakManager)](auto&& res) {
+                  if (auto mngr = weakManager.lock(); res.ok() && mngr) {
+                    mngr->updateSyncIndex(lastIndex);
+                  }
+                  return res.result();
+                });
+          }
+
+          return std::move(fut).thenValue([lastIndex,
+                                           weakManager = std::move(weakManager),
+                                           &methods](auto&& res) mutable {
+            if (auto mngr = weakManager.lock(); res.ok() && mngr) {
+              // Methods are available as long as the manager is not
+              // destroyed.
+              methods.waitForSync(res.get()).thenFinal(
+                  [lastIndex,
+                   weakManager = std::move(weakManager)](auto&& tryRes) {
+                    auto res = basics::catchToResult([&] {
+                      return std::forward<decltype(tryRes)>(tryRes).get();
+                    });
+                    if (auto mngr = weakManager.lock()) {
+                      if (res.fail()) {
+                        LOG_CTX("6e64c", TRACE, mngr->loggerContext)
+                            << "Will not update syncIndex from "
+                            << mngr->syncIndex.getLockedGuard().get() << " to "
+                            << lastIndex << ": " << res;
+                        return;
+                      }
+                      mngr->updateSyncIndex(lastIndex);
+                    }
+                  });
+            }
+            return res.result();
+          });
         });
   }
 
@@ -113,11 +153,15 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
 
 StorageManager::StorageManager(std::unique_ptr<IStorageEngineMethods> methods,
                                LoggerContext const& loggerContext,
-                               const std::shared_ptr<IScheduler> scheduler)
+                               std::shared_ptr<IScheduler> scheduler)
     : guardedData(std::move(methods)),
       loggerContext(
           loggerContext.with<logContextKeyLogComponent>("storage-manager")),
-      scheduler(std::move(scheduler)) {}
+      scheduler(std::move(scheduler)),
+      syncIndex(getTermIndexMapping()
+                    .getLastIndex()
+                    .value_or(TermIndexPair{})
+                    .index) {}
 
 auto StorageManager::resign() noexcept
     -> std::unique_ptr<IStorageEngineMethods> {
@@ -397,6 +441,16 @@ auto StorageManager::getCommittedLogIterator(
   };
 
   return std::make_unique<Iterator>(range, std::move(diskIter));
+}
+
+auto StorageManager::getSyncIndex() const -> LogIndex {
+  return syncIndex.getLockedGuard().get();
+}
+
+void StorageManager::updateSyncIndex(LogIndex index) {
+  syncIndex.doUnderLock([index](auto& currentIndex) {
+    currentIndex = std::max(currentIndex, index);
+  });
 }
 
 StorageManager::StorageRequest::StorageRequest(

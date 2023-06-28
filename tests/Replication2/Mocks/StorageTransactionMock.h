@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,27 +17,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Replication2/IScheduler.h"
-#include <deque>
+#include <gmock/gmock.h>
+
+#include "Futures/Future.h"
+#include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 
 namespace arangodb::replication2::test {
-
-struct SyncScheduler : IScheduler {
-  auto delayedFuture(std::chrono::nanoseconds duration, std::string_view name)
-      -> futures::Future<futures::Unit> override {
-    std::abort();  // not implemented
-  }
-  auto queueDelayed(std::string_view name, std::chrono::nanoseconds delay,
-                    fu2::unique_function<void(bool canceled)> handler) noexcept
-      -> WorkItemHandle override {
-    std::abort();  // not implemented
-  }
-  void queue(fu2::unique_function<void()> function) noexcept override {
-    function();
-  }
+struct StorageTransactionMock : replicated_log::IStorageTransaction {
+  MOCK_METHOD(LogRange, getLogBounds, (), (const, noexcept, override));
+  MOCK_METHOD(futures::Future<Result>, removeFront, (LogIndex),
+              (noexcept, override));
+  MOCK_METHOD(futures::Future<Result>, removeBack, (LogIndex),
+              (noexcept, override));
+  MOCK_METHOD(futures::Future<Result>, appendEntries,
+              (replicated_log::InMemoryLog,
+               replicated_state::IStorageEngineMethods::WriteOptions),
+              (noexcept, override));
 };
 }  // namespace arangodb::replication2::test

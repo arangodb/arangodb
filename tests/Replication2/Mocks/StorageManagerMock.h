@@ -52,6 +52,7 @@ struct StorageManagerMock
       (std::unique_ptr<
           arangodb::replication2::replicated_log::IStateInfoTransaction>),
       (override));
+  MOCK_METHOD(LogIndex, getSyncIndex, (), (const, override));
 };
 
 }  // namespace arangodb::replication2::test
