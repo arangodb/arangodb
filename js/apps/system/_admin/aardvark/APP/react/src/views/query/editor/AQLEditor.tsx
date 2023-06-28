@@ -96,4 +96,155 @@ const useSetupAQLEditor = (aqlJsonEditorRef: React.MutableRefObject<null>) => {
     aceEditor.setFontSize("10pt");
     aceEditor.setShowPrintMargin(false);
   }, [aqlJsonEditorRef]);
+  useSetupKeyboardShortcuts(aqlJsonEditorRef);
+};
+
+const useSetupKeyboardShortcuts = (
+  aqlJsonEditorRef: React.MutableRefObject<null>
+) => {
+  const {
+    onExecute,
+    queryValue,
+    queryBindParams,
+    onOpenSaveAsModal,
+    setIsSpotlightOpen,
+    onExplain
+  } = useQueryContext();
+  useEffect(() => {
+    const editor = (aqlJsonEditorRef.current as any)?.jsonEditor;
+    const aceEditor = editor.aceEditor;
+    aceEditor.commands.addCommand({
+      name: "togglecomment",
+      bindKey: {
+        win: "Ctrl-Shift-C",
+        linux: "Ctrl-Shift-C",
+        mac: "Command-Shift-C"
+      },
+      exec: function (editor: any) {
+        editor.toggleCommentLines();
+      },
+      multiSelectAction: "forEach"
+    });
+
+    aceEditor.commands.addCommand({
+      name: "increaseFontSize",
+      bindKey: {
+        win: "Shift-Alt-Up",
+        linux: "Shift-Alt-Up",
+        mac: "Shift-Alt-Up"
+      },
+      exec: function () {
+        let newSize = `${
+          parseInt(aceEditor.getFontSize().match(/\d+/)[0], 10) + 1
+        }`;
+        newSize = `${newSize}pt`;
+        aceEditor.setFontSize(newSize);
+      },
+      multiSelectAction: "forEach"
+    });
+
+    aceEditor.commands.addCommand({
+      name: "decreaseFontSize",
+      bindKey: {
+        win: "Shift-Alt-Down",
+        linux: "Shift-Alt-Down",
+        mac: "Shift-Alt-Down"
+      },
+      exec: function () {
+        var newSize = `${
+          parseInt(aceEditor.getFontSize().match(/\d+/)[0], 10) - 1
+        }`;
+        newSize = `${newSize}pt`;
+        aceEditor.setFontSize(newSize);
+      },
+      multiSelectAction: "forEach"
+    });
+
+    aceEditor.commands.addCommand({
+      name: "executeQuery",
+      bindKey: {
+        win: "Ctrl-Return",
+        mac: "Command-Return",
+        linux: "Ctrl-Return"
+      },
+      exec: function () {
+        onExecute({
+          queryValue,
+          queryBindParams
+        });
+      }
+    });
+
+    aceEditor.commands.addCommand({
+      name: "executeSelectedQuery",
+      bindKey: {
+        win: "Ctrl-Alt-Return",
+        mac: "Command-Alt-Return",
+        linux: "Ctrl-Alt-Return"
+      },
+      exec: function (editor: any) {
+        const selectedText = editor.getSelectedText();
+        onExecute({
+          queryValue: selectedText,
+          queryBindParams
+        });
+      }
+    });
+
+    aceEditor.commands.addCommand({
+      name: "saveQuery",
+      bindKey: {
+        win: "Ctrl-Shift-S",
+        mac: "Command-Shift-S",
+        linux: "Ctrl-Shift-S"
+      },
+      exec: function () {
+        onOpenSaveAsModal();
+      }
+    });
+
+    aceEditor.commands.addCommand({
+      name: "explainQuery",
+      bindKey: {
+        win: "Ctrl-Shift-Return",
+        mac: "Command-Shift-Return",
+        linux: "Ctrl-Shift-Return"
+      },
+      exec: function () {
+        onExplain({
+          queryValue,
+          queryBindParams
+        });
+      }
+    });
+
+    aceEditor.commands.addCommand({
+      name: "togglecomment",
+      bindKey: {
+        win: "Ctrl-Shift-C",
+        linux: "Ctrl-Shift-C",
+        mac: "Command-Shift-C"
+      },
+      exec: function (editor: any) {
+        editor.toggleCommentLines();
+      },
+      multiSelectAction: "forEach"
+    });
+
+    aceEditor.commands.addCommand({
+      name: "showSpotlight",
+      bindKey: { win: "Ctrl-Space", mac: "Ctrl-Space", linux: "Ctrl-Space" },
+      exec: function () {
+        setIsSpotlightOpen(true);
+      }
+    });
+  }, [
+    aqlJsonEditorRef,
+    queryBindParams,
+    queryValue,
+    onExecute,
+    onOpenSaveAsModal,
+    setIsSpotlightOpen,
+    onExplain
+  ]);
 };
