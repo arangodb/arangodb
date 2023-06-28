@@ -28,7 +28,8 @@ export const useQueryExecutors = (
           {
             type: "query",
             result,
-            extra
+            extra,
+            status: "success"
           },
           ...queryResults
         ]);
@@ -57,7 +58,8 @@ export const useQueryExecutors = (
     setQueryResults(queryResults => [
       {
         type: "profile",
-        result: profile.body.msg
+        result: profile.body.msg,
+        status: "success"
       },
       ...queryResults
     ]);
@@ -76,7 +78,8 @@ export const useQueryExecutors = (
         setQueryResults(queryResults => [
           {
             type: "explain",
-            result: explainResult.body.msg
+            result: explainResult.body.msg,
+            status: "success"
           },
           ...queryResults
         ]);

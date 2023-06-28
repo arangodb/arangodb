@@ -59,6 +59,7 @@ export type QueryResultType = {
   type: "query" | "profile" | "explain";
   result: any;
   extra?: CursorExtras;
+  status: "success" | "error" | "loading";
 };
 type CachedQuery = {
   query: string;
