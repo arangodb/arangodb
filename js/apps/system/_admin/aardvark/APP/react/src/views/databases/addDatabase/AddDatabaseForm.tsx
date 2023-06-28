@@ -88,7 +88,7 @@ export const AddDatabaseForm = ({
             hidden={!showUsers}
             selectProps={{
               options: availableUsers.map(user => ({
-                label: user.user,
+                label: user.extra?.name || user.user,
                 value: user.user
               }))
             }}
