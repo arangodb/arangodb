@@ -34,12 +34,6 @@ using boost::container::pmr::new_delete_resource;
 
 typedef boost::container::pmr::memory_resource memory_resource_t;
 
-/*struct new_delete_resource_t {
-  static memory_resource_t* new_delete_resource() {
-    return boost::container::pmr::new_delete_resource();
-  }
-};*/
-
 template<class T>
 using vector_t =
     boost::container::vector<T,
