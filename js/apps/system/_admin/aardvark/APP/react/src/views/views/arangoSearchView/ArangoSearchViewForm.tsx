@@ -104,16 +104,6 @@ const GeneralAccordionItem = () => {
     </AccordionItem>
   );
 };
-
-const generalGraphFields = [
-  {
-    name: "name",
-    type: "string",
-    label: "Name",
-    tooltip: "Name of the graph.",
-    isRequired: true
-  }
-];
 const ConsolidationPolicyAccordionItem = () => {
   const { tierConsolidationPolicyFields, bytesAccumConsolidationPolicyFields } =
     useArangoSearchFieldsData();
