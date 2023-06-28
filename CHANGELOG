@@ -39,7 +39,6 @@ devel
 * BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
 
 * Attempt to avoid busy looping when locking collections with a timeout
->>>>>>> 38f46a7e32a48ba83467c529f5bab2ae0350db65
 
 * Add a `description` field to OptimizerRule and dump the explanations via the
   `GET /_api/query/rules` endpoint.
