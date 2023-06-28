@@ -1,6 +1,7 @@
 import { Global } from "@emotion/react";
 import { JsonEditor } from "jsoneditor-react";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
+import { useQueryContext } from "../QueryContextProvider";
 
 export const AQLEditor = ({
   value,
@@ -15,10 +16,10 @@ export const AQLEditor = ({
   resetEditor?: boolean;
   autoFocus?: boolean;
 }) => {
-  const jsonEditorRef = useRef(null);
+  const { aqlJsonEditorRef } = useQueryContext();
 
   useEffect(() => {
-    const editor = (jsonEditorRef.current as any)?.jsonEditor;
+    const editor = (aqlJsonEditorRef.current as any)?.jsonEditor;
     editor.options.onChangeText = (value: string) => {
       onChange?.(value);
     };
@@ -38,20 +39,22 @@ export const AQLEditor = ({
 
   /** set to readOnly when in preview mode */
   useEffect(() => {
-    const editor = (jsonEditorRef.current as any)?.jsonEditor;
+    const editor = (aqlJsonEditorRef.current as any)?.jsonEditor;
     if (isPreview) {
       editor.aceEditor.setReadOnly(true);
       editor.aceEditor.setValue(value, 1);
     }
+    // disabled because we don't need the ref in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPreview, value]);
 
   useEffect(() => {
-    const editor = (jsonEditorRef.current as any)?.jsonEditor;
+    const editor = (aqlJsonEditorRef.current as any)?.jsonEditor;
     if (autoFocus) {
       editor.aceEditor.focus();
     }
   }, [autoFocus]);
-  useSetupAQLEditor(jsonEditorRef);
+  useSetupAQLEditor(aqlJsonEditorRef);
   return (
     <>
       <Global
@@ -63,7 +66,7 @@ export const AQLEditor = ({
         }}
       />
       <JsonEditor
-        ref={jsonEditorRef}
+        ref={aqlJsonEditorRef}
         mode={"code" as any}
         onChange={onChange}
         value={undefined}
@@ -80,9 +83,9 @@ export const AQLEditor = ({
   );
 };
 
-const useSetupAQLEditor = (jsonEditorRef: React.MutableRefObject<null>) => {
+const useSetupAQLEditor = (aqlJsonEditorRef: React.MutableRefObject<null>) => {
   useEffect(() => {
-    const editor = (jsonEditorRef.current as any)?.jsonEditor;
+    const editor = (aqlJsonEditorRef.current as any)?.jsonEditor;
     const aceEditor = editor.aceEditor;
     aceEditor.$blockScrolling = Infinity;
     aceEditor.getSession().setMode("ace/mode/aql");
@@ -90,5 +93,5 @@ const useSetupAQLEditor = (jsonEditorRef: React.MutableRefObject<null>) => {
     aceEditor.getSession().setUseWrapMode(true);
     aceEditor.setFontSize("10pt");
     aceEditor.setShowPrintMargin(false);
-  }, [jsonEditorRef]);
+  }, [aqlJsonEditorRef]);
 };
