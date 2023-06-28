@@ -53,6 +53,8 @@ export const AQLEditor = ({
     if (autoFocus) {
       editor.aceEditor.focus();
     }
+    // disabled because we don't need the ref in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFocus]);
   useSetupAQLEditor(aqlJsonEditorRef);
   return (
