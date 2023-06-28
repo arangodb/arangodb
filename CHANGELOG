@@ -3,6 +3,9 @@ devel
 
 * FE-289: Improve database table UI.
 
+* Remove temporary `CREATING_{number}` directories from hot backup in case a
+  hot backup runs into an error.
+
 * Added new startup options `--cache.ideal-lower-fill-ratio` and 
   `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
   ratios for cache tables that trigger shrinking and growing of the table
