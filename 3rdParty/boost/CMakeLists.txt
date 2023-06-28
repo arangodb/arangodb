@@ -136,7 +136,7 @@ add_library(boost_container STATIC
     ${boost_src}/libs/container/src/unsynchronized_pool_resource.cpp
 )
 target_link_libraries(boost_container PUBLIC boost_boost) #this will add required includes
-target_compile_definitions(boost_container PRIVATE "BOOST_SYSTEM_STATIC_LINK=1")
+target_compile_definitions(boost_container PRIVATE "BOOST_CONTAINER_STATIC_LINK=1")
 target_compile_definitions(boost_container PUBLIC  "BOOST_ALL_NO_LIB=1")
 
 #build boost_system - there seems to be just one cpp file:)
