@@ -35,17 +35,13 @@ struct CountingMemoryResource : memory_resource_t {
 
  private:
   void* do_allocate(size_t bytes, size_t alignment) override {
-    void* mem = base->allocate(bytes, alignment);
-
-    try {
       _resourceMonitor.increaseMemoryUsage(bytes);
-    } catch (...) {
-      base->deallocate(mem, bytes, alignment);
-
-      throw;
-    }
-
-    return mem;
+      ScopeGuard guard{[&] {
+        _resourceMonitor.decreaseMemoryUsage(bytes); 
+      }};
+      void* mem = base->allocate(bytes, alignment);
+      guard.cancel();
+      return mem;
   }
 
   void do_deallocate(void* p, size_t bytes, size_t alignment) override {
