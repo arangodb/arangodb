@@ -48,7 +48,7 @@ LogPersistor::LogPersistor(LogId logId, AsyncLogWriteContext& ctx,
       logCf(logCf) {}
 
 std::unique_ptr<PersistedLogIterator> LogPersistor::read(LogIndex first) {
-  return std::make_unique<RocksDBLogIterator>(ctx.objectId, db, logCf, first);
+  return std::make_unique<LogIterator>(ctx.objectId, db, logCf, first);
 }
 
 auto LogPersistor::removeFront(LogIndex stop, WriteOptions const& opts)

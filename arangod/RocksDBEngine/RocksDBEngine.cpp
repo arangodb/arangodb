@@ -2769,7 +2769,7 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
         replication2::storage::rocksdb::ReplicatedStateInfo>(slice);
     auto* cfLogs = RocksDBColumnFamilyManager::get(
         RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-    auto methods = replication2::storage::rocksdb::RocksDBLogStorageMethods(
+    auto methods = replication2::storage::rocksdb::LogStorageMethods(
         info.objectId, databaseId, info.stateId, _logPersistor, _db, cfDefs,
         cfLogs, _logMetrics);
     auto res = methods.drop();
@@ -3154,14 +3154,14 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
 
     auto info = velocypack::deserialize<
         replication2::storage::rocksdb::ReplicatedStateInfo>(slice);
-    auto methods = std::make_unique<
-        replication2::storage::rocksdb::RocksDBLogStorageMethods>(
-        info.objectId, vocbase.id(), info.stateId, _logPersistor, _db,
-        RocksDBColumnFamilyManager::get(
-            RocksDBColumnFamilyManager::Family::Definitions),
-        RocksDBColumnFamilyManager::get(
-            RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-        _logMetrics);
+    auto methods =
+        std::make_unique<replication2::storage::rocksdb::LogStorageMethods>(
+            info.objectId, vocbase.id(), info.stateId, _logPersistor, _db,
+            RocksDBColumnFamilyManager::get(
+                RocksDBColumnFamilyManager::Family::Definitions),
+            RocksDBColumnFamilyManager::get(
+                RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+            _logMetrics);
     registerReplicatedState(vocbase, info.stateId, std::move(methods));
   }
 }
@@ -3952,7 +3952,7 @@ Result RocksDBEngine::dropReplicatedState(
     std::unique_ptr<replication2::storage::IStorageEngineMethods>& ptr) {
   // make sure that all pending async operations have completed
   auto methods =
-      dynamic_cast<replication2::storage::rocksdb::RocksDBLogStorageMethods*>(
+      dynamic_cast<replication2::storage::rocksdb::LogStorageMethods*>(
           ptr.get());
   ADB_PROD_ASSERT(methods != nullptr);
   methods->ctx.waitForCompletion();
@@ -3973,14 +3973,14 @@ auto RocksDBEngine::createReplicatedState(
     replication2::replicated_state::PersistedStateInfo const& info)
     -> ResultT<std::unique_ptr<replication2::storage::IStorageEngineMethods>> {
   auto objectId = TRI_NewTickServer();
-  auto methods = std::make_unique<
-      replication2::storage::rocksdb::RocksDBLogStorageMethods>(
-      objectId, vocbase.id(), id, _logPersistor, _db,
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Definitions),
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-      _logMetrics);
+  auto methods =
+      std::make_unique<replication2::storage::rocksdb::LogStorageMethods>(
+          objectId, vocbase.id(), id, _logPersistor, _db,
+          RocksDBColumnFamilyManager::get(
+              RocksDBColumnFamilyManager::Family::Definitions),
+          RocksDBColumnFamilyManager::get(
+              RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+          _logMetrics);
   auto res = methods->updateMetadata(info);
   if (res.fail()) {
     return res;

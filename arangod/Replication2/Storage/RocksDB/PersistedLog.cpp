@@ -51,7 +51,7 @@ using namespace arangodb::replication2::replicated_state;
 
 namespace arangodb::replication2::storage::rocksdb {
 
-RocksDBLogStorageMethods::RocksDBLogStorageMethods(
+LogStorageMethods::LogStorageMethods(
     uint64_t objectId, std::uint64_t vocbaseId, replication2::LogId logId,
     std::shared_ptr<IAsyncLogWriteBatcher> batcher, ::rocksdb::DB* db,
     ::rocksdb::ColumnFamilyHandle* metaCf, ::rocksdb::ColumnFamilyHandle* logCf,
@@ -67,58 +67,55 @@ RocksDBLogStorageMethods::RocksDBLogStorageMethods(
       _statePersistor(
           std::make_unique<StatePersistor>(logId, ctx, db, metaCf)) {}
 
-Result RocksDBLogStorageMethods::updateMetadata(
+Result LogStorageMethods::updateMetadata(
     replicated_state::PersistedStateInfo info) {
   return _statePersistor->updateMetadata(info);
 }
 
-ResultT<PersistedStateInfo> RocksDBLogStorageMethods::readMetadata() {
+ResultT<PersistedStateInfo> LogStorageMethods::readMetadata() {
   return _statePersistor->readMetadata();
 }
 
-std::unique_ptr<PersistedLogIterator> RocksDBLogStorageMethods::read(
-    LogIndex first) {
+std::unique_ptr<PersistedLogIterator> LogStorageMethods::read(LogIndex first) {
   return _logPersistor->read(first);
 }
 
-auto RocksDBLogStorageMethods::removeFront(LogIndex stop,
-                                           WriteOptions const& opts)
+auto LogStorageMethods::removeFront(LogIndex stop, WriteOptions const& opts)
     -> futures::Future<ResultT<SequenceNumber>> {
   return _logPersistor->removeFront(stop, opts);
 }
 
-auto RocksDBLogStorageMethods::removeBack(LogIndex start,
-                                          WriteOptions const& opts)
+auto LogStorageMethods::removeBack(LogIndex start, WriteOptions const& opts)
     -> futures::Future<ResultT<SequenceNumber>> {
   return _logPersistor->removeBack(start, opts);
 }
 
-auto RocksDBLogStorageMethods::insert(
-    std::unique_ptr<PersistedLogIterator> iter, WriteOptions const& opts)
+auto LogStorageMethods::insert(std::unique_ptr<PersistedLogIterator> iter,
+                               WriteOptions const& opts)
     -> futures::Future<ResultT<SequenceNumber>> {
   return _logPersistor->insert(std::move(iter), opts);
 }
 
-uint64_t RocksDBLogStorageMethods::getObjectId() {
+uint64_t LogStorageMethods::getObjectId() {
   return _logPersistor->getObjectId();
 }
-LogId RocksDBLogStorageMethods::getLogId() { return _logPersistor->getLogId(); }
+LogId LogStorageMethods::getLogId() { return _logPersistor->getLogId(); }
 
-auto RocksDBLogStorageMethods::getSyncedSequenceNumber() -> SequenceNumber {
+auto LogStorageMethods::getSyncedSequenceNumber() -> SequenceNumber {
   return _logPersistor->getSyncedSequenceNumber();
 }
 
-auto RocksDBLogStorageMethods::waitForSync(
+auto LogStorageMethods::waitForSync(
     IStorageEngineMethods::SequenceNumber number)
     -> futures::Future<futures::Unit> {
   return _logPersistor->waitForSync(number);
 }
 
-void RocksDBLogStorageMethods::waitForCompletion() noexcept {
+void LogStorageMethods::waitForCompletion() noexcept {
   _logPersistor->waitForCompletion();
 }
 
-auto RocksDBLogStorageMethods::drop() -> Result {
+auto LogStorageMethods::drop() -> Result {
   // prepare deletion transaction
   ::rocksdb::WriteBatch batch;
   auto key = RocksDBKey{};
@@ -141,7 +138,7 @@ auto RocksDBLogStorageMethods::drop() -> Result {
   return {};
 }
 
-auto RocksDBLogStorageMethods::compact() -> Result {
+auto LogStorageMethods::compact() -> Result {
   auto range = RocksDBKeyBounds::LogRange(ctx.objectId);
   auto start = range.start();
   auto end = range.end();

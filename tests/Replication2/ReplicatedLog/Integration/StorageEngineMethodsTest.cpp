@@ -150,7 +150,7 @@ struct RocksDBFactory {
   static void TearDown() { rocksdb.reset(); }
 
   static void Drop(std::unique_ptr<IStorageEngineMethods> methods) {
-    auto& rocksdbMethods = dynamic_cast<RocksDBLogStorageMethods&>(*methods);
+    auto& rocksdbMethods = dynamic_cast<LogStorageMethods&>(*methods);
     rocksdbMethods.ctx.waitForCompletion();
     auto res = rocksdbMethods.drop();
     ASSERT_TRUE(res.ok());
@@ -167,7 +167,7 @@ struct RocksDBFactory {
             rocksdb->getDatabase()->DefaultColumnFamily(),
             rocksdb->getDatabase(), std::move(executor), settings, metrics);
 
-    return std::make_unique<RocksDBLogStorageMethods>(
+    return std::make_unique<LogStorageMethods>(
         objectId, vocbaseId, logId, writeBatcher, rocksdb->getDatabase(),
         rocksdb->getDatabase()->DefaultColumnFamily(),
         rocksdb->getDatabase()->DefaultColumnFamily(), metrics);

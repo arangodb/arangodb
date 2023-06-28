@@ -34,11 +34,11 @@
 
 namespace arangodb::replication2::storage::rocksdb {
 
-struct RocksDBLogIterator : PersistedLogIterator {
-  ~RocksDBLogIterator() override = default;
+struct LogIterator : PersistedLogIterator {
+  ~LogIterator() override = default;
 
-  RocksDBLogIterator(std::uint64_t objectId, ::rocksdb::DB* db,
-                     ::rocksdb::ColumnFamilyHandle* cf, LogIndex start)
+  LogIterator(std::uint64_t objectId, ::rocksdb::DB* db,
+              ::rocksdb::ColumnFamilyHandle* cf, LogIndex start)
       : _bounds(RocksDBKeyBounds::LogRange(objectId)),
         _upperBound(_bounds.end()) {
     ::rocksdb::ReadOptions opts;

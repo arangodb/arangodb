@@ -84,9 +84,8 @@ namespace arangodb::replication2::storage::rocksdb {
 struct AsyncLogWriteBatcherMetrics;
 struct IAsyncLogWriteBatcher;
 
-struct RocksDBLogStorageMethods final
-    : replication2::storage::IStorageEngineMethods {
-  explicit RocksDBLogStorageMethods(
+struct LogStorageMethods final : replication2::storage::IStorageEngineMethods {
+  explicit LogStorageMethods(
       uint64_t objectId, std::uint64_t vocbaseId, replication2::LogId logId,
       std::shared_ptr<IAsyncLogWriteBatcher> batcher, ::rocksdb::DB* db,
       ::rocksdb::ColumnFamilyHandle* metaCf,
