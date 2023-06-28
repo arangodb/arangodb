@@ -25,8 +25,10 @@
 
 #include <rocksdb/db.h>
 
+#include "Basics/Guarded.h"
 #include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "RocksDBEngine/RocksDBSyncThread.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -37,6 +39,7 @@
 
 #include <array>
 #include <variant>
+#include <map>
 #include <memory>
 
 namespace arangodb {
@@ -116,6 +119,8 @@ struct IRocksDBAsyncLogWriteBatcher {
                                replication2::LogIndex start,
                                WriteOptions const& opts)
       -> futures::Future<ResultT<SequenceNumber>> = 0;
+
+  virtual auto waitForSync(SequenceNumber seq) -> futures::Future<Result> = 0;
 };
 
 struct WriteBatchSizeScale {
@@ -169,6 +174,7 @@ struct RocksDBAsyncLogWriteBatcherMetrics {
 
 struct RocksDBAsyncLogWriteBatcher final
     : IRocksDBAsyncLogWriteBatcher,
+      RocksDBSyncThread::ISyncListener,
       std::enable_shared_from_this<RocksDBAsyncLogWriteBatcher> {
   struct IAsyncExecutor {
     virtual ~IAsyncExecutor() = default;
@@ -180,6 +186,8 @@ struct RocksDBAsyncLogWriteBatcher final
       std::shared_ptr<IAsyncExecutor> executor,
       std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options,
       std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> metrics);
+
+  ~RocksDBAsyncLogWriteBatcher() override;
 
   struct InsertEntries {
     std::unique_ptr<arangodb::replication2::PersistedLogIterator> iter;
@@ -217,8 +225,10 @@ struct RocksDBAsyncLogWriteBatcher final
   auto queueRemoveBack(AsyncLogWriteContext& ctx, replication2::LogIndex start,
                        const WriteOptions& opts)
       -> futures::Future<ResultT<SequenceNumber>> override;
+  auto waitForSync(SequenceNumber seq) -> futures::Future<Result> override;
   auto queue(AsyncLogWriteContext& ctx, Action action, WriteOptions const& wo)
       -> futures::Future<ResultT<SequenceNumber>>;
+  void onSync(SequenceNumber seq) noexcept override;
 
   struct Lane {
     Lane() = delete;
@@ -246,6 +256,14 @@ struct RocksDBAsyncLogWriteBatcher final
   std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> const
       _options;
   std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> const _metrics;
+
+  struct SyncGuard {
+    explicit SyncGuard() = default;
+
+    SequenceNumber syncedSequenceNumber{0};
+    std::multimap<SequenceNumber, futures::Promise<Result>> promises{};
+  };
+  Guarded<SyncGuard> _syncGuard;
 };
 
 struct RocksDBReplicatedStateInfo {
@@ -293,7 +311,7 @@ struct RocksDBLogStorageMethods final
 
   [[nodiscard]] auto getSyncedSequenceNumber() -> SequenceNumber override;
   [[nodiscard]] auto waitForSync(SequenceNumber number)
-      -> futures::Future<futures::Unit> override;
+      -> futures::Future<Result> override;
 
   [[nodiscard]] auto drop() -> Result;
   [[nodiscard]] auto compact() -> Result;

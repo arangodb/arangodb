@@ -57,6 +57,7 @@ struct StorageManager : IStorageManager,
       -> Result override;
   auto getCommittedMetaInfo() const
       -> replicated_state::PersistedStateInfo override;
+  auto getSyncIndex() const -> LogIndex override;
 
  private:
   friend struct StorageManagerTransaction;
@@ -90,6 +91,7 @@ struct StorageManager : IStorageManager,
   using GuardType = Guarded<GuardedData>::mutex_guard_type;
   LoggerContext const loggerContext;
   std::shared_ptr<IScheduler> const scheduler;
+  Guarded<LogIndex> syncIndex;
 
   auto scheduleOperation(GuardType&&, TermIndexMapping mapResult,
                          std::unique_ptr<StorageOperation>)
@@ -98,6 +100,7 @@ struct StorageManager : IStorageManager,
   auto scheduleOperationLambda(GuardType&&, TermIndexMapping mapResult, F&&)
       -> futures::Future<Result>;
   void triggerQueueWorker(GuardType) noexcept;
+  void updateSyncIndex(LogIndex index);
 };
 
 }  // namespace comp

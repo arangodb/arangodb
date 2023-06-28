@@ -20,9 +20,9 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+
 #include "Replication2/IScheduler.h"
 #include <deque>
-#include <thread>
 
 namespace arangodb::replication2::test {
 
@@ -40,5 +40,4 @@ struct SyncScheduler : IScheduler {
     function();
   }
 };
-
 }  // namespace arangodb::replication2::test

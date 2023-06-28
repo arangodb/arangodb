@@ -3,6 +3,54 @@ devel
 
 * BTS-744: Disable development mode for system services.
 
+* Added new startup options `--cache.ideal-lower-fill-ratio` and 
+  `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
+  ratios for cache tables that trigger shrinking and growing of the table
+  by the cache rebalancer. The default values are:
+
+  - `0.04` (i.e. 4%) for the lower bound that triggers shrinking
+  - `0.25` (i.e. 25%) for the upper bound that triggers growing
+
+  These values were hard-coded in previous versions of ArangoDB.
+
+* BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in 
+  case the update AQL is of the pattern 
+
+      FOR doc IN collection
+        UPDATE <doc> IN collection
+
+  Previously the optimization was only possible if the update AQL was of the
+  pattern 
+
+      FOR doc IN collection
+        UPDATE <key> WITH <doc> IN collection
+
+  Both <key> and <doc> refer to data from the collection enumeration variable
+  `doc` here.
+
+  Also fix the optimization in case a shard key attribute is updated with a
+  value from a different attribute, e.g.
+
+     FOR doc IN collection
+       UPDATE { _key: doc.abc, abc: doc._key } IN collection
+
+  In this case the optimization was previously applied although it shouldn't.
+
+* BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
+
+* Attempt to avoid busy looping when locking collections with a timeout
+
+* Add a `description` field to OptimizerRule and dump the explanations via the
+  `GET /_api/query/rules` endpoint.
+
+* Don't show "write query options" for AQL write queries in the explain and
+  profile output. The write query options normally don't produce any valuable
+  insights and only take up screen real estate.
+
+* If a startup option has a dynamic default value (e.g. if the default value
+  depends on the amount of available RAM), display a "dynamic default" hint
+  when invoking `--help`.
+
 * FE-229: Improve shard rebalancing UI.
 
 * FE-20: fix UI placeholder format for locale when creating analyzers.
