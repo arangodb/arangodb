@@ -71,8 +71,7 @@ struct FakeStorageEngineMethods : replicated_state::IStorageEngineMethods {
   auto getObjectId() -> std::uint64_t override;
   auto getLogId() -> LogId override;
   auto getSyncedSequenceNumber() -> SequenceNumber override;
-  auto waitForSync(SequenceNumber number)
-      -> futures::Future<futures::Unit> override;
+  auto waitForSync(SequenceNumber number) -> futures::Future<Result> override;
   void waitForCompletion() noexcept override;
 
   FakeStorageEngineMethods(FakeStorageEngineMethodsContext& self);
