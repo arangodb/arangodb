@@ -44,14 +44,14 @@ auto invoke_on_executor(
 
 namespace arangodb::replication2::storage::test {
 
-auto FakeStorageEngineMethods::updateMetadata(
-    replicated_state::PersistedStateInfo info) -> Result {
+auto FakeStorageEngineMethods::updateMetadata(storage::PersistedStateInfo info)
+    -> Result {
   _self.meta = std::move(info);
   return {};
 }
 
 auto FakeStorageEngineMethods::readMetadata()
-    -> arangodb::ResultT<replicated_state::PersistedStateInfo> {
+    -> arangodb::ResultT<storage::PersistedStateInfo> {
   if (_self.meta.has_value()) {
     return {*_self.meta};
   } else {
@@ -169,7 +169,7 @@ auto FakeStorageEngineMethodsContext::getMethods()
 FakeStorageEngineMethodsContext::FakeStorageEngineMethodsContext(
     std::uint64_t objectId, arangodb::replication2::LogId logId,
     std::shared_ptr<rocksdb::AsyncLogWriteBatcher::IAsyncExecutor> executor,
-    LogRange range, std::optional<replicated_state::PersistedStateInfo> meta)
+    LogRange range, std::optional<storage::PersistedStateInfo> meta)
     : objectId(objectId),
       logId(logId),
       executor(std::move(executor)),

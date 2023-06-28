@@ -39,10 +39,9 @@ struct StatePersistor final : IStatePersistor {
                  ::rocksdb::DB* const db,
                  ::rocksdb::ColumnFamilyHandle* const metaCf);
   [[nodiscard]] auto updateMetadata(
-      replication2::replicated_state::PersistedStateInfo info)
-      -> Result override;
+      replication2::storage::PersistedStateInfo info) -> Result override;
   [[nodiscard]] auto readMetadata()
-      -> ResultT<replication2::replicated_state::PersistedStateInfo> override;
+      -> ResultT<replication2::storage::PersistedStateInfo> override;
 
  private:
   LogId const logId;

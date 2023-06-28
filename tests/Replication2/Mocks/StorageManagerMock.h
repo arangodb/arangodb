@@ -42,7 +42,7 @@ struct StorageManagerMock
               (LogIndex), (const, override));
   MOCK_METHOD(arangodb::replication2::replicated_log::TermIndexMapping,
               getTermIndexMapping, (), (const, override));
-  MOCK_METHOD(replicated_state::PersistedStateInfo, getCommittedMetaInfo, (),
+  MOCK_METHOD(storage::PersistedStateInfo, getCommittedMetaInfo, (),
               (const, override));
   MOCK_METHOD(
       std::unique_ptr<

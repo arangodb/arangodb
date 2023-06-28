@@ -284,4 +284,5 @@ auto AsyncLogWriteBatcher::queueRemoveBack(AsyncLogWriteContext& ctx,
     -> futures::Future<ResultT<SequenceNumber>> {
   return queue(ctx, RemoveBack{.start = start}, opts);
 }
+
 }  // namespace arangodb::replication2::storage::rocksdb

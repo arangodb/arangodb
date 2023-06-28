@@ -215,7 +215,7 @@ TYPED_TEST(StorageEngineMethodsTest, read_meta_data_not_found) {
 }
 
 TYPED_TEST(StorageEngineMethodsTest, write_meta_data) {
-  replicated_state::PersistedStateInfo info;
+  storage::PersistedStateInfo info;
   info.stateId = this->logId;
   info.snapshot.status = replicated_state::SnapshotStatus::kCompleted;
   {
@@ -245,7 +245,7 @@ TYPED_TEST(StorageEngineMethodsTest, write_meta_data) {
 }
 
 TYPED_TEST(StorageEngineMethodsTest, write_drop_data) {
-  replicated_state::PersistedStateInfo info;
+  storage::PersistedStateInfo info;
   info.stateId = this->logId;
   info.snapshot.status = replicated_state::SnapshotStatus::kCompleted;
   {

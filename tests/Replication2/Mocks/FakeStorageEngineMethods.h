@@ -34,8 +34,7 @@ struct FakeStorageEngineMethodsContext {
   FakeStorageEngineMethodsContext(
       std::uint64_t objectId, LogId logId,
       std::shared_ptr<rocksdb::AsyncLogWriteBatcher::IAsyncExecutor> executor,
-      LogRange range = {},
-      std::optional<replicated_state::PersistedStateInfo> = {});
+      LogRange range = {}, std::optional<storage::PersistedStateInfo> = {});
 
   auto getMethods() -> std::unique_ptr<IStorageEngineMethods>;
   void emplaceLogRange(LogRange, LogTerm term = LogTerm{1});
@@ -43,17 +42,16 @@ struct FakeStorageEngineMethodsContext {
   std::uint64_t const objectId;
   LogId const logId;
   std::shared_ptr<rocksdb::AsyncLogWriteBatcher::IAsyncExecutor> const executor;
-  std::optional<replicated_state::PersistedStateInfo> meta;
+  std::optional<storage::PersistedStateInfo> meta;
   LogContainerType log;
   std::unordered_set<LogIndex> writtenWithWaitForSync;
   SequenceNumber lastSequenceNumber{0};
 };
 
 struct FakeStorageEngineMethods : IStorageEngineMethods {
-  auto updateMetadata(replicated_state::PersistedStateInfo info)
-      -> Result override;
+  auto updateMetadata(storage::PersistedStateInfo info) -> Result override;
 
-  auto readMetadata() -> ResultT<replicated_state::PersistedStateInfo> override;
+  auto readMetadata() -> ResultT<storage::PersistedStateInfo> override;
 
   auto read(LogIndex first) -> std::unique_ptr<PersistedLogIterator> override;
 

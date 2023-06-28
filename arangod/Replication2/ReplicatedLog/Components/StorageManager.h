@@ -55,8 +55,7 @@ struct StorageManager : IStorageManager,
   auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> override;
   auto commitMetaInfoTrx(std::unique_ptr<IStateInfoTransaction> ptr)
       -> Result override;
-  auto getCommittedMetaInfo() const
-      -> replicated_state::PersistedStateInfo override;
+  auto getCommittedMetaInfo() const -> storage::PersistedStateInfo override;
 
  private:
   friend struct StorageManagerTransaction;
@@ -83,7 +82,7 @@ struct StorageManager : IStorageManager,
     TermIndexMapping onDiskMapping, spearheadMapping;
     std::unique_ptr<IStorageEngineMethods> methods;
     std::deque<StorageRequest> queue;
-    replicated_state::PersistedStateInfo info;
+    storage::PersistedStateInfo info;
     bool workerActive{false};
   };
   Guarded<GuardedData> guardedData;

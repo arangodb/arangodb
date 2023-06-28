@@ -263,7 +263,7 @@ TEST_F(StateManagerTest_EmptyState, get_leader_state_machine_early) {
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
 
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
 
   auto const term = agency::LogPlanTermSpecification{LogTerm{1}, myself};
@@ -354,7 +354,7 @@ TEST_F(StateManagerTest_EmptyState,
   //  - send successful append entries request
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
 
   auto const term = LogTerm{1};
@@ -455,7 +455,7 @@ TEST_F(
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
 
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
   auto const leaderComm =
       std::make_shared<replication2::tests::LeaderCommunicatorMock>();
@@ -580,7 +580,7 @@ TEST_F(
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
 
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
   auto const leaderComm =
       std::make_shared<replication2::tests::LeaderCommunicatorMock>();
@@ -700,7 +700,7 @@ TEST_F(
   //  - let the state machine acquire a snapshot
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kFailed}};
   auto const leaderComm =
       std::make_shared<replication2::tests::LeaderCommunicatorMock>();
@@ -816,7 +816,7 @@ TEST_F(
   //  - send successful append entries request
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kFailed}};
   auto const leaderComm =
       std::make_shared<replication2::tests::LeaderCommunicatorMock>();
@@ -938,7 +938,7 @@ TEST_F(StateManagerTest_FakeState, follower_acquire_snapshot) {
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
 
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id,
       .snapshot = {.status = SnapshotStatus::kUninitialized}};
   auto const leaderComm =

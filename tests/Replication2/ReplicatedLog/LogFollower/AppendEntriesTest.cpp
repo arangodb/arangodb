@@ -65,7 +65,7 @@ struct AppendEntriesFollowerTest : ::testing::Test {
       logId,
       executor,
       {LogIndex{1}, LogIndex{100}},
-      replicated_state::PersistedStateInfo{
+      storage::PersistedStateInfo{
           .stateId = logId,
           .snapshot = {.status = SnapshotStatus::kCompleted,
                        .timestamp = {},

@@ -93,10 +93,9 @@ struct LogStorageMethods final : replication2::storage::IStorageEngineMethods {
       std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics);
 
   [[nodiscard]] auto updateMetadata(
-      replication2::replicated_state::PersistedStateInfo info)
-      -> Result override;
+      replication2::storage::PersistedStateInfo info) -> Result override;
   [[nodiscard]] auto readMetadata()
-      -> ResultT<replication2::replicated_state::PersistedStateInfo> override;
+      -> ResultT<replication2::storage::PersistedStateInfo> override;
   [[nodiscard]] auto read(replication2::LogIndex first)
       -> std::unique_ptr<replication2::PersistedLogIterator> override;
   [[nodiscard]] auto insert(

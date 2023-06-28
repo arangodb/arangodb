@@ -33,9 +33,10 @@ template<typename T>
 class Future;
 }
 class Result;
-namespace replication2::replicated_state {
+namespace replication2::storage {
 struct PersistedStateInfo;
-}  // namespace replication2::replicated_state
+}  // namespace replication2::storage
+
 namespace replication2 {
 struct LogRange;
 struct LogIndex;
@@ -63,7 +64,7 @@ struct IStorageTransaction {
 struct IStorageManager;
 
 struct IStateInfoTransaction {
-  using InfoType = replicated_state::PersistedStateInfo;
+  using InfoType = storage::PersistedStateInfo;
   virtual ~IStateInfoTransaction() = default;
   virtual auto get() noexcept -> InfoType& = 0;
 };
@@ -77,7 +78,7 @@ struct IStorageManager {
       std::optional<LogRange> range = std::nullopt) const
       -> std::unique_ptr<TypedLogRangeIterator<LogEntryView>> = 0;
   [[nodiscard]] virtual auto getCommittedMetaInfo() const
-      -> replicated_state::PersistedStateInfo = 0;
+      -> storage::PersistedStateInfo = 0;
   [[nodiscard]] virtual auto getPersistedLogIterator(LogIndex first) const
       -> std::unique_ptr<PersistedLogIterator> = 0;
 

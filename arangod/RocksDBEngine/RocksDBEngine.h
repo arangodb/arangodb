@@ -285,7 +285,7 @@ class RocksDBEngine final : public StorageEngine {
 
   auto createReplicatedState(
       TRI_vocbase_t& vocbase, replication2::LogId id,
-      replication2::replicated_state::PersistedStateInfo const& info)
+      replication2::storage::PersistedStateInfo const& info)
       -> ResultT<std::unique_ptr<
           replication2::storage::IStorageEngineMethods>> override;
 

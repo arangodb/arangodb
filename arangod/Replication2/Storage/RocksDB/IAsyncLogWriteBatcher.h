@@ -61,4 +61,5 @@ struct IAsyncLogWriteBatcher {
                                WriteOptions const& opts)
       -> futures::Future<ResultT<SequenceNumber>> = 0;
 };
+
 }  // namespace arangodb::replication2::storage::rocksdb

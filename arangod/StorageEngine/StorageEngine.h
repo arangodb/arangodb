@@ -74,7 +74,7 @@ namespace rest {
 class RestHandlerFactory;
 }
 
-namespace replication2::replicated_state {
+namespace replication2::storage {
 struct PersistedStateInfo;
 }
 
@@ -224,7 +224,7 @@ class StorageEngine : public ArangodFeature {
 
   virtual auto createReplicatedState(
       TRI_vocbase_t&, arangodb::replication2::LogId,
-      arangodb::replication2::replicated_state::PersistedStateInfo const&)
+      arangodb::replication2::storage::PersistedStateInfo const&)
       -> ResultT<
           std::unique_ptr<replication2::storage::IStorageEngineMethods>> = 0;
 

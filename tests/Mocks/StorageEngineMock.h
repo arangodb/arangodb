@@ -363,7 +363,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
           ptr) -> arangodb::Result override;
   auto createReplicatedState(
       TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-      const arangodb::replication2::replicated_state::PersistedStateInfo& info)
+      const arangodb::replication2::storage::PersistedStateInfo& info)
       -> arangodb::ResultT<std::unique_ptr<
           arangodb::replication2::storage::IStorageEngineMethods>> override;
 

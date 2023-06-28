@@ -41,8 +41,7 @@ StatePersistor::StatePersistor(LogId logId, AsyncLogWriteContext& ctx,
                                ::rocksdb::ColumnFamilyHandle* const metaCf)
     : logId(logId), ctx(ctx), db(db), metaCf(metaCf) {}
 
-Result StatePersistor::updateMetadata(
-    replicated_state::PersistedStateInfo info) {
+Result StatePersistor::updateMetadata(storage::PersistedStateInfo info) {
   TRI_ASSERT(info.stateId == logId);  // redundant information
 
   auto key = RocksDBKey{};

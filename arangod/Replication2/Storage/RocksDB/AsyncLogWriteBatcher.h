@@ -145,4 +145,5 @@ struct AsyncLogWriteBatcher final
       _options;
   std::shared_ptr<AsyncLogWriteBatcherMetrics> const _metrics;
 };
+
 }  // namespace arangodb::replication2::storage::rocksdb

@@ -31,7 +31,7 @@ struct ReplicatedStateInfo {
   replication2::LogId stateId;
   std::uint64_t objectId{0};
   std::uint64_t dataSourceId{0};
-  replication2::replicated_state::PersistedStateInfo state;
+  replication2::storage::PersistedStateInfo state;
 };
 
 template<class Inspector>

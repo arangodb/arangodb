@@ -67,8 +67,7 @@ LogStorageMethods::LogStorageMethods(
       _statePersistor(
           std::make_unique<StatePersistor>(logId, ctx, db, metaCf)) {}
 
-Result LogStorageMethods::updateMetadata(
-    replicated_state::PersistedStateInfo info) {
+Result LogStorageMethods::updateMetadata(storage::PersistedStateInfo info) {
   return _statePersistor->updateMetadata(info);
 }
 

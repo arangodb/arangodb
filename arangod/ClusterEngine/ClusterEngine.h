@@ -198,7 +198,7 @@ class ClusterEngine final : public StorageEngine {
       -> Result override;
   auto createReplicatedState(
       TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-      const replication2::replicated_state::PersistedStateInfo& info)
+      const replication2::storage::PersistedStateInfo& info)
       -> ResultT<std::unique_ptr<
           replication2::storage::IStorageEngineMethods>> override;
 

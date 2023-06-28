@@ -25,7 +25,7 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 
-namespace arangodb::replication2::replicated_state {
+namespace arangodb::replication2::storage {
 
 struct PersistedStateInfo {
   LogId stateId;  // could be removed
@@ -42,10 +42,4 @@ auto inspect(Inspector& f, PersistedStateInfo& x) {
                             f.field("specification", x.specification));
 }
 
-}  // namespace arangodb::replication2::replicated_state
-
-namespace arangodb::replication2::storage {
-// TODO - update usages, move type to namespace storage, and remove this alias
-using PersistedStateInfo =
-    ::arangodb::replication2::replicated_state::PersistedStateInfo;
 }  // namespace arangodb::replication2::storage

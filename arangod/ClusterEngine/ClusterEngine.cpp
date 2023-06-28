@@ -297,7 +297,7 @@ Result ClusterEngine::dropReplicatedState(
 ResultT<std::unique_ptr<replication2::storage::IStorageEngineMethods>>
 ClusterEngine::createReplicatedState(
     TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    replication2::replicated_state::PersistedStateInfo const& info) {
+    replication2::storage::PersistedStateInfo const& info) {
   return ResultT<std::unique_ptr<replication2::storage::IStorageEngineMethods>>{
       TRI_ERROR_NOT_IMPLEMENTED};
 }

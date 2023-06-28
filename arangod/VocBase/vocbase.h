@@ -83,11 +83,11 @@ struct ReplicatedLog;
 namespace replicated_state {
 struct ReplicatedStateBase;
 struct StateStatus;
-struct PersistedStateInfo;
 }  // namespace replicated_state
 namespace storage {
+struct PersistedStateInfo;
 struct IStorageEngineMethods;
-}
+}  // namespace storage
 }  // namespace replication2
 namespace velocypack {
 class Builder;

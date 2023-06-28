@@ -57,8 +57,6 @@ struct ReplicatedLog;
 namespace replicated_state {
 struct ReplicatedStateBase;
 struct StateStatus;
-struct PersistedStateInfo;
-struct IStorageEngineMethods;
 }  // namespace replicated_state
 }  // namespace replication2
 

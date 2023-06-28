@@ -272,7 +272,7 @@ struct comp::StateInfoTransaction : IStateInfoTransaction {
 
   auto get() noexcept -> InfoType& override { return info; }
 
-  replicated_state::PersistedStateInfo info;
+  storage::PersistedStateInfo info;
   GuardType guard;
   StorageManager& manager;
 };
@@ -305,7 +305,7 @@ arangodb::Result StorageManager::commitMetaInfoTrx(
 }
 
 auto StorageManager::getCommittedMetaInfo() const
-    -> replicated_state::PersistedStateInfo {
+    -> storage::PersistedStateInfo {
   return guardedData.getLockedGuard()->info;
 }
 

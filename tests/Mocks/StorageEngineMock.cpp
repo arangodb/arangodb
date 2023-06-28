@@ -1931,7 +1931,7 @@ arangodb::ResultT<
     std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>>
 StorageEngineMock::createReplicatedState(
     TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    const arangodb::replication2::replicated_state::PersistedStateInfo& info) {
+    const arangodb::replication2::storage::PersistedStateInfo& info) {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

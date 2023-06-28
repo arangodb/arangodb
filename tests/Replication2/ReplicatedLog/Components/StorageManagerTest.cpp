@@ -50,7 +50,7 @@ struct StorageManagerTest : ::testing::Test {
       logId,
       executor,
       {LogIndex{1}, LogIndex{100}},
-      replicated_state::PersistedStateInfo{
+      storage::PersistedStateInfo{
           .stateId = logId,
           .snapshot = {.status = SnapshotStatus::kFailed,
                        .timestamp = {},
@@ -243,10 +243,10 @@ struct StorageEngineMethodsMockFactory {
     });
 
     EXPECT_CALL(*ptr, readMetadata).Times(1).WillOnce([]() {
-      return replicated_state::PersistedStateInfo{.stateId = LogId{1},
-                                                  .snapshot = {},
-                                                  .generation = {},
-                                                  .specification = {}};
+      return storage::PersistedStateInfo{.stateId = LogId{1},
+                                         .snapshot = {},
+                                         .generation = {},
+                                         .specification = {}};
     });
 
     return ptr;

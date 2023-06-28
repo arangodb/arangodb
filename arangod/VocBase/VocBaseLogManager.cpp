@@ -259,7 +259,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedState(
     buffer.append(parameters.start(), parameters.byteSize());
     auto parametersCopy = velocypack::SharedSlice(std::move(buffer));
 
-    auto metadata = PersistedStateInfo{
+    auto metadata = storage::PersistedStateInfo{
         .stateId = id,
         .snapshot = {.status = replicated_state::SnapshotStatus::kCompleted,
                      .timestamp = {},
