@@ -285,8 +285,8 @@ function LeaderDisconnectedSuite() {
         let toSuspend = instanceinfo.arangods.filter(arangod => arangod.endpoint !== initialLead && arangod.instanceRole !== 'agent');
         toSuspend.forEach(arangod => {
           print("Suspending servers: ", arangod.endpoint);
+          suspended.push({ endpoint: arangod.endpoint, pid: arangod.pid });
           assertTrue(suspendExternal(arangod.pid));
-          suspended.push(toSuspend);
         });
 
         i = 100;
@@ -297,9 +297,9 @@ function LeaderDisconnectedSuite() {
           }
           internal.wait(1.0);
         } while (i-- > 0);
-      
+     
         suspended.forEach(arangod => {
-          print("Resuming: ", arangod.endpoint);
+          print("Resuming: ", arangod.endpoint, "pid: ", arangod.pid);
           assertTrue(continueExternal(arangod.pid));
         });
 
