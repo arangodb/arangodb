@@ -126,7 +126,8 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
           << "inserting new log entries count = " << request.entries.size()
           << ", range = [" << request.entries.front().entry().logIndex() << ", "
           << request.entries.back().entry().logIndex() + 1 << ")";
-      auto f = store->appendEntries(InMemoryLog{request.entries});
+      auto f = store->appendEntries(InMemoryLog{request.entries},
+                                    {.waitForSync = request.waitForSync});
       guard.unlock();
       auto result = co_await asResult(std::move(f));
       guard = self->guarded.getLockedGuard();
@@ -137,7 +138,6 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       if (result.fail()) {
         LOG_CTX("7cb3d", ERR, lctx)
             << "failed to persist new entries: " << result;
-        LOG_DEVEL << ADB_HERE << " snapshot=" << std::hex << &guard->snapshot;
         co_return AppendEntriesResult::withPersistenceError(
             termInfo->term, request.messageId, result,
             guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
