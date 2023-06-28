@@ -30,6 +30,8 @@ thread:DatabaseFeature::start
 
 # TODO Fix lock order inversion
 deadlock:consensus::Agent::setPersistedState
+deadlock:replication2::replicated_log::LogLeader::triggerAsyncReplication
+deadlock:replication2::replicated_state::ReplicatedStateManager
 
 # TODO Fix data race in arangodbtests
 race:DummyConnection::sendRequest
