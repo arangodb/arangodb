@@ -43,8 +43,10 @@ export const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
       <TableContainer>
         <Table size="sm">
           <Thead>
-            <Th>Key</Th>
-            <Th>Value</Th>
+            <Tr>
+              <Th>Key</Th>
+              <Th>Value</Th>
+            </Tr>
           </Thead>
           <Tbody>
             {Object.keys(queryBindParams).map(key => {
