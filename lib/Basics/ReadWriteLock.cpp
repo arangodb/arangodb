@@ -134,14 +134,14 @@ bool ReadWriteLock::tryLockReadFor(std::chrono::microseconds timeout) {
     return true;
   }
   auto end_time = std::chrono::steady_clock::now() + timeout;  
-  std::unique_lock<std::mutex> guard(_reader_mutex);
   std::cv_status status(std::cv_status::no_timeout);
-  while (std::cv_status::no_timeout == status) {
+  std::unique_lock<std::mutex> guard(_reader_mutex);
+  do {
     if (tryLockRead()) {
       return true;
     }
     status = _readers_bell.wait_until(guard, end_time);
-  }
+  } while (std::cv_status::no_timeout == status);
   return false;
 }
 
