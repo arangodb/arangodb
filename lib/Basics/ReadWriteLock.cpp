@@ -130,6 +130,20 @@ void ReadWriteLock::lockRead() {
   }
 }
 
+bool ReadWriteLock::trylockReadFor(std::chrono::microseconds timeout) {
+  auto end = std::chrono::high_resolution_clock::now() + timeout;
+  if (tryLockRead()) {
+    return true;
+  }
+  std::unique_lock<std::mutex> guard(_reader_mutex);
+  while (true) {
+    if (tryLockRead()) {
+      return true;
+    }
+    _readers_bell.wait_until(guard, end);
+  }
+  return false;
+}
 /// @brief locks for reading, tries only
 bool ReadWriteLock::tryLockRead() noexcept {
   // order_relaxed is an optimization, cmpxchg will synchronize side-effects
