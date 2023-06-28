@@ -62,7 +62,6 @@ class Ast;
 
 /// @brief an AQL query basic interface
 class QueryContext {
-
  private:
   QueryContext(QueryContext const&) = delete;
   QueryContext& operator=(QueryContext const&) = delete;
