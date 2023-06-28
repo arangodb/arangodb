@@ -16,7 +16,7 @@ export const useFetchUserSavedQueries = () => {
       path
     });
     const savedQueries = (user.body as ArangoUser).extra.queries;
-    return savedQueries;
+    return savedQueries.reverse();
   };
   const { data, isLoading } = useSWR<QueryType[]>("/savedQueries", fetchUser);
   return { savedQueries: data, isLoading };

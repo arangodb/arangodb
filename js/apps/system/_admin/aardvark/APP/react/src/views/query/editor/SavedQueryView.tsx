@@ -168,7 +168,7 @@ const TABLE_COLUMNS = [
 const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
   const tableInstance = useSortableReactTable<QueryType>({
     columns: TABLE_COLUMNS,
-    data: savedQueries.reverse(),
+    data: savedQueries,
     initialRowSelection: {
       0: true
     },
@@ -182,13 +182,13 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
       <Stack>
         <FiltersList<QueryType> columns={TABLE_COLUMNS} table={tableInstance} />
         <ReactTable<QueryType>
-        table={tableInstance}
-        onRowSelect={row => {
-          if (!row.getIsSelected()) {
-            row.toggleSelected();
-          }
-        }}
-      />
+          table={tableInstance}
+          onRowSelect={row => {
+            if (!row.getIsSelected()) {
+              row.toggleSelected();
+            }
+          }}
+        />
       </Stack>
       <QueryPreview query={selectedQuery} />
     </>
