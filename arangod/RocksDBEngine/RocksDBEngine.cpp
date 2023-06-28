@@ -1211,6 +1211,15 @@ void RocksDBEngine::start() {
       _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()),
       server().getFeature<ReplicatedLogFeature>().options(), _logMetrics);
 
+  if (auto* syncer = syncThread(); syncer != nullptr) {
+    syncer->registerSyncListener(_logPersistor);
+  } else {
+    LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
+        << "In replication2 databases, setting waitForSync to false will not "
+           "work correctly without a syncer thread. See the "
+           "--rocksdbsync-interval option.";
+  }
+
   _settingsManager->retrieveInitialValues();
 
   double const counterSyncSeconds = 2.5;
