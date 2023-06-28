@@ -50,7 +50,7 @@ struct CountingMemoryResource : pmr::memory_resource_t {
     return mem;
   }
 
-  void do_deallocate(void* p, size_t bytes, size_t alignment) override {
+  void do_deallocate(void* p, size_t bytes, size_t alignment) noexcept override {
     base->deallocate(p, bytes, alignment);
     _resourceMonitor.decreaseMemoryUsage(bytes);
   }
