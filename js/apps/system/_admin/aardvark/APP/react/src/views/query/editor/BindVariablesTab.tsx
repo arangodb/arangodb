@@ -52,12 +52,12 @@ export const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
             {Object.keys(queryBindParams).map(key => {
               return <BindVariableRow key={key} bindParamKey={key} />;
             })}
+            {Object.keys(queryBindParams).length === 0 ? (
+              <Tr>
+                <Td colSpan={2}>No bind parameters found in query.</Td>
+              </Tr>
+            ) : null}
           </Tbody>
-          {Object.keys(queryBindParams).length === 0 ? (
-            <Tr>
-              <Td colSpan={2}>No bind parameters found in query.</Td>
-            </Tr>
-          ) : null}
         </Table>
       </TableContainer>
     );
