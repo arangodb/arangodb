@@ -1671,12 +1671,8 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   bool gotLock = false;
   if (mode == AccessMode::Type::WRITE) {
     gotLock = _exclusiveLock.tryLockWriteFor(timeout_us);
-  } else if (mode == AccessMode::Type::READ) {
-    gotLock = _exclusiveLock.tryLockReadFor(timeout_us);
   } else {
-    // we should never get here
-    TRI_ASSERT(false);
-    return TRI_ERROR_INTERNAL;
+    gotLock = _exclusiveLock.tryLockReadFor(timeout_us);
   }
 
   if (gotLock) {
