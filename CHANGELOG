@@ -1,7 +1,7 @@
 devel
 -----
 
-* Optimise runtime performance of exclusive locks.
+* Optimize runtime performance of exclusive locks.
 
 * Attempt to avoid busy looping when locking collections with a timeout.
 
