@@ -1,8 +1,9 @@
+import { CollectionMetadata, CollectionType } from "arangojs/collection";
+import useSWR from "swr";
 import {
   getApiRouteForCurrentDB,
   getCurrentDB
 } from "../../../utils/arangoClient";
-import useSWR from "swr";
 const AQL_KEYWORDS = [
   "for",
   "return",
@@ -53,21 +54,85 @@ const useBuiltinFunctionOptions = () => {
     const response = await route.get("/aql-builtin");
     return response.body;
   };
-  const { data } = useSWR<{ functions: any[] }>("/aql-builtin", fetchBuiltins);
+  const { data, isLoading: isFunctionsLoading } = useSWR<{ functions: any[] }>(
+    "/aql-builtin",
+    fetchBuiltins
+  );
   const builtinFunctions = data?.functions.map(func => ({
     label: func.name,
     value: func.name
   }));
-  return { builtinFunctions };
+  return { builtinFunctions, isFunctionsLoading };
+};
+
+const useCollectionOptions = () => {
+  const fetchCollections = async () => {
+    const currentDB = getCurrentDB();
+    const data = await currentDB.listCollections(false);
+    return data;
+  };
+  const { data, isLoading: isCollectionsLoading } = useSWR<
+    CollectionMetadata[]
+  >(`/collections`, fetchCollections);
+  const edgeCollectionOptions = data
+    ?.filter(collection => {
+      return (
+        collection.type === CollectionType.EDGE_COLLECTION &&
+        !collection.isSystem
+      );
+    })
+    .map(collection => ({
+      label: collection.name,
+      value: collection.name
+    }));
+  console.log({ data });
+  const documentCollectionOptions = data
+    ?.filter(collection => {
+      return (
+        collection.type === CollectionType.DOCUMENT_COLLECTION &&
+        !collection.isSystem
+      );
+    })
+    .map(collection => ({
+      label: collection.name,
+      value: collection.name
+    }));
+  const systemCollectionOptions = data
+    ?.filter(collection => {
+      return collection.isSystem;
+    })
+    .map(collection => ({
+      label: collection.name,
+      value: collection.name
+    }));
+  console.log({ systemCollectionOptions });
+  return {
+    edgeCollectionOptions,
+    documentCollectionOptions,
+    systemCollectionOptions,
+    isCollectionsLoading
+  };
 };
 export const useQuerySpotlightOptions = () => {
-  const { builtinFunctions } = useBuiltinFunctionOptions();
+  const { builtinFunctions, isFunctionsLoading } = useBuiltinFunctionOptions();
+  const {
+    edgeCollectionOptions,
+    documentCollectionOptions,
+    systemCollectionOptions,
+    isCollectionsLoading
+  } = useCollectionOptions();
   const groupedOptions = [
     {
       label: "Functions",
       options: builtinFunctions || []
     },
-    { label: "keywords", options: AQL_KEYWORDS_OPTIONS }
+    { label: "Keywords", options: AQL_KEYWORDS_OPTIONS },
+    { label: "Edges", options: edgeCollectionOptions || [] },
+    { label: "Documents", options: documentCollectionOptions || [] },
+    { label: "System", options: systemCollectionOptions || [] }
   ];
-  return groupedOptions;
+  return {
+    groupedOptions,
+    isLoading: isFunctionsLoading || isCollectionsLoading
+  };
 };

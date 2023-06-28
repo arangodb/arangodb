@@ -29,7 +29,7 @@ export const QuerySpotlight = () => {
 };
 
 const SpotlightSelect = () => {
-  const groupedOptions = useQuerySpotlightOptions();
+  const { groupedOptions, isLoading } = useQuerySpotlightOptions();
   const { aqlJsonEditorRef, setIsSpotlightOpen } = useQueryContext();
   const filterOption = (
     { label, value }: FilterOptionOption<OptionType>,
@@ -59,6 +59,9 @@ const SpotlightSelect = () => {
     }
     return false;
   };
+  if (isLoading) {
+    return null;
+  }
   return (
     <SingleSelect
       autoFocus
