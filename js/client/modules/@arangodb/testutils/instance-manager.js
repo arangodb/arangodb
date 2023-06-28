@@ -78,6 +78,7 @@ class instanceManager {
     this.rootDir = fs.join(tmpDir || fs.getTempPath(), testname);
     this.options.agency = this.options.agency || this.options.cluster || this.options.activefailover;
     this.agencyConfig = new inst.agencyConfig(options, this);
+    this.dumpedAgency = false;
     this.leader = null;
     this.urls = [];
     this.endpoints = [];
@@ -531,6 +532,7 @@ class instanceManager {
   // / @brief dump the state of the agency to disk. if we still can get one.
   // //////////////////////////////////////////////////////////////////////////////
   dumpAgency() {
+    this.dumpedAgency = true;
     const dumpdir = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}`);
     const zipfn = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}.zip`);
     if (fs.isFile(zipfn)) {
@@ -809,6 +811,19 @@ class instanceManager {
       moreReason += "Deadline reached! ";
       this.arangods.forEach(arangod => { arangod.serverCrashedLocal = true;});
       forceTerminate = true;
+    }
+    if (forceTerminate && !timeoutReached && this.options.agency && !this.dumpedAgency) {
+      // the SUT is unstable, but we want to attempt an agency dump anyways.
+      try {
+        print(CYAN + Date() + ' attempting to dump agency in forceterminate!' + RESET);
+        // set us a short deadline so we don't get stuck.
+        internal.SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * 100);
+        this.dumpAgency();
+      } catch(ex) {
+        print(CYAN + Date() + ' aborted to dump agency in forceterminate! ' + ex + RESET);
+      } finally {
+        internal.SetGlobalExecutionDeadlineTo(0.0);
+      }
     }
     try {
       if (forceTerminate) {

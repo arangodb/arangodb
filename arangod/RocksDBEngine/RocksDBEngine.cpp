@@ -77,6 +77,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
@@ -1195,6 +1196,7 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
+  _dumpManager = std::make_unique<RocksDBDumpManager>(*this);
 
   struct SchedulerExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
     explicit SchedulerExecutor(ArangodServer& server)
@@ -1257,6 +1259,11 @@ void RocksDBEngine::beginShutdown() {
   // block the creation of new replication contexts
   if (_replicationManager != nullptr) {
     _replicationManager->beginShutdown();
+  }
+
+  // block the creation of new dump contexts
+  if (_dumpManager != nullptr) {
+    _dumpManager->beginShutdown();
   }
 
   // from now on, all started compactions can be canceled.
@@ -1738,6 +1745,7 @@ Result RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) {
 
 Result RocksDBEngine::dropDatabase(TRI_vocbase_t& database) {
   replicationManager()->drop(database);
+  dumpManager()->dropDatabase(database);
 
   return dropDatabase(database.id());
 }
