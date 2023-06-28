@@ -34,7 +34,7 @@ const parseInput = (value: string) => {
     return value;
   }
 };
-const definedType = ["string", "number", "array", "object", "boolean"];
+const DEFINED_TYPES = ["string", "number", "array", "object", "boolean"];
 export const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
   const { queryBindParams, onBindParamsChange } = useQueryContext();
   const [errors, setErrors] = React.useState<ValidationError[]>([]);
@@ -108,7 +108,7 @@ const BindVariableRow = ({ bindParamKey }: { bindParamKey: string }) => {
       <Td>
         <Flex maxWidth="200px" alignItems="center" gap="2">
           <Text isTruncated>{bindParamKey}</Text>
-          {definedType.includes(type) && (
+          {DEFINED_TYPES.includes(type) && (
             <Tag flexShrink={0} size="sm">
               {type}
             </Tag>
