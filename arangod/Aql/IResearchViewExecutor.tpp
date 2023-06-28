@@ -535,7 +535,8 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
     TRI_ASSERT(_trx.state());
     auto const& revision = _trx.state()->analyzersRevision();
     auto getAnalyzer = [&](std::string_view shortName) -> FieldMeta::Analyzer {
-      auto analyzer = analyzerFeature.get(shortName, vocbase, revision);
+      auto analyzer = analyzerFeature.get(shortName, vocbase, revision,
+                                          _trx.getTrxTypeHint());
       if (!analyzer) {
         return makeEmptyAnalyzer();
       }

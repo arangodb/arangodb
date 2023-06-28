@@ -49,13 +49,13 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
   auto resourceMonitor = state->getResourceMonitor();
   // refine classification of transactions with hint by mapping
   if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-      _state->hasTrxTypeHint(transaction::Hints::TrxType::REST)) {
+      _state->getTrxTypeHint() == transaction::Hints::TrxType::REST) {
     LOG_DEVEL << "REST TRANSACTION";
     _memoryTracker = std::make_unique<
         MemoryUsageTracker>(static_cast<metrics::Gauge<uint64_t>*>(
         _state->vocbase().server().getFeature<metrics::MetricsFeature>().get(
             {"arangodb_transaction_memory_rest", ""})));
-  } else if (_state->hasTrxTypeHint(transaction::Hints::TrxType::AQL)) {
+  } else if (_state->getTrxTypeHint() == transaction::Hints::TrxType::AQL) {
     TRI_ASSERT(resourceMonitor.has_value());
     LOG_DEVEL << "AQL TRANSACTION";
     _memoryTracker = std::make_unique<AqlMemoryUsageTracker>(
@@ -66,7 +66,8 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
                 .get({"arangodb_aql_global_memory_usage", ""})),
         resourceMonitor.value().get());
   } else {
-    TRI_ASSERT(_state->hasTrxTypeHint(transaction::Hints::TrxType::INTERNAL));
+    TRI_ASSERT(_state->getTrxTypeHint() ==
+               transaction::Hints::TrxType::INTERNAL);
     LOG_DEVEL << "INTERNAL TRANSACTION";
     _memoryTracker = std::make_unique<
         MemoryUsageTracker>(static_cast<metrics::Gauge<uint64_t>*>(

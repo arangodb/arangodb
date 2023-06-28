@@ -237,6 +237,7 @@ bool FieldMeta::init(
           // analyzer should have been populated via 'analyzerDefinitions'
           // above.
           analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST,
+                                   transaction::Hints::TrxType::INTERNAL,
                                    ServerState::instance()->isClusterRole());
 
           if (!analyzer) {

@@ -88,7 +88,6 @@ void RocksDBTransactionState::unuse() noexcept {
 
 /// @brief start a transaction
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
-  TRI_ASSERT(_trxTypeHint != transaction::Hints::TrxType::DEFAULT);
   LOG_TRX("0c057", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 

@@ -56,7 +56,6 @@ class Hints {
     REST = 0,
     AQL = 1,
     INTERNAL = 2,
-    DEFAULT = 4
   };
 
   Hints() : _value(0) {}

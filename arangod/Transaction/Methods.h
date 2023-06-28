@@ -202,6 +202,8 @@ class Methods {
     _trxTypeHint = hint;
   }
 
+  transaction::Hints::TrxType const& getTrxTypeHint() { return _trxTypeHint; }
+
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;
 
@@ -571,6 +573,8 @@ class Methods {
   /// @brief the transaction context
   std::shared_ptr<transaction::Context> _transactionContext;
 
+  transaction::Hints::TrxType _trxTypeHint;
+
   bool _mainTransaction;
 
  public:
@@ -583,8 +587,6 @@ class Methods {
 
   /// @brief transaction hints
   transaction::Hints _localHints;
-
-  transaction::Hints::TrxType _trxTypeHint;
 
   /// @brief name-to-cid lookup cache for last collection seen
   struct {

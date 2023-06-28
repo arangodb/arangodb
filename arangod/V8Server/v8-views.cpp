@@ -219,9 +219,11 @@ static void JS_CreateViewVocbase(
   try {
     // First refresh our analyzers cache to see all latest changes in analyzers
     TRI_GET_SERVER_GLOBALS(ArangodServer);
-    auto res = v8g->server()
-                   .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-                   .loadAvailableAnalyzers(vocbase.name());
+    auto res =
+        v8g->server()
+            .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+            .loadAvailableAnalyzers(
+                vocbase.name(), arangodb::transaction::Hints::TrxType::REST);
 
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -642,9 +644,11 @@ static void JS_PropertiesViewVocbase(
 
     auto& vocbase = GetContextVocBase(isolate);
     TRI_GET_SERVER_GLOBALS(ArangodServer);
-    auto res = v8g->server()
-                   .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-                   .loadAvailableAnalyzers(vocbase.name());
+    auto res =
+        v8g->server()
+            .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+            .loadAvailableAnalyzers(
+                vocbase.name(), arangodb::transaction::Hints::TrxType::REST);
 
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);

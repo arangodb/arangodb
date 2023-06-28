@@ -201,8 +201,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     return _hints.has(hint);
   }
 
-  [[nodiscard]] bool hasTrxTypeHint(transaction::Hints::TrxType hint) const {
-    return (_trxTypeHint == hint);
+  [[nodiscard]] transaction::Hints::TrxType const& getTrxTypeHint() const {
+    return _trxTypeHint;
   }
 
   using CommitCallback = std::function<void(TransactionState&)>;
@@ -415,7 +415,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0
 
   transaction::Hints::TrxType _trxTypeHint =
-      transaction::Hints::TrxType::DEFAULT;
+      transaction::Hints::TrxType::INTERNAL;
 
   ServerState::RoleEnum const _serverRole;  /// role of the server
 

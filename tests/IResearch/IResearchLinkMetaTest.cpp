@@ -167,6 +167,7 @@ class IResearchLinkMetaTest
     analyzers.emplace(
         result, "testVocbase::empty", "empty",
         VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features(
             irs::IndexFeatures::FREQ));  // cache the 'empty' analyzer for
                                          // 'testVocbase'
@@ -716,14 +717,17 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   analyzers.emplace(
       emplaceResult, arangodb::StaticStrings::SystemDatabase + "::empty",
       "empty", VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
+      arangodb::transaction::Hints::TrxType::INTERNAL,
       {{}, irs::IndexFeatures::FREQ});
 
   auto identity =
-      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                    arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, identity);
   auto empty =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty",
-                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                    arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_NE(nullptr, empty);
 
   meta._includeAllFields = true;
@@ -772,7 +776,8 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   overrideAll._analyzers.emplace_back(
       arangodb::iresearch::IResearchLinkMeta::Analyzer(
           analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty",
-                        arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+                        arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                        arangodb::transaction::Hints::TrxType::INTERNAL),
           "empty"));
 
   // do not inherit fields to match jSon inheritance
@@ -2624,8 +2629,10 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
   // this is for test cleanup
   irs::Finally testCleanup = [&analyzerCustomInSystem, &analyzers,
                               &analyzerCustomInTestVocbase]() noexcept {
-    analyzers.remove(analyzerCustomInSystem);
-    analyzers.remove(analyzerCustomInTestVocbase);
+    analyzers.remove(analyzerCustomInSystem,
+                     arangodb::transaction::Hints::TrxType::INTERNAL);
+    analyzers.remove(analyzerCustomInTestVocbase,
+                     arangodb::transaction::Hints::TrxType::INTERNAL);
   };
 
   {
@@ -2666,17 +2673,20 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     std::unordered_set<std::string> expectedAnalyzers;
     expectedAnalyzers.insert(
         analyzers
-            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->name());
     expectedAnalyzers.insert(
         analyzers
             .get(analyzerCustomInTestVocbase,
-                 arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+                 arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->name());
     expectedAnalyzers.insert(
         analyzers
             .get(analyzerCustomInSystem,
-                 arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+                 arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->name());
 
     arangodb::iresearch::IResearchLinkMeta::Mask mask(false);
@@ -2739,6 +2749,7 @@ class IResearchLinkMetaTestNoSystem
     analyzers.emplace(
         result, "testVocbase::empty", "empty",
         VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features(
             irs::IndexFeatures::FREQ));  // cache the 'empty' analyzer for
                                          // 'testVocbase'

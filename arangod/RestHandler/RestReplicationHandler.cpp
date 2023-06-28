@@ -1134,13 +1134,9 @@ Result RestReplicationHandler::processRestoreCollection(
           // properly notified analyzers are gone.
           // The single server and DBServer case is handled after restore of
           // data.
-          auto& analyzers =
-              server().getFeature<iresearch::IResearchAnalyzerFeature>();
-          auto const originalTrxTypeHint = analyzers.getTrxTypeHint();
-          analyzers.setTrxTypeHint(transaction::Hints::TrxType::REST);
-          Result res = analyzers.removeAllAnalyzers(_vocbase);
-          analyzers.setTrxTypeHint(originalTrxTypeHint);
-          return res;
+          return server()
+              .getFeature<iresearch::IResearchAnalyzerFeature>()
+              .removeAllAnalyzers(_vocbase, transaction::Hints::TrxType::REST);
         }
 
         auto dropResult = methods::Collections::drop(*col, true, true);
@@ -1523,12 +1519,9 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   if (res.ok() && colName == StaticStrings::AnalyzersCollection &&
       ServerState::instance()->isSingleServer() &&
       _vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
-    auto& analyzers =
-        server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const originalTrxTypeHint = analyzers.getTrxTypeHint();
-    analyzers.setTrxTypeHint(transaction::Hints::TrxType::REST);
-    analyzers.invalidate(_vocbase);
-    analyzers.setTrxTypeHint(originalTrxTypeHint);
+    server()
+        .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+        .invalidate(_vocbase, transaction::Hints::TrxType::REST);
   }
   return res;
 }
@@ -1711,12 +1704,8 @@ Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(
   if (res.ok() && !documentsToInsert.slice().isEmptyArray()) {
     auto& analyzersFeature =
         _vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>();
-    auto const originalTrxTypeHint = analyzersFeature.getTrxTypeHint();
-    analyzersFeature.setTrxTypeHint(transaction::Hints::TrxType::REST);
-    Result res2 =
-        analyzersFeature.bulkEmplace(_vocbase, documentsToInsert.slice());
-    analyzersFeature.setTrxTypeHint(originalTrxTypeHint);
-    return res2;
+    return analyzersFeature.bulkEmplace(_vocbase, documentsToInsert.slice(),
+                                        transaction::Hints::TrxType::REST);
   }
   return res;
 }

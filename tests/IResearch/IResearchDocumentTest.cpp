@@ -128,9 +128,9 @@ void assertField(arangodb::tests::mocks::MockAqlServer& server,
             ? arangodb::StaticStrings::SystemDatabase + "::"
             : "";
 
-    auto const expectedArangoSearchAnalyzerPtr =
-        analyzers.get(prefix + analyzerName,
-                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST, true);
+    auto const expectedArangoSearchAnalyzerPtr = analyzers.get(
+        prefix + analyzerName, arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+        arangodb::transaction::Hints::TrxType::INTERNAL, true);
     ASSERT_NE(nullptr, expectedArangoSearchAnalyzerPtr);
 
     ASSERT_EQ(expectedAnalyzerPtr->type(), analyzer->type());
@@ -475,6 +475,7 @@ class IResearchDocumentTest
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-empty",
         "iresearch-document-empty",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features(irs::IndexFeatures::FREQ));
     EXPECT_TRUE(res.ok());
 
@@ -484,6 +485,7 @@ class IResearchDocumentTest
             "::iresearch-document-invalid",
         "iresearch-document-invalid",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features(irs::IndexFeatures::FREQ));
     EXPECT_TRUE(res.ok());
 
@@ -491,6 +493,7 @@ class IResearchDocumentTest
         result,
         arangodb::StaticStrings::SystemDatabase + "::iresearch-vpack-analyzer",
         "iresearch-vpack-analyzer", VPackSlice::emptyObjectSlice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
 
@@ -500,6 +503,7 @@ class IResearchDocumentTest
         "iresearch-document-typed",
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"number\" }")
             ->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
     res = analyzers.emplace(
@@ -508,6 +512,7 @@ class IResearchDocumentTest
         "iresearch-document-typed",
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"bool\" }")
             ->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
     res = analyzers.emplace(
@@ -516,6 +521,7 @@ class IResearchDocumentTest
         "iresearch-document-typed",
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"string\" }")
             ->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
 
@@ -526,6 +532,7 @@ class IResearchDocumentTest
         "iresearch-document-typed-array",
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"number\" }")
             ->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
 
@@ -533,6 +540,7 @@ class IResearchDocumentTest
         result, arangodb::StaticStrings::SystemDatabase + "::my_geo", "geojson",
         arangodb::velocypack::Parser::fromJson("{\"type\": \"point\"}")
             ->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
   }
@@ -631,7 +639,9 @@ TEST_F(IResearchDocumentTest,
   auto& analyzers =
       server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features =
-      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+      analyzers
+          .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+               arangodb::transaction::Hints::TrxType::INTERNAL)
           ->features();
 
   while (it.valid()) {
@@ -716,7 +726,9 @@ TEST_F(IResearchDocumentTest,
   auto& analyzers =
       server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features =
-      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+      analyzers
+          .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+               arangodb::transaction::Hints::TrxType::INTERNAL)
           ->features();
 
   while (it.valid()) {
@@ -809,7 +821,9 @@ TEST_F(IResearchDocumentTest,
   auto& analyzers =
       server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features =
-      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+      analyzers
+          .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+               arangodb::transaction::Hints::TrxType::INTERNAL)
           ->features();
 
   std::vector<std::string> EMPTY;
@@ -891,7 +905,9 @@ TEST_F(IResearchDocumentTest,
   auto& analyzers =
       server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features =
-      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+      analyzers
+          .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+               arangodb::transaction::Hints::TrxType::INTERNAL)
           ->features();
   auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
   EXPECT_EQ(
@@ -1012,7 +1028,8 @@ TEST_F(IResearchDocumentTest,
   linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
       analyzers.get(arangodb::StaticStrings::SystemDatabase +
                         "::iresearch-document-empty",
-                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                    arangodb::transaction::Hints::TrxType::INTERNAL),
       "iresearch-document-empty"));   // add analyzer
   linkMeta._includeAllFields = true;  // include all fields
   linkMeta._primitiveOffset = linkMeta._analyzers.size();
@@ -1037,7 +1054,8 @@ TEST_F(IResearchDocumentTest,
         server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features =
         analyzers
-            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1289,7 +1307,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
         server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features =
         analyzers
-            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_EQ(
@@ -1313,7 +1332,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
         server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features =
         analyzers
-            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_EQ(
@@ -1339,7 +1359,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
         server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features =
         analyzers
-            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_EQ(
@@ -1429,7 +1450,9 @@ TEST_F(
   auto& analyzers =
       server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto const expected_features =
-      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+      analyzers
+          .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+               arangodb::transaction::Hints::TrxType::INTERNAL)
           ->features();
 
   for (; it.valid(); ++it) {
@@ -1517,7 +1540,8 @@ TEST_F(IResearchDocumentTest,
         server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features =
         analyzers
-            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->features();
     EXPECT_EQ(
         expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
@@ -1552,7 +1576,8 @@ TEST_F(IResearchDocumentTest,
         server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features =
         analyzers
-            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_EQ(
@@ -1576,7 +1601,8 @@ TEST_F(IResearchDocumentTest,
         server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features =
         analyzers
-            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_EQ(
@@ -1612,7 +1638,8 @@ TEST_F(IResearchDocumentTest,
         server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features =
         analyzers
-            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_EQ(
@@ -1648,7 +1675,8 @@ TEST_F(IResearchDocumentTest,
         server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features =
         analyzers
-            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_EQ(
@@ -1709,7 +1737,8 @@ TEST_F(IResearchDocumentTest,
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features =
           analyzers
-              .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+              .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                   arangodb::transaction::Hints::TrxType::INTERNAL)
               ->features();
       auto& analyzer =
           dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -1749,7 +1778,8 @@ TEST_F(IResearchDocumentTest,
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features =
           analyzers
-              .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+              .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                   arangodb::transaction::Hints::TrxType::INTERNAL)
               ->features();
       auto& analyzer =
           dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -1787,7 +1817,8 @@ TEST_F(IResearchDocumentTest,
         server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto const expected_features =
         analyzers
-            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::Hints::TrxType::INTERNAL)
             ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     EXPECT_EQ(
@@ -1837,7 +1868,8 @@ TEST_F(IResearchDocumentTest,
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features =
           analyzers
-              .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+              .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                   arangodb::transaction::Hints::TrxType::INTERNAL)
               ->features();
       auto& analyzer =
           dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -2102,8 +2134,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     InvalidAnalyzer::returnFalseFromToString = false;
     analyzers.start();
 
-    analyzers.remove("empty");
-    analyzers.remove("invalid");
+    analyzers.remove("empty", arangodb::transaction::Hints::TrxType::INTERNAL);
+    analyzers.remove("invalid",
+                     arangodb::transaction::Hints::TrxType::INTERNAL);
 
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     ASSERT_TRUE(
@@ -2113,6 +2146,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 "iresearch-document-empty",
                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")
                     ->slice(),
+                arangodb::transaction::Hints::TrxType::INTERNAL,
                 arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
             .ok());
 
@@ -2124,6 +2158,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 "iresearch-document-empty",
                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")
                     ->slice(),
+                arangodb::transaction::Hints::TrxType::INTERNAL,
                 arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
             .ok());
 
@@ -2136,6 +2171,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 "iresearch-document-invalid",
                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")
                     ->slice(),
+                arangodb::transaction::Hints::TrxType::INTERNAL,
                 arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
             .ok());
     InvalidAnalyzer::returnFalseFromToString = false;
@@ -2149,6 +2185,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 "iresearch-document-invalid",
                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")
                     ->slice(),
+                arangodb::transaction::Hints::TrxType::INTERNAL,
                 arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
             .ok());
     InvalidAnalyzer::returnNullFromMake = false;
@@ -2160,6 +2197,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                 "iresearch-document-invalid",
                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")
                     ->slice(),
+                arangodb::transaction::Hints::TrxType::INTERNAL,
                 arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
             .ok());
   }
@@ -2169,13 +2207,15 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     arangodb::iresearch::IResearchLinkMeta linkMeta;
     linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty",
-                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                      arangodb::transaction::Hints::TrxType::INTERNAL),
         "empty"));  // add analyzer
 
     InvalidAnalyzer::returnNullFromMake = false;
     linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid",
-                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                      arangodb::transaction::Hints::TrxType::INTERNAL),
         "invalid"));                    // add analyzer
     linkMeta._includeAllFields = true;  // include all fields
     linkMeta._primitiveOffset = linkMeta._analyzers.size();
@@ -2208,7 +2248,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       auto const expected_features =
           analyzers
-              .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+              .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                   arangodb::transaction::Hints::TrxType::INTERNAL)
               ->features();
       auto& analyzer =
           dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
@@ -2248,11 +2289,13 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     InvalidAnalyzer::returnNullFromMake = false;
     linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid",
-                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                      arangodb::transaction::Hints::TrxType::INTERNAL),
         "invalid"));  // add analyzer
     linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty",
-                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                      arangodb::transaction::Hints::TrxType::INTERNAL),
         "empty"));                      // add analyzer
     linkMeta._includeAllFields = true;  // include all fields
     linkMeta._primitiveOffset = linkMeta._analyzers.size();
@@ -2974,7 +3017,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
   linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
       analyzers.get(arangodb::StaticStrings::SystemDatabase +
                         "::iresearch-document-number-array",
-                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                    arangodb::transaction::Hints::TrxType::INTERNAL),
       "iresearch-document-number-array"));  // add analyzer
   ASSERT_TRUE(linkMeta._analyzers.front()._pool);
   linkMeta._includeAllFields = true;  // include all fields

@@ -2518,7 +2518,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
       vocbase()
           .server()
           .getFeature<iresearch::IResearchAnalyzerFeature>()
-          .invalidate(vocbase());
+          .invalidate(vocbase(), transaction::Hints::TrxType::INTERNAL);
     }
 
     // schmutz++ creates indexes on DBServers

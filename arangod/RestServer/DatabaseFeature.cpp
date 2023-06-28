@@ -808,7 +808,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
 
     if (server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
       server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(
-          *vocbase);
+          *vocbase, transaction::Hints::TrxType::REST);
     }
     vocbase->shutdownReplicatedLogs();
     auto queryRegistry = QueryRegistryFeature::registry();

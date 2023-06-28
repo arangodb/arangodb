@@ -1776,7 +1776,8 @@ AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
       server.getFeature<iresearch::IResearchAnalyzerFeature>();
   auto& trx = ctx->trx();
   auto analyzer = analyzerFeature.get(analyzerId, ctx->vocbase(),
-                                      trx.state()->analyzersRevision());
+                                      trx.state()->analyzersRevision(),
+                                      trx.state()->getTrxTypeHint());
   if (!analyzer) {
     aql::registerWarning(
         ctx, AFN,

@@ -210,11 +210,9 @@ void RestViewHandler::createView() {
   try {
     auto& analyzers =
         server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const originalTrxTypeHint = analyzers.getTrxTypeHint();
-    analyzers.setTrxTypeHint(transaction::Hints::TrxType::REST);
     // First refresh our analyzers cache to see all latest changes in analyzers
-    auto res = analyzers.loadAvailableAnalyzers(_vocbase.name());
-    analyzers.setTrxTypeHint(originalTrxTypeHint);
+    auto res = analyzers.loadAvailableAnalyzers(
+        _vocbase.name(), transaction::Hints::TrxType::REST);
 
     if (res.fail()) {
       generateError(res);
@@ -309,11 +307,9 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   auto& analyzers =
       server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto const originalTrxTypeHint = analyzers.getTrxTypeHint();
-  analyzers.setTrxTypeHint(transaction::Hints::TrxType::REST);
   // First refresh our analyzers cache to see all latest changes in analyzers
-  auto const analyzersRes = analyzers.loadAvailableAnalyzers(_vocbase.name());
-  analyzers.setTrxTypeHint(originalTrxTypeHint);
+  auto const analyzersRes = analyzers.loadAvailableAnalyzers(
+      _vocbase.name(), transaction::Hints::TrxType::REST);
   if (analyzersRes.fail()) {
     generateError(analyzersRes);
     return;

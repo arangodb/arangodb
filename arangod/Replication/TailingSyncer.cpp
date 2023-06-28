@@ -1131,7 +1131,8 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
           // because single server has no revisions
           // and never reloads cache from db by itself
           // so new analyzers will be not usable on follower
-          analyzersFeature.invalidate(*vocbase);
+          analyzersFeature.invalidate(*vocbase,
+                                      transaction::Hints::TrxType::INTERNAL);
         }
       }
       _analyzersModified.clear();

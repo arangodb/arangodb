@@ -170,7 +170,8 @@ void RestAnalyzerHandler::createAnalyzer(  // create
   }
 
   IResearchAnalyzerFeature::EmplaceResult result;
-  auto res = analyzers.emplace(result, name, type, properties, features);
+  auto res = analyzers.emplace(result, name, type, properties,
+                               transaction::Hints::TrxType::REST, features);
 
   if (res.fail()) {
     generateError(res);
@@ -204,7 +205,6 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
   }
 
   auto& analyzers = server().getFeature<IResearchAnalyzerFeature>();
-  analyzers.setTrxTypeHint(transaction::Hints::TrxType::REST);
 
   auto& suffixes = _request->suffixes();
 
@@ -286,7 +286,8 @@ void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
   }
 
   auto pool =
-      analyzers.get(normalizedName, QueryAnalyzerRevisions::QUERY_LATEST);
+      analyzers.get(normalizedName, QueryAnalyzerRevisions::QUERY_LATEST,
+                    transaction::Hints::TrxType::REST);
   if (!pool) {
     generateError(arangodb::Result(
         TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
@@ -320,10 +321,12 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
   };
 
   builder.openArray();
-  analyzers.visit(visitor, nullptr);  // include static analyzers
+  analyzers.visit(
+      visitor, nullptr,
+      transaction::Hints::TrxType::REST);  // include static analyzers
 
   if (IResearchAnalyzerFeature::canUse(_vocbase, auth::Level::RO)) {
-    analyzers.visit(visitor, &_vocbase);
+    analyzers.visit(visitor, &_vocbase, transaction::Hints::TrxType::REST);
   }
 
   // include analyzers from the system vocbase if possible
@@ -334,7 +337,8 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
     if (sysVocbase                                // have system vocbase
         && sysVocbase->name() != _vocbase.name()  // not same vocbase as current
         && IResearchAnalyzerFeature::canUse(*sysVocbase, auth::Level::RO)) {
-      analyzers.visit(visitor, sysVocbase.get());
+      analyzers.visit(visitor, sysVocbase.get(),
+                      transaction::Hints::TrxType::REST);
     }
   }
 
@@ -381,7 +385,8 @@ void RestAnalyzerHandler::removeAnalyzer(IResearchAnalyzerFeature& analyzers,
     return;
   }
 
-  auto res = analyzers.remove(normalizedName, force);
+  auto res = analyzers.remove(normalizedName, transaction::Hints::TrxType::REST,
+                              force);
   if (!res.ok()) {
     generateError(res);
     return;

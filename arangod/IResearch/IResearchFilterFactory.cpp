@@ -2030,7 +2030,8 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
     }
     auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
     analyzer._pool = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
-                                         ctx.trx->state()->analyzersRevision());
+                                         ctx.trx->state()->analyzersRevision(),
+                                         transaction::Hints::TrxType::REST);
     if (!analyzer) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat(

@@ -295,8 +295,6 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& analyzers =
       v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
-  analyzers.setTrxTypeHint(arangodb::transaction::Hints::TrxType::REST);
-
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName =
       arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(
@@ -386,7 +384,9 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    auto res = analyzers.emplace(result, name, type, propertiesSlice, features);
+    auto res = analyzers.emplace(result, name, type, propertiesSlice,
+                                 arangodb::transaction::Hints::TrxType::REST,
+                                 features);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -437,7 +437,6 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
   auto& analyzers =
       v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  analyzers.setTrxTypeHint(arangodb::transaction::Hints::TrxType::REST);
 
   auto name = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
       TRI_ObjectToString(isolate, args[0]), vocbase.name());
@@ -473,7 +472,8 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     auto analyzer =
-        analyzers.get(name, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+        analyzers.get(name, arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                      arangodb::transaction::Hints::TrxType::REST);
 
     if (!analyzer) {
       TRI_V8_RETURN_NULL();
@@ -510,7 +510,6 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
   auto& analyzers =
       v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  analyzers.setTrxTypeHint(arangodb::transaction::Hints::TrxType::REST);
   auto sysVocbase =
       v8g->server().hasFeature<arangodb::SystemDatabaseFeature>()
           ? v8g->server().getFeature<arangodb::SystemDatabaseFeature>().use()
@@ -531,12 +530,15 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   };
 
   try {
-    analyzers.setTrxTypeHint(arangodb::transaction::Hints::TrxType::REST);
-    analyzers.visit(visitor, nullptr);  // include static analyzers
+    analyzers.visit(
+        visitor, nullptr,
+        arangodb::transaction::Hints::TrxType::REST);  // include static
+                                                       // analyzers
 
     if (arangodb::iresearch::IResearchAnalyzerFeature::canUse(
             vocbase, arangodb::auth::Level::RO)) {
-      analyzers.visit(visitor, &vocbase);
+      analyzers.visit(visitor, &vocbase,
+                      arangodb::transaction::Hints::TrxType::REST);
     }
 
     // include analyzers from the system vocbase if possible
@@ -544,7 +546,8 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
         && sysVocbase->name() != vocbase.name()  // not same vocbase as current
         && arangodb::iresearch::IResearchAnalyzerFeature::canUse(
                *sysVocbase, arangodb::auth::Level::RO)) {
-      analyzers.visit(visitor, sysVocbase.get());
+      analyzers.visit(visitor, sysVocbase.get(),
+                      arangodb::transaction::Hints::TrxType::REST);
     }
 
     auto v8Result = v8::Array::New(isolate);
@@ -595,7 +598,6 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
   auto& analyzers =
       v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  analyzers.setTrxTypeHint(arangodb::transaction::Hints::TrxType::REST);
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName =
@@ -646,7 +648,8 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto res = analyzers.remove(name, force);
+    auto res = analyzers.remove(
+        name, arangodb::transaction::Hints::TrxType::REST, force);
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
