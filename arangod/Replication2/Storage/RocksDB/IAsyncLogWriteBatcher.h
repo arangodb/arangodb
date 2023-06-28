@@ -60,6 +60,7 @@ struct IAsyncLogWriteBatcher {
   virtual auto queueRemoveBack(AsyncLogWriteContext& ctx, LogIndex start,
                                WriteOptions const& opts)
       -> futures::Future<ResultT<SequenceNumber>> = 0;
+  virtual auto waitForSync(SequenceNumber seq) -> futures::Future<Result> = 0;
 };
 
 }  // namespace arangodb::replication2::storage::rocksdb

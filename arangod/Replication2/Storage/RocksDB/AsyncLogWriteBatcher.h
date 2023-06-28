@@ -26,9 +26,13 @@
 #include <function2.hpp>
 #include <Futures/Promise.h>
 
+#include "Basics/Guarded.h"
 #include "Metrics/Fwd.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteContext.h"
 #include "Replication2/Storage/RocksDB/IAsyncLogWriteBatcher.h"
+#include "RocksDBEngine/RocksDBSyncThread.h"
+
+#include <map>
 
 namespace rocksdb {
 class DB;
@@ -67,6 +71,7 @@ struct AsyncLogOperationGuard {
 
 struct AsyncLogWriteBatcher final
     : IAsyncLogWriteBatcher,
+      RocksDBSyncThread::ISyncListener,
       std::enable_shared_from_this<AsyncLogWriteBatcher> {
   struct IAsyncExecutor {
     virtual ~IAsyncExecutor() = default;
@@ -78,6 +83,7 @@ struct AsyncLogWriteBatcher final
       std::shared_ptr<IAsyncExecutor> executor,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
       std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics);
+  ~AsyncLogWriteBatcher() override;
 
   struct InsertEntries {
     std::unique_ptr<PersistedLogIterator> iter;
@@ -117,6 +123,8 @@ struct AsyncLogWriteBatcher final
       -> futures::Future<ResultT<SequenceNumber>> override;
   auto queue(AsyncLogWriteContext& ctx, Action action, WriteOptions const& wo)
       -> futures::Future<ResultT<SequenceNumber>>;
+  auto waitForSync(SequenceNumber seq) -> futures::Future<Result> override;
+  void onSync(SequenceNumber seq) noexcept override;
 
   struct Lane {
     Lane() = delete;
@@ -144,6 +152,14 @@ struct AsyncLogWriteBatcher final
   std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> const
       _options;
   std::shared_ptr<AsyncLogWriteBatcherMetrics> const _metrics;
+
+  struct SyncGuard {
+    explicit SyncGuard() = default;
+
+    SequenceNumber syncedSequenceNumber{0};
+    std::multimap<SequenceNumber, futures::Promise<Result>> promises{};
+  };
+  Guarded<SyncGuard> _syncGuard;
 };
 
 }  // namespace arangodb::replication2::storage::rocksdb

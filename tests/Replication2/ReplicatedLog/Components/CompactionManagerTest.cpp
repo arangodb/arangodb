@@ -27,6 +27,7 @@
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
 #include "Replication2/Mocks/StorageManagerMock.h"
+#include "Replication2/Mocks/StorageTransactionMock.h"
 
 #include <Futures/Future.h>
 #include <Futures/Promise.h>
@@ -37,20 +38,6 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::test;
 using namespace arangodb::replication2::replicated_log;
-
-namespace {
-
-struct StorageTransactionMock : IStorageTransaction {
-  MOCK_METHOD(LogRange, getLogBounds, (), (const, noexcept, override));
-  MOCK_METHOD(futures::Future<Result>, removeFront, (LogIndex),
-              (noexcept, override));
-  MOCK_METHOD(futures::Future<Result>, removeBack, (LogIndex),
-              (noexcept, override));
-  MOCK_METHOD(futures::Future<Result>, appendEntries, (InMemoryLog),
-              (noexcept, override));
-};
-
-}  // namespace
 
 struct CompactionManagerTest : ::testing::Test {
   testing::StrictMock<StorageManagerMock> storageManagerMock;

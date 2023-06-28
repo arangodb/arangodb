@@ -81,6 +81,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
@@ -1188,6 +1189,7 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
+  _dumpManager = std::make_unique<RocksDBDumpManager>(*this);
 
   struct SchedulerExecutor
       : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
@@ -1207,12 +1209,22 @@ void RocksDBEngine::start() {
   _logMetrics = std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(
       &server().getFeature<metrics::MetricsFeature>());
 
-  _logPersistor =
+  auto logPersistor =
       std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
           RocksDBColumnFamilyManager::get(
               RocksDBColumnFamilyManager::Family::ReplicatedLogs),
           _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()),
           server().getFeature<ReplicatedLogFeature>().options(), _logMetrics);
+  _logPersistor = logPersistor;
+
+  if (auto* syncer = syncThread(); syncer != nullptr) {
+    syncer->registerSyncListener(logPersistor);
+  } else {
+    LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
+        << "In replication2 databases, setting waitForSync to false will not "
+           "work correctly without a syncer thread. See the "
+           "--rocksdbsync-interval option.";
+  }
 
   _settingsManager->retrieveInitialValues();
 
@@ -1252,6 +1264,11 @@ void RocksDBEngine::beginShutdown() {
   // block the creation of new replication contexts
   if (_replicationManager != nullptr) {
     _replicationManager->beginShutdown();
+  }
+
+  // block the creation of new dump contexts
+  if (_dumpManager != nullptr) {
+    _dumpManager->beginShutdown();
   }
 
   // from now on, all started compactions can be canceled.
@@ -1733,6 +1750,7 @@ Result RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) {
 
 Result RocksDBEngine::dropDatabase(TRI_vocbase_t& database) {
   replicationManager()->drop(database);
+  dumpManager()->dropDatabase(database);
 
   return dropDatabase(database.id());
 }

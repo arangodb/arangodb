@@ -96,8 +96,8 @@ auto LogPersistor::getSyncedSequenceNumber() -> SequenceNumber {
 }
 
 auto LogPersistor::waitForSync(IStorageEngineMethods::SequenceNumber number)
-    -> futures::Future<futures::Unit> {
-  FATAL_ERROR_ABORT();  // TODO not implemented
+    -> futures::Future<Result> {
+  return batcher->waitForSync(number);
 }
 
 void LogPersistor::waitForCompletion() noexcept { ctx.waitForCompletion(); }

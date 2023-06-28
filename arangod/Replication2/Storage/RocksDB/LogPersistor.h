@@ -55,7 +55,7 @@ struct LogPersistor final : ILogPersistor {
 
   [[nodiscard]] auto getSyncedSequenceNumber() -> SequenceNumber override;
   [[nodiscard]] auto waitForSync(SequenceNumber number)
-      -> futures::Future<futures::Unit> override;
+      -> futures::Future<Result> override;
 
   void waitForCompletion() noexcept override;
 

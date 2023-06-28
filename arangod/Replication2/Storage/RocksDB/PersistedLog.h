@@ -112,7 +112,7 @@ struct LogStorageMethods final : replication2::storage::IStorageEngineMethods {
 
   [[nodiscard]] auto getSyncedSequenceNumber() -> SequenceNumber override;
   [[nodiscard]] auto waitForSync(SequenceNumber number)
-      -> futures::Future<futures::Unit> override;
+      -> futures::Future<Result> override;
 
   [[nodiscard]] auto drop() -> Result;
   [[nodiscard]] auto compact() -> Result;

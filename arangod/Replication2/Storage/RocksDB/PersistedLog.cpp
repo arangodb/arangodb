@@ -105,8 +105,7 @@ auto LogStorageMethods::getSyncedSequenceNumber() -> SequenceNumber {
 }
 
 auto LogStorageMethods::waitForSync(
-    IStorageEngineMethods::SequenceNumber number)
-    -> futures::Future<futures::Unit> {
+    IStorageEngineMethods::SequenceNumber number) -> futures::Future<Result> {
   return _logPersistor->waitForSync(number);
 }
 

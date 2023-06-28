@@ -24,6 +24,7 @@
 
 #include <gmock/gmock.h>
 
+#include "Cluster/CallbackGuard.h"
 #include "Replication2/ReplicatedLog/IRebootIdCache.h"
 
 namespace arangodb::replication2::test {

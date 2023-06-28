@@ -25,9 +25,10 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb {
+class Result;
 template<typename T>
 class ResultT;
-}
+}  // namespace arangodb
 
 namespace arangodb::futures {
 struct Unit;
@@ -63,8 +64,7 @@ struct ILogPersistor {
   virtual auto getLogId() -> LogId = 0;
 
   virtual auto getSyncedSequenceNumber() -> SequenceNumber = 0;
-  virtual auto waitForSync(SequenceNumber)
-      -> futures::Future<futures::Unit> = 0;
+  virtual auto waitForSync(SequenceNumber) -> futures::Future<Result> = 0;
 
   // waits for all ongoing requests to be done
   virtual void waitForCompletion() noexcept = 0;

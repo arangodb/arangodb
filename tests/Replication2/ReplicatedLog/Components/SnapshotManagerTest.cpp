@@ -50,16 +50,6 @@ using namespace arangodb::replication2::replicated_state;
 
 namespace {
 
-struct StorageTransactionMock : IStorageTransaction {
-  MOCK_METHOD(LogRange, getLogBounds, (), (const, noexcept, override));
-  MOCK_METHOD(futures::Future<Result>, removeFront, (LogIndex),
-              (noexcept, override));
-  MOCK_METHOD(futures::Future<Result>, removeBack, (LogIndex),
-              (noexcept, override));
-  MOCK_METHOD(futures::Future<Result>, appendEntries, (InMemoryLog),
-              (noexcept, override));
-};
-
 struct StateInfoTransactionMock : IStateInfoTransaction {
   MOCK_METHOD(InfoType&, get, (), (noexcept, override));
 };

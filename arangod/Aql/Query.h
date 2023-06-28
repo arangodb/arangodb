@@ -54,7 +54,6 @@ namespace arangodb {
 
 class CollectionNameResolver;
 class LogicalDataSource;  // forward declaration
-class SupervisedScheduler;
 
 namespace transaction {
 
@@ -75,15 +74,6 @@ enum class SerializationFormat;
 /// @brief an AQL query
 class Query : public QueryContext, public std::enable_shared_from_this<Query> {
  protected:
-// Use the SupervisedScheduler in production to allow for easier
-// devirtualization. Use the Scheduler in google tests so it can be mocked or
-// faked.
-#ifndef ARANGODB_USE_GOOGLE_TESTS
-  using SchedulerT = SupervisedScheduler;
-#else
-  using SchedulerT = Scheduler;
-#endif
-
   /// @brief internal constructor, Used to construct a full query or a
   /// ClusterQuery
   Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
@@ -96,7 +86,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// method
   Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
-        QueryOptions options, Query::SchedulerT* scheduler);
+        QueryOptions options, Scheduler* scheduler);
 
   ~Query() override;
 
@@ -112,7 +102,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,
       QueryOptions options = {},
-      Query::SchedulerT* scheduler = SchedulerFeature::SCHEDULER);
+      Scheduler* scheduler = SchedulerFeature::SCHEDULER);
 
   constexpr static uint64_t DontCache = 0;
 

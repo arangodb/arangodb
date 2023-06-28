@@ -149,9 +149,10 @@ auto FakeStorageEngineMethods::getSyncedSequenceNumber()
 }
 auto FakeStorageEngineMethods::waitForSync(
     storage::IStorageEngineMethods::SequenceNumber number)
-    -> arangodb::futures::Future<arangodb::futures::Unit> {
-  TRI_ASSERT(false) << "not implemented";
-  std::abort();
+    -> arangodb::futures::Future<Result> {
+  futures::Promise<Result> promise;
+  promise.setValue(Result{});
+  return promise.getFuture();
 }
 
 FakeStorageEngineMethods::FakeStorageEngineMethods(

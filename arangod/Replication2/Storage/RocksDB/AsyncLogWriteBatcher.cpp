@@ -68,6 +68,23 @@ AsyncLogWriteBatcher::AsyncLogWriteBatcher(
   _lanes[1]._numWorkerMetrics = _metrics->numWorkerThreadsNoWaitForSync;
 }
 
+AsyncLogWriteBatcher::~AsyncLogWriteBatcher() {
+  // We need to make sure that all pending requests are finished before we are
+  // destroyed. This should not happen normally, but if it does, we'll handle it
+  // gracefully.
+  auto& guard = _syncGuard.getLockedGuard().get();
+  if (!guard.promises.empty()) {
+    LOG_TOPIC("5f6f9", WARN, Logger::REPLICATION2)
+        << guard.promises.size()
+        << " wait-for-sync promises remaining in RocksDBAsyncLogWriteBatcher "
+           "destructor, the last known synced sequence number is "
+        << guard.syncedSequenceNumber;
+    for (auto&& [_, promise] : guard.promises) {
+      promise.setValue(Result{TRI_ERROR_SHUTTING_DOWN});
+    }
+  }
+}
+
 void AsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
   // This function is noexcept so in case an exception bubbles up we
   // rather crash instead of losing one thread.
@@ -283,6 +300,52 @@ auto AsyncLogWriteBatcher::queueRemoveBack(AsyncLogWriteContext& ctx,
                                            WriteOptions const& opts)
     -> futures::Future<ResultT<SequenceNumber>> {
   return queue(ctx, RemoveBack{.start = start}, opts);
+}
+
+auto AsyncLogWriteBatcher::waitForSync(SequenceNumber seq)
+    -> futures::Future<Result> {
+  return _syncGuard.doUnderLock([&](auto& guard) {
+    auto promise = futures::Promise<Result>{};
+    auto fut = promise.getFuture();
+    if (seq <= guard.syncedSequenceNumber) {
+      promise.setValue(Result{});
+    } else {
+      guard.promises.emplace(seq, std::move(promise));
+    }
+    return fut;
+  });
+}
+
+void AsyncLogWriteBatcher::onSync(SequenceNumber seq) noexcept {
+  // Schedule a task to notify all the futures waiting for the sequence number
+  // to be synced.
+  auto res = basics::catchVoidToResult([&]() {
+    _executor->operator()([self = shared_from_this(), seq]() noexcept {
+      std::vector<futures::Promise<Result>> promises;
+
+      self->_syncGuard.doUnderLock([&](auto& guard) {
+        if (seq < guard.syncedSequenceNumber) {
+          return;
+        }
+        guard.syncedSequenceNumber = seq;
+
+        auto end = guard.promises.upper_bound(seq);
+        for (auto it = guard.promises.begin(); it != end; ++it) {
+          promises.emplace_back(std::move(it->second));
+        }
+        guard.promises.erase(guard.promises.begin(), end);
+      });
+
+      for (auto& promise : promises) {
+        promise.setValue(Result{});
+      }
+    });
+  });
+  if (res.fail()) {
+    LOG_TOPIC("282be", ERR, Logger::REPLICATION2)
+        << "Could not schedule an update after syncing log entries to disk: "
+        << res << " Sequence number: " << seq;
+  }
 }
 
 }  // namespace arangodb::replication2::storage::rocksdb

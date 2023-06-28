@@ -33,6 +33,7 @@
 #include "Basics/encoding.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "Metrics/MetricsFeature.h"
