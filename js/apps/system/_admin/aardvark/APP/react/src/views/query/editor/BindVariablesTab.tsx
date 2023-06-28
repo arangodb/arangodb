@@ -36,7 +36,8 @@ const parseInput = (value: string) => {
 };
 const DEFINED_TYPES = ["string", "number", "array", "object", "boolean"];
 export const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
-  const { queryBindParams, onBindParamsChange } = useQueryContext();
+  const { queryBindParams, onBindParamsChange, bindVariablesJsonEditorRef } =
+    useQueryContext();
   const [errors, setErrors] = React.useState<ValidationError[]>([]);
   if (mode === "table") {
     return (
@@ -65,6 +66,7 @@ export const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
   return (
     <Box position="relative" height="full">
       <ControlledJSONEditor
+        ref={bindVariablesJsonEditorRef}
         mode="code"
         defaultValue={queryBindParams}
         onChange={updatedValue => {

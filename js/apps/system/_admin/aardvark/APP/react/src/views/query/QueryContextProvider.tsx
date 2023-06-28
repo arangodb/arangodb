@@ -47,6 +47,7 @@ type QueryContextType = {
   isSpotlightOpen: boolean;
   setIsSpotlightOpen: (value: boolean) => void;
   aqlJsonEditorRef: React.MutableRefObject<any>;
+  bindVariablesJsonEditorRef: React.MutableRefObject<any>;
 };
 // const defaultValue = 'FOR v,e,p IN 1..3 ANY "place/0" GRAPH "ldbc" LIMIT 100 return p'
 const QueryContext = React.createContext<QueryContextType>(
@@ -110,6 +111,7 @@ export const QueryContextProvider = ({
   });
   const [isSpotlightOpen, setIsSpotlightOpen] = React.useState<boolean>(false);
   const aqlJsonEditorRef = React.useRef(null);
+  const bindVariablesJsonEditorRef = React.useRef(null);
 
   return (
     <QueryContext.Provider
@@ -142,7 +144,8 @@ export const QueryContextProvider = ({
         onDelete,
         setIsSpotlightOpen,
         isSpotlightOpen,
-        aqlJsonEditorRef
+        aqlJsonEditorRef,
+        bindVariablesJsonEditorRef
       }}
     >
       {children}

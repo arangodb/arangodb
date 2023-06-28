@@ -108,11 +108,14 @@ const useSetupKeyboardShortcuts = (
     queryBindParams,
     onOpenSaveAsModal,
     setIsSpotlightOpen,
-    onExplain
+    onExplain,
+    bindVariablesJsonEditorRef
   } = useQueryContext();
   useEffect(() => {
     const editor = (aqlJsonEditorRef.current as any)?.jsonEditor;
     const aceEditor = editor.aceEditor;
+    const bindVarsAceEditor = (bindVariablesJsonEditorRef.current as any)
+      ?.jsonEditor?.aceEditor;
     aceEditor.commands.addCommand({
       name: "togglecomment",
       bindKey: {
@@ -139,6 +142,7 @@ const useSetupKeyboardShortcuts = (
         }`;
         newSize = `${newSize}pt`;
         aceEditor.setFontSize(newSize);
+        bindVarsAceEditor?.setFontSize(newSize);
       },
       multiSelectAction: "forEach"
     });
@@ -156,6 +160,7 @@ const useSetupKeyboardShortcuts = (
         }`;
         newSize = `${newSize}pt`;
         aceEditor.setFontSize(newSize);
+        bindVarsAceEditor?.setFontSize(newSize);
       },
       multiSelectAction: "forEach"
     });
@@ -245,6 +250,7 @@ const useSetupKeyboardShortcuts = (
     onExecute,
     onOpenSaveAsModal,
     setIsSpotlightOpen,
-    onExplain
+    onExplain,
+    bindVariablesJsonEditorRef
   ]);
 };
