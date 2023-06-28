@@ -68,8 +68,7 @@ bool ReadWriteLock::tryLockWriteFor(std::chrono::microseconds timeout) {
   // -> announce that we want to write
   _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
-  std::chrono::time_point<std::chrono::steady_clock> end_time;
-  end_time = std::chrono::steady_clock::now() + timeout;
+  auto end_time = std::chrono::high_resolution_clock::now() + timeout;
 
   std::cv_status status(std::cv_status::no_timeout);
   {
@@ -131,19 +130,21 @@ void ReadWriteLock::lockRead() {
 }
 
 bool ReadWriteLock::tryLockReadFor(std::chrono::microseconds timeout) {
-  auto end = std::chrono::high_resolution_clock::now() + timeout;
+  auto end_time = std::chrono::high_resolution_clock::now() + timeout;
   if (tryLockRead()) {
     return true;
   }
   std::unique_lock<std::mutex> guard(_reader_mutex);
-  while (true) {
+  std::cv_status status(std::cv_status::no_timeout);
+  while (std::cv_status::no_timeout == status) {
     if (tryLockRead()) {
       return true;
     }
-    _readers_bell.wait_until(guard, end);
+    status = _readers_bell.wait_until(guard, end_time);
   }
   return false;
 }
+
 /// @brief locks for reading, tries only
 bool ReadWriteLock::tryLockRead() noexcept {
   // order_relaxed is an optimization, cmpxchg will synchronize side-effects
