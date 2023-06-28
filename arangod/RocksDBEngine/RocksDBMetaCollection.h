@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
 #include "Containers/MerkleTree.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -33,7 +34,6 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <functional>
-#include <shared_mutex>
 
 namespace arangodb {
 class RevisionReplicationIterator;
