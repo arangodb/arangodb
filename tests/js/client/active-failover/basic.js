@@ -1,5 +1,5 @@
 /*jshint strict: false, sub: true */
-/*global print, assertTrue, assertEqual, assertNotEqual */
+/*global print, assertTrue, assertEqual, assertNotEqual, fail */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,19 +28,16 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 const console = require('console');
 const expect = require('chai').expect;
-
 const arangosh = require('@arangodb/arangosh');
 const crypto = require('@arangodb/crypto');
 const request = require("@arangodb/request");
 const tasks = require("@arangodb/tasks");
-
-const arango = internal.arango;
-const db = internal.db;
 const fs = require('fs');
 const path = require('path');
 const utils = require('@arangodb/foxx/manager-utils');
+const arango = internal.arango;
+const db = internal.db;
 const wait = internal.wait;
-
 const compareTicks = require("@arangodb/replication").compareTicks;
 
 const jwtSecret = 'haxxmann';
@@ -56,14 +53,6 @@ const jwtRoot = crypto.jwtEncode(jwtSecret, {
 }, 'HS256');
 
 const cname = "UnitTestActiveFailover";
-
-/*try {
-  let globals = JSON.parse(process.env.ARANGOSH_GLOBALS);
-  Object.keys(globals).forEach(g => {
-    global[g] = globals[g];
-  });
-} catch (e) {
-}*/
 
 function getUrl(endpoint) {
   return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
@@ -444,9 +433,6 @@ function ActiveFailoverSuite() {
     },
 
     tearDown: function () {
-      //db._collection(cname).drop();
-      //serverTeardown();
-
       suspended.forEach(arangod => {
         print(`${Date()} Teardown: Resuming: ${arangod.name} ${arangod.pid}`);
         assertTrue(arangod.resume());
@@ -463,7 +449,7 @@ function ActiveFailoverSuite() {
         let endpoints = getClusterEndpoints();
         if (endpoints.length === servers.length && endpoints[0] === currentLead) {
           db._collection(cname).truncate({ compact: false });
-          return ;
+          return;
         }
         print("cluster endpoints not as expected: found =", endpoints, " expected =", servers);
         internal.wait(1); // settle down
@@ -680,10 +666,6 @@ function ActiveFailoverSuite() {
 
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
-      /*if (checkData(currentLead) != 10000) {
-        print("ERROR! DODEBUG")
-        while(1){}
-      }*/
 
       print("Suspending followers, except original leader");
       suspended = global.instanceManager.arangods.filter(arangod => arangod.instanceRole !== 'agent' &&
@@ -746,10 +728,6 @@ function ActiveFailoverSuite() {
 
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ActiveFailoverSuite);
 
