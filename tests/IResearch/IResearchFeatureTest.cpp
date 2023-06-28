@@ -31,7 +31,6 @@
 #include "utils/version_defines.hpp"
 #include "utils/file_utils.hpp"
 
-#include "IResearch/AgencyMock.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"

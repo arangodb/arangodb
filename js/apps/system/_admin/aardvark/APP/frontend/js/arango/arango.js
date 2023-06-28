@@ -551,17 +551,12 @@
         Shards: {
           route: '#shards'
         },
-        "Rebalance Shards": {
-          route: '#rebalanceShards'
-        }
       };
 
       menus[activeKey].active = true;
       if (disabled) {
         menus[activeKey].disabled = true;
       }
-      menus["Rebalance Shards"].disabled = window.App.userCollection.authOptions.ro; // when user can't edit database,
-                                                                                     // the tab is not clickable
       this.buildSubNavBar(menus, disabled);
     },
 

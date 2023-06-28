@@ -27,11 +27,11 @@
 #include "store/fs_directory.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/log.hpp"
-#include <filesystem>
 
 #include <velocypack/Parser.h>
 
 #include <filesystem>
+#include <fstream>
 #include <regex>
 
 #include "Basics/files.h"
@@ -1086,6 +1086,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
   }");
@@ -1191,7 +1192,9 @@ TEST_F(IResearchLinkTest,
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
+    \"primarySortCompression\":\"test\",\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressedValues;
@@ -1301,6 +1304,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
                       {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
@@ -1410,6 +1414,7 @@ TEST_F(IResearchLinkTest,
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
@@ -1532,6 +1537,7 @@ TEST_F(
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
