@@ -234,8 +234,7 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (dontWaitForCommit) {
     auto const logIndex =
         ReplicatedLogMethods::createInstance(vocbase)
-            ->insertWithoutCommit(
-                id, LogPayload::createFromSlice(builder.slice()), waitForSync)
+            ->insertWithoutCommit(id, LogPayload{*builder.steal()}, waitForSync)
             .get();
     VPackBuilder response;
     {
@@ -245,8 +244,7 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
   } else {
     auto result = ReplicatedLogMethods::createInstance(vocbase)
-                      ->insert(id, LogPayload::createFromSlice(builder.slice()),
-                               waitForSync)
+                      ->insert(id, LogPayload{*builder.steal()}, waitForSync)
                       .get();
     VPackBuilder response;
     {
