@@ -111,8 +111,8 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
           auto* encryption = engine.encryptionProvider();
           if (encryption) {
             return irs::directory_attributes{
-                0, std::make_unique<RocksDBEncryptionProvider>(
-                       *encryption, engine.rocksDBOptions())};
+                std::make_unique<RocksDBEncryptionProvider>(
+                    *encryption, engine.rocksDBOptions())};
           }
           return irs::directory_attributes{};
         });
