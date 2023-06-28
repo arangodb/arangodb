@@ -25,7 +25,6 @@ v3.10.9 (XXXX-XX-XX)
        UPDATE { _key: doc.abc, abc: doc._key } IN collection
 
   In this case the optimization was previously applied although it shouldn't.
->>>>>>> b85a99d5e19 (Fixes second issue of BTS-1490 (#19308))
 
 * Add a `description` field to OptimizerRule and dump the explanations via the
   `GET /_api/query/rules` endpoint.
