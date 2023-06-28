@@ -821,30 +821,44 @@ const replicatedLogSuite = function () {
 
       const actions = helper.getSupervisionActionTypes(database, logId);
       const expected = [
-        // - create log
+        // 0. create log
         'AddLogToPlanAction',
-        // - add new participant
+        // 1. add new participant
         'AddParticipantToPlanAction',
-        // - force some old follower in order to become leader, as the new one's not allowed as a leader yet
+        // 2. force some old follower in order to become leader, as the new one's not allowed as a leader yet
         'UpdateParticipantFlagsAction',
-        // - switch to old follower
+        // 3. switch to old follower
         'SwitchLeaderAction',
-        // - remove force of leader (previous old follower)
+        // 4. remove force of leader (previous old follower)
         'UpdateParticipantFlagsAction',
-        // - disallow old leader from quorum
+        // 5. disallow old leader from quorum
         'UpdateParticipantFlagsAction',
-        // - remove old leader
+        // 6. remove old leader
         'RemoveParticipantFromPlanAction',
-        // - update flags from target (as requested during the test, now allowing new participant as a leader)
+        // 7. update flags from target (as requested during the test, now allowing new participant as a leader)
         'UpdateParticipantFlagsAction',
-        // - force new participant
+        // 8. force new participant
         'UpdateParticipantFlagsAction',
-        // - switch leader to new participant
+        // 9. switch leader to new participant
         'SwitchLeaderAction',
-        // - remove force flag of leader (new participant)
+        // 10. remove force flag of leader (new participant)
         'UpdateParticipantFlagsAction',
       ];
-      assertEqual(actions, expected);
+
+      assertEqual(actions.length, expected.length,
+        `Expected ${JSON.stringify(expected)} actions, got ${JSON.stringify(actions)}`);
+
+      // First 4 actions are staple
+      assertEqual(actions.slice(0, 4), expected.slice(0, 4));
+
+      // 7 and 8 can happen before 4 and 5, as the correctness of the system does not depend on the order.
+      // It is important that 6 does not happen before 4 and 5.
+      assertTrue(actions.slice(6, 9).includes(expected[6]));
+      // 4, 5, 7, 8 are identical
+      assertEqual(actions.slice(4, 9).filter(action => action === expected[4]).length, 4);
+
+      // Last two actions are fixed
+      assertEqual(actions.slice(9), expected.slice(9));
     },
 
     // This test adds a new participant to the replicated log
