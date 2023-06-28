@@ -17,6 +17,7 @@ export const AddDatabaseForm = ({
   const [path] = useField<string>("path");
   const [users] = useField<string[] | undefined>("users");
   const availableUsers = knownUsers.filter(user => user.user !== "root");
+  const showUsers = Boolean(users.value && availableUsers.length);
   return (
     <Grid templateColumns={"1fr 1fr"} gap="6">
       <Stack>
@@ -37,7 +38,7 @@ export const AddDatabaseForm = ({
           />
         </Grid>
       </Stack>
-      <Stack gridColumn="1 / -1" hidden={!window.App.isCluster}>
+      <Stack gridColumn="1 / -1" hidden={!window.App.isCluster && !showUsers}>
         <Text>Configuration</Text>
         <Divider borderColor="gray.400" />
         <Grid templateColumns={"1fr 1fr 1fr"} columnGap="4">
@@ -45,6 +46,7 @@ export const AddDatabaseForm = ({
             isDisabled={isDisabled || isSatellite.value}
             name={"replicationFactor"}
             label={"Replication Factor"}
+            hidden={!window.App.isCluster}
             inputProps={{
               type: "number",
               min: 1
@@ -54,6 +56,7 @@ export const AddDatabaseForm = ({
             isDisabled={isDisabled}
             name={"writeConcern"}
             label={"Write Concern"}
+            hidden={!window.App.isCluster}
             inputProps={{
               type: "number",
               min: 1
@@ -64,6 +67,7 @@ export const AddDatabaseForm = ({
             name={"isOneShard"}
             label={"OneShard"}
             hidden={
+              !window.App.isCluster ||
               !window.frontendConfig.isEnterprise ||
               window.frontendConfig.forceOneShard
             }
@@ -75,19 +79,19 @@ export const AddDatabaseForm = ({
             isDisabled={isDisabled}
             name={"isSatellite"}
             label={"Satellite"}
-            hidden={isSatellite.value === undefined}
+            hidden={!window.App.isCluster || isSatellite.value === undefined}
           />
           <MultiSelectControl
             isDisabled={isDisabled || !availableUsers.length}
             name={"users"}
             label="Users"
+            hidden={!showUsers}
             selectProps={{
               options: availableUsers.map(user => ({
                 label: user.user,
                 value: user.user
-              })),
+              }))
             }}
-            hidden={!users.value || !availableUsers.length}
           />
         </Grid>
       </Stack>
