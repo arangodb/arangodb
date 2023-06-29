@@ -134,7 +134,7 @@ const replicatedLogWaitForSyncFalseSupervisionSuite = function () {
       const {participants: {[leader]: {response: status}}} = log.status();
       // There is actually a race on the indexes in the log here, that has the same reason
       // why we need to be careful with stop / continue ordering of servers.
-      // The leader will try to send a message as soon as it get's aware of a stopped server.
+      // The leader will try to send a message as soon as it gets aware of a stopped server.
       // That is after the server is stopped, and agency times out on the servers heartbeat.
       // This message can be either before the expected logindex or after.
       // As we are shutting down 2 servers, we will have up to 2 messages in this race.
