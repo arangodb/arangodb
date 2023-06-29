@@ -93,8 +93,8 @@ else
   SE_BASE=$(( $PORT_OFFSET + 8530 + $NRCOORDINATORS + $NRDBSERVERS + $NRAGENTS ))
 fi
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
-ENDPOINT=[::]
-ADDRESS=${ADDRESS:-[::1]}
+ENDPOINT=localhost
+ADDRESS=${ADDRESS:-localhost}
 
 if [ -z "$JWT_SECRET" ];then
   AUTHENTICATION="--server.authentication false"
