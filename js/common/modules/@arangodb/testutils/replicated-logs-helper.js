@@ -437,6 +437,50 @@ const createReplicatedLogPlanOnly = function (database, targetConfig, replicatio
   return {logId, servers, leader, term, followers, remaining};
 };
 
+const createReplicatedLogInTarget = function (database, targetConfig, replicationFactor, servers) {
+  const logId = nextUniqueLogId();
+  if (replicationFactor === undefined) {
+    replicationFactor = 3;
+  }
+  if (servers === undefined) {
+    servers = _.sampleSize(dbservers, replicationFactor);
+  }
+  replicatedLogSetTarget(database, logId, {
+    id: logId,
+    config: targetConfig,
+    participants: getParticipantsObjectForServers(servers),
+    supervision: {maxActionsTraceLength: 20},
+    properties: {implementation: {type: "black-hole", parameters: {}}}
+  });
+
+  waitFor(() => {
+    let {plan, current} = readReplicatedLogAgency(database, logId.toString());
+    if (current === undefined) {
+      return Error("current not yet defined");
+    }
+    if (plan === undefined) {
+      return Error("plan not yet defined");
+    }
+
+    if (!plan.currentTerm) {
+      return Error(`No term in plan`);
+    }
+
+    if (!current.leader) {
+      return Error("Leader has not yet established its term");
+    }
+    if (!current.leader.leadershipEstablished) {
+      return Error("Leader has not yet established its leadership");
+    }
+
+    return true;
+  });
+
+  const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
+  const followers = _.difference(servers, [leader]);
+  return {logId, servers, leader, term, followers};
+}
+
 const createReplicatedLog = function (database, targetConfig, replicationFactor) {
   const logId = nextUniqueLogId();
   if (replicationFactor === undefined) {
@@ -776,3 +820,4 @@ exports.createReconfigureJob = createReconfigureJob;
 exports.getAgencyJobStatus = getAgencyJobStatus;
 exports.increaseTargetVersion = increaseTargetVersion;
 exports.triggerLeaderElection = triggerLeaderElection;
+exports.createReplicatedLogInTarget = createReplicatedLogInTarget
