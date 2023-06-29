@@ -11,15 +11,6 @@ race:SharedAqlItemBlockPtr::operator->
 signal:lib/Basics/CrashHandler.cpp
 signal:crashHandlerSignalHandler
 
-# accesses to the function pointers can be racy
-# this is most likely benign, but strictly speaking it is still UB so should be
-# addressed eventually
-race:3rdParty/velocypack/src/asm-functions.cpp
-race:doInitCopy
-race:doInitCopyCheckUtf8
-race:doInitSkip
-race:doInitValidateUtf8String
-
 # A compiler optimization in DBImpl::ReleaseSnapshot() produces code where a
 # register is populated with different addresses based on some condition, and
 # this register is later read to populate the variable `oldest_snapshot`.
@@ -39,15 +30,8 @@ thread:DatabaseFeature::start
 
 # TODO Fix lock order inversion
 deadlock:consensus::Agent::setPersistedState
+deadlock:replication2::replicated_log::LogLeader::triggerAsyncReplication
+deadlock:replication2::replicated_state::ReplicatedStateManager
 
 # TODO Fix data race in arangodbtests
 race:DummyConnection::sendRequest
-
-# TODO It's "false positive" caused by code:
-# 1. ctx_lock lock
-# 2. ctx_lock unlock; wait_for on ctx_lock; ctx_lock lock
-# 3. s[i].flush_mutex lock
-# 4. ctx_lock unlock; wait_for on ctx_lock; ctx_lock lock
-# 5. s[i + 1].flush_mutex lock
-# It should be fixed in future, because current code doing a lot unnecessary stuff
-deadlock:irs::IndexWriter::FlushPending
