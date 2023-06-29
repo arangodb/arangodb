@@ -71,6 +71,9 @@ struct FakeStorageEngineMethods : IStorageEngineMethods {
   auto waitForSync(SequenceNumber number) -> futures::Future<Result> override;
   void waitForCompletion() noexcept override;
 
+  auto compact() -> Result override;
+  auto drop() -> Result override;
+
   FakeStorageEngineMethods(FakeStorageEngineMethodsContext& self);
 
   FakeStorageEngineMethodsContext& _self;

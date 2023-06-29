@@ -49,6 +49,8 @@ struct StorageEngineMethodsGMock : IStorageEngineMethods {
   MOCK_METHOD(futures::Future<Result>, waitForSync, (SequenceNumber),
               (override));
   MOCK_METHOD(void, waitForCompletion, (), (noexcept, override));
+  MOCK_METHOD(Result, compact, (), (override));
+  MOCK_METHOD(Result, drop, (), (override));
 };
 
 }  // namespace arangodb::replication2::storage::tests

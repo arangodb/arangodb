@@ -101,4 +101,26 @@ auto LogPersistor::waitForSync(IStorageEngineMethods::SequenceNumber number)
 }
 
 void LogPersistor::waitForCompletion() noexcept { ctx.waitForCompletion(); }
+
+auto LogPersistor::drop() -> Result {
+  auto range = RocksDBKeyBounds::LogRange(ctx.objectId);
+  // TODO should we remove using rocksutils::removeLargeRange instead?
+  auto start = range.start();
+  auto end = range.end();
+  auto s = db->GetRootDB()->DeleteRange(::rocksdb::WriteOptions{}, logCf, start,
+                                        end);
+  return rocksutils::convertStatus(s);
+}
+
+auto LogPersistor::compact() -> Result {
+  auto range = RocksDBKeyBounds::LogRange(ctx.objectId);
+  auto start = range.start();
+  auto end = range.end();
+  auto res = db->CompactRange(
+      ::rocksdb::CompactRangeOptions{.exclusive_manual_compaction = false,
+                                     .allow_write_stall = false},
+      logCf, &start, &end);
+  return rocksutils::convertStatus(res);
+}
+
 }  // namespace arangodb::replication2::storage::rocksdb

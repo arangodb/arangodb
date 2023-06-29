@@ -68,6 +68,9 @@ struct ILogPersistor {
 
   // waits for all ongoing requests to be done
   virtual void waitForCompletion() noexcept = 0;
+
+  virtual auto drop() -> Result = 0;
+  virtual auto compact() -> Result = 0;
 };
 
 }  // namespace arangodb::replication2::storage

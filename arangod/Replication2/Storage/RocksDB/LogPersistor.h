@@ -59,6 +59,9 @@ struct LogPersistor final : storage::ILogPersistor {
 
   void waitForCompletion() noexcept override;
 
+  auto drop() -> Result override;
+  auto compact() -> Result override;
+
  private:
   LogId const logId;
   AsyncLogWriteContext& ctx;

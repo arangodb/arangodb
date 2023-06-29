@@ -23,15 +23,12 @@
 
 #include "LogStorageMethods.h"
 
-#include <Basics/RocksDBUtils.h>
 #include <Basics/Result.h>
 #include <Futures/Future.h>
 
 #include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/Storage/RocksDB/LogPersistor.h"
 #include "Replication2/Storage/RocksDB/StatePersistor.h"
-#include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBKeyBounds.h"
 
 #include <utility>
 
@@ -45,14 +42,9 @@ LogStorageMethods::LogStorageMethods(
     std::shared_ptr<IAsyncLogWriteBatcher> batcher, ::rocksdb::DB* db,
     ::rocksdb::ColumnFamilyHandle* metaCf, ::rocksdb::ColumnFamilyHandle* logCf,
     std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics)
-    : logId(logId),
-      db(db),
-      metaCf(metaCf),
-      logCf(logCf),
-      ctx(vocbaseId, objectId),
-      _metrics(std::move(metrics)),
+    : ctx(vocbaseId, objectId),
       _logPersistor(std::make_unique<LogPersistor>(
-          logId, ctx, db, logCf, std::move(batcher), _metrics)),
+          logId, ctx, db, logCf, std::move(batcher), std::move(metrics))),
       _statePersistor(
           std::make_unique<StatePersistor>(logId, ctx, db, metaCf)) {}
 
@@ -103,37 +95,15 @@ void LogStorageMethods::waitForCompletion() noexcept {
 }
 
 auto LogStorageMethods::drop() -> Result {
-  // prepare deletion transaction
-  ::rocksdb::WriteBatch batch;
-  auto key = RocksDBKey{};
-  key.constructReplicatedState(ctx.vocbaseId, logId);
-  if (auto s = batch.Delete(metaCf, key.string()); !s.ok()) {
-    return rocksutils::convertStatus(s);
+  // TODO - can we make this atomic?
+  // Probably rather tricky once we write our own WAL files
+  auto res = _statePersistor->drop();
+  if (res.ok()) {
+    res = _logPersistor->drop();
   }
-
-  auto range = RocksDBKeyBounds::LogRange(ctx.objectId);
-  // TODO should we remove using rocksutils::removeLargeRange instead?
-  auto start = range.start();
-  auto end = range.end();
-  if (auto s = batch.DeleteRange(logCf, start, end); !s.ok()) {
-    return rocksutils::convertStatus(s);
-  }
-  if (auto s = db->GetRootDB()->Write(::rocksdb::WriteOptions{}, &batch);
-      !s.ok()) {
-    return rocksutils::convertStatus(s);
-  }
-  return {};
+  return res;
 }
 
-auto LogStorageMethods::compact() -> Result {
-  auto range = RocksDBKeyBounds::LogRange(ctx.objectId);
-  auto start = range.start();
-  auto end = range.end();
-  auto res = db->CompactRange(
-      ::rocksdb::CompactRangeOptions{.exclusive_manual_compaction = false,
-                                     .allow_write_stall = false},
-      logCf, &start, &end);
-  return rocksutils::convertStatus(res);
-}
+auto LogStorageMethods::compact() -> Result { return _logPersistor->compact(); }
 
 }  // namespace arangodb::replication2::storage::rocksdb

@@ -70,18 +70,12 @@ struct LogStorageMethods final : replication2::storage::IStorageEngineMethods {
   [[nodiscard]] auto waitForSync(SequenceNumber number)
       -> futures::Future<Result> override;
 
-  [[nodiscard]] auto drop() -> Result;
-  [[nodiscard]] auto compact() -> Result;
-
   void waitForCompletion() noexcept override;
 
-  replication2::LogId const logId;
+  [[nodiscard]] auto drop() -> Result override;
+  [[nodiscard]] auto compact() -> Result override;
 
-  ::rocksdb::DB* const db;
-  ::rocksdb::ColumnFamilyHandle* const metaCf;
-  ::rocksdb::ColumnFamilyHandle* const logCf;
   AsyncLogWriteContext ctx;
-  std::shared_ptr<AsyncLogWriteBatcherMetrics> const _metrics;
   std::unique_ptr<ILogPersistor> _logPersistor;
   std::unique_ptr<IStatePersistor> _statePersistor;
 };

@@ -43,6 +43,8 @@ struct StatePersistor final : storage::IStatePersistor {
   [[nodiscard]] auto readMetadata()
       -> ResultT<replication2::storage::PersistedStateInfo> override;
 
+  auto drop() -> Result override;
+
  private:
   LogId const logId;
   AsyncLogWriteContext& ctx;

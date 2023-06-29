@@ -23,6 +23,7 @@
 #include "FakeStorageEngineMethods.h"
 
 #include <utility>
+#include "Basics/Result.h"
 
 namespace {
 template<typename F, typename R = std::invoke_result_t<F>>
@@ -160,6 +161,9 @@ FakeStorageEngineMethods::FakeStorageEngineMethods(
     : _self(self) {}
 
 void FakeStorageEngineMethods::waitForCompletion() noexcept {}
+
+auto FakeStorageEngineMethods::compact() -> Result { return {}; }
+auto FakeStorageEngineMethods::drop() -> Result { return {}; }
 
 auto FakeStorageEngineMethodsContext::getMethods()
     -> std::unique_ptr<storage::IStorageEngineMethods> {

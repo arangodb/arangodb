@@ -81,4 +81,12 @@ ResultT<PersistedStateInfo> StatePersistor::readMetadata() {
   return std::move(info.state);
 }
 
+auto StatePersistor::drop() -> Result {
+  auto key = RocksDBKey{};
+  key.constructReplicatedState(ctx.vocbaseId, logId);
+  ::rocksdb::WriteOptions opts;
+  auto status = db->GetRootDB()->Delete(opts, metaCf, key.string());
+  return rocksutils::convertStatus(status);
+}
+
 }  // namespace arangodb::replication2::storage::rocksdb
