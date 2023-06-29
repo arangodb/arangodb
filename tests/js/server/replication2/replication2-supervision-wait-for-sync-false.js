@@ -140,7 +140,7 @@ const replicatedLogWaitForSyncFalseSupervisionSuite = function () {
       // As we are shutting down 2 servers, we will have up to 2 messages in this race.
       // (Where the message of the first one only is highly unlikely)
 
-      // We can be up to 2 entries further ten the expected logIndex
+      // We can be up to 2 entries further than the expected logIndex
       assertTrue(status.local.spearhead.index < logIndex + 2, `Log Content: ${JSON.stringify(log.tail())}`);
       // We need to be at least on the expected logIndex
       assertTrue(status.local.spearhead.index >= logIndex, `Log Content: ${JSON.stringify(log.tail())}`);
