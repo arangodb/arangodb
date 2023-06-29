@@ -73,6 +73,13 @@ let tcpdump;
 
 let PORTMANAGER;
 
+var regex = /[^\u0000-\u00ff]/; // Small performance gain from pre-compiling the regex
+function containsDoubleByte(str) {
+    if (!str.length) return false;
+    if (str.charCodeAt(0) > 255) return true;
+    return regex.test(str);
+}
+
 function getSockStatFile(pid) {
   try {
     return fs.read("/proc/" + pid + "/net/sockstat");
@@ -179,7 +186,7 @@ class agencyConfig {
 
 class instance {
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig) {
+  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig, tmpDir) {
     if (! PORTMANAGER) {
       PORTMANAGER = new portManager(options);
     }
@@ -203,6 +210,7 @@ class instance {
     this.assertLines = [];
     this.memProfCounter = 0;
 
+    this.topLevelTmpDir = tmpDir;
     this.dataDir = fs.join(this.rootDir, 'data');
     this.appDir = fs.join(this.rootDir, 'apps');
     this.tmpDir = fs.join(this.rootDir, 'tmp');
@@ -452,8 +460,12 @@ class instance {
       this.JWT = this.args['server.jwt-secret'];
     }
     if (this.options.isSan) {
+      let rootDir = this.rootDir;
+      if (containsDoubleByte(rootDir)) {
+        rootDir = this.topLevelTmpDir;
+      }
       for (const [key, value] of Object.entries(this.sanOptions)) {
-        let oneLogFile = fs.join(this.rootDir, key.toLowerCase().split('_')[0] + '.log');
+        let oneLogFile = fs.join(rootDir, key.toLowerCase().split('_')[0] + '.log');
         this.sanOptions[key]['log_path'] = oneLogFile;
         this.sanFiles.push(oneLogFile);
       }

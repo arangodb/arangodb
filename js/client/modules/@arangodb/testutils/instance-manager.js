@@ -75,7 +75,8 @@ class instanceManager {
     this.protocol = protocol;
     this.options = options;
     this.addArgs = addArgs;
-    this.rootDir = fs.join(tmpDir || fs.getTempPath(), testname);
+    this.tmpDir = tmpDir || fs.getTempPath();
+    this.rootDir = fs.join(this.tmpDir, testname);
     this.options.agency = this.options.agency || this.options.cluster || this.options.activefailover;
     this.agencyConfig = new inst.agencyConfig(options, this);
     this.dumpedAgency = false;
@@ -157,7 +158,7 @@ class instanceManager {
     this.tcpdump = struct['tcpdump'];
     this.cleanup = struct['cleanup'];
     struct['arangods'].forEach(arangodStruct => {
-      let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyConfig);
+      let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyConfig, this.tmpDir);
       this.arangods.push(oneArangod);
       oneArangod.setFromStructure(arangodStruct);
       if (oneArangod.isAgent()) {
@@ -209,7 +210,8 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.agent + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir));
       }
       
       for (let count = 0;
@@ -222,7 +224,8 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir));
       }
       
       for (let count = 0;
@@ -235,7 +238,8 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir));
         frontendCount ++;
       }
       
@@ -249,7 +253,8 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.failover + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir));
         this.urls.push(this.arangods[this.arangods.length -1].url);
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
         frontendCount ++;
@@ -266,7 +271,8 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.single + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir));
         this.urls.push(this.arangods[this.arangods.length -1].url);
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
         frontendCount ++;
