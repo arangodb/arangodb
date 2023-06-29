@@ -71,10 +71,9 @@ const replicatedLogSuite = function ({waitForSync}) {
 
     testParticipantFailedOnInsert: function () {
       const {logId, servers, leader, term, followers} = createReplicatedLogAndWaitForLeader(database);
-      // This test may not be stable. When a log is created, the followers
-      // haven't yet reported to Current. The Supervision may immediately lower
-      // the effectiveWriteConcern, because it assumes the participants are
-      // unavailable.
+      // When a log is created, the followers haven't yet reported to Current.
+      // The Supervision may immediately lower the effectiveWriteConcern,
+      // because it assumes the participants are unavailable.
       // The following waits for the followers to report to Current.
       waitFor(lp.replicatedLogIsReady(database, logId, term, servers, leader));
 
