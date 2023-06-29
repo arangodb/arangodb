@@ -113,6 +113,10 @@
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -149,9 +153,13 @@ DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
 DECLARE_COUNTER(arangodb_vst_connections_total,
                 "Total number of VST connections");
+DECLARE_GAUGE(arangodb_request_body_size, std::uint64_t,
+              "Total number of VST connections");
 
 GeneralServerFeature::GeneralServerFeature(Server& server)
     : ArangodFeature{server, *this},
+      _requestBodySize(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_request_body_size{})),
       _telemetricsMaxRequestsPerInterval(3),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _startedListening(false),

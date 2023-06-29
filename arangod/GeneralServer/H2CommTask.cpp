@@ -178,6 +178,7 @@ template<SocketType T>
   Stream* strm = me->findStream(stream_id);
   if (strm) {
     strm->request->body().append(data, len);
+    strm->bodySizeTracker.add(len);
   }
 
   return 0;
@@ -738,6 +739,7 @@ void H2CommTask<T>::queueHttp2Responses() {
           << "' has no H2 stream on server";
       return;
     }
+    strm->bodySizeTracker.reset();  // request body is gone
     strm->response = std::move(guard);
     auto& res = *response;
 
