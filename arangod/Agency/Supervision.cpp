@@ -265,8 +265,8 @@ void Supervision::upgradeOne(Builder& builder) {
 
 void Supervision::upgradeZero(Builder& builder) {
   // "/arango/Target/FailedServers" is still an array
-  Slice fails = snapshot().hasAsSlice(failedServersPrefix).value();
-  if (fails.isArray()) {
+  auto fails = snapshot().hasAsBuilder(failedServersPrefix);
+  if (fails && fails->slice().isArray()) {
     {
       VPackArrayBuilder trx(&builder);
       {
@@ -274,8 +274,8 @@ void Supervision::upgradeZero(Builder& builder) {
         builder.add(VPackValue(failedServersPrefix));
         {
           VPackObjectBuilder oo(&builder);
-          if (fails.length() > 0) {
-            for (VPackSlice fail : VPackArrayIterator(fails)) {
+          if (fails->slice().length() > 0) {
+            for (VPackSlice fail : VPackArrayIterator(fails->slice())) {
               builder.add(VPackValue(fail.stringView()));
               { VPackArrayBuilder ooo(&builder); }
             }
