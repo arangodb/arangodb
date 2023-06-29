@@ -21,6 +21,7 @@ export const useQueryExecutors = (
       const route = getApiRouteForCurrentDB();
       try {
         const query = aql.literal(queryValue);
+        // call the /cursor API, get async job id
         const cursorResponse = await route.post(
           "cursor",
           {

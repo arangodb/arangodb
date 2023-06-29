@@ -10,6 +10,8 @@ import {
   Icon,
   IconButton,
   Popover,
+  PopoverArrow,
+  PopoverCloseButton,
   PopoverContent,
   PopoverTrigger,
   Spinner,
@@ -69,7 +71,7 @@ type ProfileKey =
   | "executing"
   | "finalizing";
 
-const profileOrder = [
+const PROFILE_ORDER = [
   "initializing",
   "parsing",
   "optimizing ast",
@@ -129,7 +131,8 @@ const profileInfoMap = {
 };
 
 const TimingInfo = ({ result }: { result: QueryResultType }) => {
-  const { profile, executionTime } = result;
+  const { profile, stats } = result;
+  const { executionTime } = stats || {};
   const finalExecutionTime = executionTime
     ? executionTime > 1
       ? `${round(executionTime, 3)} s`
@@ -139,7 +142,7 @@ const TimingInfo = ({ result }: { result: QueryResultType }) => {
     return null;
   }
   // timing chart to show times as a chart, with total width fixed to 504px
-  const timingChartInfo = profileOrder.map(key => {
+  const timingChartInfo = PROFILE_ORDER.map(key => {
     const { label, color } = profileInfoMap[key as ProfileKey];
     const time = profile?.[key];
     if (!time) {
@@ -166,11 +169,14 @@ const TimingInfo = ({ result }: { result: QueryResultType }) => {
         </Stack>
       </PopoverTrigger>
       <PopoverContent width="520px" padding="2">
-        <Box>
-          <Text>Profiling Information</Text>
-        </Box>
+        <PopoverArrow />
+        <PopoverCloseButton />
+
         <Stack>
-          {profileOrder.map(key => {
+          <Text fontSize="lg" fontWeight="medium">
+            Profiling Information
+          </Text>
+          {PROFILE_ORDER.map(key => {
             const profileInfo = profileInfoMap[key as ProfileKey];
             const time = profile?.[key];
             if (!time) {
@@ -263,67 +269,115 @@ const RemoveResultButton = ({
 };
 
 const useSyncJob = ({
+  result,
   asyncJobId,
   index
 }: {
+  result: QueryResultType;
   asyncJobId?: string;
   index: number;
 }) => {
-  const { setQueryResultAtIndex, appendQueryResultAtIndex } = useQueryContext();
+  const { setQueryResultById, appendQueryResultById, aqlJsonEditorRef } =
+    useQueryContext();
   useEffect(() => {
-    let timeout: number;
     const route = getApiRouteForCurrentDB();
-    const checkCursor = async (cursorId: string) => {
+    const checkCursor = async ({
+      cursorId,
+      asyncJobId
+    }: {
+      cursorId: string;
+      asyncJobId?: string;
+    }) => {
       const cursorResponse = await route.post(`/cursor/${cursorId}`);
       if (cursorResponse.statusCode === 200) {
         const { hasMore, result } = cursorResponse.body;
         if (hasMore) {
-          appendQueryResultAtIndex({
-            index,
+          appendQueryResultById({
+            asyncJobId,
             result,
             status: "loading"
           });
-          await checkCursor(cursorId);
+          await checkCursor({ cursorId, asyncJobId });
         } else {
-          appendQueryResultAtIndex({
-            index,
+          appendQueryResultById({
+            asyncJobId,
             result,
             status: "success"
           });
         }
       }
     };
-    const checkJob = async () => {
-      const jobResponse = await route.put(`/job/${asyncJobId}`);
-      if (jobResponse.statusCode === 204) {
-        // job is still running
-        timeout = setTimeout(checkJob, 1000);
-      } else if (jobResponse.statusCode === 201) {
-        // job is created
-        const { hasMore, result, id: cursorId } = jobResponse.body;
-        setQueryResultAtIndex({
-          index,
-          queryResult: {
-            type: "query",
-            status: hasMore ? "loading" : "success",
-            result,
-            executionTime: jobResponse.body?.extra?.stats?.executionTime,
-            profile: jobResponse.body?.extra?.profile,
-            asyncJobId
-          }
-        });
-        if (hasMore) {
-          await checkCursor(cursorId);
+    const detectPositionError = (message: string) => {
+      if (message) {
+        if (message.match(/\d+:\d+/g) !== null) {
+          const text = message.match(/'.*'/g)?.[0];
+          const position = message.match(/\d+:\d+/g)?.[0];
+          return {
+            text,
+            position
+          };
+        } else {
+          const text = message.match(/\(\w+\)/g)?.[0];
+          return {
+            text
+          };
         }
       }
     };
-    if (!asyncJobId) {
+    const checkJob = async () => {
+      try {
+        const jobResponse = await route.put(`/job/${asyncJobId}`);
+        if (jobResponse.statusCode === 204) {
+          // job is still running
+          checkJob();
+        } else if (jobResponse.statusCode === 201) {
+          // job is created
+          const { hasMore, result, id: cursorId, extra } = jobResponse.body;
+          const { stats, profile } = extra || {};
+          setQueryResultById({
+            queryResult: {
+              type: "query",
+              status: hasMore ? "loading" : "success",
+              result,
+              stats,
+              profile,
+              asyncJobId
+            }
+          });
+          if (hasMore) {
+            await checkCursor({ cursorId, asyncJobId: asyncJobId });
+          }
+        }
+      } catch (e: any) {
+        const message = e.response?.body?.errorMessage || e.message;
+        const positionError = detectPositionError(message);
+        if (positionError) {
+          const { text, position } = positionError;
+          if (position && text) {
+            let row = parseInt(position.split(":")[0]);
+            if (row > 0) {
+              row = row - 1;
+            }
+            const editor = (aqlJsonEditorRef.current as any)?.jsonEditor;
+
+            const searchText = text.substring(1, text.length - 1);
+            editor.aceEditor.find(searchText);
+          }
+        }
+        setQueryResultById({
+          queryResult: {
+            type: "query",
+            status: "error",
+            asyncJobId,
+            errorMessage: message
+          }
+        });
+      }
+    };
+    if (!asyncJobId || result.status !== "loading") {
       return;
     }
     checkJob();
-    return () => {
-      clearTimeout(timeout);
-    };
     // disabled because these functions don't need to be in deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asyncJobId, index]);
@@ -339,11 +393,15 @@ const QueryExecuteResult = ({
 }) => {
   const { onRemoveResult } = useQueryContext();
   useSyncJob({
+    result,
     asyncJobId: result.asyncJobId,
     index
   });
+  if (result.status === "error") {
+    return <Box>{result.errorMessage}</Box>;
+  }
   if (result.status === "loading") {
-    return <Spinner />;
+    return <Spinner key={result.asyncJobId} />;
   }
   return (
     <Box height="300px" key={index}>

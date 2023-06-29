@@ -48,19 +48,17 @@ type QueryContextType = {
   setIsSpotlightOpen: (value: boolean) => void;
   aqlJsonEditorRef: React.MutableRefObject<any>;
   bindVariablesJsonEditorRef: React.MutableRefObject<any>;
-  setQueryResultAtIndex: ({
-    index,
+  setQueryResultById: ({
     queryResult
   }: {
-    index: number;
     queryResult: QueryResultType;
   }) => void;
-  appendQueryResultAtIndex: ({
-    index,
+  appendQueryResultById: ({
+    asyncJobId,
     result,
     status
   }: {
-    index: number;
+    asyncJobId?: string;
     result: any;
     status: "success" | "error" | "loading";
   }) => void;
@@ -79,7 +77,8 @@ export type QueryResultType = {
   status: "success" | "error" | "loading";
   asyncJobId?: string;
   profile?: any;
-  executionTime?: number;
+  stats?: any;
+  errorMessage?: string;
 };
 type CachedQuery = {
   query: string;
@@ -131,36 +130,41 @@ export const QueryContextProvider = ({
   const [isSpotlightOpen, setIsSpotlightOpen] = React.useState<boolean>(false);
   const aqlJsonEditorRef = React.useRef(null);
   const bindVariablesJsonEditorRef = React.useRef(null);
-  const setQueryResultAtIndex = ({
-    index,
+  const setQueryResultById = ({
     queryResult
   }: {
-    index: number;
     queryResult: QueryResultType;
   }) => {
     setQueryResults(prev => {
-      const newResults = [...prev];
-      newResults[index] = queryResult;
+      const newResults = prev.map(prevQueryResult => {
+        if (prevQueryResult.asyncJobId === queryResult.asyncJobId) {
+          return queryResult;
+        }
+        return prevQueryResult;
+      });
       return newResults;
     });
   };
-  const appendQueryResultAtIndex = ({
-    index,
+  const appendQueryResultById = ({
+    asyncJobId,
     result,
     status
   }: {
-    index: number;
+    asyncJobId?: string;
     result: any;
     status: "success" | "error" | "loading";
   }) => {
     setQueryResults(prev => {
-      const newResults = [...prev];
-      const currentResult = newResults[index];
-      newResults[index] = {
-        ...currentResult,
-        result: [...currentResult.result, ...result],
-        status
-      };
+      const newResults = prev.map(prevQueryResult => {
+        if (asyncJobId === prevQueryResult.asyncJobId) {
+          return {
+            ...prevQueryResult,
+            result,
+            status
+          };
+        }
+        return prevQueryResult;
+      });
       return newResults;
     });
   };
@@ -197,8 +201,8 @@ export const QueryContextProvider = ({
         isSpotlightOpen,
         aqlJsonEditorRef,
         bindVariablesJsonEditorRef,
-        setQueryResultAtIndex,
-        appendQueryResultAtIndex
+        setQueryResultById,
+        appendQueryResultById
       }}
     >
       {children}

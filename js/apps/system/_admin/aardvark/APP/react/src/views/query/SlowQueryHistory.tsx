@@ -12,10 +12,11 @@ import {
   Tr
 } from "@chakra-ui/react";
 import { QueryInfo } from "arangojs/database";
-import React, { useEffect } from "react";
+import React from "react";
 import moment from "../../../../frontend/js/lib/moment.min";
 import { Modal } from "../../components/modal";
 import { getCurrentDB } from "../../utils/arangoClient";
+import { useFetchSlowQueries } from "./useFetchSlowQueries";
 
 const TABLE_COLUMNS = [
   {
@@ -56,19 +57,6 @@ const TABLE_COLUMNS = [
     }
   }
 ];
-const useFetchSlowQueries = () => {
-  const [runningQueries, setSlowQueries] = React.useState<QueryInfo[]>([]);
-  const fetchSlowQueries = async () => {
-    console.log("refetching!");
-    const currentDb = getCurrentDB();
-    const runningQueries = await currentDb.listSlowQueries();
-    setSlowQueries(runningQueries);
-  };
-  useEffect(() => {
-    fetchSlowQueries();
-  }, []);
-  return { runningQueries, refetchQueries: fetchSlowQueries };
-};
 export const SlowQueryHistory = () => {
   const { runningQueries, refetchQueries } = useFetchSlowQueries();
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
