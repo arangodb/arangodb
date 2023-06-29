@@ -11,6 +11,8 @@ import React from "react";
 import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
 import { EnterpriseGraphForm } from "./EnterpriseGraphForm";
 import { GeneralGraphForm } from "./GeneralGraphForm";
+import { SatelliteGraphForm } from "./SatelliteGraphForm";
+import { SmartGraphForm } from "./SmartGraphForm";
 
 export const AddGraphModal = ({
   isOpen,
@@ -35,21 +37,15 @@ export const AddGraphModal = ({
         </Flex>
       </ModalHeader>
 
-      <AddGraphModalInner initialFocusRef={initialFocusRef} onClose={onClose} />
+      <AddGraphModalInner onClose={onClose} />
     </Modal>
   );
 };
 
-const AddGraphModalInner = ({
-  initialFocusRef,
-  onClose
-}: {
-  initialFocusRef: React.RefObject<HTMLInputElement>;
-  onClose: () => void;
-}) => {
+const AddGraphModalInner = ({ onClose }: { onClose: () => void }) => {
   return (
     <ModalBody>
-      <Tabs size="md" variant="enclosed" defaultIndex={2}>
+      <Tabs size="md" variant="enclosed-colored" defaultIndex={2}>
         <TabList>
           <Tab>Examples</Tab>
           <Tab>SatelliteGraph</Tab>
@@ -62,16 +58,16 @@ const AddGraphModalInner = ({
             <p>Examples!</p>
           </TabPanel>
           <TabPanel>
-            <p>SatelliteGraph!</p>
+            <SatelliteGraphForm onClose={onClose} />
           </TabPanel>
           <TabPanel>
             <GeneralGraphForm onClose={onClose} />
           </TabPanel>
           <TabPanel>
-            <p>SmartGraph!</p>
+            <SmartGraphForm onClose={onClose} />
           </TabPanel>
           <TabPanel>
-            <EnterpriseGraphForm initialFocusRef={initialFocusRef} />
+            <EnterpriseGraphForm onClose={onClose} />
           </TabPanel>
         </TabPanels>
       </Tabs>

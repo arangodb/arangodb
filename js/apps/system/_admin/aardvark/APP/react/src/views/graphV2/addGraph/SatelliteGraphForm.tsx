@@ -1,4 +1,4 @@
-import { Button, Stack, VStack } from "@chakra-ui/react";
+import { Alert, AlertIcon, Button, Stack, VStack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import * as Yup from "yup";
@@ -6,10 +6,10 @@ import { FormField } from "../../../components/form/FormField";
 import { ModalFooter } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
-import { GeneralGraphCreateValues } from "./CreateGraph.types";
+import { SatelliteGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 
-const generalGraphFieldsMap = {
+const satelliteGraphFieldsMap = {
   name: {
     name: "name",
     type: "string",
@@ -25,11 +25,11 @@ const generalGraphFieldsMap = {
     tooltip:
       "Collections that are part of a graph but not used in an edge definition.",
     isRequired: true,
-    noOptionsMessage: "No collections found"
+    noOptionsMessage: "Please enter a new and valid collection name"
   }
 };
 
-const INITIAL_VALUES: GeneralGraphCreateValues = {
+const INITIAL_VALUES: SatelliteGraphCreateValues = {
   name: "",
   edgeDefinitions: [
     {
@@ -38,16 +38,18 @@ const INITIAL_VALUES: GeneralGraphCreateValues = {
       collection: ""
     }
   ],
-  orphanCollections: []
+  orphanCollections: [],
+  options: []
 };
 
-export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
-  const handleSubmit = async (values: GeneralGraphCreateValues) => {
+export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
+  const handleSubmit = async (values: SatelliteGraphCreateValues) => {
     const currentDB = getCurrentDB();
     const graph = currentDB.graph(values.name);
     try {
       const info = await graph.create(values.edgeDefinitions, {
-        orphanCollections: values.orphanCollections
+        orphanCollections: values.orphanCollections,
+        replicationFactor: "satellite"
       });
       window.arangoHelper.arangoNotification(
         "Graph",
@@ -71,10 +73,15 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
       {({ isSubmitting }) => (
         <Form>
           <VStack spacing={4} align="stretch">
+            <Alert status="info">
+              <AlertIcon />
+              Only use non-existent collection names. They are automatically
+              created during the graph setup.
+            </Alert>
             <FieldsGrid maxWidth="full">
-              <FormField field={generalGraphFieldsMap.name} />
-              <EdgeDefinitionsField noOptionsMessage="No collections found" />
-              <FormField field={generalGraphFieldsMap.orphanCollections} />
+              <FormField field={satelliteGraphFieldsMap.name} />
+              <EdgeDefinitionsField noOptionsMessage="Please enter a new and valid collection name" />
+              <FormField field={satelliteGraphFieldsMap.orphanCollections} />
             </FieldsGrid>
             <ModalFooter>
               <Stack direction="row" spacing={4} align="center">
