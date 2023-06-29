@@ -54,7 +54,6 @@ add_library(arango_rocksdb STATIC
   RocksDBVPackIndex.cpp
   RocksDBValue.cpp
   RocksDBWalAccess.cpp
-  RocksDBWalTailer.cpp
   RocksDBZkdIndex.cpp
   ReplicatedRocksDBTransactionCollection.cpp
   ReplicatedRocksDBTransactionState.cpp
