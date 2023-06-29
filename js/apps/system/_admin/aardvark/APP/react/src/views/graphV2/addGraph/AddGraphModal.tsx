@@ -10,6 +10,7 @@ import {
 import React from "react";
 import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
 import { EnterpriseGraphForm } from "./EnterpriseGraphForm";
+import { ExampleGraphForm } from "./ExampleGraphForm";
 import { GeneralGraphForm } from "./GeneralGraphForm";
 import { SatelliteGraphForm } from "./SatelliteGraphForm";
 import { SmartGraphForm } from "./SmartGraphForm";
@@ -55,7 +56,7 @@ const AddGraphModalInner = ({ onClose }: { onClose: () => void }) => {
         </TabList>
         <TabPanels>
           <TabPanel>
-            <p>Examples!</p>
+            <ExampleGraphForm onClose={onClose} />
           </TabPanel>
           <TabPanel>
             <SatelliteGraphForm onClose={onClose} />
