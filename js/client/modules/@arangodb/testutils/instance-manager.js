@@ -107,6 +107,9 @@ class instanceManager {
   destructor(cleanup) {
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
+      if (arangod.serverCrashedLocal) {
+        cleanup = false;
+      }
     });
     this.stopTcpDump();
     if (this.cleanup && cleanup) {
