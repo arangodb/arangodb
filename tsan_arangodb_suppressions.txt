@@ -30,7 +30,7 @@ thread:DatabaseFeature::start
 
 # TODO Fix lock order inversion
 deadlock:consensus::Agent::setPersistedState
-# TODO BTS-1502: should be fixed or explaining here why it's false positive
+# TODO BTS-1502: should be fixed or explained here why it's false positive
 deadlock:replication2::replicated_log::LogLeader::triggerAsyncReplication
 deadlock:replication2::replicated_state::ReplicatedStateManager
 
