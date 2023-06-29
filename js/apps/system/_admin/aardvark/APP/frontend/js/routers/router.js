@@ -295,10 +295,6 @@
         // Cluster
         this.coordinatorCollection = new window.ClusterCoordinators();
 
-        window.spotlightView = new window.SpotlightView({
-          collection: this.arangoCollectionsStore
-        });
-
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
         this.arangoCollectionsStore.fetch({
