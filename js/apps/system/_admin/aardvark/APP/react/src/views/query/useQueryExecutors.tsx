@@ -1,7 +1,10 @@
 import { aql } from "arangojs";
 import React, { useCallback } from "react";
-import { getCurrentDB } from "../../utils/arangoClient";
-import { QueryResultType, QueryExecutionOptions } from "./QueryContextProvider";
+import {
+  getApiRouteForCurrentDB,
+  getCurrentDB
+} from "../../utils/arangoClient";
+import { QueryExecutionOptions, QueryResultType } from "./QueryContextProvider";
 
 export const useQueryExecutors = (
   setQueryResults: React.Dispatch<React.SetStateAction<QueryResultType[]>>
@@ -15,21 +18,31 @@ export const useQueryExecutors = (
   };
   const onExecute = useCallback(
     async ({ queryValue, queryBindParams }: QueryExecutionOptions) => {
-      const currentDB = getCurrentDB();
+      const route = getApiRouteForCurrentDB();
       try {
-        const cursor = await currentDB.query(
-          // An AQL literal created from a normal multi-line string
-          aql.literal(queryValue),
-          queryBindParams
+        const query = aql.literal(queryValue);
+        const cursorResponse = await route.post(
+          "cursor",
+          {
+            query: query.toAQL(),
+            bindVars: queryBindParams,
+            options: {
+              profile: true
+            }
+          },
+          undefined,
+          {
+            "x-arango-async": "store"
+          }
         );
-        const result = await cursor.all();
-        const extra = cursor.extra;
+        const asyncJobId = cursorResponse.headers[
+          "x-arango-async-id"
+        ] as string;
         setQueryResults(queryResults => [
           {
             type: "query",
-            result,
-            extra,
-            status: "success"
+            asyncJobId,
+            status: "loading"
           },
           ...queryResults
         ]);
