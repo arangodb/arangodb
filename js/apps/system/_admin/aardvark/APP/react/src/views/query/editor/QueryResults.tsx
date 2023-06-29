@@ -310,7 +310,7 @@ const useSyncJob = ({
     const detectPositionError = (message: string) => {
       if (message) {
         if (message.match(/\d+:\d+/g) !== null) {
-          const text = message.match(/'.*'/g)?.[0];
+          const text = message.match(/'.*'/gs)?.[0];
           const position = message.match(/\d+:\d+/g)?.[0];
           return {
             text,
@@ -354,14 +354,21 @@ const useSyncJob = ({
         if (positionError) {
           const { text, position } = positionError;
           if (position && text) {
-            let row = parseInt(position.split(":")[0]);
-            if (row > 0) {
-              row = row - 1;
-            }
+            const row = parseInt(position.split(":")[0]);
+            const column = parseInt(position.split(":")[1]);
             const editor = (aqlJsonEditorRef.current as any)?.jsonEditor;
 
             const searchText = text.substring(1, text.length - 1);
-            editor.aceEditor.find(searchText);
+            // this highlights the text
+            const found = editor.aceEditor.find(searchText);
+
+            if (!found) {
+              editor.aceEditor.selection.moveCursorToPosition({
+                row: row,
+                column
+              });
+              editor.aceEditor.selection.selectLine();
+            }
           }
         }
         setQueryResultById({
