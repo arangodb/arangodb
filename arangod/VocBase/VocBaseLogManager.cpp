@@ -319,8 +319,11 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
 
   struct NetworkFollowerFactory
       : replication2::replicated_log::IAbstractFollowerFactory {
-    NetworkFollowerFactory(TRI_vocbase_t& vocbase, replication2::LogId id)
-        : vocbase(vocbase), id(id) {}
+    NetworkFollowerFactory(
+        TRI_vocbase_t& vocbase, replication2::LogId id,
+        std::shared_ptr<replication2::ReplicatedLogGlobalSettings const>
+            options)
+        : vocbase(vocbase), id(id), options(std::move(options)) {}
     auto constructFollower(const ParticipantId& participantId)
         -> std::shared_ptr<
             replication2::replicated_log::AbstractFollower> override {
@@ -328,7 +331,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
 
       return std::make_shared<
           replication2::replicated_log::NetworkAttachedFollower>(
-          pool, participantId, vocbase.name(), id);
+          pool, participantId, vocbase.name(), id, options);
     }
 
     auto constructLeaderCommunicator(const ParticipantId& participantId)
@@ -342,6 +345,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
 
     TRI_vocbase_t& vocbase;
     replication2::LogId id;
+    std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options;
   };
 
   auto myself = replication2::agency::ServerInstanceReference(
@@ -382,15 +386,16 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
     throw basics::Exception(std::move(maybeMetadata).result(), ADB_HERE);
   }
 
+  auto& logFeature = server.getFeature<ReplicatedLogFeature>();
   auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
   auto& log = stateAndLog.log = std::invoke([&]() {
     return std::make_shared<
         arangodb::replication2::replicated_log::ReplicatedLog>(
-        std::move(storage), server.getFeature<ReplicatedLogFeature>().metrics(),
-        server.getFeature<ReplicatedLogFeature>().options(),
+        std::move(storage), logFeature.metrics(), logFeature.options(),
         std::make_shared<replicated_log::DefaultParticipantsFactory>(
-            std::make_shared<NetworkFollowerFactory>(vocbase, id), sched,
-            std::make_shared<replicated_log::DefaultRebootIdCache>(ci)),
+            std::make_shared<NetworkFollowerFactory>(vocbase, id,
+                                                     logFeature.options()),
+            sched, std::make_shared<replicated_log::DefaultRebootIdCache>(ci)),
         logContext, myself);
   });
 
@@ -405,7 +410,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
   auto emplaceResult = statesAndLogs.emplace(id, std::move(stateAndLog));
   auto [iter, inserted] = emplaceResult;
   ADB_PROD_ASSERT(inserted);
-  auto metrics = server.getFeature<ReplicatedLogFeature>().metrics();
+  auto metrics = logFeature.metrics();
   metrics->replicatedLogNumber->fetch_add(1);
   metrics->replicatedLogCreationNumber->count();
 
