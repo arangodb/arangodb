@@ -1641,63 +1641,31 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
 
 /// @brief lock a collection, with a timeout
 ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
-  uint64_t waitTime = 0;  // indicates that time is uninitialized
-  double startTime = 0.0;
-
   // user read operations don't require any lock in RocksDB, so we won't get
   // here. user write operations will acquire the R/W lock in read mode, and
   // user exclusive operations will acquire the R/W lock in write mode.
   TRI_ASSERT(mode == AccessMode::Type::READ || mode == AccessMode::Type::WRITE);
+  auto timeout_us = std::chrono::duration_cast<std::chrono::microseconds>(
+      std::chrono::duration<double>(timeout));
 
-  while (true) {
-    bool gotLock = false;
-    if (mode == AccessMode::Type::WRITE) {
-      gotLock = _exclusiveLock.tryLockWrite();
-    } else if (mode == AccessMode::Type::READ) {
-      gotLock = _exclusiveLock.tryLockRead();
-    } else {
-      // we should never get here
-      TRI_ASSERT(false);
-      return TRI_ERROR_INTERNAL;
-    }
-
-    if (gotLock) {
-      // keep the lock and exit the loop
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    double now = TRI_microtime();
-    if (waitTime == 0) {  // initialize times
-      // set end time for lock waiting
-      if (timeout <= 0.0) {
-        timeout = defaultLockTimeout;
-      }
-
-      startTime = now;
-      waitTime = 1;
-    } else {
-      TRI_ASSERT(startTime > 0.0);
-
-      if (now > startTime + timeout) {
-        LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
-            << "timed out after " << timeout << " s waiting for "
-            << AccessMode::typeString(mode) << " lock on collection '"
-            << _logicalCollection.name() << "'";
-
-        return TRI_ERROR_LOCK_TIMEOUT;
-      }
-    }
-
-    if (now - startTime < 0.001) {
-      std::this_thread::yield();
-    } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
-
-      if (waitTime < 32) {
-        waitTime *= 2;
-      }
-    }
+  bool gotLock = false;
+  if (mode == AccessMode::Type::WRITE) {
+    gotLock = _exclusiveLock.tryLockWriteFor(timeout_us);
+  } else {
+    gotLock = _exclusiveLock.tryLockReadFor(timeout_us);
   }
+
+  if (gotLock) {
+    // keep the lock and exit
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
+      << "timed out after " << timeout << " s waiting for "
+      << AccessMode::typeString(mode) << " lock on collection '"
+      << _logicalCollection.name() << "'";
+
+  return TRI_ERROR_LOCK_TIMEOUT;
 }
 
 bool RocksDBMetaCollection::haveBufferedOperations(
