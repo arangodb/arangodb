@@ -479,7 +479,7 @@ const createReplicatedLogInTarget = function (database, targetConfig, replicatio
   const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
   const followers = _.difference(servers, [leader]);
   return {logId, servers, leader, term, followers};
-}
+};
 
 const createReplicatedLog = function (database, targetConfig, replicationFactor) {
   const logId = nextUniqueLogId();
@@ -820,4 +820,4 @@ exports.createReconfigureJob = createReconfigureJob;
 exports.getAgencyJobStatus = getAgencyJobStatus;
 exports.increaseTargetVersion = increaseTargetVersion;
 exports.triggerLeaderElection = triggerLeaderElection;
-exports.createReplicatedLogInTarget = createReplicatedLogInTarget
+exports.createReplicatedLogInTarget = createReplicatedLogInTarget;
