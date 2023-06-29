@@ -17,12 +17,15 @@ export const CreatableMultiSelectControl = (props: InputControlProps) => {
   const [field, , helper] = useField(name);
   const { isSubmitting } = useFormikContext();
 
-  let value = selectProps?.options?.filter(option => {
-    return (option as OptionType).value === field.value;
-  }) as PropsValue<OptionType>;
+  let value =
+    typeof field.value === "string"
+      ? (selectProps?.options?.filter(option => {
+          return (option as OptionType).value === field.value;
+        }) as PropsValue<OptionType>)
+      : [];
 
   // this is when a value is newly created
-  if (!selectProps?.options && field.value) {
+  if ((!selectProps?.options && field.value) || Array.isArray(field.value)) {
     value = field.value.map((value: any) => {
       return {
         value,
