@@ -34,34 +34,129 @@ using namespace arangodb;
 
 namespace {
 
-auto makeAllowList() -> std::unordered_set<std::string_view> {
+bool hasDistributeShardsLike(VPackSlice fullBody) {
+  // Only true if we have a non-empty string as DistributeShardsLike
+  return fullBody.hasKey(StaticStrings::DistributeShardsLike) &&
+         fullBody.get(StaticStrings::DistributeShardsLike).isString() &&
+         !fullBody.get(StaticStrings::DistributeShardsLike)
+              .stringView()
+              .empty();
+}
+
+
+auto justKeep(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder& result) {
+  result.add(key, value);
+}
+
+auto handleType(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder& result) {
+  if (value.isString() && value.isEqualString("edge")) {
+    // String edge translates to edge type
+    result.add(key, VPackValue(TRI_COL_TYPE_EDGE));
+  } else if (value.isNumber() && value.getNumericValue<TRI_col_type_e>() == TRI_COL_TYPE_EDGE) {
+    // Transform correct value for Edge to edge type
+    result.add(key, VPackValue(TRI_COL_TYPE_EDGE));
+  } else {
+    // Just default copy original value, should be safe
+    result.add(key, VPackValue(TRI_COL_TYPE_DOCUMENT));
+  }
+}
+
+auto handleReplicationFactor(std::string_view key, VPackSlice value, VPackSlice fullBody, VPackBuilder& result) {
+  if (!hasDistributeShardsLike(fullBody)) {
+    if (value.isNumber()) {
+      if (value.getNumericValue<int64_t>() == 0) {
+        result.add(key, VPackValue(StaticStrings::Satellite));
+      } else if (value.isInteger() && value.getNumericValue<int64_t>() > 0) {
+        // Just forward
+        result.add(key, value);
+      }
+    }
+    // Ignore other entries
+  }
+  // Ignore if we have distributeShardsLike
+}
+
+auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder& result) {
+  if (value.isBoolean()) {
+    result.add(key, value);
+  }
+  // Ignore anything else
+}
+
+auto handleOnlyPositiveIntegers(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder& result) {
+  if (value.isNumber() && value.isInteger() && value.getNumericValue<int64_t>() > 0) {
+    result.add(key, value);
+  }
+  // Ignore anything else
+}
+
+auto handleWriteConcern(std::string_view key, VPackSlice value, VPackSlice fullBody, VPackBuilder& result) {
+  if (!hasDistributeShardsLike(fullBody)) {
+    handleOnlyPositiveIntegers(key, value, fullBody, result);
+  }
+  // Just ignore if we have distributeShardsLike
+}
+
+auto handleNumberOfShards(std::string_view key, VPackSlice value, VPackSlice fullBody, VPackBuilder& result) {
+  if (!hasDistributeShardsLike(fullBody)) {
+    justKeep(key, value, fullBody, result);
+  }
+  // Just ignore if we have distributeShardsLike
+}
+
+auto handleOnlyObjects(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder& result) {
+  if (value.isObject()) {
+    result.add(key, value);
+  }
+  // Ignore anything else
+}
+
+auto handleStringsOnly(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder& result) {
+  if (value.isString()) {
+    result.add(key, value);
+  }
+  // Ignore anything else
+}
+
+
+auto makeAllowList() -> std::unordered_map<std::string_view, std::function<void(std::string_view key, VPackSlice value, VPackSlice original, VPackBuilder& result)>> {
   return {// CollectionConstantProperties
-          StaticStrings::DataSourceSystem, StaticStrings::IsSmart,
-          StaticStrings::IsDisjoint, StaticStrings::CacheEnabled,
-          StaticStrings::GraphSmartGraphAttribute,
-          StaticStrings::SmartJoinAttribute, StaticStrings::DataSourceType,
-          StaticStrings::KeyOptions,
+          {StaticStrings::DataSourceSystem, handleBoolOnly},
+          {StaticStrings::IsSmart, handleBoolOnly},
+          {StaticStrings::IsDisjoint, handleBoolOnly},
+          {StaticStrings::CacheEnabled, handleBoolOnly},
+          {StaticStrings::GraphSmartGraphAttribute, justKeep},
+          {StaticStrings::SmartJoinAttribute, justKeep},
+          {StaticStrings::DataSourceType, handleType},
+          {StaticStrings::KeyOptions, handleOnlyObjects},
 
           // CollectionMutableProperties
-          StaticStrings::DataSourceName, StaticStrings::Schema,
-          StaticStrings::ComputedValues,
+          {StaticStrings::DataSourceName, justKeep},
+          {StaticStrings::Schema, justKeep},
+          {StaticStrings::ComputedValues, justKeep},
 
           // CollectionInternalProperties,
-          StaticStrings::Id, StaticStrings::SyncByRevision,
-          StaticStrings::UsesRevisionsAsDocumentIds,
-          StaticStrings::IsSmartChild, StaticStrings::DataSourceDeleted,
-          StaticStrings::InternalValidatorTypes,
+          {StaticStrings::Id, justKeep},
+          {StaticStrings::SyncByRevision, handleBoolOnly},
+          {StaticStrings::UsesRevisionsAsDocumentIds, justKeep},
+          {StaticStrings::IsSmartChild, justKeep},
+          {StaticStrings::DataSourceDeleted, justKeep},
+          {StaticStrings::InternalValidatorTypes, justKeep},
 
           // ClusteringMutableProperties
-          StaticStrings::WaitForSyncString, StaticStrings::ReplicationFactor,
-          StaticStrings::MinReplicationFactor, StaticStrings::WriteConcern,
+          {StaticStrings::WaitForSyncString, handleBoolOnly},
+          {StaticStrings::ReplicationFactor, handleReplicationFactor},
+          {StaticStrings::MinReplicationFactor, handleWriteConcern},
+          {StaticStrings::WriteConcern, handleWriteConcern},
 
           // ClusteringConstantProperties
-          StaticStrings::NumberOfShards, StaticStrings::ShardingStrategy,
-          StaticStrings::ShardKeys, StaticStrings::DistributeShardsLike,
+          {StaticStrings::NumberOfShards, handleNumberOfShards},
+          {StaticStrings::ShardingStrategy, handleStringsOnly},
+          {StaticStrings::ShardKeys, justKeep},
+          {StaticStrings::DistributeShardsLike, handleStringsOnly},
 
           // Collection Create Options
-          "avoidServers"};
+          {"avoidServers", justKeep}};
 }
 
 /**
@@ -74,41 +169,23 @@ auto makeAllowList() -> std::unordered_set<std::string_view> {
  */
 auto transformFromBackwardsCompatibleBody(VPackSlice body, Result parsingResult) -> ResultT<VPackBuilder> {
   TRI_ASSERT(parsingResult.fail());
+//  LOG_DEVEL << "Start tranforming body " << body.toJson() << " into a legal one";
   VPackBuilder result;
   {
     VPackObjectBuilder objectGuard(&result);
     auto keyAllowList = makeAllowList();
     for (auto const& [key, value] : VPackObjectIterator(body)) {
-
-      if (keyAllowList.find(key.stringView()) == keyAllowList.end()) {
+      auto handler = keyAllowList.find(key.stringView());
+      if (handler == keyAllowList.end()) {
         // We ignore all keys we are not aware of
         continue;
-      }
-      if (key.isEqualString(StaticStrings::DataSourceType)) {
-        if (value.isString() && value.isEqualString("edge")) {
-          // String edge translates to edge type
-          result.add(key.stringView(), VPackValue(TRI_COL_TYPE_EDGE));
-        } else if (value.isNumber() && value.getNumericValue<TRI_col_type_e>() == TRI_COL_TYPE_EDGE) {
-          // Transform correct value for Edge to edge type
-          result.add(key.stringView(), VPackValue(TRI_COL_TYPE_EDGE));
-        } else {
-          // Just default copy original value, should be safe
-          result.add(key.stringView(), VPackValue(TRI_COL_TYPE_DOCUMENT));
-        }
-      } else if (key.isEqualString(StaticStrings::ReplicationFactor)) {
-        if (value.isNumber() && value.getNumericValue<uint64_t>() == 0) {
-          // LOG_DEVEL << "New reset : " << value.toJson();
-          result.add(key.stringView(), VPackValue(StaticStrings::Satellite));
-        } else {
-          // Just forward
-          result.add(key.stringView(), value);
-        }
       } else {
-        // Just default copy original value, should be safe
-        result.add(key.stringView(), value);
+        // All others have implemented a handler
+        handler->second(key.stringView(), value, body, result);
       }
     }
   }
+//  LOG_DEVEL << "Transformed body " << body.toJson() << " into" << result.slice().toJson();
   return result;
 }
 }
