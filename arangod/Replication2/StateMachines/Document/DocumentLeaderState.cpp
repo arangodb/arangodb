@@ -287,10 +287,11 @@ auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
 auto DocumentLeaderState::release(LogIndex index) -> Result {
   auto const& stream = getStream();
   return basics::catchToResult([&]() -> Result {
-    _activeTransactions.doUnderLock([&](auto& activeTransactions) {
+    auto idx = _activeTransactions.doUnderLock([&](auto& activeTransactions) {
       activeTransactions.markAsInactive(index);
-      stream->release(activeTransactions.getReleaseIndex().value_or(index));
+      return activeTransactions.getReleaseIndex().value_or(index);
     });
+    stream->release(idx);
     return {TRI_ERROR_NO_ERROR};
   });
 }
@@ -298,10 +299,11 @@ auto DocumentLeaderState::release(LogIndex index) -> Result {
 auto DocumentLeaderState::release(TransactionId tid, LogIndex index) -> Result {
   auto const& stream = getStream();
   return basics::catchToResult([&]() -> Result {
-    _activeTransactions.doUnderLock([&](auto& activeTransactions) {
+    auto idx = _activeTransactions.doUnderLock([&](auto& activeTransactions) {
       activeTransactions.markAsInactive(tid);
-      stream->release(activeTransactions.getReleaseIndex().value_or(index));
+      return activeTransactions.getReleaseIndex().value_or(index);
     });
+    stream->release(idx);
     return {TRI_ERROR_NO_ERROR};
   });
 }

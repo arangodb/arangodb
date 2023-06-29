@@ -72,7 +72,7 @@ struct FakeFollower final : replicated_log::ILogFollower,
     velocypack::Builder builder;
     using descriptor = streams::stream_descriptor_by_id_t<1, streamSpec>;
     streams::MultiplexedValues::toVelocyPack<descriptor>(t, builder);
-    return addEntry(LogPayload::createFromSlice(builder.slice()));
+    return addEntry(LogPayload{*builder.steal()});
   }
 
  private:
