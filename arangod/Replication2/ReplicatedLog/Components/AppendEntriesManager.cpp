@@ -51,12 +51,12 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
           .with<logContextKeyPrevLogIdx>(request.prevLogEntry);
   LOG_CTX("7f407", TRACE, lctx) << "receiving append entries";
 
+  auto self = shared_from_this();  // required for coroutine to keep this alive
   Guarded<GuardedData>::mutex_guard_type guard = guarded.getLockedGuard();
   if (guard->resigned) {
     throw ParticipantResignedException(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
   }
-  auto self = shared_from_this();  // required for coroutine to keep this alive
   auto requestGuard = guard->requestInFlight.acquire();
   if (not requestGuard) {
     LOG_CTX("58043", INFO, lctx)
