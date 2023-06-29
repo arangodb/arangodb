@@ -114,9 +114,6 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
                 allowExistingCollections={false}
               />
               <FormField field={enterpriseGraphFieldsMap.orphanCollections} />
-              {/*
-                <OrphanCollectionsField allowExistingCollections={false} />
-                */}
             </FieldsGrid>
             <ModalFooter>
               <Stack direction="row" spacing={4} align="center">
