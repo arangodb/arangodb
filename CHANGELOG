@@ -1,4 +1,4 @@
-v3.10.9 (XXXX-XX-XX)
+v3.10.9 (2023-06-30)
 --------------------
 
 * Added startup option `--replication.active-failover-leader-grace-period`.
