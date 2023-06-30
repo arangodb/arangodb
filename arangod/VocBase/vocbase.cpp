@@ -85,7 +85,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Replication2/IScheduler.h"
 #include "Replication2/Version.h"
 #include "Metrics/Counter.h"
@@ -1654,8 +1654,7 @@ auto TRI_vocbase_t::getReplicatedStateById(LogId id)
 
 void TRI_vocbase_t::registerReplicatedState(
     replication2::LogId id,
-    std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>
-        methods) {
+    std::unique_ptr<replication2::storage::IStorageEngineMethods> methods) {
   _logManager->registerReplicatedState(id, std::move(methods));
 }
 

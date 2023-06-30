@@ -24,9 +24,9 @@
 #include "SnapshotManager.h"
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedLog/Components/TermInformation.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogContextKeys.h"
 
