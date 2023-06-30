@@ -55,17 +55,17 @@ struct ReplicatedStateHandleMock : IReplicatedStateHandle {
 struct AppendEntriesFollowerTest : ::testing::Test {
   std::uint64_t const objectId = 1;
   LogId const logId = LogId{12};
-  std::shared_ptr<test::SyncExecutor> executor =
-      std::make_shared<test::SyncExecutor>();
+  std::shared_ptr<storage::rocksdb::test::SyncExecutor> executor =
+      std::make_shared<storage::rocksdb::test::SyncExecutor>();
   std::shared_ptr<test::SyncScheduler> scheduler =
       std::make_shared<test::SyncScheduler>();
 
-  test::FakeStorageEngineMethodsContext storage{
+  storage::test::FakeStorageEngineMethodsContext storage{
       objectId,
       logId,
       executor,
       {LogIndex{1}, LogIndex{100}},
-      replicated_state::PersistedStateInfo{
+      storage::PersistedStateInfo{
           .stateId = logId,
           .snapshot = {.status = SnapshotStatus::kCompleted,
                        .timestamp = {},
