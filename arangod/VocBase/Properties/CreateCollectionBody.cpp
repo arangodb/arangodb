@@ -50,11 +50,16 @@ auto isSingleServer() -> bool {
   return ServerState::instance()->isSingleServer();
 }
 
+#ifdef USE_ENTERPRISE
+// This method is only used in Enterprise.
+// It does not have any Enterprise requirements by itself.
+
 bool isEdgeCollection(VPackSlice fullBody) {
   // Only true if we have a non-empty string as DistributeShardsLike
   auto type = fullBody.get(StaticStrings::DataSourceType);
   return type.isNumber() && type.getNumericValue<TRI_col_type_e>() == TRI_col_type_e::TRI_COL_TYPE_EDGE;
 }
+#endif
 
 auto justKeep(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
   result.add(key, value);
@@ -77,11 +82,20 @@ auto handleReplicationFactor(std::string_view key, VPackSlice value, VPackSlice 
   if (!hasDistributeShardsLike(fullBody, config) && !isSingleServer()) {
     if (value.isNumber()) {
       if (value.getNumericValue<int64_t>() == 0) {
+#ifdef USE_ENTERPRISE
         result.add(key, VPackValue(StaticStrings::Satellite));
+#endif
+        // On non-enterprise take default
       } else if (value.isInteger() && value.getNumericValue<int64_t>() > 0) {
         // Just forward
         result.add(key, value);
       }
+#ifdef USE_ENTERPRISE
+      // On Enterprise allow satellite, otherwise ignore and take default
+    } else if (value.isString() && value.isEqualString(StaticStrings::Satellite)) {
+      // Just forward
+      result.add(key, value);
+#endif
     }
     // Ignore other entries
   }
@@ -139,10 +153,12 @@ auto handleDistributeShardsLike(std::string_view key, VPackSlice value, VPackSli
 
 
 auto handleSmartGraphAttribute(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+#ifdef USE_ENTERPRISE
   if (!isEdgeCollection(fullBody)) {
     // Only allow smartGraphAttribute if we do not have an edge collection
     justKeep(key, value, fullBody, config, result);
   }
+#endif
   // Ignore anything else
 }
 
@@ -161,11 +177,24 @@ auto handleShardKeys(std::string_view key, VPackSlice value, VPackSlice fullBody
   // In oneShardDB shardKeys are ignored
 }
 
+auto handleIsSmart(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+#ifdef USE_ENTERPRISE
+  handleBoolOnly(key, value, fullBody, config, result);
+#endif
+  // Just ignore isSmart on community
+}
+
+auto handleShardingStrategy(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+  if (!isSingleServer()) {
+    handleStringsOnly(key, value, fullBody, config, result);
+  }
+  // Just ignore on SingleServer
+}
 
 auto makeAllowList() -> std::unordered_map<std::string_view, std::function<void(std::string_view key, VPackSlice value, VPackSlice original, DatabaseConfiguration const& config, VPackBuilder& result)>> {
   return {// CollectionConstantProperties
           {StaticStrings::DataSourceSystem, handleBoolOnly},
-          {StaticStrings::IsSmart, handleBoolOnly},
+          {StaticStrings::IsSmart, handleIsSmart},
           {StaticStrings::IsDisjoint, handleBoolOnly},
           {StaticStrings::CacheEnabled, handleBoolOnly},
           {StaticStrings::GraphSmartGraphAttribute, handleSmartGraphAttribute},
@@ -194,7 +223,7 @@ auto makeAllowList() -> std::unordered_map<std::string_view, std::function<void(
 
           // ClusteringConstantProperties
           {StaticStrings::NumberOfShards, handleNumberOfShards},
-          {StaticStrings::ShardingStrategy, handleStringsOnly},
+          {StaticStrings::ShardingStrategy, handleShardingStrategy},
           {StaticStrings::ShardKeys, handleShardKeys},
           {StaticStrings::DistributeShardsLike, handleDistributeShardsLike},
 

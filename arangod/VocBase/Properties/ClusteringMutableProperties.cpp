@@ -125,5 +125,11 @@ ClusteringMutableProperties::validateDatabaseConfiguration(
             "Collection in a 'oneShardDatabase' cannot be a "
             "'satellite'"};
   }
+#ifndef USE_ENTERPRISE
+  if (isSatellite()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "'satellite' collections only allowed in enterprise edition"};
+  }
+#endif
   return {TRI_ERROR_NO_ERROR};
 }

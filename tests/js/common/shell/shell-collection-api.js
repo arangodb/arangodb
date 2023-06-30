@@ -484,8 +484,10 @@ function CreateCollectionsSuite() {
         try {
           if (!isEnterprise) {
             if (!isCluster) {
+              assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
               // SingleServer just ignores satellite.
-              validateProperties({replicationFactor: "satellite", writeConcern: 1}, collname, 2);
+              validateProperties({}, collname, 2);
+              validateDeprecationLogEntryWritten();
             } else {
               assertFalse(res.result, `Created a collection with replicationFactor 0`);
             }
@@ -603,6 +605,7 @@ function CreateCollectionsSuite() {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           // isSmart is just ignored, we keep default: false
           validateProperties({}, collname, 2);
+          validateDeprecationLogEntryWritten();
           if (!isCluster) {
             // SingleSever does not expose is Smart at all
             validatePropertiesDoNotExist(collname, ["isSmart"]);
@@ -630,8 +633,10 @@ function CreateCollectionsSuite() {
           assertEqual(res.errorNum, ERROR_BAD_PARAMETER.code);
         } else {
           // Community ignores this, go to defaults
+          assertFalse(res.error, `Result: ${JSON.stringify(res)}`);
           validateProperties({}, collname, 2);
           validatePropertiesDoNotExist(collname, ["smartGraphAttribute"]);
+          validateDeprecationLogEntryWritten();
         }
       } finally {
         db._drop(collname);
@@ -649,8 +654,10 @@ function CreateCollectionsSuite() {
           assertEqual(res.errorNum, ERROR_BAD_PARAMETER.code);
         } else {
           // Community ignores this, go to defaults
+          assertFalse(res.error, `Result: ${JSON.stringify(res)}`);
           validateProperties({}, collname, 2);
           validatePropertiesDoNotExist(collname, ["smartGraphAttribute"]);
+          validateDeprecationLogEntryWritten();
         }
       } finally {
         db._drop(collname);
@@ -691,6 +698,7 @@ function CreateCollectionsSuite() {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           validateProperties({}, collname, 2);
           validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
+          validateDeprecationLogEntryWritten();
         } else {
           assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
           if (!isServer) {
@@ -720,6 +728,7 @@ function CreateCollectionsSuite() {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
             validateProperties({}, collname, 2);
             validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
+            validateDeprecationLogEntryWritten();
           } else {
             if (!isCluster) {
               assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
@@ -908,6 +917,10 @@ function CreateCollectionsSuite() {
                 delete edge.isDisjoint;
               }
               delete edge.shardingStrategy;
+              if (!isEnterprise) {
+                // And also erases distributeShardsLike
+                delete edge.distributeShardsLike;
+              }
             } else {
               if (!isEnterprise) {
                 // smartFeatures cannot be set
@@ -953,6 +966,9 @@ function CreateCollectionsSuite() {
               }
             } else {
               validateProperties(edge, edgeName, 3, shouldKeepClusterSpecificAttributes);
+            }
+            if (!isEnterprise && !isCluster) {
+              validateDeprecationLogEntryWritten();
             }
           } finally {
             db._drop(edgeName, true);
@@ -1033,6 +1049,9 @@ function CreateCollectionsSuite() {
               }
             }
             validateProperties(vertex, vertexName, 2, shouldKeepClusterSpecificAttributes);
+            if (!isEnterprise && !isCluster) {
+              validateDeprecationLogEntryWritten();
+            }
             const resEdge = tryCreate({...edge, type: "edge", name: edgeName});
             try {
               // Should work, everything required for smartGraphs is there.
@@ -1045,6 +1064,10 @@ function CreateCollectionsSuite() {
                   delete edge.isDisjoint;
                 }
                 delete edge.shardingStrategy;
+                if (!isEnterprise) {
+                  // And also erases distributeShardsLike
+                  delete edge.distributeShardsLike;
+                }
               } else {
                 if (!isEnterprise) {
                   // smartFeatures cannot be set
@@ -1089,6 +1112,9 @@ function CreateCollectionsSuite() {
                 }
               } else {
                 validateProperties(edge, edgeName, 3, shouldKeepClusterSpecificAttributes);
+              }
+              if (!isEnterprise && !isCluster) {
+                validateDeprecationLogEntryWritten();
               }
             } finally {
               db._drop(edgeName, true);
@@ -1169,6 +1195,9 @@ function CreateCollectionsSuite() {
               }
             }
             validateProperties(vertex, vertexName, 2, shouldKeepClusterSpecificAttributes);
+            if (!isEnterprise && !isCluster) {
+              validateDeprecationLogEntryWritten();
+            }
             const resEdge = tryCreate({...edge, type: "edge", name: edgeName});
             try {
               // Should work, everything required for smartGraphs is there.
@@ -1181,6 +1210,10 @@ function CreateCollectionsSuite() {
                   delete edge.isDisjoint;
                 }
                 delete edge.shardingStrategy;
+                if (!isEnterprise) {
+                  // And also erases distributeShardsLike
+                  delete edge.distributeShardsLike;
+                }
               } else {
                 if (!isEnterprise) {
                   // smartFeatures cannot be set
@@ -1225,6 +1258,9 @@ function CreateCollectionsSuite() {
                 }
               } else {
                 validateProperties(edge, edgeName, 3, shouldKeepClusterSpecificAttributes);
+              }
+              if (!isEnterprise && !isCluster) {
+                validateDeprecationLogEntryWritten();
               }
             } finally {
               db._drop(edgeName, true);
