@@ -193,6 +193,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     LogIndex nextPrevLogIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};
     LogIndex lastAckedLowestIndexToKeep = LogIndex{0};
+    LogIndex syncIndex = LogIndex{0};
     MessageId lastSentMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason;

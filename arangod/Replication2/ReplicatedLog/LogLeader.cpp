@@ -1040,6 +1040,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
             response.snapshotAvailable, response.messageId);
       }
 
+      TRI_ASSERT(response.syncIndex >= follower.syncIndex)
+          << response.syncIndex << " vs. " << follower.syncIndex;
+      follower.syncIndex = response.syncIndex;
+
       follower.lastErrorReason = response.reason;
       if (response.isSuccess()) {
         follower.numErrorsSinceLastAnswer = 0;
