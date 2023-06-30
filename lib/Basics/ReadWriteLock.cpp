@@ -65,7 +65,7 @@ bool ReadWriteLock::tryLockWriteFor(std::chrono::microseconds timeout) {
   }
 
   if (timeout.count() == 0) {
-    timeout = std::chrono::microseconds(1000);
+    timeout = std::chrono::microseconds(100000);
   }
 
   // the lock is either held by another writer or we have active readers
