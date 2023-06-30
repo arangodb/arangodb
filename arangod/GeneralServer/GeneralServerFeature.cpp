@@ -154,7 +154,7 @@ DECLARE_COUNTER(arangodb_http2_connections_total,
 DECLARE_COUNTER(arangodb_vst_connections_total,
                 "Total number of VST connections");
 DECLARE_GAUGE(arangodb_request_body_size, std::uint64_t,
-              "Total number of VST connections");
+              "Memory consumed by incoming request bodies.");
 
 GeneralServerFeature::GeneralServerFeature(Server& server)
     : ArangodFeature{server, *this},
