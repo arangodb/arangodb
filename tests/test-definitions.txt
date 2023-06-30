@@ -4,7 +4,7 @@
 
 
 # Single Server only Tests
-BackupAuthNoSysTests,BackupAuthSysTests,BackupNoAuthSysTests,arangosh,arangobench,permissions,paths_server,version,active_failover single name=single_server_only
+BackupAuthNoSysTests,BackupAuthSysTests,BackupNoAuthSysTests,arangosh,arangobench,permissions,paths_server,version,active_failover single name=single_server_only -- --extremeVerbosity true 
 
 # Single Server Replication Tests
 replication_fuzz !mac priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
