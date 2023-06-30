@@ -20,14 +20,19 @@ v3.10.9 (XXXX-XX-XX)
   keep the existing behavior, in which a disconnected leader will not refuse
   incoming write operations.
 
-* BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in 
-  case the update AQL is of the pattern 
+* Optimize runtime performance of exclusive locks.
+
+* Remove temporary `CREATING_{number}` directories from hot backup in case a
+  hot backup runs into an error.
+
+* BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in
+  case the update AQL is of the pattern
 
       FOR doc IN collection
         UPDATE <doc> IN collection
 
   Previously the optimization was only possible if the update AQL was of the
-  pattern 
+  pattern
 
       FOR doc IN collection
         UPDATE <key> WITH <doc> IN collection
