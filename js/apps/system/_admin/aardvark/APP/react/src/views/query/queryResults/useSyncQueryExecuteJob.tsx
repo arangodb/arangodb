@@ -3,11 +3,11 @@ import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { QueryResultType, useQueryContext } from "../QueryContextProvider";
 
 export const useSyncQueryExecuteJob = ({
-  result,
+  queryResult,
   asyncJobId,
   index
 }: {
-  result: QueryResultType;
+  queryResult: QueryResultType;
   asyncJobId?: string;
   index: number;
 }) => {
@@ -115,7 +115,7 @@ export const useSyncQueryExecuteJob = ({
         });
       }
     };
-    if (!asyncJobId || result.status !== "loading") {
+    if (!asyncJobId || queryResult.status !== "loading") {
       return;
     }
     checkJob();

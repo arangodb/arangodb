@@ -2,8 +2,11 @@ import { Box } from "@chakra-ui/react";
 import React from "react";
 import { QueryResultType } from "../QueryContextProvider";
 
-
-export const ResultTypeBox = ({ result }: { result: QueryResultType; }) => {
+export const ResultTypeBox = ({
+  queryResult
+}: {
+  queryResult: QueryResultType;
+}) => {
   return (
     <Box
       display="inline-block"
@@ -13,7 +16,7 @@ export const ResultTypeBox = ({ result }: { result: QueryResultType; }) => {
       color="white"
       textTransform="capitalize"
     >
-      {result.type}
+      {queryResult.type}
     </Box>
   );
 };

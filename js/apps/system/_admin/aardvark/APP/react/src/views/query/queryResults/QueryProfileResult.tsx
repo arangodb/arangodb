@@ -7,20 +7,20 @@ import { ResultTypeBox } from "./ResultTypeBox";
 
 export const QueryProfileResult = ({
   index,
-  result
+  queryResult
 }: {
   index: number;
-  result: QueryResultType;
+  queryResult: QueryResultType;
 }) => {
   return (
     <Box height="500px" key={index}>
       <Flex padding="2" alignItems="center">
-        <ResultTypeBox result={result} />
+        <ResultTypeBox queryResult={queryResult} />
         <Box marginLeft="auto">
           <RemoveResultButton index={index} />
         </Box>
       </Flex>
-      <ProfileResultDisplayJSON defaultValue={result.result} />
+      <ProfileResultDisplayJSON defaultValue={queryResult.result} />
     </Box>
   );
 };

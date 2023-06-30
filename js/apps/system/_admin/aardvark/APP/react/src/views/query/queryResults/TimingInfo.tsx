@@ -17,6 +17,7 @@ import {
 } from "@chakra-ui/react";
 import { round } from "lodash";
 import React from "react";
+import { Table } from "styled-icons/boxicons-regular";
 import { QueryResultType } from "../QueryContextProvider";
 
 type ProfileKey =
@@ -87,8 +88,12 @@ const profileInfoMap = {
     label: "I"
   }
 };
-export const TimingInfo = ({ result }: { result: QueryResultType }) => {
-  const { profile, stats } = result;
+export const TimingInfo = ({
+  queryResult
+}: {
+  queryResult: QueryResultType;
+}) => {
+  const { profile, stats } = queryResult;
   const { executionTime } = stats || {};
   const finalExecutionTime = executionTime
     ? executionTime > 1
@@ -117,79 +122,90 @@ export const TimingInfo = ({ result }: { result: QueryResultType }) => {
     };
   });
   return (
-    <Popover flip placement="top-start">
-      <PopoverTrigger>
-        <Stack spacing="1" direction="row" alignItems="center">
-          <Icon as={TimeIcon} width="20px" height="20px" />
-          <Text>{finalExecutionTime}</Text>
-          <ChevronDownIcon />
-        </Stack>
-      </PopoverTrigger>
-      <PopoverContent width="520px" padding="2">
-        <PopoverArrow />
-        <PopoverCloseButton />
+    <>
+      <Stack spacing="1" direction="row" alignItems="center">
+        <Icon as={Table} width="20px" height="20px" />
+        <Text>
+          {queryResult.result.length}{" "}
+          {queryResult.result.length === 1 ? "element" : "elements"}
+        </Text>
+      </Stack>
+      <Popover flip placement="top-start">
+        <PopoverTrigger>
+          <Stack spacing="1" direction="row" alignItems="center">
+            <Icon as={TimeIcon} width="20px" height="20px" />
+            <Text>{finalExecutionTime}</Text>
+            <ChevronDownIcon />
+          </Stack>
+        </PopoverTrigger>
+        <PopoverContent width="520px" padding="2">
+          <PopoverArrow />
+          <PopoverCloseButton />
 
-        <Stack>
-          <Text fontSize="lg" fontWeight="medium">
-            Profiling Information
-          </Text>
-          {PROFILE_ORDER.map(key => {
-            const profileInfo = profileInfoMap[key as ProfileKey];
-            const time = profile?.[key];
-            if (!time) {
-              return null;
-            }
-            const finalTime =
-              time > 1 ? `${round(time, 3)} s` : `${round(time * 1000, 3)} ms`;
-            return (
-              <Grid
-                gridTemplateColumns="32px 100px 100px 1fr"
-                alignItems="start"
-              >
-                <Tag
-                  width="20px"
-                  height="20px"
-                  borderRadius="4"
-                  backgroundColor={profileInfo.color}
+          <Stack>
+            <Text fontSize="lg" fontWeight="medium">
+              Profiling Information
+            </Text>
+            {PROFILE_ORDER.map(key => {
+              const profileInfo = profileInfoMap[key as ProfileKey];
+              const time = profile?.[key];
+              if (!time) {
+                return null;
+              }
+              const finalTime =
+                time > 1
+                  ? `${round(time, 3)} s`
+                  : `${round(time * 1000, 3)} ms`;
+              return (
+                <Grid
+                  gridTemplateColumns="32px 100px 100px 1fr"
+                  alignItems="start"
                 >
-                  <Text color="white" fontWeight="bold">
-                    {profileInfo.label}
+                  <Tag
+                    width="20px"
+                    height="20px"
+                    borderRadius="4"
+                    backgroundColor={profileInfo.color}
+                  >
+                    <Text color="white" fontWeight="bold">
+                      {profileInfo.label}
+                    </Text>
+                  </Tag>
+                  <Text>{finalTime}</Text>
+                  <Text>{key}</Text>
+                  <Text>{profileInfo.description}</Text>
+                  <GridItem marginTop="1" as={Divider} colSpan={4} />
+                </Grid>
+              );
+            })}
+          </Stack>
+          <Flex>
+            {timingChartInfo.map(info => {
+              if (!info) {
+                return null;
+              }
+              return (
+                <Flex
+                  width={`${info.widthPercentage}%`}
+                  direction="column"
+                  alignItems="center"
+                >
+                  <Box
+                    width="100%"
+                    display="inline-block"
+                    height="20px"
+                    backgroundColor={info.color}
+                    marginRight="1"
+                  />
+                  <Text fontSize="xx-small" display="inline-block">
+                    {info.label}
                   </Text>
-                </Tag>
-                <Text>{finalTime}</Text>
-                <Text>{key}</Text>
-                <Text>{profileInfo.description}</Text>
-                <GridItem marginTop="1" as={Divider} colSpan={4} />
-              </Grid>
-            );
-          })}
-        </Stack>
-        <Flex>
-          {timingChartInfo.map(info => {
-            if (!info) {
-              return null;
-            }
-            return (
-              <Flex
-                width={`${info.widthPercentage}%`}
-                direction="column"
-                alignItems="center"
-              >
-                <Box
-                  width="100%"
-                  display="inline-block"
-                  height="20px"
-                  backgroundColor={info.color}
-                  marginRight="1"
-                />
-                <Text fontSize="xx-small" display="inline-block">
-                  {info.label}
-                </Text>
-              </Flex>
-            );
-          })}
-        </Flex>
-      </PopoverContent>
-    </Popover>
+                </Flex>
+              );
+            })}
+          </Flex>
+        </PopoverContent>
+      </Popover>
+    </>
   );
 };

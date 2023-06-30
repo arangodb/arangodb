@@ -11,15 +11,23 @@ export const QueryResults = () => {
   }
   return (
     <Box background="white" marginTop="4">
-      {queryResults.map((result, index) => {
-        if (result.type === "profile" || result.type === "explain") {
+      {queryResults.map((queryResult, index) => {
+        if (queryResult.type === "profile" || queryResult.type === "explain") {
           return (
-            <QueryProfileResult key={index} index={index} result={result} />
+            <QueryProfileResult
+              key={index}
+              index={index}
+              queryResult={queryResult}
+            />
           );
         }
-        if (result.type === "query") {
+        if (queryResult.type === "query") {
           return (
-            <QueryExecuteResult key={index} index={index} result={result} />
+            <QueryExecuteResult
+              key={index}
+              index={index}
+              queryResult={queryResult}
+            />
           );
         }
         return null;
