@@ -1,124 +1,101 @@
-import {
-  Button,
-  Grid,
-  GridItem,
-  Stack,
-  Text,
-  VStack
-} from "@chakra-ui/react";
-import { Form, Formik } from "formik";
-import React from "react";
-import * as Yup from "yup";
+import { Box, Button, HStack, Stack, Text, VStack } from "@chakra-ui/react";
+import React, { useState } from "react";
 import { ModalFooter } from "../../../components/modal";
-import { getCurrentDB } from "../../../utils/arangoClient";
-import { ExampleGraphCreateValues } from "./CreateGraph.types";
+import { getRouteForDB } from "../../../utils/arangoClient";
 
 const exampleGraphsMap = [
   {
-    label: "Knows Graph"
+    label: "Knows Graph",
+    name: "knows_graph"
   },
   {
-    label: "Traversal Graph"
+    label: "Traversal Graph",
+    name: "traversalGraph"
   },
   {
-    label: "k Shortest Paths Graph"
+    label: "k Shortest Paths Graph",
+    name: "kShortestPathsGraph"
   },
   {
-    label: "Mps Graph"
+    label: "Mps Graph",
+    name: "mps_graph"
   },
   {
-    label: "World Graph"
+    label: "World Graph",
+    name: "worldCountry"
   },
   {
-    label: "Social Graph"
+    label: "Social Graph",
+    name: "social"
   },
   {
-    label: "City Graph"
+    label: "City Graph",
+    name: "routeplanner"
   },
   {
-    label: "Connected Components Graph"
+    label: "Connected Components Graph",
+    name: "connectedComponentsGraph"
   }
 ];
 
-const INITIAL_VALUES: ExampleGraphCreateValues = {
-  name: "",
-  edgeDefinitions: [
-    {
-      from: [],
-      to: [],
-      collection: ""
-    }
-  ],
-  orphanCollections: []
-};
-
 export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
-  const handleSubmit = async (values: ExampleGraphCreateValues) => {
-    const currentDB = getCurrentDB();
-    const graph = currentDB.graph(values.name);
-    try {
-      const info = await graph.create(values.edgeDefinitions, {
-        orphanCollections: values.orphanCollections
-      });
-      window.arangoHelper.arangoNotification(
-        "Graph",
-        `Successfully created the graph: ${values.name}`
-      );
-      onClose();
-      return info;
-    } catch (e: any) {
-      const errorMessage = e.response.body.errorMessage;
-      window.arangoHelper.arangoError("Could not add graph", errorMessage);
-    }
+  const createExampleGraph = async ({ graphName }: { graphName: string }) => {
+    const data = await getRouteForDB(window.frontendConfig.db, "_admin").post(
+      `/aardvark/graph-examples/create/${graphName}`
+    );
+    return data.body;
   };
+  const [isLoading, setIsLoading] = useState(false);
+
   return (
-    <Formik
-      initialValues={INITIAL_VALUES}
-      validationSchema={Yup.object({
-        name: Yup.string().required("Name is required")
+    <VStack spacing={4} align="stretch">
+      {exampleGraphsMap.map(exampleGraphField => {
+        return (
+          <HStack key={exampleGraphField.name}>
+            <Box w="210px">
+              <Text>{exampleGraphField.label}</Text>
+            </Box>
+            <Button
+              colorScheme="blue"
+              size="xs"
+              type="submit"
+              isLoading={isLoading}
+              onClick={async () => {
+                setIsLoading(true);
+                try {
+                  await createExampleGraph({
+                    graphName: exampleGraphField.name
+                  });
+                  window.arangoHelper.arangoNotification(
+                    "Graph",
+                    `Successfully created the graph: ${exampleGraphField.name}`
+                  );
+                  onClose();
+                } catch (e: any) {
+                  const errorMessage = e.response.body.errorMessage;
+                  window.arangoHelper.arangoError(
+                    "Could not add graph",
+                    errorMessage
+                  );
+                }
+                setIsLoading(false);
+              }}
+            >
+              Create
+            </Button>
+          </HStack>
+        );
       })}
-      onSubmit={handleSubmit}
-    >
-      {({ isSubmitting }) => (
-        <Form>
-          <VStack spacing={4} align="stretch">
-            <Grid templateColumns="repeat(5, 1fr)" gap={4}>
-              {exampleGraphsMap.map(exampleGraphField => {
-                return (
-                  <>
-                    <GridItem h="10" bg="tomato">
-                      <Text>{exampleGraphField.label}</Text>
-                    </GridItem>
-                    <GridItem bg="papayawhip">
-                      <Button
-                        colorScheme="blue"
-                        type="submit"
-                        isLoading={isSubmitting}
-                      >
-                        Create
-                      </Button>
-                    </GridItem>
-                  </>
-                );
-              })}
-            </Grid>
-            <ModalFooter>
-              <Stack direction="row" spacing={4} align="center">
-                <Button onClick={onClose} colorScheme="gray">
-                  Cancel
-                </Button>
-                <Button
-                  colorScheme="blue"
-                  type="submit"
-                  isLoading={isSubmitting}
-                >
-                  Create
-                </Button>
-              </Stack>
-            </ModalFooter>
-          </VStack>
-        </Form>
-      )}
-    </Formik>
+      <ModalFooter>
+        <VStack>
+          <Text>Need help</Text>
+          <Stack direction="row" spacing={4} align="center">
+            <Button onClick={onClose} colorScheme="gray">
+              Cancel
+            </Button>
+          </Stack>
+        </VStack>
+      </ModalFooter>
+    </VStack>
   );
 };
