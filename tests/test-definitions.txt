@@ -22,7 +22,7 @@ http_replication priority=500 parallelity=3 size=small single
 agency,agency-restart priority=350 parallelity=3 size=small single -- --dumpAgencyOnError true
 authentication priority=1000 single
 endpoints priority=250 single -- --skipEndpointsIpv6 true
-recovery priority=2000 buckets=6 parallelity=5 size=small single
+recovery priority=2000 buckets=2 parallelity=5 size=small single
 
 shell_server_v8,shell_v8 priority=500 name=v8 single -- $EncryptionAtRest
 
@@ -53,7 +53,7 @@ shell_client_aql !mac priority=500  single suffix=http2 -- --http2 true
 shell_client_aql !mac priority=750  single suffix=vst -- --vst true
 shell_client_aql !mac priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true
 
-shell_server_aql priority=750 single buckets=5
+shell_server_aql priority=750 single buckets=2
 # execute without buckets in single server, but use 5 buckets in cluster
 shell_server priority=1000 single buckets=3
 
@@ -85,7 +85,7 @@ resilience_failover priority=1200 size=small buckets=2 cluster -- --dumpAgencyOn
 resilience_move priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnError true
 resilience_sharddist size=small cluster -- --dumpAgencyOnError true
 
-recovery_cluster priority=2000 size=small cluster buckets=8
+recovery_cluster priority=2000 size=small cluster buckets=2
 
 shell_api priority=500 cluster -- $EncryptionAtRest
 
@@ -97,11 +97,11 @@ shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
-shell_server_aql priority=1000 size=medium+ cluster sniff buckets=16 -- --dumpAgencyOnError true --sniffFilter graph
-shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
-shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
+shell_server_aql priority=1000 size=medium+ cluster sniff buckets=2 -- --dumpAgencyOnError true --sniffFilter graph
+shell_client priority=500 cluster buckets=2 -- --dumpAgencyOnError true
+shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=2 -- --dumpAgencyOnError true
 shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true
-shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
+shell_server priority=500 size=medium+ cluster buckets=2 -- --dumpAgencyOnError true
 
 rta_makedata cluster
 
@@ -113,7 +113,7 @@ hot_backup enterprise !windows size=medium -- --dumpAgencyOnError true
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=2 buckets=3 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 buckets=6 size=small cluster -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 buckets=2 size=small cluster -- --dumpAgencyOnError true
 server_permissions,server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 
 # Dump Tests
