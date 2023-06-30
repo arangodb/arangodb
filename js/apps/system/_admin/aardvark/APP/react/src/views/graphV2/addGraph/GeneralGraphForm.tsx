@@ -25,7 +25,7 @@ const generalGraphFieldsMap = {
     tooltip:
       "Collections that are part of a graph but not used in an edge definition.",
     isRequired: true,
-    noOptionsMessage: "No collections found"
+    noOptionsMessage: () => "No collections found"
   }
 };
 
@@ -73,7 +73,7 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
           <VStack spacing={4} align="stretch">
             <FieldsGrid maxWidth="full">
               <FormField field={generalGraphFieldsMap.name} />
-              <EdgeDefinitionsField noOptionsMessage="No collections found" />
+              <EdgeDefinitionsField noOptionsMessage={() => "No collections found"} />
               <FormField field={generalGraphFieldsMap.orphanCollections} />
             </FieldsGrid>
             <ModalFooter>

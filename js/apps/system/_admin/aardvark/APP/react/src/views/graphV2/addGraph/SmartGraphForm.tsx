@@ -65,7 +65,7 @@ const smartGraphFieldsMap = {
     tooltip:
       "Collections that are part of a graph but not used in an edge definition.",
     isRequired: true,
-    noOptionsMessage: "Please enter a new and valid collection name"
+    noOptionsMessage: () => "Please enter a new and valid collection name"
   }
 };
 
@@ -127,7 +127,7 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
               <FormField field={smartGraphFieldsMap.isDisjoint} />
               <FormField field={smartGraphFieldsMap.smartGraphAttribute} />
               <EdgeDefinitionsField
-                noOptionsMessage="Please enter a new and valid collection name"
+                noOptionsMessage={() => "Please enter a new and valid collection name"}
                 allowExistingCollections={false}
               />
               <FormField field={smartGraphFieldsMap.orphanCollections} />

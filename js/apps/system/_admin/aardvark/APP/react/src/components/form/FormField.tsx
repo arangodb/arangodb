@@ -110,7 +110,8 @@ export const FormField = ({
             selectProps={{
               isClearable: field.isClearable,
               autoFocus,
-              options: field.options
+              options: field.options,
+              noOptionsMessage: field.noOptionsMessage
             }}
             isRequired={field.isRequired}
             name={field.name}
@@ -133,7 +134,8 @@ export const FormField = ({
             selectProps={{
               isClearable: field.isClearable,
               autoFocus,
-              options: field.options
+              options: field.options,
+              noOptionsMessage: field.noOptionsMessage
             }}
             isRequired={field.isRequired}
             name={field.name}

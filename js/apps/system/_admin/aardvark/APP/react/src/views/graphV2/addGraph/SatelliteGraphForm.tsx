@@ -25,7 +25,7 @@ const satelliteGraphFieldsMap = {
     tooltip:
       "Collections that are part of a graph but not used in an edge definition.",
     isRequired: true,
-    noOptionsMessage: "Please enter a new and valid collection name"
+    noOptionsMessage: () => "Please enter a new and valid collection name"
   }
 };
 
@@ -80,7 +80,11 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
             </Alert>
             <FieldsGrid maxWidth="full">
               <FormField field={satelliteGraphFieldsMap.name} />
-              <EdgeDefinitionsField noOptionsMessage="Please enter a new and valid collection name" />
+              <EdgeDefinitionsField
+                noOptionsMessage={() =>
+                  "Please enter a new and valid collection name"
+                }
+              />
               <FormField field={satelliteGraphFieldsMap.orphanCollections} />
             </FieldsGrid>
             <ModalFooter>

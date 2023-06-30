@@ -49,7 +49,7 @@ export const EdgeDefinitionsField = ({
   noOptionsMessage,
   allowExistingCollections = true
 }: {
-  noOptionsMessage?: string,
+  noOptionsMessage?: () => string,
   allowExistingCollections?: boolean;
 }) => {
   const { values } = useFormikContext<GeneralGraphCreateValues>();

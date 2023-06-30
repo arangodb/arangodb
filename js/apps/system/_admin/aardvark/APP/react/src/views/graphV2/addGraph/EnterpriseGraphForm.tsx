@@ -49,7 +49,7 @@ const enterpriseGraphFieldsMap = {
     tooltip:
       "Collections that are part of a graph but not used in an edge definition.",
     isRequired: true,
-    noOptionsMessage: "Please enter a new and valid collection name"
+    noOptionsMessage: () => "Please enter a new and valid collection name"
   }
 };
 
@@ -110,7 +110,9 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
                 field={enterpriseGraphFieldsMap.minReplicationFactor}
               />
               <EdgeDefinitionsField
-                noOptionsMessage="Please enter a new and valid collection name"
+                noOptionsMessage={() =>
+                  "Please enter a new and valid collection name"
+                }
                 allowExistingCollections={false}
               />
               <FormField field={enterpriseGraphFieldsMap.orphanCollections} />
