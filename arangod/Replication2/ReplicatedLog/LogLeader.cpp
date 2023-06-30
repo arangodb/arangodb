@@ -1276,7 +1276,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
 
   auto returnAppendEntriesResult =
       [term = request.leaderTerm, messageId = request.messageId,
-       logContext = messageLogContext,
+       storageManager = _storageManager, logContext = messageLogContext,
        measureTime = std::move(measureTimeGuard)](Result const& res) mutable {
         // fire here because the lambda is destroyed much later in a future
         measureTime.fire();
@@ -1287,7 +1287,8 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
         }
         LOG_CTX("e0800", TRACE, logContext)
             << "local follower completed append entries";
-        return AppendEntriesResult{term, messageId, true};
+        return AppendEntriesResult{term, messageId, true,
+                                   storageManager->getSyncIndex()};
       };
 
   LOG_CTX("6fa8b", TRACE, messageLogContext)
