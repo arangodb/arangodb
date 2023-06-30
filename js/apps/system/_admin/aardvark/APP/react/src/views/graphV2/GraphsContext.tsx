@@ -6,9 +6,7 @@ type GraphsContextType = {
   graphs: GraphInfo[] | undefined;
   isFormDisabled: boolean;
 };
-const GraphsContext = createContext<GraphsContextType>(
-  {} as GraphsContextType
-);
+const GraphsContext = createContext<GraphsContextType>({} as GraphsContextType);
 
 export const GraphsProvider = ({
   children,

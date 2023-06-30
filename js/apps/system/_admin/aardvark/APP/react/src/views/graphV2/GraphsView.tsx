@@ -2,16 +2,19 @@ import { AddIcon } from "@chakra-ui/icons";
 import { Box, Button, Heading, Stack, useDisclosure } from "@chakra-ui/react";
 import React from "react";
 import { AddGraphModal } from "./addGraph/AddGraphModal";
+import { GraphsProvider } from "./GraphsContext";
 import { GraphsTable } from "./listGraphs/GraphsTable";
 
 export const GraphsView = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   return (
-    <Box padding="4" width="100%">
-      <GraphViewHeader onOpen={onOpen} />
-      <AddGraphModal isOpen={isOpen} onClose={onClose} />
-      <GraphsTable />
-    </Box>
+    <GraphsProvider>
+      <Box padding="4" width="100%">
+        <GraphViewHeader onOpen={onOpen} />
+        <AddGraphModal isOpen={isOpen} onClose={onClose} />
+        <GraphsTable />
+      </Box>
+    </GraphsProvider>
   );
 };
 
