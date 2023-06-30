@@ -95,7 +95,6 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   me->_url.clear();
   me->_request = std::make_unique<HttpRequest>(
       me->_connectionInfo, /*messageId*/ 1, me->_allowMethodOverride);
-  me->_requestSizeTracker.reset();
   me->_response.reset();
   me->_lastHeaderWasValue = false;
   me->_shouldKeepAlive = false;
@@ -262,7 +261,6 @@ template<SocketType T>
 HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
                               std::unique_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)),
-      _requestSizeTracker(this->_generalServerFeature._requestBodySize),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
       _messageDone(false),
@@ -545,7 +543,6 @@ void HttpCommTask<T>::doProcessRequest() {
 
     std::string_view body = _request->rawPayload();
     this->_generalServerFeature.countHttp1Request(body.size());
-    _requestSizeTracker.add(body.size());
 
     if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {

@@ -46,6 +46,7 @@
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
+#include "GeneralServerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -66,6 +67,9 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
               .with<structuredParams::UrlName>(_request->fullUrl())
               .with<structuredParams::UserName>(_request->user())
               .share()),
+      _requestBodySizeTracker(
+          server.getFeature<GeneralServerFeature>()._requestBodySize,
+          _request->rawPayload().size()),
       _canceled(false) {}
 
 RestHandler::~RestHandler() {

@@ -21,55 +21,51 @@
 #pragma once
 
 #include "Gauge.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb::metrics {
 
 template<typename T>
 struct GaugeCounterGuard {
-  GaugeCounterGuard() = default;
-  GaugeCounterGuard(GaugeCounterGuard&&) = default;
   GaugeCounterGuard(GaugeCounterGuard const&) = delete;
-  GaugeCounterGuard& operator=(GaugeCounterGuard&&) = default;
   GaugeCounterGuard& operator=(GaugeCounterGuard const&) = delete;
+
+  GaugeCounterGuard(GaugeCounterGuard&& other) noexcept {
+    std::swap(other._totalValue, _totalValue);
+  }
+  GaugeCounterGuard& operator=(GaugeCounterGuard&& other) noexcept {
+    reset();
+    std::swap(other._totalValue, _totalValue);
+  }
 
   ~GaugeCounterGuard() { fire(); }
 
   explicit GaugeCounterGuard(Gauge<T>& metric, T initialValue = {})
-      : _metric(&metric) {
+      : _metric(metric) {
     add(initialValue);
   }
 
   void add(T delta) noexcept {
-    TRI_ASSERT(_metric != nullptr);
-    _metric->fetch_add(delta);
+    _metric.fetch_add(delta);
     _totalValue += delta;
   }
 
   void sub(T delta) noexcept {
     TRI_ASSERT(_metric != nullptr);
-    _metric->fetch_sub(delta);
+    _metric.fetch_sub(delta);
     _totalValue -= delta;
   }
 
-  void fire() noexcept {
-    if (_metric) {
-      reset();
-      _metric.reset();
-    }
-  }
+  void fire() noexcept { reset(); }
 
   void reset(std::uint64_t newValue = {}) noexcept {
-    _metric->fetch_sub(_totalValue - newValue);
+    _metric.fetch_sub(_totalValue - newValue);
     _totalValue = newValue;
   }
 
  private:
   T _totalValue{0};
-  struct noop {
-    template<typename V>
-    void operator()(V*) {}
-  };
-  std::unique_ptr<Gauge<T>, noop> _metric = nullptr;
+  Gauge<T>& _metric;
 };
 
 }  // namespace arangodb::metrics

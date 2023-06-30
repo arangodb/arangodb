@@ -94,7 +94,6 @@ class HttpCommTask final : public GeneralCommTask<T> {
   std::string _origin;  // value of the HTTP origin header the client sent
   std::string _url;
   std::unique_ptr<HttpRequest> _request;
-  metrics::GaugeCounterGuard<std::uint64_t> _requestSizeTracker;
   std::unique_ptr<basics::StringBuffer> _response;
   bool _lastHeaderWasValue;
   bool _shouldKeepAlive;  /// keep connection open

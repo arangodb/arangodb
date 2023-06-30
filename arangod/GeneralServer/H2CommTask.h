@@ -102,7 +102,6 @@ class H2CommTask final : public GeneralCommTask<T> {
     std::string origin;
 
     std::unique_ptr<HttpRequest> request;
-    metrics::GaugeCounterGuard<std::uint64_t> bodySizeTracker;
     std::unique_ptr<H2Response> response;  // hold response memory
     bool mustSendAuthHeader = true;
 
