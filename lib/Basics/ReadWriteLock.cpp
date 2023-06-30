@@ -64,10 +64,6 @@ bool ReadWriteLock::tryLockWriteFor(std::chrono::microseconds timeout) {
     return true;
   }
 
-  if (timeout.count() == 0) {
-    timeout = std::chrono::microseconds(100000);
-  }
-  
   // the lock is either held by another writer or we have active readers
   // -> announce that we want to write
   _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
