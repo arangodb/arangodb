@@ -68,7 +68,7 @@ bool ReadWriteLock::tryLockWriteFor(std::chrono::microseconds timeout) {
   // -> announce that we want to write
   _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
-  auto end_time = std::chrono::steady_clock::now() + timeout ;
+  auto end_time = std::chrono::steady_clock::now() + timeout;
 
   std::cv_status status(std::cv_status::no_timeout);
   {
