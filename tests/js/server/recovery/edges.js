@@ -36,24 +36,26 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  var c, v, e, i;
   db._drop('UnitTestsVertices');
   db._drop('UnitTestsEdges');
 
-  v = db._create('UnitTestsVertices');
-  e = db._createEdgeCollection('UnitTestsEdges');
+  const v = db._create('UnitTestsVertices');
+  const e = db._createEdgeCollection('UnitTestsEdges');
 
-  for (i = 0; i < 1000; ++i) {
-    v.save({ _key: 'node' + i, name: 'some-name' + i });
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ _key: 'node' + i, name: 'some-name' + i });
   }
+  v.insert(docs);
 
-  for (i = 0; i < 1000; ++i) {
-    e.save('UnitTestsVertices/node' + i, 'UnitTestsVertices/node' + (i % 10),
-      { _key: 'edge' + i, what: 'some-value' + i });
+  docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ _key: 'edge' + i, what: 'some-value' + i, _from: 'UnitTestsVertices/node' + i, _to: 'UnitTestsVertices/node' + (i % 10) });
   }
+  e.insert(docs);
 
   db._drop('test');
-  c = db._create('test');
+  const c = db._create('test');
   c.save({ _key: 'crashme' }, true); // wait for sync
 
   internal.debugTerminate('crashing server');

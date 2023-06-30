@@ -43,9 +43,11 @@ function optimizerIndexesInOrTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 2000; ++i) {
-        c.save({ _key: "test" + i, value1: (i % 100), value2: i });
+      let docs = [];
+      for (let i = 0; i < 2000; ++i) {
+        docs.push({ _key: "test" + i, value1: (i % 100), value2: i });
       }
+      c.insert(docs);
     },
 
     tearDown : function () {

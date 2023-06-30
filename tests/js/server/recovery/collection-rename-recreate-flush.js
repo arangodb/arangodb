@@ -35,29 +35,35 @@ var jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-  var i, c;
+  var c;
 
   db._drop('UnitTestsRecovery1');
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery1');
 
-  for (i = 0; i < 1000; ++i) {
-    db.UnitTestsRecovery1.save({ a: i });
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ a: i });
   }
+  db.UnitTestsRecovery1.insert(docs);
 
   db.UnitTestsRecovery1.rename('UnitTestsRecovery2'); // 1000 documents in collection 2
 
   db._create('UnitTestsRecovery1');
 
-  for (i = 0; i < 99; ++i) {
+  docs = [];  
+  for (let i = 0; i < 99; ++i) {
     // new UnitTestsRecovery1
-    db.UnitTestsRecovery1.save({ a: i }); // 99 documents in collection 1
+    docs.push({ a: i }); // 99 documents in collection 1
   }
+  db.UnitTestsRecovery1.insert(docs);
 
-  for (i = 0; i < 100000; ++i) {
+  docs = [];
+  for (let i = 0; i < 100000; ++i) {
     //c is collection UnittestsRecovery2 (former 1)
-    c.save({ a: 'this-is-a-longer-string-to-fill-up-logfiles' }); // 101000 documents in collection 2
+    docs.push({ a: 'this-is-a-longer-string-to-fill-up-logfiles' }); // 101000 documents in collection 2
   }
+  c.insert(docs);
 
   // flush the logfile but do not write shutdown info
   internal.wal.flush(true, true);

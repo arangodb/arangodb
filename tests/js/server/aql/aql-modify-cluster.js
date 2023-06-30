@@ -154,18 +154,22 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      var i;
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1, {numberOfShards:5});
       c2 = db._create(cn2, {numberOfShards:5});
 
-      for (i = 0; i < 100; ++i) {
-        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
-      for (i = 0; i < 50; ++i) {
-        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      c1.insert(docs);
+
+      docs = [];
+      for (let i = 0; i < 50; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      c2.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -500,7 +504,6 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      var i;
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
@@ -508,12 +511,16 @@ function ahuacatlInsertSuite () {
       c2 = db._create(cn2, {numberOfShards: 5});
       c3 = db._create(cn3, {numberOfShards: 2, shardKeys: [ "a", "b" ] });
 
-      for (i = 0; i < 100; ++i) {
-        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
-      for (i = 0; i < 50; ++i) {
-        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      c1.insert(docs);
+      docs = [];
+      for (let i = 0; i < 50; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      c2.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

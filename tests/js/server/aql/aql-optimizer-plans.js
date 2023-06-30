@@ -45,9 +45,11 @@ function optimizerPlansTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 150; ++i) {
-        c.save({ _key: "test" + i, value: i });
+      let docs = [];
+      for (let i = 0; i < 150; ++i) {
+        docs.push({ _key: "test" + i, value: i });
       }
+      c.insert(docs);
     },
 
     tearDown : function () {

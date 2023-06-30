@@ -51,23 +51,28 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      var i;
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      for (i = 0; i < 100; ++i) {
-        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
-      for (i = 0; i < 50; ++i) {
-        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      c1.insert(docs);
+      docs = [];
+      for (let i = 0; i < 50; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
-      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+      c2.insert(docs);
 
-      for (i = 0; i < 100; ++i) {
-        edge.save("UnitTestsAhuacatlRemove1/foo" + i, "UnitTestsAhuacatlRemove2/bar", { what: i, _key: "test" + i });
+      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+      docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ what: i, _key: "test" + i, _from: "UnitTestsAhuacatlRemove1/foo" + i, _to: "UnitTestsAhuacatlRemove2/bar" });
       }
+      edge.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -389,12 +394,16 @@ function ahuacatlInsertSuite () {
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      for (var i = 0; i < 100; ++i) {
-        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
-      for (i = 0; i < 50; ++i) {
-        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      c1.insert(docs);
+      docs = [];
+      for (let i = 0; i < 50; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      c2.insert(docs);
       db._drop("UnitTestsAhuacatlEdge");
       edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
     },
@@ -634,18 +643,21 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      var i;
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      for (i = 0; i < 100; ++i) {
-        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      let docs = [];  
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
-      for (i = 0; i < 50; ++i) {
-        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      c1.insert(docs);
+      docs = [];
+      for (let i = 0; i < 50; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      c2.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

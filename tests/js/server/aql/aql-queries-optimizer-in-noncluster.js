@@ -1012,12 +1012,14 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testPersistentIndexMoreThanOne4 : function () {
+      let docs = [];
       for (var i = 1;i <= 10;i++) {
         for (var j = 1; j <= 30; j++) {
-          c.save({value1 : i, value2: j, value3: i + j,
+          docs.push({value1 : i, value2: j, value3: i + j,
             value4: 'somethings' + 2*j });
         }
       }
+      c.insert(docs);
 
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2", "value3", "value4"] });
 
@@ -1041,12 +1043,14 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testPersistentIndexMoreThanOne4Desc : function () {
+      let docs = [];
       for (var i = 1;i <= 10;i++) {
         for (var j = 1; j <= 30; j++) {
-          c.save({value1 : i, value2: j, value3: i + j,
+          docs.push({value1 : i, value2: j, value3: i + j,
             value4: 'somethings' + 2*j });
         }
       }
+      c.insert(docs);
 
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2", "value3", "value4"] });
 
@@ -1062,14 +1066,16 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testPersistentIndexMoreThanOne5 : function () {
+      let docs = [];
       for (var i = 1;i <= 10;i++) {
         for (var j = 1; j <= 10; j++) {
           for (var k = 1; k <= 10; k++) {
-            c.save({value1 : i, value2: j, value3: k,
+            docs.push({value1 : i, value2: j, value3: k,
               value4: 'somethings' + j * 2 });
           }
         }
       }
+      c.insert(docs);
 
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2", "value3", "value4"] });
 
@@ -1095,14 +1101,16 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testPersistentIndexMoreThanOne5Desc : function () {
+      let docs = [];
       for (var i = 1; i <= 10;i++) {
         for (var j = 1; j <= 10; j++) {
           for (var k = 1; k <= 10; k++) {
-            c.save({value1 : i, value2: j, value3: k,
+            docs.push({value1 : i, value2: j, value3: k,
               value4: 'somethings' + 2*j });
           }
         }
       }
+      c.insert(docs);
 
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2", "value3", "value4"] });
 
@@ -1120,14 +1128,16 @@ function ahuacatlQueryOptimizerInTestSuite () {
     },
 
     testPersistentIndexMoreThanOne6 : function () {
+      let docs = [];
       for (var i = 1; i <= 10;i++) {
         for (var j = 1; j <= 10; j++) {
           for (var k = 1; k <= 10; k++) {
-            c.save({value1 : i, value2: j, value3: k,
+            docs.push({value1 : i, value2: j, value3: k,
               value4: 'somethings' + 2*j });
           }
         }
       }
+      c.insert(docs);
 
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2", "value3", "value4"] });
 

@@ -51,17 +51,19 @@ function unusedVariableSuite() {
       db._drop(gn + 'v');
       db._drop(gn + 'e');
 
-      var i;
-
-      var c = db._create(gn + 'v');
-      for (i = 0; i < 10000; ++i) {
-        c.insert({_key: 'test' + i});
+      let c = db._create(gn + 'v');
+      let docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({_key: 'test' + i});
       }
+      c.insert(docs);
 
       c = db._createEdgeCollection(gn + 'e');
-      for (i = 0; i < 10000; ++i) {
-        c.insert({_from: gn + 'v/test' + i, _to: gn + 'v/test' + (i+1)});
+      docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({_from: gn + 'v/test' + i, _to: gn + 'v/test' + (i+1)});
       }
+      c.insert(docs);
     },
 
     tearDownAll: function () {

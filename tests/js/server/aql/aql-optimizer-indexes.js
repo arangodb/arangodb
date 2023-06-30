@@ -3659,13 +3659,16 @@ function optimizerIndexesMultiCollectionTestSuite () {
       c1 = db._create("UnitTestsCollection1");
       c2 = db._create("UnitTestsCollection2");
 
-      var i;
-      for (i = 0; i < 200; ++i) {
-        c1.save({ _key: "test" + i, value: i });
+      let docs = [];
+      for (let i = 0; i < 200; ++i) {
+        docs.push({ _key: "test" + i, value: i });
       }
-      for (i = 0; i < 200; ++i) {
-        c2.save({ _key: "test" + i, value: i, ref: "UnitTestsCollection1/test" + i });
+      c1.insert(docs);
+      docs = [];
+      for (let i = 0; i < 200; ++i) {
+        docs.push({ _key: "test" + i, value: i, ref: "UnitTestsCollection1/test" + i });
       }
+      c2.insert(docs);
     },
 
     tearDown : function () {

@@ -64,9 +64,11 @@ function corruptRepairSuite () {
       db._drop(colName1);
       let c = db._create(colName1);
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.save({ _key: "test_" + i });
+        docs.push({ _key: "test_" + i });
       }
+      c.insert(docs);
 
       waitForTreeReady(c);
     },

@@ -46,6 +46,7 @@ function runSetup () {
       var db = require('@arangodb').db;
 
       var i, c = db._collection('UnitTestsRecovery');
+      // TODO - can we use batch operations here?
       for (i = 0; i < 100000; ++i) {
         c.save({ _key: 'test' + i, value1: 'test' + i, value2: i });
       }

@@ -48,9 +48,11 @@ function optimizerKeepTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
+      let docs = [];
       for (var i = 0; i < 1000; ++i) {
-        c.save({ group: "test" + (i % 10), value: i });
+        docs.push({ group: "test" + (i % 10), value: i });
       }
+      c.insert(docs);
     },
 
     tearDownAll : function () {

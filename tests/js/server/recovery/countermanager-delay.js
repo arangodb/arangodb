@@ -49,9 +49,11 @@ function runSetup () {
 
   var j = 0;
   while (j++ < 20) {
-    for (i = 0; i < 10000; ++i) {
-      c.save({ value1: 'test' + i, value2: i });
+    let docs = [];
+    for (let i = 0; i < 10000; ++i) {
+      docs.push({ value1: 'test' + i, value2: i });
     }
+    c.insert(docs);
     internal.wal.flush(true, true);
   }
 

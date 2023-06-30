@@ -97,22 +97,24 @@ function complexInternaSuite() {
     },
 
     testMultipleBlocksResult: function () {
-      var query = `WITH ${gh.vn}
-      FOR x IN OUTBOUND @startId @@eCol
-      SORT x._key RETURN x`;
-      var amount = 10000;
-      var startId = gh.vn + '/test';
-      var bindVars = {
+      const query = `WITH ${gh.vn}
+        FOR x IN OUTBOUND @startId @@eCol
+        SORT x._key RETURN x`;
+        const amount = 10000;
+        const startId = gh.vn + '/test';
+        const bindVars = {
         '@eCol': gh.en,
         'startId': startId
       };
       gh.vc.save({_key: startId.split('/')[1]});
 
       // Insert amount many edges and vertices into the collections.
-      for (var i = 0; i < amount; ++i) {
-        var tmp = gh.vc.save({_key: '' + i})._id;
-        gh.ec.save(startId, tmp, {});
+      const docs = [];
+      for (let i = 0; i < amount; ++i) {
+        docs.push({_key: i.toString()});
       }
+      const vs = gh.vc.insert(docs);
+      gh.ec.insert(vs.map(v => ({_from: startId, _to: v._id})));
 
       // Check that we can get all of them out again.
       var result = db._query(query, bindVars).toArray();
@@ -190,20 +192,23 @@ function complexInternaSuite() {
     },
 
     testManyResults: function () {
-      var query = `WITH ${gh.vn}
-      FOR x IN OUTBOUND @startId @@eCol
-      RETURN x._key`;
-      var startId = gh.vn + '/many';
-      var bindVars = {
+      const query = `WITH ${gh.vn}
+        FOR x IN OUTBOUND @startId @@eCol
+        RETURN x._key`;
+      const startId = gh.vn + '/many';
+      const bindVars = {
         '@eCol': gh.en,
         'startId': startId
       };
       gh.vc.save({_key: startId.split('/')[1]});
-      var amount = 10000;
-      for (var i = 0; i < amount; ++i) {
-        var _id = gh.vc.save({});
-        gh.ec.save(startId, _id, {});
+      const amount = 10000;
+      const docs = [];
+      for (let i = 0; i < amount; ++i) {
+        docs.push({});
       }
+      const vs = gh.vc.insert(docs);
+      gh.ec.insert(vs.map(v => ({_from: startId, _to: v._id})));
+
       var result = db._query(query, bindVars);
       var found = 0;
       // Count has to be correct

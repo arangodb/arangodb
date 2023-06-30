@@ -39,18 +39,22 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   var c = db._create('UnitTestsRecovery'), i;
 
-  for (i = 0; i < 1000; ++i) {
-    c.save({ _key: 'test' + i, value1: 'test' + i });
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ _key: 'test' + i, value1: 'test' + i });
   }
+  c.insert(docs);
 
   // make sure the next operations go into a separate log
   internal.wal.flush(true, true);
 
   db._drop('UnitTestsRecovery');
   c = db._create('UnitTestsRecovery');
-  for (i = 0; i < 100; ++i) {
-    c.save({ _key: 'test' + i, value1: i });
+  docs = [];
+  for (let i = 0; i < 100; ++i) {
+    docs.push({ _key: 'test' + i, value1: i });
   }
+  c.insert(docs);
 
   c.save({ _key: 'foo' }, true);
 

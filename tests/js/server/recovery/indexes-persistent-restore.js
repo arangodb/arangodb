@@ -37,12 +37,14 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery1');
-  var c = db._create('UnitTestsRecovery1'), i;
+  var c = db._create('UnitTestsRecovery1');
   c.ensureIndex({ type: 'persistent', fields: ['value'] });
 
-  for (i = 0; i < 1000; ++i) {
-    c.save({ value: i });
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ value: i });
   }
+  c.insert(docs);
 
   internal.wal.flush(true, true);
 

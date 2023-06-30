@@ -35,23 +35,26 @@ var jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-  var i;
 
   db._drop('UnitTestsRecovery1');
   db._drop('UnitTestsRecovery2');
   db._create('UnitTestsRecovery1');
 
-  for (i = 0; i < 1000; ++i) {
-    db.UnitTestsRecovery1.save({ a: i });
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ a: i });
   }
+  db.UnitTestsRecovery1.insert(docs);
 
   db.UnitTestsRecovery1.rename('UnitTestsRecovery2');
 
   db._create('UnitTestsRecovery1');
 
-  for (i = 0; i < 99; ++i) {
-    db.UnitTestsRecovery1.save({ a: i });
+  docs = [];
+  for (let i = 0; i < 99; ++i) {
+    docs.push({ a: i });
   }
+  db.UnitTestsRecovery1.insert(docs);
 
   db.UnitTestsRecovery1.save({ _key: 'foo' }, true);
 

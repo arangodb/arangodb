@@ -36,11 +36,13 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery');
-  var c = db._create('UnitTestsRecovery'), i;
+  var c = db._create('UnitTestsRecovery');
 
-  for (i = 0; i < 1000; ++i) {
-    c.save({ _key: 'test' + i, value: i });
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ _key: 'test' + i, value: i });
   }
+  c.insert(docs);
   // shut down normally! no crashing!
 }
 

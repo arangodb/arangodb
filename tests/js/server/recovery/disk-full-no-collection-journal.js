@@ -48,12 +48,14 @@ function runSetup () {
     action: function () {
       var db = require('@arangodb').db;
 
-      var i, c = db._collection('UnitTestsRecovery');
-      for (i = 0; i < 100000; ++i) {
-        c.save({ _key: 'test' + i, value1: 'test' + i, value2: i });
+      const c = db._collection('UnitTestsRecovery');
+      let docs = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: 'test' + i, value1: 'test' + i, value2: i });
       }
+      c.insert(docs);
 
-      for (i = 0; i < 100000; i += 2) {
+      for (let i = 0; i < 100000; i += 2) {
         c.remove('test' + i, {
           waitForSync: (i === 100000 - 2)
         });

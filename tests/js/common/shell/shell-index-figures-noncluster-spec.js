@@ -115,9 +115,11 @@ describe('Index figures', function () {
       before('insert document', function() {
         // We insert enough documents to trigger resizing
         // of initial cache size.
+        let docs = [];
         for (let i = 0; i < 23000; i++) {
-          col.insert({"_from": "source/" + i, "_to": "sink/" + i});
+          docs.push({"_from": "source/" + i, "_to": "sink/" + i});
         }
+        col.insert(docs);
       });
 
       it('should fill the cache', function() {

@@ -438,9 +438,11 @@ function ActiveFailoverSuite() {
       assertTrue(checkInSync(currentLead, servers));
 
       let col = db._collection(cname);
+      let docs = [];
       for (let i = 0; i < 10000; i++) {
-        col.save({ attr: i});
+        docs.push({ attr: i});
       }
+      col.insert(docs);
     },
 
     tearDown: function () {

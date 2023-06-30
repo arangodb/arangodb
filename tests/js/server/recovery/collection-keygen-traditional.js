@@ -41,9 +41,11 @@ function runSetup () {
   db._drop('UnitTestsRecovery1');
   c = db._create('UnitTestsRecovery1', { keyOptions: { type: 'traditional'} } );
   c.save({ _key: String(bigNumber) });
+  let docs = [];
   for (let i = 0; i < 10000; i++) { // fill up the WAL
-    c.save({some: 'valuexxxxxxxxxxxxx'});
+    docs.push({some: 'valuexxxxxxxxxxxxx'});
   }
+  c.insert(docs);
 
   // write to other collection 
   db._drop('UnitTestsRecovery2');

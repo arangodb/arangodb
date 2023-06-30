@@ -304,26 +304,29 @@ function legacyGeoTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
-      var lat, lon;
       db._drop("UnitTestsAhuacatlLocations");
       db._drop("UnitTestsAhuacatlLocationsNon");
 
       locations = db._create("UnitTestsAhuacatlLocations");
-      for (lat = -40; lat <= 40; ++lat) {
-        for (lon = -40; lon <= 40; ++lon) {
-          locations.save({ "latitude": lat, "longitude": lon });
+      let docs = [];
+      for (let lat = -40; lat <= 40; ++lat) {
+        for (let lon = -40; lon <= 40; ++lon) {
+          docs.push({ "latitude": lat, "longitude": lon });
         }
       }
+      locations.insert(docs);
 
       locations.ensureIndex({ type: "geo", fields: ["latitude", "longitude"] });
 
       locationsNon = db._create("UnitTestsAhuacatlLocationsNon");
 
-      for (lat = -40; lat <= 40; ++lat) {
-        for (lon = -40; lon <= 40; ++lon) {
-          locationsNon.save({ "latitude": lat, "longitude": lon });
+      docs = [];
+      for (let lat = -40; lat <= 40; ++lat) {
+        for (let lon = -40; lon <= 40; ++lon) {
+          docs.push({ "latitude": lat, "longitude": lon });
         }
       }
+      locationsNon.insert(docs);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -537,17 +540,18 @@ function pointsTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
-      var lat, lon;
       db._drop("UnitTestsPointsTestSuite");
 
       locations = db._create("UnitTestsPointsTestSuite");
       locations.ensureIndex({ type: "geo", fields: ["lat", "lng"]});
 
-      for (lat = -40; lat <= 40; ++lat) {
-        for (lon = -40; lon <= 40; ++lon) {
-          locations.save({ "lat": lat, "lng": lon });
+      let docs = [];
+      for (let lat = -40; lat <= 40; ++lat) {
+        for (let lon = -40; lon <= 40; ++lon) {
+          docs.push({ "lat": lat, "lng": lon });
         }
       }
+      locations.insert(docs);
     },
 
     ////////////////////////////////////////////////////////////////////////////////

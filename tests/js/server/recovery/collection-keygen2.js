@@ -34,22 +34,25 @@ var jsunity = require('jsunity');
 function runSetup() {
   'use strict';
   internal.debugClearFailAt();
-  var c, i;
 
   // write some documents with autoincrement keys
   db._drop('UnitTestsRecovery1');
-  c = db._create('UnitTestsRecovery1', {
+  let c = db._create('UnitTestsRecovery1', {
     keyOptions: {
       type: 'autoincrement',
       offset: 0, increment: 10
     }, numberOfShards: 1
   });
-  for (i = 0; i < 1000; i++) {
-    c.save({value: i});
+
+  let docs = [];
+  for (let i = 0; i < 1000; i++) {
+    docs.push({value: i});
   }
-  var wals = db._currentWalFiles().map(function(f) {
+  c.insert(docs);
+
+  const wals = db._currentWalFiles().map(function(f) {
     // strip off leading `/` or `/archive/` if it exists
-    var p = f.split('/');
+    const p = f.split('/');
     return p[p.length - 1];
   });
 
@@ -57,21 +60,23 @@ function runSetup() {
   // out of the wal
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2');
-  var keepWriting = true;
+  let keepWriting = true;
   while (keepWriting) {
-    var padding = 'aaa';
-    for (i = 0; i < 10000; i++) {
+    let padding = 'aaa';
+    docs = [];
+    for (let i = 0; i < 10000; i++) {
       padding = padding.concat('aaa');
-      c.save({value: i, text: padding});
+      docs.push({value: i, text: padding});
     }
+    c.insert(docs);
 
     keepWriting = false;
-    var walsLeft = db._currentWalFiles().map(function(f) {
+    const walsLeft = db._currentWalFiles().map(function(f) {
       // strip off leading `/` or `/archive/` if it exists
-      var p = f.split('/');
+      const p = f.split('/');
       return p[p.length - 1];
     });
-    for (var j = 0; j < wals.length; j++) {
+    for (let j = 0; j < wals.length; j++) {
       if (walsLeft.indexOf(wals[j]) !== -1) { // still have old wal file
         keepWriting = true;
       }

@@ -288,6 +288,7 @@ function dumpTestSuite() {
         assertEqual({value: [i, i]}, doc.more);
       }
 
+      // TODO - what is this testing? there are not assertions after this code...
       for (let i = 0; i < 1000; ++i) {
         c.save({value: i, more: [i, i]});
       }

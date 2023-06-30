@@ -60,13 +60,15 @@ function optimizeInSuite() {
       ec = db._createEdgeCollection(en, {numberOfShards: 4});
       vc.save({_key: startId.split('/')[1]});
 
-      for (var i = 0; i < 100; ++i) {
-        var tmp = vc.save({_key: 'tmp' + i, value: i});
-        ec.save(startId, tmp._id, {_key: 'tmp' + i, value: i});
-        for (var j = 0; j < 100; ++j) {
-          var innerTmp = vc.save({_key: 'innertmp' + i + '_' + j});
-          ec.save(tmp._id, innerTmp._id, {});
+      for (let i = 0; i < 100; ++i) {
+        const tmp = vc.insert({_key: 'tmp' + i, value: i});
+        ec.insert(startId, tmp._id, {_key: 'tmp' + i, value: i});
+        let innerVs = [];
+        for (let j = 0; j < 100; ++j) {
+          innerVs.push({_key: 'innertmp' + i + '_' + j});
         }
+        innerVs = vc.insert(innerVs);
+        ec.insert(innerVs.map(v => { return {_from: tmp._id, _to: v._id }; }));
       }
     },
 

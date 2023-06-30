@@ -37,17 +37,21 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery');
-  var c = db._create('UnitTestsRecovery'), i;
-  for (i = 0; i < 10000; ++i) {
-    c.save({ value1: 'test' + i, value2: i });
+  var c = db._create('UnitTestsRecovery');
+  let docs = [];
+  for (let i = 0; i < 10000; ++i) {
+    docs.push({ value1: 'test' + i, value2: i });
   }
+  c.insert(docs);
 
   internal.debugSetFailAt("RocksDBCounterManagerSync");
   internal.wal.flush(true, true);
 
-  for (i = 10000; i < 200000; ++i) {
-    c.save({ value1: 'test' + i, value2: i });
+  docs = [];
+  for (let i = 10000; i < 200000; ++i) {
+    docs.push({ value1: 'test' + i, value2: i });
   }
+  c.insert(docs);
 
   internal.debugTerminate('crashing server');
 }
@@ -72,6 +76,7 @@ function recoverySuite () {
       var i, c = db._collection('UnitTestsRecovery');
       assertEqual(200000, c.count());
 
+      // TODO - can we use bulk operations here?
       for (i = 200000; i < 210000; ++i) {
         c.save({ value1: 'test' + i, value2: i });
       }

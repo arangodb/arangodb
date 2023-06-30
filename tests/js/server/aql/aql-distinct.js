@@ -57,9 +57,11 @@ function ahuacatlDistinct () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 100; ++i) {
-        c.save({ value1: i, value2: i % 10, value3: "test" + i, value4: "test" + (i % 10) });
+      const docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value1: i, value2: i % 10, value3: "test" + i, value4: "test" + (i % 10) });
       }
+      c.insert(docs);
     },
 
     tearDownAll : function () {
@@ -325,12 +327,14 @@ function ahuacatlCollect () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 10; ++i) {
-        for (var j = 0; j < 10; ++j) {
-          c.save({a:{key: i, name: j}});
-          c.save({a:{key: i, name: j}});
+      let docs = [];
+      for (let i = 0; i < 10; ++i) {
+        for (let j = 0; j < 10; ++j) {
+          docs.push({a:{key: i, name: j}});
+          docs.push({a:{key: i, name: j}});
         }
       }
+      c.insert(docs);
     },
 
     tearDownAll : function () {

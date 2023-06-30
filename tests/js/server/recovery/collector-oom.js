@@ -37,10 +37,12 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery');
-  var c = db._create('UnitTestsRecovery'), i;
-  for (i = 0; i < 10000; ++i) {
-    c.save({ _key: 'test' + i, value1: 'test' + i, value2: i });
+  let c = db._create('UnitTestsRecovery');
+  let docs = [];
+  for (let i = 0; i < 10000; ++i) {
+    docs.push({ _key: 'test' + i, value1: 'test' + i, value2: i });
   }
+  c.insert(docs);
 
   internal.debugSetFailAt('CollectorThreadProcessQueuedOperations');
   internal.wal.flush(true, false);
