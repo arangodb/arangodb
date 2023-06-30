@@ -181,7 +181,7 @@ const validateProperties = (overrides, colName, type, keepClusterSpecificAttribu
     assertEqual(props.shadowCollections.length, 3, `Found incorrect amount of shadowCollections ${JSON.stringify(props.shadowCollections)}`);
   }
   const foundKeys = Object.keys(props);
-  assertEqual(expectedKeys.length, foundKeys.length, `Check that all properties are reported expected. Missing: ${JSON.stringify(_.difference(expectedKeys, foundKeys))} unexpected: ${JSON.stringify(_.difference(foundKeys, expectedKeys))}`);
+  assertEqual(expectedKeys.length, foundKeys.length, `Check that all reported properties are expected. Missing: ${JSON.stringify(_.difference(expectedKeys, foundKeys))} unexpected: ${JSON.stringify(_.difference(foundKeys, expectedKeys))}`);
 };
 
 const validatePropertiesAreNotEqual = (forbidden, collname) => {
@@ -200,10 +200,15 @@ const isDisallowed = (code, errorNum, res, input) => {
   assertEqual(res.errorNum, errorNum, `Different error on input ${JSON.stringify(input)}, ${JSON.stringify(res)}`);
 };
 
-const isAllowed = (res, collname, input) => {
+const isAllowed = (res, collname, input, expectLogEntry = true) => {
   assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(input)}`);
   validateProperties({}, collname, 2);
   validatePropertiesAreNotEqual(input, collname);
+  if (expectLogEntry) {
+    validateDeprecationLogEntryWritten();
+  } else {
+    validateNoLogsLeftBehind();
+  }
 };
 
 const validatePropertiesDoNotExist = (colName, illegalProperties) => {
@@ -261,6 +266,11 @@ function CreateCollectionsSuite() {
   const leaderName = "UnitTestLeader";
 
   return {
+
+    setUpAll() {
+      // Make sure we start without buffered logs
+      clearLogs();
+    },
 
     tearDown() {
       validateNoLogsLeftBehind();
@@ -371,6 +381,14 @@ function CreateCollectionsSuite() {
           } else {
             validateProperties({}, collname, 2);
           }
+          // TODO: Investigate why this is te behavior right now.
+          if (type === true) {
+            // Only this one writes a deprecation message
+            validateDeprecationLogEntryWritten();
+          } else {
+            // For the others validate they are not written
+            validateNoLogsLeftBehind();
+          }
         } finally {
           db._drop(collname);
         }
@@ -418,7 +436,6 @@ function CreateCollectionsSuite() {
     },
 
     testCreateDeleted: function () {
-      return;
       const res = tryCreate({name: collname, type: 2, deleted: true});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
@@ -474,13 +491,24 @@ function CreateCollectionsSuite() {
             }
           } else {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-            if (replicationFactor === 0) {
-              validateDeprecationLogEntryWritten();
-            }
             // MinReplicationFactor is forced to 0 on satellites
             // NOTE: SingleServer Enterprise for some reason this create returns MORE properties, then the others.
             if (!isCluster) {
-              validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0, isSmart: false, shardKeys: ["_key"], numberOfShards: 1, isDisjoint: false}, collname, 2, true);
+              if (replicationFactor === 0) {
+                validateProperties({replicationFactor: "satellite", writeConcern: 1}, collname, 2);
+                // 0 is actually not allowed anymore in the future
+                validateDeprecationLogEntryWritten();
+              } else {
+                validateProperties({
+                  replicationFactor: "satellite",
+                  minReplicationFactor: 0,
+                  writeConcern: 0,
+                  isSmart: false,
+                  shardKeys: ["_key"],
+                  numberOfShards: 1,
+                  isDisjoint: false
+                }, collname, 2, true);
+              }
             } else {
               validateProperties({replicationFactor: "satellite", minReplicationFactor: 0, writeConcern: 0}, collname, 2);
             }
@@ -636,11 +664,13 @@ function CreateCollectionsSuite() {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           validateProperties({}, collname, 2);
           validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
+          validateDeprecationLogEntryWritten();
         } else {
           if (!isCluster) {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
             validateProperties({}, collname, 2);
             validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
+            validateDeprecationLogEntryWritten();
           } else {
             assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
             if (!isServer) {
@@ -670,6 +700,41 @@ function CreateCollectionsSuite() {
         }
       } finally {
         db._drop(collname);
+      }
+    },
+
+    testSmartJoinCorrect: function () {
+      const leader = tryCreate({name: leaderName, numberOfShards: 3});
+      try {
+        const props = {
+          smartJoinAttribute: "test",
+          shardKeys: ["_key:"],
+          distributeShardsLike: leaderName
+        };
+        const res = tryCreate({
+          name: collname,
+          ...props
+        });
+        try {
+          if (!isEnterprise) {
+            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+            validateProperties({}, collname, 2);
+            validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
+          } else {
+            if (!isCluster) {
+              assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+              validateProperties({}, collname, 2);
+              validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
+            } else {
+              assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+              validateProperties(props, collname, 2);
+            }
+          }
+        } finally {
+          db._drop(collname);
+        }
+      } finally {
+        db._drop(leaderName);
       }
     },
 
@@ -740,6 +805,7 @@ function CreateCollectionsSuite() {
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
         validateProperties({}, collname, 2);
+        validateDeprecationLogEntryWritten();
       } finally {
         db._drop(collname);
       }
@@ -812,8 +878,6 @@ function CreateCollectionsSuite() {
               delete vertex.isDisjoint;
             }
             delete vertex.shardingStrategy;
-            // Single Server always falls back default replicationFactor
-            vertex.replicationFactor = 1;
           } else {
             if (!isEnterprise) {
               // smart features cannot be set
@@ -844,10 +908,6 @@ function CreateCollectionsSuite() {
                 delete edge.isDisjoint;
               }
               delete edge.shardingStrategy;
-              // Single Server always falls back default replicationFactor
-              edge.replicationFactor = 1;
-              // And also erases distributeShardsLike
-              delete edge.distributeShardsLike;
             } else {
               if (!isEnterprise) {
                 // smartFeatures cannot be set
@@ -953,8 +1013,6 @@ function CreateCollectionsSuite() {
                 delete vertex.isDisjoint;
               }
               delete vertex.shardingStrategy;
-              // Single Server always falls back default replicationFactor
-              vertex.replicationFactor = 1;
             } else {
               if (!isEnterprise) {
                 // smart features cannot be set
@@ -987,10 +1045,6 @@ function CreateCollectionsSuite() {
                   delete edge.isDisjoint;
                 }
                 delete edge.shardingStrategy;
-                // Single Server always falls back default replicationFactor
-                edge.replicationFactor = 1;
-                // And also erases distributeShardsLike
-                delete edge.distributeShardsLike;
               } else {
                 if (!isEnterprise) {
                   // smartFeatures cannot be set
@@ -1095,8 +1149,6 @@ function CreateCollectionsSuite() {
                 delete vertex.isDisjoint;
               }
               delete vertex.shardingStrategy;
-              // Single Server always falls back default replicationFactor
-              vertex.replicationFactor = 1;
             } else {
               if (!isEnterprise) {
                 // smart features cannot be set
@@ -1129,10 +1181,6 @@ function CreateCollectionsSuite() {
                   delete edge.isDisjoint;
                 }
                 delete edge.shardingStrategy;
-                // Single Server always falls back default replicationFactor
-                edge.replicationFactor = 1;
-                // And also erases distributeShardsLike
-                delete edge.distributeShardsLike;
               } else {
                 if (!isEnterprise) {
                   // smartFeatures cannot be set
@@ -1211,6 +1259,11 @@ function CreateCollectionsSuite() {
           // Unknown parameters are always ignored.
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           validateProperties({}, collname, 2);
+          if (p !== "doCompact" && p !== "isVolatile") {
+            // doCompact and isVolatile are old, and have been ignored ever since.
+            // They are ignored by new API.
+            validateDeprecationLogEntryWritten();
+          }
         } finally {
           db._drop(collname, true);
         }
@@ -1265,8 +1318,10 @@ function CreateCollectionsSuite() {
             replicationFactor: 2
           });
         } else {
+          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           // On single servers those values are just ignored
           validateProperties({}, collname, 2);
+          validateDeprecationLogEntryWritten();
         }
       } finally {
         // Should be noop
@@ -1299,13 +1354,8 @@ function CreateCollectionsSuite() {
         const res = tryCreate({name: collname});
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          if (isCluster) {
-            // Needs to take into account the database defaults (also note minReplicationFactor is returned with value equal to writeConcern)
-            validateProperties({replicationFactor: 3, writeConcern: 2, minReplicationFactor: 2}, collname, 2);
-          } else {
-            // The single server just does not care.
-            validateProperties({}, collname, 2);
-          }
+          // Needs to take into account the database defaults
+          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
         } finally {
           db._drop(collname);
         }
@@ -1356,7 +1406,16 @@ function IgnoreIllegalTypesSuite() {
 
   // No Setup or teardown required.
   // Every test in the suite is self-contained
-  const suite = {};
+  const suite = {
+    setUpAll() {
+      // Make sure we start without buffered logs
+      clearLogs();
+    },
+
+    tearDown() {
+      validateNoLogsLeftBehind();
+    }
+  };
 
   for (const [prop, type] of Object.entries(propertiesToTest)) {
     suite[`testIllegalEntries${prop}`] = function () {
@@ -1366,13 +1425,9 @@ function IgnoreIllegalTypesSuite() {
         try {
           switch (prop) {
             case "type": {
-              if (!isServer && typeof ignoredValue === "number" && ignoredValue < 0) {
-                // Client gets into VPack out of range
-                isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_INTERNAL.code, res, testParam);
-              } else {
-                // But well we can create all others, obviously defaulting to 2 (document)
-                isAllowed(res, collname, testParam);
-              }
+              // But well we can create all others, obviously defaulting to 2 (document)
+              // TODO Investigate why we only print on number and booleans
+              isAllowed(res, collname, testParam, typeof(ignoredValue) === 'number' ||  typeof(ignoredValue) === 'boolean');
               break;
             }
             case "computedValues": {
@@ -1387,25 +1442,20 @@ function IgnoreIllegalTypesSuite() {
               if (isCluster) {
                 if (typeof ignoredValue === "number") {
                   if (ignoredValue < 0) {
-                    // This is actually a VPack Error.
-                    // We should consider to make this a non-internal Error.
-                    isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_INTERNAL.code, res, testParam);
+                    isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
                   } else {
                     assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(testParam)}`);
                     validateProperties({numberOfShards: Math.floor(ignoredValue)}, collname, 2);
                   }
                 } else {
                   isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
-                  // isAllowed(res, collname, testParam);
                 }
               } else {
                 if (typeof ignoredValue === "number") {
                   if (ignoredValue < 0) {
-                    // This is actually a VPack Error.
-                    // We should consider to make this a non-internal Error.
-                    isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_INTERNAL.code, res, testParam);
+                    isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
                   } else {
-                    isAllowed(res, collname, testParam);
+                    isAllowed(res, collname, testParam, false);
                   }
                 } else {
                   isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
@@ -1435,7 +1485,17 @@ function IgnoreIllegalTypesSuite() {
                 }
               } else {
                 // Just ignore if we are not in cluster.
-                isAllowed(res, collname, testParam);
+                // Double values will still be floored, making it valid for replicationFactor
+                const expectDeprecationMessage = (() => {
+                  if (prop === "replicationFactor") {
+                    if (typeof(ignoredValue) === "number") {
+                      return ignoredValue < 0;
+                    }
+                    return true;
+                  }
+                  return true;
+                })();
+                isAllowed(res, collname, testParam, expectDeprecationMessage);
               }
               break;
             }
@@ -1479,11 +1539,17 @@ function CreateCollectionsInOneShardSuite() {
     setUpAll: function () {
       db._createDatabase("UnitTestOneShard", {sharding: "single"});
       db._useDatabase("UnitTestOneShard");
+      // Make sure we start without buffered logs
+      clearLogs();
     },
 
     tearDownAll: function () {
       db._useDatabase("_system");
       db._dropDatabase("UnitTestOneShard");
+    },
+
+    tearDown() {
+      validateNoLogsLeftBehind();
     },
 
     testCreateMinimalOneShard: function () {
@@ -1504,7 +1570,8 @@ function CreateCollectionsInOneShardSuite() {
     testCreateWithOtherShardValues: function () {
       for (const v of fixedOneShardValues) {
         // all are numeric values. None of them can be modified in one shard.
-        const res = tryCreate({name: collname, [v]: 2});
+        const value = v === "replicationFactor" ? 3 : 2;
+        const res = tryCreate({name: collname, [v]: value});
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           if (isCluster) {
@@ -1512,6 +1579,7 @@ function CreateCollectionsInOneShardSuite() {
           } else {
             // OneShard has no meaning in single server, just assert values are taken
             validateProperties({}, collname, 2);
+            validateDeprecationLogEntryWritten();
           }
         } finally {
           db._drop(collname);
@@ -1531,10 +1599,12 @@ function CreateCollectionsInOneShardSuite() {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           if (isCluster) {
             validateProperties(getOneShardShardingValues(), collname, 2);
+            validateDeprecationLogEntryWritten();
           } else {
             // OneShard has no meaning in single server, just assert default values are hold
             validateProperties({}, collname, 2);
             validatePropertiesDoNotExist(collname, ["distributeShardsLike"]);
+            validateDeprecationLogEntryWritten();
           }
         } finally {
           db._drop(collname);

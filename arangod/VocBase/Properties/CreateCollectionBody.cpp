@@ -23,9 +23,10 @@
 
 #include "CreateCollectionBody.h"
 
-#include "VocBase/Properties/DatabaseConfiguration.h"
+#include "Cluster/ServerState.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
@@ -34,21 +35,32 @@ using namespace arangodb;
 
 namespace {
 
-bool hasDistributeShardsLike(VPackSlice fullBody) {
+bool hasDistributeShardsLike(VPackSlice fullBody,
+                             DatabaseConfiguration const& config) {
   // Only true if we have a non-empty string as DistributeShardsLike
-  return fullBody.hasKey(StaticStrings::DistributeShardsLike) &&
-         fullBody.get(StaticStrings::DistributeShardsLike).isString() &&
-         !fullBody.get(StaticStrings::DistributeShardsLike)
-              .stringView()
-              .empty();
+  return config.isOneShardDB ||
+         (fullBody.hasKey(StaticStrings::DistributeShardsLike) &&
+          fullBody.get(StaticStrings::DistributeShardsLike).isString() &&
+          !fullBody.get(StaticStrings::DistributeShardsLike)
+               .stringView()
+               .empty());
 }
 
+auto isSingleServer() -> bool {
+  return ServerState::instance()->isSingleServer();
+}
 
-auto justKeep(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder& result) {
+bool isEdgeCollection(VPackSlice fullBody) {
+  // Only true if we have a non-empty string as DistributeShardsLike
+  auto type = fullBody.get(StaticStrings::DataSourceType);
+  return type.isNumber() && type.getNumericValue<TRI_col_type_e>() == TRI_col_type_e::TRI_COL_TYPE_EDGE;
+}
+
+auto justKeep(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
   result.add(key, value);
 }
 
-auto handleType(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder& result) {
+auto handleType(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
   if (value.isString() && value.isEqualString("edge")) {
     // String edge translates to edge type
     result.add(key, VPackValue(TRI_COL_TYPE_EDGE));
@@ -61,8 +73,8 @@ auto handleType(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder
   }
 }
 
-auto handleReplicationFactor(std::string_view key, VPackSlice value, VPackSlice fullBody, VPackBuilder& result) {
-  if (!hasDistributeShardsLike(fullBody)) {
+auto handleReplicationFactor(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+  if (!hasDistributeShardsLike(fullBody, config) && !isSingleServer()) {
     if (value.isNumber()) {
       if (value.getNumericValue<int64_t>() == 0) {
         result.add(key, VPackValue(StaticStrings::Satellite));
@@ -76,57 +88,88 @@ auto handleReplicationFactor(std::string_view key, VPackSlice value, VPackSlice 
   // Ignore if we have distributeShardsLike
 }
 
-auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder& result) {
+auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
   if (value.isBoolean()) {
     result.add(key, value);
   }
   // Ignore anything else
 }
 
-auto handleOnlyPositiveIntegers(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder& result) {
+auto handleOnlyPositiveIntegers(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
   if (value.isNumber() && value.isInteger() && value.getNumericValue<int64_t>() > 0) {
     result.add(key, value);
   }
   // Ignore anything else
 }
 
-auto handleWriteConcern(std::string_view key, VPackSlice value, VPackSlice fullBody, VPackBuilder& result) {
-  if (!hasDistributeShardsLike(fullBody)) {
-    handleOnlyPositiveIntegers(key, value, fullBody, result);
+auto handleWriteConcern(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+  if (!hasDistributeShardsLike(fullBody, config) && !isSingleServer()) {
+    handleOnlyPositiveIntegers(key, value, fullBody, config, result);
+  }
+  // Just ignore if we have distributeShardsLike or are on SingleServer
+}
+
+auto handleNumberOfShards(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+  if (!hasDistributeShardsLike(fullBody, config)) {
+    justKeep(key, value, fullBody, config, result);
   }
   // Just ignore if we have distributeShardsLike
 }
 
-auto handleNumberOfShards(std::string_view key, VPackSlice value, VPackSlice fullBody, VPackBuilder& result) {
-  if (!hasDistributeShardsLike(fullBody)) {
-    justKeep(key, value, fullBody, result);
-  }
-  // Just ignore if we have distributeShardsLike
-}
-
-auto handleOnlyObjects(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder& result) {
+auto handleOnlyObjects(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
   if (value.isObject()) {
     result.add(key, value);
   }
   // Ignore anything else
 }
 
-auto handleStringsOnly(std::string_view key, VPackSlice value, VPackSlice, VPackBuilder& result) {
+auto handleStringsOnly(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
   if (value.isString()) {
     result.add(key, value);
   }
   // Ignore anything else
 }
 
+auto handleDistributeShardsLike(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+  if (!config.isOneShardDB && !isSingleServer()) {
+    handleStringsOnly(key, value, fullBody, config, result);
+  }
+  // In oneShardDb distributeShardsLike is forced.
+}
 
-auto makeAllowList() -> std::unordered_map<std::string_view, std::function<void(std::string_view key, VPackSlice value, VPackSlice original, VPackBuilder& result)>> {
+
+auto handleSmartGraphAttribute(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+  if (!isEdgeCollection(fullBody)) {
+    // Only allow smartGraphAttribute if we do not have an edge collection
+    justKeep(key, value, fullBody, config, result);
+  }
+  // Ignore anything else
+}
+
+auto handleSmartJoinAttribute(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+  if (!isSingleServer()) {
+    // Only allow smartJoinAttribute if we are no single server
+    justKeep(key, value, fullBody, config, result);
+  }
+  // Ignore anything else
+}
+
+auto handleShardKeys(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+  if (!config.isOneShardDB) {
+    justKeep(key, value, fullBody, config, result);
+  }
+  // In oneShardDB shardKeys are ignored
+}
+
+
+auto makeAllowList() -> std::unordered_map<std::string_view, std::function<void(std::string_view key, VPackSlice value, VPackSlice original, DatabaseConfiguration const& config, VPackBuilder& result)>> {
   return {// CollectionConstantProperties
           {StaticStrings::DataSourceSystem, handleBoolOnly},
           {StaticStrings::IsSmart, handleBoolOnly},
           {StaticStrings::IsDisjoint, handleBoolOnly},
           {StaticStrings::CacheEnabled, handleBoolOnly},
-          {StaticStrings::GraphSmartGraphAttribute, justKeep},
-          {StaticStrings::SmartJoinAttribute, justKeep},
+          {StaticStrings::GraphSmartGraphAttribute, handleSmartGraphAttribute},
+          {StaticStrings::SmartJoinAttribute, handleSmartJoinAttribute},
           {StaticStrings::DataSourceType, handleType},
           {StaticStrings::KeyOptions, handleOnlyObjects},
 
@@ -152,8 +195,8 @@ auto makeAllowList() -> std::unordered_map<std::string_view, std::function<void(
           // ClusteringConstantProperties
           {StaticStrings::NumberOfShards, handleNumberOfShards},
           {StaticStrings::ShardingStrategy, handleStringsOnly},
-          {StaticStrings::ShardKeys, justKeep},
-          {StaticStrings::DistributeShardsLike, handleStringsOnly},
+          {StaticStrings::ShardKeys, handleShardKeys},
+          {StaticStrings::DistributeShardsLike, handleDistributeShardsLike},
 
           // Collection Create Options
           {"avoidServers", justKeep}};
@@ -167,7 +210,7 @@ auto makeAllowList() -> std::unordered_map<std::string_view, std::function<void(
  * @param parsingResult The error result returned by
  * @return
  */
-auto transformFromBackwardsCompatibleBody(VPackSlice body, Result parsingResult) -> ResultT<VPackBuilder> {
+auto transformFromBackwardsCompatibleBody(VPackSlice body, DatabaseConfiguration const& config, Result parsingResult) -> ResultT<VPackBuilder> {
   TRI_ASSERT(parsingResult.fail());
 //  LOG_DEVEL << "Start tranforming body " << body.toJson() << " into a legal one";
   VPackBuilder result;
@@ -181,7 +224,7 @@ auto transformFromBackwardsCompatibleBody(VPackSlice body, Result parsingResult)
         continue;
       } else {
         // All others have implemented a handler
-        handler->second(key.stringView(), value, body, result);
+        handler->second(key.stringView(), value, body, config, result);
       }
     }
   }
@@ -243,7 +286,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
   auto res =
       ::parseAndValidate(config, input, [](CreateCollectionBody& col) {});
   if (res.fail()) {
-    auto newBody = transformFromBackwardsCompatibleBody(input, res.result());
+    auto newBody = transformFromBackwardsCompatibleBody(input, config, res.result());
     if (newBody.fail()) {
       return newBody.result();
     }
