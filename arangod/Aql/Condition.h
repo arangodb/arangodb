@@ -181,7 +181,7 @@ class Condition {
                                     AstNode*, bool isPathCondition);
 
   /// @brief remove (now) invalid variables from the condition
-  bool removeInvalidVariables(VarSet const&);
+  bool removeInvalidVariables(VarSet const&, bool& noRemoves);
 
   /// @brief locate indexes which can be used for conditions
   /// return value is a pair indicating whether the index can be used for
