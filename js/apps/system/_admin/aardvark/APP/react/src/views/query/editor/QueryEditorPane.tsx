@@ -5,7 +5,7 @@ import { AQLEditor } from "./AQLEditor";
 import { QueryEditorBottomBar } from "./QueryEditorBottomBar";
 import { QueryEditorTopBar } from "./QueryEditorTopBar";
 import { QueryOptionsPane } from "./QueryOptionsPane";
-import { QueryResults } from "./QueryResults";
+import { QueryResults } from "../queryResults/QueryResults";
 import { SavedQueryView } from "./SavedQueryView";
 
 export const QueryEditorPane = () => {

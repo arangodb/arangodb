@@ -2,7 +2,7 @@ import { Global } from "@emotion/react";
 import { JsonEditor } from "jsoneditor-react";
 import React, { useEffect, useRef } from "react";
 
-export const ProfileResultDisplay = ({
+export const ProfileResultDisplayJSON = ({
   defaultValue
 }: {
   defaultValue?: string;
