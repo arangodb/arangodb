@@ -25,16 +25,7 @@
 #pragma once
 
 #include "Basics/Result.h"
-// #include "Futures/Future.h"
-//#include "Indexes/IndexIterator.h"
-//#include "Replication2/ReplicatedLog/PersistedLog.h"
-// #include "StorageEngine/HealthData.h"
 #include "StorageEngine/PhysicalCollection.h"
-// #include "StorageEngine/StorageEngine.h"
-// #include "StorageEngine/TransactionCollection.h"
-// #include "StorageEngine/TransactionState.h"
-// #include "VocBase/Identifiers/IndexId.h"
-// #include "VocBase/Identifiers/LocalDocumentId.h"
 
 #include <atomic>
 #include <string_view>

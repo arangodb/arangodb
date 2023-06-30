@@ -38,8 +38,8 @@
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -73,8 +73,7 @@ auto VocBaseLogManager::getReplicatedStateById(replication2::LogId id)
 
 void VocBaseLogManager::registerReplicatedState(
     replication2::LogId id,
-    std::unique_ptr<
-        arangodb::replication2::replicated_state::IStorageEngineMethods>
+    std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
         methods) {
   auto meta = methods->readMetadata();
   if (meta.fail()) {
@@ -260,7 +259,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedState(
     buffer.append(parameters.start(), parameters.byteSize());
     auto parametersCopy = velocypack::SharedSlice(std::move(buffer));
 
-    auto metadata = PersistedStateInfo{
+    auto metadata = storage::PersistedStateInfo{
         .stateId = id,
         .snapshot = {.status = replicated_state::SnapshotStatus::kCompleted,
                      .timestamp = {},
@@ -286,8 +285,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
     replication2::replicated_state::ReplicatedStateAppFeature& feature,
     LoggerContext const& logContext, ArangodServer& server,
     TRI_vocbase_t& vocbase,
-    std::unique_ptr<
-        arangodb::replication2::replicated_state::IStorageEngineMethods>
+    std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
         storage)
     -> ResultT<std::shared_ptr<
         replication2::replicated_state::ReplicatedStateBase>> try {

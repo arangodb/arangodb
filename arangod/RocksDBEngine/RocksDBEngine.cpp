@@ -55,7 +55,7 @@
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabaseFeature.h"
@@ -67,6 +67,11 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
+#include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
+#include "Replication2/Storage/RocksDB/LogStorageMethods.h"
+#include "Replication2/Storage/RocksDB/Metrics.h"
+#include "Replication2/Storage/RocksDB/ReplicatedStateInfo.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
@@ -86,7 +91,6 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBPersistedLog.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
@@ -867,9 +871,10 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
 namespace {
 
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
-    : RocksDBAsyncLogWriteBatcherMetrics {
+    : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
   explicit RocksDBAsyncLogWriteBatcherMetricsImpl(
       metrics::MetricsFeature* metricsFeature) {
+    using namespace arangodb::replication2::storage::rocksdb;
     numWorkerThreadsWaitForSync = &metricsFeature->add(
         arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
                                                                        "true"));
@@ -1188,7 +1193,8 @@ void RocksDBEngine::start() {
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
   _dumpManager = std::make_unique<RocksDBDumpManager>(*this);
 
-  struct SchedulerExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
+  struct SchedulerExecutor
+      : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
     explicit SchedulerExecutor(ArangodServer& server)
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
@@ -1205,14 +1211,16 @@ void RocksDBEngine::start() {
   _logMetrics = std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(
       &server().getFeature<metrics::MetricsFeature>());
 
-  _logPersistor = std::make_shared<RocksDBAsyncLogWriteBatcher>(
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-      _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()),
-      server().getFeature<ReplicatedLogFeature>().options(), _logMetrics);
+  auto logPersistor =
+      std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
+          RocksDBColumnFamilyManager::get(
+              RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+          _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()),
+          server().getFeature<ReplicatedLogFeature>().options(), _logMetrics);
+  _logPersistor = logPersistor;
 
   if (auto* syncer = syncThread(); syncer != nullptr) {
-    syncer->registerSyncListener(_logPersistor);
+    syncer->registerSyncListener(logPersistor);
   } else {
     LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
         << "In replication2 databases, setting waitForSync to false will not "
@@ -2777,12 +2785,13 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
     auto slice =
         VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
 
-    auto info = velocypack::deserialize<RocksDBReplicatedStateInfo>(slice);
+    auto info = velocypack::deserialize<
+        replication2::storage::rocksdb::ReplicatedStateInfo>(slice);
     auto* cfLogs = RocksDBColumnFamilyManager::get(
         RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-    auto methods = RocksDBLogStorageMethods(info.objectId, databaseId,
-                                            info.stateId, _logPersistor, _db,
-                                            cfDefs, cfLogs, _logMetrics);
+    auto methods = replication2::storage::rocksdb::LogStorageMethods(
+        info.objectId, databaseId, info.stateId, _logPersistor, _db, cfDefs,
+        cfLogs, _logMetrics);
     auto res = methods.drop();
     // Save the first error we encounter, but try to drop the rest.
     if (rv.ok() && res.fail()) {
@@ -3163,14 +3172,16 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
       continue;
     }
 
-    auto info = velocypack::deserialize<RocksDBReplicatedStateInfo>(slice);
-    auto methods = std::make_unique<RocksDBLogStorageMethods>(
-        info.objectId, vocbase.id(), info.stateId, _logPersistor, _db,
-        RocksDBColumnFamilyManager::get(
-            RocksDBColumnFamilyManager::Family::Definitions),
-        RocksDBColumnFamilyManager::get(
-            RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-        _logMetrics);
+    auto info = velocypack::deserialize<
+        replication2::storage::rocksdb::ReplicatedStateInfo>(slice);
+    auto methods =
+        std::make_unique<replication2::storage::rocksdb::LogStorageMethods>(
+            info.objectId, vocbase.id(), info.stateId, _logPersistor, _db,
+            RocksDBColumnFamilyManager::get(
+                RocksDBColumnFamilyManager::Family::Definitions),
+            RocksDBColumnFamilyManager::get(
+                RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+            _logMetrics);
     registerReplicatedState(vocbase, info.stateId, std::move(methods));
   }
 }
@@ -3958,10 +3969,11 @@ bool RocksDBEngine::checkExistingDB(
 
 Result RocksDBEngine::dropReplicatedState(
     TRI_vocbase_t& vocbase,
-    std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
-        ptr) {
+    std::unique_ptr<replication2::storage::IStorageEngineMethods>& ptr) {
   // make sure that all pending async operations have completed
-  auto methods = dynamic_cast<RocksDBLogStorageMethods*>(ptr.get());
+  auto methods =
+      dynamic_cast<replication2::storage::rocksdb::LogStorageMethods*>(
+          ptr.get());
   ADB_PROD_ASSERT(methods != nullptr);
   methods->ctx.waitForCompletion();
 
@@ -3978,17 +3990,17 @@ Result RocksDBEngine::dropReplicatedState(
 
 auto RocksDBEngine::createReplicatedState(
     TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    replication2::replicated_state::PersistedStateInfo const& info)
-    -> ResultT<std::unique_ptr<
-        replication2::replicated_state::IStorageEngineMethods>> {
+    replication2::storage::PersistedStateInfo const& info)
+    -> ResultT<std::unique_ptr<replication2::storage::IStorageEngineMethods>> {
   auto objectId = TRI_NewTickServer();
-  auto methods = std::make_unique<RocksDBLogStorageMethods>(
-      objectId, vocbase.id(), id, _logPersistor, _db,
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Definitions),
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-      _logMetrics);
+  auto methods =
+      std::make_unique<replication2::storage::rocksdb::LogStorageMethods>(
+          objectId, vocbase.id(), id, _logPersistor, _db,
+          RocksDBColumnFamilyManager::get(
+              RocksDBColumnFamilyManager::Family::Definitions),
+          RocksDBColumnFamilyManager::get(
+              RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+          _logMetrics);
   auto res = methods->updateMetadata(info);
   if (res.fail()) {
     return res;

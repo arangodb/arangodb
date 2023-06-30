@@ -20,4 +20,26 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#include "PersistedStateInfo.h"
+#pragma once
+
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedState/StateCommon.h"
+
+namespace arangodb::replication2::storage {
+
+struct PersistedStateInfo {
+  LogId stateId;  // could be removed
+  replicated_state::SnapshotInfo snapshot;
+  replicated_state::StateGeneration generation;
+  replication2::agency::ImplementationSpec specification;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, PersistedStateInfo& x) {
+  return f.object(x).fields(f.field("stateId", x.stateId),
+                            f.field("snapshot", x.snapshot),
+                            f.field("generation", x.generation),
+                            f.field("specification", x.specification));
+}
+
+}  // namespace arangodb::replication2::storage
