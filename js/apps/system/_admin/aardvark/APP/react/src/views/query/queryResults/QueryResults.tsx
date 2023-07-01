@@ -10,7 +10,7 @@ export const QueryResults = () => {
     return null;
   }
   return (
-    <Box background="white" marginTop="4">
+    <Box background="white" marginTop="4" paddingBottom="4">
       {queryResults.map((queryResult, index) => {
         if (queryResult.type === "profile" || queryResult.type === "explain") {
           return (

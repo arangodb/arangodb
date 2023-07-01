@@ -12,6 +12,7 @@ import _ from "lodash";
 import React from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { QueryResultType } from "../QueryContextProvider";
+import { QueryGraphView } from "./QueryGraphView";
 import { RemoveResultButton } from "./RemoveResultButton";
 import { ResultTypeBox } from "./ResultTypeBox";
 import { TimingInfo } from "./TimingInfo";
@@ -73,8 +74,8 @@ const useDisplayType = ({ queryResult }: { queryResult: QueryResultType }) => {
         }
       } else {
         // case b) 95% have _from and _to attribute
-        var hitsb = 0;
-        var totalb = result.length;
+        let hitsb = 0;
+        let totalb = result.length;
 
         _.each(result, function (obj) {
           if (obj) {
@@ -84,7 +85,7 @@ const useDisplayType = ({ queryResult }: { queryResult: QueryResultType }) => {
           }
         });
 
-        var percentageb = 0;
+        let percentageb = 0;
         if (totalb > 0) {
           percentageb = (hitsb / totalb) * 100;
         }
@@ -140,7 +141,11 @@ export const QueryExecuteResult = ({
     );
   }
   return (
-    <Box height="300px">
+    <Box
+      boxShadow="0 0 15px 0 rgba(0,0,0,0.2)"
+      borderRadius="md"
+      marginBottom="4"
+    >
       <Flex padding="2" alignItems="center">
         <Stack direction="row">
           <ResultTypeBox queryResult={queryResult} />
@@ -203,8 +208,4 @@ const QueryExecuteResultDisplay = ({
       mainMenuBar={false}
     />
   );
-};
-
-const QueryGraphView = ({ queryResult }: { queryResult: QueryResultType }) => {
-  return <>{queryResult.type}</>;
 };
