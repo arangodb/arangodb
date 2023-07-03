@@ -112,13 +112,17 @@ bool IResearchRocksDBRecoveryHelper::skip(Impl& impl) {
 
 template<bool Force>
 void IResearchRocksDBRecoveryHelper::clear() noexcept {
-  if constexpr (!Force) {
+  if constexpr (Force) {
+    if (!_ranges.empty()) {
+      _ranges.clear();
+    }
+  } else {
     if (_indexes.size() < kMaxSize && _links.size() < kMaxSize &&
         _ranges.size() < kMaxSize) {
       return;
     }
+    _ranges.clear();
   }
-  _ranges.clear();
   _indexes.clear();
   _links.clear();
 }
@@ -245,7 +249,7 @@ void IResearchRocksDBRecoveryHelper::LogData(rocksdb::Slice const& blob,
             continue;
           }
           if (!skip(**it)) {
-            (**it).afterTruncate(tick, nullptr);
+            (**it).truncateCommit({}, tick, nullptr);
           } else {
             (**it).setOutOfSync();
             *it = nullptr;

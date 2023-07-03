@@ -764,13 +764,15 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
   auto const& indexes = indexesSnapshot.getIndexes();
 
   // delete index values
+  std::vector<TruncateGuard> guards;
+  guards.reserve(indexes.size());
   for (auto const& idx : indexes) {
-    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-    bounds = ridx->getBounds();
-    s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
-    if (!s.ok()) {
-      return rocksutils::convertStatus(s);
+    auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+    auto r = rIdx->truncateBegin(batch);
+    if (!r.ok()) {
+      return std::move(r).result();
     }
+    guards.push_back(std::move(r.get()));
   }
 
   // add the log entry so we can recover the correct count
@@ -796,9 +798,10 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
                               /*revision*/ _logicalCollection.newRevisionId(),
                               -static_cast<int64_t>(numDocs));
 
-  for (auto const& idx : indexes) {
-    idx->afterTruncate(seq,
-                       &trx);  // clears caches / clears links (if applicable)
+  for (auto it = guards.begin(); auto const& idx : indexes) {
+    // clears caches / clears links (if applicable)
+    auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+    rIdx->truncateCommit(std::move(*it++), seq, &trx);
   }
 
   indexesSnapshot.release();

@@ -131,7 +131,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
       IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       int) override;
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
+  void truncateCommit(TruncateGuard guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) final;
 
   Result drop() override;
 

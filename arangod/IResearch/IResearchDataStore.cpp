@@ -903,7 +903,6 @@ Result IResearchDataStore::commitUnsafeImpl(
     }();
 #endif
     auto engineSnapshot = _engine->currentSnapshot();
-    TRI_IF_FAILURE("ArangoSearch::DisableMoveTickInCommit") { return {}; }
     if (ADB_UNLIKELY(!engineSnapshot)) {
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("Failed to get engine snapshot while committing "
@@ -1666,8 +1665,9 @@ void IResearchDataStore::recoveryInsert(uint64_t recoveryTick,
   // TODO(MBkkt) IndexWriter::Commit? Probably makes sense only if were removes
 }
 
-void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
-                                       transaction::Methods* trx) {
+void IResearchDataStore::truncateCommit(TruncateGuard guard,
+                                        TRI_voc_tick_t tick,
+                                        transaction::Methods* trx) {
   // '_dataStore' can be asynchronously modified
   auto linkLock = _asyncSelf->lock();
 
@@ -1712,7 +1712,9 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     _recoveryTrx.Abort();
   }
 
-  std::lock_guard commitLock{_commitMutex};
+  if (!guard.mutex) {
+    guard = truncateBegin();
+  }
   absl::Cleanup clearGuard = [&, last = _lastCommittedTick]() noexcept {
     _lastCommittedTick = last;
   };

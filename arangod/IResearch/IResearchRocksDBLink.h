@@ -43,8 +43,17 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   IResearchRocksDBLink(IndexId iid, LogicalCollection& collection,
                        uint64_t objectId);
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) final {
-    IResearchDataStore::afterTruncate(tick, trx);
+  ResultT<TruncateGuard> truncateBegin(rocksdb::WriteBatch& batch) final {
+    auto r = RocksDBIndex::truncateBegin(batch);
+    if (!r.ok()) {
+      return r;
+    }
+    return IResearchDataStore::truncateBegin();
+  }
+
+  void truncateCommit(TruncateGuard guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) final {
+    IResearchDataStore::truncateCommit(std::move(guard), tick, trx);
   }
 
   bool canBeDropped() const final { return IResearchDataStore::canBeDropped(); }
