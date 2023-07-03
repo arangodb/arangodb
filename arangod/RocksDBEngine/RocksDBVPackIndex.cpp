@@ -2715,7 +2715,8 @@ void RocksDBVPackIndex::expandInSearchValues(
   }
 }
 
-void RocksDBVPackIndex::truncateCommit(TruncateGuard guard, TRI_voc_tick_t tick,
+void RocksDBVPackIndex::truncateCommit(TruncateGuard&& guard,
+                                       TRI_voc_tick_t tick,
                                        transaction::Methods* trx) {
   if (_estimator != nullptr) {
     _estimator->bufferTruncate(tick);

@@ -175,7 +175,7 @@ class IResearchDataStore {
     _commitMutex.lock();
     return {TruncateGuard::Ptr{&_commitMutex}};
   }
-  void truncateCommit(TruncateGuard guard, TRI_voc_tick_t tick,
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
                       transaction::Methods* trx);
 
   //////////////////////////////////////////////////////////////////////////////

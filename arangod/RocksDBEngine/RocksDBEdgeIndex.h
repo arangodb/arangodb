@@ -104,7 +104,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   // warm up the index cache
   Result warmup() override;
 
-  void truncateCommit(TruncateGuard guard, TRI_voc_tick_t tick,
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
                       transaction::Methods* trx) final;
 
   Result drop() override;

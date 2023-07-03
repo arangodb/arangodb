@@ -250,7 +250,8 @@ ResultT<TruncateGuard> RocksDBIndex::truncateBegin(rocksdb::WriteBatch& batch) {
   return {};
 }
 
-void RocksDBIndex::truncateCommit(TruncateGuard guard, TRI_voc_tick_t /*tick*/,
+void RocksDBIndex::truncateCommit(TruncateGuard&& guard,
+                                  TRI_voc_tick_t /*tick*/,
                                   transaction::Methods* /*trx*/) {
   // simply drop the cache and re-create it
   if (_cacheEnabled) {

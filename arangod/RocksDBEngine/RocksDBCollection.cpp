@@ -789,26 +789,29 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
   }
+  // we need crash server if any failure in order to trigger recovery,
+  // as rocksdb truncate already committed here
+  [&]() noexcept {
+    // post commit sequence
+    rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber() - 1;
 
-  rocksdb::SequenceNumber seq =
-      db->GetLatestSequenceNumber() - 1;  // post commit sequence
+    uint64_t numDocs = _meta.numberDocuments();
+    _meta.adjustNumberDocuments(seq,
+                                /*revision*/ _logicalCollection.newRevisionId(),
+                                -static_cast<int64_t>(numDocs));
 
-  uint64_t numDocs = _meta.numberDocuments();
-  _meta.adjustNumberDocuments(seq,
-                              /*revision*/ _logicalCollection.newRevisionId(),
-                              -static_cast<int64_t>(numDocs));
+    for (auto it = guards.begin(); auto const& idx : indexes) {
+      // clears caches / clears links (if applicable)
+      auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+      rIdx->truncateCommit(std::move(*it++), seq, &trx);
+    }
 
-  for (auto it = guards.begin(); auto const& idx : indexes) {
-    // clears caches / clears links (if applicable)
-    auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
-    rIdx->truncateCommit(std::move(*it++), seq, &trx);
-  }
+    indexesSnapshot.release();
 
-  indexesSnapshot.release();
+    bufferTruncate(seq);
 
-  bufferTruncate(seq);
-
-  TRI_ASSERT(!state->hasOperations());  // not allowed
+    TRI_ASSERT(!state->hasOperations());  // not allowed
+  }();
   return {};
 }
 

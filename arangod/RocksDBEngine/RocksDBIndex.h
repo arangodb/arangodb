@@ -93,7 +93,7 @@ class RocksDBIndex : public Index {
   Result drop() override;
 
   virtual ResultT<TruncateGuard> truncateBegin(rocksdb::WriteBatch& batch);
-  virtual void truncateCommit(TruncateGuard guard, TRI_voc_tick_t tick,
+  virtual void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
                               transaction::Methods* trx);
 
   void load() override;

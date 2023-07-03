@@ -1037,7 +1037,8 @@ void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
   }
 }
 
-void RocksDBEdgeIndex::truncateCommit(TruncateGuard guard, TRI_voc_tick_t tick,
+void RocksDBEdgeIndex::truncateCommit(TruncateGuard&& guard,
+                                      TRI_voc_tick_t tick,
                                       transaction::Methods* trx) {
   TRI_ASSERT(!unique());
   if (_estimator != nullptr) {
