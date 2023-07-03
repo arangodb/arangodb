@@ -25,7 +25,6 @@
 
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
-#include "Metrics/GaugeCounterGuard.h"
 
 #include <boost/lockfree/queue.hpp>
 #include <memory>

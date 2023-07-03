@@ -24,7 +24,6 @@
 #pragma once
 
 #include "GeneralServer/GeneralCommTask.h"
-#include "Metrics/GaugeCounterGuard.h"
 
 #include <llhttp.h>
 #include <memory>

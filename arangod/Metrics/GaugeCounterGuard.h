@@ -21,7 +21,6 @@
 #pragma once
 
 #include "Gauge.h"
-#include "Logger/LogMacros.h"
 
 namespace arangodb::metrics {
 
@@ -40,7 +39,7 @@ struct GaugeCounterGuard {
     return *this;
   }
 
-  ~GaugeCounterGuard() { fire(); }
+  ~GaugeCounterGuard() { reset(); }
   GaugeCounterGuard() = default;
 
   explicit GaugeCounterGuard(Gauge<T>& metric, T initialValue = {})
@@ -61,8 +60,6 @@ struct GaugeCounterGuard {
       _totalValue -= delta;
     }
   }
-
-  void fire() noexcept { reset(); }
 
   void reset(std::uint64_t newValue = {}) noexcept {
     if (_metric) {

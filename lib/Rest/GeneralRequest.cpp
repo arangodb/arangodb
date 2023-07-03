@@ -312,4 +312,12 @@ arangodb::velocypack::Options const* GeneralRequest::validationOptions(
   return &basics::VelocyPackHelper::looseRequestValidationOptions;
 }
 
+std::uint64_t GeneralRequest::approxMemoryUsage() const noexcept {
+  auto size = rawPayload().size();
+  if (_vpackBuilder) {
+    size += _vpackBuilder->size();
+  }
+  return size;
+}
+
 }  // namespace arangodb

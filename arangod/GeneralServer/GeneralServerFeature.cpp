@@ -153,13 +153,13 @@ DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
 DECLARE_COUNTER(arangodb_vst_connections_total,
                 "Total number of VST connections");
-DECLARE_GAUGE(arangodb_request_body_size, std::uint64_t,
+DECLARE_GAUGE(arangodb_request_body_memory_usage, std::uint64_t,
               "Memory consumed by incoming request bodies.");
 
 GeneralServerFeature::GeneralServerFeature(Server& server)
     : ArangodFeature{server, *this},
       _requestBodySize(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_request_body_size{})),
+          arangodb_request_body_memory_usage{})),
       _telemetricsMaxRequestsPerInterval(3),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _startedListening(false),
