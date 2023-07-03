@@ -23,17 +23,13 @@
 
 #pragma once
 
-#include <string_view>
-#include <velocypack/Slice.h>
-#include <Inspection/VPack.h>
-
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogPayload.h"
 #include "Replication2/ReplicatedLog/LogMetaPayload.h"
 #include "Replication2/ReplicatedLog/TypedLogIterator.h"
 
 namespace arangodb::replication2 {
+
 class PersistingLogEntry {
  public:
   PersistingLogEntry(LogTerm term, LogIndex index, LogPayload payload)
@@ -66,8 +62,7 @@ class PersistingLogEntry {
 
   TermIndexPair _termIndex;
   // TODO It seems impractical to not copy persisting log entries, so we
-  // should
-  //      probably make this a shared_ptr (or immer::box).
+  // should probably make this a shared_ptr (or immer::box).
   std::variant<LogMetaPayload, LogPayload> _payload;
 
   // TODO this is a magic constant "measuring" the size of
@@ -75,29 +70,7 @@ class PersistingLogEntry {
   static inline constexpr auto approxMetaDataSize = std::size_t{42 * 2};
 };
 
-// A log entry, enriched with non-persisted metadata, to be stored in an
-// InMemoryLog.
-class InMemoryLogEntry {
- public:
-  using clock = std::chrono::steady_clock;
-
-  explicit InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync = false);
-
-  [[nodiscard]] auto insertTp() const noexcept -> clock::time_point;
-  void setInsertTp(clock::time_point) noexcept;
-  [[nodiscard]] auto entry() const noexcept -> PersistingLogEntry const&;
-  [[nodiscard]] bool getWaitForSync() const noexcept { return _waitForSync; }
-
- private:
-  bool _waitForSync;
-  // Immutable box that allows sharing, i.e. cheap copying.
-  ::immer::box<PersistingLogEntry, ::arangodb::immer::arango_memory_policy>
-      _logEntry;
-  // Timepoint at which the insert was started (not the point in time where it
-  // was committed)
-  clock::time_point _insertTp{};
-};
-
 // ReplicatedLog-internal iterator over PersistingLogEntries
 struct PersistedLogIterator : TypedLogIterator<PersistingLogEntry> {};
+
 }  // namespace arangodb::replication2

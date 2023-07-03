@@ -25,13 +25,13 @@
 #include "ReplicatedState.h"
 
 #include <string>
-#include <unordered_map>
 #include <utility>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 #include "Basics/DownCast.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogContextKeys.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"

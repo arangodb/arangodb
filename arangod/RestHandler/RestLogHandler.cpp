@@ -39,7 +39,6 @@
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"

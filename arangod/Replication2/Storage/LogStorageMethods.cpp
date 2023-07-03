@@ -24,9 +24,10 @@
 #include "LogStorageMethods.h"
 
 #include <Basics/Result.h>
+#include <Basics/ResultT.h>
 #include <Futures/Future.h>
 
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
 
 namespace arangodb::replication2::storage {
 

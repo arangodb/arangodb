@@ -21,18 +21,9 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LogEntries.h"
+#include "PersistingLogEntry.h"
 
-#include "Inspection/VPack.h"
-#include "Logger/LogMacros.h"
-
-#include <Basics/StaticStrings.h>
-#include <Basics/StringUtils.h>
-
-#include <Basics/VelocyPackHelper.h>
-
-using namespace arangodb;
-using namespace arangodb::replication2;
+namespace arangodb::replication2 {
 
 PersistingLogEntry::PersistingLogEntry(
     TermIndexPair termIndexPair,
@@ -131,18 +122,4 @@ auto PersistingLogEntry::meta() const noexcept -> const LogMetaPayload* {
   return std::get_if<LogMetaPayload>(&_payload);
 }
 
-InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync)
-    : _waitForSync(waitForSync), _logEntry(std::move(entry)) {}
-
-void InMemoryLogEntry::setInsertTp(clock::time_point tp) noexcept {
-  _insertTp = tp;
-}
-
-auto InMemoryLogEntry::insertTp() const noexcept -> clock::time_point {
-  return _insertTp;
-}
-
-auto InMemoryLogEntry::entry() const noexcept -> PersistingLogEntry const& {
-  // Note that while get() isn't marked as noexcept, it actually is.
-  return _logEntry.get();
-}
+}  // namespace arangodb::replication2
