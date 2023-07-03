@@ -27,6 +27,12 @@ const useDisplayType = ({ queryResult }: { queryResult: QueryResultType }) => {
   const [displayType, setDisplayType] = React.useState<"graph" | "json">(
     "json"
   );
+  const [currentView, setCurrentView] = React.useState<"json" | "graph">(
+    "json"
+  );
+  const [graphDataType, setGraphDataType] = React.useState<"object" | "array">(
+    "object"
+  );
   React.useEffect(() => {
     const detectGraph = () => {
       const { result } = queryResult;
@@ -69,41 +75,59 @@ const useDisplayType = ({ queryResult }: { queryResult: QueryResultType }) => {
           if (percentagea >= 95) {
             found = true;
             setDisplayType("graph");
-            // toReturn.graphInfo = "object";
+            setCurrentView(prevView => {
+              if (prevView !== "graph") {
+                return "graph";
+              }
+              return prevView;
+            });
+            setGraphDataType("object");
           }
-        }
-      } else {
-        // case b) 95% have _from and _to attribute
-        let hitsb = 0;
-        let totalb = result.length;
+        } else {
+          // case b) 95% have _from and _to attribute
+          let hitsb = 0;
+          let totalb = result.length;
 
-        _.each(result, function (obj) {
-          if (obj) {
-            if (obj._from && obj._to && obj._id) {
-              hitsb++;
+          _.each(result, function (obj) {
+            if (obj) {
+              if (obj._from && obj._to && obj._id) {
+                hitsb++;
+              }
             }
+          });
+
+          let percentageb = 0;
+          if (totalb > 0) {
+            percentageb = (hitsb / totalb) * 100;
           }
-        });
 
-        let percentageb = 0;
-        if (totalb > 0) {
-          percentageb = (hitsb / totalb) * 100;
-        }
-
-        if (percentageb >= 95) {
-          found = true;
-          setDisplayType("graph");
-          // toReturn.graphInfo = 'array';
-          // then display as graph
+          if (percentageb >= 95) {
+            found = true;
+            setDisplayType("graph");
+            setCurrentView(prevView => {
+              if (prevView !== "graph") {
+                return "graph";
+              }
+              return prevView;
+            });
+            setGraphDataType("array");
+            // then display as graph
+          }
         }
       }
       if (!found) {
         setDisplayType("json");
+        setCurrentView(prevView => {
+          if (prevView !== "json") {
+            return "json";
+          }
+          return prevView;
+        });
       }
     };
     detectGraph();
   }, [queryResult]);
-  return displayType;
+  return { displayType, graphDataType, currentView, setCurrentView };
 };
 export const QueryExecuteResult = ({
   index,
@@ -117,10 +141,10 @@ export const QueryExecuteResult = ({
     asyncJobId: queryResult.asyncJobId,
     index
   });
-  const [currentView, setCurrentView] = React.useState<"json" | "graph">(
-    "json"
-  );
-  const displayType = useDisplayType({ queryResult });
+  const { displayType, graphDataType, currentView, setCurrentView } =
+    useDisplayType({
+      queryResult
+    });
 
   if (queryResult.status === "error") {
     return (
@@ -178,6 +202,7 @@ export const QueryExecuteResult = ({
       <QueryExecuteResultDisplay
         currentView={currentView}
         queryResult={queryResult}
+        graphDataType={graphDataType}
       />
     </Box>
   );
@@ -185,13 +210,17 @@ export const QueryExecuteResult = ({
 
 const QueryExecuteResultDisplay = ({
   queryResult,
-  currentView
+  currentView,
+  graphDataType
 }: {
   queryResult: QueryResultType;
   currentView: "json" | "graph";
+  graphDataType: "object" | "array";
 }) => {
   if (currentView === "graph") {
-    return <QueryGraphView queryResult={queryResult} />;
+    return (
+      <QueryGraphView graphDataType={graphDataType} queryResult={queryResult} />
+    );
   }
   const { result } = queryResult;
   return (
