@@ -1,6 +1,9 @@
 v3.9.12 (XXXX-X-XX)
 --------------------
 
+* When trying to read multiple documents, the coordinator will now handle empty
+  lists gracefully and return an empty result set instead of an error.
+
 * Remove temporary `CREATING_{number}` directories from hot backup in case a hot
   backup runs into an error.
 
