@@ -31,16 +31,17 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogPayload.h"
 #include "Replication2/ReplicatedLog/LogMetaPayload.h"
+#include "Replication2/ReplicatedLog/TypedLogIterator.h"
 
 namespace arangodb::replication2 {
-
 class PersistingLogEntry {
  public:
   PersistingLogEntry(LogTerm term, LogIndex index, LogPayload payload)
       : PersistingLogEntry(TermIndexPair{term, index}, std::move(payload)) {}
   PersistingLogEntry(TermIndexPair, std::variant<LogMetaPayload, LogPayload>);
   PersistingLogEntry(
-      LogIndex, velocypack::Slice persisted);  // RocksDB from disk constructor
+      LogIndex,
+      velocypack::Slice persisted);  // RocksDB from disk constructor
 
   [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
@@ -64,7 +65,8 @@ class PersistingLogEntry {
   void entriesWithoutIndexToVelocyPack(velocypack::Builder& builder) const;
 
   TermIndexPair _termIndex;
-  // TODO It seems impractical to not copy persisting log entries, so we should
+  // TODO It seems impractical to not copy persisting log entries, so we
+  // should
   //      probably make this a shared_ptr (or immer::box).
   std::variant<LogMetaPayload, LogPayload> _payload;
 
@@ -95,51 +97,6 @@ class InMemoryLogEntry {
   // was committed)
   clock::time_point _insertTp{};
 };
-
-// A log entry as visible to the user of a replicated log.
-// Does thus always contain a payload: only internal log entries are without
-// payload, which aren't visible to the user. User-defined log entries always
-// contain a payload.
-// The term is not of interest, and therefore not part of this struct.
-// Note that when these entries are visible, they are already committed.
-// It does not own the payload, so make sure it is still valid when using it.
-class LogEntryView {
- public:
-  LogEntryView() = delete;
-  LogEntryView(LogIndex index, LogPayload const& payload) noexcept;
-  LogEntryView(LogIndex index, velocypack::Slice payload) noexcept;
-
-  [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
-  [[nodiscard]] auto logPayload() const noexcept -> velocypack::Slice;
-  [[nodiscard]] auto clonePayload() const -> LogPayload;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> LogEntryView;
-
- private:
-  LogIndex _index;
-  velocypack::Slice _payload;
-};
-
-template<typename T>
-struct TypedLogIterator {
-  virtual ~TypedLogIterator() = default;
-  // The returned view is guaranteed to stay valid until a successive next()
-  // call (only).
-  virtual auto next() -> std::optional<T> = 0;
-};
-
-template<typename T>
-struct TypedLogRangeIterator : TypedLogIterator<T> {
-  // returns the index interval [from, to)
-  // Note that this does not imply that all indexes in the range [from, to)
-  // are returned. Hence (to - from) is only an upper bound on the number of
-  // entries returned.
-  [[nodiscard]] virtual auto range() const noexcept -> LogRange = 0;
-};
-
-using LogIterator = TypedLogIterator<LogEntryView>;
-using LogRangeIterator = TypedLogRangeIterator<LogEntryView>;
 
 // ReplicatedLog-internal iterator over PersistingLogEntries
 struct PersistedLogIterator : TypedLogIterator<PersistingLogEntry> {};

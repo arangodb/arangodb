@@ -146,30 +146,3 @@ auto InMemoryLogEntry::entry() const noexcept -> PersistingLogEntry const& {
   // Note that while get() isn't marked as noexcept, it actually is.
   return _logEntry.get();
 }
-
-LogEntryView::LogEntryView(LogIndex index, LogPayload const& payload) noexcept
-    : _index(index), _payload(payload.slice()) {}
-
-LogEntryView::LogEntryView(LogIndex index, velocypack::Slice payload) noexcept
-    : _index(index), _payload(payload) {}
-
-auto LogEntryView::logIndex() const noexcept -> LogIndex { return _index; }
-
-auto LogEntryView::logPayload() const noexcept -> velocypack::Slice {
-  return _payload;
-}
-
-void LogEntryView::toVelocyPack(velocypack::Builder& builder) const {
-  auto og = velocypack::ObjectBuilder(&builder);
-  builder.add(StaticStrings::LogIndex, velocypack::Value(_index));
-  builder.add(StaticStrings::Payload, _payload);
-}
-
-auto LogEntryView::fromVelocyPack(velocypack::Slice slice) -> LogEntryView {
-  return {slice.get(StaticStrings::LogIndex).extract<LogIndex>(),
-          slice.get(StaticStrings::Payload)};
-}
-
-auto LogEntryView::clonePayload() const -> LogPayload {
-  return LogPayload::createFromSlice(_payload);
-}
