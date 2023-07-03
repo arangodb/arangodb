@@ -1,6 +1,9 @@
 v3.9.12 (XXXX-X-XX)
 --------------------
 
+* Remove temporary `CREATING_{number}` directories from hot backup in case a hot
+  backup runs into an error.
+
 * FE-287: fix number validation for replicationFactor and writeConcern.
 
 * Updated arangosync to v2.18.1.
