@@ -1643,8 +1643,14 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
       }
     } else if (response->getHttpReturnCode() == 204) {
       return nullptr;
+    } else if (response->getHttpReturnCode() == 200) {
+      return response;
+    } else {
+      LOG_TOPIC("2668f", FATAL, Logger::DUMP)
+          << "Got invalid return code: " << response->getHttpReturnCode() << " "
+          << response->getHttpReturnMessage();
+      FATAL_ERROR_EXIT();
     }
-    return response;
   }
 }
 
