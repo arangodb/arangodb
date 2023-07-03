@@ -23,32 +23,31 @@
 
 #pragma once
 
-#include "Replication2/Storage/IStatePersistor.h"
+#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
 
-namespace rocksdb {
-class DB;
-class ColumnFamilyHandle;
-}  // namespace rocksdb
+namespace arangodb::replication2 {
 
-namespace arangodb::replication2::storage::rocksdb {
+// A log entry, enriched with non-persisted metadata, to be stored in an
+// InMemoryLog.
+class InMemoryLogEntry {
+ public:
+  using clock = std::chrono::steady_clock;
 
-struct StatePersistor final : storage::IStatePersistor {
-  StatePersistor(LogId logId, uint64_t objectId, std::uint64_t vocbaseId,
-                 ::rocksdb::DB* const db,
-                 ::rocksdb::ColumnFamilyHandle* const metaCf);
-  [[nodiscard]] auto updateMetadata(
-      replication2::storage::PersistedStateInfo info) -> Result override;
-  [[nodiscard]] auto readMetadata()
-      -> ResultT<replication2::storage::PersistedStateInfo> override;
+  explicit InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync = false);
 
-  auto drop() -> Result override;
+  [[nodiscard]] auto insertTp() const noexcept -> clock::time_point;
+  void setInsertTp(clock::time_point) noexcept;
+  [[nodiscard]] auto entry() const noexcept -> PersistingLogEntry const&;
+  [[nodiscard]] bool getWaitForSync() const noexcept { return _waitForSync; }
 
  private:
-  LogId const logId;
-  uint64_t const objectId;
-  std::uint64_t const vocbaseId;
-  ::rocksdb::DB* const db;
-  ::rocksdb::ColumnFamilyHandle* const metaCf;
+  bool _waitForSync;
+  // Immutable box that allows sharing, i.e. cheap copying.
+  ::immer::box<PersistingLogEntry, ::arangodb::immer::arango_memory_policy>
+      _logEntry;
+  // Timepoint at which the insert was started (not the point in time where it
+  // was committed)
+  clock::time_point _insertTp{};
 };
 
-}  // namespace arangodb::replication2::storage::rocksdb
+}  // namespace arangodb::replication2

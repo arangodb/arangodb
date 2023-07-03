@@ -20,16 +20,25 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include "Replication2/Storage/ILogPersistor.h"
-#include "Replication2/Storage/IStatePersistor.h"
+#include "InMemoryLogEntry.h"
 
-namespace arangodb::replication2::storage {
+namespace arangodb::replication2 {
 
-// TODO - cleanup usage and remove this interface
-struct IStorageEngineMethods : virtual ILogPersistor, virtual IStatePersistor {
-  virtual ~IStorageEngineMethods() = default;
-};
+InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync)
+    : _waitForSync(waitForSync), _logEntry(std::move(entry)) {}
 
-}  // namespace arangodb::replication2::storage
+void InMemoryLogEntry::setInsertTp(clock::time_point tp) noexcept {
+  _insertTp = tp;
+}
+
+auto InMemoryLogEntry::insertTp() const noexcept -> clock::time_point {
+  return _insertTp;
+}
+
+auto InMemoryLogEntry::entry() const noexcept -> PersistingLogEntry const& {
+  // Note that while get() isn't marked as noexcept, it actually is.
+  return _logEntry.get();
+}
+
+}  // namespace arangodb::replication2

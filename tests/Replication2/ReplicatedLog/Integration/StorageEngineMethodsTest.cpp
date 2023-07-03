@@ -26,9 +26,11 @@
 #include "Basics/RocksDBUtils.h"
 #include "Basics/files.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Storage/LogStorageMethods.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
-#include "Replication2/Storage/RocksDB/LogStorageMethods.h"
+#include "Replication2/Storage/RocksDB/LogPersistor.h"
+#include "Replication2/Storage/RocksDB/StatePersistor.h"
 #include "Replication2/Storage/RocksDB/Metrics.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
@@ -152,9 +154,8 @@ struct RocksDBFactory {
   static void TearDown() { rocksdb.reset(); }
 
   static void Drop(std::unique_ptr<IStorageEngineMethods> methods) {
-    auto& rocksdbMethods = dynamic_cast<LogStorageMethods&>(*methods);
-    rocksdbMethods.ctx.waitForCompletion();
-    auto res = rocksdbMethods.drop();
+    methods->waitForCompletion();
+    auto res = methods->drop();
     ASSERT_TRUE(res.ok());
   }
 
@@ -169,10 +170,16 @@ struct RocksDBFactory {
             rocksdb->getDatabase()->DefaultColumnFamily(),
             rocksdb->getDatabase(), std::move(executor), settings, metrics);
 
-    return std::make_unique<LogStorageMethods>(
-        objectId, vocbaseId, logId, writeBatcher, rocksdb->getDatabase(),
-        rocksdb->getDatabase()->DefaultColumnFamily(),
-        rocksdb->getDatabase()->DefaultColumnFamily(), metrics);
+    auto logPersistor = std::make_unique<LogPersistor>(
+        logId, objectId, vocbaseId, rocksdb->getDatabase(),
+        rocksdb->getDatabase()->DefaultColumnFamily(), std::move(writeBatcher),
+        std::move(metrics));
+    auto statePersistor = std::make_unique<StatePersistor>(
+        logId, objectId, vocbaseId, rocksdb->getDatabase(),
+        rocksdb->getDatabase()->DefaultColumnFamily());
+
+    return std::make_unique<LogStorageMethods>(std::move(logPersistor),
+                                               std::move(statePersistor));
   }
 
   static std::shared_ptr<test::RocksDBInstance> rocksdb;

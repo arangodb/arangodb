@@ -25,12 +25,14 @@
 #include <Futures/Future.h>
 
 #include <utility>
+
+#include "Basics/Guarded.h"
+#include "Inspection/VPack.h"
+#include "Logger/LogContextKeys.h"
 #include "Replication2/coro-helper.h"
+#include "Replication2/IScheduler.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
-#include "Basics/Guarded.h"
-#include "Logger/LogContextKeys.h"
-#include "Replication2/IScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

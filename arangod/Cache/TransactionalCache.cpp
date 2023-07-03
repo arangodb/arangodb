@@ -54,6 +54,7 @@ Finding TransactionalCache<Hasher>::find(void const* key,
   Table::BucketLocker guard;
   std::tie(status, guard) = getBucket(hash, Cache::triesFast, false);
   if (status != TRI_ERROR_NO_ERROR) {
+    recordStat(Stat::findMiss);
     result.reportError(status);
   } else {
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();

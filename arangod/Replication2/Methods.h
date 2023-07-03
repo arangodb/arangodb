@@ -24,9 +24,10 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/LogPayload.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
+#include "VocBase/vocbase.h"
 
 #include <string>
 #include <variant>
@@ -39,6 +40,8 @@ template<typename T>
 class Future;
 }
 }  // namespace arangodb
+
+struct TRI_vocbase_t;
 
 namespace arangodb::replication2 {
 
