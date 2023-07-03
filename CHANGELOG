@@ -1,6 +1,9 @@
 devel
 -----
 
+* Arangodump retries dump requests in more cases: read, write and connection
+  errors.
+
 * Added startup option `--replication.active-failover-leader-grace-period`.
   This startup option can be used to set the amount of time (in seconds) for
   which the current leader in an active failover setup will continue to 
