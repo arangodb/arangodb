@@ -140,36 +140,42 @@ struct IndexingEnabler {
   RocksDBMethods* _methods;
 };
 
-class ConcurrencyControlToggler {
+class ConcurrencyControlSkipper {
  public:
-  ConcurrencyControlToggler(ConcurrencyControlToggler const&) = delete;
-  ConcurrencyControlToggler& operator=(ConcurrencyControlToggler const&) =
+  ConcurrencyControlSkipper(ConcurrencyControlSkipper const&) = delete;
+  ConcurrencyControlSkipper& operator=(ConcurrencyControlSkipper const&) =
       delete;
 
-  explicit ConcurrencyControlToggler(RocksDBMethods* methods, bool isExclusive)
-      : _methods(methods), _exclusive(isExclusive) {
+  explicit ConcurrencyControlSkipper(RocksDBMethods* methods,
+                                     bool active) noexcept
+      : _methods(methods), _active(active) {
     TRI_ASSERT(methods != nullptr);
-  }
-
-  ~ConcurrencyControlToggler() {
-    // nothing to do for exclusive transactions, as they already have the
-    // concurrency control disabled for the entire transaction
-    if (!_exclusive) {
-      _methods->SetSkipConcurrencyControl(false);
+    if (_active) {
+      skipConcurrencyControl();
     }
   }
 
-  void setConcurrencyControl(bool value) {
-    // nothing to do for exclusive transactions, as they already have the
-    // concurrency control disabled for the entire transaction
-    if (!_exclusive) {
-      _methods->SetSkipConcurrencyControl(!value);
+  ~ConcurrencyControlSkipper() {
+    if (_active) {
+      enableConcurrencyControl();
+    }
+  }
+
+  void skipConcurrencyControl() noexcept {
+    if (_active) {
+      _methods->SetSkipConcurrencyControl(true);
+    }
+  }
+
+  void enableConcurrencyControl() noexcept {
+    if (_active) {
+      _methods->SetSkipConcurrencyControl(false);
     }
   }
 
  private:
   RocksDBMethods* _methods;
-  bool const _exclusive;
+  bool const _active;
 };
 
 }  // namespace arangodb

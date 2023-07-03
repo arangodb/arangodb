@@ -1399,8 +1399,11 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
     return res.reset(TRI_ERROR_DEBUG);
   }
 
-  ConcurrencyControlToggler cct(mthds, state->isOnlyExclusiveTransaction());
-  cct.setConcurrencyControl(false);
+  // temporarily disable concurrency control in RocksDB for the following
+  // operations in case we are not in an exclusive transaction. in exclusive
+  // transactions the concurrency control is already disabled.
+  ConcurrencyControlSkipper ccd(
+      mthds, /*active*/ !state->isOnlyExclusiveTransaction());
 
   rocksdb::Status s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(
@@ -1447,13 +1450,24 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
       }
       auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());
 
-      cct.setConcurrencyControl(rIdx.unique());
+      if (rIdx.unique()) {
+        // for unique indexes, we need to enable concurrency control
+        // again. this is necessary because concurrent operations on
+        // unique secondary indexes are synchronized via the unique
+        // key's RocksDB lock.
+        ccd.enableConcurrencyControl();
+      } else {
+        ccd.skipConcurrencyControl();
+      }
       // if we already performed the preflight checks,
       // there is no need to repeat the checks once again here
       res = rIdx.insert(*trx, mthds, documentId, doc, options,
                         /*performChecks*/ !performPreflightChecks);
       if (!res.ok()) {
-        cct.setConcurrencyControl(true);
+        // if something went wrong during index insertion, we can as
+        // well enable concurrency control unconditionally. we don't need
+        // to optimize for this exceptional case.
+        ccd.enableConcurrencyControl();
         reverse(it);
         break;
       }
