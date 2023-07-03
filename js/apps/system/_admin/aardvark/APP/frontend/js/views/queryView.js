@@ -2020,7 +2020,6 @@
                   geojson = new L.Geodesic().fromGeoJson(geometry).addTo(self.maps[counter]);
                   markers.push(geojson);
                 } catch (ignore) {
-                  console.log({ignore})
                   invalidGeoJSON++;
                 }
               }
@@ -2053,7 +2052,6 @@
               }
 
               if (data.result.length === invalidGeoJSON) {
-                console.log('invalidGeoJSON: ' + invalidGeoJSON, data.result.length);t
                 $('#outputGeo' + counter).remove();
                 if (result.defaultType === 'geotable') {
                   $('#outputTable' + counter).show();
@@ -2680,7 +2678,6 @@
           }
         }
       }
-      console.log({toReturn});
       return toReturn;
     },
 
