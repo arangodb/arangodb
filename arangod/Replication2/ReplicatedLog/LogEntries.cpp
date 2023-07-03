@@ -173,33 +173,3 @@ auto LogEntryView::fromVelocyPack(velocypack::Slice slice) -> LogEntryView {
 auto LogEntryView::clonePayload() const -> LogPayload {
   return LogPayload::createFromSlice(_payload);
 }
-
-auto LogMetaPayload::fromVelocyPack(velocypack::Slice s) -> LogMetaPayload {
-  return velocypack::deserialize<LogMetaPayload>(s);
-}
-
-void LogMetaPayload::toVelocyPack(velocypack::Builder& builder) const {
-  velocypack::serialize(builder, *this);
-}
-
-auto LogMetaPayload::withFirstEntryOfTerm(ParticipantId leader,
-                                          agency::ParticipantsConfig config)
-    -> LogMetaPayload {
-  return LogMetaPayload{FirstEntryOfTerm{.leader = std::move(leader),
-                                         .participants = std::move(config)}};
-}
-
-auto LogMetaPayload::withUpdateInnerTermConfig(
-    agency::ParticipantsConfig config,
-    std::unordered_map<ParticipantId, RebootId> safeRebootIds)
-    -> LogMetaPayload {
-  return LogMetaPayload{
-      UpdateInnerTermConfig{.participants = std::move(config),
-                            .safeRebootIds = std::move(safeRebootIds)}};
-}
-
-auto LogMetaPayload::withPing(std::optional<std::string> message,
-                              Ping::clock::time_point tp) noexcept
-    -> LogMetaPayload {
-  return LogMetaPayload{Ping{std::move(message), tp}};
-}
