@@ -974,7 +974,7 @@ PhysicalCollectionMock::PhysicalCollectionMock(
 
 std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     arangodb::velocypack::Slice info, bool restore, bool& created,
-      std::shared_ptr<std::function<arangodb::Result(double)>>) {
+    std::shared_ptr<std::function<arangodb::Result(double)>>) {
   before();
 
   std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
