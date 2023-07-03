@@ -31,7 +31,6 @@
 #include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/FlatHashMap.h"
-#include "Containers/SmallVector.h"
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
@@ -49,7 +48,6 @@ namespace arangodb {
 class LogicalView;
 namespace aql {
 struct Collection;
-class ExecutionNode;
 class ExecutionBlock;
 class ExecutionEngine;
 template<typename T>
@@ -118,6 +116,9 @@ class IResearchViewNode final : public aql::ExecutionNode {
 
   // Return the type of the node.
   NodeType getType() const final { return ENUMERATE_IRESEARCH_VIEW; }
+
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
 
   // Clone ExecutionNode recursively.
   aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,

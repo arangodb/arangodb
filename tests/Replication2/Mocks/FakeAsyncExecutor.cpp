@@ -22,9 +22,11 @@
 
 #include "FakeAsyncExecutor.h"
 
-using namespace arangodb;
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::test;
+#include "Replication2/ReplicatedLog/LogEntries.h"
+
+#include <gtest/gtest.h>
+
+using namespace arangodb::replication2::storage::rocksdb::test;
 
 void ThreadAsyncExecutor::run() noexcept {
   while (true) {
@@ -63,4 +65,40 @@ void ThreadAsyncExecutor::operator()(ThreadAsyncExecutor::Func fn) {
   std::unique_lock guard(mutex);
   queue.emplace_back(std::move(fn));
   cv.notify_one();
+}
+
+void SyncExecutor::operator()(
+    fu2::unique_function<void() noexcept> f) noexcept {
+  std::move(f).operator()();
+}
+
+DelayedExecutor::~DelayedExecutor() {
+  EXPECT_TRUE(queue.empty())
+      << "Unresolved item(s) in the DelayedExecutor queue";
+}
+
+DelayedExecutor::DelayedExecutor() = default;
+
+void DelayedExecutor::operator()(DelayedExecutor::Func fn) {
+  queue.emplace_back(std::move(fn));
+}
+
+void DelayedExecutor::runOnce() noexcept {
+  auto f = std::invoke([this] {
+    ADB_PROD_ASSERT(not queue.empty());
+    auto f = std::move(queue.front());
+    queue.pop_front();
+    return f;
+  });
+  f.operator()();
+}
+
+void DelayedExecutor::runAll() noexcept {
+  while (not queue.empty()) {
+    runOnce();
+  }
+}
+
+auto DelayedExecutor::hasWork() const noexcept -> bool {
+  return not queue.empty();
 }

@@ -35,26 +35,37 @@ using namespace arangodb::replication2;
 
 auto replication2::operator==(LogPayload const& left, LogPayload const& right)
     -> bool {
-  return arangodb::basics::VelocyPackHelper::equal(left.slice(), right.slice(),
-                                                   true);
+  if (left.slice().isString() and right.slice().isString()) {
+    return left.slice().stringView() == right.slice().stringView();
+  } else {
+    // We do not use velocypack compare here, since this is used only in tests
+    // and velocypack compare always has ICU as dependency.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 }
 
 LogPayload::LogPayload(BufferType buffer) : buffer(std::move(buffer)) {}
 
 auto LogPayload::createFromSlice(velocypack::Slice slice) -> LogPayload {
-  return LogPayload(BufferType{slice.start(), slice.byteSize()});
+  BufferType buffer(slice.byteSize());
+  buffer.append(slice.start(), slice.byteSize());
+  return LogPayload{std::move(buffer)};
 }
 
 auto LogPayload::createFromString(std::string_view string) -> LogPayload {
   VPackBuilder builder;
   builder.add(VPackValue(string));
-  return LogPayload::createFromSlice(builder.slice());
+  return LogPayload{*builder.steal()};
 }
 
 auto LogPayload::copyBuffer() const -> velocypack::UInt8Buffer {
   velocypack::UInt8Buffer result;
   result.append(buffer.data(), buffer.size());
   return result;
+}
+
+auto LogPayload::stealBuffer() -> velocypack::UInt8Buffer&& {
+  return std::move(buffer);
 }
 
 auto LogPayload::byteSize() const noexcept -> std::size_t {
@@ -84,7 +95,8 @@ auto PersistingLogEntry::logPayload() const noexcept -> LogPayload const* {
 
 void PersistingLogEntry::toVelocyPack(velocypack::Builder& builder) const {
   builder.openObject();
-  builder.add("logIndex", velocypack::Value(_termIndex.index.value));
+  builder.add(StaticStrings::LogIndex,
+              velocypack::Value(_termIndex.index.value));
   entriesWithoutIndexToVelocyPack(builder);
   builder.close();
 }
@@ -98,26 +110,26 @@ void PersistingLogEntry::toVelocyPack(velocypack::Builder& builder,
 
 void PersistingLogEntry::entriesWithoutIndexToVelocyPack(
     velocypack::Builder& builder) const {
-  builder.add("logTerm", velocypack::Value(_termIndex.term.value));
+  builder.add(StaticStrings::LogTerm, velocypack::Value(_termIndex.term.value));
   if (std::holds_alternative<LogPayload>(_payload)) {
-    builder.add("payload", std::get<LogPayload>(_payload).slice());
+    builder.add(StaticStrings::Payload, std::get<LogPayload>(_payload).slice());
   } else {
     TRI_ASSERT(std::holds_alternative<LogMetaPayload>(_payload));
-    builder.add(velocypack::Value("meta"));
+    builder.add(velocypack::Value(StaticStrings::Meta));
     std::get<LogMetaPayload>(_payload).toVelocyPack(builder);
   }
 }
 
 auto PersistingLogEntry::fromVelocyPack(velocypack::Slice slice)
     -> PersistingLogEntry {
-  auto const logTerm = slice.get("logTerm").extract<LogTerm>();
-  auto const logIndex = slice.get("logIndex").extract<LogIndex>();
+  auto const logTerm = slice.get(StaticStrings::LogTerm).extract<LogTerm>();
+  auto const logIndex = slice.get(StaticStrings::LogIndex).extract<LogIndex>();
   auto const termIndex = TermIndexPair{logTerm, logIndex};
 
-  if (auto payload = slice.get("payload"); !payload.isNone()) {
+  if (auto payload = slice.get(StaticStrings::Payload); !payload.isNone()) {
     return {termIndex, LogPayload::createFromSlice(payload)};
   } else {
-    auto meta = slice.get("meta");
+    auto meta = slice.get(StaticStrings::Meta);
     TRI_ASSERT(!meta.isNone()) << slice.toJson();
     return {termIndex, LogMetaPayload::fromVelocyPack(meta)};
   }
@@ -140,11 +152,11 @@ auto PersistingLogEntry::approxByteSize() const noexcept -> std::size_t {
 PersistingLogEntry::PersistingLogEntry(LogIndex index,
                                        velocypack::Slice persisted) {
   _termIndex.index = index;
-  _termIndex.term = persisted.get("logTerm").extract<LogTerm>();
-  if (auto payload = persisted.get("payload"); !payload.isNone()) {
+  _termIndex.term = persisted.get(StaticStrings::LogTerm).extract<LogTerm>();
+  if (auto payload = persisted.get(StaticStrings::Payload); !payload.isNone()) {
     _payload = LogPayload::createFromSlice(payload);
   } else {
-    auto meta = persisted.get("meta");
+    auto meta = persisted.get(StaticStrings::Meta);
     TRI_ASSERT(!meta.isNone()) << persisted.toJson();
     _payload = LogMetaPayload::fromVelocyPack(meta);
   }
@@ -191,12 +203,13 @@ auto LogEntryView::logPayload() const noexcept -> velocypack::Slice {
 
 void LogEntryView::toVelocyPack(velocypack::Builder& builder) const {
   auto og = velocypack::ObjectBuilder(&builder);
-  builder.add("logIndex", velocypack::Value(_index));
-  builder.add("payload", _payload);
+  builder.add(StaticStrings::LogIndex, velocypack::Value(_index));
+  builder.add(StaticStrings::Payload, _payload);
 }
 
 auto LogEntryView::fromVelocyPack(velocypack::Slice slice) -> LogEntryView {
-  return {slice.get("logIndex").extract<LogIndex>(), slice.get("payload")};
+  return {slice.get(StaticStrings::LogIndex).extract<LogIndex>(),
+          slice.get(StaticStrings::Payload)};
 }
 
 auto LogEntryView::clonePayload() const -> LogPayload {
@@ -218,10 +231,13 @@ auto LogMetaPayload::withFirstEntryOfTerm(ParticipantId leader,
                                          .participants = std::move(config)}};
 }
 
-auto LogMetaPayload::withUpdateParticipantsConfig(
-    agency::ParticipantsConfig config) -> LogMetaPayload {
+auto LogMetaPayload::withUpdateInnerTermConfig(
+    agency::ParticipantsConfig config,
+    std::unordered_map<ParticipantId, RebootId> safeRebootIds)
+    -> LogMetaPayload {
   return LogMetaPayload{
-      UpdateParticipantsConfig{.participants = std::move(config)}};
+      UpdateInnerTermConfig{.participants = std::move(config),
+                            .safeRebootIds = std::move(safeRebootIds)}};
 }
 
 auto LogMetaPayload::withPing(std::optional<std::string> message,

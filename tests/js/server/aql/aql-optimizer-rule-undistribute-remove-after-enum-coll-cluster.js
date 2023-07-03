@@ -42,40 +42,27 @@ let explain = function (result) {
       { return node.type; });
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function optimizerRuleTestSuite () {
-  var cn1 = "UnitTestsAqlOptimizerRuleUndist1";
-  var cn2 = "UnitTestsAqlOptimizerRuleUndist2";
-  var c1, c2;
+  const cn1 = "UnitTestsAqlOptimizerRuleUndist1";
+  const cn2 = "UnitTestsAqlOptimizerRuleUndist2";
+  let c1, c2;
   
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
     setUpAll : function () {
-      var i;
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1, {numberOfShards:9});
       c2 = db._create(cn2);
       let docs1 = [];
       let docs2 = [];
-      for (i = 0; i < 10; i++){ 
-          docs1.push({Hallo1:i});
-          docs2.push({Hallo2:i});
+      for (let i = 0; i < 10; i++) { 
+        docs1.push({Hallo1:i});
+        docs2.push({Hallo2:i});
       }
       c1.insert(docs1);
       c2.insert(docs2);
     },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll : function () {
       db._drop(cn1);
@@ -575,6 +562,7 @@ function optimizerRuleUpdateTestSuite () {
 
       let queries = [
         "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
+        "FOR doc IN " + cn + " UPDATE {_key: doc._key, value: doc.value, foo: 'bar'} IN " + cn,
         "FOR doc IN " + cn + " FILTER doc.value > 0 UPDATE doc WITH {} IN " + cn,
         "FOR doc IN " + cn + " FILTER doc.value > 0 FILTER doc.value < 99 UPDATE doc WITH {} IN " + cn,
       ];
@@ -612,13 +600,55 @@ function optimizerRuleUpdateTestSuite () {
       let queries = [
         "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
         "FOR doc IN " + cn + " FILTER doc.value > 0 UPDATE doc._key WITH {} IN " + cn,
+        "FOR doc IN " + cn + " FILTER doc.value > 0 UPDATE { _key: doc._key, foo: 'bar' } IN " + cn,
         "FOR doc IN " + cn + " FILTER doc.value > 0 FILTER doc.value < 99 UPDATE doc._key WITH {} IN " + cn,
         "FOR doc IN " + cn + " UPDATE doc.value WITH {} IN " + cn,
+        "FOR doc IN " + cn + " UPDATE { _key: doc._key } IN " + cn,
+        "FOR doc IN " + cn + " UPDATE { _key: doc._key, value: doc.abc } IN " + cn,
+        "FOR doc IN " + cn + " UPDATE { _key: doc._key, foo: 'bar' } IN " + cn,
+        "FOR doc IN " + cn + " UPDATE { _key: doc._key, abc: doc.value } IN " + cn,
         "FOR doc IN " + cn + " FILTER doc.value > 0 UPDATE doc.value WITH {} IN " + cn,
         "FOR doc IN " + cn + " FILTER doc.value > 0 FILTER doc.value < 99 UPDATE doc.value WITH {} IN " + cn,
         "FOR doc IN " + cn + " UPDATE doc.abc WITH {} IN " + cn,
         "FOR doc IN " + cn + " FILTER doc.value > 0 UPDATE doc.abc WITH {} IN " + cn,
         "FOR doc IN " + cn + " FILTER doc.value > 0 FILTER doc.value < 99 UPDATE doc.abc WITH {} IN " + cn,
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query);
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      });
+    },
+    
+    testUpdateCustomShardingEffectiveTwoShardKeys : function () {
+      let c = db._create(cn, { numberOfShards: 3, shardKeys: ["a", "b"] });
+
+      let queries = [
+        "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
+        "FOR doc IN " + cn + " UPDATE {_key: doc._key, a: doc.a, b: doc.b, foo: 'bar'} IN " + cn,
+        "FOR doc IN " + cn + " FILTER doc.value > 0 UPDATE doc WITH {} IN " + cn,
+        "FOR doc IN " + cn + " FILTER doc.value > 0 FILTER doc.value < 99 UPDATE doc WITH {} IN " + cn,
+      ];
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      });
+    },
+    
+    testUpdateCustomShardingIneffectiveTwoShardKeys : function () {
+      let c = db._create(cn, { numberOfShards: 3, shardKeys: ["a", "b"] });
+
+      let queries = [
+        "FOR doc IN " + cn + " UPDATE { _key: doc._key } IN " + cn,
+        "FOR doc IN " + cn + " UPDATE { _key: doc._key, a: doc.a } IN " + cn,
+        "FOR doc IN " + cn + " UPDATE { _key: doc._key, b: doc.b } IN " + cn,
+        "FOR doc IN " + cn + " UPDATE { _key: doc._key, a: doc.b, b: doc.x } IN " + cn,
+        "FOR doc IN " + cn + " UPDATE { _key: doc._key, foo: 'bar' } IN " + cn,
+        "FOR doc IN " + cn + " UPDATE { _key: doc._key, abc: doc.value } IN " + cn,
+        "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
+        "FOR doc IN " + cn + " UPDATE doc.value WITH {} IN " + cn,
+        "FOR doc IN " + cn + " UPDATE doc.a WITH {} IN " + cn,
+        "FOR doc IN " + cn + " UPDATE doc.b WITH {} IN " + cn,
       ];
 
       queries.forEach(function(query) {

@@ -276,8 +276,23 @@ class Scheduler {
   virtual void toVelocyPack(velocypack::Builder&) const = 0;
   virtual QueueStatistics queueStatistics() const = 0;
 
+  virtual void trackCreateHandlerTask() noexcept = 0;
+  virtual void trackBeginOngoingLowPriorityTask() noexcept = 0;
+  virtual void trackEndOngoingLowPriorityTask() noexcept = 0;
+
+  virtual void trackQueueTimeViolation() = 0;
+  virtual void trackQueueItemSize(std::int64_t) noexcept = 0;
+
   /// @brief returns the last stored dequeue time [ms]
   virtual uint64_t getLastLowPriorityDequeueTime() const noexcept = 0;
+
+  /// @brief set the time it took for the last low prio item to be dequeued
+  /// (time between queuing and dequeing) [ms]
+  virtual void setLastLowPriorityDequeueTime(uint64_t time) noexcept = 0;
+
+  /// @brief get information about low prio queue:
+  virtual std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued()
+      const = 0;
 
   /// @brief approximate fill grade of the scheduler's queue (in %)
   virtual double approximateQueueFillGrade() const = 0;

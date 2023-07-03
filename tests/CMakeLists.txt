@@ -38,6 +38,7 @@ add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PreparedResponseConnectionPool.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PhysicalCollectionMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraph.cpp
@@ -179,8 +180,11 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfoTest.cpp
-  Cluster/RebootTrackerTest.cpp
+  Cluster/EvenDistributionTest.cpp
+  Cluster/PlanCollectionToAgencyWriterTest.cpp
+  Cluster/PlanCollectionEntryTest.cpp
   Cluster/QueryAnalyzerRevisionsTest.cpp
+  Cluster/RebootTrackerTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
@@ -295,6 +299,7 @@ target_link_libraries(arangodbtests
   arango
   arango_tests_basics
   arango_tests_replication2
+  arango_tests_replication2_pure
   arango_tests_graph
   arango_tests_futures
   arango_tests_zkd
@@ -369,3 +374,4 @@ endforeach()
 
 add_subdirectory(Pregel)
 add_subdirectory(sepp)
+add_subdirectory(VocBase/Properties)

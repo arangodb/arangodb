@@ -40,8 +40,10 @@ struct FakeFollower final : replicated_log::ILogFollower,
 
   auto getStatus() const -> replicated_log::LogStatus override;
   auto getQuickStatus() const -> replicated_log::QuickLogStatus override;
-  auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>,
-                                 DeferredAction> override;
+  auto resign() && -> std::tuple<
+      std::unique_ptr<storage::IStorageEngineMethods>,
+      std::unique_ptr<replicated_log::IReplicatedStateHandle>,
+      DeferredAction> override;
   void resign() &;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
@@ -60,8 +62,8 @@ struct FakeFollower final : replicated_log::ILogFollower,
   void updateCommitIndex(LogIndex index);
   auto addEntry(LogPayload) -> LogIndex;
   void triggerLeaderAcked();
-
-  auto copyInMemoryLog() const -> replicated_log::InMemoryLog override;
+  auto getInternalLogIterator(std::optional<LogRange> bounds) const
+      -> std::unique_ptr<PersistedLogIterator> override;
 
   template<typename State>
   auto insertMultiplexedValue(typename State::EntryType const& t) -> LogIndex {
@@ -70,7 +72,7 @@ struct FakeFollower final : replicated_log::ILogFollower,
     velocypack::Builder builder;
     using descriptor = streams::stream_descriptor_by_id_t<1, streamSpec>;
     streams::MultiplexedValues::toVelocyPack<descriptor>(t, builder);
-    return addEntry(LogPayload::createFromSlice(builder.slice()));
+    return addEntry(LogPayload{*builder.steal()});
   }
 
  private:

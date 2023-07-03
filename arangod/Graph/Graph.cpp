@@ -30,6 +30,7 @@
 #include <array>
 #include <utility>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
@@ -37,6 +38,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
@@ -44,6 +46,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
 
@@ -157,7 +160,15 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
       _vertexColls(),
       _edgeColls(),
       _numberOfShards(1),
-      _replicationFactor(vocbase.replicationFactor()),
+      /* In OneShardDatabases this value is not used internally. It mostly has
+       * informative value on how your graph is sharded. The OneShard feature
+       * will overwrite this setting */
+      _replicationFactor(vocbase.getDatabaseConfiguration().isOneShardDB
+                             ? (std::max)(vocbase.replicationFactor(),
+                                          vocbase.server()
+                                              .getFeature<ClusterFeature>()
+                                              .systemReplicationFactor())
+                             : vocbase.replicationFactor()),
       _writeConcern(1),
       _rev("") {
   if (_graphName.empty()) {
@@ -745,7 +756,9 @@ void Graph::graphForClient(VPackBuilder& builder) const {
   builder.close();  // graph object
 }
 
-Result Graph::validateCollection(LogicalCollection& col) const {
+Result Graph::validateCollection(
+    LogicalCollection const&, std::optional<std::string> const&,
+    std::function<std::string(LogicalCollection const&)> const&) const {
   return {TRI_ERROR_NO_ERROR};
 }
 
@@ -805,11 +818,6 @@ void Graph::createCollectionOptions(VPackBuilder& builder,
               VPackValue(replicationFactor()));
 }
 
-void Graph::createSatelliteCollectionOptions(VPackBuilder& builder,
-                                             bool waitForSync) const {
-  TRI_ASSERT(false);
-}
-
 std::optional<std::reference_wrapper<const EdgeDefinition>>
 Graph::getEdgeDefinition(std::string const& collectionName) const {
   auto it = edgeDefinitions().find(collectionName);
@@ -825,4 +833,88 @@ Graph::getEdgeDefinition(std::string const& collectionName) const {
 auto Graph::addSatellites(VPackSlice const&) -> Result {
   // Enterprise only
   return TRI_ERROR_NO_ERROR;
+}
+
+auto Graph::prepareCreateCollectionBodyEdge(
+    std::string_view name, std::optional<std::string> const& leadingCollection,
+    std::unordered_set<std::string> const& satellites,
+    DatabaseConfiguration const& config) const noexcept
+    -> ResultT<CreateCollectionBody> {
+  CreateCollectionBody body;
+  body.name = name;
+  body.type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
+
+  auto res = injectShardingToCollectionBody(body, leadingCollection, satellites,
+                                            config);
+  if (res.fail()) {
+    return res;
+  }
+  res = body.applyDefaultsAndValidateDatabaseConfiguration(config);
+  if (res.fail()) {
+    return res;
+  }
+  return body;
+}
+
+auto Graph::prepareCreateCollectionBodyVertex(
+    std::string_view name, std::optional<std::string> const& leadingCollection,
+    std::unordered_set<std::string> const& satellites,
+    DatabaseConfiguration const& config) const noexcept
+    -> ResultT<CreateCollectionBody> {
+  CreateCollectionBody body;
+  body.name = name;
+  body.type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
+  auto res = injectShardingToCollectionBody(body, leadingCollection, satellites,
+                                            config);
+  if (res.fail()) {
+    return res;
+  }
+  res = body.applyDefaultsAndValidateDatabaseConfiguration(config);
+  if (res.fail()) {
+    return res;
+  }
+  return body;
+}
+
+auto Graph::injectShardingToCollectionBody(
+    CreateCollectionBody& body, std::optional<std::string> const&,
+    std::unordered_set<std::string> const&,
+    DatabaseConfiguration const& config) const noexcept -> Result {
+  // Only specialized enterprise Graphs make use of the leadingCollection.
+  // Inject all attributes required for a collection
+  if (config.isOneShardDB) {
+    // Nothing to do for oneShardDBs we just use defaults
+    return {};
+  }
+  body.numberOfShards = numberOfShards();
+  if (!isSatellite()) {
+    body.writeConcern = writeConcern();
+    TRI_ASSERT(replicationFactor() > 0);
+  } else {
+    TRI_ASSERT(replicationFactor() == 0);
+  }
+  body.replicationFactor = replicationFactor();
+  return {};
+}
+
+auto Graph::getLeadingCollection(
+    std::unordered_set<std::string> const&,
+    std::unordered_set<std::string> const& edgeCollectionsToCreate,
+    std::unordered_set<std::string> const&,
+    std::shared_ptr<LogicalCollection> const&,
+    const std::function<std::string(const LogicalCollection&)>& getLeader)
+    const noexcept -> std::pair<std::optional<std::string>, bool> const {
+  // Community Graphs have no leading collection
+  return std::make_pair(std::nullopt, false);
+}
+
+auto Graph::requiresInitialUpdate() const noexcept -> bool { return false; }
+
+auto Graph::updateInitial(
+    std::vector<std::shared_ptr<LogicalCollection>> const&,
+    std::optional<std::string> const&,
+    std::function<std::string(LogicalCollection const&)> const&) -> void {
+  TRI_ASSERT(false)
+      << "Called illegal internal function, other implementations of this "
+         "class should have covered this call (Enterprise Edition)";
 }

@@ -58,3 +58,5 @@ void MockTypedNode::doToVelocyPack(arangodb::velocypack::Builder&,
 }
 
 ExecutionNode::NodeType MockTypedNode::getType() const { return _mockedType; }
+
+size_t MockTypedNode::getMemoryUsedBytes() const { return sizeof(*this); }
