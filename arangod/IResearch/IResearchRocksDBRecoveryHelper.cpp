@@ -113,16 +113,16 @@ bool IResearchRocksDBRecoveryHelper::skip(Impl& impl) {
 template<bool Force>
 void IResearchRocksDBRecoveryHelper::clear() noexcept {
   if constexpr (Force) {
-    if (!_ranges.empty()) {
-      _ranges.clear();
+    if (_ranges.empty()) {
+      return;
     }
   } else {
     if (_indexes.size() < kMaxSize && _links.size() < kMaxSize &&
         _ranges.size() < kMaxSize) {
       return;
     }
-    _ranges.clear();
   }
+  _ranges.clear();
   _indexes.clear();
   _links.clear();
 }
