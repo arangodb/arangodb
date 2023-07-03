@@ -725,6 +725,7 @@ exit code if there is an error in any of the .sst files.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
+      .setDeprecatedIn(31200)
       .setLongDescription(R"(A value of `0` does not restrict the size of the
 archive, so the leader removes archived WAL files when there are no replication
 clients needing them. Any non-zero value restricts the size of the WAL files
@@ -748,7 +749,11 @@ You can use the option to force a deletion of WAL files from the archive even if
 there are followers attached that may want to read the archive. In case the
 option is set and a leader deletes files from the archive that followers want to
 read, this aborts the replication on the followers. Followers can restart the
-replication doing a resync, however.)");
+replication doing a resync, though, but they may not be able to catch up if WAL
+file deletion happens too early.
+
+Thus it is best to leave this option at its default value of `0` except in cases
+when disk size is very constrained and no replication is used.)");
 
   options
       ->addOption("--rocksdb.auto-flush-min-live-wal-files",
