@@ -4,23 +4,15 @@ import { useFetchGraphs } from "./useFetchGraphs";
 
 type GraphsContextType = {
   graphs: GraphInfo[] | undefined;
-  isFormDisabled: boolean;
 };
 const GraphsContext = createContext<GraphsContextType>({} as GraphsContextType);
 
-export const GraphsProvider = ({
-  children,
-  isFormDisabled
-}: {
-  children: ReactNode;
-  isFormDisabled?: boolean;
-}) => {
+export const GraphsProvider = ({ children }: { children: ReactNode }) => {
   const { graphs } = useFetchGraphs();
   return (
     <GraphsContext.Provider
       value={{
-        graphs,
-        isFormDisabled: !!isFormDisabled
+        graphs
       }}
     >
       {children}
