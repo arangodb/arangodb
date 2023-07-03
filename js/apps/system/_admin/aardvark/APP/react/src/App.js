@@ -146,7 +146,8 @@ window.define = window.ace.define;
 window.aqltemplates = require('../public/assets/aqltemplates.json');
 
 window.d3 = d3;
-require('../../frontend/js/lib/leaflet.js');
+require('leaflet');
+require('leaflet.geodesic');
 require('../../frontend/js/lib/tile.stamen.js');
 
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');
