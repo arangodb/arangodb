@@ -67,10 +67,14 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
               .with<structuredParams::UrlName>(_request->fullUrl())
               .with<structuredParams::UserName>(_request->user())
               .share()),
-      _requestBodySizeTracker(
-          server.getFeature<GeneralServerFeature>()._requestBodySize,
-          _request->rawPayload().size()),
-      _canceled(false) {}
+      _canceled(false) {
+  if (server.hasFeature<GeneralServerFeature>() &&
+      server.isEnabled<GeneralServerFeature>()) {
+    _requestBodySizeTracker = metrics::GaugeCounterGuard<std::uint64_t>{
+        server.getFeature<GeneralServerFeature>()._requestBodySize,
+        _request->rawPayload().size()};
+  }
+}
 
 RestHandler::~RestHandler() {
   if (_trackedAsOngoingLowPrio) {

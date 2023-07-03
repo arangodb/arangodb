@@ -31,41 +31,50 @@ struct GaugeCounterGuard {
   GaugeCounterGuard& operator=(GaugeCounterGuard const&) = delete;
 
   GaugeCounterGuard(GaugeCounterGuard&& other) noexcept {
-    std::swap(other._totalValue, _totalValue);
+    *this = std::move(other);
   }
   GaugeCounterGuard& operator=(GaugeCounterGuard&& other) noexcept {
     reset();
     std::swap(other._totalValue, _totalValue);
+    std::swap(other._metric, _metric);
+    return *this;
   }
 
   ~GaugeCounterGuard() { fire(); }
+  GaugeCounterGuard() = default;
 
   explicit GaugeCounterGuard(Gauge<T>& metric, T initialValue = {})
-      : _metric(metric) {
+      : _metric(&metric) {
     add(initialValue);
   }
 
   void add(T delta) noexcept {
-    _metric.fetch_add(delta);
-    _totalValue += delta;
+    if (_metric) {
+      _metric->fetch_add(delta);
+      _totalValue += delta;
+    }
   }
 
   void sub(T delta) noexcept {
-    TRI_ASSERT(_metric != nullptr);
-    _metric.fetch_sub(delta);
-    _totalValue -= delta;
+    if (_metric) {
+      _metric->fetch_sub(delta);
+      _totalValue -= delta;
+    }
   }
 
   void fire() noexcept { reset(); }
 
   void reset(std::uint64_t newValue = {}) noexcept {
-    _metric.fetch_sub(_totalValue - newValue);
-    _totalValue = newValue;
+    if (_metric) {
+      _metric->fetch_sub(_totalValue - newValue);
+      _totalValue = newValue;
+      _metric = nullptr;
+    }
   }
 
  private:
   T _totalValue{0};
-  Gauge<T>& _metric;
+  Gauge<T>* _metric = nullptr;
 };
 
 }  // namespace arangodb::metrics
