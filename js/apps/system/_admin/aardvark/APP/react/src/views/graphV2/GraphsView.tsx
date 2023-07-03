@@ -3,18 +3,21 @@ import { Box, Button, Heading, Stack, useDisclosure } from "@chakra-ui/react";
 import React from "react";
 import { AddGraphModal } from "./addGraph/AddGraphModal";
 import { GraphsProvider } from "./GraphsContext";
+import { GraphsModeProvider } from "./GraphsModeContext";
 import { GraphsTable } from "./listGraphs/GraphsTable";
 
 export const GraphsView = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   return (
-    <GraphsProvider>
-      <Box padding="4" width="100%">
-        <GraphViewHeader onOpen={onOpen} />
+    <Box padding="4" width="100%">
+      <GraphViewHeader onOpen={onOpen} />
+      <GraphsModeProvider mode="add">
         <AddGraphModal isOpen={isOpen} onClose={onClose} />
+      </GraphsModeProvider>
+      <GraphsProvider>
         <GraphsTable />
-      </Box>
-    </GraphsProvider>
+      </GraphsProvider>
+    </Box>
   );
 };
 
