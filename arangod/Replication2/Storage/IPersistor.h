@@ -18,18 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/Storage/ILogPersistor.h"
-#include "Replication2/Storage/IStatePersistor.h"
+namespace arangodb {
+class Result;
+}  // namespace arangodb
 
 namespace arangodb::replication2::storage {
 
-// TODO - cleanup usage and remove this interface
-struct IStorageEngineMethods : virtual ILogPersistor, virtual IStatePersistor {
-  virtual ~IStorageEngineMethods() = default;
+struct IPersistor {
+  virtual ~IPersistor() = default;
+  virtual auto drop() -> Result = 0;
 };
 
 }  // namespace arangodb::replication2::storage

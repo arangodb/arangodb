@@ -23,9 +23,9 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Storage/IPersistor.h"
 
 namespace arangodb {
-class Result;
 template<typename T>
 class ResultT;
 }  // namespace arangodb
@@ -41,7 +41,7 @@ struct PersistedLogIterator;
 }
 namespace arangodb::replication2::storage {
 
-struct ILogPersistor {
+struct ILogPersistor : virtual IPersistor {
   virtual ~ILogPersistor() = default;
 
   [[nodiscard]] virtual auto read(LogIndex first)
@@ -69,7 +69,6 @@ struct ILogPersistor {
   // waits for all ongoing requests to be done
   virtual void waitForCompletion() noexcept = 0;
 
-  virtual auto drop() -> Result = 0;
   virtual auto compact() -> Result = 0;
 };
 
