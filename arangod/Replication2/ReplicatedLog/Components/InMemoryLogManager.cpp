@@ -99,8 +99,9 @@ auto InMemoryLogManager::appendLogEntry(
     }
 
     // TODO for now only waitForSync=true is supported.
-    waitForSync = true;  // by setting this to true, the waitForSync flag is set
-                         // for all log entries, independent of the log config.
+    // waitForSync = true;  // by setting this to true, the waitForSync flag is
+    // set
+    // for all log entries, independent of the log config.
 
     auto const index = data._inMemoryLog.getNextIndex();
     auto const payloadSize = std::holds_alternative<LogPayload>(payload)
