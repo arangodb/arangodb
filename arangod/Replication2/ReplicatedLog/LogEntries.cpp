@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogEntries.h"
+
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 
@@ -32,49 +33,6 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
-
-auto replication2::operator==(LogPayload const& left, LogPayload const& right)
-    -> bool {
-  if (left.slice().isString() and right.slice().isString()) {
-    return left.slice().stringView() == right.slice().stringView();
-  } else {
-    // We do not use velocypack compare here, since this is used only in tests
-    // and velocypack compare always has ICU as dependency.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-}
-
-LogPayload::LogPayload(BufferType buffer) : buffer(std::move(buffer)) {}
-
-auto LogPayload::createFromSlice(velocypack::Slice slice) -> LogPayload {
-  BufferType buffer(slice.byteSize());
-  buffer.append(slice.start(), slice.byteSize());
-  return LogPayload{std::move(buffer)};
-}
-
-auto LogPayload::createFromString(std::string_view string) -> LogPayload {
-  VPackBuilder builder;
-  builder.add(VPackValue(string));
-  return LogPayload{*builder.steal()};
-}
-
-auto LogPayload::copyBuffer() const -> velocypack::UInt8Buffer {
-  velocypack::UInt8Buffer result;
-  result.append(buffer.data(), buffer.size());
-  return result;
-}
-
-auto LogPayload::stealBuffer() -> velocypack::UInt8Buffer&& {
-  return std::move(buffer);
-}
-
-auto LogPayload::byteSize() const noexcept -> std::size_t {
-  return buffer.size();
-}
-
-auto LogPayload::slice() const noexcept -> velocypack::Slice {
-  return VPackSlice(buffer.data());
-}
 
 PersistingLogEntry::PersistingLogEntry(
     TermIndexPair termIndexPair,

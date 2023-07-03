@@ -24,38 +24,14 @@
 #pragma once
 
 #include <string_view>
-#include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 #include <Inspection/VPack.h>
 
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogPayload.h"
 
 namespace arangodb::replication2 {
-
-struct LogPayload {
-  using BufferType = velocypack::UInt8Buffer;
-
-  explicit LogPayload(BufferType dummy);
-
-  // Named constructors, have to make copies.
-  [[nodiscard]] static auto createFromSlice(velocypack::Slice slice)
-      -> LogPayload;
-  [[nodiscard]] static auto createFromString(std::string_view string)
-      -> LogPayload;
-
-  friend auto operator==(LogPayload const&, LogPayload const&) -> bool;
-
-  [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
-  [[nodiscard]] auto slice() const noexcept -> velocypack::Slice;
-  [[nodiscard]] auto copyBuffer() const -> velocypack::UInt8Buffer;
-  [[nodiscard]] auto stealBuffer() -> velocypack::UInt8Buffer&&;
-
- private:
-  BufferType buffer;
-};
-
-auto operator==(LogPayload const&, LogPayload const&) -> bool;
 
 struct LogMetaPayload {
   struct FirstEntryOfTerm {

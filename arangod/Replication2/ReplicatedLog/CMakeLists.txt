@@ -19,6 +19,7 @@ target_sources(arango_replication2_pure PRIVATE
   InMemoryLog.cpp
   WaitForBag.cpp
   LogEntries.cpp
+  LogPayload.cpp
   ReplicatedLog.cpp
   Supervision.cpp
   SupervisionAction.cpp
