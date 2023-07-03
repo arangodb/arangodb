@@ -30,14 +30,17 @@
 
 #include <velocypack/Slice.h>
 
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 
 namespace arangodb {
+
+namespace replication2 {
+struct LogTerm;
+struct LogPayload;
+class PersistingLogEntry;
+}  // namespace replication2
 
 class RocksDBValue {
  public:

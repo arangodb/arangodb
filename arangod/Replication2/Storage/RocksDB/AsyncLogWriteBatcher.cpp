@@ -29,7 +29,7 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Replication2/MetricsHelper.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteContext.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
 #include "RocksDBEngine/RocksDBKey.h"

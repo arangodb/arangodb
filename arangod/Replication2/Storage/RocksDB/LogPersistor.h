@@ -26,6 +26,7 @@
 #include <rocksdb/db.h>
 
 #include "Replication2/Storage/ILogPersistor.h"
+#include "Replication2/Storage/RocksDB/AsyncLogWriteContext.h"
 
 namespace arangodb::replication2::storage::rocksdb {
 
@@ -34,7 +35,8 @@ struct AsyncLogWriteContext;
 struct IAsyncLogWriteBatcher;
 
 struct LogPersistor final : storage::ILogPersistor {
-  LogPersistor(LogId logId, AsyncLogWriteContext& ctx, ::rocksdb::DB* const db,
+  LogPersistor(LogId logId, uint64_t objectId, std::uint64_t vocbaseId,
+               ::rocksdb::DB* const db,
                ::rocksdb::ColumnFamilyHandle* const logCf,
                std::shared_ptr<IAsyncLogWriteBatcher> batcher,
                std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics);
@@ -64,7 +66,7 @@ struct LogPersistor final : storage::ILogPersistor {
 
  private:
   LogId const logId;
-  AsyncLogWriteContext& ctx;
+  AsyncLogWriteContext ctx;
   std::shared_ptr<IAsyncLogWriteBatcher> const batcher;
   std::shared_ptr<AsyncLogWriteBatcherMetrics> const _metrics;
   ::rocksdb::DB* const db;

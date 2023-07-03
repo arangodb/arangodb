@@ -22,15 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Replication2/Storage/IPersistor.h"
 #include "Replication2/Storage/PersistedStateInfo.h"
 
 namespace arangodb::replication2::storage {
 
-struct IStatePersistor {
+struct IStatePersistor : virtual IPersistor {
   virtual ~IStatePersistor() = default;
   [[nodiscard]] virtual auto updateMetadata(PersistedStateInfo) -> Result = 0;
   [[nodiscard]] virtual auto readMetadata() -> ResultT<PersistedStateInfo> = 0;
-  [[nodiscard]] virtual auto drop() -> Result = 0;
 };
 
 }  // namespace arangodb::replication2::storage
