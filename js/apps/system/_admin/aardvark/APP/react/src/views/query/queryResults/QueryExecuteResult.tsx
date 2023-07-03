@@ -8,7 +8,6 @@ import {
   Stack,
   Text
 } from "@chakra-ui/react";
-import _ from "lodash";
 import React from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { QueryResultType } from "../QueryContextProvider";
@@ -16,119 +15,9 @@ import { QueryGraphView } from "./QueryGraphView";
 import { RemoveResultButton } from "./RemoveResultButton";
 import { ResultTypeBox } from "./ResultTypeBox";
 import { TimingInfo } from "./TimingInfo";
+import { DisplayType, useDisplayTypes } from "./useDisplayTypes";
 import { useSyncQueryExecuteJob } from "./useSyncQueryExecuteJob";
 
-/**
- * check if result could be displayed as graph
- * case a) result has keys named vertices and edges
- * case b) 95% results _from and _to attribute
- */
-const useDisplayType = ({ queryResult }: { queryResult: QueryResultType }) => {
-  const [displayType, setDisplayType] = React.useState<"graph" | "json">(
-    "json"
-  );
-  const [currentView, setCurrentView] = React.useState<"json" | "graph">(
-    "json"
-  );
-  const [graphDataType, setGraphDataType] = React.useState<"object" | "array">(
-    "object"
-  );
-  React.useEffect(() => {
-    const detectGraph = () => {
-      const { result } = queryResult;
-      if (!result) {
-        return;
-      }
-      let found = false;
-
-      // find first index with data
-      let index = 0;
-      for (let i = 0; i < result.length; i++) {
-        if (result[i]) {
-          index = i;
-          break;
-        }
-      }
-      if (result[index]) {
-        if (result[index].vertices && result[index].edges) {
-          let hitsa = 0;
-          let totala = 0;
-
-          _.each(result, function (obj) {
-            if (obj.edges) {
-              _.each(obj.edges, function (edge) {
-                if (edge !== null) {
-                  if (edge._from && edge._to) {
-                    hitsa++;
-                  }
-                  totala++;
-                }
-              });
-            }
-          });
-
-          let percentagea = 0;
-          if (totala > 0) {
-            percentagea = (hitsa / totala) * 100;
-          }
-
-          if (percentagea >= 95) {
-            found = true;
-            setDisplayType("graph");
-            setCurrentView(prevView => {
-              if (prevView !== "graph") {
-                return "graph";
-              }
-              return prevView;
-            });
-            setGraphDataType("object");
-          }
-        } else {
-          // case b) 95% have _from and _to attribute
-          let hitsb = 0;
-          let totalb = result.length;
-
-          _.each(result, function (obj) {
-            if (obj) {
-              if (obj._from && obj._to && obj._id) {
-                hitsb++;
-              }
-            }
-          });
-
-          let percentageb = 0;
-          if (totalb > 0) {
-            percentageb = (hitsb / totalb) * 100;
-          }
-
-          if (percentageb >= 95) {
-            found = true;
-            setDisplayType("graph");
-            setCurrentView(prevView => {
-              if (prevView !== "graph") {
-                return "graph";
-              }
-              return prevView;
-            });
-            setGraphDataType("array");
-            // then display as graph
-          }
-        }
-      }
-      if (!found) {
-        setDisplayType("json");
-        setCurrentView(prevView => {
-          if (prevView !== "json") {
-            return "json";
-          }
-          return prevView;
-        });
-      }
-    };
-    detectGraph();
-  }, [queryResult]);
-  return { displayType, graphDataType, currentView, setCurrentView };
-};
 export const QueryExecuteResult = ({
   index,
   queryResult
@@ -141,8 +30,8 @@ export const QueryExecuteResult = ({
     asyncJobId: queryResult.asyncJobId,
     index
   });
-  const { displayType, graphDataType, currentView, setCurrentView } =
-    useDisplayType({
+  const { displayTypes, graphDataType, currentView, setCurrentView } =
+    useDisplayTypes({
       queryResult
     });
 
@@ -185,16 +74,20 @@ export const QueryExecuteResult = ({
             >
               JSON
             </Button>
-            {displayType === "graph" && (
-              <Button
-                onClick={() => {
-                  setCurrentView("graph");
-                }}
-                colorScheme={currentView === "graph" ? "blue" : "gray"}
-              >
-                Graph
-              </Button>
-            )}
+            {displayTypes.map(type => {
+              return (
+                <Button
+                  key={type}
+                  onClick={() => {
+                    setCurrentView(type);
+                  }}
+                  colorScheme={currentView === type ? "blue" : "gray"}
+                  textTransform="capitalize"
+                >
+                  {type}
+                </Button>
+              );
+            })}
           </ButtonGroup>
           <RemoveResultButton index={index} />
         </Stack>
@@ -214,8 +107,8 @@ const QueryExecuteResultDisplay = ({
   graphDataType
 }: {
   queryResult: QueryResultType;
-  currentView: "json" | "graph";
-  graphDataType: "object" | "array";
+  currentView: DisplayType;
+  graphDataType: "graphObject" | "edgeArray";
 }) => {
   if (currentView === "graph") {
     return (

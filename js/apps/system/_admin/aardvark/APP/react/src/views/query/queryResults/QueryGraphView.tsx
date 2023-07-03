@@ -29,7 +29,7 @@ const convertToGraphData = ({
   graphDataType
 }: {
   data: ObjectInputDataType[] | ArrayDataInputType[];
-  graphDataType: "object" | "array";
+  graphDataType: "graphObject" | "edgeArray";
 }) => {
   const graphSettings = {
     edges: {
@@ -48,7 +48,7 @@ const convertToGraphData = ({
   const color = "#48bb78";
   let nodeIds = [] as string[];
   let edgeIds = [] as string[];
-  if (graphDataType === "object") {
+  if (graphDataType === "graphObject") {
     (data as ObjectInputDataType[]).forEach(function (obj) {
       if (obj.edges && obj.vertices) {
         obj.vertices.forEach(function (node) {
@@ -174,7 +174,6 @@ const useSetupQueryGraph = ({
   graphData
 }: {
   graphData?: { edges: EdgeDataType[]; nodes: NodeDataType[]; settings: any };
-  data: ObjectInputDataType[];
   visJsRef: React.RefObject<HTMLDivElement>;
 }) => {
   const [network, setNetwork] = useState<Network>();
@@ -269,7 +268,7 @@ export const QueryGraphView = ({
   graphDataType
 }: {
   queryResult: QueryResultType;
-  graphDataType: "object" | "array";
+  graphDataType: "graphObject" | "edgeArray";
 }) => {
   const graphData = useMemo(() => {
     return convertToGraphData({ graphDataType, data: queryResult.result });
@@ -277,8 +276,7 @@ export const QueryGraphView = ({
   const visJsRef = useRef<HTMLDivElement>(null);
   const { progressValue, network } = useSetupQueryGraph({
     visJsRef,
-    graphData,
-    data: queryResult.result
+    graphData
   });
   return (
     <Box position="relative">
@@ -287,19 +285,21 @@ export const QueryGraphView = ({
           <Progress value={progressValue} colorScheme="green" />
         </Box>
       )}
-      <Button
-        position="absolute"
-        zIndex="1"
-        right="12px"
-        top="12px"
-        size="xs"
-        variant="ghost"
-        onClick={() => {
-          network?.fit();
-        }}
-      >
-        Reset zoom
-      </Button>
+      {progressValue === 100 && (
+        <Button
+          position="absolute"
+          zIndex="1"
+          right="12px"
+          top="12px"
+          size="xs"
+          variant="ghost"
+          onClick={() => {
+            network?.fit();
+          }}
+        >
+          Reset zoom
+        </Button>
+      )}
       <Box height="500px" width="full" ref={visJsRef} />
     </Box>
   );
