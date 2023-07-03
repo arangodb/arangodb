@@ -1,6 +1,9 @@
 v3.10.9 (XXXX-XX-XX)
 --------------------
 
+* When trying to read multiple documents, the coordinator will now handle empty
+  lists gracefully and return an empty result set instead of an error.
+
 * Added startup option `--replication.active-failover-leader-grace-period`.
   This startup option can be used to set the amount of time (in seconds) for
   which the current leader in an active failover setup will continue to 
