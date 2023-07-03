@@ -36,21 +36,25 @@ using namespace arangodb::replication2::replicated_state;
 
 namespace arangodb::replication2::storage::rocksdb {
 
-StatePersistor::StatePersistor(LogId logId, AsyncLogWriteContext& ctx,
-                               ::rocksdb::DB* const db,
+StatePersistor::StatePersistor(LogId logId, uint64_t objectId,
+                               std::uint64_t vocbaseId, ::rocksdb::DB* const db,
                                ::rocksdb::ColumnFamilyHandle* const metaCf)
-    : logId(logId), ctx(ctx), db(db), metaCf(metaCf) {}
+    : logId(logId),
+      objectId(objectId),
+      vocbaseId(vocbaseId),
+      db(db),
+      metaCf(metaCf) {}
 
 Result StatePersistor::updateMetadata(storage::PersistedStateInfo info) {
   TRI_ASSERT(info.stateId == logId);  // redundant information
 
   auto key = RocksDBKey{};
-  key.constructReplicatedState(ctx.vocbaseId, logId);
+  key.constructReplicatedState(vocbaseId, logId);
 
   ReplicatedStateInfo rInfo;
   rInfo.dataSourceId = logId.id();
   rInfo.stateId = logId;
-  rInfo.objectId = ctx.objectId;
+  rInfo.objectId = objectId;
   rInfo.state = std::move(info);
 
   VPackBuilder valueBuilder;
@@ -65,7 +69,7 @@ Result StatePersistor::updateMetadata(storage::PersistedStateInfo info) {
 
 ResultT<PersistedStateInfo> StatePersistor::readMetadata() {
   auto key = RocksDBKey{};
-  key.constructReplicatedState(ctx.vocbaseId, logId);
+  key.constructReplicatedState(vocbaseId, logId);
 
   std::string value;
   auto s = db->GetRootDB()->Get(::rocksdb::ReadOptions{}, metaCf, key.string(),
@@ -83,7 +87,7 @@ ResultT<PersistedStateInfo> StatePersistor::readMetadata() {
 
 auto StatePersistor::drop() -> Result {
   auto key = RocksDBKey{};
-  key.constructReplicatedState(ctx.vocbaseId, logId);
+  key.constructReplicatedState(vocbaseId, logId);
   ::rocksdb::WriteOptions opts;
   auto status = db->GetRootDB()->Delete(opts, metaCf, key.string());
   return rocksutils::convertStatus(status);
