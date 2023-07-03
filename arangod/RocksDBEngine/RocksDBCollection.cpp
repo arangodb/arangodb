@@ -392,9 +392,9 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
   }
 }
 
-std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
-                                                      bool restore,
-                                                      bool& created) {
+std::shared_ptr<Index> RocksDBCollection::createIndex(
+    VPackSlice info, bool restore, bool& created,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(info.isObject());
 
   // Step 0. Lock all the things
@@ -545,9 +545,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
       }
 
       RocksDBFilePurgePreventer walKeeper(&engine);
-      res = buildIdx->fillIndexBackground(locker);
+      res = buildIdx->fillIndexBackground(locker, std::move(progress));
     } else {
-      res = buildIdx->fillIndexForeground();
+      res = buildIdx->fillIndexForeground(std::move(progress));
     }
     if (res.fail()) {
       return res;

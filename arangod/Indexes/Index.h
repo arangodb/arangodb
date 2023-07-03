@@ -459,6 +459,13 @@ class Index {
   /// @param key the conflicting key
   Result& addErrorMsg(Result& r, std::string_view key = {}) const;
 
+  void progress(double p) noexcept {
+    _progress.store(p, std::memory_order_relaxed);
+  }
+  double progress() const noexcept {
+    return _progress.load(std::memory_order_relaxed);
+  }
+
  protected:
   static std::vector<std::vector<basics::AttributeName>> parseFields(
       velocypack::Slice fields, bool allowEmpty, bool allowExpansion);
@@ -485,6 +492,7 @@ class Index {
   LogicalCollection& _collection;
   std::string _name;
   std::vector<std::vector<basics::AttributeName>> const _fields;
+  std::atomic<double> _progress;
   bool const _useExpansion;
 
   mutable bool _unique;

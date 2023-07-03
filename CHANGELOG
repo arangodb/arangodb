@@ -1,6 +1,8 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+* Add visibility pf progress to index API
+
 * Remove temporary `CREATING_{number}` directories from hot backup in case a
   hot backup runs into an error.
 

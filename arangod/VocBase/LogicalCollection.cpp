@@ -1054,9 +1054,11 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
   return getPhysical()->lookupIndex(info);
 }
 
-std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
-                                                      bool& created) {
-  auto idx = _physical->createIndex(info, /*restore*/ false, created);
+std::shared_ptr<Index> LogicalCollection::createIndex(
+    VPackSlice info, bool& created,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
+  auto idx = _physical->createIndex(info, /*restore*/ false, created,
+                                    std::move(progress));
   if (idx) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
     if (df.versionTracker() != nullptr) {

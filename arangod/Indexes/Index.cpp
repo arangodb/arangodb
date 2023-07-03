@@ -209,6 +209,7 @@ Index::Index(
       _collection(collection),
       _name(name),
       _fields(fields),
+      _progress(-1.),
       _useExpansion(::hasExpansion(_fields)),
       _unique(unique),
       _sparse(sparse) {
@@ -226,6 +227,7 @@ Index::Index(IndexId iid, arangodb::LogicalCollection& collection,
           slice.get(arangodb::StaticStrings::IndexFields), /*allowEmpty*/ true,
           Index::allowExpansion(Index::type(
               slice.get(arangodb::StaticStrings::IndexType).stringView())))),
+      _progress(-1.),
       _useExpansion(::hasExpansion(_fields)),
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, arangodb::StaticStrings::IndexUnique, false)),
@@ -550,6 +552,11 @@ void Index::toVelocyPack(
   if (hasSelectivityEstimate() &&
       Index::hasFlag(flags, Index::Serialize::Estimates)) {
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
+  }
+
+  auto const progress = _progress.load(std::memory_order_relaxed);
+  if (progress > -1 && progress < 100) {
+    builder.add("progress", VPackValue(progress));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {
