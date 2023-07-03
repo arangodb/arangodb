@@ -2277,7 +2277,10 @@ function processQuery(query, explain, planIndex) {
   stringBuilder.appendLine();
 
   printRules(plan.rules, explain.stats);
-  printModificationFlags(modificationFlags);
+  // printing of "write query options" normally does not help to get any
+  // better insights, so it has been deactivated. the code is kept around
+  // in case we still need it later.
+  // printModificationFlags(modificationFlags);
   if (profileMode) {
     printStats(explain.stats, isCoord);
     printProfile(explain.profile);
@@ -2448,6 +2451,10 @@ function debug(query, bindVars, options) {
               }
             });
           } catch (err) { }
+        } else {
+          node.graph.forEach(edgeColl => {
+            collections.push({name: edgeColl});
+          });
         }
       } else if (node.type === 'SubqueryNode') {
         // recurse into subqueries
@@ -2563,11 +2570,21 @@ function inspectDump(filename, outfile) {
   }
 
   let data = JSON.parse(require('fs').read(filename));
-  if (data.version && data.version) {
-    print("/* original data is from " + data.version["server-version"] + ", " + data.version.license + " */");
+  let version = "";
+  let license = "";
+  if (data.version) {
+    version = data.version;
+    license = version.license;
+    if (version && version.details) {
+      version = version.details;
+    }
+    if (version && version.hasOwnProperty('server-version')) {
+      version = version['server-version'];
+    }
+    print("/* original data is from " + version + ", " + license + " */");
   }
   if (data.database) {
-    print("/* original data gathered from database '" + data.database + "' */");
+    print("/* original data gathered from database " + JSON.stringify(data.database) + " */");
   }
 
   try {
@@ -2679,7 +2696,7 @@ function inspectDump(filename, outfile) {
   }
 }
 
-function explainQuerysRegisters(plan) {
+function explainQueryRegisters(plan) {
 
   /**
    * @typedef Node
@@ -3083,12 +3100,12 @@ function explainRegisters(data, options, shouldPrint) {
       stringBuilder.appendLine(section("Plan #" + (i + 1) + " of " + result.plans.length));
       stringBuilder.prefix = ' ';
       stringBuilder.appendLine();
-      explainQuerysRegisters(result.plans[i]);
+      explainQueryRegisters(result.plans[i]);
       stringBuilder.prefix = '';
     }
   } else {
     // single plan
-    explainQuerysRegisters(result.plan);
+    explainQueryRegisters(result.plan);
   }
 
   if (shouldPrint === undefined || shouldPrint) {

@@ -1,14 +1,13 @@
 
 @startDocuBlock put_api_replication_server_id
-@brief fetch this server's unique identifier
 
-@RESTHEADER{GET /_api/replication/server-id, Return server id, getReplicationServerId}
+@RESTHEADER{GET /_api/replication/server-id, Get the replication server ID, getReplicationServerId}
 
 @RESTDESCRIPTION
 Returns the servers id. The id is also returned by other replication API
 methods, and this method is an easy means of determining a server's id.
 
-The body of the response is a JSON object with the attribute *serverId*. The
+The body of the response is a JSON object with the attribute `serverId`. The
 server id is returned as a string.
 
 @RESTRETURNCODES

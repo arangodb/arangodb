@@ -29,11 +29,13 @@
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/MoveShard.h"
+#include "Agency/NodeDeserialization.h"
+#include "Agency/ReconfigureReplicatedLog.h"
 #include "Basics/TimeString.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
-#include "VocBase/LogicalCollection.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 using namespace arangodb::consensus;
 
@@ -74,8 +76,8 @@ JOB_STATUS ResignLeadership::status() {
     return _status;
   }
 
-  auto const& todos = _snapshot.hasAsChildren(toDoPrefix).value().get();
-  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).value().get();
+  auto const& todos = *_snapshot.hasAsChildren(toDoPrefix);
+  auto const& pends = *_snapshot.hasAsChildren(pendingPrefix);
   size_t found = 0;
 
   for (auto const& subJob : todos) {
@@ -103,8 +105,7 @@ JOB_STATUS ResignLeadership::status() {
     return PENDING;
   }
 
-  Node::Children const& failed =
-      _snapshot.hasAsChildren(failedPrefix).value().get();
+  Node::Children const& failed = *_snapshot.hasAsChildren(failedPrefix);
   size_t failedFound = 0;
   for (auto const& subJob : failed) {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
@@ -230,7 +231,7 @@ bool ResignLeadership::start(bool& aborts) {
   VPackBuilder cleanedServersBuilder;
   auto const& cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
   if (cleanedServersNode) {
-    cleanedServersNode->get().toBuilder(cleanedServersBuilder);
+    cleanedServersNode->toBuilder(cleanedServersBuilder);
   } else {
     // ignore this check
     cleanedServersBuilder.clear();
@@ -253,7 +254,7 @@ bool ResignLeadership::start(bool& aborts) {
   if (_snapshot.has(failedServersPrefix)) {
     auto const& failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
     if (failedServersNode) {
-      failedServersNode->get().toBuilder(failedServersBuilder);
+      failedServersNode->toBuilder(failedServersBuilder);
     } else {
       // ignore this check
       failedServersBuilder.clear();
@@ -367,17 +368,63 @@ bool ResignLeadership::start(bool& aborts) {
   return false;
 }
 
+void ResignLeadership::scheduleJobsR2(std::shared_ptr<Builder>& trx,
+                                      DatabaseID const& database, size_t& sub) {
+  auto replicatedLogsPath =
+      basics::StringUtils::concatT("/Target/ReplicatedLogs/", database);
+  auto logs = _snapshot.hasAsChildren(replicatedLogsPath);
+
+  for (auto const& [logIdString, logNode] : *logs) {
+    auto logTarget = deserialize<replication2::agency::LogTarget>(*logNode);
+    auto logPlan = readLogPlan(_snapshot, database, logTarget.id);
+
+    bool changeLeader = [&] {
+      if (logTarget.leader == _server) {
+        return true;
+      }
+      if (logPlan && logPlan->currentTerm && logPlan->currentTerm->leader) {
+        return logPlan->currentTerm->leader->serverId == _server;
+      }
+      return false;
+    }();
+
+    if (changeLeader) {
+      auto replacement =
+          findOtherHealthyParticipant(_snapshot, logTarget, {_server});
+
+      if (replacement.empty()) {
+        continue;
+      }
+
+      auto undo =
+          _undoMoves ? std::optional<std::string>{_server} : std::nullopt;
+      ReconfigureReplicatedLog(
+          _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
+          database, logTarget.id,
+          {ReconfigureOperation{
+              ReconfigureOperation::SetLeader{.participant = replacement}}},
+          // cppcheck-suppress accessMoved
+          std::move(undo))
+          .create(trx);
+    }
+  }
+}
+
 bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   std::vector<std::string> servers = availableServers(_snapshot);
 
   Node::Children const& databaseProperties =
-      _snapshot.hasAsChildren(planDBPrefix).value().get();
-  Node::Children const& databases =
-      _snapshot.hasAsChildren(planColPrefix).value().get();
+      *_snapshot.hasAsChildren(planDBPrefix);
+  Node::Children const& databases = *_snapshot.hasAsChildren(planColPrefix);
   size_t sub = 0;
 
   for (auto const& database : databases) {
     bool const isRepl2 = isReplicationTwoDB(databaseProperties, database.first);
+    if (isRepl2) {
+      scheduleJobsR2(trx, database.first, sub);
+      continue;
+    }
+
     // Find shardsLike dependencies
     for (auto const& collptr : database.second->children()) {
       auto const& collection = *(collptr.second);
@@ -386,44 +433,27 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         continue;
       }
 
-      for (auto const& shard :
-           collection.hasAsChildren("shards").value().get()) {
+      for (auto const& shard : *collection.hasAsChildren("shards")) {
         // Only shards, which are affected
         int found = -1;
-        if (!isRepl2) {
-          int count = 0;
-          for (VPackSlice dbserver :
-               VPackArrayIterator(shard.second->slice())) {
-            if (dbserver.stringView() == _server) {
-              found = count;
-              break;
-            }
-            count++;
+        int count = 0;
+        for (VPackSlice dbserver : VPackArrayIterator(shard.second->slice())) {
+          if (dbserver.stringView() == _server) {
+            found = count;
+            break;
           }
-        } else {
-          // look into replicated state
-          auto stateId = LogicalCollection::shardIdToStateId(shard.first);
-          if (isServerLeaderForState(_snapshot, database.first, stateId,
-                                     _server)) {
-            found = 0;
-          }
+          count++;
         }
+
         if (found == -1) {
           continue;
         }
 
         bool isLeader = (found == 0);
-
         if (isLeader) {
-          std::string toServer;
-          if (isRepl2) {
-            auto stateId = LogicalCollection::shardIdToStateId(shard.first);
-            toServer = Job::findOtherHealthyParticipant(
-                _snapshot, database.first, stateId, _server);
-          } else {
-            toServer = Job::findNonblockedCommonHealthyInSyncFollower(
-                _snapshot, database.first, collptr.first, shard.first, _server);
-          }
+          std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
+              _snapshot, database.first, collptr.first, shard.first, _server);
+
           if (toServer.empty()) {
             continue;  // can not resign from that shard
           }
@@ -480,10 +510,8 @@ arangodb::Result ResignLeadership::abort(std::string const& reason) {
   }
 
   // Abort all our subjobs:
-  Node::Children const& todos =
-      _snapshot.hasAsChildren(toDoPrefix).value().get();
-  Node::Children const& pends =
-      _snapshot.hasAsChildren(pendingPrefix).value().get();
+  Node::Children const& todos = *_snapshot.hasAsChildren(toDoPrefix);
+  Node::Children const& pends = *_snapshot.hasAsChildren(pendingPrefix);
 
   std::string moveShardAbortReason = "resign leadership aborted: " + reason;
 

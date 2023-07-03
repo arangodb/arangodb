@@ -1,7 +1,6 @@
 @startDocuBlock put_api_view_view_properties_arangosearch
-@brief changes all properties of an `arangosearch` View
 
-@RESTHEADER{PUT /_api/view/{view-name}/properties, Change properties of an arangosearch View, replaceViewProperties}
+@RESTHEADER{PUT /_api/view/{view-name}/properties, Replace the properties of an arangosearch View, replaceViewProperties}
 
 @RESTURLPARAMETERS
 
@@ -114,36 +113,32 @@ Sub-properties:
   - `minScore` (number, _optional_): (default: 0)
 
 @RESTDESCRIPTION
-Changes the properties of a View by replacing them.
+Changes all properties of a View by replacing them.
 
 On success an object with the following attributes is returned:
-- *id*: The identifier of the View
-- *name*: The name of the View
-- *type*: The View type
+- `id`: The identifier of the View
+- `name`: The name of the View
+- `type`: The View type
 - all additional `arangosearch` View implementation-specific properties
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *view-name* is missing, then a *HTTP 400* is returned.
+If the `view-name` is missing, then a *HTTP 400* is returned.
 
 @RESTRETURNCODE{404}
-If the *view-name* is unknown, then a *HTTP 404* is returned.
+If the `view-name` is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestViewPutPropertiesArangoSearch}
-    var viewName = "products";
-    var viewType = "arangosearch";
+    var view = db._createView("productsView", "arangosearch");
 
-    var view = db._createView(viewName, viewType);
     var url = "/_api/view/"+ view.name() + "/properties";
-
     var response = logCurlRequest('PUT', url, { "locale": "en" });
-
     assert(response.code === 200);
-
     logJsonResponse(response);
-    db._dropView(viewName);
+
+    db._dropView(view.name());
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

@@ -102,6 +102,7 @@ using Helper = arangodb::basics::VelocyPackHelper;
 namespace {
 std::string const edgeUrl = "/_internal/traverser/edge/";
 std::string const vertexUrl = "/_internal/traverser/vertex/";
+
 }  // namespace
 
 // Timeout for write operations, note that these are used for communication
@@ -346,6 +347,9 @@ void mergeResultsAllShards(
   }
 }
 
+const ShardID LocalErrorsShard = "#ERRORS";
+struct InsertOperationCtx;
+
 /// @brief handle CRUD api shard responses, fast path
 template<typename F, typename CT>
 OperationResult handleCRUDShardResponsesFast(
@@ -355,8 +359,16 @@ OperationResult handleCRUDShardResponsesFast(
   std::map<ShardID, int> shardError;
   std::unordered_map<::ErrorCode, size_t> errorCounter;
 
-  fuerte::StatusCode code = fuerte::StatusInternalError;
-  // If none of the shards responded we return a SERVER_ERROR;
+  fuerte::StatusCode code =
+      results.empty() ? fuerte::StatusOK : fuerte::StatusInternalError;
+  // If the list of shards is not empty and none of the shards responded we
+  // return a SERVER_ERROR;
+  if constexpr (std::is_same_v<CT, InsertOperationCtx>) {
+    if (opCtx.reverseMapping.size() == opCtx.localErrors.size()) {
+      // all batch operations failed because of key errors, return Accepted
+      code = fuerte::StatusAccepted;
+    }
+  }
 
   for (Try<arangodb::network::Response> const& tryRes : results) {
     network::Response const& res = tryRes.get();  // throws exceptions upwards
@@ -399,8 +411,22 @@ OperationResult handleCRUDShardResponsesFast(
   resultBody.openArray();
   for (auto const& pair : opCtx.reverseMapping) {
     ShardID const& sId = pair.first;
-    auto const& it = resultMap.find(sId);
-    if (it == resultMap.end()) {  // no answer from this shard
+    if constexpr (std::is_same_v<CT, InsertOperationCtx>) {
+      if (sId == LocalErrorsShard) {
+        Result const& res = opCtx.localErrors[pair.second];
+        resultBody.openObject(
+            /*unindexed*/ true);
+        resultBody.add(StaticStrings::Error, VPackValue(true));
+        resultBody.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
+        resultBody.add(StaticStrings::ErrorMessage,
+                       VPackValue(res.errorMessage()));
+        resultBody.close();
+        ++errorCounter[res.errorNumber()];
+        continue;
+      }
+    }
+    if (auto const& it = resultMap.find(sId);
+        it == resultMap.end()) {  // no answer from this shard
       auto const& it2 = shardError.find(sId);
       TRI_ASSERT(it2 != shardError.end());
       resultBody.openObject(/*unindexed*/ true);
@@ -539,6 +565,7 @@ struct InsertOperationCtx {
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   std::map<ShardID, std::vector<std::pair<VPackSlice, std::string>>> shardMap;
   arangodb::OperationOptions options;
+  std::vector<Result> localErrors;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,6 +584,13 @@ struct InsertOperationCtx {
   bool isRestore = opCtx.options.isRestore;
   ShardID shardID;
   std::string key;
+
+  auto addLocalError = [&](Result err) {
+    TRI_ASSERT(err.fail());
+    auto idx = opCtx.localErrors.size();
+    opCtx.localErrors.emplace_back(std::move(err));
+    opCtx.reverseMapping.emplace_back(LocalErrorsShard, idx);
+  };
 
   if (!value.isObject()) {
     // We have invalid input at this point.
@@ -594,7 +628,8 @@ struct InsertOperationCtx {
           auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
                                                       value, isRestore);
           if (res != TRI_ERROR_NO_ERROR) {
-            return res;
+            addLocalError(res);
+            return TRI_ERROR_NO_ERROR;
           }
         }
       }
@@ -712,11 +747,6 @@ static std::shared_ptr<ShardMap> DistributeShardsEvenly(
     std::vector<std::string> serverIds;
     for (uint64_t j = 0; j < replicationFactor; ++j) {
       if (j >= dbServers.size()) {
-        if (warnAboutReplicationFactor) {
-          LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
-              << "createCollectionCoordinator: replicationFactor is "
-              << "too large for the number of DBservers";
-        }
         break;
       }
 
@@ -930,8 +960,8 @@ futures::Future<OperationResult> revisionOnCoordinator(
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
@@ -991,8 +1021,8 @@ futures::Future<OperationResult> checksumOnCoordinator(
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
@@ -1079,8 +1109,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, cid);
+  std::shared_ptr<LogicalCollection> collinfo = ci.getCollectionNT(dbname, cid);
   if (collinfo == nullptr) {
     return futures::makeFuture(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1177,8 +1206,8 @@ futures::Future<OperationResult> figuresOnCoordinator(
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
@@ -1243,8 +1272,8 @@ futures::Future<OperationResult> countOnCoordinator(
 
   std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, cname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, cname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
@@ -1267,11 +1296,12 @@ futures::Future<OperationResult> countOnCoordinator(
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
-  if (NameValidator::isSystemName(cname)) {
-    // system collection (e.g. _apps, _jobs, _graphs...
+  if (NameValidator::isSystemName(cname) &&
+      !(collinfo->isSmartChild() || collinfo->isSmartEdgeCollection())) {
+    // system collection (e.g. _apps, _jobs, _graphs...) that is not
     // very likely this is an internal request that should not block other
     // processing in case we don't get a timely response
-    reqOpts.timeout = network::Timeout(5.0);
+    reqOpts.timeout = network::Timeout(10.0);
   }
 
   std::vector<Future<network::Response>> futures;
@@ -1389,6 +1419,7 @@ futures::Future<metrics::LeaderResponse> metricsFromLeader(
   headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJsonNoEncoding);
   auto options = network::RequestOptions{}
                      .param("type", metrics::kCDJson)
+                     // cppcheck-suppress accessMoved
                      .param("MetricsServerId", std::move(serverId))
                      .param("MetricsRebootId", std::to_string(rebootId))
                      .param("MetricsVersion", std::to_string(version));
@@ -1418,8 +1449,8 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
   result.clear();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
@@ -1432,11 +1463,12 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = true;
 
-  if (NameValidator::isSystemName(collname)) {
-    // system collection (e.g. _apps, _jobs, _graphs...
+  if (NameValidator::isSystemName(collname) &&
+      !(collinfo->isSmartChild() || collinfo->isSmartEdgeCollection())) {
+    // system collection (e.g. _apps, _jobs, _graphs...) that is not
     // very likely this is an internal request that should not block other
     // processing in case we don't get a timely response
-    reqOpts.timeout = network::Timeout(5.0);
+    reqOpts.timeout = network::Timeout(10.0);
   }
 
   std::vector<Future<network::Response>> futures;
@@ -1545,6 +1577,15 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     if (res != TRI_ERROR_NO_ERROR) {
       return makeFuture(OperationResult(res, options));
     }
+    if (!opCtx.localErrors.empty()) {
+      return makeFuture(OperationResult(opCtx.localErrors.front(), options));
+    }
+  }
+
+  if (opCtx.shardMap.empty()) {
+    return handleCRUDShardResponsesFast(network::clusterResultInsert, opCtx,
+                                        {});
+    // all operations failed with a local error
   }
 
   bool const isJobsCollection =
@@ -1891,8 +1932,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
       trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(trx.vocbase().name(), collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(trx.vocbase().name(), collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(OperationResult(
         res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), options));
@@ -2944,6 +2985,13 @@ ClusterMethods::persistCollectionsInAgency(
     std::vector<std::string> dbServers = ci.getCurrentDBServers();
     infos.reserve(collections.size());
 
+    TRI_IF_FAILURE("allShardsOnSameServer") {
+      std::sort(dbServers.begin(), dbServers.end());
+      while (dbServers.size() > 1) {
+        dbServers.pop_back();
+      }
+    }
+
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackData;
     vpackData.reserve(collections.size());
 
@@ -3000,13 +3048,6 @@ ClusterMethods::persistCollectionsInAgency(
         if (!avoid.empty()) {
           // We need to remove all servers that are in the avoid list
           if (dbServers.size() - avoid.size() < replicationFactor) {
-            LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
-                << "Do not have enough DBServers for requested "
-                   "replicationFactor,"
-                << " (after considering avoid list),"
-                << " nrDBServers: " << dbServers.size()
-                << " replicationFactor: " << replicationFactor
-                << " avoid list size: " << avoid.size();
             // Not enough DBServers left
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
           }

@@ -56,18 +56,23 @@ class SupervisedScheduler final : public Scheduler {
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
 
-  void trackCreateHandlerTask() noexcept;
-  void trackBeginOngoingLowPriorityTask() noexcept;
-  void trackEndOngoingLowPriorityTask() noexcept;
+  void trackCreateHandlerTask() noexcept override;
+  void trackBeginOngoingLowPriorityTask() noexcept override;
+  void trackEndOngoingLowPriorityTask() noexcept override;
 
-  void trackQueueTimeViolation() noexcept;
+  void trackQueueTimeViolation() noexcept override;
+  void trackQueueItemSize(std::int64_t) noexcept override;
 
   /// @brief returns the last stored dequeue time [ms]
   uint64_t getLastLowPriorityDequeueTime() const noexcept override;
 
   /// @brief set the time it took for the last low prio item to be dequeued
   /// (time between queuing and dequeing) [ms]
-  void setLastLowPriorityDequeueTime(uint64_t time) noexcept;
+  void setLastLowPriorityDequeueTime(uint64_t time) noexcept override;
+
+  /// @brief get information about low prio queue:
+  std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued()
+      const override;
 
   constexpr static uint64_t const NumberOfQueues = 4;
 
@@ -88,9 +93,6 @@ class SupervisedScheduler final : public Scheduler {
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
   double unavailabilityQueueFillGrade() const override;
-
-  /// @brief get information about low prio queue:
-  std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued() const;
 
  protected:
   bool isStopping() override { return _stopping; }
@@ -136,16 +138,6 @@ class SupervisedScheduler final : public Scheduler {
 
     // cppcheck-suppress missingOverride
     bool start();
-  };
-
-  struct WorkItem final {
-    fu2::unique_function<void()> _handler;
-
-    explicit WorkItem(fu2::unique_function<void()>&& handler)
-        : _handler(std::move(handler)) {}
-    ~WorkItem() = default;
-
-    void operator()() { _handler(); }
   };
 
   std::unique_ptr<WorkItemBase> getWork(std::shared_ptr<WorkerState>& state);
@@ -224,6 +216,8 @@ class SupervisedScheduler final : public Scheduler {
   metrics::Gauge<uint64_t>& _metricsNumAwakeThreads;
   metrics::Gauge<uint64_t>& _metricsNumWorkingThreads;
   metrics::Gauge<uint64_t>& _metricsNumWorkerThreads;
+  metrics::Gauge<uint64_t>& _metricsStackMemoryWorkerThreads;
+  metrics::Gauge<int64_t>& _schedulerQueueMemory;
 
   metrics::Counter& _metricsHandlerTasksCreated;
   metrics::Counter& _metricsThreadsStarted;

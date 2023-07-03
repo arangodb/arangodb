@@ -1932,9 +1932,9 @@ void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
     while (!banished) {
       auto status = _cache->banish(k.buffer()->data(),
                                    static_cast<uint32_t>(k.buffer()->size()));
-      if (status.ok()) {
+      if (status == TRI_ERROR_NO_ERROR) {
         banished = true;
-      } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
+      } else if (status == TRI_ERROR_SHUTTING_DOWN) {
         destroyCache();
         break;
       }

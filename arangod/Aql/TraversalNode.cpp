@@ -40,6 +40,7 @@
 #include "Aql/Variable.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tryEmplaceHelper.h"
+#include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/Providers/BaseProviderOptions.h"
@@ -47,13 +48,14 @@
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/TraverserOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
+#include "Graph/algorithm-aliases.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/ticks.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 
-#include <Graph/algorithm-aliases.h>
 #include <memory>
 #include <utility>
 
@@ -161,6 +163,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
+  validateCollections();
 }
 
 /// @brief Internal constructor to clone the node.
@@ -177,7 +180,9 @@ TraversalNode::TraversalNode(
       _inVariable(inVariable),
       _vertexId(std::move(vertexId)),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {}
+      _toCondition(nullptr) {
+  validateCollections();
+}
 
 TraversalNode::TraversalNode(ExecutionPlan* plan,
                              arangodb::velocypack::Slice const& base)
@@ -295,6 +300,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
+  validateCollections();
 }
 
 // This constructor is only used from LocalTraversalNode, and GraphNode
@@ -311,6 +317,7 @@ TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
     TRI_ASSERT(!other._optionsBuilt);
   }
   other.traversalCloneHelper(plan, *this, false);
+  validateCollections();
 }
 
 TraversalNode::~TraversalNode() = default;
@@ -1388,5 +1395,65 @@ void TraversalNode::checkConditionsDefined() const {
   TRI_ASSERT(_toCondition != nullptr);
   TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 }
-
 #endif
+
+void TraversalNode::validateCollections() const {
+  if (!ServerState::instance()->isSingleServerOrCoordinator()) {
+    // validation must happen on single/coordinator.
+    // DB servers only see shard names here
+    return;
+  }
+  auto* g = graph();
+  if (g == nullptr) {
+    // list of edge collections
+    for (auto const& it : options()->edgeCollections) {
+      if (_edgeAliases.contains(it)) {
+        // SmartGraph edge collection. its real name is contained
+        // in the aliases list
+        continue;
+      }
+      if (std::find_if(_edgeColls.begin(), _edgeColls.end(),
+                       [&it](aql::Collection const* c) {
+                         return c->name() == it;
+                       }) == _edgeColls.end()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,
+            absl::StrCat(
+                "edge collection '", it,
+                "' used in 'edgeCollections' option is not part of the "
+                "specified edge collection list"));
+      }
+    }
+  } else {
+    // named graph
+    {
+      auto colls = g->vertexCollections();
+      for (auto const& it : options()->vertexCollections) {
+        if (!colls.contains(it)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
+              absl::StrCat(
+                  "vertex collection '", it,
+                  "' used in 'vertexCollections' option is not part of "
+                  "the specified graph"));
+        }
+      }
+    }
+
+    {
+      auto colls = g->edgeCollections();
+      for (auto const& it : options()->edgeCollections) {
+        if (!colls.contains(it)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,
+              absl::StrCat(
+                  "edge collection '", it,
+                  "' used in 'edgeCollections' option is not part of the "
+                  "specified graph"));
+        }
+      }
+    }
+  }
+}
+
+size_t TraversalNode::getMemoryUsedBytes() const { return sizeof(*this); }

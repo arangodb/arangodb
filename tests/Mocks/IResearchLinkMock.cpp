@@ -35,6 +35,7 @@
 #include "Logger/Logger.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb::iresearch {
@@ -83,14 +84,11 @@ void IResearchLinkMock::toVelocyPack(
 std::function<irs::directory_attributes()> IResearchLinkMock::InitCallback;
 
 Result IResearchLinkMock::remove(transaction::Methods& trx,
-                                 LocalDocumentId documentId, bool nested,
-                                 uint64_t const* recoveryTick) {
-  if (recoveryTick == nullptr) {
-    auto* state = basics::downCast<::TransactionStateMock>(trx.state());
-    TRI_ASSERT(state != nullptr);
-    state->incrementRemove();
-  }
-  return IResearchDataStore::remove(trx, documentId, nested, recoveryTick);
+                                 LocalDocumentId documentId) {
+  auto* state = basics::downCast<::TransactionStateMock>(trx.state());
+  TRI_ASSERT(state != nullptr);
+  state->incrementRemove();
+  return IResearchDataStore::remove(trx, documentId);
 }
 
 }  // namespace arangodb::iresearch

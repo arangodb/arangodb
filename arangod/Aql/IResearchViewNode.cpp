@@ -38,7 +38,6 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
 #include "Aql/types.h"
 #include "Basics/NumberUtils.h"
@@ -54,7 +53,6 @@
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/Search.h"
 #include "IResearch/ViewSnapshot.h"
-#include "RegisterPlan.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -2213,6 +2211,8 @@ IResearchViewNode::OptimizationState::replaceAllViewVariables(
 bool IResearchViewNode::isBuilding() const {
   return _view && _view->isBuilding();
 }
+
+size_t IResearchViewNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 }  // namespace arangodb::iresearch
 

@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_collection
-@brief creates a collection
 
-@RESTHEADER{POST /_api/collection, Create collection, createCollection}
+@RESTHEADER{POST /_api/collection, Create a collection, createCollection}
 
 @HINTS
 {% hint 'warning' %}

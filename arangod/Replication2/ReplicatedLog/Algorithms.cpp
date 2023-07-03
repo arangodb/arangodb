@@ -23,13 +23,10 @@
 
 #include "Algorithms.h"
 
-#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
-#include "Cluster/FailureOracle.h"
 #include "Logger/LogMacros.h"
-#include "Random/RandomGenerator.h"
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/TermIndexMapping.h"
 
 #include <algorithm>
 #include <random>
@@ -59,8 +56,9 @@ auto algorithms::to_string(ConflictReason r) noexcept -> std::string_view {
   FATAL_ERROR_ABORT();
 }
 
-auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
-                                TermIndexPair prevLog) noexcept
+auto algorithms::detectConflict(
+    replicated_log::TermIndexMapping const& termIndexMap,
+    TermIndexPair prevLog) noexcept
     -> std::optional<std::pair<ConflictReason, TermIndexPair>> {
   /*
    * There are three situations to handle here:
@@ -69,14 +67,14 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
    *    - It is before our first entry
    *  - The term does not match.
    */
-  auto entry = log.getEntryByIndex(prevLog.index);
+  auto entry = termIndexMap.getTermOfIndex(prevLog.index);
   if (entry.has_value()) {
     // check if the term matches
-    if (entry->entry().logTerm() != prevLog.term) {
+    if (*entry != prevLog.term) {
       auto conflict = std::invoke([&] {
-        if (auto idx = log.getFirstIndexOfTerm(entry->entry().logTerm());
+        if (auto idx = termIndexMap.getFirstIndexOfTerm(*entry);
             idx.has_value()) {
-          return TermIndexPair{entry->entry().logTerm(), *idx};
+          return TermIndexPair{*entry, *idx};
         }
         return TermIndexPair{};
       });
@@ -87,18 +85,18 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
       return std::nullopt;
     }
   } else {
-    auto lastEntry = log.getLastEntry();
-    if (!lastEntry.has_value()) {
+    auto lastEntry = termIndexMap.getLastIndex();
+    if (not lastEntry.has_value()) {
       // The log is empty, reset to (0, 0)
       return std::make_pair(ConflictReason::LOG_EMPTY, TermIndexPair{});
-    } else if (prevLog.index > lastEntry->entry().logIndex()) {
+    } else if (prevLog.index > lastEntry->index) {
       // the given entry is too far ahead
-      return std::make_pair(ConflictReason::LOG_ENTRY_AFTER_END,
-                            TermIndexPair{lastEntry->entry().logTerm(),
-                                          lastEntry->entry().logIndex() + 1});
+      return std::make_pair(
+          ConflictReason::LOG_ENTRY_AFTER_END,
+          TermIndexPair{lastEntry->term, lastEntry->index + 1});
     } else {
-      TRI_ASSERT(prevLog.index < lastEntry->entry().logIndex());
-      TRI_ASSERT(prevLog.index < log.getFirstEntry()->entry().logIndex());
+      TRI_ASSERT(prevLog.index < lastEntry->index);
+      TRI_ASSERT(prevLog.index < termIndexMap.getFirstIndex()->index);
       // the given index too old, reset to (0, 0)
       return std::make_pair(ConflictReason::LOG_ENTRY_BEFORE_BEGIN,
                             TermIndexPair{});

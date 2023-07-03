@@ -36,8 +36,8 @@ const optionsDocumentation = [
 const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
-const tu = require('@arangodb/testutils/test-utils');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
+const {getGTestResults} = require('@arangodb/testutils/result-processing');
 const testPaths = {
   'gtest': [],
   'catch': [],
@@ -79,37 +79,6 @@ function readGreylist() {
     print(RED + "Greylisting tests: " + JSON.stringify(greylist) + RESET);
   }
   return greylist;
-}
-
-function getGTestResults(fileName, defaultResults) {
-  let results = defaultResults;
-  if (! fs.exists(fileName)) {
-    defaultResults.failed += 1;
-    print(RED + "No testresult file found at: " + fileName + RESET);    
-    return defaultResults;
-  }
-  let gTestResults = JSON.parse(fs.read(fileName));
-  results.failed = gTestResults.failures + gTestResults.errors;
-  results.status = (gTestResults.errors === 0) || (gTestResults.failures === 0);
-  gTestResults.testsuites.forEach(function(testSuite) {
-    results[testSuite.name] = {
-      failed: testSuite.failures + testSuite.errors,
-      status: (testSuite.failures + testSuite.errors ) === 0,
-      duration: testSuite.time
-    };
-    if (testSuite.failures !== 0) {
-      let message = "";
-      testSuite.testsuite.forEach(function (suite) {
-        if (suite.hasOwnProperty('failures')) {
-          suite.failures.forEach(function (fail) {
-            message += fail.failure;
-          });
-        }
-      });
-      results[testSuite.name].message = message;
-    }
-  });
-  return results;
 }
 
 function gtestRunner (testfilename, name, opts, testoptions) {
@@ -176,8 +145,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
     testFns[test] = x => gtestRunner(test, test, x);
   }
   testFns['gtest'] = x => gtestRunner('arangodbtests', 'arangodbtests', x);
-
-  testFns['gtest_replication2'] = x => gtestRunner('arangodbtests_replication2', 'gtest-replication2', x);
   
   let iresearch_filter = ['gtest_filter=IResearch*'];
   testFns['gtest_iresearch'] = x => gtestRunner('arangodbtests', 'gtest-iresearch', x, iresearch_filter);

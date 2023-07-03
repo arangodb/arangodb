@@ -24,7 +24,9 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 
 #include "Basics/debugging.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperationInspectors.h"
 #include "Transaction/Methods.h"
+#include "StorageEngine/TransactionState.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -32,38 +34,24 @@ DocumentStateTransaction::DocumentStateTransaction(
     std::unique_ptr<transaction::Methods> methods)
     : _methods(std::move(methods)) {}
 
-auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
-    -> OperationResult {
-  // TODO revisit checkUniqueConstraintsInPreflight and waitForSync
-  auto opOptions = OperationOptions();
-  opOptions.silent = true;
-  opOptions.ignoreRevs = true;
-  opOptions.isRestore = true;
-  // opOptions.checkUniqueConstraintsInPreflight = true;
-  opOptions.validate = false;
-  opOptions.waitForSync = false;
-  opOptions.indexOperationMode = IndexOperationMode::internal;
-
-  switch (entry.operation) {
-    case OperationType::kInsert:
-    case OperationType::kUpdate:
-    case OperationType::kReplace:
-      opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
-      return _methods->insert(entry.shardId, entry.data.slice(), opOptions);
-    case OperationType::kRemove:
-      return _methods->remove(entry.shardId, entry.data.slice(), opOptions);
-    case OperationType::kTruncate:
-      // TODO Think about correctness and efficiency.
-      return _methods->truncate(entry.shardId, opOptions);
-    default:
-      TRI_ASSERT(false);
-      return OperationResult{
-          Result{TRI_ERROR_TRANSACTION_INTERNAL,
-                 fmt::format(
-                     "Transaction of type {} with ID {} could not be applied",
-                     int(entry.operation), entry.tid.id())},
-          opOptions};
-  }
+auto DocumentStateTransaction::apply(
+    ReplicatedOperation::OperationType const& op) -> OperationResult {
+  auto opts = buildDefaultOptions();
+  return std::visit(
+      overload{
+          [&](ModifiesUserTransaction auto const& operation) {
+            return applyOp(operation, opts);
+          },
+          [&](auto&&) {
+            TRI_ASSERT(false) << op;
+            return OperationResult{
+                Result{TRI_ERROR_TRANSACTION_INTERNAL,
+                       fmt::format("Operation {} cannot be applied",
+                                   ReplicatedOperation::fromOperationType(op))},
+                opts};
+          },
+      },
+      op);
 }
 
 auto DocumentStateTransaction::intermediateCommit() -> Result {
@@ -73,5 +61,41 @@ auto DocumentStateTransaction::intermediateCommit() -> Result {
 auto DocumentStateTransaction::commit() -> Result { return _methods->commit(); }
 
 auto DocumentStateTransaction::abort() -> Result { return _methods->abort(); }
+
+auto DocumentStateTransaction::containsShard(ShardID const& sid) -> bool {
+  return nullptr != _methods->state()->collection(sid, AccessMode::Type::NONE);
+}
+
+auto DocumentStateTransaction::buildDefaultOptions() -> OperationOptions {
+  // TODO revisit checkUniqueConstraintsInPreflight and waitForSync
+  auto opOptions = OperationOptions();
+  opOptions.silent = true;
+  opOptions.ignoreRevs = true;
+  opOptions.isRestore = true;
+  // opOptions.checkUniqueConstraintsInPreflight = true;
+  opOptions.validate = false;
+  opOptions.waitForSync = false;
+  opOptions.indexOperationMode = IndexOperationMode::internal;
+  return opOptions;
+}
+
+auto DocumentStateTransaction::applyOp(InsertsDocuments auto const& op,
+                                       OperationOptions& opts)
+    -> OperationResult {
+  opts.overwriteMode = OperationOptions::OverwriteMode::Replace;
+  return _methods->insert(op.shard, op.payload.slice(), opts);
+}
+auto DocumentStateTransaction::applyOp(ReplicatedOperation::Remove const& op,
+                                       OperationOptions& opts)
+    -> OperationResult {
+  return _methods->remove(op.shard, op.payload.slice(), opts);
+}
+
+auto DocumentStateTransaction::applyOp(ReplicatedOperation::Truncate const& op,
+                                       OperationOptions& opts)
+    -> OperationResult {
+  // TODO Think about correctness and efficiency.
+  return _methods->truncate(op.shard, opts);
+}
 
 }  // namespace arangodb::replication2::replicated_state::document

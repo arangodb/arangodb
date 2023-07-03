@@ -62,10 +62,15 @@ class TransactionDB;
 
 namespace arangodb {
 
-struct RocksDBAsyncLogWriteBatcher;
+namespace replication2::storage::rocksdb {
+struct AsyncLogWriteBatcherMetrics;
+struct IAsyncLogWriteBatcher;
+}  // namespace replication2::storage::rocksdb
+
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
+class RocksDBDumpManager;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -276,14 +281,14 @@ class RocksDBEngine final : public StorageEngine {
 
   auto dropReplicatedState(
       TRI_vocbase_t& vocbase,
-      std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
-          ptr) -> Result override;
+      std::unique_ptr<replication2::storage::IStorageEngineMethods>& ptr)
+      -> Result override;
 
   auto createReplicatedState(
       TRI_vocbase_t& vocbase, replication2::LogId id,
-      replication2::replicated_state::PersistedStateInfo const& info)
+      replication2::storage::PersistedStateInfo const& info)
       -> ResultT<std::unique_ptr<
-          replication2::replicated_state::IStorageEngineMethods>> override;
+          replication2::storage::IStorageEngineMethods>> override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -387,6 +392,16 @@ class RocksDBEngine final : public StorageEngine {
   void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
   void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
 
+  void trackRevisionTreeBufferedMemoryIncrease(std::uint64_t value) noexcept;
+  void trackRevisionTreeBufferedMemoryDecrease(std::uint64_t value) noexcept;
+
+  void trackIndexSelectivityMemoryIncrease(std::uint64_t value) noexcept;
+  void trackIndexSelectivityMemoryDecrease(std::uint64_t value) noexcept;
+
+  metrics::Gauge<uint64_t>& indexEstimatorMemoryUsageMetric() const noexcept {
+    return _metricsIndexEstimatorMemoryUsage;
+  }
+
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
@@ -441,6 +456,11 @@ class RocksDBEngine final : public StorageEngine {
     return _replicationManager.get();
   }
 
+  RocksDBDumpManager* dumpManager() const {
+    TRI_ASSERT(_dumpManager);
+    return _dumpManager.get();
+  }
+
   /// @brief returns a pointer to the sync thread
   /// note: returns a nullptr if automatic syncing is turned off!
   RocksDBSyncThread* syncThread() const { return _syncThread.get(); }
@@ -480,6 +500,7 @@ class RocksDBEngine final : public StorageEngine {
 
  private:
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
+  [[nodiscard]] Result dropReplicatedStates(TRI_voc_tick_t databaseId);
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
@@ -520,8 +541,6 @@ class RocksDBEngine final : public StorageEngine {
 
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
-
-  void removeEmptyJournalFilesFromArchive();
 
   RocksDBOptionsProvider const& _optionsProvider;
 
@@ -707,6 +726,7 @@ class RocksDBEngine final : public StorageEngine {
   // an auto-flush
   uint64_t _autoFlushMinWalFiles;
 
+  metrics::Gauge<uint64_t>& _metricsIndexEstimatorMemoryUsage;
   metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   metrics::Gauge<uint64_t>& _metricsLiveWalFiles;
@@ -716,18 +736,24 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Gauge<uint64_t>& _metricsPrunableWalFiles;
   metrics::Gauge<uint64_t>& _metricsWalPruningActive;
   metrics::Gauge<uint64_t>& _metricsTreeMemoryUsage;
+  metrics::Gauge<uint64_t>& _metricsTreeBufferedMemoryUsage;
   metrics::Counter& _metricsTreeRebuildsSuccess;
   metrics::Counter& _metricsTreeRebuildsFailure;
   metrics::Counter& _metricsTreeHibernations;
   metrics::Counter& _metricsTreeResurrections;
 
   // @brief persistor for replicated logs
-  std::shared_ptr<RocksDBAsyncLogWriteBatcher> _logPersistor;
+  std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
+      _logMetrics;
+  std::shared_ptr<replication2::storage::rocksdb::IAsyncLogWriteBatcher>
+      _logPersistor;
 
   // Checksum env for when creation of sha files is enabled
   // this is for when encryption is enabled, sha files will be created
   // after the encryption of the .sst and .blob files
   std::unique_ptr<rocksdb::Env> _checksumEnv;
+
+  std::unique_ptr<RocksDBDumpManager> _dumpManager;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

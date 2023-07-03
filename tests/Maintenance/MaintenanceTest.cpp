@@ -34,6 +34,7 @@
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ResignShardLeadership.h"
+#include "Metrics/MetricsFeature.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
@@ -41,6 +42,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 
@@ -166,11 +168,10 @@ class SharedMaintenanceTest : public ::testing::Test {
   std::map<std::string, std::string> matchShortLongIds(
       Node const& supervision) {
     std::map<std::string, std::string> ret;
-    for (auto const& dbs : supervision.get("Health").value().get().children()) {
+    for (auto const& dbs : supervision.get("Health")->children()) {
       if (dbs.first.front() == 'P') {
-        ret.emplace(
-            dbs.second->get("ShortName").value().get().getString().value(),
-            dbs.first);
+        ret.emplace(dbs.second->get("ShortName")->getString().value(),
+                    dbs.first);
       }
     }
     return ret;
@@ -356,7 +357,7 @@ class SharedMaintenanceTest : public ::testing::Test {
 
   std::map<std::string, std::string> collectionMap(Node const& plan) {
     std::map<std::string, std::string> ret;
-    auto const pb = plan.get("Collections")->get().toBuilder();
+    auto const pb = plan.get("Collections")->toBuilder();
     auto const ps = pb.slice();
     for (auto const& db : VPackObjectIterator(ps)) {
       for (auto const& col : VPackObjectIterator(db.value)) {
@@ -605,7 +606,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 
     auto vec = path->vec(paths::SkipComponents(2));
     TRI_ASSERT(plan.has(vec));
-    auto const& shardList = plan.get(vec)->get();
+    auto const& shardList = *plan.get(vec);
     std::unordered_set<std::string> res;
     for (auto const& [shard, servers] : shardList.children()) {
       auto oldValue = servers->slice();
@@ -852,7 +853,7 @@ std::vector<std::string> PLAN_SECTIONS{ANALYZERS,       COLLECTIONS,
 containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>
 planToChangeset(Node const& plan) {
   containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> ret;
-  for (auto const& db : plan.get(DATABASES)->get().children()) {
+  for (auto const& db : plan.get(DATABASES)->children()) {
     VPackBuilder& dbbuilder =
         *ret.try_emplace(db.first, std::make_shared<VPackBuilder>())
              .first->second;
@@ -872,8 +873,7 @@ planToChangeset(Node const& plan) {
               VPackObjectBuilder c(&dbbuilder);
               auto path = std::vector<std::string>{section, db.first};
               if (plan.has(path)) {
-                dbbuilder.add(db.first,
-                              plan.get(path)->get().toBuilder().slice());
+                dbbuilder.add(db.first, plan.get(path)->toBuilder().slice());
               }
             }
           }
@@ -1024,10 +1024,8 @@ TEST_F(
   createPlanCollection(dbname, colname, 1, 3, plan);
 
   auto cid = collectionMap(plan).at("db3/x");
-  auto shards = plan.getOrCreate({COLLECTIONS, dbname, cid})
-                    .hasAsChildren(SHARDS)
-                    .value()
-                    .get();
+  auto shards =
+      *plan.getOrCreate({COLLECTIONS, dbname, cid}).hasAsChildren(SHARDS);
   ASSERT_EQ(shards.size(), 1);
   std::string shardName = shards.begin()->first;
 
@@ -1235,8 +1233,7 @@ TEST_F(
         getShardsForServer(dbName(), planId(), server, originalPlan, true);
     std::vector<std::shared_ptr<ActionDescription>> actions;
 
-    auto cb =
-        local.get(dbName())->get().children().begin()->second->toBuilder();
+    auto cb = local.get(dbName())->children().begin()->second->toBuilder();
     auto collection = cb.slice();
     auto shname = collection.get(NAME).copyString();
 
@@ -1723,8 +1720,7 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
   for (auto node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;
 
-    auto& collection =
-        *node.second.get(dbName())->get().children().begin()->second;
+    auto& collection = *node.second.get(dbName())->children().begin()->second;
     auto& leader = collection.getOrCreate("theLeader");
 
     bool check = false;

@@ -62,6 +62,7 @@
 #include "Pregel/SpawnActor.h"
 #include "Pregel/MetricsActor.h"
 #include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "Pregel/StatusWriter/StatusEntry.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/Worker.h"
@@ -120,6 +121,34 @@ auto PregelRunUser::authorized(ExecContext const& userContext) const -> bool {
     return true;
   }
   return name == userContext.user();
+}
+
+Result PregelFeature::persistExecution(TRI_vocbase_t& vocbase,
+                                       ExecutionNumber en) {
+  statuswriter::CollectionStatusWriter cWriter{vocbase, en};
+
+  // TODO: Here we should also write the Coordinator's ServerID into the
+  // collection
+  auto serialized = inspection::serializeWithErrorT(PregelCollectionEntry{
+      .serverId = ServerState::instance()->getId(), .executionNumber = en});
+
+  if (!serialized.ok()) {
+    return Result{TRI_ERROR_INTERNAL, serialized.error().error()};
+  }
+
+  auto storeResult = cWriter.createResult(serialized.get().slice());
+  if (storeResult.ok()) {
+    LOG_TOPIC("a63f1", INFO, Logger::PREGEL) << fmt::format(
+        "[ExecutionNumber {}] Created pregel execution entry in {}", en,
+        StaticStrings::PregelCollection);
+    return {};
+  } else {
+    LOG_TOPIC("063f2", WARN, Logger::PREGEL) << fmt::format(
+        "[ExecutionNumber {}] Failed to create pregel execution entry in {}, "
+        "message {}",
+        en, StaticStrings::PregelCollection, storeResult.errorMessage());
+    return Result{TRI_ERROR_INTERNAL, storeResult.errorMessage()};
+  }
 }
 
 ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
@@ -181,6 +210,11 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   auto graphSerdeConfig = maybeGraphSerdeConfig.get();
 
   auto en = createExecutionNumber();
+
+  auto persistResult = persistExecution(vocbase, en);
+  if (!persistResult.ok()) {
+    return persistResult;
+  }
 
   auto executionSpecifications = ExecutionSpecifications{
       .executionNumber = en,
@@ -497,13 +531,16 @@ void PregelFeature::beginShutdown() {
   std::unique_lock guard{_mutex};
   _gcHandle.reset();
 
+  for (auto& it : _conductors) {
+    it.second.conductor->_shutdown = true;
+  }
+
   auto cs = _conductors;
   auto ws = _workers;
   guard.unlock();
 
   // cancel all conductors and workers
   for (auto& it : cs) {
-    it.second.conductor->_shutdown = true;
     it.second.conductor->cancel();
   }
   for (auto it : ws) {

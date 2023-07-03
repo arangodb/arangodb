@@ -42,7 +42,6 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
-#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
@@ -524,6 +523,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     RequestStatistics::Item stats = stealStatistics(messageId);
     stats.SET_ASYNC();
     handler->setStatistics(std::move(stats));
+    handler->setIsAsyncRequest();
 
     uint64_t jobId = 0;
 

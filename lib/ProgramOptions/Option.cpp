@@ -51,7 +51,7 @@ Option::Option(std::string const& value, std::string const& description,
   size_t const pos = name.find(',');
   if (pos != std::string::npos) {
     shorthand = stripShorthand(name.substr(pos + 1));
-    name = name.substr(0, pos);
+    name.resize(pos);
   }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // at least one OS must be supported
@@ -185,7 +185,11 @@ void Option::printHelp(std::string const& search, size_t tw, size_t ow,
       }
 
       if (!hasFlag(arangodb::options::Flags::Command)) {
-        value += " (default: " + parameter->valueString() + ")";
+        if (hasFlag(arangodb::options::Flags::Dynamic)) {
+          value += " (dynamic default: " + parameter->valueString() + ")";
+        } else {
+          value += " (default: " + parameter->valueString() + ")";
+        }
       }
       if (hasIntroducedIn()) {
         value += " (introduced in " + introducedInString() + ")";

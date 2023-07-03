@@ -67,18 +67,18 @@ const std::uint64_t Manager::minCacheAllocation =
     Manager::cacheRecordOverhead;
 
 Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
-                 std::uint64_t globalLimit, bool enableWindowedStats)
+                 std::uint64_t globalLimit, bool enableWindowedStats,
+                 double idealLowerFillRatio, double idealUpperFillRatio)
     : _sharedPRNG(sharedPRNG),
-      _lock(),
       _shutdown(false),
       _shuttingDown(false),
       _resizing(false),
       _rebalancing(false),
+      _enableWindowedStats(enableWindowedStats),
       _accessStats(sharedPRNG,
                    (globalLimit >= (1024 * 1024 * 1024))
                        ? ((1024 * 1024) / sizeof(std::uint64_t))
                        : (globalLimit / (1024 * sizeof(std::uint64_t)))),
-      _enableWindowedStats(enableWindowedStats),
       _findHits(),
       _findMisses(),
       _caches(),
@@ -95,6 +95,8 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _peakGlobalAllocation(_fixedAllocation),
       _activeTables(0),
       _spareTables(0),
+      _idealLowerFillRatio(idealLowerFillRatio),
+      _idealUpperFillRatio(idealUpperFillRatio),
       _transactions(),
       _schedulerPost(std::move(schedulerPost)),
       _outstandingTasks(0),
@@ -213,7 +215,14 @@ void Manager::shutdown() {
       SpinUnlocker unguard(SpinUnlocker::Mode::Write, _lock);
       cache->shutdown();
     }
+
+    TRI_ASSERT(_activeTables == 0);
     freeUnusedTables();
+
+    TRI_ASSERT(std::all_of(_tables.begin(), _tables.end(),
+                           [](auto const& t) { return t.empty(); }));
+    TRI_ASSERT(_activeTables == 0);
+    TRI_ASSERT(_spareTables == 0);
     _shutdown = true;
   }
 }
@@ -369,6 +378,8 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     if (ok) {
       TRI_ASSERT(_globalAllocation + (metadata.allocatedSize - memoryUsage) >=
                  _fixedAllocation);
+      // we are subtracting the table's memory usage here because it was
+      // already tracked in leaseTable
       _globalAllocation += (metadata.allocatedSize - memoryUsage);
       TRI_ASSERT(_globalAllocation >= _fixedAllocation);
       _peakGlobalAllocation =
@@ -685,7 +696,6 @@ void Manager::freeUnusedTables() {
       TRI_ASSERT(_globalAllocation >= memoryUsage + _fixedAllocation);
       _globalAllocation -= memoryUsage;
       TRI_ASSERT(_globalAllocation >= _fixedAllocation);
-
       TRI_ASSERT(_spareTableAllocation >= memoryUsage);
       _spareTableAllocation -= memoryUsage;
 
@@ -722,17 +732,14 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   if (metadata.usage <= newLimit) {
     std::uint64_t oldLimit = metadata.hardUsageLimit;
     bool success = metadata.adjustLimits(newLimit, newLimit);
-    TRI_ASSERT(success);
     metaGuard.release();
+    TRI_ASSERT(success);
 
-    if (newLimit != oldLimit) {
-      TRI_ASSERT(_globalAllocation + newLimit - oldLimit >= _fixedAllocation);
-      _globalAllocation -= oldLimit;
-      _globalAllocation += newLimit;
-      TRI_ASSERT(_globalAllocation >= _fixedAllocation);
-      _peakGlobalAllocation =
-          std::max(_globalAllocation, _peakGlobalAllocation);
-    }
+    TRI_ASSERT(_globalAllocation + newLimit - oldLimit >= _fixedAllocation);
+    _globalAllocation += newLimit;
+    _globalAllocation -= oldLimit;
+    TRI_ASSERT(_globalAllocation >= _fixedAllocation);
+    _peakGlobalAllocation = std::max(_globalAllocation, _peakGlobalAllocation);
     return;
   }
 
@@ -803,8 +810,7 @@ std::shared_ptr<Table> Manager::leaseTable(std::uint32_t logSize) {
   if (_tables[logSize].empty()) {
     if (increaseAllowed(Table::allocationSize(logSize), true)) {
       try {
-        table = std::make_shared<Table>(logSize);
-
+        table = std::make_shared<Table>(logSize, this);
         _globalAllocation += table->memoryUsage();
         TRI_ASSERT(_globalAllocation >= _fixedAllocation);
         _peakGlobalAllocation =

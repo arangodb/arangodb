@@ -34,7 +34,7 @@
 namespace arangodb::replication2 {
 
 struct LogPayload {
-  using BufferType = std::basic_string<std::uint8_t>;
+  using BufferType = velocypack::UInt8Buffer;
 
   explicit LogPayload(BufferType dummy);
 
@@ -49,6 +49,7 @@ struct LogPayload {
   [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
   [[nodiscard]] auto slice() const noexcept -> velocypack::Slice;
   [[nodiscard]] auto copyBuffer() const -> velocypack::UInt8Buffer;
+  [[nodiscard]] auto stealBuffer() -> velocypack::UInt8Buffer&&;
 
  private:
   BufferType buffer;
@@ -75,19 +76,23 @@ struct LogMetaPayload {
                                    agency::ParticipantsConfig config)
       -> LogMetaPayload;
 
-  struct UpdateParticipantsConfig {
+  struct UpdateInnerTermConfig {
     agency::ParticipantsConfig participants;
+    std::unordered_map<ParticipantId, RebootId> safeRebootIds;
 
-    friend auto operator==(UpdateParticipantsConfig const&,
-                           UpdateParticipantsConfig const&) noexcept
+    friend auto operator==(UpdateInnerTermConfig const&,
+                           UpdateInnerTermConfig const&) noexcept
         -> bool = default;
     template<typename Inspector>
-    friend auto inspect(Inspector& f, UpdateParticipantsConfig& x) {
-      return f.object(x).fields(f.field("participants", x.participants));
+    friend auto inspect(Inspector& f, UpdateInnerTermConfig& x) {
+      return f.object(x).fields(f.field("participants", x.participants),
+                                f.field("safeRebootIds", x.safeRebootIds));
     }
   };
 
-  static auto withUpdateParticipantsConfig(agency::ParticipantsConfig config)
+  static auto withUpdateInnerTermConfig(
+      agency::ParticipantsConfig config,
+      std::unordered_map<ParticipantId, RebootId> safeRebootIds)
       -> LogMetaPayload;
 
   struct Ping {
@@ -112,14 +117,14 @@ struct LogMetaPayload {
   static auto fromVelocyPack(velocypack::Slice) -> LogMetaPayload;
   void toVelocyPack(velocypack::Builder&) const;
 
-  std::variant<FirstEntryOfTerm, UpdateParticipantsConfig, Ping> info;
+  std::variant<FirstEntryOfTerm, UpdateInnerTermConfig, Ping> info;
 
   template<typename Inspector>
   friend auto inspect(Inspector& f, LogMetaPayload& x) {
     namespace insp = arangodb::inspection;
     return f.variant(x.info).embedded("type").alternatives(
         insp::type<FirstEntryOfTerm>("FirstEntryOfTerm"),
-        insp::type<UpdateParticipantsConfig>("UpdateParticipantsConfig"),
+        insp::type<UpdateInnerTermConfig>("UpdateInnerTermConfig"),
         insp::type<Ping>("Ping"));
   }
 
