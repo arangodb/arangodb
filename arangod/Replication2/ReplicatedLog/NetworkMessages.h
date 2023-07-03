@@ -45,7 +45,7 @@
 #endif
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {

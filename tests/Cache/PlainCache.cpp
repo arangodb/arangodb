@@ -387,14 +387,17 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
   {
     auto cacheStats = cacheMixed->hitRates();
     auto managerStats = manager.globalHitRates();
+    // the tracking of hits and misses in the cache is only
+    // approximate. thus we cannot guarantee exact values here
+    // and have to use ranges for checking.
     EXPECT_GT(cacheStats.first, 10.0);
-    EXPECT_LT(cacheStats.first, 60.0);
+    EXPECT_LT(cacheStats.first, 75.0);
     EXPECT_GT(cacheStats.second, 10.0);
-    EXPECT_LT(cacheStats.second, 60.0);
+    EXPECT_LT(cacheStats.second, 75.0);
     EXPECT_GT(managerStats.first, 10.0);
-    EXPECT_LT(managerStats.first, 60.0);
+    EXPECT_LT(managerStats.first, 75.0);
     EXPECT_GT(managerStats.second, 10.0);
-    EXPECT_LT(managerStats.second, 60.0);
+    EXPECT_LT(managerStats.second, 75.0);
   }
 
   manager.destroyCache(cacheHit);

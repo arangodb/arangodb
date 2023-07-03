@@ -20,16 +20,38 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Replication2/Storage/ILogPersistor.h"
-#include "Replication2/Storage/IStatePersistor.h"
+#include <cstdint>
+#include <string_view>
+#include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
 
-namespace arangodb::replication2::storage {
+namespace arangodb::replication2 {
 
-// TODO - cleanup usage and remove this interface
-struct IStorageEngineMethods : virtual ILogPersistor, virtual IStatePersistor {
-  virtual ~IStorageEngineMethods() = default;
+struct LogPayload {
+  using BufferType = velocypack::UInt8Buffer;
+
+  explicit LogPayload(BufferType dummy);
+
+  // Named constructors, have to make copies.
+  [[nodiscard]] static auto createFromSlice(velocypack::Slice slice)
+      -> LogPayload;
+  [[nodiscard]] static auto createFromString(std::string_view string)
+      -> LogPayload;
+
+  friend auto operator==(LogPayload const&, LogPayload const&) -> bool;
+
+  [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
+  [[nodiscard]] auto slice() const noexcept -> velocypack::Slice;
+  [[nodiscard]] auto copyBuffer() const -> velocypack::UInt8Buffer;
+  [[nodiscard]] auto stealBuffer() -> velocypack::UInt8Buffer&&;
+
+ private:
+  BufferType buffer;
 };
 
-}  // namespace arangodb::replication2::storage
+auto operator==(LogPayload const&, LogPayload const&) -> bool;
+
+}  // namespace arangodb::replication2

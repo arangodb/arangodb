@@ -67,9 +67,11 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "Replication2/Storage/LogStorageMethods.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
-#include "Replication2/Storage/RocksDB/LogStorageMethods.h"
+#include "Replication2/Storage/RocksDB/LogPersistor.h"
+#include "Replication2/Storage/RocksDB/StatePersistor.h"
 #include "Replication2/Storage/RocksDB/Metrics.h"
 #include "Replication2/Storage/RocksDB/ReplicatedStateInfo.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
@@ -874,6 +876,26 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
 }
 
 namespace {
+
+auto makeLogStorageMethods(
+    replication2::LogId logId, uint64_t objectId, std::uint64_t vocbaseId,
+    ::rocksdb::DB* const db, ::rocksdb::ColumnFamilyHandle* const logCf,
+    ::rocksdb::ColumnFamilyHandle* const metaCf,
+    std::shared_ptr<replication2::storage::rocksdb::IAsyncLogWriteBatcher>
+        batcher,
+    std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
+        metrics)
+    -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
+  auto logPersistor =
+      std::make_unique<replication2::storage::rocksdb::LogPersistor>(
+          logId, objectId, vocbaseId, db, logCf, std::move(batcher),
+          std::move(metrics));
+  auto statePersistor =
+      std::make_unique<replication2::storage::rocksdb::StatePersistor>(
+          logId, objectId, vocbaseId, db, metaCf);
+  return std::make_unique<replication2::storage::LogStorageMethods>(
+      std::move(logPersistor), std::move(statePersistor));
+}
 
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
     : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
@@ -2794,10 +2816,11 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
         replication2::storage::rocksdb::ReplicatedStateInfo>(slice);
     auto* cfLogs = RocksDBColumnFamilyManager::get(
         RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-    auto methods = replication2::storage::rocksdb::LogStorageMethods(
-        info.objectId, databaseId, info.stateId, _logPersistor, _db, cfDefs,
-        cfLogs, _logMetrics);
-    auto res = methods.drop();
+
+    auto methods =
+        makeLogStorageMethods(info.stateId, info.objectId, databaseId, _db,
+                              cfLogs, cfDefs, _logPersistor, _logMetrics);
+    auto res = methods->drop();
     // Save the first error we encounter, but try to drop the rest.
     if (rv.ok() && res.fail()) {
       rv = res;
@@ -2805,7 +2828,7 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
     // TODO Should we do this here and now, or defer it, or don't do it at all?
     //      To answer that, check whether and how compaction is usually done
     //      after dropping a collection or database.
-    std::ignore = methods.compact();
+    std::ignore = methods->compact();
   }
 
   return rv;
@@ -3179,14 +3202,13 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
 
     auto info = velocypack::deserialize<
         replication2::storage::rocksdb::ReplicatedStateInfo>(slice);
-    auto methods =
-        std::make_unique<replication2::storage::rocksdb::LogStorageMethods>(
-            info.objectId, vocbase.id(), info.stateId, _logPersistor, _db,
-            RocksDBColumnFamilyManager::get(
-                RocksDBColumnFamilyManager::Family::Definitions),
-            RocksDBColumnFamilyManager::get(
-                RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-            _logMetrics);
+    auto methods = makeLogStorageMethods(
+        info.stateId, info.objectId, vocbase.id(), _db,
+        RocksDBColumnFamilyManager::get(
+            RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+        RocksDBColumnFamilyManager::get(
+            RocksDBColumnFamilyManager::Family::Definitions),
+        _logPersistor, _logMetrics);
     registerReplicatedState(vocbase, info.stateId, std::move(methods));
   }
 }
@@ -3976,19 +3998,15 @@ Result RocksDBEngine::dropReplicatedState(
     TRI_vocbase_t& vocbase,
     std::unique_ptr<replication2::storage::IStorageEngineMethods>& ptr) {
   // make sure that all pending async operations have completed
-  auto methods =
-      dynamic_cast<replication2::storage::rocksdb::LogStorageMethods*>(
-          ptr.get());
-  ADB_PROD_ASSERT(methods != nullptr);
-  methods->ctx.waitForCompletion();
+  ptr->waitForCompletion();
 
   // drop everything
-  if (auto res = methods->drop(); res.fail()) {
+  if (auto res = ptr->drop(); res.fail()) {
     return res;
   }
 
   // do a compaction for the log range
-  std::ignore = methods->compact();
+  std::ignore = ptr->compact();
   ptr.reset();
   return {};
 }
@@ -3998,14 +4016,13 @@ auto RocksDBEngine::createReplicatedState(
     replication2::storage::PersistedStateInfo const& info)
     -> ResultT<std::unique_ptr<replication2::storage::IStorageEngineMethods>> {
   auto objectId = TRI_NewTickServer();
-  auto methods =
-      std::make_unique<replication2::storage::rocksdb::LogStorageMethods>(
-          objectId, vocbase.id(), id, _logPersistor, _db,
-          RocksDBColumnFamilyManager::get(
-              RocksDBColumnFamilyManager::Family::Definitions),
-          RocksDBColumnFamilyManager::get(
-              RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-          _logMetrics);
+  auto methods = makeLogStorageMethods(
+      id, objectId, vocbase.id(), _db,
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::Definitions),
+      _logPersistor, _logMetrics);
   auto res = methods->updateMetadata(info);
   if (res.fail()) {
     return res;
