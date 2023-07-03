@@ -5,6 +5,20 @@ devel
   This leads to queries that consume 1GB or more memory to be logged so that
   they can be investigated and improved.
 
+* Set threshold for RocksDB automatic WAL file deletion by age from 30 days
+  to 30 years.
+  This should effectively not change any behavior, as we don't rely on 
+  RocksDB's built-in WAL file deletion mechanism. Instead, we tell RocksDB
+  explicitly to delete which WAL files, depending on what other functionality
+  (e.g. replication, index creation) still needs them or not.
+
+* Deprecate the startup option `--rocksdb.wal-archive-size-limit` because
+  it can be unsafe to use in environments that use replication (cluster,
+  active failover, single-to-single replication). When using the option and
+  limiting the total size of the WAL files in the archive, this may lead
+  to still-needed WAL files being pruned too early. This can have side
+  effects, such as aborting ongoing replication or index creation attempts.
+
 * Remove temporary `CREATING_{number}` directories from hot backup in case a
   hot backup runs into an error.
 

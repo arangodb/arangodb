@@ -20,13 +20,15 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "RocksDBEngine/RocksDBPersistedLog.h"
+
+#include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
+
 #include <deque>
 #include <thread>
 
-namespace arangodb::replication2::test {
+namespace arangodb::replication2::storage::rocksdb::test {
 
-struct ThreadAsyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
+struct ThreadAsyncExecutor : AsyncLogWriteBatcher::IAsyncExecutor {
   using Func = fu2::unique_function<void() noexcept>;
 
   void operator()(Func fn) override;
@@ -45,7 +47,7 @@ struct ThreadAsyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
   std::thread thread;
 };
 
-struct DelayedExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
+struct DelayedExecutor : AsyncLogWriteBatcher::IAsyncExecutor {
   using Func = fu2::unique_function<void() noexcept>;
 
   void operator()(Func fn) override;
@@ -62,8 +64,8 @@ struct DelayedExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
   std::deque<Func> queue;
 };
 
-struct SyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
+struct SyncExecutor : AsyncLogWriteBatcher::IAsyncExecutor {
   void operator()(fu2::unique_function<void() noexcept> f) noexcept override;
 };
 
-}  // namespace arangodb::replication2::test
+}  // namespace arangodb::replication2::storage::rocksdb::test

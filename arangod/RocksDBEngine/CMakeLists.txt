@@ -28,7 +28,6 @@ add_library(arango_rocksdb STATIC
   RocksDBOptimizerRules.cpp
   RocksDBOptionFeature.cpp
   RocksDBOptionsProvider.cpp
-  RocksDBPersistedLog.cpp
   RocksDBPrimaryIndex.cpp
   RocksDBRecoveryManager.cpp
   RocksDBReplicationCommon.cpp

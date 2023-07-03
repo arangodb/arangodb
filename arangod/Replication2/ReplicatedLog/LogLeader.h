@@ -96,7 +96,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   ~LogLeader() override;
 
   [[nodiscard]] static auto construct(
-      std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+      std::unique_ptr<storage::IStorageEngineMethods>&& methods,
       std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
@@ -139,7 +139,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus override;
 
   auto resign() && -> std::tuple<
-      std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      std::unique_ptr<storage::IStorageEngineMethods>,
       std::unique_ptr<IReplicatedStateHandle>, DeferredAction> override;
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const&;
@@ -193,6 +193,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     LogIndex nextPrevLogIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};
     LogIndex lastAckedLowestIndexToKeep = LogIndex{0};
+    LogIndex syncIndex = LogIndex{0};
     MessageId lastSentMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason;

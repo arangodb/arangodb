@@ -47,7 +47,7 @@
 #pragma warning(pop)
 #endif
 
-namespace arangodb::replication2::replicated_state {
+namespace arangodb::replication2::storage {
 struct IStorageEngineMethods;
 }
 
@@ -157,8 +157,8 @@ struct InMemoryLog {
   [[nodiscard]] static auto dump(log_type const& log) -> std::string;
   [[nodiscard]] auto dump() const -> std::string;
 
-  [[nodiscard]] static auto loadFromMethods(
-      replicated_state::IStorageEngineMethods&) -> InMemoryLog;
+  [[nodiscard]] static auto loadFromMethods(storage::IStorageEngineMethods&)
+      -> InMemoryLog;
 
  protected:
   explicit InMemoryLog(log_type log, LogIndex first);
