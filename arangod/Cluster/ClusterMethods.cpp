@@ -327,6 +327,9 @@ OperationResult handleCRUDShardResponsesFast(
   std::unordered_map<::ErrorCode, size_t> errorCounter;
 
   fuerte::StatusCode code = fuerte::StatusInternalError;
+  if (results.empty()) {
+    code = fuerte::StatusOK;
+  }
   // If none of the shards responded we return a SERVER_ERROR;
 
   for (Try<arangodb::network::Response> const& tryRes : results) {
