@@ -1118,7 +1118,7 @@ class instanceManager {
     }
   }
 
-  detectCurrentLeader(instanceInfo) {
+  detectCurrentLeader() {
     let opts = {
       method: 'POST',
       jwt: crypto.jwtEncode(this.arangods[0].args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),

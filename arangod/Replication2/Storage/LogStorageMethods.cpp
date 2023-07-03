@@ -24,29 +24,18 @@
 #include "LogStorageMethods.h"
 
 #include <Basics/Result.h>
+#include <Basics/ResultT.h>
 #include <Futures/Future.h>
 
-#include "Replication2/ReplicatedLog/LogEntries.h"
-#include "Replication2/Storage/RocksDB/LogPersistor.h"
-#include "Replication2/Storage/RocksDB/StatePersistor.h"
+#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
 
-#include <utility>
-
-using namespace arangodb::replication2::replicated_log;
-using namespace arangodb::replication2::replicated_state;
-
-namespace arangodb::replication2::storage::rocksdb {
+namespace arangodb::replication2::storage {
 
 LogStorageMethods::LogStorageMethods(
-    uint64_t objectId, std::uint64_t vocbaseId, replication2::LogId logId,
-    std::shared_ptr<IAsyncLogWriteBatcher> batcher, ::rocksdb::DB* db,
-    ::rocksdb::ColumnFamilyHandle* metaCf, ::rocksdb::ColumnFamilyHandle* logCf,
-    std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics)
-    : ctx(vocbaseId, objectId),
-      _logPersistor(std::make_unique<LogPersistor>(
-          logId, ctx, db, logCf, std::move(batcher), std::move(metrics))),
-      _statePersistor(
-          std::make_unique<StatePersistor>(logId, ctx, db, metaCf)) {}
+    std::unique_ptr<ILogPersistor> logPersistor,
+    std::unique_ptr<IStatePersistor> statePersistor)
+    : _logPersistor(std::move(logPersistor)),
+      _statePersistor(std::move(statePersistor)) {}
 
 Result LogStorageMethods::updateMetadata(storage::PersistedStateInfo info) {
   return _statePersistor->updateMetadata(info);
@@ -106,4 +95,4 @@ auto LogStorageMethods::drop() -> Result {
 
 auto LogStorageMethods::compact() -> Result { return _logPersistor->compact(); }
 
-}  // namespace arangodb::replication2::storage::rocksdb
+}  // namespace arangodb::replication2::storage

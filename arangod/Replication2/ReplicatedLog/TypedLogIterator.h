@@ -20,16 +20,30 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Replication2/Storage/ILogPersistor.h"
-#include "Replication2/Storage/IStatePersistor.h"
+#include <optional>
 
-namespace arangodb::replication2::storage {
+namespace arangodb::replication2 {
 
-// TODO - cleanup usage and remove this interface
-struct IStorageEngineMethods : virtual ILogPersistor, virtual IStatePersistor {
-  virtual ~IStorageEngineMethods() = default;
+struct LogRange;
+
+template<typename T>
+struct TypedLogIterator {
+  virtual ~TypedLogIterator() = default;
+  // The returned view is guaranteed to stay valid until a successive next()
+  // call (only).
+  virtual auto next() -> std::optional<T> = 0;
 };
 
-}  // namespace arangodb::replication2::storage
+template<typename T>
+struct TypedLogRangeIterator : TypedLogIterator<T> {
+  // returns the index interval [from, to)
+  // Note that this does not imply that all indexes in the range [from, to)
+  // are returned. Hence (to - from) is only an upper bound on the number of
+  // entries returned.
+  [[nodiscard]] virtual auto range() const noexcept -> LogRange = 0;
+};
+
+}  // namespace arangodb::replication2
