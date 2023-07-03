@@ -72,7 +72,7 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
       server.isEnabled<GeneralServerFeature>()) {
     _requestBodySizeTracker = metrics::GaugeCounterGuard<std::uint64_t>{
         server.getFeature<GeneralServerFeature>()._requestBodySize,
-        _request->approxMemoryUsage()};
+        _request->rawPayload().size()};
   }
 }
 

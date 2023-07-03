@@ -226,9 +226,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::shared_ptr<LogContext::Values> _logContextScopeValues;
   LogContext::EntryPtr _logContextEntry;
 
+ protected:
   metrics::GaugeCounterGuard<std::uint64_t> _requestBodySizeTracker;
 
- protected:
   std::atomic<bool> _canceled;
 };
 

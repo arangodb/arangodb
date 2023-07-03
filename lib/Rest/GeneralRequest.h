@@ -214,8 +214,6 @@ class GeneralRequest {
     _authenticationMethod = method;
   }
 
-  std::uint64_t approxMemoryUsage() const noexcept;
-
  protected:
   ConnectionInfo _connectionInfo;  /// connection info
 
