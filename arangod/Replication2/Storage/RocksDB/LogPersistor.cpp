@@ -29,19 +29,18 @@
 #include "Basics/RocksDBUtils.h"
 #include "Replication2/MetricsHelper.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
-#include "Replication2/Storage/RocksDB/AsyncLogWriteContext.h"
 #include "Replication2/Storage/RocksDB/IAsyncLogWriteBatcher.h"
 #include "Replication2/Storage/RocksDB/LogIterator.h"
 
 namespace arangodb::replication2::storage::rocksdb {
 
-LogPersistor::LogPersistor(LogId logId, AsyncLogWriteContext& ctx,
-                           ::rocksdb::DB* const db,
+LogPersistor::LogPersistor(LogId logId, uint64_t objectId,
+                           std::uint64_t vocbaseId, ::rocksdb::DB* const db,
                            ::rocksdb::ColumnFamilyHandle* const logCf,
                            std::shared_ptr<IAsyncLogWriteBatcher> batcher,
                            std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics)
     : logId(logId),
-      ctx(ctx),
+      ctx(vocbaseId, objectId),
       batcher(std::move(batcher)),
       _metrics(std::move(metrics)),
       db(db),

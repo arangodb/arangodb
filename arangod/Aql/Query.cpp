@@ -1289,7 +1289,7 @@ void Query::logAtEnd(QueryResult const& queryResult) const {
 
   // log failed queries?
   bool logFailed = feature.logFailedQueries() && queryResult.result.fail();
-  // log queries exceeded memory usage threshold
+  // log queries exceeding memory usage threshold
   bool logMemoryUsage =
       resourceMonitor().peak() >= feature.peakMemoryUsageThreshold();
 

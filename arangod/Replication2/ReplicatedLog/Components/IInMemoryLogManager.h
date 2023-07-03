@@ -24,7 +24,6 @@
 
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
 
 #include <chrono>
 #include <variant>

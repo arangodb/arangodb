@@ -20,6 +20,10 @@ devel
   keep the existing behavior, in which a disconnected leader will not refuse
   incoming write operations.
 
+* Lower default value of `--query.log-memory-usage-threshold` from 4GB to 1GB.
+  This leads to queries that consume 1GB or more memory to be logged so that
+  they can be investigated and improved.
+
 * Set threshold for RocksDB automatic WAL file deletion by age from 30 days
   to 30 years.
   This should effectively not change any behavior, as we don't rely on 

@@ -21,60 +21,9 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LogEntries.h"
-#include "Inspection/VPack.h"
-#include "Logger/LogMacros.h"
+#include "PersistingLogEntry.h"
 
-#include <Basics/StaticStrings.h>
-#include <Basics/StringUtils.h>
-
-#include <Basics/VelocyPackHelper.h>
-
-using namespace arangodb;
-using namespace arangodb::replication2;
-
-auto replication2::operator==(LogPayload const& left, LogPayload const& right)
-    -> bool {
-  if (left.slice().isString() and right.slice().isString()) {
-    return left.slice().stringView() == right.slice().stringView();
-  } else {
-    // We do not use velocypack compare here, since this is used only in tests
-    // and velocypack compare always has ICU as dependency.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-}
-
-LogPayload::LogPayload(BufferType buffer) : buffer(std::move(buffer)) {}
-
-auto LogPayload::createFromSlice(velocypack::Slice slice) -> LogPayload {
-  BufferType buffer(slice.byteSize());
-  buffer.append(slice.start(), slice.byteSize());
-  return LogPayload{std::move(buffer)};
-}
-
-auto LogPayload::createFromString(std::string_view string) -> LogPayload {
-  VPackBuilder builder;
-  builder.add(VPackValue(string));
-  return LogPayload{*builder.steal()};
-}
-
-auto LogPayload::copyBuffer() const -> velocypack::UInt8Buffer {
-  velocypack::UInt8Buffer result;
-  result.append(buffer.data(), buffer.size());
-  return result;
-}
-
-auto LogPayload::stealBuffer() -> velocypack::UInt8Buffer&& {
-  return std::move(buffer);
-}
-
-auto LogPayload::byteSize() const noexcept -> std::size_t {
-  return buffer.size();
-}
-
-auto LogPayload::slice() const noexcept -> velocypack::Slice {
-  return VPackSlice(buffer.data());
-}
+namespace arangodb::replication2 {
 
 PersistingLogEntry::PersistingLogEntry(
     TermIndexPair termIndexPair,
@@ -173,75 +122,4 @@ auto PersistingLogEntry::meta() const noexcept -> const LogMetaPayload* {
   return std::get_if<LogMetaPayload>(&_payload);
 }
 
-InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync)
-    : _waitForSync(waitForSync), _logEntry(std::move(entry)) {}
-
-void InMemoryLogEntry::setInsertTp(clock::time_point tp) noexcept {
-  _insertTp = tp;
-}
-
-auto InMemoryLogEntry::insertTp() const noexcept -> clock::time_point {
-  return _insertTp;
-}
-
-auto InMemoryLogEntry::entry() const noexcept -> PersistingLogEntry const& {
-  // Note that while get() isn't marked as noexcept, it actually is.
-  return _logEntry.get();
-}
-
-LogEntryView::LogEntryView(LogIndex index, LogPayload const& payload) noexcept
-    : _index(index), _payload(payload.slice()) {}
-
-LogEntryView::LogEntryView(LogIndex index, velocypack::Slice payload) noexcept
-    : _index(index), _payload(payload) {}
-
-auto LogEntryView::logIndex() const noexcept -> LogIndex { return _index; }
-
-auto LogEntryView::logPayload() const noexcept -> velocypack::Slice {
-  return _payload;
-}
-
-void LogEntryView::toVelocyPack(velocypack::Builder& builder) const {
-  auto og = velocypack::ObjectBuilder(&builder);
-  builder.add(StaticStrings::LogIndex, velocypack::Value(_index));
-  builder.add(StaticStrings::Payload, _payload);
-}
-
-auto LogEntryView::fromVelocyPack(velocypack::Slice slice) -> LogEntryView {
-  return {slice.get(StaticStrings::LogIndex).extract<LogIndex>(),
-          slice.get(StaticStrings::Payload)};
-}
-
-auto LogEntryView::clonePayload() const -> LogPayload {
-  return LogPayload::createFromSlice(_payload);
-}
-
-auto LogMetaPayload::fromVelocyPack(velocypack::Slice s) -> LogMetaPayload {
-  return velocypack::deserialize<LogMetaPayload>(s);
-}
-
-void LogMetaPayload::toVelocyPack(velocypack::Builder& builder) const {
-  velocypack::serialize(builder, *this);
-}
-
-auto LogMetaPayload::withFirstEntryOfTerm(ParticipantId leader,
-                                          agency::ParticipantsConfig config)
-    -> LogMetaPayload {
-  return LogMetaPayload{FirstEntryOfTerm{.leader = std::move(leader),
-                                         .participants = std::move(config)}};
-}
-
-auto LogMetaPayload::withUpdateInnerTermConfig(
-    agency::ParticipantsConfig config,
-    std::unordered_map<ParticipantId, RebootId> safeRebootIds)
-    -> LogMetaPayload {
-  return LogMetaPayload{
-      UpdateInnerTermConfig{.participants = std::move(config),
-                            .safeRebootIds = std::move(safeRebootIds)}};
-}
-
-auto LogMetaPayload::withPing(std::optional<std::string> message,
-                              Ping::clock::time_point tp) noexcept
-    -> LogMetaPayload {
-  return LogMetaPayload{Ping{std::move(message), tp}};
-}
+}  // namespace arangodb::replication2
