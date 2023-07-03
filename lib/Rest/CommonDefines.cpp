@@ -28,8 +28,7 @@
 
 #include "Basics/StaticStrings.h"
 
-namespace arangodb {
-namespace rest {
+namespace arangodb::rest {
 
 std::string contentTypeToString(ContentType type) {
   switch (type) {
@@ -59,18 +58,16 @@ ContentType stringToContentType(std::string const& val, ContentType def) {
   if (val == StaticStrings::MimeTypeVPack) {
     return ContentType::VPACK;
   }
-  if (val.size() >= 25 &&
-      val.compare(0, 25, "application/x-arango-dump") == 0) {
+  if (val.starts_with(StaticStrings::MimeTypeDumpNoEncoding)) {
     return ContentType::DUMP;
   }
-  if (val.size() >= 10 && val.compare(0, 10, "text/plain") == 0) {
+  if (val.starts_with(StaticStrings::MimeTypeTextNoEncoding)) {
     return ContentType::TEXT;
   }
-  if (val.size() >= 9 && val.compare(0, 9, "text/html") == 0) {
+  if (val.starts_with(StaticStrings::MimeTypeHtmlNoEncoding)) {
     return ContentType::HTML;
   }
   return def;
 }
 
-}  // namespace rest
-}  // namespace arangodb
+}  // namespace arangodb::rest

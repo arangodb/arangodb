@@ -40,7 +40,6 @@
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/LazyDeserializingIterator.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/Streams/StreamSpecification.h"
@@ -356,9 +355,7 @@ template<typename S>
 auto ProducerStreamProxy<S>::serialize(const EntryType& v) -> LogPayload {
   auto builder = velocypack::Builder();
   std::invoke(Serializer{}, streams::serializer_tag<EntryType>, v, builder);
-  // TODO avoid the copy
-  auto payload = LogPayload::createFromSlice(builder.slice());
-  return payload;
+  return LogPayload{*builder.steal()};
 }
 
 template<typename S>

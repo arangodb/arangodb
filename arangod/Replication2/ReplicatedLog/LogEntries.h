@@ -34,7 +34,7 @@
 namespace arangodb::replication2 {
 
 struct LogPayload {
-  using BufferType = std::basic_string<std::uint8_t>;
+  using BufferType = velocypack::UInt8Buffer;
 
   explicit LogPayload(BufferType dummy);
 
@@ -49,6 +49,7 @@ struct LogPayload {
   [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
   [[nodiscard]] auto slice() const noexcept -> velocypack::Slice;
   [[nodiscard]] auto copyBuffer() const -> velocypack::UInt8Buffer;
+  [[nodiscard]] auto stealBuffer() -> velocypack::UInt8Buffer&&;
 
  private:
   BufferType buffer;

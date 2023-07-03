@@ -26,6 +26,7 @@
 
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 
 namespace arangodb::replication2::test {
 
@@ -41,7 +42,7 @@ struct StorageManagerMock
               (LogIndex), (const, override));
   MOCK_METHOD(arangodb::replication2::replicated_log::TermIndexMapping,
               getTermIndexMapping, (), (const, override));
-  MOCK_METHOD(replicated_state::PersistedStateInfo, getCommittedMetaInfo, (),
+  MOCK_METHOD(storage::PersistedStateInfo, getCommittedMetaInfo, (),
               (const, override));
   MOCK_METHOD(
       std::unique_ptr<
@@ -52,6 +53,7 @@ struct StorageManagerMock
       (std::unique_ptr<
           arangodb::replication2::replicated_log::IStateInfoTransaction>),
       (override));
+  MOCK_METHOD(LogIndex, getSyncIndex, (), (const, override));
 };
 
 }  // namespace arangodb::replication2::test

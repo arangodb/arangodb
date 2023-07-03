@@ -1,0 +1,4 @@
+[
+  normal create database=UnitTestDatabase collection=UnitTestCollection numberOfShards=1 replicationFactor=1 drop=true
+  normal insert database=UnitTestDatabase collection=UnitTestCollection parallelism=10 size=10000K documentSize=1024
+]
