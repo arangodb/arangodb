@@ -31,6 +31,16 @@ v3.11.2 (XXXX-XX-XX)
   Note that these metrics will be increased upon every insertion into the
   edge cache, but not decreased when data gets evicted from the cache.
 
+* Added new startup options `--cache.ideal-lower-fill-ratio` and 
+  `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
+  ratios for cache tables that trigger shrinking and growing of the table
+  by the cache rebalancer. The default values are:
+
+  - `0.04` (i.e. 4%) for the lower bound that triggers shrinking
+  - `0.25` (i.e. 25%) for the upper bound that triggers growing
+
+  These values were hard-coded in previous versions of ArangoDB.
+
 * Remove temporary `CREATING_{number}` directories from hot backup in case a
   hot backup runs into an error.
 
