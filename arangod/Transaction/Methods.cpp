@@ -3452,7 +3452,7 @@ Future<Result> Methods::replicateOperations(
             if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
               // In this case, we know that we are not or no longer
               // the leader for this shard. Therefore we need to
-              // send a code which let's the coordinator retry.
+              // send a code which lets the coordinator retry.
               THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
             } else {
               // In this case, some other error occurred and we

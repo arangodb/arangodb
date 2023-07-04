@@ -1404,6 +1404,7 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
   // transactions the concurrency control is already disabled.
   ConcurrencyControlSkipper ccd(
       mthds, /*active*/ !state->isOnlyExclusiveTransaction());
+  TRI_ASSERT(state->isOnlyExclusiveTransaction() != ccd.active());
 
   rocksdb::Status s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(
@@ -1428,11 +1429,13 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
     bool needReversal = false;
     auto reverse = [&](auto it) {
       if (needReversal && !state->isSingleOperation()) {
-        ::reverseIdxOps(
-            indexes, it,
-            [mthds, trx, &documentId, &doc, &options](RocksDBIndex& rIdx) {
-              return rIdx.remove(*trx, mthds, documentId, doc, options);
-            });
+        ::reverseIdxOps(indexes, it,
+                        [mthds, trx, &documentId, &doc, &options,
+                         &ccd](RocksDBIndex& rIdx) {
+                          ccd.setConcurrencyControl(rIdx.unique());
+                          return rIdx.remove(*trx, mthds, documentId, doc,
+                                             options);
+                        });
       }
     };
     for (auto it = indexes.begin(); it != indexes.end(); ++it) {
@@ -1450,15 +1453,12 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
       }
       auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());
 
-      if (rIdx.unique()) {
-        // for unique indexes, we need to enable concurrency control
-        // again. this is necessary because concurrent operations on
-        // unique secondary indexes are synchronized via the unique
-        // key's RocksDB lock.
-        ccd.enableConcurrencyControl();
-      } else {
-        ccd.skipConcurrencyControl();
-      }
+      // for unique indexes, we need to enable concurrency control
+      // again. this is necessary because concurrent operations on
+      // unique secondary indexes are synchronized via the unique
+      // key's RocksDB lock.
+      ccd.setConcurrencyControl(rIdx.unique());
+
       // if we already performed the preflight checks,
       // there is no need to repeat the checks once again here
       res = rIdx.insert(*trx, mthds, documentId, doc, options,
@@ -1467,7 +1467,6 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
         // if something went wrong during index insertion, we can as
         // well enable concurrency control unconditionally. we don't need
         // to optimize for this exceptional case.
-        ccd.enableConcurrencyControl();
         reverse(it);
         break;
       }

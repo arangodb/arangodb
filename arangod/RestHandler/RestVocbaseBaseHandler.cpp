@@ -571,6 +571,8 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type,
     OperationOptions const& opOptions, transaction::Options&& trxOpts) const {
+  bool const isFollower = !opOptions.isSynchronousReplicationFrom.empty() &&
+                          ServerState::instance()->isDBServer();
   bool found = false;
   std::string const& value =
       _request->header(StaticStrings::TransactionId, found);
@@ -581,8 +583,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     auto tmp = std::make_unique<SingleCollectionTransaction>(
         transaction::StandaloneContext::Create(_vocbase), collectionName, type,
         std::move(trxOpts));
-    if (!opOptions.isSynchronousReplicationFrom.empty() &&
-        ServerState::instance()->isDBServer()) {
+    if (isFollower) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }
     return tmp;
@@ -613,9 +614,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
         _request->header(StaticStrings::TransactionBody, found);
     if (found) {
       auto trxOpts = VPackParser::fromJson(trxDef);
-      Result res = mgr->ensureManagedTrx(
-          _vocbase, tid, trxOpts->slice(),
-          !opOptions.isSynchronousReplicationFrom.empty());
+      Result res =
+          mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(), isFollower);
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -645,15 +645,13 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   }
 
   std::unique_ptr<transaction::Methods> trx;
-  if (ServerState::instance()->isDBServer() &&
-      !opOptions.isSynchronousReplicationFrom.empty()) {
+  if (isFollower) {
     // a write request from synchronous replication
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     // inject at least the required collection name
     trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName,
                                                  type);
   } else {
-    trx = std::make_unique<transaction::Methods>(std::move(ctx));
     if (isSideUser) {
       // this is a call from the DOCUMENT() AQL function into an existing AQL
       // query. locks are already acquired by the AQL transaction.
@@ -662,6 +660,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
                              "invalid access mode for request", ADB_HERE);
       }
     }
+    trx = std::make_unique<transaction::Methods>(std::move(ctx));
   }
   return trx;
 }

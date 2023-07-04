@@ -150,26 +150,20 @@ class ConcurrencyControlSkipper {
                                      bool active) noexcept
       : _methods(methods), _active(active) {
     TRI_ASSERT(methods != nullptr);
-    if (_active) {
-      skipConcurrencyControl();
-    }
+    skipConcurrencyControl();
   }
 
-  ~ConcurrencyControlSkipper() {
-    if (_active) {
-      enableConcurrencyControl();
-    }
-  }
+  ~ConcurrencyControlSkipper() { enableConcurrencyControl(); }
 
-  void skipConcurrencyControl() noexcept {
-    if (_active) {
-      _methods->SetSkipConcurrencyControl(true);
-    }
-  }
+  bool active() const noexcept { return _active; }
 
-  void enableConcurrencyControl() noexcept {
+  void skipConcurrencyControl() noexcept { setConcurrencyControl(false); }
+
+  void enableConcurrencyControl() noexcept { setConcurrencyControl(true); }
+
+  void setConcurrencyControl(bool value) noexcept {
     if (_active) {
-      _methods->SetSkipConcurrencyControl(false);
+      _methods->SetSkipConcurrencyControl(!value);
     }
   }
 
