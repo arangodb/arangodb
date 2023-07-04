@@ -107,7 +107,7 @@ used less often and reallocates it to caches which get more activity.)");
                       arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(Cache tables with a fill ratio lower than this
 value will be shrunk by the cache rebalancer.)")
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31102);
 
   options
       ->addOption("--cache.ideal-upper-fill-ratio",
@@ -120,7 +120,7 @@ value will be shrunk by the cache rebalancer.)")
                       arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(Cache tables with a fill ratio higher than this
 value will be inflated in size by the cache rebalancer.)")
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31102);
 }
 
 void CacheManagerFeature::validateOptions(

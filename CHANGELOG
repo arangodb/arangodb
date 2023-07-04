@@ -1,9 +1,6 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
-* Remove temporary `CREATING_{number}` directories from hot backup in case a
-  hot backup runs into an error.
-
 * Added new startup options `--cache.ideal-lower-fill-ratio` and 
   `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
   ratios for cache tables that trigger shrinking and growing of the table
@@ -13,6 +10,9 @@ v3.11.2 (XXXX-XX-XX)
   - `0.25` (i.e. 25%) for the upper bound that triggers growing
 
   These values were hard-coded in previous versions of ArangoDB.
+
+* Remove temporary `CREATING_{number}` directories from hot backup in case a
+  hot backup runs into an error.
 
 * BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in 
   case the update AQL is of the pattern 
