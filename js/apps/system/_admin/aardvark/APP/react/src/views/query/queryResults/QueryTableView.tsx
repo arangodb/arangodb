@@ -26,7 +26,9 @@ export const QueryTableView = ({
         <Thead>
           <Tr>
             {headers.map(header => (
-              <Th key={header}>{header}</Th>
+              <Th textTransform="unset" key={header}>
+                {header}
+              </Th>
             ))}
           </Tr>
         </Thead>
