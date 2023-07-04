@@ -740,7 +740,9 @@ void SimpleHttpClient::processHeader() {
         return;
       }
 
-      else if (_result->getHttpReturnCode() == 204) {
+      else if (_result->getHttpReturnCode() == 204 &&
+               _result->hasContentLength() &&
+               _result->getContentLength() != 0) {
         _result->setResultType(SimpleHttpResult::COMPLETE);
         _state = FINISHED;
         // always disconnect - some servers include a response body
