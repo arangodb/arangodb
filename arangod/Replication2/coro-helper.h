@@ -30,6 +30,11 @@ namespace std_coro = std;
 #endif
 #include <optional>
 
+#include <Basics/Exceptions.h>
+#include <Basics/Result.h>
+#include <Futures/Promise.h>
+#include <Futures/Try.h>
+
 namespace arangodb::futures {
 template<typename T>
 class Future;

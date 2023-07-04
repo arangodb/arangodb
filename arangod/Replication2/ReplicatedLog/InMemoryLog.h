@@ -25,7 +25,9 @@
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntryView.h"
+#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
 
 #include <Containers/ImmerMemoryPolicy.h>
 #include <velocypack/Builder.h>
@@ -47,7 +49,7 @@
 #pragma warning(pop)
 #endif
 
-namespace arangodb::replication2::replicated_state {
+namespace arangodb::replication2::storage {
 struct IStorageEngineMethods;
 }
 
@@ -157,8 +159,8 @@ struct InMemoryLog {
   [[nodiscard]] static auto dump(log_type const& log) -> std::string;
   [[nodiscard]] auto dump() const -> std::string;
 
-  [[nodiscard]] static auto loadFromMethods(
-      replicated_state::IStorageEngineMethods&) -> InMemoryLog;
+  [[nodiscard]] static auto loadFromMethods(storage::IStorageEngineMethods&)
+      -> InMemoryLog;
 
  protected:
   explicit InMemoryLog(log_type log, LogIndex first);

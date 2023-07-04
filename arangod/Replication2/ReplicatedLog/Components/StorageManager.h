@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 #include "Basics/Guarded.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
@@ -38,7 +38,7 @@ struct StorageManagerTransaction;
 struct StateInfoTransaction;
 struct StorageManager : IStorageManager,
                         std::enable_shared_from_this<StorageManager> {
-  using IStorageEngineMethods = replicated_state::IStorageEngineMethods;
+  using IStorageEngineMethods = storage::IStorageEngineMethods;
 
   StorageManager(std::unique_ptr<IStorageEngineMethods> core,
                  LoggerContext const& loggerContext,
@@ -55,8 +55,8 @@ struct StorageManager : IStorageManager,
   auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> override;
   auto commitMetaInfoTrx(std::unique_ptr<IStateInfoTransaction> ptr)
       -> Result override;
-  auto getCommittedMetaInfo() const
-      -> replicated_state::PersistedStateInfo override;
+  auto getCommittedMetaInfo() const -> storage::PersistedStateInfo override;
+  auto getSyncIndex() const -> LogIndex override;
 
  private:
   friend struct StorageManagerTransaction;
@@ -83,13 +83,14 @@ struct StorageManager : IStorageManager,
     TermIndexMapping onDiskMapping, spearheadMapping;
     std::unique_ptr<IStorageEngineMethods> methods;
     std::deque<StorageRequest> queue;
-    replicated_state::PersistedStateInfo info;
+    storage::PersistedStateInfo info;
     bool workerActive{false};
   };
   Guarded<GuardedData> guardedData;
   using GuardType = Guarded<GuardedData>::mutex_guard_type;
   LoggerContext const loggerContext;
   std::shared_ptr<IScheduler> const scheduler;
+  Guarded<LogIndex> syncIndex;
 
   auto scheduleOperation(GuardType&&, TermIndexMapping mapResult,
                          std::unique_ptr<StorageOperation>)
@@ -98,6 +99,7 @@ struct StorageManager : IStorageManager,
   auto scheduleOperationLambda(GuardType&&, TermIndexMapping mapResult, F&&)
       -> futures::Future<Result>;
   void triggerQueueWorker(GuardType) noexcept;
+  void updateSyncIndex(LogIndex index);
 };
 
 }  // namespace comp

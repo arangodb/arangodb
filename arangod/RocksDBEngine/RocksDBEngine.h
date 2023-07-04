@@ -62,8 +62,11 @@ class TransactionDB;
 
 namespace arangodb {
 
-struct RocksDBAsyncLogWriteBatcher;
-struct RocksDBAsyncLogWriteBatcherMetrics;
+namespace replication2::storage::rocksdb {
+struct AsyncLogWriteBatcherMetrics;
+struct IAsyncLogWriteBatcher;
+}  // namespace replication2::storage::rocksdb
+
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
@@ -278,14 +281,14 @@ class RocksDBEngine final : public StorageEngine {
 
   auto dropReplicatedState(
       TRI_vocbase_t& vocbase,
-      std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
-          ptr) -> Result override;
+      std::unique_ptr<replication2::storage::IStorageEngineMethods>& ptr)
+      -> Result override;
 
   auto createReplicatedState(
       TRI_vocbase_t& vocbase, replication2::LogId id,
-      replication2::replicated_state::PersistedStateInfo const& info)
+      replication2::storage::PersistedStateInfo const& info)
       -> ResultT<std::unique_ptr<
-          replication2::replicated_state::IStorageEngineMethods>> override;
+          replication2::storage::IStorageEngineMethods>> override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -752,8 +755,10 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeEffective;
 
   // @brief persistor for replicated logs
-  std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> _logMetrics;
-  std::shared_ptr<RocksDBAsyncLogWriteBatcher> _logPersistor;
+  std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
+      _logMetrics;
+  std::shared_ptr<replication2::storage::rocksdb::IAsyncLogWriteBatcher>
+      _logPersistor;
 
   // Checksum env for when creation of sha files is enabled
   // this is for when encryption is enabled, sha files will be created
