@@ -1,8 +1,7 @@
 
 @startDocuBlock patch_api_document_collection
-@brief updates multiple documents
 
-@RESTHEADER{PATCH /_api/document/{collection},Update documents,updateDocuments}
+@RESTHEADER{PATCH /_api/document/{collection},Update multiple documents,updateDocuments}
 
 @RESTALLBODYPARAM{documents,json,required}
 A JSON representation of an array of document updates as objects.
@@ -16,10 +15,11 @@ Name of the `collection` in which the documents are to be updated.
 
 @RESTQUERYPARAM{keepNull,boolean,optional}
 If the intention is to delete existing attributes with the patch
-command, the URL query parameter `keepNull` can be used with a value
-of `false`. This modifies the behavior of the patch command to
-remove any attributes from the existing document that are contained
-in the patch document with an attribute value of `null`.
+command, set the `keepNull` URL query parameter to `false`. This modifies the
+behavior of the patch command to remove top-level attributes and sub-attributes
+from the existing document that are contained in the patch document with an
+attribute value of `null` (but not attributes of objects that are nested inside
+of arrays).
 
 @RESTQUERYPARAM{mergeObjects,boolean,optional}
 Controls whether objects (not arrays) are merged if present in

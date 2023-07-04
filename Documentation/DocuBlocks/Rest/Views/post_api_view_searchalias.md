@@ -1,5 +1,4 @@
 @startDocuBlock post_api_view_searchalias
-@brief Creates a `search-alias` View
 
 @RESTHEADER{POST /_api/view#searchalias, Create a search-alias View, createViewSearchAlias}
 
@@ -27,28 +26,31 @@ already exist.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *name* or *type* attribute are missing or invalid, then an *HTTP 400*
+If the `name` or `type` attribute are missing or invalid, then an *HTTP 400*
 error is returned.
 
 @RESTRETURNCODE{409}
-If a View called *name* already exists, then an *HTTP 409* error is returned.
+If a View called `name` already exists, then an *HTTP 409* error is returned.
 
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestViewPostViewSearchAlias}
+    var coll = db._create("books");
+    var idx = coll.ensureIndex({ type: "inverted", name: "inv-idx", fields: [ { name: "title", analyzer: "text_en" } ] });
+
     var url = "/_api/view";
     var body = {
-      name: "testViewBasics",
-      type: "search-alias"
+      name: "products",
+      type: "search-alias",
+      indexes: [
+        { collection: "books", index: "inv-idx" }
+      ]
     };
-
     var response = logCurlRequest('POST', url, body);
-
     assert(response.code === 201);
-
     logJsonResponse(response);
 
-    db._flushCache();
-    db._dropView("testViewBasics");
+    db._dropView("products");
+    db._drop(coll.name());
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
