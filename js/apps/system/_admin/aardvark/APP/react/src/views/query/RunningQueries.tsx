@@ -64,7 +64,6 @@ const TABLE_COLUMNS = [
 const useFetchRunningQueries = () => {
   const [runningQueries, setRunningQueries] = React.useState<QueryInfo[]>([]);
   const fetchRunningQueries = async () => {
-    console.log("refetching!");
     const currentDb = getCurrentDB();
     const runningQueries = await currentDb.listRunningQueries();
     setRunningQueries(runningQueries);

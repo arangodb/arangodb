@@ -224,7 +224,6 @@ const detectGeo = ({
     if (item.coordinates && item.type) {
       if (GEOMETRY_TYPES.includes(item.type)) {
         if (isValidPoint(item) || isValidGeodesic(item)) {
-          console.log("validd!");
           validGeojsonCount++;
         }
       }

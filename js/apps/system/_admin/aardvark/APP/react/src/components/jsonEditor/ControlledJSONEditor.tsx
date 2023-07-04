@@ -127,7 +127,6 @@ const useSetupValueUpdate = ({
       value &&
       JSON.stringify(value) !== JSON.stringify(editor.get())
     ) {
-      console.log({ value });
       editor.update(value);
     }
   }, [jsonEditorRef, value]);

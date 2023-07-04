@@ -85,7 +85,6 @@ const useCollectionOptions = () => {
       label: collection.name,
       value: collection.name
     }));
-  console.log({ data });
   const documentCollectionOptions = data
     ?.filter(collection => {
       return (
@@ -105,7 +104,6 @@ const useCollectionOptions = () => {
       label: collection.name,
       value: collection.name
     }));
-  console.log({ systemCollectionOptions });
   return {
     edgeCollectionOptions,
     documentCollectionOptions,

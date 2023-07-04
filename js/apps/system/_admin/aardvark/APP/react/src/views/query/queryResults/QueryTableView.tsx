@@ -32,7 +32,6 @@ export const QueryTableView = ({
         </Thead>
         <Tbody>
           {queryResult.result?.map((row, index) => {
-            console.log({ row });
             return (
               <Tr key={index}>
                 {headers.map(header => {
