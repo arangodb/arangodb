@@ -28,10 +28,13 @@
 
 #include <atomic>
 #include <cstdint>
+#include <memory>
 
 namespace arangodb {
 class GlobalResourceMonitor;
 
+/// @brief a ResourceMonitor to track and limit memory usage for allocations
+/// in a certain area.
 struct alignas(64) ResourceMonitor final {
   /// @brief: granularity of allocations that we track. this should be a
   /// power of 2, so dividing by it is efficient!
@@ -129,6 +132,83 @@ class ResourceUsageScope {
  private:
   ResourceMonitor& _resourceMonitor;
   std::uint64_t _value;
+};
+
+/// @brief an std::allocator-like specialization that uses a ResourceMonitor
+/// underneath.
+template<typename Allocator>
+class ResourceUsageAllocatorBase : public Allocator {
+ public:
+  using difference_type =
+      typename std::allocator_traits<Allocator>::difference_type;
+  using propagate_on_container_move_assignment = typename std::allocator_traits<
+      Allocator>::propagate_on_container_move_assignment;
+  using size_type = typename std::allocator_traits<Allocator>::size_type;
+  using value_type = typename std::allocator_traits<Allocator>::value_type;
+
+  ResourceUsageAllocatorBase() = delete;
+
+  template<typename... Args>
+  ResourceUsageAllocatorBase(ResourceMonitor& resourceMonitor, Args&&... args)
+      : Allocator(std::forward<Args>(args)...),
+        _resourceMonitor(resourceMonitor) {}
+
+  ResourceUsageAllocatorBase(ResourceUsageAllocatorBase&& other) noexcept
+      : Allocator(other.rawAllocator()),
+        _resourceMonitor(other._resourceMonitor) {}
+
+  ResourceUsageAllocatorBase(ResourceUsageAllocatorBase const& other) noexcept
+      : Allocator(other.rawAllocator()),
+        _resourceMonitor(other._resourceMonitor) {}
+
+  ResourceUsageAllocatorBase& operator=(
+      ResourceUsageAllocatorBase&& other) noexcept {
+    static_cast<Allocator&>(*this) = std::move(static_cast<Allocator&>(other));
+    _resourceMonitor = other._resourceMonitor;
+    return *this;
+  }
+
+  template<typename A>
+  ResourceUsageAllocatorBase(
+      ResourceUsageAllocatorBase<A> const& other) noexcept
+      : Allocator(other.rawAllocator()),
+        _resourceMonitor(other.resourceMonitor()) {}
+
+  value_type* allocate(std::size_t n) {
+    _resourceMonitor.increaseMemoryUsage(sizeof(value_type) * n);
+    try {
+      return Allocator::allocate(n);
+    } catch (...) {
+      _resourceMonitor.decreaseMemoryUsage(sizeof(value_type) * n);
+      throw;
+    }
+  }
+
+  void deallocate(value_type* p, std::size_t n) {
+    Allocator::deallocate(p, n);
+    _resourceMonitor.decreaseMemoryUsage(sizeof(value_type) * n);
+  }
+
+  Allocator const& rawAllocator() const noexcept {
+    return static_cast<Allocator const&>(*this);
+  }
+
+  ResourceMonitor& resourceMonitor() const noexcept { return _resourceMonitor; }
+
+  template<typename A>
+  bool operator==(ResourceUsageAllocatorBase<A> const& other) const noexcept {
+    return rawAllocator() == other.rawAllocator() &&
+           &_resourceMonitor == &other.resourceMonitor();
+  }
+
+ private:
+  ResourceMonitor& _resourceMonitor;
+};
+
+template<typename T>
+struct ResourceUsageAllocator : ResourceUsageAllocatorBase<std::allocator<T>> {
+  using ResourceUsageAllocatorBase<
+      std::allocator<T>>::ResourceUsageAllocatorBase;
 };
 
 }  // namespace arangodb

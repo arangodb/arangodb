@@ -24,18 +24,18 @@
 #pragma once
 
 #include "Aql/ExecutionPlan.h"
-#include "Containers/RollingVector.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
 
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 struct OptimizerRule;
 struct QueryOptions;
 
@@ -50,17 +50,14 @@ class Optimizer {
     using Entry =
         std::pair<std::unique_ptr<ExecutionPlan>, RuleDatabase::iterator>;
 
-    ::arangodb::containers::RollingVector<Entry> list;
-
-    PlanList() { list.reserve(8); }
+    std::deque<Entry, ResourceUsageAllocator<Entry>> list;
 
     /// @brief constructor with a plan
-    PlanList(std::unique_ptr<ExecutionPlan> p, RuleDatabase::iterator rule) {
-      push_back(std::move(p), rule);
-    }
-
-    /// @brief destructor, deleting contents
-    ~PlanList() = default;
+    //    PlanList(std::unique_ptr<ExecutionPlan> p, RuleDatabase::iterator
+    //    rule) {
+    //      push_back(std::move(p), rule);
+    //    }
+    explicit PlanList(ResourceMonitor& monitor) : list(monitor) {}
 
     /// @brief get number of plans contained
     size_t size() const noexcept { return list.size(); }
@@ -105,9 +102,7 @@ class Optimizer {
   /// @brief constructor, this will initialize the rules database
   /// the .cpp file includes Aql/OptimizerRules.h
   /// and add all methods there to the rules database
-  explicit Optimizer(size_t maxNumberOfPlans);
-
-  ~Optimizer() = default;
+  explicit Optimizer(ResourceMonitor& resourceMonitor, size_t maxNumberOfPlans);
 
   /// @brief disable rules in the given plan, using the predicate function
   void disableRules(ExecutionPlan* plan,
@@ -134,7 +129,7 @@ class Optimizer {
                        bool wasModified);
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
-  ::arangodb::containers::RollingVector<PlanList::Entry> const&
+  std::deque<PlanList::Entry, ResourceUsageAllocator<PlanList::Entry>> const&
   getPlans() noexcept {
     return _plans.list;
   }
@@ -206,5 +201,4 @@ class Optimizer {
   bool _runOnlyRequiredRules;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
