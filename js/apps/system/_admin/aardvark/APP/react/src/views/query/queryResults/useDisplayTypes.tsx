@@ -34,6 +34,18 @@ export const useDisplayTypes = ({
         return prevView;
       });
     }
+    const { isGeo } = detectGeo({
+      result: queryResult.result
+    });
+    if (isGeo) {
+      setDisplayTypes(["table", "geo"]);
+      setCurrentView(prevView => {
+        if (prevView !== "geo") {
+          return "geo";
+        }
+        return prevView;
+      });
+    }
   }, [queryResult]);
   return { displayTypes, graphDataType, currentView, setCurrentView };
 };
@@ -129,4 +141,78 @@ const detectGraph = ({
       isGraph: false
     };
   }
+};
+
+const GEOMETRY_TYPES = [
+  "Point",
+  "MultiPoint",
+  "LineString",
+  "MultiLineString",
+  "Polygon",
+  "MultiPolygon"
+];
+type GeoItemType = {
+  type?: string;
+  coordinates?: any[];
+  geometry?: {
+    type: string;
+    coordinates: any[];
+  };
+};
+
+const detectGeo = ({
+  result
+}: {
+  result: GeoItemType[];
+}): {
+  isGeo: boolean;
+} => {
+  let validGeojsonCount = 0;
+  let isGeo = false;
+  result?.forEach(item => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) {
+      return {
+        isGeo: false
+      };
+    }
+    if (item.coordinates && item.type) {
+      if (GEOMETRY_TYPES.includes(item.type)) {
+        validGeojsonCount++;
+      }
+    } else if (
+      item.geometry &&
+      item.geometry.coordinates &&
+      item.geometry.type
+    ) {
+      if (GEOMETRY_TYPES.includes(item.geometry.type)) {
+        validGeojsonCount++;
+      }
+    }
+
+    // makes a map like {type: 1, coordinates: 2} across all items
+    let attributeCountMap = {} as any;
+    Object.keys(item).forEach(key => {
+      if (attributeCountMap.hasOwnProperty(key)) {
+        attributeCountMap[key] = attributeCountMap[key] + 1;
+      } else {
+        attributeCountMap[key] = 1;
+      }
+    });
+    //
+    // answers the question - what % of result items have a given attribute
+    // for eg, do 95% have attribute 'type'? if yes, then it's a geojson
+    Object.keys(attributeCountMap).forEach(key => {
+      const attributeCount = attributeCountMap[key];
+      const attributeRateForItem = (attributeCount / result.length) * 100;
+      if (attributeRateForItem <= 95) {
+        isGeo = false;
+      }
+    });
+    if (result.length === validGeojsonCount) {
+      isGeo = true;
+    }
+  });
+  return {
+    isGeo
+  };
 };

@@ -70,9 +70,9 @@ const QueryContext = React.createContext<QueryContextType>(
 
 export const useQueryContext = () => React.useContext(QueryContext);
 
-export type QueryResultType = {
+export type QueryResultType<ResultType extends any = any> = {
   type: "query" | "profile" | "explain";
-  result?: any;
+  result?: ResultType;
   extra?: CursorExtras;
   status: "success" | "error" | "loading";
   asyncJobId?: string;

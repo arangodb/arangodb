@@ -11,6 +11,7 @@ import {
 import React from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { QueryResultType } from "../QueryContextProvider";
+import { QueryGeoView } from "./QueryGeoView";
 import { QueryGraphView } from "./QueryGraphView";
 import { RemoveResultButton } from "./RemoveResultButton";
 import { ResultTypeBox } from "./ResultTypeBox";
@@ -110,6 +111,9 @@ const QueryExecuteResultDisplay = ({
   currentView: DisplayType;
   graphDataType: "graphObject" | "edgeArray";
 }) => {
+  if (currentView === "geo") {
+    return <QueryGeoView queryResult={queryResult} />;
+  }
   if (currentView === "graph") {
     return (
       <QueryGraphView graphDataType={graphDataType} queryResult={queryResult} />
