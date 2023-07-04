@@ -13,6 +13,7 @@ import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJ
 import { QueryResultType } from "../QueryContextProvider";
 import { QueryGeoView } from "./QueryGeoView";
 import { QueryGraphView } from "./QueryGraphView";
+import { QueryTableView } from "./QueryTableView";
 import { RemoveResultButton } from "./RemoveResultButton";
 import { ResultTypeBox } from "./ResultTypeBox";
 import { TimingInfo } from "./TimingInfo";
@@ -111,6 +112,9 @@ const QueryExecuteResultDisplay = ({
   currentView: DisplayType;
   graphDataType: "graphObject" | "edgeArray";
 }) => {
+  if(currentView === "table") {
+    return <QueryTableView queryResult={queryResult} />
+  }
   if (currentView === "geo") {
     return <QueryGeoView queryResult={queryResult} />;
   }

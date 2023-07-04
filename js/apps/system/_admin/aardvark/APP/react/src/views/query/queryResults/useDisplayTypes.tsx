@@ -1,3 +1,5 @@
+import L from "leaflet";
+import { GeodesicLine } from "leaflet.geodesic";
 import React from "react";
 import { QueryResultType } from "../QueryContextProvider";
 
@@ -34,14 +36,26 @@ export const useDisplayTypes = ({
         return prevView;
       });
     }
-    const { isGeo } = detectGeo({
+    const { isGeo, isTable } = detectGeo({
       result: queryResult.result
     });
     if (isGeo) {
-      setDisplayTypes(["table", "geo"]);
+      let displayTypes = ["geo"];
+      if (isTable) {
+        displayTypes = ["table", ...displayTypes];
+      }
+      setDisplayTypes(displayTypes as DisplayType[]);
       setCurrentView(prevView => {
         if (prevView !== "geo") {
           return "geo";
+        }
+        return prevView;
+      });
+    } else if (isTable) {
+      setDisplayTypes(["table"]);
+      setCurrentView(prevView => {
+        if (prevView !== "table") {
+          return "table";
         }
         return prevView;
       });
@@ -151,6 +165,15 @@ const GEOMETRY_TYPES = [
   "Polygon",
   "MultiPolygon"
 ];
+
+const POINT_GEOMETRY_TYPES = ["Point", "MultiPoint"];
+
+const GEODESIC_GEOMETRY_TYPES = [
+  "LineString",
+  "MultiLineString",
+  "Polygon",
+  "MultiPolygon"
+];
 type GeoItemType = {
   type?: string;
   coordinates?: any[];
@@ -160,24 +183,50 @@ type GeoItemType = {
   };
 };
 
+const isValidPoint = (item: { type?: string; coordinates?: any[] }) => {
+  if (item.type && POINT_GEOMETRY_TYPES.includes(item.type)) {
+    try {
+      new L.GeoJSON(item as any);
+      return true;
+    } catch (ignore) {
+      return false;
+    }
+  }
+};
+const isValidGeodesic = (item: GeoItemType) => {
+  if (item.type && GEODESIC_GEOMETRY_TYPES.includes(item.type)) {
+    try {
+      new GeodesicLine().fromGeoJson(item as any);
+      return true;
+    } catch (ignore) {
+      return false;
+    }
+  }
+};
 const detectGeo = ({
   result
 }: {
   result: GeoItemType[];
 }): {
   isGeo: boolean;
+  isTable: boolean;
 } => {
   let validGeojsonCount = 0;
   let isGeo = false;
+  let isTable = false;
   result?.forEach(item => {
     if (typeof item !== "object" || item === null || Array.isArray(item)) {
       return {
-        isGeo: false
+        isGeo: false,
+        isTable: false
       };
     }
     if (item.coordinates && item.type) {
       if (GEOMETRY_TYPES.includes(item.type)) {
-        validGeojsonCount++;
+        if (isValidPoint(item) || isValidGeodesic(item)) {
+          console.log("validd!");
+          validGeojsonCount++;
+        }
       }
     } else if (
       item.geometry &&
@@ -185,7 +234,9 @@ const detectGeo = ({
       item.geometry.type
     ) {
       if (GEOMETRY_TYPES.includes(item.geometry.type)) {
-        validGeojsonCount++;
+        if (isValidPoint(item.geometry) || isValidGeodesic(item.geometry)) {
+          validGeojsonCount++;
+        }
       }
     }
 
@@ -200,12 +251,15 @@ const detectGeo = ({
     });
     //
     // answers the question - what % of result items have a given attribute
-    // for eg, do 95% have attribute 'type'? if yes, then it's a geojson
+    // for eg, do 95% have attribute 'type'?
+    // If yes, then it's can be displayed as a table
     Object.keys(attributeCountMap).forEach(key => {
       const attributeCount = attributeCountMap[key];
       const attributeRateForItem = (attributeCount / result.length) * 100;
       if (attributeRateForItem <= 95) {
-        isGeo = false;
+        isTable = false;
+      } else {
+        isTable = true;
       }
     });
     if (result.length === validGeojsonCount) {
@@ -213,6 +267,7 @@ const detectGeo = ({
     }
   });
   return {
-    isGeo
+    isGeo,
+    isTable
   };
 };
