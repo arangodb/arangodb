@@ -67,7 +67,7 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
       };
 
       const {logId} = createReplicatedLog(database, config);
-      let log = db._replicatedLog(logId)
+      let log = db._replicatedLog(logId);
 
       // Insert 100 entries
       for (let i = 0; i < 100; i++) {
@@ -92,7 +92,7 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
       };
 
       const {logId, leader, followers} = createReplicatedLog(database, config);
-      let log = db._replicatedLog(logId)
+      let log = db._replicatedLog(logId);
 
       for (let i = 0; i < 100; i++) {
         log.insert({foo: `foo${i}`});
