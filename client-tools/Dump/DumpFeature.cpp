@@ -1547,6 +1547,8 @@ Result DumpFeature::ParallelDumpServer::run(
 
   printBlockStats();
 
+  LOG_TOPIC("1b7fe", INFO, Logger::DUMP) << "all data received for " << server;
+
   return Result{};
 }
 
@@ -1566,7 +1568,7 @@ void DumpFeature::ParallelDumpServer::ParallelDumpServer::printBlockStats() {
     msg += std::to_string(blockCounter[i]);
   }
 
-  LOG_TOPIC("d1349", INFO, Logger::DUMP) << "block counter " << msg;
+  LOG_TOPIC("d1349", DEBUG, Logger::DUMP) << "block counter " << msg;
 }
 
 void DumpFeature::ParallelDumpServer::ParallelDumpServer::countBlocker(
