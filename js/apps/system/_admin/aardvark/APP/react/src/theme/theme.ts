@@ -29,6 +29,13 @@ export const theme = extendTheme({
         };
       }
     },
+    Popover: {
+      baseStyle: {
+        popper: {
+          zIndex: 500
+        }
+      }
+    },
     Modal: {
       sizes: {
         max: {
