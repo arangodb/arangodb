@@ -3,27 +3,27 @@ v3.10.9 (2023-06-30)
 
 * Added startup option `--replication.active-failover-leader-grace-period`.
   This startup option can be used to set the amount of time (in seconds) for
-  which the current leader in an active failover setup will continue to 
-  assume its leadership even if it lost connection to the agency.
+  which the current leader in an active failover setup will continue to assume
+  its leadership even if it lost connection to the agency.
 
-  In case the leader cannot contact the agency anymore, the agency will elect
-  a new leader after the supervision grace period has elapsed. 
+  In case the leader cannot contact the agency anymore, the agency will elect a
+  new leader after the supervision grace period has elapsed.
   In order to avoid a split-brain situation with multiple servers assuming
-  leadership, this option can be used to make a disconnected leader refuse
-  any incoming write operations after the grace period controled by this option
-  has elapsed.
-  Ideally the startup option should be given a value greater than the value
-  of the supervision grace period, in order to avoid a temporarily disconnected
+  leadership, this option can be used to make a disconnected leader refuse any
+  incoming write operations after the grace period controled by this option has
+  elapsed.
+  Ideally the startup option should be given a value greater than the value of
+  the supervision grace period, in order to avoid a temporarily disconnected
   leader giving up leadership too early and unnecessarily.
 
-  The default value is 120 seconds. Setting the option to a value of 0 will
-  keep the existing behavior, in which a disconnected leader will not refuse
-  incoming write operations.
+  The default value is 120 seconds. Setting the option to a value of 0 will keep
+  the existing behavior, in which a disconnected leader will not refuse incoming
+  write operations.
 
 * Optimize runtime performance of exclusive locks.
 
-* Remove temporary `CREATING_{number}` directories from hot backup in case a
-  hot backup runs into an error.
+* Remove temporary `CREATING_{number}` directories from hot backup in case a hot
+  backup runs into an error.
 
 * BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in
   case the update AQL is of the pattern
@@ -51,7 +51,7 @@ v3.10.9 (2023-06-30)
 * Add a `description` field to OptimizerRule and dump the explanations via the
   `GET /_api/query/rules` endpoint.
 
-* Attempt to avoid busy looping when locking collections with a timeout
+* Attempt to avoid busy looping when locking collections with a timeout.
 
 * BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
 
@@ -59,10 +59,11 @@ v3.10.9 (2023-06-30)
 v3.10.8 (2023-06-23)
 --------------------
 
-* Fixed two possible deadlocks which could occur if all medium priority
-  threads are busy. One is that in this case the AgencyCache could no longer
-  receive updates from the agency and another that queries could no longer
-  be finished. This fixes BTS-1475 and BTS-1486.
+* Fixed two possible deadlocks which could occur if all medium priority threads
+  are busy. One is that in this case the AgencyCache could no longer receive
+  updates from the agency and another that queries could no longer be finished.
+  This fixes BTS-1475 and BTS-1486.
+
 
 v3.10.7 (2023-06-12)
 --------------------
