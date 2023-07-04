@@ -125,7 +125,7 @@ void Cache::sizeHint(uint64_t numElements) {
 
   std::uint64_t numBuckets = static_cast<std::uint64_t>(
       static_cast<double>(numElements) /
-      (static_cast<double>(_slotsPerBucket) * Table::idealUpperRatio));
+      (static_cast<double>(_slotsPerBucket) * _manager->idealUpperFillRatio()));
   std::uint32_t requestedLogSize = 0;
   for (; (static_cast<std::uint64_t>(1) << requestedLogSize) < numBuckets;
        requestedLogSize++) {
