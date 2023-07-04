@@ -1199,6 +1199,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
   result.firstIndex = mapping.getFirstIndex().value_or(TermIndexPair{}).index;
   result.spearHead = _self._inMemoryLogManager->getSpearheadTermIndexPair();
   result.releaseIndex = releaseIndex;
+  result.syncIndex = _self._storageManager->getSyncIndex();
   return result;
 }
 
