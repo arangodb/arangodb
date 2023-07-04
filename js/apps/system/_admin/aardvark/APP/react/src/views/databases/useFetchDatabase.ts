@@ -2,7 +2,7 @@ import useSWR from "swr";
 import { getCurrentDB } from "../../utils/arangoClient";
 
 export const useFetchDatabase = (name: string) => {
-  const { data } = useSWR(`/databases/${name}`, async () => {
+  const { data } = useSWR(`/databases/${encodeURIComponent(name)}`, async () => {
     const db = getCurrentDB();
     const { sharding, ...data } = await db.database(name).get();
     return {

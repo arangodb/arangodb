@@ -8,7 +8,8 @@ import { useFetchDatabase } from "../useFetchDatabase";
 
 export const SingleDatabaseView = () => {
   const { params } = useRouteMatch<{ databaseName: string }>();
-  const { database: currentDatabase } = useFetchDatabase(params.databaseName);
+  const databaseName = decodeURIComponent(params.databaseName);
+  const { database: currentDatabase } = useFetchDatabase(databaseName);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const history = useHistory();
   if (!currentDatabase) {
@@ -32,7 +33,7 @@ export const SingleDatabaseView = () => {
           }}
         />
         <Heading marginLeft="2" as="h1" size="lg">
-          Database: {params.databaseName}
+          Database: {databaseName}
         </Heading>
         {showDeleteButton && (
           <Button

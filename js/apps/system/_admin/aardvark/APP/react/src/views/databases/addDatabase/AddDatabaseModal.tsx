@@ -1,4 +1,4 @@
-import { Button, Flex, Heading, Stack } from "@chakra-ui/react";
+import { Button, Heading, Stack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { mutate } from "swr";
@@ -21,8 +21,7 @@ export const AddDatabaseModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  const initialFocusRef = React.useRef<HTMLInputElement>(null);
-  const { defaults: INITIAL_VALUES } = useFetchInitialValues();
+  const { defaults: initialValues } = useFetchInitialValues();
   const handleSubmit = async ({
     name,
     users: usernames,
@@ -31,6 +30,7 @@ export const AddDatabaseModal = ({
     replicationFactor,
     writeConcern
   }: DatabaseDescription & { users: string[] }) => {
+    name = name.normalize();
     const currentDB = getCurrentDB();
     try {
       const users = usernames.map(username => ({ username }));
@@ -57,16 +57,11 @@ export const AddDatabaseModal = ({
       }
     }
   };
-  if (!INITIAL_VALUES) return null;
+  if (!initialValues) return null;
   return (
-    <Modal
-      initialFocusRef={initialFocusRef}
-      size="6xl"
-      isOpen={isOpen}
-      onClose={onClose}
-    >
+    <Modal size="6xl" isOpen={isOpen} onClose={onClose}>
       <Formik
-        initialValues={INITIAL_VALUES}
+        initialValues={initialValues}
         validationSchema={Yup.object({
           name: Yup.string().required("Name is required")
         })}
@@ -74,7 +69,6 @@ export const AddDatabaseModal = ({
       >
         {({ isSubmitting }) => (
           <AddDatabaseModalInner
-            initialFocusRef={initialFocusRef}
             onClose={onClose}
             isSubmitting={isSubmitting}
           />
@@ -85,26 +79,20 @@ export const AddDatabaseModal = ({
 };
 
 const AddDatabaseModalInner = ({
-  initialFocusRef,
   onClose,
   isSubmitting
 }: {
-  initialFocusRef: React.RefObject<HTMLInputElement>;
   onClose: () => void;
   isSubmitting: boolean;
 }) => {
   return (
     <Form>
-      <ModalHeader fontSize="sm" fontWeight="normal">
-        <Flex direction="row" alignItems="center">
-          <Heading marginRight="4" size="md">
-            Create Database
-          </Heading>
-        </Flex>
+      <ModalHeader>
+        <Heading size="md">Create Database</Heading>
       </ModalHeader>
 
       <ModalBody>
-        <AddDatabaseForm initialFocusRef={initialFocusRef} />
+        <AddDatabaseForm />
       </ModalBody>
       <ModalFooter>
         <Stack direction="row" spacing={4} align="center">

@@ -11,13 +11,16 @@ export const AddDatabaseForm = ({
 }: {
   initialFocusRef?: React.RefObject<HTMLInputElement>;
 }) => {
-  const { users: knownUsers = [] } = useFetchUsers();
+  const { users: availableUsers = [] } = useFetchUsers();
   const { isFormDisabled: isDisabled } = useDatabasesContext();
   const [isSatellite] = useField<boolean>("isSatellite");
   const [path] = useField<string>("path");
   const [users] = useField<string[] | undefined>("users");
-  const availableUsers = knownUsers.filter(user => user.user !== "root");
-  const showUsers = Boolean(users.value && availableUsers.length);
+  const showUsers = Boolean(users.value);
+  const isUsersDisabled = Boolean(
+    !availableUsers.length ||
+      (availableUsers.length === 1 && availableUsers[0].user === "root")
+  );
   return (
     <Grid templateColumns={"1fr 1fr"} gap="6">
       <Stack>
@@ -82,11 +85,12 @@ export const AddDatabaseForm = ({
             hidden={!window.App.isCluster || isSatellite.value === undefined}
           />
           <MultiSelectControl
-            isDisabled={isDisabled || !availableUsers.length}
+            isDisabled={isDisabled || isUsersDisabled}
             name={"users"}
             label="Users"
             hidden={!showUsers}
             selectProps={{
+              placeholder: "root",
               options: availableUsers.map(user => ({
                 label: user.extra?.name || user.user,
                 value: user.user

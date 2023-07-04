@@ -19,7 +19,7 @@ const TABLE_COLUMNS = [
       return (
         <Link
           as={RouterLink}
-          to={`/databases/${cellValue}`}
+          to={`/databases/${encodeURIComponent(cellValue)}`}
           textDecoration="underline"
           color="blue.500"
           _hover={{
@@ -60,7 +60,7 @@ export const DatabasesTable = () => {
         table={tableInstance}
         emptyStateMessage="No databases found"
         onRowSelect={row => {
-          history.push(`/databases/${row.original.name}`);
+          history.push(`/databases/${encodeURIComponent(row.original.name)}`);
         }}
       />
     </Stack>
