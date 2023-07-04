@@ -184,107 +184,86 @@ void replicated_log::AppendEntriesResult::toVelocyPack(
 
 auto replicated_log::AppendEntriesResult::fromVelocyPack(
     velocypack::Slice slice) -> AppendEntriesResult {
-  auto logTerm = slice.get("term").extract<LogTerm>();
+  Params params;
+  params.logTerm = slice.get("term").extract<LogTerm>();
+  params.messageId = slice.get("messageId").extract<MessageId>();
+  params.snapshotAvailable = slice.get("snapshotAvailable").isTrue();
+  params.syncIndex = slice.get("syncIndex").extract<LogIndex>();
   auto errorCode = ErrorCode{slice.get("errorCode").extract<int>()};
   auto reason = AppendEntriesErrorReason::fromVelocyPack(slice.get("reason"));
-  auto messageId = slice.get("messageId").extract<MessageId>();
-  auto snapshotAvailable = slice.get("snapshotAvailable").isTrue();
-  auto syncIndex = slice.get("syncIndex").extract<LogIndex>();
 
   if (reason.error == AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch) {
     TRI_ASSERT(errorCode ==
                TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
     auto conflict = slice.get("conflict");
     TRI_ASSERT(conflict.isObject());
-    return AppendEntriesResult{logTerm,
-                               messageId,
+    return AppendEntriesResult{std::move(params),
                                TermIndexPair::fromVelocyPack(conflict),
-                               std::move(reason),
-                               snapshotAvailable,
-                               syncIndex};
+                               std::move(reason)};
   }
 
   TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR ||
              reason.error != AppendEntriesErrorReason::ErrorType::kNone);
-  return AppendEntriesResult{logTerm,   errorCode,         reason,
-                             messageId, snapshotAvailable, syncIndex};
+  return AppendEntriesResult{std::move(params), errorCode, reason};
 }
 
 replicated_log::AppendEntriesResult::AppendEntriesResult(
-    LogTerm logTerm, ErrorCode errorCode, AppendEntriesErrorReason reason,
-    MessageId id, bool snapshotAvailable, LogIndex syncIndex) noexcept
-    : logTerm(logTerm),
+    Params params, ErrorCode errorCode, AppendEntriesErrorReason reason,
+    std::optional<TermIndexPair> conflict) noexcept
+    : logTerm(params.logTerm),
+      messageId(params.messageId),
+      snapshotAvailable(params.snapshotAvailable),
+      syncIndex(params.syncIndex),
       errorCode(errorCode),
       reason(std::move(reason)),
-      messageId(id),
-      snapshotAvailable(snapshotAvailable),
-      syncIndex(syncIndex) {
+      conflict(conflict) {
   static_assert(std::is_nothrow_move_constructible_v<AppendEntriesErrorReason>);
   TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR ||
              reason.error != AppendEntriesErrorReason::ErrorType::kNone);
 }
 
-replicated_log::AppendEntriesResult::AppendEntriesResult(
-    LogTerm logTerm, MessageId id, bool snapshotAvailable,
-    LogIndex syncIndex) noexcept
-    : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, {}, id,
-                          snapshotAvailable, syncIndex) {}
+replicated_log::AppendEntriesResult::AppendEntriesResult(Params params) noexcept
+    : AppendEntriesResult(std::move(params), TRI_ERROR_NO_ERROR, {}) {}
 
 replicated_log::AppendEntriesResult::AppendEntriesResult(
-    LogTerm term, replicated_log::MessageId id, TermIndexPair conflict,
-    AppendEntriesErrorReason reason, bool snapshotAvailable,
-    LogIndex syncIndex) noexcept
+    Params params, TermIndexPair conflict,
+    AppendEntriesErrorReason reason) noexcept
     : AppendEntriesResult(
-          term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-          std::move(reason), id, snapshotAvailable, syncIndex) {
+          std::move(params),
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
+          std::move(reason), conflict) {
   static_assert(std::is_nothrow_move_constructible_v<AppendEntriesErrorReason>);
-  this->conflict = conflict;
 }
 
 auto replicated_log::AppendEntriesResult::withConflict(
-    LogTerm term, replicated_log::MessageId id, TermIndexPair conflict,
-    bool snapshotAvailable, LogIndex syncIndex) noexcept
+    Params params, TermIndexPair conflict) noexcept
     -> replicated_log::AppendEntriesResult {
-  return {term,
-          id,
+  return {std::move(params),
           conflict,
-          {AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch},
-          snapshotAvailable,
-          syncIndex};
+          {AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch}};
 }
 
 auto replicated_log::AppendEntriesResult::withRejection(
-    LogTerm term, MessageId id, AppendEntriesErrorReason reason,
-    bool snapshotAvailable, LogIndex syncIndex) noexcept
+    Params params, AppendEntriesErrorReason reason) noexcept
     -> AppendEntriesResult {
   static_assert(std::is_nothrow_move_constructible_v<AppendEntriesErrorReason>);
-  return {term,
+  return {std::move(params),
           TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-          std::move(reason),
-          id,
-          snapshotAvailable,
-          syncIndex};
+          std::move(reason)};
 }
 
 auto replicated_log::AppendEntriesResult::withPersistenceError(
-    LogTerm term, replicated_log::MessageId id, Result const& res,
-    bool snapshotAvailable, LogIndex syncIndex) noexcept
+    Params params, Result const& res) noexcept
     -> replicated_log::AppendEntriesResult {
-  return {term,
+  return {std::move(params),
           res.errorNumber(),
           {AppendEntriesErrorReason::ErrorType::kPersistenceFailure,
-           std::string{res.errorMessage()}},
-          id,
-          snapshotAvailable,
-          syncIndex};
+           std::string{res.errorMessage()}}};
 }
 
-auto replicated_log::AppendEntriesResult::withOk(LogTerm term,
-                                                 replicated_log::MessageId id,
-                                                 bool snapshotAvailable,
-                                                 LogIndex syncIndex) noexcept
+auto replicated_log::AppendEntriesResult::withOk(Params params) noexcept
     -> replicated_log::AppendEntriesResult {
-  return {term, id, snapshotAvailable, syncIndex};
+  return {std::move(params)};
 }
 
 auto replicated_log::AppendEntriesResult::isSuccess() const noexcept -> bool {

@@ -57,23 +57,30 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     throw ParticipantResignedException(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
   }
+
+  auto const snapshotAvailable =
+      guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE;
+  auto const syncIndex = guard->storage.getSyncIndex();
+
+  AppendEntriesResult::Params params = {.logTerm = termInfo->term,
+                                        .messageId = request.messageId,
+                                        .snapshotAvailable = snapshotAvailable,
+                                        .syncIndex = syncIndex
+
+  };
+
   auto requestGuard = guard->requestInFlight.acquire();
   if (not requestGuard) {
     LOG_CTX("58043", INFO, lctx)
         << "rejecting append entries - request in flight";
     co_return AppendEntriesResult::withRejection(
-        termInfo->term, request.messageId,
+        params,
         AppendEntriesErrorReason{
-            AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight},
-        guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE,
-        guard->storage.getSyncIndex());
+            AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight});
   }
 
-  if (auto error = guard->preflightChecks(request, *termInfo, lctx); error) {
-    error->messageId = request.messageId;
-    error->logTerm = termInfo->term;
-    error->snapshotAvailable =
-        guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE;
+  if (auto error = guard->preflightChecks(params, request, *termInfo, lctx);
+      error) {
     co_return {std::move(*error)};
   }
 
@@ -86,10 +93,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       if (auto result = guard->snapshot.invalidateSnapshotState();
           result.fail()) {
         LOG_CTX("c0981", ERR, lctx) << "failed to persist: " << result;
-        co_return AppendEntriesResult::withPersistenceError(
-            termInfo->term, request.messageId, result,
-            guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE,
-            guard->storage.getSyncIndex());
+        co_return AppendEntriesResult::withPersistenceError(params, result);
       }
     }
   }
@@ -116,10 +120,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       }
       if (result.fail()) {
         LOG_CTX("0982a", ERR, lctx) << "failed to persist: " << result;
-        co_return AppendEntriesResult::withPersistenceError(
-            termInfo->term, request.messageId, result,
-            guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE,
-            guard->storage.getSyncIndex());
+        co_return AppendEntriesResult::withPersistenceError(params, result);
       }
       store = guard->storage.transaction();
     }
@@ -141,26 +142,21 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       if (result.fail()) {
         LOG_CTX("7cb3d", ERR, lctx)
             << "failed to persist new entries: " << result;
-        co_return AppendEntriesResult::withPersistenceError(
-            termInfo->term, request.messageId, result,
-            guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE,
-            guard->storage.getSyncIndex());
+        co_return AppendEntriesResult::withPersistenceError(params, result);
       }
     }
   }
 
   guard->compaction.updateLowestIndexToKeep(request.lowestIndexToKeep);
-  auto hasSnapshot =
-      guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE;
-  auto action =
-      guard->stateHandle.updateCommitIndex(request.leaderCommit, hasSnapshot);
-  auto syncIndex = guard->storage.getSyncIndex();
+
+  auto action = guard->stateHandle.updateCommitIndex(request.leaderCommit,
+                                                     snapshotAvailable);
+
   guard.unlock();
   action.fire();
   requestGuard.reset();
   LOG_CTX("f5ecd", TRACE, lctx) << "append entries successful";
-  co_return AppendEntriesResult::withOk(termInfo->term, request.messageId,
-                                        hasSnapshot, syncIndex);
+  co_return AppendEntriesResult::withOk(params);
 }
 
 AppendEntriesManager::AppendEntriesManager(
@@ -192,6 +188,7 @@ AppendEntriesManager::GuardedData::GuardedData(
       messageIdManager(messageIdManager) {}
 
 auto AppendEntriesManager::GuardedData::preflightChecks(
+    AppendEntriesResult::Params const& params,
     AppendEntriesRequest const& request,
     FollowerTermInformation const& termInfo, LoggerContext const& lctx)
     -> std::optional<AppendEntriesResult> {
@@ -203,9 +200,7 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
         << "rejecting append entries - wrong term - expected " << termInfo.term
         << " found " << request.leaderTerm;
     return AppendEntriesResult::withRejection(
-        termInfo.term, request.messageId,
-        {AppendEntriesErrorReason::ErrorType::kWrongTerm}, false,
-        storage.getSyncIndex());
+        params, {AppendEntriesErrorReason::ErrorType::kWrongTerm});
   }
 
   if (not messageIdManager.acceptReceivedMessageId(request.messageId)) {
@@ -214,9 +209,7 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
         << request.messageId << " expected > "
         << messageIdManager.getLastReceivedMessageId();
     return AppendEntriesResult::withRejection(
-        termInfo.term, request.messageId,
-        {AppendEntriesErrorReason::ErrorType::kMessageOutdated}, false,
-        storage.getSyncIndex());
+        params, {AppendEntriesErrorReason::ErrorType::kMessageOutdated});
   }
 
   if (request.leaderId != termInfo.leader) {
@@ -224,9 +217,7 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
         << "rejecting append entries - wrong leader - expected "
         << termInfo.leader.value_or("<none>") << " found " << request.leaderId;
     return AppendEntriesResult::withRejection(
-        termInfo.term, request.messageId,
-        {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId}, false,
-        storage.getSyncIndex());
+        params, {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId});
   }
 
   // It is always allowed to replace the log entirely
@@ -239,9 +230,7 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
       LOG_CTX("568c7", TRACE, lctx)
           << "rejecting append entries - log conflict - reason "
           << to_string(reason) << " next " << next;
-      return AppendEntriesResult::withConflict(termInfo.term, request.messageId,
-                                               next, false,
-                                               storage.getSyncIndex());
+      return AppendEntriesResult::withConflict(params, next);
     }
   }
 

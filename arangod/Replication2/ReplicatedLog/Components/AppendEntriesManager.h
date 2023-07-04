@@ -30,6 +30,7 @@
 #include "IFollowerCommitManager.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
@@ -61,7 +62,8 @@ struct AppendEntriesManager
                 ICompactionManager& compaction,
                 IStateHandleManager& stateHandle,
                 IMessageIdManager& messageIdManager);
-    auto preflightChecks(AppendEntriesRequest const& request,
+    auto preflightChecks(AppendEntriesResult::Params const& params,
+                         AppendEntriesRequest const& request,
                          FollowerTermInformation const&,
                          LoggerContext const& lctx)
         -> std::optional<AppendEntriesResult>;
