@@ -98,10 +98,6 @@ auto InMemoryLogManager::appendLogEntry(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
     }
 
-    // TODO for now only waitForSync=true is supported.
-    waitForSync = true;  // by setting this to true, the waitForSync flag is set
-                         // for all log entries, independent of the log config.
-
     auto const index = data._inMemoryLog.getNextIndex();
     auto const payloadSize = std::holds_alternative<LogPayload>(payload)
                                  ? std::get<LogPayload>(payload).byteSize()
