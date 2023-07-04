@@ -681,6 +681,7 @@ class instance {
     if (this.options.extremeVerbosity) {
       print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
+    let backup = {};
     if (this.options.isSan) {
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneSet = "";
@@ -690,12 +691,19 @@ class instance {
           }
           oneSet += `${keyOne}=${valueOne}`;
         }
+        backup[key] = process.env[key];
         process.env[key] = oneSet;
       }
     }
 
     process.env['ARANGODB_SERVER_DIR'] = this.rootDir;
-    return executeExternal(cmd, argv, false, pu.coverageEnvironment());
+    let ret = executeExternal(cmd, argv, false, pu.coverageEnvironment());
+    if (this.options.isSan) {
+      for (const [key, value] of Object.entries(backup)) {
+        process.env[key] = value;
+      }
+    }
+    return ret;
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief starts an instance
