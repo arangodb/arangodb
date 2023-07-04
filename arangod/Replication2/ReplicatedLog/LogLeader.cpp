@@ -1143,8 +1143,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerStates() const
         .snapshotAvailable = follower->snapshotAvailable,
         .flags = flags->second});
 
-    largestCommonIndex =
-        std::min(largestCommonIndex, follower->lastAckedIndex.index);
+    largestCommonIndex = std::min(largestCommonIndex, follower->syncIndex);
   }
 
   return {largestCommonIndex, std::move(participantStates)};
@@ -1166,7 +1165,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
   auto const currentCommitIndex = _self._inMemoryLogManager->getCommitIndex();
   auto const lastTermIndex =
       _self._inMemoryLogManager->getSpearheadTermIndexPair();
-  auto const [newCommitIndex, commitFailReason, quorum] =
+  auto [newCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(
           indexes,
           this->activeInnerTermConfig->participantsConfig.config
