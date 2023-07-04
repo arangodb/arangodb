@@ -45,6 +45,7 @@
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Maskings/Maskings.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
@@ -257,15 +258,11 @@ bool isIgnoredHiddenEnterpriseCollection(
 arangodb::Result dumpJsonObjects(arangodb::DumpFeature::DumpJob& job,
                                  arangodb::ManagedDirectory::File& file,
                                  arangodb::basics::StringBuffer const& body,
-                                 std::string const* collectionName = nullptr) {
-  if (collectionName == nullptr) {
-    collectionName = &job.collectionName;
-  }
-  TRI_ASSERT(collectionName != nullptr);
+                                 std::string const& collectionName) {
   size_t length;
   if (job.maskings != nullptr) {
     arangodb::basics::StringBuffer masked(256, false);
-    job.maskings->mask(*collectionName, body, masked);
+    job.maskings->mask(collectionName, body, masked);
     file.write(masked.data(), masked.length());
     length = masked.length();
   } else {
@@ -380,7 +377,8 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
 
     // now actually write retrieved data to dump file
     arangodb::basics::StringBuffer const& body = response->getBody();
-    arangodb::Result result = dumpJsonObjects(job, file, body);
+    arangodb::Result result =
+        dumpJsonObjects(job, file, body, job.collectionName);
 
     if (result.fail()) {
       return result;
@@ -752,15 +750,21 @@ void DumpFeature::collectOptions(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
-  // options
-  //    ->addOption(
-  //        "--split-files",
-  //        "Split a collection in multiple files to increase throughput.",
-  //        new BooleanParameter(&_options.splitFiles),
-  //        arangodb::options::makeDefaultFlags(
-  //            arangodb::options::Flags::Experimental,
-  //            arangodb::options::Flags::Uncommon))
-  //    .setIntroducedIn(31200);
+
+  options
+      ->addOption(
+          "--split-files",
+          "Split a collection in multiple files to increase throughput.",
+          new BooleanParameter(&_options.splitFiles),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Experimental,
+              arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(This option only has effect when the option
+`--use-experimental-dump` is set to `true`. Restoring split files also
+requires an arangorestore version that is capable of restoring data of a
+single collection/shard from multiple files.)")
+      .setIntroducedIn(31200);
+
   options
       ->addOption("--dbserver-worker-threads",
                   "Number of worker threads on each dbserver.",
@@ -968,7 +972,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     views = VPackSlice::emptyArraySlice();
   }
 
-  // Step 1. Store view definition files
+  // Step 1. Store database properties files
   Result res = storeDumpJson(body, dbName);
   if (res.fail()) {
     return res;
@@ -1686,7 +1690,7 @@ void DumpFeature::ParallelDumpServer::runWriterThread() noexcept {
 
     auto file = getFileForShard(shardId);
     arangodb::Result result =
-        dumpJsonObjects(*this, *file, body, &shards.at(shardId).collectionName);
+        dumpJsonObjects(*this, *file, body, shards.at(shardId).collectionName);
 
     if (result.fail()) {
       LOG_TOPIC("77881", FATAL, Logger::DUMP)
