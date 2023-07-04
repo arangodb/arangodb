@@ -52,11 +52,6 @@ class Optimizer {
 
     std::deque<Entry, ResourceUsageAllocator<Entry>> list;
 
-    /// @brief constructor with a plan
-    //    PlanList(std::unique_ptr<ExecutionPlan> p, RuleDatabase::iterator
-    //    rule) {
-    //      push_back(std::move(p), rule);
-    //    }
     explicit PlanList(ResourceMonitor& monitor) : list(monitor) {}
 
     /// @brief get number of plans contained
