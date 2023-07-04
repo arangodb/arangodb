@@ -1,6 +1,8 @@
 devel
 -----
 
+* Enforce that server always returns an empty body if the return code is 204.
+
 * Arangodump retries dump requests in more cases: read, write and connection
   errors.
 
