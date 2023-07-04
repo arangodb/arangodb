@@ -41,7 +41,7 @@ struct Expected {
   int _id;
   int _result;
   int _state;
-  int _progress;
+  double _progress;
 };
 
 typedef std::vector<Expected> ExpectedVec_t;
@@ -173,8 +173,8 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
       }  // if
 
       VPackSlice progress = (*action).get("progress");
-      if (!(progress.isInteger() && check->_progress == progress.getInt())) {
-        std::cerr << "Progress mismatch: action has " << progress.getInt()
+      if (!(progress.isNumber() && check->_progress == progress.getNumber<double>())) {
+        std::cerr << "Progress mismatch: action has " << progress.getNumber<double>()
                   << " expected " << check->_progress << std::endl;
         good = false;
       }  // if
