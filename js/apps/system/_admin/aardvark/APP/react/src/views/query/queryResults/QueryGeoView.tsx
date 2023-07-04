@@ -63,20 +63,8 @@ const MapInner = ({
         }
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <GeometryResult geometryResult={geometryResult} />
-    </>
-  );
-};
-
-const GeometryResult = ({
-  geometryResult
-}: {
-  geometryResult: GeoJSONUnionType[];
-}) => {
-  return (
-    <>
-      {geometryResult.map(geometry => {
-        return <SingleGeometry geometry={geometry} />;
+      {geometryResult.map((geometry, index) => {
+        return <SingleGeometry key={index} geometry={geometry} />;
       })}
     </>
   );

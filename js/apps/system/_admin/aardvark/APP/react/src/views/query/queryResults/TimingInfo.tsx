@@ -164,6 +164,7 @@ export const TimingInfo = ({
                     : `${round(time * 1000, 3)} ms`;
                 return (
                   <Grid
+                    key={key}
                     gridTemplateColumns="32px 100px 100px 1fr"
                     alignItems="start"
                   >
@@ -192,6 +193,7 @@ export const TimingInfo = ({
                 }
                 return (
                   <Flex
+                    key={info.key}
                     width={`${info.widthPercentage}%`}
                     direction="column"
                     alignItems="center"
