@@ -740,6 +740,14 @@ void SimpleHttpClient::processHeader() {
         return;
       }
 
+      else if (_result->getHttpReturnCode() == 204) {
+        _result->setResultType(SimpleHttpResult::COMPLETE);
+        _state = FINISHED;
+        // always disconnect - some servers include a response body
+        _connection->disconnect();
+        return;
+      }
+
       // no content-length header in response
       else if (!_result->hasContentLength()) {
         _state = IN_READ_BODY;
