@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
+#include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
@@ -68,13 +69,90 @@
 #include <array>
 #include <cmath>
 
+#include <lz4.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
+using EdgeIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
+
 constexpr bool EdgeIndexFillBlockCache = false;
 
-using EdgeIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
+// values > this size will not be stored LZ4-compressed in the in-memory
+// edge cache
+constexpr size_t maxValueSizeForCompression = 1073741824;  // 1GB
+
+// length of compressed header.
+// the header format is
+// - byte 0: hard-coded to 0xff:
+// - byte 1-4: uncompressed size, encoded as a uint32_t in big endian order
+constexpr size_t compressedHeaderLength = 5;
+
+size_t resizeCompressionBuffer(std::string& scratch, size_t value) {
+  if (scratch.size() < value) {
+    size_t increment = value - scratch.size();
+    scratch.resize(value);
+    // return memory usage increase
+    return increment;
+  }
+  return 0;
+}
+
+std::pair<char const*, size_t> tryCompress(
+    velocypack::Slice slice, size_t size, size_t minValueSizeForCompression,
+    std::string& scratch,
+    std::function<void(size_t)> const& memoryUsageCallback) {
+  char const* data = slice.startAs<char>();
+
+  if (size < minValueSizeForCompression || size > maxValueSizeForCompression) {
+    // value too big or too small. return original value
+    return {data, size};
+  }
+
+  // determine maximum size for output buffer
+  int maxLength = LZ4_compressBound(static_cast<int>(size));
+  if (maxLength <= 0) {
+    // error. return original value
+    return {data, size};
+  }
+
+  // resize output buffer if necessary
+  size_t memoryUsage = resizeCompressionBuffer(
+      scratch, compressedHeaderLength + static_cast<size_t>(maxLength));
+  memoryUsageCallback(memoryUsage);
+
+  uint32_t uncompressedSize = basics::hostToBig(static_cast<uint32_t>(size));
+  // store compressed value using a velocypack Custom type.
+  // the compressed value is prepended by the following header:
+  // - byte 0: hard-coded to 0xff
+  // - byte 1-4: uncompressed size, encoded as a uint32_t in big endian
+  // order
+
+  // write prefix byte, so the decoder can distinguish between compressed
+  // values and uncompressed values. note that 0xff is a velocypack Custom
+  // type and should thus not appear as the first byte in uncompressed
+  // data.
+  scratch[0] = 0xffU;
+  // copy length of uncompressed data into bytes 1-4.
+  memcpy(scratch.data() + 1, &uncompressedSize, sizeof(uncompressedSize));
+
+  // compress data into output buffer, starting at byte 5.
+  int compressedSize = LZ4_compress_fast(
+      data, scratch.data() + compressedHeaderLength, static_cast<int>(size),
+      static_cast<int>(scratch.size() - compressedHeaderLength),
+      /*acceleration factor*/ 1);
+  if (compressedSize > 0 && (static_cast<size_t>(compressedSize) +
+                             compressedHeaderLength) < size * 3 / 4) {
+    // only store the compressed version if it saves at least 25%
+    data = scratch.data();
+    size = static_cast<size_t>(compressedSize + compressedHeaderLength);
+    TRI_ASSERT(reinterpret_cast<uint8_t const*>(data)[0] == 0xffU);
+    TRI_ASSERT(size <= scratch.size());
+  }
+  // return compressed or uncompressed value
+  return {data, size};
+}
 
 template<std::size_t N>
 class StringFromParts final : public velocypack::IStringFromParts {
@@ -166,7 +244,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         _bounds(RocksDBKeyBounds::EdgeIndex(0)),
         _builderIterator(VPackArrayIterator::Empty{}),
         _lastKey(VPackSlice::nullSlice()),
-        _memoryUsage(0) {
+        _memoryUsage(0),
+        _totalCachedSizeInitial(0),
+        _totalCachedSizeEffective(0) {
     TRI_ASSERT(_keys.slice().isArray());
     TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "BinaryKeyHasher");
     TRI_ASSERT(_builder.size() == 0);
@@ -178,6 +258,13 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   ~RocksDBEdgeIndexLookupIterator() override {
     _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
+
+    // report compression metrics to storage engine
+    _collection->vocbase()
+        .server()
+        .getFeature<EngineSelectorFeature>()
+        .engine<RocksDBEngine>()
+        .addCacheMetrics(_totalCachedSizeInitial, _totalCachedSizeEffective);
   }
 
   std::string_view typeName() const noexcept final {
@@ -355,26 +442,35 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
             incrCacheHits();
             needRocksLookup = false;
             // We got sth. in the cache
-            VPackSlice cachedData(finding.value()->value());
-            TRI_ASSERT(cachedData.isArray());
-            VPackArrayIterator cachedIterator(cachedData);
-            TRI_ASSERT(cachedIterator.size() % 2 == 0);
-            if (cachedIterator.size() / 2 < limit) {
-              // Directly return it, no need to copy
-              _builderIterator = cachedIterator;
-              while (_builderIterator.valid()) {
-                handleSingleResult();
-                _builderIterator.next();
-                TRI_ASSERT(limit > 0);
-                --limit;
-              }
-              _builderIterator =
-                  VPackArrayIterator(VPackArrayIterator::Empty{});
-            } else {
-              // We need to copy it.
-              // And then we just get back to beginning of the loop
+            uint8_t const* data = finding.value()->value();
+            if (data[0] == 0xffU) {
+              // Custom type. this means the data is lz4-compressed
+              TRI_ASSERT(finding.value()->size() >= ::compressedHeaderLength);
+              // read size of uncompressed value
+              uint32_t uncompressedSize;
+              memcpy(&uncompressedSize, data + 1, sizeof(uncompressedSize));
+              uncompressedSize = basics::bigToHost<uint32_t>(uncompressedSize);
+
+              // prepare _builder's Buffer to hold the uncompressed data
               resetInplaceMemory();
-              _builder.add(cachedData);
+              TRI_ASSERT(_builder.slice().isNone());
+              _builder.reserve(uncompressedSize);
+              TRI_ASSERT(_builder.bufferRef().data() == _builder.start());
+
+              // uncompressed directly into _builder's Buffer.
+              // this should not go wrong if we have a big enough output buffer.
+              int size = LZ4_decompress_safe(
+                  reinterpret_cast<char const*>(data) +
+                      ::compressedHeaderLength,
+                  reinterpret_cast<char*>(_builder.bufferRef().data()),
+                  static_cast<int>(finding.value()->valueSize() -
+                                   ::compressedHeaderLength),
+                  static_cast<int>(uncompressedSize));
+              TRI_ASSERT(uncompressedSize == static_cast<size_t>(size));
+
+              // we have uncompressed data directly into the Buffer's memory.
+              // we need to tell the Buffer to advance its end pointer.
+              _builder.resetTo(uncompressedSize);
 
               size_t memoryUsage = _builder.size();
               _resourceMonitor.increaseMemoryUsage(memoryUsage);
@@ -382,7 +478,36 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
               TRI_ASSERT(_builder.slice().isArray());
               _builderIterator = VPackArrayIterator(_builder.slice());
-              // Do not set limit
+            } else {
+              VPackSlice cachedData(data);
+              TRI_ASSERT(cachedData.isArray());
+              VPackArrayIterator cachedIterator(cachedData);
+              TRI_ASSERT(cachedIterator.size() % 2 == 0);
+              if (cachedIterator.size() / 2 < limit) {
+                // Directly return it, no need to copy
+                _builderIterator = cachedIterator;
+                while (_builderIterator.valid()) {
+                  handleSingleResult();
+                  _builderIterator.next();
+                  TRI_ASSERT(limit > 0);
+                  --limit;
+                }
+                _builderIterator =
+                    VPackArrayIterator(VPackArrayIterator::Empty{});
+              } else {
+                // We need to copy it.
+                // And then we just get back to beginning of the loop
+                resetInplaceMemory();
+                _builder.add(cachedData);
+
+                size_t memoryUsage = _builder.size();
+                _resourceMonitor.increaseMemoryUsage(memoryUsage);
+                _memoryUsage += memoryUsage;
+
+                TRI_ASSERT(_builder.slice().isArray());
+                _builderIterator = VPackArrayIterator(_builder.slice());
+                // Do not set limit
+              }
             }
           } else {
             incrCacheMisses();
@@ -479,13 +604,41 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       std::string_view key = cacheKey.empty() ? fromTo : cacheKey;
       // the value we store in the cache may be an empty array or a non-empty
       // one. we don't care and cache both.
-      cache::Cache::SimpleInserter<EdgeIndexCacheType>{
-          static_cast<EdgeIndexCacheType&>(*_cache), key.data(),
-          static_cast<uint32_t>(key.size()), _builder.slice().start(),
-          static_cast<uint64_t>(_builder.slice().byteSize())};
+      insertIntoCache(key, _builder.slice());
     }
     TRI_ASSERT(_builder.slice().isArray());
     _builderIterator = VPackArrayIterator(_builder.slice());
+  }
+
+  void insertIntoCache(std::string_view key, velocypack::Slice slice) {
+    TRI_ASSERT(_cache != nullptr);
+
+    // values >= this size will be stored LZ4-compressed in the in-memory
+    // edge cache
+    size_t const minValueSizeForCompression =
+        _collection->vocbase()
+            .server()
+            .getFeature<EngineSelectorFeature>()
+            .engine<RocksDBEngine>()
+            .minValueSizeForEdgeCompression();
+
+    size_t const originalSize = slice.byteSize();
+
+    auto [data, size] =
+        tryCompress(slice, originalSize, minValueSizeForCompression,
+                    _lz4CompressBuffer, [this](size_t memoryUsage) {
+                      _resourceMonitor.increaseMemoryUsage(memoryUsage);
+                      _memoryUsage += memoryUsage;
+                    });
+
+    cache::Cache::SimpleInserter<EdgeIndexCacheType>{
+        static_cast<EdgeIndexCacheType&>(*_cache), key.data(),
+        static_cast<uint32_t>(key.size()), data, static_cast<uint64_t>(size)};
+
+    _totalCachedSizeInitial +=
+        cache::kCachedValueHeaderSize + key.size() + originalSize;
+    _totalCachedSizeEffective +=
+        cache::kCachedValueHeaderSize + key.size() + size;
   }
 
   // expected number of bytes that a RocksDB iterator will use.
@@ -507,7 +660,15 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   velocypack::Builder _builder;
   velocypack::ArrayIterator _builderIterator;
   velocypack::Slice _lastKey;
+
+  // reusable buffer for lz4 compression
+  std::string _lz4CompressBuffer;
   size_t _memoryUsage;
+
+  // total size of uncompressed values stored in the cache
+  uint64_t _totalCachedSizeInitial;
+  // total size of values stored in the cache (compressed/uncompressed)
+  uint64_t _totalCachedSizeEffective;
 };
 
 }  // namespace arangodb
@@ -822,6 +983,13 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   cache::Cache* cc = _cache.get();
   TRI_ASSERT(cc != nullptr);
 
+  size_t const minValueSizeForCompression =
+      _collection.vocbase()
+          .server()
+          .getFeature<EngineSelectorFeature>()
+          .engine<RocksDBEngine>()
+          .minValueSizeForEdgeCompression();
+
   auto rocksColl = toRocksDBCollection(_collection);
 
   // intentional copy of the read options
@@ -840,8 +1008,32 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   std::string previous;
   VPackBuilder builder;
   velocypack::Builder docBuilder;
+  std::string lz4CompressBuffer;
   std::string const* cacheKeyCollection = nullptr;
   std::string_view cacheKey;
+  uint64_t totalCachedSizeInitial = 0;
+  uint64_t totalCachedSizeEffective = 0;
+
+  auto storeInCache = [&](velocypack::Builder& b, std::string_view cacheKey) {
+    builder.close();
+
+    size_t const originalSize = b.slice().byteSize();
+
+    auto [data, size] =
+        tryCompress(b.slice(), originalSize, minValueSizeForCompression,
+                    lz4CompressBuffer, [](size_t /*memoryUsage*/) {});
+
+    cache::Cache::SimpleInserter<EdgeIndexCacheType>{
+        static_cast<EdgeIndexCacheType&>(*cc), cacheKey.data(),
+        static_cast<uint32_t>(cacheKey.size()), data,
+        static_cast<uint64_t>(size)};
+    builder.clear();
+
+    totalCachedSizeInitial +=
+        cache::kCachedValueHeaderSize + cacheKey.size() + originalSize;
+    totalCachedSizeEffective +=
+        cache::kCachedValueHeaderSize + cacheKey.size() + size;
+  };
 
   size_t n = 0;
   for (it->Seek(lower); it->Valid(); it->Next()) {
@@ -893,14 +1085,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       if (needsInsert) {
         // Switch to next vertex id.
         // Store what we have.
-        builder.close();
-
-        cache::Cache::SimpleInserter<EdgeIndexCacheType>{
-            static_cast<EdgeIndexCacheType&>(*cc), cacheKey.data(),
-            static_cast<uint32_t>(cacheKey.size()), builder.slice().start(),
-            static_cast<uint64_t>(builder.slice().byteSize())};
-
-        builder.clear();
+        storeInCache(builder, cacheKey);
+        TRI_ASSERT(builder.isEmpty());
       }
       // Need to store
       previous = v;
@@ -944,17 +1130,18 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
 
   if (!previous.empty() && needsInsert) {
     // We still have something to store
-    builder.close();
-
     TRI_ASSERT(!cacheKey.empty() && previous.ends_with(cacheKey));
-
-    cache::Cache::SimpleInserter<EdgeIndexCacheType>{
-        static_cast<EdgeIndexCacheType&>(*cc), cacheKey.data(),
-        static_cast<uint32_t>(cacheKey.size()), builder.slice().start(),
-        static_cast<uint64_t>(builder.slice().byteSize())};
+    storeInCache(builder, cacheKey);
   }
 
   LOG_TOPIC("99a29", DEBUG, Logger::ENGINES) << "loaded n: " << n;
+
+  // report compression metrics to storage engine
+  _collection.vocbase()
+      .server()
+      .getFeature<EngineSelectorFeature>()
+      .engine<RocksDBEngine>()
+      .addCacheMetrics(totalCachedSizeInitial, totalCachedSizeEffective);
 }
 
 // ===================== Helpers ==================
