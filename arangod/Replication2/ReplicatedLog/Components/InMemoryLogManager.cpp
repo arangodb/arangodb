@@ -125,9 +125,9 @@ auto InMemoryLogManager::appendLogEntry(
 }
 
 auto InMemoryLogManager::getInternalLogIterator(LogIndex firstIdx) const
-    -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> {
+    -> std::unique_ptr<InMemoryLogIterator> {
   return _guardedData.doUnderLock(
-      [&](auto& data) -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> {
+      [&](auto& data) -> std::unique_ptr<InMemoryLogIterator> {
         auto const& inMemoryLog = data._inMemoryLog;
         if (inMemoryLog.getFirstIndex() <= firstIdx) {
           auto const endIdx = inMemoryLog.getLastTermIndexPair().index + 1;
@@ -137,10 +137,10 @@ auto InMemoryLogManager::getInternalLogIterator(LogIndex firstIdx) const
 
         auto diskIter = _storageManager->getPersistedLogIterator(firstIdx);
 
-        struct OverlayIterator : TypedLogIterator<InMemoryLogEntry> {
+        struct OverlayIterator : InMemoryLogIterator {
           explicit OverlayIterator(
               std::unique_ptr<PersistedLogIterator> diskIter,
-              std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> inMemoryIter,
+              std::unique_ptr<InMemoryLogIterator> inMemoryIter,
               LogRange inMemoryRange)
               : _diskIter(std::move(diskIter)),
                 _inMemoryIter(std::move(inMemoryIter)),
@@ -164,7 +164,7 @@ auto InMemoryLogManager::getInternalLogIterator(LogIndex firstIdx) const
           }
 
           std::unique_ptr<PersistedLogIterator> _diskIter;
-          std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> _inMemoryIter;
+          std::unique_ptr<InMemoryLogIterator> _inMemoryIter;
           LogRange _inMemoryRange;
         };
 

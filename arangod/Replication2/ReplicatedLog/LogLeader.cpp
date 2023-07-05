@@ -1579,8 +1579,7 @@ auto replicated_log::LogLeader::getInternalLogIterator(
   auto iter = _inMemoryLogManager->getInternalLogIterator(range.from);
 
   struct Adapter : PersistedLogIterator {
-    explicit Adapter(std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> iter,
-                     LogRange range)
+    explicit Adapter(std::unique_ptr<InMemoryLogIterator> iter, LogRange range)
         : iter(std::move(iter)), range(range) {}
 
     auto next() -> std::optional<PersistingLogEntry> override {
@@ -1591,7 +1590,7 @@ auto replicated_log::LogLeader::getInternalLogIterator(
       return std::nullopt;
     }
 
-    std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> iter;
+    std::unique_ptr<InMemoryLogIterator> iter;
     LogRange range;
   };
 

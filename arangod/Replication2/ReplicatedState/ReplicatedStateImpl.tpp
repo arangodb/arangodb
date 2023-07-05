@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,29 +17,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ActionBase.h"
-#include "ActionDescription.h"
-
-#include <chrono>
-
-namespace arangodb {
-namespace maintenance {
-
-class EnsureIndex : public ActionBase {
- public:
-  EnsureIndex(MaintenanceFeature&, ActionDescription const& d);
-
-  virtual ~EnsureIndex();
-
-  virtual arangodb::Result setProgress(double d) override final;
-  virtual bool first() override final;
-};
-
-}  // namespace maintenance
-}  // namespace arangodb
+#include "Replication2/ReplicatedState/FollowerStateManager.tpp"
+#include "Replication2/ReplicatedState/LeaderStateManager.tpp"
+#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateManager.tpp"
+#include "Replication2/ReplicatedState/StreamProxy.tpp"

@@ -98,6 +98,6 @@ operator()(
   b.add(velocypack::Value(e.value));
 }
 
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 
 template struct replicated_state::ReplicatedState<BlackHoleState>;
