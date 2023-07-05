@@ -665,7 +665,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
 
   // handle response code 204 No Content
   if (tmp->responseCode() == rest::ResponseCode::NO_CONTENT) {
-    tmp->clearBody();  // in non maintainer build clear the body
+    tmp->clearBody();
   }
 
   if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
