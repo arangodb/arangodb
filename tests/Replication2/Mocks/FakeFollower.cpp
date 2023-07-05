@@ -129,7 +129,7 @@ void FakeFollower::resign() & {
 }
 
 auto FakeFollower::getInternalLogIterator(std::optional<LogRange> bounds) const
-    -> std::unique_ptr<PersistedLogIterator> {
+    -> std::unique_ptr<LogIterator> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

@@ -43,12 +43,12 @@ struct MockLog : replication2::replicated_log::PersistedLog {
   explicit MockLog(replication2::GlobalLogIdentifier gid);
   MockLog(replication2::LogId id, storeType storage);
 
-  auto insert(replication2::PersistedLogIterator& iter, WriteOptions const&)
+  auto insert(replication2::LogIterator& iter, WriteOptions const&)
       -> Result override;
-  auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
+  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
   auto read(replication2::LogIndex start)
-      -> std::unique_ptr<replication2::PersistedLogIterator> override;
+      -> std::unique_ptr<replication2::LogIterator> override;
   auto removeFront(replication2::LogIndex stop)
       -> futures::Future<Result> override;
   auto removeBack(replication2::LogIndex start) -> Result override;
@@ -73,7 +73,7 @@ struct MockLog : replication2::replicated_log::PersistedLog {
 struct DelayedMockLog : MockLog {
   explicit DelayedMockLog(replication2::LogId id) : MockLog(id) {}
 
-  auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
+  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
 
   auto hasPendingInsert() const noexcept -> bool {
@@ -82,9 +82,9 @@ struct DelayedMockLog : MockLog {
   void runAsyncInsert();
 
   struct PendingRequest {
-    PendingRequest(std::unique_ptr<replication2::PersistedLogIterator> iter,
+    PendingRequest(std::unique_ptr<replication2::LogIterator> iter,
                    WriteOptions options);
-    std::unique_ptr<replication2::PersistedLogIterator> iter;
+    std::unique_ptr<replication2::LogIterator> iter;
     WriteOptions options;
     futures::Promise<Result> promise;
   };
@@ -97,7 +97,7 @@ struct AsyncMockLog : MockLog {
 
   ~AsyncMockLog() noexcept;
 
-  auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
+  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
 
   auto stop() noexcept -> void {
@@ -114,7 +114,7 @@ struct AsyncMockLog : MockLog {
  private:
   struct QueueEntry {
     WriteOptions opts;
-    std::unique_ptr<replication2::PersistedLogIterator> iter;
+    std::unique_ptr<replication2::LogIterator> iter;
     futures::Promise<Result> promise;
   };
 

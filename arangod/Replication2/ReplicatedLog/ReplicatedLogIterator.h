@@ -83,7 +83,7 @@ class ReplicatedLogIterator : public LogViewRangeIterator {
   log_type::const_iterator _end;
 };
 
-class InMemoryPersistedLogIterator : public PersistedLogIterator {
+class InMemoryPersistedLogIterator : public LogIterator {
  public:
   using log_type = ::immer::flex_vector<InMemoryLogEntry,
                                         arangodb::immer::arango_memory_policy>;

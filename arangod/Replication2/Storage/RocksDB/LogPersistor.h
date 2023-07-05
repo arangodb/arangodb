@@ -43,8 +43,8 @@ struct LogPersistor final : ILogPersistor {
                std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics);
 
   [[nodiscard]] auto getIterator(IteratorPosition position)
-      -> std::unique_ptr<PersistedLogIterator> override;
-  [[nodiscard]] auto insert(std::unique_ptr<PersistedLogIterator> ptr,
+      -> std::unique_ptr<LogIterator> override;
+  [[nodiscard]] auto insert(std::unique_ptr<LogIterator> ptr,
                             WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> override;
   [[nodiscard]] auto removeFront(LogIndex stop, WriteOptions const&)

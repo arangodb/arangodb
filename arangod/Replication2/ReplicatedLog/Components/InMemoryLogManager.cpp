@@ -142,7 +142,7 @@ auto InMemoryLogManager::getInternalLogIterator(LogIndex firstIdx) const
 
         struct OverlayIterator : InMemoryLogIterator {
           explicit OverlayIterator(
-              std::unique_ptr<PersistedLogIterator> diskIter,
+              std::unique_ptr<LogIterator> diskIter,
               std::unique_ptr<InMemoryLogIterator> inMemoryIter,
               LogRange inMemoryRange)
               : _diskIter(std::move(diskIter)),
@@ -166,7 +166,7 @@ auto InMemoryLogManager::getInternalLogIterator(LogIndex firstIdx) const
             return _inMemoryIter->next();
           }
 
-          std::unique_ptr<PersistedLogIterator> _diskIter;
+          std::unique_ptr<LogIterator> _diskIter;
           std::unique_ptr<InMemoryLogIterator> _inMemoryIter;
           LogRange _inMemoryRange;
         };

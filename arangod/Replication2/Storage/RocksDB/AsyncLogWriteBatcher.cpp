@@ -282,8 +282,7 @@ auto AsyncLogWriteBatcher::prepareRequest(Request const& req,
 }
 
 auto AsyncLogWriteBatcher::queueInsert(
-    AsyncLogWriteContext& ctx,
-    std::unique_ptr<replication2::PersistedLogIterator> iter,
+    AsyncLogWriteContext& ctx, std::unique_ptr<replication2::LogIterator> iter,
     WriteOptions const& opts) -> futures::Future<ResultT<SequenceNumber>> {
   return queue(ctx, InsertEntries{.iter = std::move(iter)}, opts);
 }

@@ -62,8 +62,8 @@ auto FakeStorageEngineMethods::readMetadata()
 }
 
 auto FakeStorageEngineMethods::getIterator(IteratorPosition position)
-    -> std::unique_ptr<PersistedLogIterator> {
-  struct ContainerIterator : PersistedLogIterator {
+    -> std::unique_ptr<LogIterator> {
+  struct ContainerIterator : LogIterator {
     using Container = FakeStorageEngineMethodsContext::LogContainerType;
     using Iterator = Container ::iterator;
     ContainerIterator(Container store, LogIndex start)
@@ -89,7 +89,7 @@ auto FakeStorageEngineMethods::getIterator(IteratorPosition position)
 }
 
 auto FakeStorageEngineMethods::insert(
-    std::unique_ptr<PersistedLogIterator> iter,
+    std::unique_ptr<LogIterator> iter,
     const storage::IStorageEngineMethods::WriteOptions& options)
     -> arangodb::futures::Future<
         arangodb::ResultT<storage::IStorageEngineMethods::SequenceNumber>> {

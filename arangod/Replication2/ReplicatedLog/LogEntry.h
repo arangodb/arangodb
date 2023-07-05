@@ -70,6 +70,6 @@ class LogEntry {
 };
 
 // ReplicatedLog-internal iterator over PersistingLogEntries
-struct PersistedLogIterator : TypedLogIterator<LogEntry> {};
+struct LogIterator : TypedLogIterator<LogEntry> {};
 
 }  // namespace arangodb::replication2

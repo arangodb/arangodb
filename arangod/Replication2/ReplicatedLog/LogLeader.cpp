@@ -1577,13 +1577,12 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<
 }
 
 auto replicated_log::LogLeader::getInternalLogIterator(
-    std::optional<LogRange> bounds) const
-    -> std::unique_ptr<PersistedLogIterator> {
+    std::optional<LogRange> bounds) const -> std::unique_ptr<LogIterator> {
   auto range =
       bounds ? *bounds : LogRange{LogIndex{0}, LogIndex{std::uint64_t(-1)}};
   auto iter = _inMemoryLogManager->getInternalLogIterator(range.from);
 
-  struct Adapter : PersistedLogIterator {
+  struct Adapter : LogIterator {
     explicit Adapter(std::unique_ptr<InMemoryLogIterator> iter, LogRange range)
         : iter(std::move(iter)), range(range) {}
 

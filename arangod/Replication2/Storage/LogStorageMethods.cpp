@@ -46,7 +46,7 @@ ResultT<PersistedStateInfo> LogStorageMethods::readMetadata() {
   return _statePersistor->readMetadata();
 }
 
-std::unique_ptr<PersistedLogIterator> LogStorageMethods::getIterator(
+std::unique_ptr<LogIterator> LogStorageMethods::getIterator(
     IteratorPosition position) {
   return _logPersistor->getIterator(position);
 }
@@ -61,7 +61,7 @@ auto LogStorageMethods::removeBack(LogIndex start, WriteOptions const& opts)
   return _logPersistor->removeBack(start, opts);
 }
 
-auto LogStorageMethods::insert(std::unique_ptr<PersistedLogIterator> iter,
+auto LogStorageMethods::insert(std::unique_ptr<LogIterator> iter,
                                WriteOptions const& opts)
     -> futures::Future<ResultT<SequenceNumber>> {
   return _logPersistor->insert(std::move(iter), opts);

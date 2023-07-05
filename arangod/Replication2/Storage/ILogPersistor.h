@@ -38,7 +38,7 @@ class Future;
 }  // namespace arangodb::futures
 
 namespace arangodb::replication2 {
-struct PersistedLogIterator;
+struct LogIterator;
 }
 namespace arangodb::replication2::storage {
 
@@ -46,7 +46,7 @@ struct ILogPersistor : virtual IPersistor {
   virtual ~ILogPersistor() = default;
 
   [[nodiscard]] virtual auto getIterator(IteratorPosition position)
-      -> std::unique_ptr<PersistedLogIterator> = 0;
+      -> std::unique_ptr<LogIterator> = 0;
 
   struct WriteOptions {
     bool waitForSync = false;
@@ -54,8 +54,7 @@ struct ILogPersistor : virtual IPersistor {
 
   using SequenceNumber = std::uint64_t;
 
-  virtual auto insert(std::unique_ptr<PersistedLogIterator>,
-                      WriteOptions const&)
+  virtual auto insert(std::unique_ptr<LogIterator>, WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> = 0;
   virtual auto removeFront(LogIndex stop, WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> = 0;

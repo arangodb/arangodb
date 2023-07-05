@@ -150,7 +150,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto getLogConsumerIterator(std::optional<LogRange> bounds)
       const -> std::unique_ptr<LogViewRangeIterator>;
   [[nodiscard]] auto getInternalLogIterator(std::optional<LogRange> bounds)
-      const -> std::unique_ptr<PersistedLogIterator> override;
+      const -> std::unique_ptr<LogIterator> override;
 
   auto waitForLeadership() -> WaitForFuture override;
   auto ping(std::optional<std::string> message) -> LogIndex override;

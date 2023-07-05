@@ -369,13 +369,13 @@ auto StorageManager::getTermIndexMapping() const -> TermIndexMapping {
 }
 
 auto StorageManager::getPersistedLogIterator(LogIndex first) const
-    -> std::unique_ptr<PersistedLogIterator> {
+    -> std::unique_ptr<LogIterator> {
   return getPersistedLogIterator(
       LogRange{first, LogIndex{static_cast<std::uint64_t>(-1)}});
 }
 
-auto StorageManager::getPersistedLogIterator(std::optional<LogRange> bounds)
-    const -> std::unique_ptr<PersistedLogIterator> {
+auto StorageManager::getPersistedLogIterator(
+    std::optional<LogRange> bounds) const -> std::unique_ptr<LogIterator> {
   auto range = bounds.value_or(
       LogRange{LogIndex{0}, LogIndex{static_cast<std::uint64_t>(-1)}});
 
@@ -388,9 +388,8 @@ auto StorageManager::getPersistedLogIterator(std::optional<LogRange> bounds)
   auto diskIter = guard->methods->getIterator(
       storage::IteratorPosition::fromLogIndex(range.from));
 
-  struct Iterator : PersistedLogIterator {
-    explicit Iterator(LogRange range,
-                      std::unique_ptr<PersistedLogIterator> disk)
+  struct Iterator : LogIterator {
+    explicit Iterator(LogRange range, std::unique_ptr<LogIterator> disk)
         : _range(range), _disk(std::move(disk)) {}
 
     auto next() -> std::optional<LogEntry> override {
@@ -405,7 +404,7 @@ auto StorageManager::getPersistedLogIterator(std::optional<LogRange> bounds)
     }
 
     LogRange _range;
-    std::unique_ptr<PersistedLogIterator> _disk;
+    std::unique_ptr<LogIterator> _disk;
   };
 
   return std::make_unique<Iterator>(range, std::move(diskIter));
@@ -427,8 +426,7 @@ auto StorageManager::getCommittedLogIterator(std::optional<LogRange> bounds)
       storage::IteratorPosition::fromLogIndex(range.from));
 
   struct Iterator : LogViewRangeIterator {
-    explicit Iterator(LogRange range,
-                      std::unique_ptr<PersistedLogIterator> disk)
+    explicit Iterator(LogRange range, std::unique_ptr<LogIterator> disk)
         : _range(range), _disk(std::move(disk)) {}
 
     auto range() const noexcept -> LogRange override { return _range; }
@@ -448,7 +446,7 @@ auto StorageManager::getCommittedLogIterator(std::optional<LogRange> bounds)
     }
 
     LogRange _range;
-    std::unique_ptr<PersistedLogIterator> _disk;
+    std::unique_ptr<LogIterator> _disk;
     std::optional<LogEntry> _entry;
   };
 

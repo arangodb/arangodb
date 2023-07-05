@@ -102,13 +102,13 @@ struct ReplicatedLogMethods {
   virtual auto getStatus(LogId) const -> futures::Future<GenericLogStatus> = 0;
 
   virtual auto slice(LogId, LogIndex start, LogIndex stop) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
   virtual auto poll(LogId, LogIndex, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
   virtual auto head(LogId, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
   virtual auto tail(LogId, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
 
   virtual auto ping(LogId, std::optional<std::string> message) const
       -> futures::Future<

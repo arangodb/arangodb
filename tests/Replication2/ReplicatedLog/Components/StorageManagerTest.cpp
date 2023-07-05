@@ -356,7 +356,7 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_index_update) {
 
   EXPECT_CALL(*methods, insert)
       .Times(2)
-      .WillRepeatedly([&](std::unique_ptr<PersistedLogIterator> ptr,
+      .WillRepeatedly([&](std::unique_ptr<LogIterator> ptr,
                           IStorageEngineMethods::WriteOptions const& options) {
         StorageEngineFuture promise;
         promise.setValue(ResultT<decltype(seqNumber)>{seqNumber});
@@ -414,7 +414,7 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_update_fails) {
   auto syncIndex1 = storageManager->getSyncIndex();
 
   EXPECT_CALL(*methods, insert)
-      .WillOnce([&](std::unique_ptr<PersistedLogIterator> ptr,
+      .WillOnce([&](std::unique_ptr<LogIterator> ptr,
                     IStorageEngineMethods::WriteOptions const& options) {
         StorageEngineFuture promise;
         promise.setValue(ResultT<decltype(seqNumber)>{seqNumber});
@@ -439,7 +439,7 @@ TEST_F(StorageManagerSyncIndexTest, manager_unavailable_during_update) {
   IStorageEngineMethods::SequenceNumber seqNumber{1};
 
   EXPECT_CALL(*methods, insert)
-      .WillOnce([&](std::unique_ptr<PersistedLogIterator> ptr,
+      .WillOnce([&](std::unique_ptr<LogIterator> ptr,
                     IStorageEngineMethods::WriteOptions const& options) {
         StorageEngineFuture promise;
         promise.setValue(ResultT<decltype(seqNumber)>{seqNumber});
@@ -462,7 +462,7 @@ TEST_F(StorageManagerSyncIndexTest, manager_unavailable_during_update) {
 
 TEST_F(StorageManagerSyncIndexTest, methods_insertion_fails) {
   EXPECT_CALL(*methods, insert)
-      .WillOnce([](std::unique_ptr<PersistedLogIterator> ptr,
+      .WillOnce([](std::unique_ptr<LogIterator> ptr,
                    IStorageEngineMethods::WriteOptions const& options) {
         StorageEngineFuture promise;
         promise.setValue(Result{TRI_ERROR_WAS_ERLAUBE});

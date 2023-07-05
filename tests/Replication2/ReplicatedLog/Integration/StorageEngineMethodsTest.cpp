@@ -66,7 +66,7 @@ struct RocksDBInstance {
 };
 
 template<typename I>
-struct SimpleIterator : PersistedLogIterator {
+struct SimpleIterator : LogIterator {
   SimpleIterator(I begin, I end) : current(begin), end(end) {}
   ~SimpleIterator() override = default;
 

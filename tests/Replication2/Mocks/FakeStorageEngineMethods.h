@@ -55,10 +55,9 @@ struct FakeStorageEngineMethods : IStorageEngineMethods {
   auto readMetadata() -> ResultT<storage::PersistedStateInfo> override;
 
   auto getIterator(IteratorPosition position)
-      -> std::unique_ptr<PersistedLogIterator> override;
+      -> std::unique_ptr<LogIterator> override;
 
-  auto insert(std::unique_ptr<PersistedLogIterator> ptr,
-              const WriteOptions& options)
+  auto insert(std::unique_ptr<LogIterator> ptr, const WriteOptions& options)
       -> futures::Future<ResultT<SequenceNumber>> override;
 
   auto removeFront(LogIndex stop, const WriteOptions& options)
