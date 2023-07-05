@@ -48,7 +48,11 @@ RestBaseHandler::RestBaseHandler(ArangodServer& server, GeneralRequest* request,
 arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
   try {
     success = true;
-    return _request->payload(true);
+    auto slice = _request->payload(true);
+    if (_request->contentType() != rest::ContentType::VPACK) {
+      this->_requestBodySizeTracker.add(slice.byteSize());
+    }
+    return slice;
   } catch (VPackException const& e) {
     // simon: do not mess with the error message format, tests break
     std::string errmsg("VPackError error: ");
