@@ -30,9 +30,11 @@
 #include "Aql/Projections.h"
 #include "Aql/VarInfoMap.h"
 #include "Basics/Common.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -73,7 +75,21 @@ class TraverserCache;
  *          - K_Shortest_Paths
  *          - K_Paths
  */
+
 struct BaseOptions {
+  typedef std::basic_string<char, std::char_traits<char>,
+                            ResourceUsageAllocator<char>>
+      MonitoredString;
+
+  typedef std::vector<MonitoredString> MonitoredStringVector;
+  typedef std::unordered_map<
+      MonitoredString, MonitoredStringVector,
+      std::hash<std::basic_string<char, std::char_traits<char>, ResourceUsageAllocator<char>>>,
+      std::equal_to<>,
+      ResourceUsageAllocator<
+          std::pair<const MonitoredString, MonitoredStringVector>>>
+      MonitoredCollectionToShardMap;
+
  public:
   struct LookupInfo {
     // This struct does only take responsibility for the expression
@@ -190,8 +206,7 @@ struct BaseOptions {
       bool enableDocumentCache,
       std::unordered_map<ServerID, aql::EngineId> const* engines);
 
-  std::unordered_map<std::string, std::vector<std::string>> const&
-  collectionToShard() const {
+  MonitoredCollectionToShardMap const& collectionToShard() const {
     return _collectionToShard;
   }
 
@@ -301,7 +316,7 @@ struct BaseOptions {
 
   // @brief - translations for one-shard-databases
   // (currently not monitored as we've not introduced PMR or an alternative yet)
-  std::unordered_map<std::string, std::vector<std::string>> _collectionToShard;
+  MonitoredCollectionToShardMap _collectionToShard;
 
   /// Section for Options the user has given in the AQL query
 

@@ -35,6 +35,7 @@
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
@@ -513,6 +514,9 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
 
 arangodb::aql::Expression* BaseOptions::getEdgeExpression(
     size_t cursorId, bool& needToInjectVertex) const {
+
+  ResourceUsageAllocator<MonitoredCollectionToShardMap> alloc = {resourceMonitor()};
+  BaseOptions::MonitoredCollectionToShardMap peter{5, alloc};
   TRI_ASSERT(!_baseLookupInfos.empty());
   TRI_ASSERT(_baseLookupInfos.size() > cursorId);
   needToInjectVertex = !_baseLookupInfos[cursorId].conditionNeedUpdate;
