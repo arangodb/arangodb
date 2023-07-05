@@ -80,7 +80,7 @@ auto DocumentFactory::constructCleanupHandler()
   return std::make_shared<DocumentCleanupHandler>();
 }
 
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 
 template struct arangodb::replication2::replicated_state::ReplicatedState<
     DocumentState>;

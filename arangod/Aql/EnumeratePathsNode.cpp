@@ -357,8 +357,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::_makeExecutionBlockImpl(
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   RegIdSet inputRegisters;

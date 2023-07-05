@@ -62,7 +62,7 @@ struct IInMemoryLogManager {
       -> LogIndex = 0;
 
   [[nodiscard]] virtual auto getInternalLogIterator(LogIndex firstIdx) const
-      -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> = 0;
+      -> std::unique_ptr<InMemoryLogIterator> = 0;
 
   [[nodiscard]] virtual auto getLogConsumerIterator(
       std::optional<LogRange> bounds) const

@@ -43,7 +43,7 @@
 #include "Replication2/ReplicatedLog/DefaultRebootIdCache.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 #include "Replication2/IScheduler.h"
 #include "Replication2/Mocks/SchedulerMocks.h"
 #include "Replication2/Mocks/RebootIdCacheMock.h"
