@@ -665,8 +665,6 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
 
   // handle response code 204 No Content
   if (tmp->responseCode() == rest::ResponseCode::NO_CONTENT) {
-    TRI_ASSERT(tmp->isResponseEmpty())
-        << "response code 204 requires body to be empty";
     tmp->clearBody();  // in non maintainer build clear the body
   }
 
