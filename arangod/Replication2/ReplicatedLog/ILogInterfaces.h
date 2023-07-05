@@ -25,7 +25,7 @@
 
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/LogEntryView.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "Basics/ResultT.h"
@@ -41,7 +41,7 @@ class Result;
 struct LoggerContext;
 }  // namespace arangodb
 
-namespace arangodb::replication2::replicated_state {
+namespace arangodb::replication2::storage {
 struct IStorageEngineMethods;
 }
 
@@ -77,7 +77,7 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto getQuickStatus() const -> QuickLogStatus = 0;
   virtual ~ILogParticipant() = default;
   [[nodiscard]] virtual auto resign() && -> std::tuple<
-      std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      std::unique_ptr<storage::IStorageEngineMethods>,
       std::unique_ptr<IReplicatedStateHandle>, DeferredAction> = 0;
 
   using WaitForPromise = futures::Promise<WaitForResult>;

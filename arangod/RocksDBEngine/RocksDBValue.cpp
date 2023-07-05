@@ -22,13 +22,14 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "RocksDBValue.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
 #include "Transaction/Helpers.h"

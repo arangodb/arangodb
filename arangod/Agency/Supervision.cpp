@@ -2895,7 +2895,7 @@ void Supervision::checkReplicatedLogs() {
 
   envelope.done();
   if (builder.slice().length() > 0) {
-    _shouldRunAgain = true;
+    notify();
     write_ret_t res = _agent->write(builder.slice());
     if (!res.successful()) {
       LOG_TOPIC("12d36", WARN, Logger::SUPERVISION)
@@ -2941,7 +2941,7 @@ void Supervision::checkCollectionGroups() {
 
   envelope.done();
   if (builder.slice().length() > 0) {
-    _shouldRunAgain = true;
+    notify();
     write_ret_t res = _agent->write(builder.slice());
     if (!res.successful()) {
       LOG_TOPIC("12f36", WARN, Logger::SUPERVISION)

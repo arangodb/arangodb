@@ -25,8 +25,8 @@
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
@@ -425,7 +425,7 @@ auto replicated_log::InMemoryLog::getFirstIndex() const noexcept -> LogIndex {
 }
 
 auto replicated_log::InMemoryLog::loadFromMethods(
-    replicated_state::IStorageEngineMethods& methods) -> InMemoryLog {
+    storage::IStorageEngineMethods& methods) -> InMemoryLog {
   auto iter = methods.read(LogIndex{0});
   auto log = log_type::transient_type{};
   while (auto entry = iter->next()) {

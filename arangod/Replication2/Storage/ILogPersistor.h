@@ -21,43 +21,29 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedState/StateCommon.h"
+
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Storage/IPersistor.h"
 
 namespace arangodb {
 template<typename T>
 class ResultT;
-}
+}  // namespace arangodb
+
 namespace arangodb::futures {
 struct Unit;
 template<typename T>
 class Future;
 }  // namespace arangodb::futures
+
 namespace arangodb::replication2 {
 struct PersistedLogIterator;
 }
+namespace arangodb::replication2::storage {
 
-namespace arangodb::replication2::replicated_state {
+struct ILogPersistor : virtual IPersistor {
+  virtual ~ILogPersistor() = default;
 
-struct PersistedStateInfo {
-  LogId stateId;  // could be removed
-  SnapshotInfo snapshot;
-  StateGeneration generation;
-  replication2::agency::ImplementationSpec specification;
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, PersistedStateInfo& x) {
-  return f.object(x).fields(f.field("stateId", x.stateId),
-                            f.field("snapshot", x.snapshot),
-                            f.field("generation", x.generation),
-                            f.field("specification", x.specification));
-}
-
-struct IStorageEngineMethods {
-  virtual ~IStorageEngineMethods() = default;
-  [[nodiscard]] virtual auto updateMetadata(PersistedStateInfo) -> Result = 0;
-  [[nodiscard]] virtual auto readMetadata() -> ResultT<PersistedStateInfo> = 0;
   [[nodiscard]] virtual auto read(LogIndex first)
       -> std::unique_ptr<PersistedLogIterator> = 0;
 
@@ -78,11 +64,12 @@ struct IStorageEngineMethods {
   virtual auto getLogId() -> LogId = 0;
 
   virtual auto getSyncedSequenceNumber() -> SequenceNumber = 0;
-  virtual auto waitForSync(SequenceNumber)
-      -> futures::Future<futures::Unit> = 0;
+  virtual auto waitForSync(SequenceNumber) -> futures::Future<Result> = 0;
 
   // waits for all ongoing requests to be done
   virtual void waitForCompletion() noexcept = 0;
+
+  virtual auto compact() -> Result = 0;
 };
 
-}  // namespace arangodb::replication2::replicated_state
+}  // namespace arangodb::replication2::storage

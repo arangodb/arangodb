@@ -30,6 +30,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <regex>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -68,6 +69,8 @@
 #endif
 
 namespace {
+std::regex const splitFilesRegex(".*\\.[0-9]+\\.data\\.json(\\.gz)?$",
+                                 std::regex::ECMAScript);
 
 std::string escapedCollectionName(std::string const& name,
                                   VPackSlice parameters) {
@@ -810,9 +813,9 @@ arangodb::Result processInputDirectory(
 
       if (progressTracker.getStatus(name.copyString()).state <
           arangodb::RestoreFeature::CREATED) {
-        progressTracker.updateStatus(name.copyString(),
-                                     arangodb::RestoreFeature::CollectionStatus{
-                                         arangodb::RestoreFeature::CREATED});
+        progressTracker.updateStatus(
+            name.copyString(), arangodb::RestoreFeature::CollectionStatus{
+                                   arangodb::RestoreFeature::CREATED, {}});
       }
 
       if (name.isString() &&
@@ -845,6 +848,15 @@ arangodb::Result processInputDirectory(
     }
 
     auto createViews = [&](std::string_view type) {
+      auto const specialName = "_VIEW_MARKER_" + std::string{type};
+      auto status = progressTracker.getStatus(specialName);
+
+      if (status.state == arangodb::RestoreFeature::RESTORED) {
+        LOG_TOPIC("79e1b", INFO, Logger::RESTORE)
+            << "# " << type << " views already created...";
+        return Result{};
+      }
+
       if (options.importStructure && !views.empty()) {
         LOG_TOPIC("f723c", INFO, Logger::RESTORE)
             << "# Creating " << type << " views...";
@@ -862,6 +874,9 @@ arangodb::Result processInputDirectory(
           }
         }
       }
+      status.state = arangodb::RestoreFeature::RESTORED;
+      progressTracker.updateStatus(specialName, status);
+
       return Result{};
     };
 
@@ -1154,8 +1169,8 @@ RestoreFeature::RestoreJob::RestoreJob(RestoreFeature& feature,
 RestoreFeature::RestoreJob::~RestoreJob() = default;
 
 Result RestoreFeature::RestoreJob::sendRestoreData(
-    arangodb::httpclient::SimpleHttpClient& client, size_t readOffset,
-    char const* buffer, size_t bufferSize) {
+    arangodb::httpclient::SimpleHttpClient& client,
+    MultiFileReadOffset readOffset, char const* buffer, size_t bufferSize) {
   using arangodb::basics::StringUtils::urlEncode;
   using arangodb::httpclient::SimpleHttpResult;
 
@@ -1225,7 +1240,7 @@ void RestoreFeature::RestoreJob::updateProgress() {
 
   if (!sharedState->readOffsets.empty()) {
     auto it = sharedState->readOffsets.begin();
-    size_t readOffset = (*it).first;
+    auto readOffset = (*it).first;
 
     // progressTracker has its own lock
     locker.unlock();
@@ -1241,7 +1256,7 @@ void RestoreFeature::RestoreJob::updateProgress() {
 
     progressTracker.updateStatus(collectionName,
                                  arangodb::RestoreFeature::CollectionStatus{
-                                     arangodb::RestoreFeature::RESTORED, 0});
+                                     arangodb::RestoreFeature::RESTORED, {}});
   }
 }
 
@@ -1283,8 +1298,9 @@ Result RestoreFeature::RestoreMainJob::run(
 
 /// @brief dispatch restore data
 Result RestoreFeature::RestoreMainJob::dispatchRestoreData(
-    arangodb::httpclient::SimpleHttpClient& client, size_t readOffset,
-    char const* data, size_t length, bool forceDirect) {
+    arangodb::httpclient::SimpleHttpClient& client,
+    MultiFileReadOffset readOffset, char const* data, size_t length,
+    bool forceDirect) {
   size_t readLength = length;
 
   // the following object is needed for cleaning up duplicate attributes.
@@ -1416,33 +1432,67 @@ Result RestoreFeature::RestoreMainJob::restoreData(
              currentStatus.state == arangodb::RestoreFeature::RESTORING);
 
   // import data. check if we have a datafile
-  //  ... there are 4 possible names
+  //  ... there are 6 possible names
   std::string escapedName =
       escapedCollectionName(collectionName, parameters.get("parameters"));
-  bool isCompressed = false;
-  auto datafile = directory.readableFile(
-      escapedName + "_" + arangodb::rest::SslInterface::sslMD5(collectionName) +
-      ".data.json");
+  std::string const nameHash =
+      arangodb::rest::SslInterface::sslMD5(collectionName);
+
+  auto datafile =
+      directory.readableFile(escapedName + "_" + nameHash + ".data.json");
   if (!datafile || datafile->status().fail()) {
-    datafile = directory.readableFile(
-        escapedName + "_" +
-        arangodb::rest::SslInterface::sslMD5(collectionName) + ".data.json.gz");
-    isCompressed = true;
+    datafile =
+        directory.readableFile(escapedName + "_" + nameHash + ".data.json.gz");
   }
   if (!datafile || datafile->status().fail()) {
     datafile = directory.readableFile(escapedName + ".data.json.gz");
-    isCompressed = true;
+  }
+  if (!datafile || datafile->status().fail()) {
+    datafile = directory.readableFile(escapedName + "_" + nameHash +
+                                      ".0.data.json.gz");
+  }
+  if (!datafile || datafile->status().fail()) {
+    datafile =
+        directory.readableFile(escapedName + "_" + nameHash + ".0.data.json");
   }
   if (!datafile || datafile->status().fail()) {
     datafile = directory.readableFile(escapedName + ".data.json");
-    isCompressed = false;
   }
   if (!datafile || datafile->status().fail()) {
-    return {TRI_ERROR_CANNOT_READ_FILE,
-            "could not open data file for collection '" + collectionName + "'"};
+    {
+      std::lock_guard locker{sharedState->mutex};
+      sharedState->readCompleteInputfile = true;
+    }
+
+    updateProgress();
+    return {TRI_ERROR_NO_ERROR};
   }
 
-  int64_t const fileSize = TRI_SizeFile(datafile->path().c_str());
+  TRI_ASSERT(datafile);
+  // check if we are dealing with compressed file(s)
+  bool const isCompressed = datafile->path().ends_with(".gz");
+  // check if we are dealing with multiple files (created via `--split-file
+  // true`)
+  bool const isMultiFile =
+      std::regex_match(datafile->path(), ::splitFilesRegex);
+
+  int64_t fileSize = TRI_SizeFile(datafile->path().c_str());
+  if (isMultiFile) {
+    fileSize = 0;
+    auto allFiles = arangodb::basics::FileUtils::listFiles(directory.path());
+    std::string const prefix = escapedName + "_" + nameHash + ".";
+    for (auto const& it : allFiles) {
+      if (!it.starts_with(prefix) || !std::regex_match(it, ::splitFilesRegex)) {
+        continue;
+      }
+      int64_t s = TRI_SizeFile(
+          arangodb::basics::FileUtils::buildFilename(directory.path(), it)
+              .c_str());
+      if (s >= 0) {
+        fileSize += s;
+      }
+    }
+  }
 
   if (options.progress) {
     LOG_TOPIC("95913", INFO, Logger::RESTORE)
@@ -1454,23 +1504,31 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   int64_t numReadForThisCollection = 0;
   int64_t numReadSinceLastReport = 0;
 
-  bool const isGzip =
-      datafile->path().size() > 3 &&
-      (0 ==
-       datafile->path().substr(datafile->path().size() - 3).compare(".gz"));
+  bool const isGzip = isCompressed;
 
   std::string ofFilesize;
   if (!isGzip) {
     ofFilesize = " of " + formatSize(fileSize);
   }
 
-  size_t datafileReadOffset = 0;
+  MultiFileReadOffset datafileReadOffset;
   if (currentStatus.state == arangodb::RestoreFeature::RESTORING) {
     LOG_TOPIC("94913", INFO, Logger::RESTORE)
         << "# continuing restoring " << collectionType << " collection '"
-        << collectionName << "' from offset " << currentStatus.bytes_acked;
-    datafileReadOffset = currentStatus.bytes_acked;
-    datafile->skip(datafileReadOffset);
+        << collectionName << "' from offset " << currentStatus.bytesAcked;
+    datafileReadOffset = currentStatus.bytesAcked;
+
+    // open the nth file
+    if (datafileReadOffset.fileNo != 0) {
+      datafile = directory.readableFile(basics::StringUtils::concatT(
+          escapedName, "_", nameHash, ".", datafileReadOffset.fileNo,
+          ".data.json", isCompressed ? ".gz" : ""));
+      if (datafile->status().fail()) {
+        return datafile->status();
+      }
+    }
+
+    datafile->skip(datafileReadOffset.readOffset);
     if (datafile->status().fail()) {
       return datafile->status();
     }
@@ -1565,7 +1623,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
         }
       }
 
-      datafileReadOffset += length;
+      datafileReadOffset.readOffset += length;
 
       // bytes successfully sent
       buffer->erase_front(length);
@@ -1592,7 +1650,17 @@ Result RestoreFeature::RestoreMainJob::restoreData(
     }
 
     if (numRead == 0) {  // EOF
-      break;
+      if (!isMultiFile) {
+        break;
+      }
+      datafileReadOffset.fileNo += 1;
+      datafileReadOffset.readOffset = 0;
+      datafile = directory.readableFile(basics::StringUtils::concatT(
+          escapedName, "_", nameHash, ".", datafileReadOffset.fileNo,
+          ".data.json", isCompressed ? ".gz" : ""));
+      if (!datafile || datafile->status().fail()) {
+        break;
+      }
     }
   }
 
@@ -1600,9 +1668,19 @@ Result RestoreFeature::RestoreMainJob::restoreData(
 
   // end of main job
   if (result.ok()) {
-    {
-      std::lock_guard locker{sharedState->mutex};
-      sharedState->readCompleteInputfile = true;
+    while (true) {
+      {
+        std::lock_guard locker{sharedState->mutex};
+        if (sharedState->pendingJobs == 0) {
+          // no more pending jobs. we are done!
+          sharedState->readCompleteInputfile = true;
+          break;
+        }
+      }
+      // we still have pending jobs, which are dispatched to other
+      // threads but not yet finished. wait for all of them to be
+      // fully processed
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     updateProgress();
@@ -1664,11 +1742,23 @@ RestoreFeature::RestoreSendJob::RestoreSendJob(
     RestoreFeature& feature, RestoreProgressTracker& progressTracker,
     RestoreFeature::Options const& options, RestoreFeature::Stats& stats,
     std::string const& collectionName, std::shared_ptr<SharedState> sharedState,
-    size_t readOffset, std::unique_ptr<basics::StringBuffer> buffer)
+    MultiFileReadOffset readOffset,
+    std::unique_ptr<basics::StringBuffer> buffer)
     : RestoreJob(feature, progressTracker, options, stats, collectionName,
-                 std::move(sharedState)),
+                 sharedState),
       readOffset(readOffset),
-      buffer(std::move(buffer)) {}
+      buffer(std::move(buffer)) {
+  // count number of pending jobs up
+  std::lock_guard locker{sharedState->mutex};
+  ++sharedState->pendingJobs;
+}
+
+RestoreFeature::RestoreSendJob::~RestoreSendJob() {
+  // count number of pending jobs back at the end
+  std::lock_guard locker{sharedState->mutex};
+  TRI_ASSERT(sharedState->pendingJobs > 0);
+  --sharedState->pendingJobs;
+}
 
 Result RestoreFeature::RestoreSendJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {
@@ -2359,7 +2449,9 @@ RestoreFeature::CollectionStatus::CollectionStatus(VPackSlice slice) {
   using arangodb::basics::VelocyPackHelper;
   state = VelocyPackHelper::getNumericValue<CollectionState>(
       slice, "state", CollectionState::UNKNOWN);
-  bytes_acked =
+  bytesAcked.fileNo =
+      VelocyPackHelper::getNumericValue<size_t>(slice, "file-no", 0);
+  bytesAcked.readOffset =
       VelocyPackHelper::getNumericValue<size_t>(slice, "bytes-acked", 0);
 }
 
@@ -2368,15 +2460,16 @@ void RestoreFeature::CollectionStatus::toVelocyPack(
   {
     VPackObjectBuilder object(&builder);
     builder.add("state", VPackValue(state));
-    if (bytes_acked != 0) {
-      builder.add("bytes-acked", VPackValue(bytes_acked));
+    if (bytesAcked != MultiFileReadOffset{}) {
+      builder.add("bytes-acked", VPackValue(bytesAcked.readOffset));
+      builder.add("file-no", VPackValue(bytesAcked.fileNo));
     }
   }
 }
 
 RestoreFeature::CollectionStatus::CollectionStatus(
-    RestoreFeature::CollectionState state, size_t bytes_acked)
-    : state(state), bytes_acked(bytes_acked) {}
+    RestoreFeature::CollectionState state, MultiFileReadOffset bytesAcked)
+    : state(state), bytesAcked(bytesAcked) {}
 
 RestoreFeature::CollectionStatus::CollectionStatus() = default;
 

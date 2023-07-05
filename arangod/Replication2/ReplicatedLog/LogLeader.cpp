@@ -60,6 +60,7 @@
 #include "Metrics/LogScale.h"
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Replication2/IScheduler.h"
 #include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
@@ -67,9 +68,9 @@
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Replication2/IScheduler.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -330,7 +331,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 }
 
 auto replicated_log::LogLeader::construct(
-    std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+    std::unique_ptr<storage::IStorageEngineMethods>&& methods,
     std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
@@ -1039,6 +1040,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
             response.snapshotAvailable, response.messageId);
       }
 
+      TRI_ASSERT(response.syncIndex >= follower.syncIndex)
+          << response.syncIndex << " vs. " << follower.syncIndex;
+      follower.syncIndex = response.syncIndex;
+
       follower.lastErrorReason = response.reason;
       if (response.isSuccess()) {
         follower.numErrorsSinceLastAnswer = 0;
@@ -1275,7 +1280,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
 
   auto returnAppendEntriesResult =
       [term = request.leaderTerm, messageId = request.messageId,
-       logContext = messageLogContext,
+       storageManager = _storageManager, logContext = messageLogContext,
        measureTime = std::move(measureTimeGuard)](Result const& res) mutable {
         // fire here because the lambda is destroyed much later in a future
         measureTime.fire();
@@ -1286,7 +1291,8 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
         }
         LOG_CTX("e0800", TRACE, logContext)
             << "local follower completed append entries";
-        return AppendEntriesResult{term, messageId, true};
+        return AppendEntriesResult{term, messageId, true,
+                                   storageManager->getSyncIndex()};
       };
 
   LOG_CTX("6fa8b", TRACE, messageLogContext)
@@ -1299,10 +1305,10 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
 
   // Note that the beginning of iter here is always (and must be) exactly
   // the next index after the last one in the LogCore.
-  replicated_state::IStorageEngineMethods::WriteOptions opts;
-  opts.waitForSync = request.waitForSync;
   auto trx = _storageManager->transaction();
-  return trx->appendEntries(InMemoryLog{request.entries})
+  return trx
+      ->appendEntries(InMemoryLog{request.entries},
+                      {.waitForSync = request.waitForSync})
       .thenValue(std::move(returnAppendEntriesResult));
 }
 
@@ -1504,7 +1510,7 @@ auto replicated_log::LogLeader::ping(std::optional<std::string> message)
   return index;
 }
 auto replicated_log::LogLeader::resign() && -> std::tuple<
-    std::unique_ptr<replicated_state::IStorageEngineMethods>,
+    std::unique_ptr<storage::IStorageEngineMethods>,
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
   auto [actionOuter, leaderEstablished, stateHandle] =
       _guardedLeaderData.doUnderLock([this, &localFollower = *_localFollower,
