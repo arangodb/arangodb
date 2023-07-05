@@ -29,6 +29,7 @@
 #include <vector>
 
 struct GeneralRequestMock;
+struct TRI_vocbase_t;
 
 namespace arangodb {
 

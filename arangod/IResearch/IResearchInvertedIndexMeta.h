@@ -30,7 +30,6 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewStoredValues.h"
 #include "IResearch/IResearchViewSort.h"
-#include "VocBase/LogicalCollection.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 

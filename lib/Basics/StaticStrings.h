@@ -76,6 +76,12 @@ class StaticStrings {
   static std::string const Compact;
   static std::string const DontWaitForCommit;
 
+  // dump headers
+  static std::string const DumpAuthUser;
+  static std::string const DumpBlockCounts;
+  static std::string const DumpId;
+  static std::string const DumpShardId;
+
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
   static std::string const ReplicationHeaderLastIncluded;
@@ -225,10 +231,13 @@ class StaticStrings {
 
   // mime types
   static std::string const MimeTypeDump;
+  static std::string const MimeTypeDumpNoEncoding;
   static std::string const MimeTypeHtml;
+  static std::string const MimeTypeHtmlNoEncoding;
   static std::string const MimeTypeJson;
   static std::string const MimeTypeJsonNoEncoding;
   static std::string const MimeTypeText;
+  static std::string const MimeTypeTextNoEncoding;
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
 

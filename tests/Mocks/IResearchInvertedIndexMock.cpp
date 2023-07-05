@@ -23,6 +23,7 @@
 
 #include "IResearchInvertedIndexMock.h"
 #include "IResearch/IResearchDataStore.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb::iresearch {
 
@@ -95,11 +96,6 @@ bool IResearchInvertedIndexMock::covers(
 Result IResearchInvertedIndexMock::drop() { return deleteDataStore(); }
 
 void IResearchInvertedIndexMock::load() {}
-
-void IResearchInvertedIndexMock::afterTruncate(TRI_voc_tick_t tick,
-                                               transaction::Methods* trx) {
-  return IResearchDataStore::afterTruncate(tick, trx);
-}
 
 std::unique_ptr<IndexIterator> IResearchInvertedIndexMock::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,

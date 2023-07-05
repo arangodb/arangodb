@@ -22,3 +22,5 @@ export const getAardvarkRouteForCurrentDb = (url: string) =>
   getRouteForDB(window.frontendConfig.db, `_admin/aardvark/${url}`);
 export const getApiRouteForCurrentDB = () =>
   getRouteForDB(window.frontendConfig.db, "_api");
+export const getAdminRouteForCurrentDB = () =>
+  getRouteForDB(window.frontendConfig.db, "_admin");

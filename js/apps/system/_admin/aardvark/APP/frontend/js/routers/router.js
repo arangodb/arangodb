@@ -14,7 +14,6 @@
     foxxApiEnabled: undefined,
     statisticsInAllDatabases: undefined,
     lastRoute: undefined,
-    maxNumberOfMoveShards: undefined,
 
     routes: {
       '': 'cluster',
@@ -55,7 +54,6 @@
       'cluster': 'cluster',
       'nodes': 'nodes',
       'shards': 'shards',
-      'rebalanceShards': 'rebalanceShards',
       'maintenance': 'maintenance',
       'distribution': 'distribution',
       'node/:name': 'node',
@@ -248,8 +246,6 @@
         this.statisticsInAllDatabases = frontendConfig.statisticsInAllDatabases;
       }
 
-      this.maxNumberOfMoveShards = frontendConfig.maxNumberOfMoveShards;
-
       document.addEventListener('keyup', this.listener, false);
 
       // This should be the only global object
@@ -440,10 +436,6 @@
           this.navigate('#dashboard', { trigger: true });
           return;
         }
-        // TODO re-enable React View, for now use old view:
-        // ReactDOM.render(React.createElement(window.ShardsReactView),
-        //   document.getElementById('content'));
-        // Below code needs to be removed then again.
         if (this.shardsView) {
           this.shardsView.remove();
         }
@@ -451,32 +443,6 @@
           dbServers: this.dbServers
         });
         this.shardsView.render();
-      });
-    },
-
-    rebalanceShards: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (this.isCluster === false || isCurrentCoordinator === false || this.maxNumberOfMoveShards === 0) {
-          this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', { trigger: true });
-          return;
-        }
-        // this below is for when Rebalance Shards tab is not clickable, but user enters it through its URL
-        else if (this.userCollection.authOptions.ro) { // if user can't edit the database,
-          // it goes back to the Overview page
-          this.routes[''] = 'nodes';
-          this.navigate('#nodes', { trigger: true });
-          return;
-        }
-        if (this.rebalanceShardsView) {
-          this.rebalanceShardsView.remove();
-        }
-        this.rebalanceShardsView = new window.RebalanceShardsView({
-          maxNumberOfMoveShards: this.maxNumberOfMoveShards
-        });
-        this.rebalanceShardsView.render();
       });
     },
 
@@ -495,11 +461,14 @@
           return;
         }
 
-        if (this.shardDistributionView) {
-          this.shardDistributionView.remove();
-        }
-        this.shardDistributionView = new window.ShardDistributionView({});
-        this.shardDistributionView.render();
+        ReactDOM.render(
+          React.createElement(window.ShardDistributionReactView, {
+            readOnly: this.userCollection.authOptions.ro
+          }),
+          document.getElementById("content")
+        );
+
+        arangoHelper.buildClusterSubNav('Distribution');
       });
     },
 

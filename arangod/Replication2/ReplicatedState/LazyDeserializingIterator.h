@@ -23,9 +23,8 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/LogEntryView.h"
 #include "Replication2/Streams/Streams.h"
-#include "Inspection/VPack.h"
 
 namespace arangodb::replication2 {
 

@@ -77,6 +77,14 @@ const getServerRebootId = function (serverId) {
   return readAgencyValueAt(`Current/ServersKnown/${serverId}/rebootId`);
 };
 
+const bumpServerRebootId = function (serverId) {
+  const response = serverHelper.agency.increaseVersion(`Current/ServersKnown/${serverId}/rebootId`);
+  if (response !== true) {
+    return undefined;
+  }
+  return getServerRebootId(serverId);
+};
+
 const getParticipantsObjectForServers = function (servers) {
   return _.reduce(servers, (a, v) => {
     a[v] = {allowedInQuorum: true, allowedAsLeader: true, forced: false};
@@ -161,7 +169,8 @@ const coordinators = (function () {
  *         localStatus: Object<string, Object>,
  *         localState: Object,
  *         supervision?: Object,
- *         leader?: Object
+ *         leader?: Object,
+ *         safeRebootIds?: Object<string, number>
  *       }
  *   }}
  */
@@ -216,8 +225,16 @@ const replicatedLogSetPlanTerm = function (database, logId, term) {
 };
 
 const triggerLeaderElection = function (database, logId) {
-  serverHelper.agency.increaseVersion(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`);
-  serverHelper.agency.remove(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/leader`);
+  // This operation has to be in one envelope. Otherwise we violate the assumption
+  // that they are only modified as a unit.
+  serverHelper.agency.transact([[{
+    [`/arango/Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`]: {
+      'op': 'increment',
+    },
+    [`/arango/Plan/ReplicatedLogs/${database}/${logId}/currentTerm/leader`]: {
+      'op': 'delete'
+    }
+  }]]);
   serverHelper.agency.increaseVersion(`Plan/Version`);
 };
 
@@ -418,6 +435,50 @@ const createReplicatedLogPlanOnly = function (database, targetConfig, replicatio
   const followers = _.difference(servers, [leader]);
   const remaining = _.difference(dbservers, servers);
   return {logId, servers, leader, term, followers, remaining};
+};
+
+const createReplicatedLogInTarget = function (database, targetConfig, replicationFactor, servers) {
+  const logId = nextUniqueLogId();
+  if (replicationFactor === undefined) {
+    replicationFactor = 3;
+  }
+  if (servers === undefined) {
+    servers = _.sampleSize(dbservers, replicationFactor);
+  }
+  replicatedLogSetTarget(database, logId, {
+    id: logId,
+    config: targetConfig,
+    participants: getParticipantsObjectForServers(servers),
+    supervision: {maxActionsTraceLength: 20},
+    properties: {implementation: {type: "black-hole", parameters: {}}}
+  });
+
+  waitFor(() => {
+    let {plan, current} = readReplicatedLogAgency(database, logId.toString());
+    if (current === undefined) {
+      return Error("current not yet defined");
+    }
+    if (plan === undefined) {
+      return Error("plan not yet defined");
+    }
+
+    if (!plan.currentTerm) {
+      return Error(`No term in plan`);
+    }
+
+    if (!current.leader) {
+      return Error("Leader has not yet established its term");
+    }
+    if (!current.leader.leadershipEstablished) {
+      return Error("Leader has not yet established its leadership");
+    }
+
+    return true;
+  });
+
+  const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
+  const followers = _.difference(servers, [leader]);
+  return {logId, servers, leader, term, followers};
 };
 
 const createReplicatedLog = function (database, targetConfig, replicationFactor) {
@@ -722,6 +783,7 @@ exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
 exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
+exports.bumpServerRebootId = bumpServerRebootId;
 exports.getServerUrl = getServerUrl;
 exports.getSupervisionActionTypes = getSupervisionActionTypes;
 exports.getSupervisionActions = getSupervisionActions;
@@ -757,3 +819,5 @@ exports.replaceParticipant = replaceParticipant;
 exports.createReconfigureJob = createReconfigureJob;
 exports.getAgencyJobStatus = getAgencyJobStatus;
 exports.increaseTargetVersion = increaseTargetVersion;
+exports.triggerLeaderElection = triggerLeaderElection;
+exports.createReplicatedLogInTarget = createReplicatedLogInTarget;

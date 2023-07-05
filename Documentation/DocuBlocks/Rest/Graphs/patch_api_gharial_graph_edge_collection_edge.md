@@ -22,10 +22,11 @@ The `_key` attribute of the vertex.
 Define if the request should wait until synced to disk.
 
 @RESTQUERYPARAM{keepNull,boolean,optional}
-Define if values set to null should be stored.
-By default (true) the given documents attribute(s) will be set to null.
-If this parameter is false the attribute(s) will instead be deleted from the
-document.
+Define if values set to `null` should be stored.
+By default (`true`), the given documents attribute(s) are set to `null`.
+If this parameter is set to `false`, top-level attribute and sub-attributes with
+a `null` value in the request are removed from the document (but not attributes
+of objects that are nested inside of arrays).
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
 Define if a presentation of the deleted document should

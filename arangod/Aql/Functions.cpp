@@ -111,6 +111,7 @@
 #include <velocypack/Sink.h>
 
 #include <algorithm>
+#include <list>
 
 #ifdef __APPLE__
 #include <regex>
@@ -118,6 +119,7 @@
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
+#include <Ws2tcpip.h>
 #else
 #include <arpa/inet.h>
 #endif
@@ -5286,11 +5288,7 @@ AqlValue functions::IpV4ToNumber(ExpressionContext* expressionContext,
 
     struct in_addr addr;
     memset(&addr, 0, sizeof(struct in_addr));
-#if _WIN32
-    int result = InetPton(AF_INET, &buffer[0], &addr);
-#else
     int result = inet_pton(AF_INET, &buffer[0], &addr);
-#endif
 
 #ifdef __APPLE__
     // inet_pton on MacOS accepts leading zeros...
@@ -5342,11 +5340,7 @@ AqlValue functions::IsIpV4(ExpressionContext* expressionContext, AstNode const&,
 
     struct in_addr addr;
     memset(&addr, 0, sizeof(struct in_addr));
-#if _WIN32
-    int result = InetPton(AF_INET, &buffer[0], &addr);
-#else
     int result = inet_pton(AF_INET, &buffer[0], &addr);
-#endif
 
     if (result == 1) {
 #ifdef __APPLE__
