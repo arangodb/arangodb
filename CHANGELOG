@@ -20,6 +20,13 @@ v3.9.12 (XXXX-X-XX)
   keep the existing behavior, in which a disconnected leader will not refuse
   incoming write operations.
 
+* When trying to read multiple documents, the coordinator will now handle empty
+  lists gracefully and return an empty result set instead of an error.
+
+* Remove temporary `CREATING_{number}` directories from hot backup in case a hot
+  backup runs into an error.
+
+
 * FE-287: fix number validation for replicationFactor and writeConcern.
 
 * Updated arangosync to v2.18.1.
