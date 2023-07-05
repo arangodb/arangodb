@@ -23,9 +23,7 @@ const DatabaseViewHeader = ({ onOpen }: { onOpen: () => void }) => {
         size="sm"
         leftIcon={<AddIcon />}
         colorScheme="blue"
-        onClick={() => {
-          onOpen();
-        }}
+        onClick={onOpen}
       >
         Add database
       </Button>
