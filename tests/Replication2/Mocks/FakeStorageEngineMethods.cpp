@@ -24,6 +24,7 @@
 
 #include <utility>
 #include "Basics/Result.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 namespace {
 template<typename F, typename R = std::invoke_result_t<F>>
@@ -60,7 +61,7 @@ auto FakeStorageEngineMethods::readMetadata()
   }
 }
 
-auto FakeStorageEngineMethods::read(replication2::LogIndex start)
+auto FakeStorageEngineMethods::getIterator(IteratorPosition position)
     -> std::unique_ptr<PersistedLogIterator> {
   struct ContainerIterator : PersistedLogIterator {
     using Container = FakeStorageEngineMethodsContext::LogContainerType;
@@ -84,7 +85,7 @@ auto FakeStorageEngineMethods::read(replication2::LogIndex start)
     Iterator _end;
   };
 
-  return std::make_unique<ContainerIterator>(_self.log, start);
+  return std::make_unique<ContainerIterator>(_self.log, position.index());
 }
 
 auto FakeStorageEngineMethods::insert(

@@ -46,8 +46,10 @@ LogPersistor::LogPersistor(LogId logId, uint64_t objectId,
       db(db),
       logCf(logCf) {}
 
-std::unique_ptr<PersistedLogIterator> LogPersistor::read(LogIndex first) {
-  return std::make_unique<LogIterator>(ctx.objectId, db, logCf, first);
+std::unique_ptr<PersistedLogIterator> LogPersistor::getIterator(
+    IteratorPosition position) {
+  return std::make_unique<LogIterator>(ctx.objectId, db, logCf,
+                                       position.index());
 }
 
 auto LogPersistor::removeFront(LogIndex stop, WriteOptions const& opts)

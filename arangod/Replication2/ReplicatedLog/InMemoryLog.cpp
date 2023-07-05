@@ -426,7 +426,8 @@ auto replicated_log::InMemoryLog::getFirstIndex() const noexcept -> LogIndex {
 
 auto replicated_log::InMemoryLog::loadFromMethods(
     storage::IStorageEngineMethods& methods) -> InMemoryLog {
-  auto iter = methods.read(LogIndex{0});
+  auto iter =
+      methods.getIterator(storage::IteratorPosition::fromLogIndex(LogIndex{0}));
   auto log = log_type::transient_type{};
   while (auto entry = iter->next()) {
     log.push_back(InMemoryLogEntry(std::move(entry).value()));

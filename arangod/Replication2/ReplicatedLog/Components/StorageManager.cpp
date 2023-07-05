@@ -378,7 +378,8 @@ auto StorageManager::getPersistedLogIterator(std::optional<LogRange> bounds)
         TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
   }
 
-  auto diskIter = guard->methods->read(range.from);
+  auto diskIter = guard->methods->getIterator(
+      storage::IteratorPosition::fromLogIndex(range.from));
 
   struct Iterator : PersistedLogIterator {
     explicit Iterator(LogRange range,
@@ -415,9 +416,10 @@ auto StorageManager::getCommittedLogIterator(
   if (bounds) {
     range = intersect(*bounds, range);
   }
-  auto diskIter = guard->methods->read(range.from);
+  auto diskIter = guard->methods->getIterator(
+      storage::IteratorPosition::fromLogIndex(range.from));
 
-  struct Iterator : TypedLogRangeIterator<LogEntryView> {
+  struct Iterator : LogRangeIterator {
     explicit Iterator(LogRange range,
                       std::unique_ptr<PersistedLogIterator> disk)
         : _range(range), _disk(std::move(disk)) {}

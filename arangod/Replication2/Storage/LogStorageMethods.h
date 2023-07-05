@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 #include <memory>
 
@@ -32,27 +33,24 @@ namespace arangodb::replication2::storage {
 struct ILogPersistor;
 struct IStatePersistor;
 
-struct LogStorageMethods final : replication2::storage::IStorageEngineMethods {
+struct LogStorageMethods final : IStorageEngineMethods {
   LogStorageMethods(std::unique_ptr<ILogPersistor> logPersistor,
                     std::unique_ptr<IStatePersistor> statePersistor);
 
-  [[nodiscard]] auto updateMetadata(
-      replication2::storage::PersistedStateInfo info) -> Result override;
-  [[nodiscard]] auto readMetadata()
-      -> ResultT<replication2::storage::PersistedStateInfo> override;
-  [[nodiscard]] auto read(replication2::LogIndex first)
-      -> std::unique_ptr<replication2::PersistedLogIterator> override;
-  [[nodiscard]] auto insert(
-      std::unique_ptr<replication2::PersistedLogIterator> ptr,
-      WriteOptions const&) -> futures::Future<ResultT<SequenceNumber>> override;
-  [[nodiscard]] auto removeFront(replication2::LogIndex stop,
-                                 WriteOptions const&)
+  [[nodiscard]] auto updateMetadata(PersistedStateInfo info) -> Result override;
+  [[nodiscard]] auto readMetadata() -> ResultT<PersistedStateInfo> override;
+
+  [[nodiscard]] auto getIterator(IteratorPosition position)
+      -> std::unique_ptr<PersistedLogIterator> override;
+  [[nodiscard]] auto insert(std::unique_ptr<PersistedLogIterator> ptr,
+                            WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> override;
-  [[nodiscard]] auto removeBack(replication2::LogIndex start,
-                                WriteOptions const&)
+  [[nodiscard]] auto removeFront(LogIndex stop, WriteOptions const&)
+      -> futures::Future<ResultT<SequenceNumber>> override;
+  [[nodiscard]] auto removeBack(LogIndex start, WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> override;
   [[nodiscard]] auto getObjectId() -> std::uint64_t override;
-  [[nodiscard]] auto getLogId() -> replication2::LogId override;
+  [[nodiscard]] auto getLogId() -> LogId override;
 
   [[nodiscard]] auto getSyncedSequenceNumber() -> SequenceNumber override;
   [[nodiscard]] auto waitForSync(SequenceNumber number)

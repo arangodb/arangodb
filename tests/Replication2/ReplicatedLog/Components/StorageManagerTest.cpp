@@ -254,10 +254,12 @@ struct StorageEngineMethodsMockFactory {
     auto ptr = std::make_unique<storage::tests::StorageEngineMethodsGMock>();
     lastPtr = ptr.get();
 
-    EXPECT_CALL(*ptr, read).Times(1).WillOnce([](LogIndex idx) {
-      auto log = makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{100}});
-      return log.getPersistedLogIterator();
-    });
+    EXPECT_CALL(*ptr, getIterator)
+        .Times(1)
+        .WillOnce([](storage::IteratorPosition pos) {
+          auto log = makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{100}});
+          return log.getPersistedLogIterator();
+        });
 
     EXPECT_CALL(*ptr, readMetadata).Times(1).WillOnce([]() {
       return storage::PersistedStateInfo{.stateId = LogId{1},

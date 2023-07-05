@@ -24,6 +24,7 @@
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IPersistor.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 namespace arangodb {
 template<typename T>
@@ -44,7 +45,7 @@ namespace arangodb::replication2::storage {
 struct ILogPersistor : virtual IPersistor {
   virtual ~ILogPersistor() = default;
 
-  [[nodiscard]] virtual auto read(LogIndex first)
+  [[nodiscard]] virtual auto getIterator(IteratorPosition position)
       -> std::unique_ptr<PersistedLogIterator> = 0;
 
   struct WriteOptions {

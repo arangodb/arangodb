@@ -34,8 +34,8 @@ namespace arangodb::replication2::storage::tests {
 struct StorageEngineMethodsGMock : IStorageEngineMethods {
   MOCK_METHOD(Result, updateMetadata, (PersistedStateInfo), (override));
   MOCK_METHOD(ResultT<PersistedStateInfo>, readMetadata, (), (override));
-  MOCK_METHOD(std::unique_ptr<PersistedLogIterator>, read, (LogIndex),
-              (override));
+  MOCK_METHOD(std::unique_ptr<PersistedLogIterator>, getIterator,
+              (IteratorPosition), (override));
   MOCK_METHOD(futures::Future<ResultT<SequenceNumber>>, insert,
               (std::unique_ptr<PersistedLogIterator>, WriteOptions const&),
               (override));

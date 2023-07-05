@@ -28,6 +28,7 @@
 #include <Futures/Future.h>
 
 #include "Replication2/ReplicatedLog/PersistingLogEntry.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 namespace arangodb::replication2::storage {
 
@@ -45,8 +46,9 @@ ResultT<PersistedStateInfo> LogStorageMethods::readMetadata() {
   return _statePersistor->readMetadata();
 }
 
-std::unique_ptr<PersistedLogIterator> LogStorageMethods::read(LogIndex first) {
-  return _logPersistor->read(first);
+std::unique_ptr<PersistedLogIterator> LogStorageMethods::getIterator(
+    IteratorPosition position) {
+  return _logPersistor->getIterator(position);
 }
 
 auto LogStorageMethods::removeFront(LogIndex stop, WriteOptions const& opts)
