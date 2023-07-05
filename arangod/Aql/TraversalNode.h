@@ -124,9 +124,7 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
