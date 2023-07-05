@@ -393,7 +393,7 @@ auto StorageManager::getPersistedLogIterator(std::optional<LogRange> bounds)
                       std::unique_ptr<PersistedLogIterator> disk)
         : _range(range), _disk(std::move(disk)) {}
 
-    auto next() -> std::optional<PersistingLogEntry> override {
+    auto next() -> std::optional<LogEntry> override {
       auto entry = _disk->next();
       if (not entry) {
         return std::nullopt;
@@ -449,7 +449,7 @@ auto StorageManager::getCommittedLogIterator(std::optional<LogRange> bounds)
 
     LogRange _range;
     std::unique_ptr<PersistedLogIterator> _disk;
-    std::optional<PersistingLogEntry> _entry;
+    std::optional<LogEntry> _entry;
   };
 
   return std::make_unique<Iterator>(range, std::move(diskIter));

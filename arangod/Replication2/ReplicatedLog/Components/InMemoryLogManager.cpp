@@ -109,8 +109,7 @@ auto InMemoryLogManager::appendLogEntry(
     bool const isMetaLogEntry = std::holds_alternative<LogMetaPayload>(payload);
 
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(TermIndexPair{term, index}, std::move(payload)),
-        waitForSync);
+        LogEntry(TermIndexPair{term, index}, std::move(payload)), waitForSync);
     logEntry.setInsertTp(insertTp);
     auto size = logEntry.entry().approxByteSize();
     data._inMemoryLog.appendInPlace(_logContext, std::move(logEntry));

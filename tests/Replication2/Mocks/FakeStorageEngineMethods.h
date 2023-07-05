@@ -29,7 +29,7 @@
 namespace arangodb::replication2::storage::test {
 
 struct FakeStorageEngineMethodsContext {
-  using LogContainerType = std::map<LogIndex, PersistingLogEntry>;
+  using LogContainerType = std::map<LogIndex, LogEntry>;
   using SequenceNumber = IStorageEngineMethods::SequenceNumber;
 
   FakeStorageEngineMethodsContext(

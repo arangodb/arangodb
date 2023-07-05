@@ -27,7 +27,7 @@
 #include <Basics/ResultT.h>
 #include <Futures/Future.h>
 
-#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
 #include "Replication2/Storage/IteratorPosition.h"
 
 namespace arangodb::replication2::storage {

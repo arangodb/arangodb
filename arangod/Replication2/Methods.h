@@ -24,9 +24,9 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
 #include "Replication2/ReplicatedLog/LogPayload.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
 #include "VocBase/vocbase.h"
 
 #include <string>

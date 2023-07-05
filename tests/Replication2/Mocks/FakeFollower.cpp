@@ -83,7 +83,7 @@ auto FakeFollower::getQuickStatus() const -> replicated_log::QuickLogStatus {
 auto FakeFollower::addEntry(LogPayload payload) -> LogIndex {
   auto index = guarded.doUnderLock([&](GuardedFollowerData& data) {
     auto index = data.log.getNextIndex();
-    auto memtry = InMemoryLogEntry(PersistingLogEntry(term, index, payload));
+    auto memtry = InMemoryLogEntry(LogEntry(term, index, payload));
     data.log.appendInPlace(LoggerContext(Logger::REPLICATION2),
                            std::move(memtry));
     return index;

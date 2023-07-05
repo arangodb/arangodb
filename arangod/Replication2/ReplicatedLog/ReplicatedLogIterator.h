@@ -93,7 +93,7 @@ class InMemoryPersistedLogIterator : public PersistedLogIterator {
         _begin(_container.begin()),
         _end(_container.end()) {}
 
-  auto next() -> std::optional<PersistingLogEntry> override {
+  auto next() -> std::optional<LogEntry> override {
     if (_begin != _end) {
       auto const& it = *_begin;
       ++_begin;

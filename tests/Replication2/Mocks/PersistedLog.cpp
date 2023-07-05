@@ -34,7 +34,7 @@ struct MockLogContainerIterator : PersistedLogIterator {
         _current(_store.lower_bound(start)),
         _end(_store.end()) {}
 
-  auto next() -> std::optional<PersistingLogEntry> override {
+  auto next() -> std::optional<LogEntry> override {
     if (_current != _end) {
       auto it = _current;
       ++_current;
@@ -89,7 +89,7 @@ AsyncMockLog::AsyncMockLog(replication2::LogId id)
 
 AsyncMockLog::~AsyncMockLog() noexcept { stop(); }
 
-void MockLog::setEntry(replication2::PersistingLogEntry entry) {
+void MockLog::setEntry(replication2::LogEntry entry) {
   _storage.emplace(entry.logIndex(), std::move(entry));
 }
 

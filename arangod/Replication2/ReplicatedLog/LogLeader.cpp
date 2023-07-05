@@ -1587,7 +1587,7 @@ auto replicated_log::LogLeader::getInternalLogIterator(
     explicit Adapter(std::unique_ptr<InMemoryLogIterator> iter, LogRange range)
         : iter(std::move(iter)), range(range) {}
 
-    auto next() -> std::optional<PersistingLogEntry> override {
+    auto next() -> std::optional<LogEntry> override {
       auto entry = iter->next();
       if (entry && range.contains(entry->entry().logIndex())) {
         return entry->entry();

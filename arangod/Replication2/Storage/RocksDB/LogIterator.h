@@ -24,7 +24,7 @@
 #pragma once
 
 #include "Basics/RocksDBUtils.h"
-#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBValue.h"
@@ -51,7 +51,7 @@ struct LogIterator : PersistedLogIterator {
     _iter->Seek(first.string());
   }
 
-  auto next() -> std::optional<PersistingLogEntry> override {
+  auto next() -> std::optional<LogEntry> override {
     if (!_first) {
       _iter->Next();
     }
@@ -67,9 +67,9 @@ struct LogIterator : PersistedLogIterator {
       return std::nullopt;
     }
 
-    return std::optional<PersistingLogEntry>{
-        std::in_place, RocksDBKey::logIndex(_iter->key()),
-        RocksDBValue::data(_iter->value())};
+    return std::optional<LogEntry>{std::in_place,
+                                   RocksDBKey::logIndex(_iter->key()),
+                                   RocksDBValue::data(_iter->value())};
   }
 
   RocksDBKeyBounds const _bounds;

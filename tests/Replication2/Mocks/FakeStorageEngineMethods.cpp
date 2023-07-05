@@ -71,7 +71,7 @@ auto FakeStorageEngineMethods::getIterator(IteratorPosition position)
           _current(_store.lower_bound(start)),
           _end(_store.end()) {}
 
-    auto next() -> std::optional<PersistingLogEntry> override {
+    auto next() -> std::optional<LogEntry> override {
       if (_current != _end) {
         auto it = _current;
         ++_current;
@@ -186,10 +186,10 @@ FakeStorageEngineMethodsContext::FakeStorageEngineMethodsContext(
 void FakeStorageEngineMethodsContext::emplaceLogRange(LogRange range,
                                                       LogTerm term) {
   for (auto idx : range) {
-    log.emplace(idx, PersistingLogEntry{term, idx,
-                                        LogPayload::createFromString(
-                                            "(" + to_string(term) + "," +
-                                            to_string(idx) + ")")});
+    log.emplace(
+        idx, LogEntry{term, idx,
+                      LogPayload::createFromString("(" + to_string(term) + "," +
+                                                   to_string(idx) + ")")});
   }
 }
 

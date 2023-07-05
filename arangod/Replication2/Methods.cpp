@@ -244,9 +244,9 @@ struct VPackLogIterator final : PersistedLogIterator {
       : buffer(std::move(buffer_ptr)),
         iter(VPackSlice(buffer->data()).get("result")) {}
 
-  auto next() -> std::optional<PersistingLogEntry> override {
+  auto next() -> std::optional<LogEntry> override {
     while (iter != std::default_sentinel) {
-      return PersistingLogEntry::fromVelocyPack(*iter++);
+      return LogEntry::fromVelocyPack(*iter++);
     }
     return std::nullopt;
   }

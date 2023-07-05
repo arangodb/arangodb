@@ -26,8 +26,8 @@
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
 #include "Replication2/ReplicatedLog/LogEntryView.h"
-#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
 
 #include <Containers/ImmerMemoryPolicy.h>
 #include <velocypack/Builder.h>
@@ -69,7 +69,7 @@ struct InMemoryLog {
   using log_type_t =
       ::immer::flex_vector<T, arangodb::immer::arango_memory_policy>;
   using log_type = log_type_t<InMemoryLogEntry>;
-  using log_type_persisted = log_type_t<PersistingLogEntry>;
+  using log_type_persisted = log_type_t<LogEntry>;
 
  private:
   log_type _log{};

@@ -150,7 +150,7 @@ auto makeRange(LogTerm term, LogRange range) -> InMemoryLog {
   auto transient = log.transient();
   for (auto idx : range) {
     transient.push_back(InMemoryLogEntry{
-        PersistingLogEntry{term, idx, LogPayload::createFromString("")}});
+        LogEntry{term, idx, LogPayload::createFromString("")}});
   }
   return InMemoryLog(transient.persistent());
 }

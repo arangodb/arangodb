@@ -70,7 +70,7 @@ struct SimpleIterator : PersistedLogIterator {
   SimpleIterator(I begin, I end) : current(begin), end(end) {}
   ~SimpleIterator() override = default;
 
-  auto next() -> std::optional<PersistingLogEntry> override {
+  auto next() -> std::optional<LogEntry> override {
     if (current == end) {
       return std::nullopt;
     }
@@ -277,14 +277,11 @@ TYPED_TEST(StorageEngineMethodsTest, write_drop_data) {
 
 TYPED_TEST(StorageEngineMethodsTest, write_log_entries) {
   auto const entries = std::vector{
-      PersistingLogEntry{LogTerm{1}, LogIndex{1},
-                         LogPayload::createFromString("first")},
-      PersistingLogEntry{LogTerm{1}, LogIndex{2},
-                         LogPayload::createFromString("second")},
-      PersistingLogEntry{LogTerm{2}, LogIndex{3},
-                         LogPayload::createFromString("third")},
-      PersistingLogEntry{LogTerm{2}, LogIndex{1000},
-                         LogPayload::createFromString("thousand")},
+      LogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
+      LogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
+      LogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
+      LogEntry{LogTerm{2}, LogIndex{1000},
+               LogPayload::createFromString("thousand")},
   };
 
   {
@@ -305,14 +302,11 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries) {
 
 TYPED_TEST(StorageEngineMethodsTest, write_log_entries_remove_front_back) {
   auto const entries = std::vector{
-      PersistingLogEntry{LogTerm{1}, LogIndex{1},
-                         LogPayload::createFromString("first")},
-      PersistingLogEntry{LogTerm{1}, LogIndex{2},
-                         LogPayload::createFromString("second")},
-      PersistingLogEntry{LogTerm{2}, LogIndex{3},
-                         LogPayload::createFromString("third")},
-      PersistingLogEntry{LogTerm{2}, LogIndex{1000},
-                         LogPayload::createFromString("thousand")},
+      LogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
+      LogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
+      LogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
+      LogEntry{LogTerm{2}, LogIndex{1000},
+               LogPayload::createFromString("thousand")},
   };
 
   {
@@ -343,14 +337,11 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries_remove_front_back) {
 
 TYPED_TEST(StorageEngineMethodsTest, write_log_entries_iter_after_remove) {
   auto const entries = std::vector{
-      PersistingLogEntry{LogTerm{1}, LogIndex{1},
-                         LogPayload::createFromString("first")},
-      PersistingLogEntry{LogTerm{1}, LogIndex{2},
-                         LogPayload::createFromString("second")},
-      PersistingLogEntry{LogTerm{2}, LogIndex{3},
-                         LogPayload::createFromString("third")},
-      PersistingLogEntry{LogTerm{2}, LogIndex{1000},
-                         LogPayload::createFromString("thousand")},
+      LogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
+      LogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
+      LogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
+      LogEntry{LogTerm{2}, LogIndex{1000},
+               LogPayload::createFromString("thousand")},
   };
 
   {

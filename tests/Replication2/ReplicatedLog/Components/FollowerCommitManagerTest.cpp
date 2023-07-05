@@ -52,7 +52,7 @@ auto makeRangeIter(LogRange range) -> std::unique_ptr<LogViewRangeIterator> {
   auto transient = log.transient();
   for (auto idx : range) {
     transient.push_back(InMemoryLogEntry{
-        PersistingLogEntry{LogTerm{1}, idx, LogPayload::createFromString("")}});
+        LogEntry{LogTerm{1}, idx, LogPayload::createFromString("")}});
   }
   return InMemoryLog(transient.persistent()).getIteratorRange(range);
 }

@@ -37,8 +37,7 @@ namespace arangodb::replication2::test {
 using namespace replicated_log;
 
 struct MockLog : replication2::replicated_log::PersistedLog {
-  using storeType =
-      std::map<replication2::LogIndex, replication2::PersistingLogEntry>;
+  using storeType = std::map<replication2::LogIndex, replication2::LogEntry>;
 
   explicit MockLog(replication2::LogId id);
   explicit MockLog(replication2::GlobalLogIdentifier gid);
@@ -57,7 +56,7 @@ struct MockLog : replication2::replicated_log::PersistedLog {
 
   void setEntry(replication2::LogIndex idx, replication2::LogTerm term,
                 replication2::LogPayload payload);
-  void setEntry(replication2::PersistingLogEntry);
+  void setEntry(replication2::LogEntry);
 
   [[nodiscard]] storeType getStorage() const { return _storage; }
 
