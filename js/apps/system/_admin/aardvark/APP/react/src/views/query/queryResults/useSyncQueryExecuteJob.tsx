@@ -12,8 +12,9 @@ export const useSyncQueryExecuteJob = ({
   index: number;
 }) => {
   const { setQueryResultById, appendQueryResultById, aqlJsonEditorRef } =
-    useQueryContext();
+  useQueryContext();
   useEffect(() => {
+    let timer = 0;
     const route = getApiRouteForCurrentDB();
     const checkCursor = async ({
       cursorId,
@@ -63,7 +64,7 @@ export const useSyncQueryExecuteJob = ({
         const jobResponse = await route.put(`/job/${asyncJobId}`);
         if (jobResponse.statusCode === 204) {
           // job is still running
-          checkJob();
+          timer = window.setTimeout(checkJob, 1000);
         } else if (jobResponse.statusCode === 201) {
           // job is created
           const { hasMore, result, id: cursorId, extra } = jobResponse.body;
@@ -124,6 +125,9 @@ export const useSyncQueryExecuteJob = ({
       return;
     }
     checkJob();
+    return () => {
+      clearTimeout(timer);
+    };
     // disabled because these functions don't need to be in deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asyncJobId, index]);
