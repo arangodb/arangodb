@@ -110,7 +110,7 @@ export const QueryEditorBottomBar = () => {
               aria-label="Query execution options"
               icon={<ChevronDownIcon />}
             />
-            <MenuList>
+            <MenuList zIndex="500">
               <MenuItem
                 onClick={() => onProfile({ queryValue, queryBindParams })}
               >
