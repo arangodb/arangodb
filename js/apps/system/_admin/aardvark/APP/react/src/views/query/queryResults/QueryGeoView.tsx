@@ -1,6 +1,8 @@
 import { Box } from "@chakra-ui/react";
 import type { GeoJSON as GeoJSONUnionType } from "geojson";
 import L, { Layer } from "leaflet";
+import GestureHandling from "leaflet-gesture-handling";
+import "leaflet-gesture-handling/dist/leaflet-gesture-handling.css";
 import { GeodesicLine } from "leaflet.geodesic";
 import React from "react";
 import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
@@ -35,7 +37,7 @@ export const QueryGeoView = ({
   if (!newResult) {
     return null;
   }
-
+  L.Map.addInitHook("addHandler", "gestureHandling", GestureHandling);
   return (
     <Box height="500px">
       <MapContainer
@@ -43,6 +45,8 @@ export const QueryGeoView = ({
           height: "500px"
         }}
         scrollWheelZoom={false}
+        // @ts-ignore
+        gestureHandling={true}
       >
         <MapInner geometryResult={newResult} />
       </MapContainer>
@@ -95,10 +99,21 @@ const SingleGeometry = ({ geometry }: { geometry: GeoJSONUnionType }) => {
       setMarkers([geojson]);
     }
   }, [geometry, isPolygonGeometry, isLineStringGeometry, map]);
-
   if (isPointGeometry) {
     return (
       <GeoJSON
+        onEachFeature={(feature, layer) => {
+          // create a HTML element for the popup
+          const element = document.createElement("pre");
+          element.appendChild(
+            document.createTextNode(JSON.stringify(feature, null, 2))
+          );
+          layer.bindPopup(element, {
+            maxWidth: 300,
+            minWidth: 300,
+            maxHeight: 250
+          });
+        }}
         data={geometry}
         pointToLayer={(_feature, latlng) => {
           const marker = L.circleMarker(latlng, geojsonMarkerOptions);
