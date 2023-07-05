@@ -49,6 +49,7 @@
 #include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/Storage/IteratorPosition.h"
 #include "Scheduler/Scheduler.h"
 #include "Replication2/IScheduler.h"
 #include "Replication2/ReplicatedLog/Components/InMemoryLogManager.h"
@@ -190,7 +191,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::chrono::steady_clock::time_point _errorBackoffEndTP{};
     std::shared_ptr<AbstractFollower> _impl;
     TermIndexPair lastAckedIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
-    LogIndex nextPrevLogIndex = LogIndex{0};
+    storage::IteratorPosition nextPrevLogPosition;
     LogIndex lastAckedCommitIndex = LogIndex{0};
     LogIndex lastAckedLowestIndexToKeep = LogIndex{0};
     LogIndex syncIndex = LogIndex{0};

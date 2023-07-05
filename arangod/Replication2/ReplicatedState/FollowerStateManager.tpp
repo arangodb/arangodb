@@ -32,6 +32,7 @@
 #include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedState/LazyDeserializingIterator.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 namespace {
 inline auto calcRetryDuration(std::uint64_t retryCount)
@@ -76,9 +77,10 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
       ADB_PROD_ASSERT(guard->_applyEntriesIndexInFlight.has_value());
       _metrics->replicatedStateApplyDebt->operator-=(
           guard->_applyEntriesIndexInFlight->value -
-          guard->_lastAppliedIndex.value);
-      auto const index = guard->_lastAppliedIndex =
-          *guard->_applyEntriesIndexInFlight;
+          guard->_lastAppliedPosition.index().value);
+      guard->_lastAppliedPosition = storage::IteratorPosition::fromLogIndex(
+          *guard->_applyEntriesIndexInFlight);
+      auto const index = guard->_lastAppliedPosition.index();
       // TODO
       //   _metrics->replicatedStateNumberProcessedEntries->count(range.count());
 
@@ -111,7 +113,8 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
         << _loggerContext
         << " Unexpected error returned by apply entries: " << res;
 
-    if (res.fail() || guard->_commitIndex > guard->_lastAppliedIndex) {
+    if (res.fail() ||
+        guard->_commitIndex > guard->_lastAppliedPosition.index()) {
       return guard->maybeScheduleApplyEntries(_metrics, _scheduler);
     }
     return std::nullopt;
@@ -155,13 +158,13 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
   if (_stream == nullptr) {
     return std::nullopt;
   }
-  if (_commitIndex > _lastAppliedIndex and
+  if (_commitIndex > _lastAppliedPosition.index() and
       not _applyEntriesIndexInFlight.has_value()) {
     // Apply at most 1000 entries at once, so we have a smoother progression.
     _applyEntriesIndexInFlight =
-        std::min(_commitIndex, _lastAppliedIndex + 1000);
-    auto range =
-        LogRange{_lastAppliedIndex + 1, *_applyEntriesIndexInFlight + 1};
+        std::min(_commitIndex, _lastAppliedPosition.index() + 1000);
+    auto range = LogRange{_lastAppliedPosition.index() + 1,
+                          *_applyEntriesIndexInFlight + 1};
     auto promise = futures::Promise<Result>();
     auto future = promise.getFuture();
     auto rttGuard = MeasureTimeGuard(*metrics->replicatedStateApplyEntriesRtt);
@@ -213,10 +216,10 @@ auto FollowerStateManager<S>::GuardedData::getResolvablePromises(
 template<typename S>
 auto FollowerStateManager<S>::GuardedData::waitForApplied(LogIndex index)
     -> WaitForQueue::WaitForFuture {
-  if (index <= _lastAppliedIndex) {
+  if (index <= _lastAppliedPosition.index()) {
     // Resolve the promise immediately before returning the future
     auto promise = WaitForQueue::WaitForPromise();
-    promise.setTry(futures::Try(_lastAppliedIndex));
+    promise.setTry(futures::Try(_lastAppliedPosition.index()));
     return promise.getFuture();
   }
   return _waitQueue.waitFor(index);

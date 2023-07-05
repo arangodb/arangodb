@@ -71,6 +71,7 @@
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -236,7 +237,8 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
               auto const commitIndex =
                   logLeader->_inMemoryLogManager->getCommitIndex();
               LOG_CTX("71801", TRACE, follower->logContext)
-                  << "last matched index = " << follower->nextPrevLogIndex
+                  << "last matched index = "
+                  << follower->nextPrevLogPosition.index()
                   << ", current index = " << lastAvailableIndex
                   << ", last acked commit index = "
                   << follower->lastAckedCommitIndex
@@ -246,10 +248,11 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                   << ", current litk = " << lowestIndexToKeep;
               // We can only get here if there is some new information
               // for this follower
-              TRI_ASSERT(
-                  follower->nextPrevLogIndex != lastAvailableIndex.index ||
-                  commitIndex != follower->lastAckedCommitIndex ||
-                  lowestIndexToKeep != follower->lastAckedLowestIndexToKeep);
+              TRI_ASSERT(follower->nextPrevLogPosition.index() !=
+                             lastAvailableIndex.index ||
+                         commitIndex != follower->lastAckedCommitIndex ||
+                         lowestIndexToKeep !=
+                             follower->lastAckedLowestIndexToKeep);
 
               return self.createAppendEntriesRequest(*follower,
                                                      lastAvailableIndex);
@@ -556,7 +559,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
           FollowerStatistics{
               LogStatistics{f->lastAckedIndex, f->lastAckedCommitIndex},
               f->lastErrorReason, lastRequestLatencyMS, state,
-              f->nextPrevLogIndex, f->snapshotAvailable});
+              f->nextPrevLogPosition.index(), f->snapshotAvailable});
     }
 
     status.commitLagMS = _inMemoryLogManager->calculateCommitLag();
@@ -824,13 +827,13 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   auto const lastAvailableIndex =
       _self._inMemoryLogManager->getSpearheadTermIndexPair();
   LOG_CTX("8844a", TRACE, follower->logContext)
-      << "last matched index = " << follower->nextPrevLogIndex
+      << "last matched index = " << follower->nextPrevLogPosition.index()
       << ", current index = " << lastAvailableIndex
       << ", last acked commit index = " << follower->lastAckedCommitIndex
       << ", current commit index = " << commitIndex
       << ", last acked lci = " << follower->lastAckedLowestIndexToKeep
       << ", current lci = " << lowestIndexToKeep;
-  if (follower->nextPrevLogIndex == lastAvailableIndex.index &&
+  if (follower->nextPrevLogPosition.index() == lastAvailableIndex.index &&
       commitIndex == follower->lastAckedCommitIndex &&
       lowestIndexToKeep == follower->lastAckedLowestIndexToKeep) {
     LOG_CTX("74b71", TRACE, follower->logContext) << "up to date";
@@ -868,8 +871,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
     replicated_log::LogLeader::FollowerInfo& follower,
     TermIndexPair const& lastAvailableIndex) const
     -> std::pair<AppendEntriesRequest, TermIndexPair> {
-  auto const prevLogTerm =
-      _self._inMemoryLogManager->getTermOfIndex(follower.nextPrevLogIndex);
+  auto const prevLogTerm = _self._inMemoryLogManager->getTermOfIndex(
+      follower.nextPrevLogPosition.index());
 
   auto const [releaseIndex, lowestIndexToKeep] =
       _self._compactionManager->getIndexes();
@@ -890,20 +893,20 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   follower._lastRequestStartTP = std::chrono::steady_clock::now();
 
   if (prevLogTerm) {
-    req.prevLogEntry.index = follower.nextPrevLogIndex;
+    req.prevLogEntry.index = follower.nextPrevLogPosition.index();
     req.prevLogEntry.term = *prevLogTerm;
-    TRI_ASSERT(req.prevLogEntry.index == follower.nextPrevLogIndex);
+    TRI_ASSERT(req.prevLogEntry.index == follower.nextPrevLogPosition.index());
   } else {
     req.prevLogEntry.index = LogIndex{0};
     req.prevLogEntry.term = LogTerm{0};
   }
 
-  // Now get a iterator starting at follower.nextPrevLogIndex + 1 but also
+  // Now get a iterator starting at follower.nextPrevLogPosition + 1 but also
   // including the InMemory part.
 
-  if (spearheadIdx > follower.nextPrevLogIndex) {
+  if (spearheadIdx > follower.nextPrevLogPosition.index()) {
     auto it = _self._inMemoryLogManager->getInternalLogIterator(
-        follower.nextPrevLogIndex + 1);
+        follower.nextPrevLogPosition.index() + 1);
     auto transientEntries = decltype(req.entries)::transient_type{};
     auto sizeCounter = std::size_t{0};
     while (auto entry = it->next()) {
@@ -1048,7 +1051,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
       if (response.isSuccess()) {
         follower.numErrorsSinceLastAnswer = 0;
         follower.lastAckedIndex = lastIndex;
-        follower.nextPrevLogIndex = lastIndex.index;
+        follower.nextPrevLogPosition =
+            storage::IteratorPosition::fromLogIndex(lastIndex.index);
         follower.lastAckedCommitIndex = currentCommitIndex;
         follower.lastAckedLowestIndexToKeep = currentLITK;
       } else {
@@ -1058,10 +1062,13 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
           case AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch:
             follower.numErrorsSinceLastAnswer = 0;
             TRI_ASSERT(response.conflict.has_value());
-            follower.nextPrevLogIndex =
-                response.conflict.value().index.saturatedDecrement();
+            // TODO - use term index map
+            follower.nextPrevLogPosition =
+                storage::IteratorPosition::fromLogIndex(
+                    response.conflict.value().index.saturatedDecrement());
             LOG_CTX("33c6d", DEBUG, follower.logContext)
-                << "reset last matched index to " << follower.nextPrevLogIndex;
+                << "reset last matched index to "
+                << follower.nextPrevLogPosition.index();
             break;
           default:
             LOG_CTX("1bd0b", DEBUG, follower.logContext)
@@ -1638,7 +1645,8 @@ replicated_log::LogLeader::FollowerInfo::FollowerInfo(
     std::shared_ptr<AbstractFollower> impl, LogIndex lastLogIndex,
     LoggerContext const& logContext)
     : _impl(std::move(impl)),
-      nextPrevLogIndex(lastLogIndex),
+      nextPrevLogPosition(
+          storage::IteratorPosition::fromLogIndex(lastLogIndex)),
       logContext(
           logContext.with<logContextKeyLogComponent>("follower-info")
               .with<logContextKeyFollowerId>(_impl->getParticipantId())) {}

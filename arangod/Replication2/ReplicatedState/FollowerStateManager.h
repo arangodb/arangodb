@@ -30,6 +30,7 @@
 #include "Replication2/ReplicatedState/WaitForQueue.h"
 
 #include "Basics/Guarded.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 namespace arangodb {
 class Result;
@@ -102,7 +103,7 @@ struct FollowerStateManager
     std::shared_ptr<StreamImpl> _stream;
     WaitForQueue _waitQueue{};
     LogIndex _commitIndex = LogIndex{0};
-    LogIndex _lastAppliedIndex = LogIndex{0};
+    storage::IteratorPosition _lastAppliedPosition{};
     std::optional<Result> _lastSnapshotError{};
     std::uint64_t _snapshotErrorCounter{0};
     std::optional<LogIndex> _applyEntriesIndexInFlight = std::nullopt;
