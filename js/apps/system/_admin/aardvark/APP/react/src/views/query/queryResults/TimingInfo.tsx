@@ -127,7 +127,6 @@ export const TimingInfo = ({
       widthPercentage: widthPercentage < 1 ? 1 : widthPercentage
     };
   });
-  const hasWrites = writesExecuted > 0 || writesIgnored > 0;
   return (
     <>
       <Stack spacing="1" direction="row" alignItems="center">
@@ -221,27 +220,44 @@ export const TimingInfo = ({
           </PopoverBody>
         </PopoverContent>
       </Popover>
-      {hasWrites && (
-        <>
-          <Stack spacing="1" direction="row" alignItems="center">
-            <CheckCircleIcon color="green.500" />
-            <Text>
-              {writesExecuted} {writesExecuted === 1 ? "write" : "writes"}{" "}
-              executed
-            </Text>
-          </Stack>
-          <Stack spacing="1" direction="row" alignItems="center">
-            {writesIgnored === 0 ? (
-              <CheckCircleIcon color="green.500" />
-            ) : (
-              <WarningIcon color="yellow.500" />
-            )}
-            <Text>
-              {writesIgnored} {writesIgnored === 1 ? "write" : "writes"} ignored
-            </Text>
-          </Stack>
-        </>
-      )}
+      <WritesInfo
+        writesExecuted={writesExecuted}
+        writesIgnored={writesIgnored}
+      />
+    </>
+  );
+};
+
+const WritesInfo = ({
+  writesExecuted,
+  writesIgnored
+}: {
+  writesExecuted: any;
+  writesIgnored: any;
+}) => {
+  const hasWrites = writesExecuted > 0 || writesIgnored > 0;
+
+  if (!hasWrites) {
+    return null;
+  }
+  return (
+    <>
+      <Stack spacing="1" direction="row" alignItems="center">
+        <CheckCircleIcon color="green.500" />
+        <Text>
+          {writesExecuted} {writesExecuted === 1 ? "write" : "writes"} executed
+        </Text>
+      </Stack>
+      <Stack spacing="1" direction="row" alignItems="center">
+        {writesIgnored === 0 ? (
+          <CheckCircleIcon color="green.500" />
+        ) : (
+          <WarningIcon color="yellow.500" />
+        )}
+        <Text>
+          {writesIgnored} {writesIgnored === 1 ? "write" : "writes"} ignored
+        </Text>
+      </Stack>
     </>
   );
 };
