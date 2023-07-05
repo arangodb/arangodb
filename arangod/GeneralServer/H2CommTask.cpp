@@ -663,6 +663,11 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
 
   auto* tmp = static_cast<H2Response*>(res.get());
 
+  // handle response code 204 No Content
+  if (tmp->responseCode() == rest::ResponseCode::NO_CONTENT) {
+    tmp->clearBody();
+  }
+
   if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
       Logger::logRequestParameters()) {
     auto& bodyBuf = tmp->body();
