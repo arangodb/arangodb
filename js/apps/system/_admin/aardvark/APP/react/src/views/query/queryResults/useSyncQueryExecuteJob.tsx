@@ -12,7 +12,7 @@ export const useSyncQueryExecuteJob = ({
   index: number;
 }) => {
   const { setQueryResultById, appendQueryResultById, aqlJsonEditorRef } =
-  useQueryContext();
+    useQueryContext();
   useEffect(() => {
     let timer = 0;
     const route = getApiRouteForCurrentDB();
@@ -64,7 +64,7 @@ export const useSyncQueryExecuteJob = ({
         const jobResponse = await route.put(`/job/${asyncJobId}`);
         if (jobResponse.statusCode === 204) {
           // job is still running
-          timer = window.setTimeout(checkJob, 1000);
+          timer = window.setTimeout(checkJob, 2000);
         } else if (jobResponse.statusCode === 201) {
           // job is created
           const { hasMore, result, id: cursorId, extra } = jobResponse.body;
