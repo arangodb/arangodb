@@ -498,6 +498,12 @@ class RocksDBEngine final : public StorageEngine {
 
   std::shared_ptr<StorageSnapshot> currentSnapshot() override;
 
+  void addCacheMetrics(uint64_t initial, uint64_t effective) noexcept;
+
+  size_t minValueSizeForEdgeCompression() const noexcept;
+
+  int accelerationFactorForEdgeCompression() const noexcept;
+
  private:
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
   [[nodiscard]] Result dropReplicatedStates(TRI_voc_tick_t databaseId);
@@ -572,6 +578,9 @@ class RocksDBEngine final : public StorageEngine {
                                       // for intermediate commit
 
   uint64_t _maxParallelCompactions;
+
+  size_t _minValueSizeForEdgeCompression;
+  uint32_t _accelerationFactorForEdgeCompression;
 
   // hook-ins for recovery process
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
@@ -741,6 +750,12 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Counter& _metricsTreeRebuildsFailure;
   metrics::Counter& _metricsTreeHibernations;
   metrics::Counter& _metricsTreeResurrections;
+
+  // total size of uncompressed values for the edge cache
+  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeInitial;
+  // total size of values stored in the edge cache (can be smaller than the
+  // initial size because of compression)
+  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeEffective;
 
   // @brief persistor for replicated logs
   std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
