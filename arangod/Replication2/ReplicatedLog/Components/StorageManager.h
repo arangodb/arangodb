@@ -85,6 +85,8 @@ struct StorageManager : IStorageManager,
     std::deque<StorageRequest> queue;
     storage::PersistedStateInfo info;
     bool workerActive{false};
+
+    auto computeTermIndexMap() const -> TermIndexMapping;
   };
   Guarded<GuardedData> guardedData;
   using GuardType = Guarded<GuardedData>::mutex_guard_type;

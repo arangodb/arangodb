@@ -41,6 +41,8 @@
 #endif
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntryView.h"
 
 namespace arangodb::replication2::replicated_log {
 

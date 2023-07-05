@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TermIndexMapping.h"
+
 #include "LogCommon.h"
 #include "Basics/debugging.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -31,7 +33,7 @@ using namespace arangodb::replication2::replicated_log;
 auto TermIndexMapping::getTermRange(LogTerm t) const noexcept
     -> std::optional<LogRange> {
   if (auto iter = _mapping.find(t); iter != _mapping.end()) {
-    return iter->second;
+    return iter->second.range;
   }
   return std::nullopt;
 }
@@ -50,39 +52,44 @@ auto operator+(LogTerm t, std::uint64_t delta) -> LogTerm {
 
 void TermIndexMapping::insert(LogRange range, LogTerm term) noexcept {
   if (_mapping.empty()) {
-    _mapping.emplace(term, range);
+    _mapping.emplace(
+        term,
+        TermInfo{range, storage::IteratorPosition::fromLogIndex(range.from)});
   } else {
-    auto [prevTerm, prevRange] = *_mapping.rbegin();
-    ADB_PROD_ASSERT(prevRange.to == range.from);
+    auto [prevTerm, prevInfo] = *_mapping.rbegin();
+    ADB_PROD_ASSERT(prevInfo.range.to == range.from);
     ADB_PROD_ASSERT(prevTerm <= term);
     if (prevTerm == term) {
-      _mapping.rbegin()->second.to = range.to;
+      _mapping.rbegin()->second.range.to = range.to;
     } else {
-      _mapping.emplace_hint(_mapping.end(), term, range);
+      _mapping.emplace_hint(
+          _mapping.end(), term,
+          TermInfo{range, storage::IteratorPosition::fromLogIndex(range.from)});
     }
   }
 }
 
 void TermIndexMapping::removeFront(LogIndex stop) noexcept {
   auto keep = std::find_if(_mapping.begin(), _mapping.end(), [&](auto pair) {
-    return pair.second.contains(stop);
+    return pair.second.range.contains(stop);
   });
 
   if (keep != _mapping.end()) {
-    keep->second.from = stop;
+    keep->second.range.from = stop;
   }
 
   _mapping.erase(_mapping.begin(), keep);
 }
 
 void TermIndexMapping::removeBack(LogIndex start) noexcept {
-  auto keep = std::find_if(_mapping.rbegin(), _mapping.rend(),
-                           [&](auto pair) { return pair.second.from < start; });
+  auto keep = std::find_if(_mapping.rbegin(), _mapping.rend(), [&](auto pair) {
+    return pair.second.range.from < start;
+  });
 
   ADB_PROD_ASSERT(_mapping.rbegin().base() == _mapping.end());
 
   if (keep != _mapping.rend()) {
-    keep->second.to = start;
+    keep->second.range.to = start;
   }
 
   _mapping.erase(keep.base(), _mapping.end());
@@ -91,7 +98,7 @@ void TermIndexMapping::removeBack(LogIndex start) noexcept {
 auto TermIndexMapping::getTermOfIndex(LogIndex idx) const noexcept
     -> std::optional<LogTerm> {
   auto term = std::find_if(_mapping.begin(), _mapping.end(), [&](auto pair) {
-    return pair.second.contains(idx);
+    return pair.second.range.contains(idx);
   });
 
   if (term != _mapping.end()) {
@@ -103,8 +110,8 @@ auto TermIndexMapping::getTermOfIndex(LogIndex idx) const noexcept
 auto TermIndexMapping::getLastIndex() const noexcept
     -> std::optional<TermIndexPair> {
   if (!_mapping.empty()) {
-    auto [term, range] = *_mapping.rbegin();
-    return TermIndexPair{term, range.to.saturatedDecrement()};
+    auto [term, info] = *_mapping.rbegin();
+    return TermIndexPair{term, info.range.to.saturatedDecrement()};
   }
   return std::nullopt;
 }
@@ -112,8 +119,8 @@ auto TermIndexMapping::getLastIndex() const noexcept
 auto TermIndexMapping::getFirstIndex() const noexcept
     -> std::optional<TermIndexPair> {
   if (!_mapping.empty()) {
-    auto [term, range] = *_mapping.begin();
-    return TermIndexPair{term, range.from};
+    auto [term, info] = *_mapping.begin();
+    return TermIndexPair{term, info.range.from};
   }
   return std::nullopt;
 }
@@ -121,25 +128,31 @@ auto TermIndexMapping::getFirstIndex() const noexcept
 void TermIndexMapping::insert(LogIndex idx, LogTerm term) noexcept {
   auto iter = std::invoke([&] {
     if (_mapping.empty()) {
-      return _mapping.emplace(term, LogRange{idx, idx}).first;
+      return _mapping
+          .emplace(term, TermInfo{LogRange{idx, idx},
+                                  storage::IteratorPosition::fromLogIndex(idx)})
+          .first;
     } else if (auto iter = _mapping.rbegin(); iter->first != term) {
       ADB_PROD_ASSERT(iter->first < term);
-      ADB_PROD_ASSERT(iter->second.to == idx);
+      ADB_PROD_ASSERT(iter->second.range.to == idx);
 
-      return _mapping.emplace(term, LogRange{idx, idx}).first;
+      return _mapping
+          .emplace(term, TermInfo{LogRange{idx, idx},
+                                  storage::IteratorPosition::fromLogIndex(idx)})
+          .first;
     } else {
       return std::prev(_mapping.end());
     }
   });
 
-  ADB_PROD_ASSERT(iter->second.to == idx);
-  iter->second.to = idx + 1;
+  ADB_PROD_ASSERT(iter->second.range.to == idx);
+  iter->second.range.to = idx + 1;
 }
 
 void TermIndexMapping::append(TermIndexMapping const& other) noexcept {
   // TODO optimize
-  for (auto [term, range] : other._mapping) {
-    insert(range, term);
+  for (auto [term, info] : other._mapping) {
+    insert(info.range, term);
   }
 }
 
@@ -147,8 +160,8 @@ auto TermIndexMapping::getIndexRange() const noexcept -> LogRange {
   if (_mapping.empty()) {
     return LogRange{};
   } else {
-    auto from = _mapping.begin()->second.from;
-    auto to = _mapping.rbegin()->second.to;
+    auto from = _mapping.begin()->second.range.from;
+    auto to = _mapping.rbegin()->second.range.to;
     return LogRange{from, to};
   }
 }

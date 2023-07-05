@@ -34,10 +34,9 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 
-using namespace arangodb;
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_state;
+
+namespace arangodb::replication2::replicated_log {
 
 struct comp::StorageManager::StorageOperation {
   virtual ~StorageOperation() = default;
@@ -179,10 +178,19 @@ StorageManager::GuardedData::GuardedData(
     std::unique_ptr<IStorageEngineMethods> methods_ptr)
     : methods(std::move(methods_ptr)) {
   ADB_PROD_ASSERT(methods != nullptr);
-  // TODO is it really necessary to load the entire log?
-  auto log = InMemoryLog::loadFromMethods(*methods);
   info = methods->readMetadata().get();
-  spearheadMapping = onDiskMapping = log.computeTermIndexMap();
+  spearheadMapping = onDiskMapping = computeTermIndexMap();
+}
+
+auto StorageManager::GuardedData::computeTermIndexMap() const
+    -> TermIndexMapping {
+  TermIndexMapping mapping;
+  auto iter = methods->getIterator(
+      storage::IteratorPosition::fromLogIndex(LogIndex{0}));
+  while (auto entry = iter->next()) {
+    mapping.insert(entry->logIndex(), entry->logTerm());
+  }
+  return mapping;
 }
 
 auto StorageManager::scheduleOperation(
@@ -368,9 +376,8 @@ auto StorageManager::getPersistedLogIterator(LogIndex first) const
 
 auto StorageManager::getPersistedLogIterator(std::optional<LogRange> bounds)
     const -> std::unique_ptr<PersistedLogIterator> {
-  auto range =
-      bounds ? *bounds
-             : LogRange{LogIndex{0}, LogIndex{static_cast<std::uint64_t>(-1)}};
+  auto range = bounds.value_or(
+      LogRange{LogIndex{0}, LogIndex{static_cast<std::uint64_t>(-1)}});
 
   auto guard = guardedData.getLockedGuard();
   if (guard->methods == nullptr) {
@@ -462,3 +469,5 @@ StorageManager::StorageRequest::StorageRequest(
     std::unique_ptr<StorageOperation> op, TermIndexMapping mappingResult)
     : operation(std::move(op)), mappingResult(std::move(mappingResult)) {}
 StorageManager::StorageRequest::~StorageRequest() = default;
+
+}  // namespace arangodb::replication2::replicated_log
