@@ -1,6 +1,8 @@
 v3.10.10 (XXXX-XX-XX)
 ---------------------
 
+* Upgraded OpenSSL to 3.0.9.
+
 * When trying to read multiple documents, the coordinator will now handle empty
   lists gracefully and return an empty result set instead of an error.
 
