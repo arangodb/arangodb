@@ -933,6 +933,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
       << " entries , prevLogEntry.term = " << req.prevLogEntry.term
       << ", prevLogEntry.index = " << req.prevLogEntry.index
       << ", leaderCommit = " << req.leaderCommit
+      << ", waitForSync = " << req.waitForSync
       << ", lci = " << req.lowestIndexToKeep << ", msg-id = " << req.messageId;
 
   return std::make_pair(std::move(req), lastIndex);
@@ -1041,10 +1042,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
             response.snapshotAvailable, response.messageId);
       }
 
-      TRI_ASSERT(response.syncIndex >= follower.syncIndex)
-          << response.syncIndex << " vs. " << follower.syncIndex;
-      follower.syncIndex = response.syncIndex;
-
       follower.lastErrorReason = response.reason;
       if (response.isSuccess()) {
         follower.numErrorsSinceLastAnswer = 0;
@@ -1052,6 +1049,17 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         follower.nextPrevLogIndex = lastIndex.index;
         follower.lastAckedCommitIndex = currentCommitIndex;
         follower.lastAckedLowestIndexToKeep = currentLITK;
+
+        // Note that it is not necessary to update the follower's syncIndex
+        // exclusively on success. While doing so after getting an
+        // AppendEntriesError, but then we might end up with a syncIndex that is
+        // greater than the lastAckedIndex, which is correct, but
+        // counterintuitive. As this is not performance critical, it would be
+        // nicer to know that the syncIndex is always = lastAckedIndex (in case
+        // of waitForSync = true).
+        TRI_ASSERT(response.syncIndex >= follower.syncIndex)
+            << response.syncIndex << " vs. " << follower.syncIndex;
+        follower.syncIndex = response.syncIndex;
       } else {
         TRI_ASSERT(response.reason.error !=
                    AppendEntriesErrorReason::ErrorType::kNone);
