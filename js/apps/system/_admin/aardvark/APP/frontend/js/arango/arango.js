@@ -271,19 +271,6 @@
       });
     },
 
-    parseInput: function (element) {
-      var parsed;
-      var string = $(element).val();
-
-      try {
-        parsed = JSON.parse(string);
-      } catch (e) {
-        parsed = string;
-      }
-
-      return parsed;
-    },
-
     calculateCenterDivHeight: function () {
       var navigation = $('.navbar').height();
       var windowHeight = $(window).height();
