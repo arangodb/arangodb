@@ -11,7 +11,7 @@ import {
 } from "@chakra-ui/react";
 import React from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
-import { downloadPost } from "../../../utils/downloadHelper";
+import { downloadBlob, downloadPost } from "../../../utils/downloadHelper";
 import { QueryResultType, useQueryContext } from "../QueryContextProvider";
 import { QueryGeoView } from "./QueryGeoView";
 import { QueryGraphView } from "./QueryGraphView";
@@ -21,6 +21,7 @@ import { ResultTypeBox } from "./ResultTypeBox";
 import { TimingInfo } from "./TimingInfo";
 import { DisplayType, useDisplayTypes } from "./useDisplayTypes";
 import { useSyncQueryExecuteJob } from "./useSyncQueryExecuteJob";
+import Papa from "papaparse";
 
 export const QueryExecuteResult = ({
   index,
@@ -217,6 +218,23 @@ const ViewSwitch = ({
   );
 };
 
+const getAllowCSVDownload = (queryResult: QueryResultType) => {
+  // if nested array, don't allow CSV download
+  if (!queryResult.result || !queryResult.result.length) {
+    return false;
+  }
+  let allowCSVDownload = true;
+  queryResult.result.forEach((row: any) => {
+    if (typeof row === "object") {
+      Object.keys(row).forEach(key => {
+        if (typeof row[key] === "object") {
+          allowCSVDownload = false;
+        }
+      });
+    }
+  });
+  return allowCSVDownload;
+};
 const QueryExecuteResultFooter = ({
   queryResult
 }: {
@@ -234,13 +252,22 @@ const QueryExecuteResultFooter = ({
       }
     });
   };
+  const onDownloadCSV = async () => {
+    const csv = Papa.unparse(queryResult.result);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+    downloadBlob(url, "query-result.csv");
+  };
+  const allowCSVDownload = getAllowCSVDownload(queryResult);
   return (
     <Flex padding="2" alignItems="center" justifyContent="end">
       <Stack direction="row">
-        <Button
-          size="sm"
-          onClick={onDownload}
-        >
+        {allowCSVDownload && (
+          <Button size="sm" onClick={onDownloadCSV}>
+            Download CSV
+          </Button>
+        )}
+        <Button size="sm" onClick={onDownload}>
           Download JSON
         </Button>
         <Button

@@ -45,10 +45,10 @@ const makeBlobFilename = (headers: any) => {
   );
 };
 
-const downloadBlob = (blobUrl: string, filename: string) => {
+export const downloadBlob = (blobUrl: string, filename?: string) => {
   const a = document.createElement("a");
   a.href = blobUrl;
-  a.download = filename;
+  a.download = filename || "download";
   document.body.appendChild(a);
   a.click();
   window.setTimeout(() => {
