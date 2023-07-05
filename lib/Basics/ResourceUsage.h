@@ -151,7 +151,7 @@ class ResourceUsageAllocatorBase : public Allocator {
   template<typename... Args>
   ResourceUsageAllocatorBase(ResourceMonitor& resourceMonitor, Args&&... args)
       : Allocator(std::forward<Args>(args)...),
-        _resourceMonitor(resourceMonitor) {}
+        _resourceMonitor(&resourceMonitor) {}
 
   ResourceUsageAllocatorBase(ResourceUsageAllocatorBase&& other) noexcept
       : Allocator(other.rawAllocator()),
@@ -175,34 +175,34 @@ class ResourceUsageAllocatorBase : public Allocator {
         _resourceMonitor(other.resourceMonitor()) {}
 
   value_type* allocate(std::size_t n) {
-    _resourceMonitor.increaseMemoryUsage(sizeof(value_type) * n);
+    _resourceMonitor->increaseMemoryUsage(sizeof(value_type) * n);
     try {
       return Allocator::allocate(n);
     } catch (...) {
-      _resourceMonitor.decreaseMemoryUsage(sizeof(value_type) * n);
+      _resourceMonitor->decreaseMemoryUsage(sizeof(value_type) * n);
       throw;
     }
   }
 
   void deallocate(value_type* p, std::size_t n) {
     Allocator::deallocate(p, n);
-    _resourceMonitor.decreaseMemoryUsage(sizeof(value_type) * n);
+    _resourceMonitor->decreaseMemoryUsage(sizeof(value_type) * n);
   }
 
   Allocator const& rawAllocator() const noexcept {
     return static_cast<Allocator const&>(*this);
   }
 
-  ResourceMonitor& resourceMonitor() const noexcept { return _resourceMonitor; }
+  ResourceMonitor* resourceMonitor() const noexcept { return _resourceMonitor; }
 
   template<typename A>
   bool operator==(ResourceUsageAllocatorBase<A> const& other) const noexcept {
     return rawAllocator() == other.rawAllocator() &&
-           &_resourceMonitor == &other.resourceMonitor();
+           _resourceMonitor == other.resourceMonitor();
   }
 
  private:
-  ResourceMonitor& _resourceMonitor;
+  ResourceMonitor* _resourceMonitor;
 };
 
 template<typename T>
