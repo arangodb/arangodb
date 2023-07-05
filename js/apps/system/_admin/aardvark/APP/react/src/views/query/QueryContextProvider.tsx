@@ -5,6 +5,7 @@ import {
   QueryType,
   useFetchUserSavedQueries
 } from "./editor/useFetchUserSavedQueries";
+import { QueryNavigationPrompt } from "./QueryNavigationPrompt";
 import { useQueryExecutors } from "./useQueryExecutors";
 import { useQueryUpdaters } from "./useQueryUpdaters";
 import { useQueryValueModifiers } from "./useQueryValueModifiers";
@@ -211,6 +212,7 @@ export const QueryContextProvider = ({
         appendQueryResultById
       }}
     >
+      <QueryNavigationPrompt queryResults={queryResults} />
       {children}
     </QueryContext.Provider>
   );
