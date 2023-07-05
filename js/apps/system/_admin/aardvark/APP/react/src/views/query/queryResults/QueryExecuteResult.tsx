@@ -1,5 +1,6 @@
 import { WarningIcon } from "@chakra-ui/icons";
 import {
+  Alert,
   Box,
   Button,
   ButtonGroup,
@@ -39,10 +40,22 @@ export const QueryExecuteResult = ({
 
   if (queryResult.status === "error") {
     return (
-      <Stack direction="row" alignItems="center" padding="2">
+      <Stack
+        boxShadow="0 0 15px 0 rgba(0,0,0,0.2)"
+        borderRadius="md"
+        marginBottom="4"
+        direction="row"
+        alignItems="center"
+        padding="2"
+      >
         <ResultTypeBox queryResult={queryResult} />
-        <WarningIcon color="red.500" />
-        <Text>Query error: {queryResult.errorMessage}</Text>
+        <Alert status="error" borderRadius="0">
+          <Stack direction="row" alignItems="center">
+            <WarningIcon color="red.500" />
+            <Text>Query error: {queryResult.errorMessage}</Text>
+          </Stack>
+        </Alert>
+        <RemoveResultButton index={index} />
       </Stack>
     );
   }
@@ -61,39 +74,14 @@ export const QueryExecuteResult = ({
       borderRadius="md"
       marginBottom="4"
     >
-      <Flex padding="2" alignItems="center">
-        <Stack direction="row">
-          <ResultTypeBox queryResult={queryResult} />
-          <TimingInfo queryResult={queryResult} />
-        </Stack>
-        <Stack direction="row" alignItems="center" marginLeft="auto">
-          <ButtonGroup isAttached size="xs">
-            <Button
-              onClick={() => {
-                setCurrentView("json");
-              }}
-              colorScheme={currentView === "json" ? "blue" : "gray"}
-            >
-              JSON
-            </Button>
-            {displayTypes.map(type => {
-              return (
-                <Button
-                  key={type}
-                  onClick={() => {
-                    setCurrentView(type);
-                  }}
-                  colorScheme={currentView === type ? "blue" : "gray"}
-                  textTransform="capitalize"
-                >
-                  {type}
-                </Button>
-              );
-            })}
-          </ButtonGroup>
-          <RemoveResultButton index={index} />
-        </Stack>
-      </Flex>
+      <QueryExecuteResultHeader
+        queryResult={queryResult}
+        setCurrentView={setCurrentView}
+        currentView={currentView}
+        displayTypes={displayTypes}
+        index={index}
+      />
+      <WarningPane queryResult={queryResult} />
       <QueryExecuteResultDisplay
         currentView={currentView}
         queryResult={queryResult}
@@ -103,6 +91,27 @@ export const QueryExecuteResult = ({
   );
 };
 
+const WarningPane = ({ queryResult }: { queryResult: QueryResultType }) => {
+  const { warnings } = queryResult;
+  if (!warnings || !warnings.length) {
+    return null;
+  }
+  return (
+    <Alert status="warning" borderRadius="0">
+      <Stack direction="row" alignItems="center">
+        <WarningIcon color="yellow.500" />
+        <Text>Warnings:</Text>
+        {warnings.map((warning, index) => {
+          return (
+            <Text key={index}>
+              [{warning.code}], {warning.message}
+            </Text>
+          );
+        })}
+      </Stack>
+    </Alert>
+  );
+};
 const QueryExecuteResultDisplay = ({
   queryResult,
   currentView,
@@ -112,8 +121,8 @@ const QueryExecuteResultDisplay = ({
   currentView: DisplayType;
   graphDataType: "graphObject" | "edgeArray";
 }) => {
-  if(currentView === "table") {
-    return <QueryTableView queryResult={queryResult} />
+  if (currentView === "table") {
+    return <QueryTableView queryResult={queryResult} />;
   }
   if (currentView === "geo") {
     return <QueryGeoView queryResult={queryResult} />;
@@ -137,5 +146,71 @@ const QueryExecuteResultDisplay = ({
       }}
       mainMenuBar={false}
     />
+  );
+};
+const QueryExecuteResultHeader = ({
+  queryResult,
+  setCurrentView,
+  currentView,
+  displayTypes,
+  index
+}: {
+  queryResult: QueryResultType<any>;
+  setCurrentView: React.Dispatch<React.SetStateAction<DisplayType>>;
+  currentView: string;
+  displayTypes: DisplayType[];
+  index: number;
+}) => {
+  return (
+    <Flex padding="2" alignItems="center">
+      <Stack direction="row">
+        <ResultTypeBox queryResult={queryResult} />
+        <TimingInfo queryResult={queryResult} />
+      </Stack>
+      <Stack direction="row" alignItems="center" marginLeft="auto">
+        <ViewSwitch
+          setCurrentView={setCurrentView}
+          currentView={currentView}
+          displayTypes={displayTypes}
+        />
+        <RemoveResultButton index={index} />
+      </Stack>
+    </Flex>
+  );
+};
+const ViewSwitch = ({
+  setCurrentView,
+  currentView,
+  displayTypes
+}: {
+  setCurrentView: React.Dispatch<React.SetStateAction<DisplayType>>;
+  currentView: string;
+  displayTypes: DisplayType[];
+}) => {
+  return (
+    <ButtonGroup isAttached size="xs">
+      <Button
+        onClick={() => {
+          setCurrentView("json");
+        }}
+        colorScheme={currentView === "json" ? "blue" : "gray"}
+      >
+        JSON
+      </Button>
+      {displayTypes.map(type => {
+        return (
+          <Button
+            key={type}
+            onClick={() => {
+              setCurrentView(type);
+            }}
+            colorScheme={currentView === type ? "blue" : "gray"}
+            textTransform="capitalize"
+          >
+            {type}
+          </Button>
+        );
+      })}
+    </ButtonGroup>
   );
 };

@@ -67,13 +67,14 @@ export const useSyncQueryExecuteJob = ({
         } else if (jobResponse.statusCode === 201) {
           // job is created
           const { hasMore, result, id: cursorId, extra } = jobResponse.body;
-          const { stats, profile } = extra || {};
+          const { stats, profile, warnings } = extra || {};
           setQueryResultById({
             queryResult: {
               type: "query",
               status: hasMore ? "loading" : "success",
               result,
               stats,
+              warnings,
               profile,
               asyncJobId
             }

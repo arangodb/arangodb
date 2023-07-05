@@ -78,6 +78,10 @@ export type QueryResultType<ResultType extends any = any> = {
   asyncJobId?: string;
   profile?: any;
   stats?: any;
+  warnings?: {
+    code: number;
+    message: string;
+  }[];
   errorMessage?: string;
 };
 type CachedQuery = {
