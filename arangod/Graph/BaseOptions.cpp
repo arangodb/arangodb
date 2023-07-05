@@ -33,6 +33,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
@@ -327,7 +328,12 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
   parseShardIndependentFlags(info);
 }
 
-BaseOptions::~BaseOptions() = default;
+BaseOptions::~BaseOptions() {
+  resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
+                                        sizeof(aql::Projections::Projection));
+  resourceMonitor().decreaseMemoryUsage(getEdgeProjections().size() *
+                                        sizeof(aql::Projections::Projection));
+}
 
 arangodb::ResourceMonitor& BaseOptions::resourceMonitor() const {
   return _query.resourceMonitor();
@@ -582,11 +588,6 @@ void BaseOptions::activateCache(
       CacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
 }
 
-void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
-  TRI_ASSERT(_cache == nullptr);
-  _cache = std::move(testCache);
-}
-
 arangodb::aql::FixedVarExpressionContext& BaseOptions::getExpressionCtx() {
   return _expressionCtx;
 }
@@ -605,11 +606,19 @@ void BaseOptions::isQueryKilledCallback() const {
 }
 
 void BaseOptions::setVertexProjections(Projections projections) {
+  arangodb::ResourceUsageScope guard(
+      resourceMonitor(),
+      projections.size() * sizeof(aql::Projections::Projection));
   _vertexProjections = std::move(projections);
+  guard.steal();  // now we are responsible for tracking the memory
 }
 
 void BaseOptions::setEdgeProjections(Projections projections) {
+  arangodb::ResourceUsageScope guard(
+      resourceMonitor(),
+      projections.size() * sizeof(aql::Projections::Projection));
   _edgeProjections = std::move(projections);
+  guard.steal();  // now we are responsible for tracking the memory
 }
 
 void BaseOptions::setMaxProjections(size_t projections) noexcept {

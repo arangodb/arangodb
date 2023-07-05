@@ -252,8 +252,6 @@ struct BaseOptions {
                               aql::AstNode* condition, bool onlyEdgeIndexes,
                               TRI_edge_direction_e direction);
 
-  void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
-
   void toVelocyPackBase(VPackBuilder& builder) const;
 
   void parseShardIndependentFlags(arangodb::velocypack::Slice info);
