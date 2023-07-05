@@ -46,7 +46,7 @@
 
 namespace arangodb::replication2::replicated_log {
 
-class ReplicatedLogIterator : public LogRangeIterator {
+class ReplicatedLogIterator : public LogViewRangeIterator {
  public:
   using log_type = ::immer::flex_vector<InMemoryLogEntry,
                                         arangodb::immer::arango_memory_policy>;

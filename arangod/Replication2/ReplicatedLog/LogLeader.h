@@ -148,7 +148,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
   [[nodiscard]] auto compact() -> ResultT<CompactionResult> override;
   [[nodiscard]] auto getLogConsumerIterator(std::optional<LogRange> bounds)
-      const -> std::unique_ptr<LogRangeIterator>;
+      const -> std::unique_ptr<LogViewRangeIterator>;
   [[nodiscard]] auto getInternalLogIterator(std::optional<LogRange> bounds)
       const -> std::unique_ptr<PersistedLogIterator> override;
 

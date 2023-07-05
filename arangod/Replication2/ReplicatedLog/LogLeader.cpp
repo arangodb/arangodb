@@ -732,7 +732,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
       }
     }
     auto getCommittedLogIterator(std::optional<LogRange> range)
-        -> std::unique_ptr<LogRangeIterator> override {
+        -> std::unique_ptr<LogViewRangeIterator> override {
       return _log.getLogConsumerIterator(range);
     }
     auto insert(LogPayload payload) -> LogIndex override {
@@ -1244,7 +1244,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
 
     return std::visit(
         overload{
-            [](std::unique_ptr<LogRangeIterator> iter)
+            [](std::unique_ptr<LogViewRangeIterator> iter)
                 -> WaitForIteratorFuture { return iter; },
             [this](LogIndex indexToWaitFor) -> WaitForIteratorFuture {
               // call here, otherwise we deadlock with waitFor
@@ -1256,7 +1256,8 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
 }
 
 auto replicated_log::LogLeader::getLogConsumerIterator(
-    std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
+    std::optional<LogRange> bounds) const
+    -> std::unique_ptr<LogViewRangeIterator> {
   return _inMemoryLogManager->getLogConsumerIterator(bounds);
 }
 

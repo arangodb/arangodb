@@ -411,8 +411,8 @@ auto StorageManager::getPersistedLogIterator(std::optional<LogRange> bounds)
   return std::make_unique<Iterator>(range, std::move(diskIter));
 }
 
-auto StorageManager::getCommittedLogIterator(
-    std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
+auto StorageManager::getCommittedLogIterator(std::optional<LogRange> bounds)
+    const -> std::unique_ptr<LogViewRangeIterator> {
   auto guard = guardedData.getLockedGuard();
   if (guard->methods == nullptr) {
     THROW_ARANGO_EXCEPTION(
@@ -426,7 +426,7 @@ auto StorageManager::getCommittedLogIterator(
   auto diskIter = guard->methods->getIterator(
       storage::IteratorPosition::fromLogIndex(range.from));
 
-  struct Iterator : LogRangeIterator {
+  struct Iterator : LogViewRangeIterator {
     explicit Iterator(LogRange range,
                       std::unique_ptr<PersistedLogIterator> disk)
         : _range(range), _disk(std::move(disk)) {}

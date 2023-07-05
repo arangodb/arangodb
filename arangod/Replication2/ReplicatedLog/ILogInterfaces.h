@@ -83,7 +83,7 @@ struct ILogParticipant {
   using WaitForPromise = futures::Promise<WaitForResult>;
   using WaitForFuture = futures::Future<WaitForResult>;
   using WaitForIteratorFuture =
-      futures::Future<std::unique_ptr<LogRangeIterator>>;
+      futures::Future<std::unique_ptr<LogViewRangeIterator>>;
   using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
 
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;

@@ -107,7 +107,7 @@ auto FakeFollower::waitFor(LogIndex index) -> WaitForFuture {
 auto FakeFollower::waitForIterator(LogIndex index)
     -> replicated_log::ILogParticipant::WaitForIteratorFuture {
   return waitFor(index).thenValue(
-      [this, index](auto&&) -> std::unique_ptr<LogRangeIterator> {
+      [this, index](auto&&) -> std::unique_ptr<LogViewRangeIterator> {
         auto guard = guarded.getLockedGuard();
         return guard->log.getIteratorRange(index, guard->commitIndex + 1);
       });

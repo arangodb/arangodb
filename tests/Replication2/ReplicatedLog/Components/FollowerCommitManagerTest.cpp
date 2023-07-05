@@ -47,7 +47,7 @@ auto makeRange(LogRange range) -> TermIndexMapping {
   return mapping;
 }
 
-auto makeRangeIter(LogRange range) -> std::unique_ptr<LogRangeIterator> {
+auto makeRangeIter(LogRange range) -> std::unique_ptr<LogViewRangeIterator> {
   InMemoryLog::log_type log;
   auto transient = log.transient();
   for (auto idx : range) {

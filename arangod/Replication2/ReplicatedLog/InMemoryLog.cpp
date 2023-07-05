@@ -211,12 +211,12 @@ auto replicated_log::InMemoryLog::operator=(
 }
 
 auto replicated_log::InMemoryLog::getIteratorFrom(LogIndex fromIdx) const
-    -> std::unique_ptr<LogIterator> {
+    -> std::unique_ptr<LogViewIterator> {
   return getRangeIteratorFrom(fromIdx);
 }
 
 auto replicated_log::InMemoryLog::getRangeIteratorFrom(LogIndex fromIdx) const
-    -> std::unique_ptr<LogRangeIterator> {
+    -> std::unique_ptr<LogViewRangeIterator> {
   // if we want to have read from log entry 1 onwards, we have to drop
   // no entries, because log entry 0 does not exist.
   auto log = _log.drop(fromIdx.saturatedDecrement(_first.value).value);
@@ -251,7 +251,7 @@ auto replicated_log::InMemoryLog::getPersistedLogIterator() const
 
 auto replicated_log::InMemoryLog::getIteratorRange(LogIndex fromIdx,
                                                    LogIndex toIdx) const
-    -> std::unique_ptr<LogRangeIterator> {
+    -> std::unique_ptr<LogViewRangeIterator> {
   auto log = _log.take(toIdx.saturatedDecrement(_first.value).value)
                  .drop(fromIdx.saturatedDecrement(_first.value).value);
   return std::make_unique<ReplicatedLogIterator>(std::move(log));
@@ -415,7 +415,7 @@ auto replicated_log::InMemoryLog::loadFromMethods(
 }
 
 auto replicated_log::InMemoryLog::getIteratorRange(LogRange bounds) const
-    -> std::unique_ptr<LogRangeIterator> {
+    -> std::unique_ptr<LogViewRangeIterator> {
   return getIteratorRange(bounds.from, bounds.to);
 }
 
