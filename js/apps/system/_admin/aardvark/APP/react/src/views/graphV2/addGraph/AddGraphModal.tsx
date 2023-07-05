@@ -44,32 +44,39 @@ export const AddGraphModal = ({
 };
 
 const AddGraphModalInner = ({ onClose }: { onClose: () => void }) => {
+  const defaultIndex = window.frontendConfig.isEnterprise ? 4 : 0;
   return (
     <ModalBody>
-      <Tabs size="md" variant="enclosed-colored" defaultIndex={2}>
+      <Tabs size="md" variant="enclosed-colored" defaultIndex={defaultIndex}>
         <TabList>
           <Tab>Examples</Tab>
-          <Tab>SatelliteGraph</Tab>
+          {window.frontendConfig.isEnterprise && <Tab>SatelliteGraph</Tab>}
           <Tab>GeneralGraph</Tab>
-          <Tab>SmartGraph</Tab>
-          <Tab>EnterpriseGraph</Tab>
+          {window.frontendConfig.isEnterprise && <Tab>SmartGraph</Tab>}
+          {window.frontendConfig.isEnterprise && <Tab>EnterpriseGraph</Tab>}
         </TabList>
         <TabPanels>
           <TabPanel>
             <ExampleGraphForm onClose={onClose} />
           </TabPanel>
-          <TabPanel>
-            <SatelliteGraphForm onClose={onClose} />
-          </TabPanel>
+          {window.frontendConfig.isEnterprise && (
+            <TabPanel>
+              <SatelliteGraphForm onClose={onClose} />
+            </TabPanel>
+          )}
           <TabPanel>
             <GeneralGraphForm onClose={onClose} />
           </TabPanel>
-          <TabPanel>
-            <SmartGraphForm onClose={onClose} />
-          </TabPanel>
-          <TabPanel>
-            <EnterpriseGraphForm onClose={onClose} />
-          </TabPanel>
+          {window.frontendConfig.isEnterprise && (
+            <TabPanel>
+              <SmartGraphForm onClose={onClose} />
+            </TabPanel>
+          )}
+          {window.frontendConfig.isEnterprise && (
+            <TabPanel>
+              <EnterpriseGraphForm onClose={onClose} />
+            </TabPanel>
+          )}
         </TabPanels>
       </Tabs>
     </ModalBody>
