@@ -46,7 +46,7 @@ export const DeleteDatabaseModal = ({
           <Button
             isDisabled={isLoading}
             colorScheme="gray"
-            onClick={() => onClose()}
+            onClick={onClose}
           >
             Cancel
           </Button>
