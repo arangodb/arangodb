@@ -488,6 +488,8 @@ class RocksDBEngine final : public StorageEngine {
 
   size_t minValueSizeForEdgeCompression() const noexcept;
 
+  int accelerationFactorForEdgeCompression() const noexcept;
+
  private:
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
   void shutdownRocksDBInstance() noexcept;
@@ -563,6 +565,7 @@ class RocksDBEngine final : public StorageEngine {
   uint64_t _maxParallelCompactions;
 
   size_t _minValueSizeForEdgeCompression;
+  uint32_t _accelerationFactorForEdgeCompression;
 
   // hook-ins for recovery process
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;

@@ -17,6 +17,11 @@ v3.11.2 (XXXX-XX-XX)
   values. The default value is `1GB`, which will effectively turn compression
   off. Setting the option to a lower value (e.g. `100`) will turn on the
   compression for any payloads whose size exceeds this value.
+  
+  The new startup option `--cache.acceleration-factor-for-edge-compression` can
+  be used to fine-tune the compression. It controls the LZ4-internal 
+  "acceleration" factor used for the compression. The default value is `1`.
+  Higher values typically mean less compression but faster speeds.
 
   The following new metrics can be used to determine the usefulness of 
   compression:

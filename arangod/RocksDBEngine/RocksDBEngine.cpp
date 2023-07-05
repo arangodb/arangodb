@@ -249,6 +249,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
           transaction::Options::defaultIntermediateCommitCount),
       _maxParallelCompactions(2),
       _minValueSizeForEdgeCompression(1073741824ULL),
+      _accelerationFactorForEdgeCompression(1),
       _pruneWaitTime(10.0),
       _pruneWaitTimeInitial(60.0),
       _maxWalArchiveSizeLimit(0),
@@ -776,7 +777,11 @@ replication doing a resync, however.)");
                   "The size threshold (in bytes) from which on payloads in the "
                   "edge index cache transparently get LZ4-compressed.",
                   new SizeTParameter(&_minValueSizeForEdgeCompression, 1, 0,
-                                     1073741824ULL))
+                                     1073741824ULL),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
       .setLongDescription(
           R"(By transparently compressing values in the in-memory
 edge index cache, more data can be held in memory than without compression.  
@@ -785,6 +790,23 @@ and decompression. In case compression is undesired, this option can be set to a
 very high value, which will effectively disable it. To use compression, set the
 option to a value that is lower than medium-to-large average payload sizes.
 It is normally not that useful to compress values that are smaller than 100 bytes.)")
+      .setIntroducedIn(31102);
+
+  options
+      ->addOption(
+          "--cache.acceleration-factor-for-edge-compression",
+          "The acceleration factor for the LZ4 compression of in-memory "
+          "edge cache entries.",
+          new UInt32Parameter(&_accelerationFactorForEdgeCompression, 1, 1, 10),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setLongDescription(
+          R"(This value controls the LZ4-internal acceleration factor for the 
+LZ4 compression. Higher values typically yield less compression in exchange
+for faster compression speeds.)")
       .setIntroducedIn(31102);
 
 #ifdef USE_ENTERPRISE
@@ -3926,6 +3948,10 @@ void RocksDBEngine::addCacheMetrics(uint64_t initial,
 
 size_t RocksDBEngine::minValueSizeForEdgeCompression() const noexcept {
   return _minValueSizeForEdgeCompression;
+}
+
+int RocksDBEngine::accelerationFactorForEdgeCompression() const noexcept {
+  return static_cast<int>(_accelerationFactorForEdgeCompression);
 }
 
 }  // namespace arangodb

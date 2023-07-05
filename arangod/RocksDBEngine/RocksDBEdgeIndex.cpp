@@ -101,7 +101,7 @@ size_t resizeCompressionBuffer(std::string& scratch, size_t value) {
 
 std::pair<char const*, size_t> tryCompress(
     velocypack::Slice slice, size_t size, size_t minValueSizeForCompression,
-    std::string& scratch,
+    int accelerationFactor, std::string& scratch,
     std::function<void(size_t)> const& memoryUsageCallback) {
   char const* data = slice.startAs<char>();
 
@@ -141,7 +141,7 @@ std::pair<char const*, size_t> tryCompress(
   int compressedSize = LZ4_compress_fast(
       data, scratch.data() + compressedHeaderLength, static_cast<int>(size),
       static_cast<int>(scratch.size() - compressedHeaderLength),
-      /*acceleration factor*/ 1);
+      accelerationFactor);
   if (compressedSize > 0 && (static_cast<size_t>(compressedSize) +
                              compressedHeaderLength) < size * 3 / 4) {
     // only store the compressed version if it saves at least 25%
@@ -622,14 +622,20 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
             .engine<RocksDBEngine>()
             .minValueSizeForEdgeCompression();
 
+    int const accelerationFactor = _collection->vocbase()
+                                       .server()
+                                       .getFeature<EngineSelectorFeature>()
+                                       .engine<RocksDBEngine>()
+                                       .accelerationFactorForEdgeCompression();
+
     size_t const originalSize = slice.byteSize();
 
-    auto [data, size] =
-        tryCompress(slice, originalSize, minValueSizeForCompression,
-                    _lz4CompressBuffer, [this](size_t memoryUsage) {
-                      _resourceMonitor.increaseMemoryUsage(memoryUsage);
-                      _memoryUsage += memoryUsage;
-                    });
+    auto [data, size] = tryCompress(
+        slice, originalSize, minValueSizeForCompression, accelerationFactor,
+        _lz4CompressBuffer, [this](size_t memoryUsage) {
+          _resourceMonitor.increaseMemoryUsage(memoryUsage);
+          _memoryUsage += memoryUsage;
+        });
 
     cache::Cache::SimpleInserter<EdgeIndexCacheType>{
         static_cast<EdgeIndexCacheType&>(*_cache), key.data(),
@@ -989,6 +995,11 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
           .getFeature<EngineSelectorFeature>()
           .engine<RocksDBEngine>()
           .minValueSizeForEdgeCompression();
+  int const accelerationFactor = _collection.vocbase()
+                                     .server()
+                                     .getFeature<EngineSelectorFeature>()
+                                     .engine<RocksDBEngine>()
+                                     .accelerationFactorForEdgeCompression();
 
   auto rocksColl = toRocksDBCollection(_collection);
 
@@ -1019,9 +1030,9 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
 
     size_t const originalSize = b.slice().byteSize();
 
-    auto [data, size] =
-        tryCompress(b.slice(), originalSize, minValueSizeForCompression,
-                    lz4CompressBuffer, [](size_t /*memoryUsage*/) {});
+    auto [data, size] = tryCompress(
+        b.slice(), originalSize, minValueSizeForCompression, accelerationFactor,
+        lz4CompressBuffer, [](size_t /*memoryUsage*/) {});
 
     cache::Cache::SimpleInserter<EdgeIndexCacheType>{
         static_cast<EdgeIndexCacheType&>(*cc), cacheKey.data(),
