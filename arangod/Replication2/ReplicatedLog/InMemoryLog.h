@@ -135,12 +135,12 @@ struct InMemoryLog {
   [[nodiscard]] auto getPersistedLogIterator() const
       -> std::unique_ptr<PersistedLogIterator>;
   [[nodiscard]] auto getMemtryIteratorFrom(LogIndex fromIdx) const
-      -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>>;
+      -> std::unique_ptr<InMemoryLogIterator>;
   [[nodiscard]] auto getMemtryIteratorRange(LogIndex fromIdx,
                                             LogIndex toIdx) const
-      -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>>;
+      -> std::unique_ptr<InMemoryLogIterator>;
   [[nodiscard]] auto getMemtryIteratorRange(LogRange) const
-      -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>>;
+      -> std::unique_ptr<InMemoryLogIterator>;
   // get an iterator for range [from, to).
   [[nodiscard]] auto getIteratorRange(LogIndex fromIdx, LogIndex toIdx) const
       -> std::unique_ptr<LogRangeIterator>;

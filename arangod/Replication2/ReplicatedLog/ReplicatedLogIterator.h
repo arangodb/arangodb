@@ -106,12 +106,11 @@ class InMemoryPersistedLogIterator : public PersistedLogIterator {
   log_type::const_iterator _end;
 };
 
-class InMemoryLogIterator : public TypedLogIterator<InMemoryLogEntry> {
- public:
+struct InMemoryLogIteratorImpl : InMemoryLogIterator {
   using log_type = ::immer::flex_vector<InMemoryLogEntry,
                                         arangodb::immer::arango_memory_policy>;
 
-  explicit InMemoryLogIterator(log_type container)
+  explicit InMemoryLogIteratorImpl(log_type container)
       : _container(std::move(container)),
         _begin(_container.begin()),
         _end(_container.end()) {}

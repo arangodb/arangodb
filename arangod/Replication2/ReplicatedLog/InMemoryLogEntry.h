@@ -50,4 +50,6 @@ class InMemoryLogEntry {
   clock::time_point _insertTp{};
 };
 
+using InMemoryLogIterator = TypedLogIterator<InMemoryLogEntry>;
+
 }  // namespace arangodb::replication2
