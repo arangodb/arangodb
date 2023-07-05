@@ -86,6 +86,11 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
       // Therefore, we only check the leader in order to avoid a race.
       assertEqual(status.participants[leader].response.lowestIndexToKeep, 101,
         `lowestIndexToKeep should be 101 for ${leader}, status: ${JSON.stringify(status)}`);
+
+      // The syncCommitIndex should be equal to the commitIndex
+      assertEqual(status.participants[leader].response.syncCommitIndex,
+        status.participants[leader].response.local.commitIndex,
+        `syncCommitIndex should be equal to commitIndex for ${leader}, status: ${JSON.stringify(status)}`);
     },
 
     testSyncIndexWaitForSyncFalse: function () {
@@ -141,6 +146,10 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
       assertEqual(status.participants[leader].response.local.firstIndex, fixedLowestIndexToKeep,
         `firstIndex should be ${fixedLowestIndexToKeep} for ${leader}, status: ${JSON.stringify(status)}`);
 
+      assertTrue(status.participants[leader].response.syncCommitIndex <
+        status.participants[leader].response.local.commitIndex,
+        `syncCommitIndex should be less then commitIndex for ${leader}, status: ${JSON.stringify(status)}`);
+
       // Resume syncIndex updates for the affected follower
       helper.debugClearFailAt(lh.getServerUrl(followers[0]));
 
@@ -154,6 +163,12 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
         return Error(`lowestIndexToKeep should be > ${fixedLowestIndexToKeep} for ${leader}, ` +
           `status: ${JSON.stringify(status)}`);
       });
+
+      // Expect the syncCommitIndex to be increased. We can't be certain of a specific value,
+      // so instead of doing a waitFor, we just check that it's higher than the previous lowestIndexToKeep.
+      assertTrue(status.participants[leader].response.syncCommitIndex > fixedLowestIndexToKeep,
+        `syncCommitIndex should be > ${fixedLowestIndexToKeep} for ${leader}, ` +
+        `status: ${JSON.stringify(status)}`);
     }
   };
 };

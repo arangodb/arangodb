@@ -518,6 +518,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.compactionStatus = _compactionManager->getCompactionStatus();
     status.lowestIndexToKeep = lowestIndexToKeep;
     status.firstInMemoryIndex = _inMemoryLogManager->getFirstInMemoryIndex();
+    status.syncCommitIndex = leaderData._syncCommitIndex;
     status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
     status.activeParticipantsConfig =
@@ -1141,7 +1142,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerStates() const
         .lastAckedEntry = follower->lastAckedIndex,
         .id = pid,
         .snapshotAvailable = follower->snapshotAvailable,
-        .flags = flags->second});
+        .flags = flags->second,
+        .syncIndex = follower->syncIndex});
 
     largestCommonIndex = std::min(largestCommonIndex, follower->syncIndex);
   }
@@ -1165,13 +1167,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
   auto const currentCommitIndex = _self._inMemoryLogManager->getCommitIndex();
   auto const lastTermIndex =
       _self._inMemoryLogManager->getSpearheadTermIndexPair();
-  auto [newCommitIndex, commitFailReason, quorum] =
+  auto [newCommitIndex, newSyncCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(
           indexes,
           this->activeInnerTermConfig->participantsConfig.config
               .effectiveWriteConcern,
-          currentCommitIndex, lastTermIndex);
+          currentCommitIndex, lastTermIndex, _syncCommitIndex);
   _lastCommitFailReason = commitFailReason;
+  _syncCommitIndex = std::max(_syncCommitIndex, newSyncCommitIndex);
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
       << "calculated commit index as " << newCommitIndex
