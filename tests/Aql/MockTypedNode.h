@@ -48,10 +48,7 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
                       unsigned flags) const override;
 
   std::unique_ptr<::arangodb::aql::ExecutionBlock> createBlock(
-      ::arangodb::aql::ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*,
-                         ::arangodb::aql::ExecutionBlock*> const&)
-      const override;
+      ::arangodb::aql::ExecutionEngine& engine) const override;
 
   ExecutionNode* clone(::arangodb::aql::ExecutionPlan* plan,
                        bool withDependencies,

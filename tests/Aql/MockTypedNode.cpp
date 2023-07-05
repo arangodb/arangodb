@@ -46,9 +46,7 @@ ExecutionNode* MockTypedNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 std::unique_ptr<::arangodb::aql::ExecutionBlock> MockTypedNode::createBlock(
-    ::arangodb::aql::ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ::arangodb::aql::ExecutionBlock*> const&)
-    const {
+    ::arangodb::aql::ExecutionEngine& engine) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
