@@ -2977,7 +2977,6 @@ bool Supervision::start(Agent* agent) {
   return start();
 }
 
-
 void Supervision::getUniqueIds() {
   _lock.assertLockedByCurrentThread();
 
