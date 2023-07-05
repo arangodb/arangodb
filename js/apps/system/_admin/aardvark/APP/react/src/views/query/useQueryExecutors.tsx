@@ -41,6 +41,8 @@ export const useQueryExecutors = (
         ] as string;
         setQueryResults(queryResults => [
           {
+            queryValue,
+            queryBindParams,
             type: "query",
             asyncJobId,
             status: "loading"
@@ -71,6 +73,8 @@ export const useQueryExecutors = (
     });
     setQueryResults(queryResults => [
       {
+        queryValue,
+        queryBindParams,
         type: "profile",
         result: profile.body.msg,
         status: "success"
@@ -91,6 +95,8 @@ export const useQueryExecutors = (
         });
         setQueryResults(queryResults => [
           {
+            queryValue,
+            queryBindParams,
             type: "explain",
             result: explainResult.body.msg,
             status: "success"

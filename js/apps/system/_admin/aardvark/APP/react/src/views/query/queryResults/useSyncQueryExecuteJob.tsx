@@ -70,6 +70,8 @@ export const useSyncQueryExecuteJob = ({
           const { stats, profile, warnings } = extra || {};
           setQueryResultById({
             queryResult: {
+              queryValue: queryResult.queryValue,
+              queryBindParams: queryResult.queryBindParams,
               type: "query",
               status: hasMore ? "loading" : "success",
               result,
@@ -108,6 +110,8 @@ export const useSyncQueryExecuteJob = ({
         }
         setQueryResultById({
           queryResult: {
+            queryValue: queryResult.queryValue,
+            queryBindParams: queryResult.queryBindParams,
             type: "query",
             status: "error",
             asyncJobId,
