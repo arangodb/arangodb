@@ -11,7 +11,8 @@ import {
 } from "@chakra-ui/react";
 import React from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
-import { QueryResultType } from "../QueryContextProvider";
+import { downloadPost } from "../../../utils/downloadHelper";
+import { QueryResultType, useQueryContext } from "../QueryContextProvider";
 import { QueryGeoView } from "./QueryGeoView";
 import { QueryGraphView } from "./QueryGraphView";
 import { QueryTableView } from "./QueryTableView";
@@ -87,6 +88,7 @@ export const QueryExecuteResult = ({
         queryResult={queryResult}
         graphDataType={graphDataType}
       />
+      <QueryExecuteResultFooter queryResult={queryResult} />
     </Box>
   );
 };
@@ -212,5 +214,48 @@ const ViewSwitch = ({
         );
       })}
     </ButtonGroup>
+  );
+};
+
+const QueryExecuteResultFooter = ({
+  queryResult
+}: {
+  queryResult: QueryResultType;
+}) => {
+  const { onQueryChange, setResetEditor, resetEditor } = useQueryContext();
+  const { queryValue, queryBindParams } = queryResult;
+  const onDownload = async () => {
+    const path = `query/result/download`;
+    await downloadPost({
+      url: path,
+      body: {
+        query: queryValue,
+        bindVars: queryBindParams || {}
+      }
+    });
+  };
+  return (
+    <Flex padding="2" alignItems="center" justifyContent="end">
+      <Stack direction="row">
+        <Button
+          size="sm"
+          onClick={onDownload}
+        >
+          Download JSON
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => {
+            onQueryChange({
+              value: queryValue,
+              parameter: queryBindParams || {}
+            });
+            setResetEditor(!resetEditor);
+          }}
+        >
+          Copy to editor
+        </Button>
+      </Stack>
+    </Flex>
   );
 };

@@ -13,12 +13,8 @@ export const downloadPost = async ({
       method: "POST",
       body
     });
-    const blobUrl = window.URL.createObjectURL(response.body);
-    const filename =
-      response.headers?.["content-disposition"]?.replace(
-        /.* filename="([^")]*)"/,
-        "$1"
-      ) || "";
+    const blobUrl = makeBlobUrl(response.body);
+    const filename = makeBlobFilename(response.headers) || "download";
     downloadBlob(blobUrl, filename);
   } catch (e: any) {
     window.arangoHelper.arangoError(
@@ -35,12 +31,18 @@ export const download = async (url: string) => {
     method: "GET"
   });
   const blobUrl = window.URL.createObjectURL(response.body);
-  const filename =
-    response.headers?.["content-disposition"]?.replace(
-      /.* filename="([^")]*)"/,
-      "$1"
-    ) || "download";
+  const filename = makeBlobFilename(response.headers) || "download";
   downloadBlob(blobUrl, filename);
+};
+
+const makeBlobUrl = (body: any) => {
+  return window.URL.createObjectURL(body);
+};
+const makeBlobFilename = (headers: any) => {
+  return headers?.["content-disposition"]?.replace(
+    /.* filename="([^")]*)"/,
+    "$1"
+  );
 };
 
 const downloadBlob = (blobUrl: string, filename: string) => {
