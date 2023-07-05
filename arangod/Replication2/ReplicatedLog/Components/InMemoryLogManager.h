@@ -54,7 +54,7 @@ struct InMemoryLogManager : IInMemoryLogManager {
                       InMemoryLogEntry::clock::time_point insertTp,
                       bool waitForSync) -> LogIndex override;
   auto getInternalLogIterator(LogIndex firstIdx) const
-      -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> override;
+      -> std::unique_ptr<InMemoryLogIterator> override;
   auto getLogConsumerIterator(std::optional<LogRange> bounds) const
       -> std::unique_ptr<LogRangeIterator> override;
   auto getNonEmptyLogConsumerIterator(LogIndex firstIdx) const
