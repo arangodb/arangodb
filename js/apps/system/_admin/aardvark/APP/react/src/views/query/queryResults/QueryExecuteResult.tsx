@@ -22,6 +22,7 @@ import { TimingInfo } from "./TimingInfo";
 import { DisplayType, useDisplayTypes } from "./useDisplayTypes";
 import { useSyncQueryExecuteJob } from "./useSyncQueryExecuteJob";
 import Papa from "papaparse";
+import { CancelQueryButton } from "./CancelQueryButton";
 
 export const QueryExecuteResult = ({
   index,
@@ -63,11 +64,20 @@ export const QueryExecuteResult = ({
   }
   if (queryResult.status === "loading") {
     return (
-      <Stack direction="row" alignItems="center" padding="2">
+      <Flex
+        boxShadow="0 0 15px 0 rgba(0,0,0,0.2)"
+        borderRadius="md"
+        marginBottom="4"
+        direction="row"
+        alignItems="center"
+        padding="2"
+        gap="2"
+      >
         <ResultTypeBox queryResult={queryResult} />
         <Spinner size="sm" />
         <Text>Query in progress</Text>
-      </Stack>
+        <CancelQueryButton index={index} asyncJobId={queryResult.asyncJobId} />
+      </Flex>
     );
   }
   return (
