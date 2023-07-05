@@ -1,8 +1,6 @@
 import { Button } from "@chakra-ui/react";
 import React from "react";
-import {
-  getApiRouteForCurrentDB
-} from "../../../utils/arangoClient";
+import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { useQueryContext } from "../QueryContextProvider";
 
 export const CancelQueryButton = ({
@@ -21,11 +19,14 @@ export const CancelQueryButton = ({
       aria-label="Close"
       onClick={async () => {
         const route = getApiRouteForCurrentDB();
-        await route.request({
-          method: 'PUT',
-          path: `/job/${asyncJobId}/cancel`
-        });
-        onRemoveResult(index);
+        try {
+          await route.request({
+            method: "PUT",
+            path: `/job/${asyncJobId}/cancel`
+          });
+          onRemoveResult(index);
+          window.arangoHelper.arangoNotification("Query cancelled");
+        } catch (e) {}
       }}
     >
       Cancel
