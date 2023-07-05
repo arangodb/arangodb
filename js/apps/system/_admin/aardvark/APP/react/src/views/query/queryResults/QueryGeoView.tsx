@@ -93,10 +93,14 @@ const SingleGeometry = ({ geometry }: { geometry: GeoJSONUnionType }) => {
   }, [markers, map]);
   React.useEffect(() => {
     if (isPolygonGeometry || isLineStringGeometry) {
-      const geojson = (
-        new GeodesicLine().fromGeoJson(geometry) as any as Layer
-      ).addTo(map);
-      setMarkers([geojson]);
+      try {
+        const geojson = (
+          new GeodesicLine().fromGeoJson(geometry) as any as Layer
+        ).addTo(map);
+        setMarkers([geojson]);
+      } catch (ignore) {
+        // ignore error as the tab will not be displayed after first render
+      }
     }
   }, [geometry, isPolygonGeometry, isLineStringGeometry, map]);
   if (isPointGeometry) {
