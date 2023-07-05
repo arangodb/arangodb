@@ -19,32 +19,14 @@ export const QueryNavigationPrompt = ({
       return isAnyQueryInProgress ? true : null;
     };
   };
-  useEffect(() => {
-    const isAnyQueryInProgress = queryResults.some(
-      queryResult => queryResult.status === "loading"
-    );
-    preventNavigation(isAnyQueryInProgress);
-    const originalExecute = window.App.execute;
-    window.App.execute = function (...args: any[]) {
-      if (!isAnyQueryInProgress || allowLeave.current) {
-        return originalExecute.call(this, ...args);
-      } else {
-        // put URL back to original state
-        const newFragment = (window.Backbone.history as any).fragment;
-        setFragment(prevFragment => newFragment !== "queries" ? newFragment : prevFragment
-        );
-        window.history.replaceState(
-          {},
-          document.title,
-          `${window.location.origin}${window.location.pathname}#queries`
-        );
-        setShowPrompt(true);
-      }
-    };
-    return () => {
-      window.App.execute = originalExecute;
-    };
-  }, [queryResults, allowLeave]);
+  usePatchBackboneExecute({
+    queryResults,
+    preventNavigation,
+    allowLeave,
+    setFragment,
+    setShowPrompt
+  });
+
   if (showPrompt) {
     return (
       <Modal
@@ -83,4 +65,46 @@ export const QueryNavigationPrompt = ({
     );
   }
   return null;
+};
+
+const usePatchBackboneExecute = ({
+  queryResults,
+  preventNavigation,
+  allowLeave,
+  setFragment,
+  setShowPrompt
+}: {
+  queryResults: QueryResultType<any>[];
+  preventNavigation: (isAnyQueryInProgress: boolean) => void;
+  allowLeave: React.MutableRefObject<boolean>;
+  setFragment: React.Dispatch<React.SetStateAction<string>>;
+  setShowPrompt: React.Dispatch<React.SetStateAction<boolean>>;
+}) => {
+  useEffect(() => {
+    const isAnyQueryInProgress = queryResults.some(
+      queryResult => queryResult.status === "loading"
+    );
+    preventNavigation(isAnyQueryInProgress);
+    const originalExecute = window.App.execute;
+    window.App.execute = function (...args: any[]) {
+      if (!isAnyQueryInProgress || allowLeave.current) {
+        return originalExecute.call(this, ...args);
+      } else {
+        // put URL back to original state
+        const newFragment = (window.Backbone.history as any).fragment;
+        setFragment(prevFragment =>
+          newFragment !== "queries" ? newFragment : prevFragment
+        );
+        window.history.replaceState(
+          {},
+          document.title,
+          `${window.location.origin}${window.location.pathname}#queries`
+        );
+        setShowPrompt(true);
+      }
+    };
+    return () => {
+      window.App.execute = originalExecute;
+    };
+  }, [queryResults, allowLeave]);
 };
