@@ -22,14 +22,15 @@
 
 #pragma once
 
+#include "Basics/Exceptions.h"
+#include "Basics/Guarded.h"
+#include "Basics/UnshackledMutex.h"
+#include "Replication2/Helper/WaitForQueue.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/WaitForBag.h"
-#include "Replication2/Helper/WaitForQueue.h"
-#include "Basics/UnshackledMutex.h"
-#include "Basics/Guarded.h"
-#include "Replication2/Streams/MultiplexedValues.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/Streams/MultiplexedValues.h"
 
 namespace arangodb::replication2::test {
 
@@ -41,7 +42,7 @@ struct FakeFollower final : replicated_log::ILogFollower,
   auto getStatus() const -> replicated_log::LogStatus override;
   auto getQuickStatus() const -> replicated_log::QuickLogStatus override;
   auto resign() && -> std::tuple<
-      std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      std::unique_ptr<storage::IStorageEngineMethods>,
       std::unique_ptr<replicated_log::IReplicatedStateHandle>,
       DeferredAction> override;
   void resign() &;
@@ -72,7 +73,7 @@ struct FakeFollower final : replicated_log::ILogFollower,
     velocypack::Builder builder;
     using descriptor = streams::stream_descriptor_by_id_t<1, streamSpec>;
     streams::MultiplexedValues::toVelocyPack<descriptor>(t, builder);
-    return addEntry(LogPayload::createFromSlice(builder.slice()));
+    return addEntry(LogPayload{*builder.steal()});
   }
 
  private:

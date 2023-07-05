@@ -606,6 +606,16 @@ function checking_a_documentSuite () {
       assertEqual(doc.code, 412);
     },
 
+    test_use_empty_array_for_documents_read: function () {
+      let cmd = `/_api/document/${cid._id}?onlyget=true`;
+      let body = [];
+      let doc = arango.PUT_RAW(cmd, body);
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertEqual(doc.parsedBody, []);
+    },
+
   };
 }
 
