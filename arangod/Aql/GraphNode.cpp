@@ -1078,9 +1078,7 @@ bool GraphNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
 }
 
-size_t GraphNode::getMemoryUsedBytes() const {
-  return sizeof(*this);
-}
+size_t GraphNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 /* Enterprise features */
 
