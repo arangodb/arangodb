@@ -220,6 +220,9 @@ class GraphNode : public ExecutionNode {
   void enableClusterOneShardRule(bool enable);
   bool isClusterOneShardRuleEnabled() const;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override;
+
  protected:
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override;
