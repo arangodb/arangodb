@@ -307,7 +307,7 @@ class GraphNode : public ExecutionNode {
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
 
-  /// @brief Options for traversals
+  /// @brief Options for traversals (monitored)
   std::unique_ptr<graph::BaseOptions> _options;
 
   /// @brief The list of traverser engines grouped by server.

@@ -275,7 +275,10 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _vertexProjections{},
-      _edgeProjections{} {}
+      _edgeProjections{} {
+  arangodb::ResourceUsageScope guard(resourceMonitor(), getMemoryUsedBytes());
+  guard.steal();  // now we are responsible for tracking the memory
+}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
@@ -329,10 +332,16 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
 }
 
 BaseOptions::~BaseOptions() {
-  resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
-                                        sizeof(aql::Projections::Projection));
-  resourceMonitor().decreaseMemoryUsage(getEdgeProjections().size() *
-                                        sizeof(aql::Projections::Projection));
+  resourceMonitor().decreaseMemoryUsage(getMemoryUsedBytes());
+
+  if (!getVertexProjections().empty()) {
+    resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
+                                          sizeof(aql::Projections::Projection));
+  }
+  if (!getEdgeProjections().empty()) {
+    resourceMonitor().decreaseMemoryUsage(getEdgeProjections().size() *
+                                          sizeof(aql::Projections::Projection));
+  }
 }
 
 arangodb::ResourceMonitor& BaseOptions::resourceMonitor() const {
@@ -669,4 +678,17 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
       DocumentProducingNode::kMaxProjections));
   _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
   _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
+  arangodb::ResourceUsageScope vGuard(
+      resourceMonitor(),
+      getVertexProjections().size() * sizeof(aql::Projections::Projection));
+  vGuard.steal();  // now we are responsible for tracking the memory
+  arangodb::ResourceUsageScope eGuard(
+      resourceMonitor(),
+      getEdgeProjections().size() * sizeof(aql::Projections::Projection));
+  eGuard.steal();  // now we are responsible for tracking the memory
+}
+
+size_t BaseOptions::getMemoryUsedBytes() const {
+  // BaseOptions + TraverserCache
+  return sizeof(*this) + sizeof(TraverserCache);
 }
