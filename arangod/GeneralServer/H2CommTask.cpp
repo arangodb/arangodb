@@ -133,7 +133,7 @@ template<SocketType T>
   } else if (std::string_view(":authority") == field) {
     // simon: ignore, could treat like "Host" header
   } else {  // fall through
-    strm->request->setHeaderV2(std::string(field), std::string(val));
+    strm->request->setHeader(std::string(field), std::string(val));
   }
 
   return 0;
@@ -177,7 +177,7 @@ template<SocketType T>
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   Stream* strm = me->findStream(stream_id);
   if (strm) {
-    strm->request->body().append(data, len);
+    strm->request->appendBody(reinterpret_cast<char const*>(data), len);
   }
 
   return 0;
@@ -558,8 +558,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
                                    std::unique_ptr<HttpRequest> req) {
   // ensure there is a null byte termination. RestHandlers use
   // C functions like strchr that except a C string as input
-  req->body().push_back('\0');
-  req->body().resetTo(req->body().size() - 1);
+  req->appendNullTerminator();
 
   if (this->stopped()) {
     return;  // we have to ignore this request because the connection has
@@ -665,7 +664,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
 
   if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
       Logger::logRequestParameters()) {
-    auto& bodyBuf = tmp->body();
+    auto const& bodyBuf = tmp->body();
     std::string_view body{bodyBuf.data(), bodyBuf.size()};
     if (!body.empty()) {
       this->logRequestBody("h2", res->contentType(), body,

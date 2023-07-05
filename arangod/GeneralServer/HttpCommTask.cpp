@@ -139,8 +139,8 @@ int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at,
                                      size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   if (me->_lastHeaderWasValue) {
-    me->_request->setHeaderV2(std::move(me->_lastHeaderField),
-                              std::move(me->_lastHeaderValue));
+    me->_request->setHeader(std::move(me->_lastHeaderField),
+                            std::move(me->_lastHeaderValue));
     me->_lastHeaderField.assign(at, len);
   } else {
     me->_lastHeaderField.append(at, len);
@@ -175,8 +175,8 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_response.reset();
   if (!me->_lastHeaderField.empty()) {
-    me->_request->setHeaderV2(std::move(me->_lastHeaderField),
-                              std::move(me->_lastHeaderValue));
+    me->_request->setHeader(std::move(me->_lastHeaderField),
+                            std::move(me->_lastHeaderValue));
   }
 
   bool found;
@@ -234,7 +234,7 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
 template<SocketType T>
 int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  me->_request->body().append(at, len);
+  me->_request->appendBody(at, len);
   return HPE_OK;
 } catch (...) {
   // the caller of this function is a C function, which doesn't know
@@ -532,8 +532,8 @@ void HttpCommTask<T>::doProcessRequest() {
 
   // ensure there is a null byte termination. Some RestHandlers use
   // C functions like strchr that except a C string as input
-  _request->body().push_back('\0');
-  _request->body().resetTo(_request->body().size() - 1);
+  _request->appendNullTerminator();
+  // no need to increase memory usage here!
   {
     LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""

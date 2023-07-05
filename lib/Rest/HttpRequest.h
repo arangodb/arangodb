@@ -38,15 +38,15 @@ struct Options;
 class HttpRequest final : public GeneralRequest {
   friend class RestBatchHandler;  // TODO remove
 
+  HttpRequest(HttpRequest&&) = delete;
+
  public:
   HttpRequest(ConnectionInfo const&, uint64_t mid, bool allowMethodOverride);
 
-  HttpRequest(HttpRequest&&) = default;
-  ~HttpRequest() = default;
+  ~HttpRequest();
 
- public:
-  arangodb::Endpoint::TransportType transportType() override {
-    return arangodb::Endpoint::TransportType::HTTP;
+  Endpoint::TransportType transportType() override {
+    return Endpoint::TransportType::HTTP;
   }
 
   std::string const& cookieValue(std::string const& key) const;
@@ -55,46 +55,35 @@ class HttpRequest final : public GeneralRequest {
     return _cookies;
   }
 
-  virtual void setDefaultContentType() override {
+  void setDefaultContentType() override {
     _contentType = rest::ContentType::JSON;
   }
   /// @brief the body content length
   size_t contentLength() const override { return _payload.size(); }
   // Payload
   std::string_view rawPayload() const override;
-  arangodb::velocypack::Slice payload(bool strictValidation) override;
-  void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override {
-    _payload = std::move(buffer);
-  }
+  velocypack::Slice payload(bool strictValidation) override;
+  void setPayload(velocypack::Buffer<uint8_t> buffer) override;
 
-  arangodb::velocypack::Buffer<uint8_t>& body() { return _payload; }
-
-  /// @brief sets a key/value header
-  //  this function is called by setHeaders and get offsets to
-  //  the found key / value with respective lengths.
-  //  the function sets member variables like _contentType. All
-  //  key that do not get special treatment end um in the _headers map.
-  void setHeader(char const* key, size_t keyLength, char const* value,
-                 size_t valueLength);
-  /// @brief sets a key-only header
-  void setHeader(char const* key, size_t keyLength);
+  velocypack::Buffer<uint8_t> const& body() { return _payload; }
+  void appendBody(char const* data, size_t size);
+  // append a NUL byte to the request body
+  void appendNullTerminator();
+  void clearBody() noexcept;
 
   /// @brief parse an existing path
   void parseUrl(char const* start, size_t len);
-  void setHeaderV2(std::string&& key, std::string&& value);
-
- protected:
-  void setArrayValue(char const* key, size_t length, char const* value);
+  void setHeader(std::string key, std::string value);
 
  private:
+  void setValue(std::string key, std::string value);
+  void setArrayValue(std::string key, std::string value);
+  void setCookie(std::string key, std::string value);
   /// used by RestBatchHandler (an API straight from hell)
   void parseHeader(char* buffer, size_t length);
-  void setValues(char* buffer, char* end);
-  void setCookie(char* key, size_t length, char const* value);
-
   void parseCookies(char const* buffer, size_t length);
+  void setValues(char* buffer, char* end);
 
- private:
   std::unordered_map<std::string, std::string> _cookies;
   //  whether or not overriding the HTTP method via custom headers
   // (x-http-method, x-method-override or x-http-method-override) is allowed
