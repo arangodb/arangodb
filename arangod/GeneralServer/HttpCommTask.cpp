@@ -625,7 +625,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   // handle response code 204 No Content
   if (response.responseCode() == rest::ResponseCode::NO_CONTENT) {
-    response.clearBody();  // in non maintainer build clear the body
+    response.clearBody();
   }
 
   _header.clear();
