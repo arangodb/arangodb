@@ -1,11 +1,16 @@
-import { Box, Link } from "@chakra-ui/react";
+import { EditIcon } from "@chakra-ui/icons";
+import { Button, Link, Stack, useDisclosure } from "@chakra-ui/react";
+import { CellContext, createColumnHelper } from "@tanstack/react-table";
 import { GraphInfo } from "arangojs/graph";
 import React from "react";
+import { Link as RouterLink } from "react-router-dom";
+import { FiltersList } from "../../../components/table/FiltersList";
+import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { useGraphsContext } from "../GraphsContext";
-import { Link as RouterLink, useHistory } from "react-router-dom";
-import { createColumnHelper } from "@tanstack/react-table";
-import { ReactTable } from "../../../components/table/ReactTable";
+import { detectType } from "../GraphsHelpers";
+import { GraphsModeProvider } from "../GraphsModeContext";
+import { EditGraphModal } from "./EditGraphModal";
 
 const columnHelper = createColumnHelper<GraphInfo>();
 
@@ -32,8 +37,69 @@ const TABLE_COLUMNS = [
     meta: {
       filterType: "text"
     }
+  }),
+  columnHelper.accessor(row => getGraphTypeString(row), {
+    header: "Type",
+    id: "type",
+    filterFn: "equals"
+  }),
+  columnHelper.accessor("actions" as any, {
+    header: "Actions",
+    id: "actions",
+    enableColumnFilter: false,
+    enableSorting: false,
+    cell: info => {
+      return <ActionCell info={info} />;
+    }
   })
 ];
+
+const ActionCell = ({ info }: { info: CellContext<GraphInfo, any> }) => {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  console.log("info in ActionCell: ", info);
+
+  return (
+    <>
+      <GraphsModeProvider mode="edit">
+        <EditGraphModal
+          isOpen={isOpen}
+          onClose={onClose}
+          graph={info.cell.row.original}
+        />
+      </GraphsModeProvider>
+      <Button onClick={onOpen} size="xs">
+        <EditIcon />
+      </Button>
+    </>
+  );
+};
+
+const getGraphTypeString = (graph: GraphInfo) => {
+  const { type, isDisjoint } = detectType(graph);
+
+  if (type === "satellite") {
+    if (isDisjoint) {
+      return "Disjoint Sattelite";
+    }
+    return "Satellite";
+  }
+
+  if (type === "smart") {
+    if (isDisjoint) {
+      return "Disjoint Smart";
+    }
+    return "Smart";
+  }
+
+  if (type === "enterprise") {
+    if (isDisjoint) {
+      return "Disjoint Enterprise";
+    }
+    return "Enterprise";
+  }
+
+  return "General";
+};
 
 export const GraphsTable = () => {
   const { graphs } = useGraphsContext();
@@ -48,17 +114,15 @@ export const GraphsTable = () => {
     ]
   });
 
-  const history = useHistory();
-
   return (
-    <Box padding="4" width="100%">
-      <ReactTable<GraphInfo>
-        table={tableInstance}
-        emptyStateMessage="No graphs found"
-        onRowSelect={row => {
-          history.push(`/graphs-v2/${row.original.name}`);
-        }}
-      />
-    </Box>
+    <>
+      <Stack>
+        <FiltersList<GraphInfo> columns={TABLE_COLUMNS} table={tableInstance} />
+        <ReactTable<GraphInfo>
+          table={tableInstance}
+          emptyStateMessage="No graphs found"
+        />
+      </Stack>
+    </>
   );
 };
