@@ -11,8 +11,10 @@ import {
 } from "@chakra-ui/react";
 import React from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
-import { downloadBlob, downloadPost } from "../../../utils/downloadHelper";
+import { downloadPost } from "../../../utils/downloadHelper";
 import { QueryResultType, useQueryContext } from "../QueryContextProvider";
+import { CancelQueryButton } from "./CancelQueryButton";
+import { CSVDownloadButton } from "./CSVDownloadButton";
 import { QueryGeoView } from "./QueryGeoView";
 import { QueryGraphView } from "./QueryGraphView";
 import { QueryTableView } from "./QueryTableView";
@@ -21,8 +23,6 @@ import { ResultTypeBox } from "./ResultTypeBox";
 import { TimingInfo } from "./TimingInfo";
 import { DisplayType, useDisplayTypes } from "./useDisplayTypes";
 import { useSyncQueryExecuteJob } from "./useSyncQueryExecuteJob";
-import Papa from "papaparse";
-import { CancelQueryButton } from "./CancelQueryButton";
 
 export const QueryExecuteResult = ({
   index,
@@ -228,7 +228,7 @@ const ViewSwitch = ({
   );
 };
 
-const getAllowCSVDownload = (queryResult: QueryResultType) => {
+export const getAllowCSVDownload = (queryResult: QueryResultType) => {
   // if nested array, don't allow CSV download
   if (!queryResult.result || !queryResult.result.length) {
     return false;
@@ -245,6 +245,7 @@ const getAllowCSVDownload = (queryResult: QueryResultType) => {
   });
   return allowCSVDownload;
 };
+
 const QueryExecuteResultFooter = ({
   queryResult
 }: {
@@ -263,21 +264,11 @@ const QueryExecuteResultFooter = ({
       }
     });
   };
-  const onDownloadCSV = async () => {
-    const csv = Papa.unparse(queryResult.result);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = window.URL.createObjectURL(blob);
-    downloadBlob(url, "query-result.csv");
-  };
-  const allowCSVDownload = getAllowCSVDownload(queryResult);
+
   return (
     <Flex padding="2" alignItems="center" justifyContent="end">
       <Stack direction="row">
-        {allowCSVDownload && (
-          <Button size="sm" onClick={onDownloadCSV}>
-            Download CSV
-          </Button>
-        )}
+        <CSVDownloadButton queryResult={queryResult} />
         <Button size="sm" onClick={onDownload}>
           Download JSON
         </Button>
