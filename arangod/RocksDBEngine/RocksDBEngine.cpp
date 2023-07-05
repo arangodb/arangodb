@@ -169,12 +169,15 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
                 "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
-DECLARE_GAUGE(arangodb_edge_cache_uncompressed_entries_size, uint64_t,
+DECLARE_GAUGE(rocksdb_cache_edge_uncompressed_entries_size, uint64_t,
               "Total gross memory size of all edge cache entries ever stored "
-              "in the cache");
-DECLARE_GAUGE(arangodb_edge_cache_effective_entries_size, uint64_t,
+              "in memory");
+DECLARE_GAUGE(rocksdb_cache_edge_effective_entries_size, uint64_t,
               "Total effective memory size of all edge cache entries ever "
-              "stored in the cache");
+              "stored in memory (after compression)");
+DECLARE_GAUGE(rocksdb_cache_edge_compression_ratio, double,
+              "Overall compression ratio for all edge cache entries ever "
+              "stored in memory");
 
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
@@ -245,7 +248,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
       _maxParallelCompactions(2),
-      _minValueSizeForEdgeCompression(100),
+      _minValueSizeForEdgeCompression(1073741824ULL),
       _pruneWaitTime(10.0),
       _pruneWaitTimeInitial(60.0),
       _maxWalArchiveSizeLimit(0),
@@ -305,10 +308,10 @@ RocksDBEngine::RocksDBEngine(Server& server,
               arangodb_revision_tree_resurrections_total{})),
       _metricsEdgeCacheEntriesSizeInitial(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_edge_cache_uncompressed_entries_size{})),
+              rocksdb_cache_edge_uncompressed_entries_size{})),
       _metricsEdgeCacheEntriesSizeEffective(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_edge_cache_effective_entries_size{})) {
+              rocksdb_cache_edge_effective_entries_size{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
@@ -769,16 +772,18 @@ replication doing a resync, however.)");
       .setIntroducedIn(31005);
 
   options
-      ->addOption("--rocksdb.min-value-size-for-edge-compression",
+      ->addOption("--cache.min-value-size-for-edge-compression",
                   "The size threshold (in bytes) from which on payloads in the "
-                  "edge index transparently get LZ4-compressed.",
-                  new SizeTParameter(&_minValueSizeForEdgeCompression))
+                  "edge index cache transparently get LZ4-compressed.",
+                  new SizeTParameter(&_minValueSizeForEdgeCompression, 1, 0,
+                                     1073741824ULL))
       .setLongDescription(
           R"(By transparently compressing values in the in-memory
-edge index, more data can be held in memory than without compression.  
+edge index cache, more data can be held in memory than without compression.  
 Storing compressed values can increase CPU usage for the on-the-fly compression 
 and decompression. In case compression is undesired, this option can be set to a 
-very high value, which will effectively disable it. 
+very high value, which will effectively disable it. To use compression, set the
+option to a value that is lower than medium-to-large average payload sizes.
 It is normally not that useful to compress values that are smaller than 100 bytes.)")
       .setIntroducedIn(31102);
 
@@ -3416,6 +3421,16 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     builder.add("cache.active-tables", VPackValue(stats->activeTables));
     builder.add("cache.unused-memory", VPackValue(stats->spareAllocation));
     builder.add("cache.unused-tables", VPackValue(stats->spareTables));
+
+    // edge cache compression ratio
+    double compressionRatio = 0.0;
+    auto initial = _metricsEdgeCacheEntriesSizeInitial.load();
+    auto effective = _metricsEdgeCacheEntriesSizeEffective.load();
+    if (initial != 0) {
+      compressionRatio = 100.0 * (1.0 - (static_cast<double>(effective) /
+                                         static_cast<double>(initial)));
+    }
+    builder.add("cache.edge-compression-ratio", VPackValue(compressionRatio));
 
     std::pair<double, double> rates;
     if (manager != nullptr) {

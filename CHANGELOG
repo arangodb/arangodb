@@ -2,7 +2,8 @@ v3.11.2 (XXXX-XX-XX)
 --------------------
 
 * Added transparent LZ4 compression for values in the in-memory edge cache if
-  their size exceeds a configurable threshold.
+  their size exceeds a configurable threshold. This is configurable as an
+  opt-in functionality.
 
   LZ4 compression of edge index cache values allows to store more data in main
   memory than without compression, so the available memory can be used more
@@ -11,25 +12,38 @@ v3.11.2 (XXXX-XX-XX)
   The compression can add CPU overhead for compressing values when storing them
   in the cache, and for decompressing values when fetching them from the cache.
   
-  The new startup option `--rocksdb.min-value-size-for-edge-compression` can be
+  The new startup option `--cache.min-value-size-for-edge-compression` can be
   used to set a threshold value size for compression edge index cache payload
-  values. The default value is `100`, i.e. values with a payload size of at 
-  least 100 bytes will be LZ4-compressed. 
-  To turn compression off, it is enough to set the option to a very large
-  value.
+  values. The default value is `1GB`, which will effectively turn compression
+  off. Setting the option to a lower value (e.g. `100`) will turn on the
+  compression for any payloads whose size exceeds this value.
 
   The following new metrics can be used to determine the usefulness of 
   compression:
 
-  - `arangodb_edge_cache_uncompressed_entries_size`: will return the 
-    total number of bytes of all entries that were ever stored in the 
-    in-memory edge cache, before compression was applied.
-  - `arangodb_edge_cache_effective_entries_size`: will return the total
+  - `rocksdb_cache_edge_effective_entries_size`: will return the total
     number of bytes of all entries that were stored in the in-memory edge cache,
-    after compression was applied.
+    after compression was attempted/applied. This metric will be populated
+    regardless of whether compression is used or not.
+  - `rocksdb_cache_edge_uncompressed_entries_size`: will return the 
+    total number of bytes of all entries that were ever stored in the 
+    in-memory edge cache, before compression was applied. This metric will be
+    populated regardless of whether compression is used or not. 
+  - `rocksdb_cache_edge_compression_ratio`: will return the effective
+    compression ratio for all edge cache entries ever stored in the cache.
 
   Note that these metrics will be increased upon every insertion into the
   edge cache, but not decreased when data gets evicted from the cache.
+
+* Added new startup options `--cache.ideal-lower-fill-ratio` and 
+  `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
+  ratios for cache tables that trigger shrinking and growing of the table
+  by the cache rebalancer. The default values are:
+
+  - `0.04` (i.e. 4%) for the lower bound that triggers shrinking
+  - `0.25` (i.e. 25%) for the upper bound that triggers growing
+
+  These values were hard-coded in previous versions of ArangoDB.
 
 * Remove temporary `CREATING_{number}` directories from hot backup in case a
   hot backup runs into an error.

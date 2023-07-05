@@ -1,4 +1,4 @@
-name: arangodb_edge_cache_effective_entries_size
+name: rocksdb_cache_edge_effective_entries_size
 introducedIn: "3.11.2"
 help: |
   Total effective memory size of all edge cache entries ever stored in the edge cache.
