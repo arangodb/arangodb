@@ -30,6 +30,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 #include "Futures/Unit.h"
+#include "Metrics/GaugeCounterGuard.h"
 
 #include <atomic>
 #include <memory>
@@ -226,6 +227,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   LogContext::EntryPtr _logContextEntry;
 
  protected:
+  metrics::GaugeCounterGuard<std::uint64_t> _requestBodySizeTracker;
+
   std::atomic<bool> _canceled;
 };
 
