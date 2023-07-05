@@ -24,6 +24,12 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+if (getOptions === true) {
+  return {
+    'cache.min-value-size-for-edge-compression' : '100',
+  };
+}
+
 const db = require('@arangodb').db;
 const jsunity = require('jsunity');
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
@@ -55,8 +61,8 @@ function EdgeIndexCompressionSuite() {
       }
       c.insert(docs);
       
-      const oldUncompressedSize = getMetric("arangodb_edge_cache_uncompressed_entries_size");
-      const oldCompressedSize = getMetric("arangodb_edge_cache_effective_entries_size");
+      const oldUncompressedSize = getMetric("rocksdb_cache_edge_uncompressed_entries_size");
+      const oldCompressedSize = getMetric("rocksdb_cache_edge_effective_entries_size");
 
       runWithRetry(() => {
         let result = db._query(`FOR i IN 0..${n - 1} FOR e IN ${cn} FILTER e._from == CONCAT('v/test', i) RETURN e`);
@@ -65,8 +71,8 @@ function EdgeIndexCompressionSuite() {
         assertEqual(n, stats.cacheHits + stats.cacheMisses, stats);
         assertTrue(stats.cacheHits > 0, stats);
         
-        const newUncompressedSize = getMetric("arangodb_edge_cache_uncompressed_entries_size");
-        const newCompressedSize = getMetric("arangodb_edge_cache_effective_entries_size");
+        const newUncompressedSize = getMetric("rocksdb_cache_edge_uncompressed_entries_size");
+        const newCompressedSize = getMetric("rocksdb_cache_edge_effective_entries_size");
         // total values should have increased for both uncompressed and effective payload sizes
         assertTrue(newUncompressedSize > oldUncompressedSize, { newUncompressedSize, oldUncompressedSize });
         assertTrue(newCompressedSize > oldCompressedSize, { newCompressedSize, oldCompressedSize });
@@ -86,8 +92,8 @@ function EdgeIndexCompressionSuite() {
       }
       c.insert(docs);
       
-      const oldUncompressedSize = getMetric("arangodb_edge_cache_uncompressed_entries_size");
-      const oldCompressedSize = getMetric("arangodb_edge_cache_effective_entries_size");
+      const oldUncompressedSize = getMetric("rocksdb_cache_edge_uncompressed_entries_size");
+      const oldCompressedSize = getMetric("rocksdb_cache_edge_effective_entries_size");
 
       runWithRetry(() => {
         let result = db._query(`FOR i IN 0..${n - 1} FOR e IN ${cn} FILTER e._to == CONCAT('v/test', i) RETURN e`);
@@ -96,8 +102,8 @@ function EdgeIndexCompressionSuite() {
         assertEqual(n, stats.cacheHits + stats.cacheMisses, stats);
         assertTrue(stats.cacheHits > 0, stats);
         
-        const newUncompressedSize = getMetric("arangodb_edge_cache_uncompressed_entries_size");
-        const newCompressedSize = getMetric("arangodb_edge_cache_effective_entries_size");
+        const newUncompressedSize = getMetric("rocksdb_cache_edge_uncompressed_entries_size");
+        const newCompressedSize = getMetric("rocksdb_cache_edge_effective_entries_size");
         // total values should have increased for both uncompressed and effective payload sizes
         assertTrue(newUncompressedSize > oldUncompressedSize, { newUncompressedSize, oldUncompressedSize });
         assertTrue(newCompressedSize > oldCompressedSize, { newCompressedSize, oldCompressedSize });
@@ -108,7 +114,7 @@ function EdgeIndexCompressionSuite() {
     
     testCompressibleValuesFrom: function() {
       const n = 5000;
-
+      
       let c = db._createEdgeCollection(cn);
       let docs = [];
       for (let i = 0; i < n; ++i) {
@@ -117,8 +123,9 @@ function EdgeIndexCompressionSuite() {
       }
       c.insert(docs);
       
-      const oldUncompressedSize = getMetric("arangodb_edge_cache_uncompressed_entries_size");
-      const oldCompressedSize = getMetric("arangodb_edge_cache_effective_entries_size");
+      const oldRatio = getMetric("rocksdb_cache_edge_compression_ratio");
+      const oldUncompressedSize = getMetric("rocksdb_cache_edge_uncompressed_entries_size");
+      const oldCompressedSize = getMetric("rocksdb_cache_edge_effective_entries_size");
 
       runWithRetry(() => {
         let result = db._query(`FOR i IN 0..99 FOR e IN ${cn} FILTER e._from == CONCAT('v/test', i) RETURN e`);
@@ -127,14 +134,17 @@ function EdgeIndexCompressionSuite() {
         assertEqual(100, stats.cacheHits + stats.cacheMisses, stats);
         assertTrue(stats.cacheHits > 0, stats);
         
-        const newUncompressedSize = getMetric("arangodb_edge_cache_uncompressed_entries_size");
-        const newCompressedSize = getMetric("arangodb_edge_cache_effective_entries_size");
+        const newUncompressedSize = getMetric("rocksdb_cache_edge_uncompressed_entries_size");
+        const newCompressedSize = getMetric("rocksdb_cache_edge_effective_entries_size");
         // total values should have increased for both uncompressed and effective payload sizes
         assertTrue(newUncompressedSize > oldUncompressedSize, { newUncompressedSize, oldUncompressedSize });
         assertTrue(newCompressedSize > oldCompressedSize, { newCompressedSize, oldCompressedSize });
         // increase in uncompressed size should be greater than the increase in effective size, because data was compressible
         assertTrue(newCompressedSize - oldCompressedSize < newUncompressedSize - oldUncompressedSize, { newCompressedSize, oldCompressedSize, newUncompressedSize, oldUncompressedSize });
       }, retryCb);
+      
+      const newRatio = getMetric("rocksdb_cache_edge_compression_ratio");
+      assertTrue(newRatio > oldRatio, { oldRatio, newRatio });
     },
     
     testCompressibleValuesTo: function() {
@@ -148,8 +158,9 @@ function EdgeIndexCompressionSuite() {
       }
       c.insert(docs);
       
-      const oldUncompressedSize = getMetric("arangodb_edge_cache_uncompressed_entries_size");
-      const oldCompressedSize = getMetric("arangodb_edge_cache_effective_entries_size");
+      const oldRatio = getMetric("rocksdb_cache_edge_compression_ratio");
+      const oldUncompressedSize = getMetric("rocksdb_cache_edge_uncompressed_entries_size");
+      const oldCompressedSize = getMetric("rocksdb_cache_edge_effective_entries_size");
 
       runWithRetry(() => {
         let result = db._query(`FOR i IN 0..99 FOR e IN ${cn} FILTER e._to == CONCAT('v/test', i) RETURN e`);
@@ -158,14 +169,17 @@ function EdgeIndexCompressionSuite() {
         assertEqual(100, stats.cacheHits + stats.cacheMisses, stats);
         assertTrue(stats.cacheHits > 0, stats);
         
-        const newUncompressedSize = getMetric("arangodb_edge_cache_uncompressed_entries_size");
-        const newCompressedSize = getMetric("arangodb_edge_cache_effective_entries_size");
+        const newUncompressedSize = getMetric("rocksdb_cache_edge_uncompressed_entries_size");
+        const newCompressedSize = getMetric("rocksdb_cache_edge_effective_entries_size");
         // total values should have increased for both uncompressed and effective payload sizes
         assertTrue(newUncompressedSize > oldUncompressedSize, { newUncompressedSize, oldUncompressedSize });
         assertTrue(newCompressedSize > oldCompressedSize, { newCompressedSize, oldCompressedSize });
         // increase in uncompressed size should be greater than the increase in effective size, because data was compressible
         assertTrue(newCompressedSize - oldCompressedSize < newUncompressedSize - oldUncompressedSize, { newCompressedSize, oldCompressedSize, newUncompressedSize, oldUncompressedSize });
       }, retryCb);
+      
+      const newRatio = getMetric("rocksdb_cache_edge_compression_ratio");
+      assertTrue(newRatio > oldRatio, { oldRatio, newRatio });
     },
 
   };

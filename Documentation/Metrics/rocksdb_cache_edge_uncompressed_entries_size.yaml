@@ -1,5 +1,5 @@
-name: arangodb_edge_cache_uncompressed_entries_size
-introducedIn: "3.12.0"
+name: rocksdb_cache_edge_uncompressed_entries_size
+introducedIn: "3.11.2"
 help: |
   Total gross memory size of all edge cache entries ever stored in the edge cache.
 unit: bytes
