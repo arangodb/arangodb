@@ -50,8 +50,7 @@ void DistributeConsumerNode::doToVelocyPack(VPackBuilder& nodes,
 }
 
 std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   TRI_ASSERT(hasDependency());
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);

@@ -55,9 +55,7 @@ class DistributeConsumerNode : public ExecutionNode {
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief whether or not this node will forward initializeCursor or shutDown
   /// requests

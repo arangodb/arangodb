@@ -3520,13 +3520,9 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 
     node.planRegisters();
 
-    std::unordered_map<arangodb::aql::ExecutionNode*,
-                       arangodb::aql::ExecutionBlock*>
-        EMPTY;
-
     // before transaction has started (no snapshot)
     try {
-      auto block = node.createBlock(engine, EMPTY);
+      auto block = node.createBlock(engine);
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
       EXPECT_EQ(TRI_ERROR_INTERNAL, e.code());
@@ -3561,7 +3557,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 
     // after transaction has started
     {
-      auto block = node.createBlock(engine, EMPTY);
+      auto block = node.createBlock(engine);
       EXPECT_NE(nullptr, block);
       EXPECT_NE(
           nullptr,
@@ -3614,9 +3610,6 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
       {});      // no sort condition
   node.addDependency(&singleton);
 
-  std::unordered_map<arangodb::aql::ExecutionNode*,
-                     arangodb::aql::ExecutionBlock*>
-      EMPTY;
   singleton.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
   singleton.setVarsValid({{}});
   node.setVarsUsedLater({{}});
@@ -3627,7 +3620,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   node.planRegisters();
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::ROLE_COORDINATOR);
-  auto emptyBlock = node.createBlock(engine, EMPTY);
+  auto emptyBlock = node.createBlock(engine);
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::ROLE_SINGLE);
   EXPECT_NE(nullptr, emptyBlock);
@@ -3670,9 +3663,6 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
       {});      // no sort condition
   node.addDependency(&singleton);
   node.setLateMaterialized(outNmDocId);
-  std::unordered_map<arangodb::aql::ExecutionNode*,
-                     arangodb::aql::ExecutionBlock*>
-      EMPTY;
   singleton.setVarsUsedLater({arangodb::aql::VarSet{&outNmDocId}});
   singleton.setVarsValid({{}});
   node.setVarsUsedLater({{}});
@@ -3683,7 +3673,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
   node.planRegisters();
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::ROLE_COORDINATOR);
-  auto emptyBlock = node.createBlock(engine, EMPTY);
+  auto emptyBlock = node.createBlock(engine);
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::ROLE_SINGLE);
   EXPECT_TRUE(nullptr != emptyBlock);
