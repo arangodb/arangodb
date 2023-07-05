@@ -35,6 +35,7 @@ export const useDisplayTypes = ({
         }
         return prevView;
       });
+      return;
     }
     const { isGeo, isTable } = detectGeo({
       result: queryResult.result
@@ -263,6 +264,9 @@ const detectGeo = ({
     });
     if (result.length === validGeojsonCount) {
       isGeo = true;
+    } else {
+      isGeo = false;
+      isTable = true;
     }
   });
   return {
