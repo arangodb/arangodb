@@ -66,7 +66,7 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
         waitForSync: true,
       };
 
-      const {logId} = createReplicatedLog(database, config);
+      const {logId, leader} = createReplicatedLog(database, config);
       let log = db._replicatedLog(logId);
 
       // Insert 100 entries
@@ -79,9 +79,13 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
       for (const [k, v] of Object.entries(status.participants)) {
         assertEqual(v.response.local.syncIndex, v.response.local.spearhead.index,
           `syncIndex should be equal to spearhead for ${k}, status: ${JSON.stringify(status)}`);
-        assertEqual(v.response.lowestIndexToKeep, 101,
-          `lowestIndexToKeep should be 101 for ${k}, status: ${JSON.stringify(status)}`);
       }
+
+      // The followers are expected to converge to the same value, as the leader propagates the lowestIndexToKeep.
+      // However, followers are not updated instantly, so they might have a lower value for a short period of time.
+      // Therefore, we only check the leader in order to avoid a race.
+      assertEqual(status.participants[leader].response.lowestIndexToKeep, 101,
+        `lowestIndexToKeep should be 101 for ${leader}, status: ${JSON.stringify(status)}`);
     },
 
     testSyncIndexWaitForSyncFalse: function () {
@@ -119,7 +123,7 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
       const fixedFollowerSyncIndex = status.participants[followers[0]].response.local.syncIndex;
 
       // One of the followers no longer updates the syncIndex.
-      // Therefore, the syncIndex and the lowestIndexToKeep should no longer be updated.
+      // Therefore, the lowestIndexToKeep should no longer be updated globally.
       helper.debugSetFailAt(lh.getServerUrl(followers[0]), "AsyncLogWriteBatcher::syncIndexDisabled");
       for (let i = 0; i < 100; i++) {
         log.insert({bar: `bar${i}`});
@@ -127,18 +131,17 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
       status = log.status();
       assertEqual(status.participants[followers[0]].response.local.syncIndex, fixedFollowerSyncIndex,
         `syncIndex should be ${fixedFollowerSyncIndex} for ${followers[0]}, status: ${JSON.stringify(status)}`);
-      for (const [k, v] of Object.entries(status.participants)) {
-        assertEqual(v.response.lowestIndexToKeep, fixedLowestIndexToKeep,
-          `lowestIndexToKeep should be ${fixedLowestIndexToKeep} for ${k}, status: ${JSON.stringify(status)}`);
-      }
+      assertEqual(status.participants[leader].response.lowestIndexToKeep, fixedLowestIndexToKeep,
+        `lowestIndexToKeep should be ${fixedLowestIndexToKeep} for ${leader}, status: ${JSON.stringify(status)}`);
 
-      // Perform regular compaction.
+      // Perform regular compaction
       log.release(fixedLowestIndexToKeep + 100);
       log.compact();
       status = log.status();
       assertEqual(status.participants[leader].response.local.firstIndex, fixedLowestIndexToKeep,
         `firstIndex should be ${fixedLowestIndexToKeep} for ${leader}, status: ${JSON.stringify(status)}`);
 
+      // Resume syncIndex updates for the affected follower
       helper.debugClearFailAt(lh.getServerUrl(followers[0]));
 
       // Wait for lowestIndexToKeep to be updated, an indication that data has been synced
