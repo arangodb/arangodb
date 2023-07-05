@@ -1291,12 +1291,8 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
         }
         LOG_CTX("e0800", TRACE, logContext)
             << "local follower completed append entries";
-
-        return AppendEntriesResult{
-            {.logTerm = term,
-             .messageId = messageId,
-             .snapshotAvailable = true,
-             .syncIndex = storageManager->getSyncIndex()}};
+        return AppendEntriesResult{term, messageId, true,
+                                   storageManager->getSyncIndex()};
       };
 
   LOG_CTX("6fa8b", TRACE, messageLogContext)

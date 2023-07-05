@@ -99,47 +99,44 @@ auto inspect(Inspector& f, MessageId& x) {
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 struct AppendEntriesResult {
-  struct Params {
-    LogTerm logTerm;
-    MessageId messageId;
-    bool snapshotAvailable{false};
+  LogTerm logTerm;
+  ErrorCode errorCode;
+  AppendEntriesErrorReason reason;
+  MessageId messageId;
+  // TODO With some error reasons (at least kLostLogCore, i.e. when the follower
+  //      resigned already) information about the snapshot is unavailable. Maybe
+  //      this should be an optional<bool>.
+  bool snapshotAvailable{false};
 
-    LogIndex syncIndex;
-  };
-
-  LogTerm const logTerm;
-  MessageId const messageId;
-  // TODO With some error reasons (at least kLostLogCore, i.e. when the
-  //      follower resigned already) information about the snapshot is
-  //      unavailable. Maybe this should be an optional<bool>.bool
-  //      snapshotAvailable{false};
-  bool const snapshotAvailable{false};
-
-  LogIndex const syncIndex;
-
-  ErrorCode const errorCode;
-  AppendEntriesErrorReason const reason;
+  LogIndex syncIndex;
 
   std::optional<TermIndexPair> conflict;
 
   [[nodiscard]] auto isSuccess() const noexcept -> bool;
 
-  AppendEntriesResult(Params params) noexcept;
-  AppendEntriesResult(Params params, TermIndexPair conflict,
-                      AppendEntriesErrorReason reason) noexcept;
-  AppendEntriesResult(Params params, ErrorCode errorCode,
-                      AppendEntriesErrorReason reason,
-                      std::optional<TermIndexPair> conflict = {}) noexcept;
+  AppendEntriesResult(LogTerm term, MessageId id, TermIndexPair conflict,
+                      AppendEntriesErrorReason reason, bool snapshotAvailable,
+                      LogIndex syncIndex) noexcept;
+  AppendEntriesResult(LogTerm, MessageId, bool snapshotAvailable,
+                      LogIndex syncIndex) noexcept;
+  AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
+                      AppendEntriesErrorReason reason, MessageId,
+                      bool snapshotAvailable, LogIndex syncIndex) noexcept;
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
 
-  static auto withConflict(Params params, TermIndexPair conflict) noexcept
+  static auto withConflict(LogTerm, MessageId, TermIndexPair conflict,
+                           bool snapshotAvailable, LogIndex syncIndex) noexcept
       -> AppendEntriesResult;
-  static auto withRejection(Params params, AppendEntriesErrorReason) noexcept
+  static auto withRejection(LogTerm, MessageId, AppendEntriesErrorReason,
+                            bool snapshotAvailable, LogIndex syncIndex) noexcept
       -> AppendEntriesResult;
-  static auto withPersistenceError(Params params, Result const&) noexcept
+  static auto withPersistenceError(LogTerm, MessageId, Result const&,
+                                   bool snapshotAvailable,
+                                   LogIndex syncIndex) noexcept
       -> AppendEntriesResult;
-  static auto withOk(Params params) noexcept -> AppendEntriesResult;
+  static auto withOk(LogTerm, MessageId, bool snapshotAvailable,
+                     LogIndex syncIndex) noexcept -> AppendEntriesResult;
 };
 #if (defined(__GNUC__) && !defined(__clang__))
 #pragma GCC diagnostic pop
