@@ -77,7 +77,7 @@ struct IStorageManager {
       -> std::unique_ptr<TypedLogRangeIterator<LogEntryView>> = 0;
   [[nodiscard]] virtual auto getCommittedMetaInfo() const
       -> storage::PersistedStateInfo = 0;
-  [[nodiscard]] virtual auto getPersistedLogIterator(LogIndex first) const
+  [[nodiscard]] virtual auto getLogIterator(LogIndex first) const
       -> std::unique_ptr<LogIterator> = 0;
   [[nodiscard]] virtual auto getSyncIndex() const -> LogIndex = 0;
 

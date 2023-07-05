@@ -69,7 +69,7 @@ class LogEntry {
   static inline constexpr auto approxMetaDataSize = std::size_t{42 * 2};
 };
 
-// ReplicatedLog-internal iterator over PersistingLogEntries
+// ReplicatedLog-internal iterator over LogEntries
 struct LogIterator : TypedLogIterator<LogEntry> {};
 
 }  // namespace arangodb::replication2

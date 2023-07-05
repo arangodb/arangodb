@@ -95,7 +95,7 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
         << "tried to append non matching slice - log range is: "
         << guard->spearheadMapping.getIndexRange() << " new piece starts at "
         << slice.getFirstIndex();
-    auto iter = slice.getPersistedLogIterator();
+    auto iter = slice.getLogIterator();
     auto mapping = guard->spearheadMapping;
     auto sliceMapping = slice.computeTermIndexMap();
     mapping.append(sliceMapping);
@@ -368,14 +368,14 @@ auto StorageManager::getTermIndexMapping() const -> TermIndexMapping {
   return guardedData.getLockedGuard()->onDiskMapping;
 }
 
-auto StorageManager::getPersistedLogIterator(LogIndex first) const
+auto StorageManager::getLogIterator(LogIndex first) const
     -> std::unique_ptr<LogIterator> {
-  return getPersistedLogIterator(
+  return getLogIterator(
       LogRange{first, LogIndex{static_cast<std::uint64_t>(-1)}});
 }
 
-auto StorageManager::getPersistedLogIterator(
-    std::optional<LogRange> bounds) const -> std::unique_ptr<LogIterator> {
+auto StorageManager::getLogIterator(std::optional<LogRange> bounds) const
+    -> std::unique_ptr<LogIterator> {
   auto range = bounds.value_or(
       LogRange{LogIndex{0}, LogIndex{static_cast<std::uint64_t>(-1)}});
 

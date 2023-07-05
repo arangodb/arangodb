@@ -38,7 +38,7 @@ struct StorageManagerMock
   MOCK_METHOD(std::unique_ptr<TypedLogRangeIterator<LogEntryView>>,
               getCommittedLogIterator, (std::optional<LogRange>),
               (const, override));
-  MOCK_METHOD(std::unique_ptr<LogIterator>, getPersistedLogIterator, (LogIndex),
+  MOCK_METHOD(std::unique_ptr<LogIterator>, getLogIterator, (LogIndex),
               (const, override));
   MOCK_METHOD(arangodb::replication2::replicated_log::TermIndexMapping,
               getTermIndexMapping, (), (const, override));

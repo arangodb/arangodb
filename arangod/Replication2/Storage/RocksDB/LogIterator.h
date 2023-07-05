@@ -34,7 +34,7 @@
 
 namespace arangodb::replication2::storage::rocksdb {
 
-struct LogIterator : LogIterator {
+struct LogIterator : replication2::LogIterator {
   ~LogIterator() override = default;
 
   LogIterator(std::uint64_t objectId, ::rocksdb::DB* db,

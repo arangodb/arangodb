@@ -138,7 +138,7 @@ auto InMemoryLogManager::getInternalLogIterator(LogIndex firstIdx) const
           return inMemoryLog.getMemtryIteratorFrom(firstIdx);
         }
 
-        auto diskIter = _storageManager->getPersistedLogIterator(firstIdx);
+        auto diskIter = _storageManager->getLogIterator(firstIdx);
 
         struct OverlayIterator : InMemoryLogIterator {
           explicit OverlayIterator(

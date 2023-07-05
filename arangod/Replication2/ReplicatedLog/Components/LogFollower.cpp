@@ -247,7 +247,7 @@ auto LogFollowerImpl::waitForIterator(LogIndex index)
 
 auto LogFollowerImpl::getInternalLogIterator(
     std::optional<LogRange> bounds) const -> std::unique_ptr<LogIterator> {
-  return guarded.getLockedGuard()->storage->getPersistedLogIterator(bounds);
+  return guarded.getLockedGuard()->storage->getLogIterator(bounds);
 }
 
 auto LogFollowerImpl::release(LogIndex doneWithIdx) -> Result {

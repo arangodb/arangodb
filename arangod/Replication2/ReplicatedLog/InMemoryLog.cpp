@@ -244,7 +244,7 @@ auto replicated_log::InMemoryLog::getMemtryIteratorRange(LogRange range) const
   return getMemtryIteratorRange(range.from, range.to);
 }
 
-auto replicated_log::InMemoryLog::getPersistedLogIterator() const
+auto replicated_log::InMemoryLog::getLogIterator() const
     -> std::unique_ptr<LogIterator> {
   return std::make_unique<InMemoryPersistedLogIterator>(_log);
 }

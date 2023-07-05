@@ -258,7 +258,7 @@ struct StorageEngineMethodsMockFactory {
         .Times(1)
         .WillOnce([](storage::IteratorPosition pos) {
           auto log = makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{100}});
-          return log.getPersistedLogIterator();
+          return log.getLogIterator();
         });
 
     EXPECT_CALL(*ptr, readMetadata).Times(1).WillOnce([]() {
