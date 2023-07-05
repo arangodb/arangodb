@@ -40,7 +40,7 @@ export const DeleteDatabaseModal = ({
   return (
     <Modal isOpen onClose={onClose}>
       <ModalHeader>Delete Database</ModalHeader>
-      <ModalBody>Are you sure you want to delete {database.name}?</ModalBody>
+      <ModalBody>Are you sure you want to delete the database: {database.name}?</ModalBody>
       <ModalFooter>
         <Stack direction="row">
           <Button
