@@ -51,11 +51,9 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
 static const std::string OPTIONS = "options";
-static const std::string INACCESSIBLE = "inaccessible";
 static const std::string SHARDS = "shards";
 static const std::string EDGES = "edges";
 static const std::string TYPE = "type";
-static const std::string VARIABLES = "variables";
 static const std::string VERTICES = "vertices";
 
 #ifndef USE_ENTERPRISE

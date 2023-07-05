@@ -2977,7 +2977,6 @@ bool Supervision::start(Agent* agent) {
   return start();
 }
 
-static std::string const syncLatest = "/Sync/LatestID";
 
 void Supervision::getUniqueIds() {
   _lock.assertLockedByCurrentThread();

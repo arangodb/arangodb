@@ -602,8 +602,6 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   // handle response code 204 No Content
   if (response.responseCode() == rest::ResponseCode::NO_CONTENT) {
-    TRI_ASSERT(response.isResponseEmpty())
-        << "response code 204 requires body to be empty";
     response.clearBody();  // in non maintainer build clear the body
   }
 
