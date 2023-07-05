@@ -283,7 +283,7 @@ const QueryExecuteResultFooter = ({
             aqlJsonEditorRef.current?.jsonEditor?.focus();
           }}
         >
-          Copy to editor
+          Copy query to editor
         </Button>
       </Stack>
     </Flex>
