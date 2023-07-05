@@ -176,7 +176,6 @@ require('../../frontend/js/lib/sigma.plugins.filter.js');
 require('../../frontend/js/lib/sigma.plugins.fullScreen.js');
 require('../../frontend/js/lib/sigma.plugins.lasso.js');
 require('../../frontend/js/lib/sigma.renderers.halo.js');
-require('../../frontend/js/lib/jquery.csv.min.js');
 
 require('../../frontend/js/lib/wheelnav.slicePath.js');
 require('../../frontend/js/lib/wheelnav.min.js');
