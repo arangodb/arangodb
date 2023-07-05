@@ -623,6 +623,11 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   // will add CORS headers if necessary
   this->finishExecution(*baseRes, _origin);
 
+  // handle response code 204 No Content
+  if (response.responseCode() == rest::ResponseCode::NO_CONTENT) {
+    response.clearBody();
+  }
+
   _header.clear();
   _header.reserve(220);
 
@@ -723,6 +728,9 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   size_t len = response.bodySize();
+  TRI_ASSERT(response.responseCode() != rest::ResponseCode::NO_CONTENT ||
+             len == 0)
+      << "response code 204 requires body length to be zero";
   _header.append(std::string_view("Content-Length: "));
   _header.append(std::to_string(len));
   _header.append("\r\n\r\n", 4);
@@ -730,6 +738,9 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   TRI_ASSERT(_response == nullptr);
   _response = response.stealBody();
   // append write buffer and statistics
+  TRI_ASSERT(response.responseCode() != rest::ResponseCode::NO_CONTENT ||
+             _response->empty())
+      << "response code 204 requires body length to be zero";
 
   if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
       Logger::logRequestParameters()) {
