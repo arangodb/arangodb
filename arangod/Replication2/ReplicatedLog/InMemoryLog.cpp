@@ -244,27 +244,6 @@ auto replicated_log::InMemoryLog::getMemtryIteratorRange(LogRange range) const
   return getMemtryIteratorRange(range.from, range.to);
 }
 
-auto replicated_log::InMemoryLog::getInternalIteratorFrom(
-    LogIndex fromIdx) const -> std::unique_ptr<PersistedLogIterator> {
-  // if we want to have read from log entry 1 onwards, we have to drop
-  // no entries, because log entry 0 does not exist.
-  auto log = _log.drop(fromIdx.saturatedDecrement(_first.value).value);
-  return std::make_unique<InMemoryPersistedLogIterator>(std::move(log));
-}
-
-auto replicated_log::InMemoryLog::getInternalIteratorRange(LogIndex fromIdx,
-                                                           LogIndex toIdx) const
-    -> std::unique_ptr<PersistedLogIterator> {
-  auto log = _log.take(toIdx.saturatedDecrement(_first.value).value)
-                 .drop(fromIdx.saturatedDecrement(_first.value).value);
-  return std::make_unique<InMemoryPersistedLogIterator>(std::move(log));
-}
-
-auto replicated_log::InMemoryLog::getInternalIteratorRange(
-    LogRange bounds) const -> std::unique_ptr<PersistedLogIterator> {
-  return getInternalIteratorRange(bounds.from, bounds.to);
-}
-
 auto replicated_log::InMemoryLog::getPersistedLogIterator() const
     -> std::unique_ptr<PersistedLogIterator> {
   return std::make_unique<InMemoryPersistedLogIterator>(_log);
