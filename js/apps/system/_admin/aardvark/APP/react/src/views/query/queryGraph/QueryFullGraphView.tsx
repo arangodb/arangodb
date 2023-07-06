@@ -22,7 +22,7 @@ import {
   useMultiStyleConfig
 } from "@chakra-ui/react";
 import React, { ReactNode, useMemo } from "react";
-import { useHistory } from "react-router";
+import { Redirect, useHistory } from "react-router";
 import { AddAPhoto } from "styled-icons/material";
 import { downloadCanvas } from "../../graphV2/graphHeader/DownloadGraphButton";
 import { FullscreenGraphButton } from "../../graphV2/graphHeader/FullscreenGraphButton";
@@ -42,10 +42,15 @@ export const QueryFullGraphView = () => {
     result: queryGraphResult.result
   });
   const graphData = useMemo(() => {
-    return convertToGraphData({ graphDataType, data: queryGraphResult.result });
+    return (
+      queryGraphResult.result &&
+      convertToGraphData({ graphDataType, data: queryGraphResult.result })
+    );
   }, [graphDataType, queryGraphResult.result]);
   const visJsRef = React.useRef(null);
-
+  if (!queryGraphResult.result) {
+    return <Redirect to="/queries" />;
+  }
   return (
     <QueryFullGraphContextProvider visJsRef={visJsRef} graphData={graphData}>
       <QueryFullGraphViewInner />
