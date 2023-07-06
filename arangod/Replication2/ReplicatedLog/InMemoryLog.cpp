@@ -24,9 +24,11 @@
 #include "InMemoryLog.h"
 
 #include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
@@ -355,7 +357,9 @@ auto replicated_log::InMemoryLog::computeTermIndexMap() const
   // itself and update it as we go.
   TermIndexMapping mapping;
   for (auto const& ent : _log) {
-    mapping.insert(ent.entry().logIndex(), ent.entry().logTerm());
+    mapping.insert(
+        storage::IteratorPosition::fromLogIndex(ent.entry().logIndex()),
+        ent.entry().logTerm());
   }
   return mapping;
 }

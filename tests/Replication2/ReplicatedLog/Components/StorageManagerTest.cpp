@@ -23,9 +23,15 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <immer/flex_vector_transient.hpp>
+#include <memory>
 
 #include "Basics/Result.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
+#include "Replication2/ReplicatedLog/PersistedLogEntry.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Replication2/Storage/IteratorPosition.h"
 #include "Replication2/Storage/PersistedStateInfo.h"
 
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
@@ -154,6 +160,26 @@ auto makeRange(LogTerm term, LogRange range) -> InMemoryLog {
   }
   return InMemoryLog(transient.persistent());
 }
+
+// we simulate a PersistedLogIterator on top of an InMemoryLog
+struct InMemoryPersistedLogIterator : PersistedLogIterator {
+  explicit InMemoryPersistedLogIterator(InMemoryLog log)
+      : _iter(std::move(log).copyFlexVector()) {}
+
+  auto next() -> std::optional<PersistedLogEntry> override {
+    auto e = _iter.next();
+    if (e) {
+      return PersistedLogEntry{
+          LogEntry{e->entry()},
+          storage::IteratorPosition::fromLogIndex(e->entry().logIndex())};
+    }
+    return std::nullopt;
+  }
+
+ private:
+  InMemoryLogIteratorImpl _iter;
+};
+
 }  // namespace
 
 TEST_F(StorageManagerTest, transaction_append) {
@@ -258,7 +284,7 @@ struct StorageEngineMethodsMockFactory {
         .Times(1)
         .WillOnce([](storage::IteratorPosition pos) {
           auto log = makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{100}});
-          return log.getLogIterator();
+          return std::make_unique<InMemoryPersistedLogIterator>(log);
         });
 
     EXPECT_CALL(*ptr, readMetadata).Times(1).WillOnce([]() {

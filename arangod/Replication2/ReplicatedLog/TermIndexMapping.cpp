@@ -125,20 +125,18 @@ auto TermIndexMapping::getFirstIndex() const noexcept
   return std::nullopt;
 }
 
-void TermIndexMapping::insert(LogIndex idx, LogTerm term) noexcept {
+void TermIndexMapping::insert(storage::IteratorPosition position,
+                              LogTerm term) noexcept {
+  auto idx = position.index();
   auto iter = std::invoke([&] {
     if (_mapping.empty()) {
-      return _mapping
-          .emplace(term, TermInfo{LogRange{idx, idx},
-                                  storage::IteratorPosition::fromLogIndex(idx)})
+      return _mapping.emplace(term, TermInfo{LogRange{idx, idx}, position})
           .first;
     } else if (auto iter = _mapping.rbegin(); iter->first != term) {
       ADB_PROD_ASSERT(iter->first < term);
       ADB_PROD_ASSERT(iter->second.range.to == idx);
 
-      return _mapping
-          .emplace(term, TermInfo{LogRange{idx, idx},
-                                  storage::IteratorPosition::fromLogIndex(idx)})
+      return _mapping.emplace(term, TermInfo{LogRange{idx, idx}, position})
           .first;
     } else {
       return std::prev(_mapping.end());

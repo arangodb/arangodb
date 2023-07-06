@@ -46,7 +46,7 @@ ResultT<PersistedStateInfo> LogStorageMethods::readMetadata() {
   return _statePersistor->readMetadata();
 }
 
-std::unique_ptr<LogIterator> LogStorageMethods::getIterator(
+std::unique_ptr<PersistedLogIterator> LogStorageMethods::getIterator(
     IteratorPosition position) {
   return _logPersistor->getIterator(position);
 }

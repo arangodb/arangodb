@@ -294,7 +294,7 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries) {
     auto iter = this->methods->getIterator(
         storage::IteratorPosition::fromLogIndex(LogIndex{0}));
     for (auto const& expected : entries) {
-      ASSERT_EQ(iter->next(), expected);
+      ASSERT_EQ(iter->next()->entry(), expected);
     }
     ASSERT_EQ(iter->next(), std::nullopt);
   }
@@ -329,8 +329,8 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries_remove_front_back) {
         storage::IteratorPosition::fromLogIndex(LogIndex{0}));
     auto next = iter->next();
     ASSERT_TRUE(next.has_value());
-    EXPECT_EQ(next->logIndex(), LogIndex{2});
-    EXPECT_EQ(next->logTerm(), LogTerm{1});
+    EXPECT_EQ(next->entry().logIndex(), LogIndex{2});
+    EXPECT_EQ(next->entry().logTerm(), LogTerm{1});
     ASSERT_EQ(iter->next(), std::nullopt);
   }
 }
@@ -363,7 +363,7 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries_iter_after_remove) {
   {
     // should see all log entries
     for (auto const& expected : entries) {
-      ASSERT_EQ(iter->next(), expected);
+      ASSERT_EQ(iter->next()->entry(), expected);
     }
     ASSERT_EQ(iter->next(), std::nullopt);
   }

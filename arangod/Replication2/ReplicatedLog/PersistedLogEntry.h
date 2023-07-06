@@ -33,7 +33,9 @@ namespace arangodb::replication2 {
 // starting at this entry.
 struct PersistedLogEntry {
   PersistedLogEntry(LogEntry&& entry, storage::IteratorPosition position)
-      : _entry(std::move(entry)), _position(position) {}
+      : _entry(std::move(entry)), _position(position) {
+    TRI_ASSERT(_entry.logIndex() == _position.index());
+  }
 
   [[nodiscard]] auto entry() const noexcept -> LogEntry const& {
     return _entry;

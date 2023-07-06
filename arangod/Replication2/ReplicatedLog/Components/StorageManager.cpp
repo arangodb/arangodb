@@ -188,7 +188,8 @@ auto StorageManager::GuardedData::computeTermIndexMap() const
   auto iter = methods->getIterator(
       storage::IteratorPosition::fromLogIndex(LogIndex{0}));
   while (auto entry = iter->next()) {
-    mapping.insert(entry->logIndex(), entry->logTerm());
+    auto& e = *entry;
+    mapping.insert(e.position(), e.entry().logTerm());
   }
   return mapping;
 }
@@ -389,7 +390,8 @@ auto StorageManager::getLogIterator(std::optional<LogRange> bounds) const
       storage::IteratorPosition::fromLogIndex(range.from));
 
   struct Iterator : LogIterator {
-    explicit Iterator(LogRange range, std::unique_ptr<LogIterator> disk)
+    explicit Iterator(LogRange range,
+                      std::unique_ptr<PersistedLogIterator> disk)
         : _range(range), _disk(std::move(disk)) {}
 
     auto next() -> std::optional<LogEntry> override {
@@ -397,14 +399,14 @@ auto StorageManager::getLogIterator(std::optional<LogRange> bounds) const
       if (not entry) {
         return std::nullopt;
       }
-      if (not _range.contains(entry->logIndex())) {
+      if (not _range.contains(entry->entry().logIndex())) {
         return std::nullopt;  // end of range
       }
-      return entry;
+      return entry->entry();
     }
 
     LogRange _range;
-    std::unique_ptr<LogIterator> _disk;
+    std::unique_ptr<PersistedLogIterator> _disk;
   };
 
   return std::make_unique<Iterator>(range, std::move(diskIter));
@@ -426,7 +428,8 @@ auto StorageManager::getCommittedLogIterator(std::optional<LogRange> bounds)
       storage::IteratorPosition::fromLogIndex(range.from));
 
   struct Iterator : LogViewRangeIterator {
-    explicit Iterator(LogRange range, std::unique_ptr<LogIterator> disk)
+    explicit Iterator(LogRange range,
+                      std::unique_ptr<PersistedLogIterator> disk)
         : _range(range), _disk(std::move(disk)) {}
 
     auto range() const noexcept -> LogRange override { return _range; }
@@ -436,18 +439,19 @@ auto StorageManager::getCommittedLogIterator(std::optional<LogRange> bounds)
         if (not _entry) {
           return std::nullopt;
         }
-        if (not _range.contains(_entry->logIndex())) {
+        if (not _range.contains(_entry->entry().logIndex())) {
           return std::nullopt;  // end of range
         }
-        if (_entry->hasPayload()) {
-          return LogEntryView{_entry->logIndex(), *_entry->logPayload()};
+        if (_entry->entry().hasPayload()) {
+          return LogEntryView{_entry->entry().logIndex(),
+                              *_entry->entry().logPayload()};
         }
       }
     }
 
     LogRange _range;
-    std::unique_ptr<LogIterator> _disk;
-    std::optional<LogEntry> _entry;
+    std::unique_ptr<PersistedLogIterator> _disk;
+    std::optional<PersistedLogEntry> _entry;
   };
 
   return std::make_unique<Iterator>(range, std::move(diskIter));

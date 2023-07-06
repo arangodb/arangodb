@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/PersistedLogEntry.h"
 #include "Replication2/Storage/IPersistor.h"
 #include "Replication2/Storage/IteratorPosition.h"
 
@@ -46,7 +47,7 @@ struct ILogPersistor : virtual IPersistor {
   virtual ~ILogPersistor() = default;
 
   [[nodiscard]] virtual auto getIterator(IteratorPosition position)
-      -> std::unique_ptr<LogIterator> = 0;
+      -> std::unique_ptr<PersistedLogIterator> = 0;
 
   struct WriteOptions {
     bool waitForSync = false;

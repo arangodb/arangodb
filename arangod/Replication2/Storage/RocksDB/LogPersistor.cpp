@@ -46,10 +46,10 @@ LogPersistor::LogPersistor(LogId logId, uint64_t objectId,
       db(db),
       logCf(logCf) {}
 
-std::unique_ptr<replication2::LogIterator> LogPersistor::getIterator(
+std::unique_ptr<replication2::PersistedLogIterator> LogPersistor::getIterator(
     IteratorPosition position) {
-  return std::make_unique<LogIterator>(ctx.objectId, db, logCf,
-                                       position.index());
+  return std::make_unique<rocksdb::LogIterator>(ctx.objectId, db, logCf,
+                                                position.index());
 }
 
 auto LogPersistor::removeFront(LogIndex stop, WriteOptions const& opts)

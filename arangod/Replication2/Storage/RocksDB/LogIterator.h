@@ -24,7 +24,8 @@
 #pragma once
 
 #include "Basics/RocksDBUtils.h"
-#include "Replication2/ReplicatedLog/LogEntry.h"
+#include "Replication2/ReplicatedLog/PersistedLogEntry.h"
+#include "Replication2/Storage/IteratorPosition.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBValue.h"
@@ -34,7 +35,7 @@
 
 namespace arangodb::replication2::storage::rocksdb {
 
-struct LogIterator : replication2::LogIterator {
+struct LogIterator : replication2::PersistedLogIterator {
   ~LogIterator() override = default;
 
   LogIterator(std::uint64_t objectId, ::rocksdb::DB* db,
@@ -51,7 +52,7 @@ struct LogIterator : replication2::LogIterator {
     _iter->Seek(first.string());
   }
 
-  auto next() -> std::optional<LogEntry> override {
+  auto next() -> std::optional<PersistedLogEntry> override {
     if (!_first) {
       _iter->Next();
     }
@@ -67,9 +68,10 @@ struct LogIterator : replication2::LogIterator {
       return std::nullopt;
     }
 
-    return std::optional<LogEntry>{std::in_place,
-                                   RocksDBKey::logIndex(_iter->key()),
-                                   RocksDBValue::data(_iter->value())};
+    auto index = RocksDBKey::logIndex(_iter->key());
+    return std::optional<PersistedLogEntry>{
+        std::in_place, LogEntry{index, RocksDBValue::data(_iter->value())},
+        IteratorPosition::fromLogIndex(index)};
   }
 
   RocksDBKeyBounds const _bounds;

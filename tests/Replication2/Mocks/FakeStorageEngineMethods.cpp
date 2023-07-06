@@ -24,6 +24,7 @@
 
 #include <utility>
 #include "Basics/Result.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
 #include "Replication2/Storage/IteratorPosition.h"
 
 namespace {
@@ -62,8 +63,8 @@ auto FakeStorageEngineMethods::readMetadata()
 }
 
 auto FakeStorageEngineMethods::getIterator(IteratorPosition position)
-    -> std::unique_ptr<LogIterator> {
-  struct ContainerIterator : LogIterator {
+    -> std::unique_ptr<PersistedLogIterator> {
+  struct ContainerIterator : PersistedLogIterator {
     using Container = FakeStorageEngineMethodsContext::LogContainerType;
     using Iterator = Container ::iterator;
     ContainerIterator(Container store, LogIndex start)
@@ -71,11 +72,13 @@ auto FakeStorageEngineMethods::getIterator(IteratorPosition position)
           _current(_store.lower_bound(start)),
           _end(_store.end()) {}
 
-    auto next() -> std::optional<LogEntry> override {
+    auto next() -> std::optional<PersistedLogEntry> override {
       if (_current != _end) {
         auto it = _current;
         ++_current;
-        return it->second;
+        return PersistedLogEntry(
+            LogEntry{it->second},
+            storage::IteratorPosition::fromLogIndex(it->second.logIndex()));
       }
       return std::nullopt;
     }
