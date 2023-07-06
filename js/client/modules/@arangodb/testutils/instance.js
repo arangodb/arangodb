@@ -73,6 +73,13 @@ let tcpdump;
 
 let PORTMANAGER;
 
+var regex = /[^\u0000-\u00ff]/; // Small performance gain from pre-compiling the regex
+function containsDoubleByte(str) {
+    if (!str.length) return false;
+    if (str.charCodeAt(0) > 255) return true;
+    return regex.test(str);
+}
+
 function getSockStatFile(pid) {
   try {
     return fs.read("/proc/" + pid + "/net/sockstat");
@@ -179,7 +186,7 @@ class agencyConfig {
 
 class instance {
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig) {
+  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig, tmpDir) {
     if (! PORTMANAGER) {
       PORTMANAGER = new portManager(options);
     }
@@ -203,6 +210,7 @@ class instance {
     this.assertLines = [];
     this.memProfCounter = 0;
 
+    this.topLevelTmpDir = tmpDir;
     this.dataDir = fs.join(this.rootDir, 'data');
     this.appDir = fs.join(this.rootDir, 'apps');
     this.tmpDir = fs.join(this.rootDir, 'tmp');
@@ -217,8 +225,12 @@ class instance {
     }
     this.JWT = null;
     this.jwtFiles = null;
+
+    this.sanOptions = _.clone(this.options.sanOptions);
+    this.sanFiles = [];
+
     this._makeArgsArangod();
-    
+
     this.name = instanceRole + ' - ' + this.port;
     this.pid = null;
     this.exitStatus = null;
@@ -447,6 +459,17 @@ class instance {
     if (this.args.hasOwnProperty('server.jwt-secret')) {
       this.JWT = this.args['server.jwt-secret'];
     }
+    if (this.options.isSan) {
+      let rootDir = this.rootDir;
+      if (containsDoubleByte(rootDir)) {
+        rootDir = this.topLevelTmpDir;
+      }
+      for (const [key, value] of Object.entries(this.sanOptions)) {
+        let oneLogFile = fs.join(rootDir, key.toLowerCase().split('_')[0] + '.log');
+        this.sanOptions[key]['log_path'] = oneLogFile;
+        this.sanFiles.push(oneLogFile);
+      }
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -658,9 +681,29 @@ class instance {
     if (this.options.extremeVerbosity) {
       print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
+    let backup = {};
+    if (this.options.isSan) {
+      for (const [key, value] of Object.entries(this.sanOptions)) {
+        let oneSet = "";
+        for (const [keyOne, valueOne] of Object.entries(value)) {
+          if (oneSet.length > 0) {
+            oneSet += ":";
+          }
+          oneSet += `${keyOne}=${valueOne}`;
+        }
+        backup[key] = process.env[key];
+        process.env[key] = oneSet;
+      }
+    }
 
     process.env['ARANGODB_SERVER_DIR'] = this.rootDir;
-    return executeExternal(cmd, argv, false, pu.coverageEnvironment());
+    let ret = executeExternal(cmd, argv, false, pu.coverageEnvironment());
+    if (this.options.isSan) {
+      for (const [key, value] of Object.entries(backup)) {
+        process.env[key] = value;
+      }
+    }
+    return ret;
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief starts an instance
@@ -727,6 +770,24 @@ class instance {
     }
   };
 
+  fetchSanFileAfterExit() {
+    if (this.options.isSan) {
+      this.sanFiles.forEach(fileName => {
+        let fn = `${fileName}.arangod.${this.pid}`;
+        if (this.options.extremeVerbosity) {
+          print(`checking for ${fn}: ${fs.exists(fn)}`);
+        }
+        if (fs.exists(fn)) {
+          let content = fs.read(fn);
+          if (content.length > 10) {
+            crashUtils.GDB_OUTPUT += `Report of '${this.name}' in ${fn} contains: \n`;
+            crashUtils.GDB_OUTPUT += content;
+            this.serverCrashedLocal = true;
+          }
+        }
+      });
+    }
+  }
   waitForExitAfterDebugKill() {
     // Crashutils debugger kills our instance, but we neet to get
     // testing.js sapwned-PID-monitoring adjusted.
@@ -742,6 +803,7 @@ class instance {
     } catch(ex) {
       print(ex);
     }
+    this.fetchSanFileAfterExit();
     this.pid = null;
     print('done');
   }
@@ -752,8 +814,10 @@ class instance {
     }
     this.exitStatus = statusExternal(this.pid, true);
     if (this.exitStatus.status !== 'TERMINATED') {
+      this.fetchSanFileAfterExit();
       throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
     }
+    this.fetchSanFileAfterExit();
     this.exitStatus = null;
     this.pid = null;
   }
@@ -954,6 +1018,7 @@ class instance {
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
+        this.fetchSanFileAfterExit();
         this.pid = null;
         print(sockStat);
       } else if (this.protocol === 'unix') {
@@ -974,8 +1039,11 @@ class instance {
           this.serverCrashedLocal = true;
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
-        } else if (!this.options.noStartStopLogs) {
-          print(sockStat);
+        } else {
+          this.fetchSanFileAfterExit();
+          if (!this.options.noStartStopLogs) {
+            print(sockStat);
+          }
         }
         if (this.options.extremeVerbosity) {
           print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
@@ -999,8 +1067,11 @@ class instance {
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
         }
-        else if (!this.options.noStartStopLogs) {
-          print(sockStat);
+        else {
+          this.fetchSanFileAfterExit();
+          if (!this.options.noStartStopLogs) {
+            print(sockStat);
+          }
         }
         if (this.options.extremeVerbosity) {
           print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
