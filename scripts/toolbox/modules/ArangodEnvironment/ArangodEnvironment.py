@@ -1,3 +1,7 @@
+from .Agent import Agent
+from .Coordinator import Coordinator
+from .DBServer import DBServer
+
 class ArangodEnvironment:
     """An environment for starting arangod processes
     """
@@ -20,11 +24,23 @@ class ArangodEnvironment:
         self._next_port = self._next_port + 1
         return result
 
+    def start_agent(self):
+        agent = Agent(self)
+        agent.start()
+
     def register_agent(self, agent):
         self._agents.append(agent)
 
+    def start_coordinator(self):
+        coordinator = Coordinator(self)
+        coordinator.start()
+
     def register_coordinator(self, coordinator):
         self._coordinators.append(coordinator)
+
+    def start_dbserver(self):
+        dbserver = DBServer(self)
+        dbserver.start()
 
     def register_dbserver(self, dbserver):
         self._dbservers.append(dbserver)

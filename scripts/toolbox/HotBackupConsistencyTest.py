@@ -17,55 +17,50 @@ def inserter(collection):
     for i in range(10000):
         collection.insert({"number": i, "field1": "stone"})
 
-def main():
-    parser = argparse.ArgumentParser(
-        prog="HotBackupConsistencyTest.py",
-        description="tests hotbackups",
-        epilog="")
-    parser.add_argument('--arangod')
-    parser.add_argument('--topdir')
-    args = parser.parse_args()
-
-    workdir = tempfile.mkdtemp(prefix="arangotest_")
-    environment = ArangodEnvironment(args.arangod, args.topdir, workdir)
-
-    agent = Agent(environment)
-    agent.start()
-
-    coordinator = Coordinator(environment)
-    coordinator.start()
+def start_cluster(binary, topdir, workdir):
+    environment = ArangodEnvironment(binary, topdir, workdir)
+    environment.start_agent()
+    environment.start_coordinator()
 
     for i in range(2):
-        dbserver = DBServer(environment)
-        dbserver.start()
+        environment.start_dbserver()
 
-    client = ArangoClient(hosts="http://localhost:8501")
+    return environment
+
+def run_test(client):
+    # create a database to run the test on
     sys_db = client.db('_system', username='root')
-    backup = sys_db.backup
-
-    # TODO: replace this with API call for readiness
-    time.sleep(15)
-
     sys_db.create_database('test')
 
     test_db = client.db('test', username='root')
-    test_collection = test_db.create_collection('test_collection')
-    test_collection2 = test_db.create_collection('test_collection2')
 
+    # collection into which documents will be inserted and indexed
+    test_collection = test_db.create_collection('test_collection')
     index = test_collection.add_inverted_index(fields=["field1"])
     test_db.create_view(name="test_view", view_type="arangosearch",
-                        properties = { "links": { "test_collection": { "includeAllFields": True }} })
+                        properties = { "links": {
+                            "test_collection": {
+                                "includeAllFields": True }}})
 
+    test_collection2 = test_db.create_collection('test_collection2')
+    test_db.create_view(name="test_view_squared", view_type="arangosearch",
+                        properties = { "links": {
+                            "test_collection2": {
+                                "includeAllFields": True }}})
+
+    # Start a transaction
     txn_db = test_db.begin_transaction(read="test_collection2", write="test_collection2")
     txn_col = txn_db.collection("test_collection2")
     txn_col.insert({"foo": "bar"})
 
+    # Insert documents into test_collection
     insjob = threading.Thread(target=inserter, args=[test_collection])
     insjob.start()
-
+    # :/ making sure that something has happened from the
+    # inserter thread
     time.sleep(1)
 
-    print("Taking a hot backup...")
+    # Concurrently, take a hotbackup
     result = backup.create(
         label="hotbackuptesthotbackup",
         allow_inconsistent=False,
@@ -73,13 +68,19 @@ def main():
         timeout=1000
     )
     print(f"result: {result}")
+
+    # wait for the insertion job to finish
+    # TODO:
+    #  * have the inserter just continously insert documents
+    #  * signal for it to stop here
+    #  * join it.
     insjob.join()
 
-    print(f"Restoring hotbackup with id {result['backup_id']}")
+    # restore the hotbackup taken above
     result = backup.restore(result["backup_id"])
-    print(f"result: {result}")
 
-    print("Checking database consistency")
+    # Check that all documents that are in the test_view
+    # are also in the test_collection (and vice-versa)
     p = list(test_db.aql.execute(
         """LET x = (FOR v IN test_collection RETURN v._key)
            FOR w IN test_view
@@ -95,6 +96,13 @@ def main():
         """))
     assert q == [], f"q == {q}"
 
+    # Check that the inverted index is consistent with the documents
+    # in the collection.
+    # I could not come up with a reliable way to do this: the AQL optimiser
+    # is free to optimise the index into the first query, and then
+    # this check is void. in the same way it could happen that the optimiser
+    # decidesd that the filter in the second query is not best served by
+    # the inverted index and the test is void.
     p = set(test_db.aql.execute("FOR v IN test_collection RETURN v._key"))
     q = set(test_db.aql.execute("""
         FOR w IN test_collection
@@ -102,6 +110,27 @@ def main():
              RETURN w._key
         """))
     assert p == q
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="HotBackupConsistencyTest.py",
+        description="tests hotbackups",
+        epilog="")
+    parser.add_argument('--arangod')
+    parser.add_argument('--topdir')
+    args = parser.parse_args()
+
+    workdir = tempfile.mkdtemp(prefix="arangotest_")
+    print(f"working directory is {workdir}")
+
+    environment = start_cluster(args.arangod, args.topdir, workdir)
+    client = ArangoClient(hosts=environment._coordinators[0].get_endpoint())
+
+    # TODO: replace this with API call for cluster readiness
+    time.sleep(15)
+
+    run_test(client)
 
 if __name__ == "__main__":
     main()
