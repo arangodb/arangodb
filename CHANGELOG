@@ -1,6 +1,8 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+* Optimize runtime performance of exclusive locks.
+
 * Added startup option `--replication.active-failover-leader-grace-period`.
   This startup option can be used to set the amount of time (in seconds) for
   which the current leader in an active failover setup will continue to assume

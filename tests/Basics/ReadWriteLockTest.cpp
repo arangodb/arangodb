@@ -51,7 +51,7 @@ TEST(ReadWriteLockTest, testTryLockWrite) {
   ASSERT_TRUE(lock.isLockedWrite());
 
   // try write-locking again, with timeout
-  ASSERT_FALSE(lock.lockWrite(std::chrono::microseconds(1000)));
+  ASSERT_FALSE(lock.tryLockWriteFor(std::chrono::microseconds(1000)));
   ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_TRUE(lock.isLockedWrite());
@@ -83,7 +83,7 @@ TEST(ReadWriteLockTest, testLockWrite) {
   ASSERT_TRUE(lock.isLockedWrite());
 
   // try write-locking again, with timeout
-  ASSERT_FALSE(lock.lockWrite(std::chrono::microseconds(1000)));
+  ASSERT_FALSE(lock.tryLockWriteFor(std::chrono::microseconds(1000)));
   ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_TRUE(lock.isLockedWrite());
@@ -127,7 +127,7 @@ TEST(ReadWriteLockTest, testTryLockRead) {
   ASSERT_FALSE(lock.isLockedWrite());
 
   // try write-locking again, with timeout
-  ASSERT_FALSE(lock.lockWrite(std::chrono::microseconds(1000)));
+  ASSERT_FALSE(lock.tryLockWriteFor(std::chrono::microseconds(1000)));
   ASSERT_TRUE(lock.isLocked());
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
@@ -186,7 +186,7 @@ TEST(ReadWriteLockTest, testLockRead) {
   ASSERT_FALSE(lock.isLockedWrite());
 
   // try write-locking again, with timeout
-  ASSERT_FALSE(lock.lockWrite(std::chrono::microseconds(1000)));
+  ASSERT_FALSE(lock.tryLockWriteFor(std::chrono::microseconds(1000)));
   ASSERT_TRUE(lock.isLocked());
   ASSERT_TRUE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
@@ -221,13 +221,13 @@ TEST(ReadWriteLockTest, testLockWriteAttempted) {
   ASSERT_FALSE(lock.isLockedWrite());
 
   // lock write
-  ASSERT_TRUE(lock.lockWrite(std::chrono::microseconds(1000000)));
+  ASSERT_TRUE(lock.tryLockWriteFor(std::chrono::microseconds(1000000)));
   ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_TRUE(lock.isLockedWrite());
 
   // try locking again
-  ASSERT_FALSE(lock.lockWrite(std::chrono::microseconds(1000000)));
+  ASSERT_FALSE(lock.tryLockWriteFor(std::chrono::microseconds(1000000)));
   ASSERT_TRUE(lock.isLocked());
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_TRUE(lock.isLockedWrite());
