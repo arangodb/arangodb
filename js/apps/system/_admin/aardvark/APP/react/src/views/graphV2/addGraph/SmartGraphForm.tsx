@@ -6,6 +6,7 @@ import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
 import { ModalFooter } from "../../../components/modal";
 import { FieldsGrid } from "../FieldsGrid";
+import { useGraphsModeContext } from "../GraphsModeContext";
 import { createGraph } from "../GraphsHelpers";
 import { SmartGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
@@ -83,6 +84,7 @@ const INITIAL_VALUES: SmartGraphCreateValues = {
   isSmart: true
 };
 export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
+  const { initialGraph, mode } = useGraphsModeContext();
   const handleSubmit = async (values: SmartGraphCreateValues) => {
     try {
       const options = {
@@ -96,7 +98,7 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
         name: values.name,
         edgeDefinitions: values.edgeDefinitions
       };
-      const info = await createGraph(options)
+      const info = await createGraph(options);
 
       window.arangoHelper.arangoNotification(
         "Graph",
@@ -112,7 +114,7 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
   };
   return (
     <Formik
-      initialValues={INITIAL_VALUES}
+      initialValues={initialGraph || INITIAL_VALUES}
       validationSchema={Yup.object({
         name: Yup.string().required("Name is required")
       })}
@@ -124,32 +126,38 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
             <FieldsGrid maxWidth="full">
               <FormField
                 field={{
-                  ...smartGraphFieldsMap.name
+                  ...smartGraphFieldsMap.name,
+                  isDisabled: mode === "edit"
                 }}
               />
               <FormField
                 field={{
-                  ...smartGraphFieldsMap.numberOfShards
+                  ...smartGraphFieldsMap.numberOfShards,
+                  isDisabled: mode === "edit"
                 }}
               />
               <FormField
                 field={{
-                  ...smartGraphFieldsMap.replicationFactor
+                  ...smartGraphFieldsMap.replicationFactor,
+                  isDisabled: mode === "edit"
                 }}
               />
               <FormField
                 field={{
-                  ...smartGraphFieldsMap.minReplicationFactor
+                  ...smartGraphFieldsMap.minReplicationFactor,
+                  isDisabled: mode === "edit"
                 }}
               />
               <FormField
                 field={{
-                  ...smartGraphFieldsMap.isDisjoint
+                  ...smartGraphFieldsMap.isDisjoint,
+                  isDisabled: mode === "edit"
                 }}
               />
               <FormField
                 field={{
-                  ...smartGraphFieldsMap.smartGraphAttribute
+                  ...smartGraphFieldsMap.smartGraphAttribute,
+                  isDisabled: mode === "edit"
                 }}
               />
               <EdgeDefinitionsField
