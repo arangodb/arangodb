@@ -3,22 +3,22 @@ v3.9.12 (XXXX-X-XX)
 
 * Added startup option `--replication.active-failover-leader-grace-period`.
   This startup option can be used to set the amount of time (in seconds) for
-  which the current leader in an active failover setup will continue to 
-  assume its leadership even if it lost connection to the agency.
+  which the current leader in an active failover setup will continue to assume
+  its leadership even if it lost connection to the agency.
 
-  In case the leader cannot contact the agency anymore, the agency will elect
-  a new leader after the supervision grace period has elapsed. 
+  In case the leader cannot contact the agency anymore, the agency will elect a
+  new leader after the supervision grace period has elapsed.
   In order to avoid a split-brain situation with multiple servers assuming
-  leadership, this option can be used to make a disconnected leader refuse
-  any incoming write operations after the grace period controled by this option
-  has elapsed.
-  Ideally the startup option should be given a value greater than the value
-  of the supervision grace period, in order to avoid a temporarily disconnected
+  leadership, this option can be used to make a disconnected leader refuse any
+  incoming write operations after the grace period controled by this option has
+  elapsed.
+  Ideally the startup option should be given a value greater than the value of
+  the supervision grace period, in order to avoid a temporarily disconnected
   leader giving up leadership too early and unnecessarily.
 
-  The default value is 120 seconds. Setting the option to a value of 0 will
-  keep the existing behavior, in which a disconnected leader will not refuse
-  incoming write operations.
+  The default value is 120 seconds. Setting the option to a value of 0 will keep
+  the existing behavior, in which a disconnected leader will not refuse incoming
+  write operations.
 
 * When trying to read multiple documents, the coordinator will now handle empty
   lists gracefully and return an empty result set instead of an error.
