@@ -20,4 +20,25 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#include "PersistedStateInfo.h"
+
+#include "InMemoryLogEntry.h"
+
+namespace arangodb::replication2 {
+
+InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync)
+    : _waitForSync(waitForSync), _logEntry(std::move(entry)) {}
+
+void InMemoryLogEntry::setInsertTp(clock::time_point tp) noexcept {
+  _insertTp = tp;
+}
+
+auto InMemoryLogEntry::insertTp() const noexcept -> clock::time_point {
+  return _insertTp;
+}
+
+auto InMemoryLogEntry::entry() const noexcept -> PersistingLogEntry const& {
+  // Note that while get() isn't marked as noexcept, it actually is.
+  return _logEntry.get();
+}
+
+}  // namespace arangodb::replication2

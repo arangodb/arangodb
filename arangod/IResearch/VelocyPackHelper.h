@@ -47,16 +47,16 @@ uint8_t const COMPACT_ARRAY = 0x13;
 uint8_t const COMPACT_OBJECT = 0x14;
 
 template<typename Char>
-std::basic_string_view<Char> ref(VPackSlice slice) {
+irs::basic_string_view<Char> ref(VPackSlice slice) {
   static_assert(sizeof(Char) == sizeof(uint8_t),
                 "sizeof(Char) != sizeof(uint8_t)");
 
-  return std::basic_string_view<Char>(
+  return irs::basic_string_view<Char>(
       reinterpret_cast<Char const*>(slice.begin()), slice.byteSize());
 }
 
 template<typename Char>
-VPackSlice slice(std::basic_string_view<Char> const& ref) {
+VPackSlice slice(irs::basic_string_view<Char> const& ref) {
   static_assert(sizeof(Char) == sizeof(uint8_t),
                 "sizeof(Char) != sizeof(uint8_t)");
 
@@ -64,7 +64,7 @@ VPackSlice slice(std::basic_string_view<Char> const& ref) {
 }
 
 template<typename Char>
-VPackSlice slice(std::basic_string<Char> const& ref) {
+VPackSlice slice(irs::basic_string<Char> const& ref) {
   static_assert(sizeof(Char) == sizeof(uint8_t),
                 "sizeof(Char) != sizeof(uint8_t)");
 

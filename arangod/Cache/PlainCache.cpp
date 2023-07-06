@@ -53,6 +53,7 @@ Finding PlainCache<Hasher>::find(void const* key, std::uint32_t keySize) {
   Table::BucketLocker guard;
   std::tie(status, guard) = getBucket(hash, Cache::triesFast);
   if (status != TRI_ERROR_NO_ERROR) {
+    recordStat(Stat::findMiss);
     result.reportError(status);
   } else {
     PlainBucket& bucket = guard.bucket<PlainBucket>();

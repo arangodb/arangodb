@@ -25,16 +25,7 @@
 #pragma once
 
 #include "Basics/Result.h"
-// #include "Futures/Future.h"
-//#include "Indexes/IndexIterator.h"
-//#include "Replication2/ReplicatedLog/PersistedLog.h"
-// #include "StorageEngine/HealthData.h"
 #include "StorageEngine/PhysicalCollection.h"
-// #include "StorageEngine/StorageEngine.h"
-// #include "StorageEngine/TransactionCollection.h"
-// #include "StorageEngine/TransactionState.h"
-// #include "VocBase/Identifiers/IndexId.h"
-// #include "VocBase/Identifiers/LocalDocumentId.h"
 
 #include <atomic>
 #include <string_view>
@@ -60,9 +51,10 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   static std::function<void()> before;
 
   PhysicalCollectionMock(arangodb::LogicalCollection& collection);
-  std::shared_ptr<arangodb::Index> createIndex(arangodb::velocypack::Slice info,
-                                               bool restore,
-                                               bool& created) override;
+  std::shared_ptr<arangodb::Index> createIndex(
+      arangodb::velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(double)>> =
+          nullptr) override;
   void deferDropCollection(
       std::function<bool(arangodb::LogicalCollection&)> const& callback)
       override;
