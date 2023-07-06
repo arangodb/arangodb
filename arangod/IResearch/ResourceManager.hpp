@@ -41,4 +41,27 @@ struct ResourceManager final : metrics::Gauge<uint64_t>, irs::IResourceManager {
   }
 };
 
+struct LimittedResourceManager final : metrics::Gauge<uint64_t>,
+                                       irs::IResourceManager {
+  using Value = uint64_t;
+  using metrics::Gauge<uint64_t>::Gauge;
+
+  bool Increase(size_t v) noexcept final {
+    uint64_t current = load();
+    do {
+      if (limit < current + v) {
+        return false;
+      }
+    } while (!compare_exchange_weak(current, current + v));
+    return true;
+  }
+
+  void Decrease(size_t v) noexcept final {
+    [[maybe_unused]] auto const was = fetch_sub(v);
+    TRI_ASSERT(v <= was);
+  }
+
+  uint64_t limit{0};
+};
+
 }  // namespace arangodb::iresearch

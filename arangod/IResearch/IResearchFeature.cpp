@@ -104,30 +104,7 @@ DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
 
 #ifdef USE_ENTERPRISE
 
-struct CachedColumnsManager final : metrics::Gauge<uint64_t>,
-                                    irs::IResourceManager {
-  using Value = uint64_t;
-  using metrics::Gauge<uint64_t>::Gauge;
-
-  bool Increase(size_t v) noexcept final {
-    uint64_t current = load();
-    do {
-      if (_columnsCacheLimit < current + v) {
-        return false;
-      }
-    } while (!compare_exchange_weak(current, current + v));
-    return true;
-  }
-
-  void Decrease(size_t v) noexcept final {
-    [[maybe_unused]] auto const was = fetch_sub(v);
-    TRI_ASSERT(v <= was);
-  }
-
-  uint64_t _columnsCacheLimit{0};
-};
-
-DECLARE_GAUGE(arangodb_search_columns_cache_size, CachedColumnsManager,
+DECLARE_GAUGE(arangodb_search_columns_cache_size, LimittedResourceManager,
               "ArangoSearch columns cache usage in bytes");
 #endif
 
@@ -1046,12 +1023,12 @@ but the returned data may be incomplete.)");
 
 #ifdef USE_ENTERPRISE
   auto& manager =
-      basics::downCast<CachedColumnsManager>(_columnsCacheMemoryUsed);
+      basics::downCast<LimittedResourceManager>(_columnsCacheMemoryUsed);
   options
       ->addOption(CACHE_LIMIT,
                   "The limit (in bytes) for ArangoSearch columns cache "
                   "(0 = no caching).",
-                  new options::UInt64Parameter(&manager._columnsCacheLimit),
+                  new options::UInt64Parameter(&manager.limit),
                   options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                             options::Flags::OnSingle,
                                             options::Flags::OnDBServer,
@@ -1227,9 +1204,9 @@ void IResearchFeature::start() {
 
 #ifdef USE_ENTERPRISE
     auto& manager =
-        basics::downCast<CachedColumnsManager>(_columnsCacheMemoryUsed);
+        basics::downCast<LimittedResourceManager>(_columnsCacheMemoryUsed);
     LOG_TOPIC("c2c74", INFO, arangodb::iresearch::TOPIC)
-        << "ArangoSearch columns cache limit: " << manager._columnsCacheLimit;
+        << "ArangoSearch columns cache limit: " << manager.limit;
 #endif
 
     {
@@ -1410,13 +1387,13 @@ void IResearchFeature::registerIndexFactory() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 int64_t IResearchFeature::columnsCacheUsage() const noexcept {
   auto& manager =
-      basics::downCast<CachedColumnsManager>(_columnsCacheMemoryUsed);
+      basics::downCast<LimittedResourceManager>(_columnsCacheMemoryUsed);
   return manager.load();
 }
 void IResearchFeature::setCacheUsageLimit(uint64_t limit) noexcept {
   auto& manager =
-      basics::downCast<CachedColumnsManager>(_columnsCacheMemoryUsed);
-  manager._columnsCacheLimit = limit;
+      basics::downCast<LimittedResourceManager>(_columnsCacheMemoryUsed);
+  manager.limit = limit;
 }
 #endif
 
