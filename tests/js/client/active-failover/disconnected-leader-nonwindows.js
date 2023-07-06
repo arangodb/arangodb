@@ -27,21 +27,14 @@
 const jsunity = require('jsunity');
 const internal = require('internal');
 const console = require('console');
-const expect = require('chai').expect;
 const arangosh = require('@arangodb/arangosh');
 const crypto = require('@arangodb/crypto');
 const request = require("@arangodb/request");
-const tasks = require("@arangodb/tasks");
-const fs = require('fs');
-const path = require('path');
-const utils = require('@arangodb/foxx/manager-utils');
 const arango = internal.arango;
 const errors = internal.errors;
 const db = internal.db;
 const wait = internal.wait;
 const compareTicks = require("@arangodb/replication").compareTicks;
-const suspendExternal = internal.suspendExternal;
-const continueExternal = internal.continueExternal;
 const { debugSetFailAt, debugClearFailAt, debugRemoveFailAt, debugCanUseFailAt } = require("@arangodb/test-helper");
 
 const jwtSecret = 'haxxmann';
@@ -56,49 +49,37 @@ const jwtRoot = crypto.jwtEncode(jwtSecret, {
   "exp": Math.floor(Date.now() / 1000) + 3600
 }, 'HS256');
 
-if (!internal.env.hasOwnProperty('INSTANCEINFO')) {
-  throw new Error('env.INSTANCEINFO was not set by caller!');
-}
-const instanceinfo = JSON.parse(internal.env.INSTANCEINFO);
-
 const cname = "UnitTestActiveFailover";
 
-function getUrl(endpoint) {
-  return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-}
-
-function baseUrl() {
-  return getUrl(arango.getEndpoint());
-}
-
 function connectToServer(leader) {
-  arango.reconnect(leader, "_system", "root", "");
+  leader.connect();
   db._flushCache();
 }
 
 // getEndponts works with any server
 function getClusterEndpoints() {
   //let jwt = crypto.jwtEncode(options['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-  var res = request.get({
-    url: baseUrl() + "/_api/cluster/endpoints",
-    auth: {
-      bearer: jwtRoot,
-    },
-    timeout: 300
+  var res = arango.GET_RAW("/_api/cluster/endpoints");
+  assertTrue(res.parsedBody.hasOwnProperty('code'), JSON.stringify(res));
+  assertEqual(res.parsedBody.code, 200, JSON.stringify(res));
+  assertTrue(res.parsedBody.hasOwnProperty('endpoints'));
+  assertTrue(res.parsedBody.endpoints instanceof Array);
+  assertTrue(res.parsedBody.endpoints.length > 0);
+  let endpoints = res.parsedBody.endpoints.map(e => e.endpoint);
+  let ret = [];
+  endpoints.forEach(endpoint => {
+    ret.push(
+      global.instanceManager.arangods.filter(
+        arangod => arangod.endpoint === endpoint)[
+        0]
+    );
   });
-  assertTrue(res instanceof request.Response);
-  assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
-  assertEqual(res.statusCode, 200, JSON.stringify(res));
-  assertTrue(res.hasOwnProperty('json'));
-  assertTrue(res.json.hasOwnProperty('endpoints'));
-  assertTrue(res.json.endpoints instanceof Array);
-  assertTrue(res.json.endpoints.length > 0);
-  return res.json.endpoints.map(e => e.endpoint);
+  return ret;
 }
 
-function getLoggerState(endpoint) {
+function getLoggerState(url) {
   var res = request.get({
-    url: getUrl(endpoint) + "/_db/_system/_api/replication/logger-state",
+    url: url + "/_db/_system/_api/replication/logger-state",
     auth: {
       bearer: jwtRoot,
     },
@@ -111,9 +92,9 @@ function getLoggerState(endpoint) {
   return arangosh.checkRequestResult(res.json);
 }
 
-function getApplierState(endpoint) {
+function getApplierState(url) {
   var res = request.get({
-    url: getUrl(endpoint) + "/_db/_system/_api/replication/applier-state?global=true",
+    url: url + "/_db/_system/_api/replication/applier-state?global=true",
     auth: {
       bearer: jwtRoot,
     },
@@ -128,19 +109,18 @@ function getApplierState(endpoint) {
 
 // check the servers are in sync with the leader
 function checkInSync(leader, servers, ignore) {
-  print("Checking in-sync state with lead: ", leader);
+  print("Checking in-sync state with lead: ", leader.url);
 
-  const leaderTick = getLoggerState(leader).state.lastLogTick;
+  const leaderTick = getLoggerState(leader.url).state.lastLogTick;
 
-  let check = (endpoint) => {
-    if (endpoint === leader || endpoint === ignore) {
+  let check = (arangod) => {
+    if (arangod.url === leader.url || arangod.url === ignore) {
       return true;
     }
 
-    let applier = getApplierState(endpoint);
-
-    print("Checking endpoint ", endpoint, " applier.state.running=", applier.state.running, " applier.endpoint=", applier.endpoint);
-    return applier.state.running && applier.endpoint === leader &&
+    let applier = getApplierState(arangod.url);
+    print("Checking endpoint ", arangod.url, " applier.state.running=", applier.state.running, " applier.endpoint=", applier.endpoint);
+    return applier.state.running && applier.endpoint === leader.endpoint &&
       (compareTicks(applier.state.lastAppliedContinuousTick, leaderTick) >= 0 ||
         compareTicks(applier.state.lastProcessedContinuousTick, leaderTick) >= 0);
   };
@@ -148,33 +128,21 @@ function checkInSync(leader, servers, ignore) {
   let loop = 100;
   while (loop-- > 0) {
     if (servers.every(check)) {
-      print("All followers are in sync with: ", leader);
+      print("All followers are in sync with: ", leader.name);
       return true;
     }
     wait(1.0);
   }
-  print("Timeout waiting for followers of: ", leader);
+  print("Timeout waiting for followers of: ", leader.name);
   return false;
 }
 
 function readAgencyValue(path) {
-  let agents = instanceinfo.arangods.filter(arangod => arangod.instanceRole === "agent");
-  assertTrue(agents.length > 0, "No agents present");
   print("Querying agency... (", path, ")");
-  var res = request.post({
-    url: agents[0].url + "/_api/agency/read",
-    auth: {
-      bearer: jwtSuperuser,
-    },
-    body: JSON.stringify([[path]]),
-    timeout: 300
-  });
-  assertTrue(res instanceof request.Response);
-  assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
-  assertEqual(res.statusCode, 200, JSON.stringify(res));
-  assertTrue(res.hasOwnProperty('json'));
-  //print("Agency response ", res.json);
-  return arangosh.checkRequestResult(res.json);
+  let res = global.instanceManager.getAgency("/_api/agency/read", 'POST', JSON.stringify([[path]]));
+  assertTrue(res.hasOwnProperty('code'), JSON.stringify(res));
+  assertEqual(res.code, 200, JSON.stringify(res));
+  return JSON.parse(arangosh.checkRequestResult(res.body));
 }
 
 // resolve leader from agency
@@ -185,7 +153,8 @@ function leaderInAgency() {
     let uuid = res[0].arango.Plan.AsyncReplication.Leader;
     if (uuid && uuid.length > 0) {
       res = readAgencyValue("/arango/Supervision/Health");
-      return res[0].arango.Supervision.Health[uuid].Endpoint;
+      let leaderEndpoint = res[0].arango.Supervision.Health[uuid].Endpoint;
+      return global.instanceManager.arangods.filter(arangod => arangod.endpoint === leaderEndpoint)[0];
     }
     internal.wait(1.0);
   } while (i-- > 0);
@@ -193,7 +162,10 @@ function leaderInAgency() {
 }
 
 function waitUntilHealthStatusIs(isHealthy, isFailed) {
-  print("Waiting for health status to be healthy: ", JSON.stringify(isHealthy), " failed: ", JSON.stringify(isFailed));
+  let healthNames = [];
+  isHealthy.forEach(arangod => healthNames.push(arangod.name));
+
+  print("Waiting for health status to be healthy: ", healthNames, " failed: ", JSON.stringify(isFailed));
   // Wait 25 seconds, sleep 5 each run
   for (const start = Date.now(); (Date.now() - start) / 1000 < 25; internal.wait(5.0)) {
     let needToWait = false;
@@ -210,18 +182,19 @@ function waitUntilHealthStatusIs(isHealthy, isFailed) {
         }
         foundFailed++;
       } else {
-        if (!isHealthy.indexOf(srv.Endpoint) === -1) {
-          needToWait = true;
-          break;
-        }
-        foundHealthy++;
+        isHealthy.forEach(arangod => {
+          
+          if (arangod.endpoint === srv.Endpoint) {
+            foundHealthy++;
+          }
+        });
       }
     }
     if (!needToWait && foundHealthy === isHealthy.length && foundFailed === isFailed.length) {
       return true;
     }
   }
-  print("Timing out, could not reach desired state: ", JSON.stringify(isHealthy), " failed: ", JSON.stringify(isFailed));
+  print("Timing out, could not reach desired state: ", healthNames, " failed: ", JSON.stringify(isFailed));
   print("We only got: ", JSON.stringify(readAgencyValue("/arango/Supervision/Health")[0].arango.Supervision.Health));
   return false;
 }
@@ -245,11 +218,11 @@ function LeaderDisconnectedSuite() {
     tearDown: function () {
       // clear all failure points
       servers.forEach((s) => {
-        debugClearFailAt(s);
+        debugClearFailAt(s.endpoint);
       });
 
       let currentLead = leaderInAgency();
-      print("connecting shell to leader ", currentLead);
+      print("connecting shell to leader ", currentLead.name);
       connectToServer(currentLead);
       
       db._drop(cname);
@@ -257,22 +230,22 @@ function LeaderDisconnectedSuite() {
       let i = 100;
       do {
         let endpoints = getClusterEndpoints();
-        if (endpoints.length === servers.length && endpoints[0] === currentLead) {
+        if (endpoints.length === servers.length && endpoints[0].name === currentLead.name) {
           break;
         }
-        print("cluster endpoints not as expected: found =", endpoints, " expected =", servers);
+        print("cluster endpoints not as expected: found =", endpoints.length, " expected =", servers.length);
         internal.wait(1); // settle down
       } while (i-- > 0);
 
       let endpoints = getClusterEndpoints();
-      print("endpoints: ", endpoints, " servers: ", servers);
+      print("endpoints: ", endpoints.length, " servers: ", servers.length);
       assertEqual(endpoints.length, servers.length);
       assertEqual(endpoints[0], currentLead);
       
       connectToServer(initialLead);
 
-      // unfortunately the following is necessary to work against
-      // the quirks of our test framework.
+      // We need to restore the original leader, so our fuse against
+      // accidential leader change doesn't blow.
       // the test framework does some post-checks, which queries all
       // sorts of REST endpoints. querying such endpoints is disallowed
       // on active failover followers, and will result in the post-tests
@@ -280,13 +253,12 @@ function LeaderDisconnectedSuite() {
       // therefore it is necessary that we finish the test with the
       // leader being the same leader as when the test was started.
       currentLead = leaderInAgency();
-      if (currentLead !== initialLead) {
-        let suspended = [];
-        let toSuspend = instanceinfo.arangods.filter(arangod => arangod.endpoint !== initialLead && arangod.instanceRole !== 'agent');
+      if (currentLead.url !== initialLead.url) {
+        let toSuspend = global.instanceManager.arangods.filter(arangod => arangod.endpoint !== initialLead.endpoint && !arangod.isAgent());
         toSuspend.forEach(arangod => {
-          print("Suspending servers: ", arangod.endpoint);
-          assertTrue(suspendExternal(arangod.pid));
-          suspended.push(toSuspend);
+          print(`${Date()} Suspending Leader: ${arangod.name} ${arangod.pid} ${arangod.endpoint}`);
+          assertTrue(arangod.suspend());
+
         });
 
         i = 100;
@@ -297,10 +269,10 @@ function LeaderDisconnectedSuite() {
           }
           internal.wait(1.0);
         } while (i-- > 0);
-      
-        suspended.forEach(arangod => {
-          print("Resuming: ", arangod.endpoint);
-          assertTrue(continueExternal(arangod.pid));
+
+        toSuspend.forEach(arangod => {
+          print(`${Date()} Teardown: Resuming: ${arangod.name} ${arangod.pid}`);
+          assertTrue(arangod.resume());
         });
 
         // wait until the server itself has recognized that it is leader again
@@ -320,7 +292,7 @@ function LeaderDisconnectedSuite() {
       assertEqual(currentLead, initialLead);
       // must drop again here
       db._drop(cname);
-
+      
       assertTrue(waitUntilHealthStatusIs(servers, []));
       // wait for things to settle. we need to do this so all follow-up tests
       // (in other files) find the server to be ready again.
@@ -329,7 +301,7 @@ function LeaderDisconnectedSuite() {
 
     testLeaderCannotSendToAgency: function () {
       let oldLead = leaderInAgency();
-      if (!debugCanUseFailAt(oldLead)) {
+      if (!debugCanUseFailAt(oldLead.endpoint)) {
         return;
       }
      
@@ -341,30 +313,30 @@ function LeaderDisconnectedSuite() {
       // later reconnect to it. if we don't set this failure point, the
       // leader will switch into TRYAGAIN mode and every request to /_api/version
       // and /_api/database/current is denied. such requests happen during reconnects.
-      debugSetFailAt(oldLead, "CommTask::allowReconnectRequests");
+      debugSetFailAt(oldLead.endpoint, "CommTask::allowReconnectRequests");
 
       // we want this to speed up the test
-      debugSetFailAt(oldLead, "HeartbeatThread::reducedLeaderGracePeriod");
+      debugSetFailAt(oldLead.endpoint, "HeartbeatThread::reducedLeaderGracePeriod");
 
       // this failure point makes the leader not send its heartbeat
       // to the agency anymore
       print("Setting failure point to block heartbeats from leader");
-      debugSetFailAt(oldLead, "HeartbeatThread::sendServerState");
+      debugSetFailAt(oldLead.endpoint, "HeartbeatThread::sendServerState");
 
       let currentLead;
       let i = 60;
       do {
         currentLead = leaderInAgency();
-        if (currentLead !== oldLead) {
+        if (currentLead.name !== oldLead.name) {
           break;
         }
         internal.sleep(1.0);
       } while (i-- > 0);
 
-      print("Leader has changed to", currentLead);
+      print("Leader has changed to", currentLead.name);
 
       // leader must have changed
-      assertNotEqual(currentLead, oldLead);
+      assertNotEqual(currentLead.name, oldLead.name);
 
       try {
         db._create(cname + "2");
@@ -374,8 +346,8 @@ function LeaderDisconnectedSuite() {
       }
 
       // clear failure points
-      print("Healing old leader", oldLead);
-      debugRemoveFailAt(oldLead, "HeartbeatThread::sendServerState");
+      print("Healing old leader", oldLead.name);
+      debugRemoveFailAt(oldLead.endpoint, "HeartbeatThread::sendServerState");
 
       connectToServer(currentLead);
 

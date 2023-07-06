@@ -73,7 +73,7 @@ function baseUrl() {
 function connectToServer(leader) {
   arango.reconnect(leader, "_system", "root", "");
   db._flushCache();
-};
+}
 
 // getEndponts works with any server
 function getClusterEndpoints() {
