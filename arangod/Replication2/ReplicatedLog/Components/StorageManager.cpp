@@ -250,8 +250,10 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
         LOG_CTX("4f5e3", DEBUG, self->loggerContext)
             << "aborting storage operation "
             << " because log core gone";
-        resolvePromise(std::move(req.promise),
-                       TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+        resolvePromise(
+            std::move(req.promise),
+            Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,
+                   "Storage operation aborted"});
         guard = self->guardedData.getLockedGuard();
         continue;
       }
@@ -313,8 +315,9 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
 auto StorageManager::transaction() -> std::unique_ptr<IStorageTransaction> {
   auto guard = guardedData.getLockedGuard();
   if (guard->methods == nullptr) {
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,
+        "Participant gone while trying to start storage manager transaction");
   }
   LOG_CTX("63ab8", TRACE, loggerContext) << "begin log transaction ";
   return std::make_unique<StorageManagerTransaction>(std::move(guard), *this);
@@ -337,8 +340,9 @@ auto StorageManager::beginMetaInfoTrx()
     -> std::unique_ptr<IStateInfoTransaction> {
   auto guard = guardedData.getLockedGuard();
   if (guard->methods == nullptr) {
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,
+        "Participant gone while trying to start meta info transaction");
   }
   LOG_CTX("ceb65", TRACE, loggerContext) << "begin meta info transaction";
   return std::make_unique<StateInfoTransaction>(std::move(guard), *this);
@@ -382,8 +386,9 @@ auto StorageManager::getLogIterator(std::optional<LogRange> bounds) const
 
   auto guard = guardedData.getLockedGuard();
   if (guard->methods == nullptr) {
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,
+        "Participant gone while trying to get a persisted log iterator");
   }
 
   auto diskIter = guard->methods->getIterator(
@@ -416,8 +421,10 @@ auto StorageManager::getCommittedLogIterator(std::optional<LogRange> bounds)
     const -> std::unique_ptr<LogViewRangeIterator> {
   auto guard = guardedData.getLockedGuard();
   if (guard->methods == nullptr) {
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,
+        "Participant gone while trying to get committed log "
+        "iterator");
   }
 
   auto range = guard->onDiskMapping.getIndexRange();

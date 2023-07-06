@@ -78,15 +78,17 @@ class RestBaseHandler : public rest::RestHandler {
   void generateForbidden();
 
  protected:
-  /// @brief parses the body (request) as VelocyPack, generates body
-  arangodb::velocypack::Slice parseVPackBody(bool& success);
+  /// @brief parses the request body as VelocyPack, generates body
+  velocypack::Slice parseVPackBody(bool& success);
 
   template<typename Payload>
-  void writeResult(Payload&&, arangodb::velocypack::Options const& options);
+  void writeResult(Payload&&, velocypack::Options const& options);
 
   /// @brief configure if outgoing responses will have the potential
   /// dirty reads header set:
-  void setOutgoingDirtyReadsHeader(bool flag) { _potentialDirtyReads = flag; }
+  void setOutgoingDirtyReadsHeader(bool flag) noexcept {
+    _potentialDirtyReads = flag;
+  }
 
   /// @brief Flag, if the outgoing response should have an HTTP header
   /// indicating potential dirty reads:

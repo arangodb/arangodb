@@ -521,6 +521,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.compactionStatus = _compactionManager->getCompactionStatus();
     status.lowestIndexToKeep = lowestIndexToKeep;
     status.firstInMemoryIndex = _inMemoryLogManager->getFirstInMemoryIndex();
+    status.syncCommitIndex = leaderData._syncCommitIndex;
     status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
     status.activeParticipantsConfig =
@@ -935,6 +936,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
       << " entries , prevLogEntry.term = " << req.prevLogEntry.term
       << ", prevLogEntry.index = " << req.prevLogEntry.index
       << ", leaderCommit = " << req.leaderCommit
+      << ", waitForSync = " << req.waitForSync
       << ", lci = " << req.lowestIndexToKeep << ", msg-id = " << req.messageId;
 
   return std::make_pair(std::move(req), lastIndex);
@@ -1043,10 +1045,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
             response.snapshotAvailable, response.messageId);
       }
 
-      TRI_ASSERT(response.syncIndex >= follower.syncIndex)
-          << response.syncIndex << " vs. " << follower.syncIndex;
-      follower.syncIndex = response.syncIndex;
-
       follower.lastErrorReason = response.reason;
       if (response.isSuccess()) {
         follower.numErrorsSinceLastAnswer = 0;
@@ -1055,6 +1053,17 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
             storage::IteratorPosition::fromLogIndex(lastIndex.index);
         follower.lastAckedCommitIndex = currentCommitIndex;
         follower.lastAckedLowestIndexToKeep = currentLITK;
+
+        // Note that it is not necessary to update the follower's syncIndex
+        // exclusively on success. While doing so after getting an
+        // AppendEntriesError, but then we might end up with a syncIndex that is
+        // greater than the lastAckedIndex, which is correct, but
+        // counterintuitive. As this is not performance critical, it would be
+        // nicer to know that the syncIndex is always = lastAckedIndex (in case
+        // of waitForSync = true).
+        TRI_ASSERT(response.syncIndex >= follower.syncIndex)
+            << response.syncIndex << " vs. " << follower.syncIndex;
+        follower.syncIndex = response.syncIndex;
       } else {
         TRI_ASSERT(response.reason.error !=
                    AppendEntriesErrorReason::ErrorType::kNone);
@@ -1148,10 +1157,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerStates() const
         .lastAckedEntry = follower->lastAckedIndex,
         .id = pid,
         .snapshotAvailable = follower->snapshotAvailable,
-        .flags = flags->second});
+        .flags = flags->second,
+        .syncIndex = follower->syncIndex});
 
-    largestCommonIndex =
-        std::min(largestCommonIndex, follower->lastAckedIndex.index);
+    largestCommonIndex = std::min(largestCommonIndex, follower->syncIndex);
   }
 
   return {largestCommonIndex, std::move(participantStates)};
@@ -1173,13 +1182,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
   auto const currentCommitIndex = _self._inMemoryLogManager->getCommitIndex();
   auto const lastTermIndex =
       _self._inMemoryLogManager->getSpearheadTermIndexPair();
-  auto const [newCommitIndex, commitFailReason, quorum] =
+  auto [newCommitIndex, newSyncCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(
           indexes,
           this->activeInnerTermConfig->participantsConfig.config
               .effectiveWriteConcern,
-          currentCommitIndex, lastTermIndex);
+          currentCommitIndex, lastTermIndex, _syncCommitIndex);
   _lastCommitFailReason = commitFailReason;
+  _syncCommitIndex = std::max(_syncCommitIndex, newSyncCommitIndex);
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
       << "calculated commit index as " << newCommitIndex
@@ -1207,6 +1217,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
   result.firstIndex = mapping.getFirstIndex().value_or(TermIndexPair{}).index;
   result.spearHead = _self._inMemoryLogManager->getSpearheadTermIndexPair();
   result.releaseIndex = releaseIndex;
+  result.syncIndex = _self._storageManager->getSyncIndex();
   return result;
 }
 

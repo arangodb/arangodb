@@ -190,7 +190,7 @@ void RestDumpHandler::handleCommandDumpNext() {
 
   if (batch == nullptr) {
     // all batches have been received
-    return generateOk(rest::ResponseCode::NO_CONTENT, VPackSlice::noneSlice());
+    return resetResponse(rest::ResponseCode::NO_CONTENT);
   }
 
   // output the batch value
