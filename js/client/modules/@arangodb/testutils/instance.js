@@ -1025,7 +1025,7 @@ class instance {
         let sockStat = this.getSockStat("Sock stat for: ");
         let reply = {code: 555};
         try {
-          print(this.cconnect());
+          print(this.connect());
           reply = arango.DELETE_RAW('/_admin/shutdown');
         } catch(ex) {
           print(RED + 'while invoking shutdown via unix domain socket: ' + ex + RESET);
