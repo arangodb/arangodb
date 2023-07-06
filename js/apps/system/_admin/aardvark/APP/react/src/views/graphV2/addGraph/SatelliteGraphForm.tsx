@@ -1,18 +1,20 @@
 import { Alert, AlertIcon, Button, Stack, VStack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
+import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
 import { ModalFooter } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
+import { useGraphsModeContext } from "../GraphsModeContext";
 import { SatelliteGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 
 const satelliteGraphFieldsMap = {
   name: {
     name: "name",
-    type: "string",
+    type: "text",
     label: "Name",
     tooltip:
       "String value. The name to identify the graph. Has to be unique and must follow the Document Keys naming conventions.",
@@ -39,10 +41,11 @@ const INITIAL_VALUES: SatelliteGraphCreateValues = {
     }
   ],
   orphanCollections: [],
-  options: []
+  replicationFactor: 'satellite'
 };
 
 export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
+  const { initialGraph, mode } = useGraphsModeContext();
   const handleSubmit = async (values: SatelliteGraphCreateValues) => {
     const currentDB = getCurrentDB();
     const graph = currentDB.graph(values.name);
@@ -55,6 +58,7 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
         "Graph",
         `Successfully created the graph: ${values.name}`
       );
+      mutate("/graphs");
       onClose();
       return info;
     } catch (e: any) {
@@ -64,7 +68,7 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
   };
   return (
     <Formik
-      initialValues={INITIAL_VALUES}
+    initialValues={initialGraph || INITIAL_VALUES}
       validationSchema={Yup.object({
         name: Yup.string().required("Name is required")
       })}
@@ -79,11 +83,17 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
               created during the graph setup.
             </Alert>
             <FieldsGrid maxWidth="full">
-              <FormField field={satelliteGraphFieldsMap.name} />
+              <FormField
+                field={{
+                  ...satelliteGraphFieldsMap.name,
+                  isDisabled: mode === "edit"
+                }}
+              />
               <EdgeDefinitionsField
                 noOptionsMessage={() =>
                   "Please enter a new and valid collection name"
                 }
+                allowExistingCollections={false}
               />
               <FormField field={satelliteGraphFieldsMap.orphanCollections} />
             </FieldsGrid>
