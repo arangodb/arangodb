@@ -36,8 +36,12 @@ export const QueryExecuteResult = ({
     asyncJobId: queryResult.asyncJobId,
     index
   });
-  const { displayTypes, graphDataType, currentView, setCurrentView } =
-    useDisplayTypes({
+  const {
+    displayTypes,
+    graphDataType,
+    currentDisplayType,
+    setCurrentDisplayType
+  } = useDisplayTypes({
       queryResult
     });
 
@@ -88,18 +92,21 @@ export const QueryExecuteResult = ({
     >
       <QueryExecuteResultHeader
         queryResult={queryResult}
-        setCurrentView={setCurrentView}
-        currentView={currentView}
+        setCurrentDisplayType={setCurrentDisplayType}
+        currentDisplayType={currentDisplayType}
         displayTypes={displayTypes}
         index={index}
       />
       <WarningPane queryResult={queryResult} />
       <QueryExecuteResultDisplay
-        currentView={currentView}
+        currentDisplayType={currentDisplayType}
         queryResult={queryResult}
         graphDataType={graphDataType}
       />
-      <QueryExecuteResultFooter queryResult={queryResult} />
+      <QueryExecuteResultFooter
+        currentDisplayType={currentDisplayType}
+        queryResult={queryResult}
+      />
     </Box>
   );
 };
@@ -127,20 +134,20 @@ const WarningPane = ({ queryResult }: { queryResult: QueryResultType }) => {
 };
 const QueryExecuteResultDisplay = ({
   queryResult,
-  currentView,
+  currentDisplayType,
   graphDataType
 }: {
   queryResult: QueryResultType;
-  currentView: DisplayType;
+  currentDisplayType: DisplayType;
   graphDataType: "graphObject" | "edgeArray";
 }) => {
-  if (currentView === "table") {
+  if (currentDisplayType === "table") {
     return <QueryTableView queryResult={queryResult} />;
   }
-  if (currentView === "geo") {
+  if (currentDisplayType === "geo") {
     return <QueryGeoView queryResult={queryResult} />;
   }
-  if (currentView === "graph") {
+  if (currentDisplayType === "graph") {
     return (
       <QueryGraphView graphDataType={graphDataType} queryResult={queryResult} />
     );
@@ -163,14 +170,14 @@ const QueryExecuteResultDisplay = ({
 };
 const QueryExecuteResultHeader = ({
   queryResult,
-  setCurrentView,
-  currentView,
+  setCurrentDisplayType,
+  currentDisplayType,
   displayTypes,
   index
 }: {
   queryResult: QueryResultType<any>;
-  setCurrentView: React.Dispatch<React.SetStateAction<DisplayType>>;
-  currentView: string;
+  setCurrentDisplayType: React.Dispatch<React.SetStateAction<DisplayType>>;
+  currentDisplayType: string;
   displayTypes: DisplayType[];
   index: number;
 }) => {
@@ -182,8 +189,8 @@ const QueryExecuteResultHeader = ({
       </Stack>
       <Stack direction="row" alignItems="center" marginLeft="auto">
         <ViewSwitch
-          setCurrentView={setCurrentView}
-          currentView={currentView}
+          setCurrentDisplayType={setCurrentDisplayType}
+          currentDisplayType={currentDisplayType}
           displayTypes={displayTypes}
         />
         <RemoveResultButton index={index} />
@@ -192,21 +199,21 @@ const QueryExecuteResultHeader = ({
   );
 };
 const ViewSwitch = ({
-  setCurrentView,
-  currentView,
+  setCurrentDisplayType,
+  currentDisplayType,
   displayTypes
 }: {
-  setCurrentView: React.Dispatch<React.SetStateAction<DisplayType>>;
-  currentView: string;
+  setCurrentDisplayType: React.Dispatch<React.SetStateAction<DisplayType>>;
+  currentDisplayType: string;
   displayTypes: DisplayType[];
 }) => {
   return (
     <ButtonGroup isAttached size="xs">
       <Button
         onClick={() => {
-          setCurrentView("json");
+          setCurrentDisplayType("json");
         }}
-        colorScheme={currentView === "json" ? "blue" : "gray"}
+        colorScheme={currentDisplayType === "json" ? "blue" : "gray"}
       >
         JSON
       </Button>
@@ -215,9 +222,9 @@ const ViewSwitch = ({
           <Button
             key={type}
             onClick={() => {
-              setCurrentView(type);
+              setCurrentDisplayType(type);
             }}
-            colorScheme={currentView === type ? "blue" : "gray"}
+            colorScheme={currentDisplayType === type ? "blue" : "gray"}
             textTransform="capitalize"
           >
             {type}
@@ -247,9 +254,11 @@ export const getAllowCSVDownload = (queryResult: QueryResultType) => {
 };
 
 const QueryExecuteResultFooter = ({
-  queryResult
+  queryResult,
+  currentDisplayType
 }: {
   queryResult: QueryResultType;
+  currentDisplayType: DisplayType;
 }) => {
   const { onQueryChange, setResetEditor, resetEditor, aqlJsonEditorRef } =
     useQueryContext();

@@ -19,7 +19,8 @@ export const useDisplayTypes = ({
   const [displayTypes, setDisplayTypes] = React.useState<Array<DisplayType>>(
     []
   );
-  const [currentView, setCurrentView] = React.useState<DisplayType>("json");
+  const [currentDisplayType, setCurrentDisplayType] =
+    React.useState<DisplayType>("json");
   const [graphDataType, setGraphDataType] =
     React.useState<GraphDataType>("graphObject");
   React.useEffect(() => {
@@ -29,7 +30,7 @@ export const useDisplayTypes = ({
     if (isGraph && graphDataType) {
       setDisplayTypes(["graph"]);
       setGraphDataType(graphDataType as GraphDataType);
-      setCurrentView(prevView => {
+      setCurrentDisplayType(prevView => {
         if (prevView !== "graph") {
           return "graph";
         }
@@ -46,7 +47,7 @@ export const useDisplayTypes = ({
         displayTypes = ["table", ...displayTypes];
       }
       setDisplayTypes(displayTypes as DisplayType[]);
-      setCurrentView(prevView => {
+      setCurrentDisplayType(prevView => {
         if (prevView !== "geo") {
           return "geo";
         }
@@ -54,7 +55,7 @@ export const useDisplayTypes = ({
       });
     } else if (isTable) {
       setDisplayTypes(["table"]);
-      setCurrentView(prevView => {
+      setCurrentDisplayType(prevView => {
         if (prevView !== "table") {
           return "table";
         }
@@ -62,7 +63,12 @@ export const useDisplayTypes = ({
       });
     }
   }, [queryResult]);
-  return { displayTypes, graphDataType, currentView, setCurrentView };
+  return {
+    displayTypes,
+    graphDataType,
+    currentDisplayType,
+    setCurrentDisplayType
+  };
 };
 
 type EdgeGraphType = {
