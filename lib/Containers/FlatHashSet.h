@@ -23,7 +23,6 @@
 #pragma once
 
 #include <absl/container/flat_hash_set.h>
-#include <Basics/pmr.h>
 
 namespace arangodb::containers {
 namespace detail {
@@ -57,13 +56,5 @@ template<class T, class Hash = typename absl::flat_hash_set<T>::hasher,
          // TODO(MBkkt) After additional benchmarks make SizeofT bigger
          class = std::enable_if<detail::SetSizeofChecker<32, T>(), void>>
 using FlatHashSet = absl::flat_hash_set<T, Hash, Eq, Allocator>;
-
-namespace pmr {
-template<class T, class Hash = typename absl::flat_hash_set<T>::hasher,
-         class Eq = typename absl::flat_hash_set<T, Hash>::key_equal>
-using FlatHashSet =
-    arangodb::containers::FlatHashSet<T, Hash, Eq,
-                                      std_pmr::polymorphic_allocator<T>>;
-}
 
 }  // namespace arangodb::containers

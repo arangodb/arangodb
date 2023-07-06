@@ -35,7 +35,6 @@
 
 #include "Basics/system-compiler.h"
 #include "CrashHandler/CrashHandler.h"
-#include "Basics/pmr.h"  // required for declaration of std_pmr::string
 
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
@@ -147,6 +146,11 @@ struct remove_cvref {
 template<class T>
 using remove_cvref_t = typename remove_cvref<T>::type;
 
+template<typename>
+struct is_basic_string : std::false_type {};
+template<typename C, typename T, typename A>
+struct is_basic_string<std::basic_string<C, T, A>> : std::true_type {};
+
 template<typename T>
 struct is_container
     : std::conditional<
@@ -157,8 +161,7 @@ struct is_container
               !std::is_same_v<unsigned char*, typename std::decay<T>::type> &&
               !std::is_same_v<unsigned char const*,
                               typename std::decay<T>::type> &&
-              !std::is_same_v<T, std::string> &&
-              !std::is_same_v<T, std_pmr::string> &&
+              !is_basic_string<T>::value &&
               !std::is_same_v<T, std::string_view> &&
               !std::is_same_v<T, const std::string>,
           std::true_type, std::false_type>::type {};

@@ -209,6 +209,17 @@ template<typename T>
 struct ResourceUsageAllocator : ResourceUsageAllocatorBase<std::allocator<T>> {
   using ResourceUsageAllocatorBase<
       std::allocator<T>>::ResourceUsageAllocatorBase;
+
+  template<typename U>
+  struct rebind {
+    using other = ResourceUsageAllocator<U>;
+  };
+
+  template<typename X, typename... Args>
+  void construct(X* ptr, Args&&... args) {
+    std::uninitialized_construct_using_allocator(ptr, *this,
+                                                 std::forward<Args>(args)...);
+  }
 };
 
 }  // namespace arangodb

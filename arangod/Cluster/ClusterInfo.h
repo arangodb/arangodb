@@ -37,7 +37,6 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/pmr.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
@@ -48,9 +47,7 @@
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/Version.h"
 
-#include <boost/container/pmr/map.hpp>
-#include <boost/container/pmr/vector.hpp>
-#include <boost/container/pmr/string.hpp>
+#include "Basics/ResourceUsage.h"
 
 struct TRI_vocbase_t;
 
@@ -157,8 +154,47 @@ class ClusterInfo final {
     uint64_t hash;
     std::shared_ptr<LogicalCollection> collection;
   };
+
+  struct Hasher {
+    using is_transparent = void;
+    template<typename T>
+    size_t operator()(
+        std::basic_string<char, std::char_traits<char>, T> const& str) const {
+      return std::hash<std::string_view>{}(str);
+    }
+    template<typename T>
+    size_t operator()(T const& v) const {
+      return std::hash<T>{}(v);
+    }
+  };
+  struct KeyEqual {
+    using is_transparent = void;
+    // special stunt for strings with different allocators.
+    template<typename T, typename V>
+    bool operator()(
+        std::basic_string<char, std::char_traits<char>, T> const& lhs,
+        std::basic_string<char, std::char_traits<char>, V> const& rhs) const {
+      return std::string_view{lhs} == rhs;
+    }
+    template<typename T, typename V>
+    bool operator()(T const& lhs, V const& rhs) const {
+      return lhs == rhs;
+    }
+  };
+
   template<typename K, typename V>
-  using AssocUnorderedContainer = containers::pmr::NodeHashMap<K, V>;
+  using AssocUnorderedContainer =
+      containers::NodeHashMap<K, V, Hasher, KeyEqual,
+                              ResourceUsageAllocator<std::pair<const K, V>>>;
+
+  template<typename K, typename V>
+  using AssocMultiMap =
+      std::multimap<K, V, KeyEqual,
+                    ResourceUsageAllocator<std::pair<const K, V>>>;
+
+  template<typename T>
+  using ManagedVector = std::vector<T, ResourceUsageAllocator<T>>;
+
   using DatabaseCollections =
       AssocUnorderedContainer<pmr::CollectionID, CollectionWithHash>;
   using AllCollections =
@@ -698,7 +734,7 @@ class ClusterInfo final {
   /// an error.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std_pmr::vector<pmr::ServerID> const> getResponsibleServer(
+  std::shared_ptr<ManagedVector<pmr::ServerID> const> getResponsibleServer(
       std::string_view shardID);
 
   enum class ShardLeadership { kLeader, kFollower, kUnclear };
@@ -751,8 +787,8 @@ class ClusterInfo final {
   /// shard
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std_pmr::vector<pmr::ServerID> const>
-  getCurrentServersForShard(std::string_view shardId);
+  std::shared_ptr<ManagedVector<pmr::ServerID> const> getCurrentServersForShard(
+      std::string_view shardId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the list of coordinator server names
@@ -933,7 +969,7 @@ class ClusterInfo final {
   void loadClusterId();
 
   void triggerWaiting(
-      std_pmr::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
+      AssocMultiMap<uint64_t, futures::Promise<arangodb::Result>>& mm,
       uint64_t commitIndex);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -984,7 +1020,7 @@ class ClusterInfo final {
       std::vector<replication2::LogId> const& replicatedStatesIds)
       -> futures::Future<Result>;
 
-  std::unique_ptr<std_pmr::memory_resource> _memoryResource;
+  ResourceMonitor _resourceMonitor;
 
   /// underlying application server
   ArangodServer& _server;
@@ -1031,13 +1067,13 @@ class ClusterInfo final {
   ErrorCode const _syncerShutdownCode;
 
   // The servers, first all, we only need Current here:
-  AssocUnorderedContainer<pmr::ServerID, std_pmr::string>
+  AssocUnorderedContainer<pmr::ServerID, pmr::ManagedString>
       _servers;  // from Current/ServersRegistered
-  AssocUnorderedContainer<pmr::ServerID, std_pmr::string>
+  AssocUnorderedContainer<pmr::ServerID, pmr::ManagedString>
       _serverAliases;  // from Current/ServersRegistered
-  AssocUnorderedContainer<pmr::ServerID, std_pmr::string>
+  AssocUnorderedContainer<pmr::ServerID, pmr::ManagedString>
       _serverAdvertisedEndpoints;  // from Current/ServersRegistered
-  AssocUnorderedContainer<pmr::ServerID, std_pmr::string>
+  AssocUnorderedContainer<pmr::ServerID, pmr::ManagedString>
       _serverTimestamps;  // from Current/ServersRegistered
   ProtectionData _serversProt;
 
@@ -1108,7 +1144,7 @@ class ClusterInfo final {
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
   // planned shard => servers map
-  AssocUnorderedContainer<pmr::ShardID, std_pmr::vector<pmr::ServerID>>
+  AssocUnorderedContainer<pmr::ShardID, ManagedVector<pmr::ServerID>>
       _shardsToPlanServers;
   // planned shard ID => collection name
   AssocUnorderedContainer<pmr::ShardID, pmr::CollectionID> _shardToName;
@@ -1149,7 +1185,7 @@ class ClusterInfo final {
   // In the following map we store for each shard group leader the list
   // of shards in the group, including the leader.
   AssocUnorderedContainer<pmr::ShardID,
-                          std::shared_ptr<std_pmr::vector<pmr::ShardID>>>
+                          std::shared_ptr<ManagedVector<pmr::ShardID>>>
       _shardGroups;
 
   AllViews _plannedViews;     // from Plan/Views/
@@ -1165,7 +1201,7 @@ class ClusterInfo final {
   // The Current state:
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
   AssocUnorderedContainer<pmr::ShardID,
-                          std::shared_ptr<std_pmr::vector<pmr::ServerID> const>>
+                          std::shared_ptr<ManagedVector<pmr::ServerID> const>>
       _shardsToCurrentServers;  // from Current/Collections/
 
   struct NewStuffByDatabase;
@@ -1216,16 +1252,19 @@ class ClusterInfo final {
   static constexpr double checkAnalyzersPreconditionTimeout = 10.0;
 
   mutable std::mutex _failedServersMutex;
-  containers::pmr::NodeHashSet<pmr::ServerID> _failedServers;
+  template<typename K>
+  using NodeHashSet =
+      containers::NodeHashSet<K, typename containers::NodeHashSet<K>::hasher,
+                              typename containers::NodeHashSet<K>::key_equal,
+                              ResourceUsageAllocator<K>>;
+
+  NodeHashSet<pmr::ServerID> _failedServers;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief plan and current update threads
   //////////////////////////////////////////////////////////////////////////////
   std::unique_ptr<SyncerThread> _planSyncer;
   std::unique_ptr<SyncerThread> _curSyncer;
-
-  template<typename K, typename V>
-  using AssocMultiMap = std_pmr::multimap<K, V>;
 
   mutable std::mutex _waitPlanLock;
   AssocMultiMap<uint64_t, futures::Promise<arangodb::Result>> _waitPlan;

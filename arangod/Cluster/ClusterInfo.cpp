@@ -98,6 +98,8 @@
 #include <chrono>
 #include "Metrics/GaugeBuilder.h"
 
+#include "Basics/GlobalResourceMonitor.h"
+
 namespace arangodb {
 /// @brief internal helper struct for counting the number of shards etc.
 struct ShardStatistics {
@@ -551,52 +553,52 @@ DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
 DECLARE_GAUGE(arangodb_internal_cluster_info_memory, std::size_t,
               "Memory cluster info");
 
-namespace {
-struct CountingMemoryResource : std_pmr::memory_resource {
-  explicit CountingMemoryResource(memory_resource* base,
-                                  metrics::Gauge<std::size_t>& metric)
-      : base(base), metric(metric) {}
-
- private:
-  void* do_allocate(size_t bytes, size_t alignment) override {
-    void* mem = base->allocate(bytes, alignment);
-    metric += bytes;
-    return mem;
-  }
-
-  void do_deallocate(void* p, size_t bytes, size_t alignment) override {
-    base->deallocate(p, bytes, alignment);
-    metric -= bytes;
-  }
-
-  bool do_is_equal(memory_resource const&) const noexcept override {
-    return false;
-  }
-
- public:
-  std_pmr::memory_resource* base;
-  metrics::Gauge<std::size_t>& metric;
-};
-}  // namespace
-
 ClusterInfo::ClusterInfo(ArangodServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)
-    : _memoryResource(std::make_unique<CountingMemoryResource>(
-          std_pmr::new_delete_resource(),
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_internal_cluster_info_memory{}))),
+    : _resourceMonitor(GlobalResourceMonitor::instance()),
       _server(server),
       _agency(server),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
       _syncerShutdownCode(syncerShutdownCode),
+      _servers(_resourceMonitor),
+      _serverAliases(_resourceMonitor),
+      _serverAdvertisedEndpoints(_resourceMonitor),
+      _serverTimestamps(_resourceMonitor),
+      _dbServers(_resourceMonitor),
+      _coordinators(_resourceMonitor),
+      _coordinatorIdMap(_resourceMonitor),
+      _plan(_resourceMonitor),
+      _current(_resourceMonitor),
+      _plannedDatabases(_resourceMonitor),
       _planVersion(0),
       _planIndex(0),
       _currentVersion(0),
       _currentIndex(0),
+      _currentDatabases(_resourceMonitor),
+      _plannedCollections(_resourceMonitor),
+      _newPlannedCollections(_resourceMonitor),
+      _shards(_resourceMonitor),
+      _shardsToPlanServers(_resourceMonitor),
+      _shardToName(_resourceMonitor),
+      _shardToShardGroupLeader(_resourceMonitor),
+      _shardGroups(_resourceMonitor),
+      _plannedViews(_resourceMonitor),
+      _newPlannedViews(_resourceMonitor),
+      _dbAnalyzersRevision(_resourceMonitor),
       _planLoader(std::thread::id()),
+      _currentCollections(_resourceMonitor),
+      _shardsToCurrentServers(_resourceMonitor),
+      _newStuffByDatabase(_resourceMonitor),
+      _replicatedLogs(_resourceMonitor),
+      _collectionGroups(_resourceMonitor),
       _uniqid(),
+      _failedServers(_resourceMonitor),
+      _waitPlan(_resourceMonitor),
+      _waitPlanVersion(_resourceMonitor),
+      _waitCurrent(_resourceMonitor),
+      _waitCurrentVersion(_resourceMonitor),
       _lpTimer(_server.getFeature<metrics::MetricsFeature>().add(
           arangodb_load_plan_runtime{})),
       _lcTimer(_server.getFeature<metrics::MetricsFeature>().add(
@@ -1121,9 +1123,9 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
 }
 
 struct ClusterInfo::NewStuffByDatabase {
-  using allocator_type = std_pmr::polymorphic_allocator<NewStuffByDatabase>;
+  using allocator_type = ResourceUsageAllocator<NewStuffByDatabase>;
 
-  NewStuffByDatabase(allocator_type alloc)
+  NewStuffByDatabase(allocator_type const& alloc)
       : replicatedLogs(alloc), collectionGroups(alloc) {}
 
   ReplicatedLogsMap replicatedLogs;
@@ -1210,7 +1212,7 @@ void ClusterInfo::loadPlan() {
   bool changed = false;
   auto changeSet = agencyCache.changedSince(
       "Plan", planIndex);  // also delivers plan/version
-  decltype(_plan) newPlan;
+  decltype(_plan) newPlan{_resourceMonitor};
   {
     READ_LOCKER(readLocker, _planProt.lock);
     newPlan = _plan;
@@ -1231,15 +1233,15 @@ void ClusterInfo::loadPlan() {
   }
 
   std::set<std::string> buildingDatabases;
-  decltype(_plannedDatabases) newDatabases{_memoryResource.get()};
-  decltype(_shards) newShards{_memoryResource.get()};
-  decltype(_shardsToPlanServers) newShardsToPlanServers{_memoryResource.get()};
+  decltype(_plannedDatabases) newDatabases{_resourceMonitor};
+  decltype(_shards) newShards{_resourceMonitor};
+  decltype(_shardsToPlanServers) newShardsToPlanServers{_resourceMonitor};
   decltype(_shardToShardGroupLeader) newShardToShardGroupLeader{
-      _memoryResource.get()};
-  decltype(_shardGroups) newShardGroups{_memoryResource.get()};
-  decltype(_shardToName) newShardToName{_memoryResource.get()};
-  decltype(_dbAnalyzersRevision) newDbAnalyzersRevision{_memoryResource.get()};
-  decltype(_newStuffByDatabase) newStuffByDatabase{_memoryResource.get()};
+      _resourceMonitor};
+  decltype(_shardGroups) newShardGroups{_resourceMonitor};
+  decltype(_shardToName) newShardToName{_resourceMonitor};
+  decltype(_dbAnalyzersRevision) newDbAnalyzersRevision{_resourceMonitor};
+  decltype(_newStuffByDatabase) newStuffByDatabase{_resourceMonitor};
 
   bool swapDatabases = false;
   bool swapCollections = false;
@@ -1553,13 +1555,19 @@ void ClusterInfo::loadPlan() {
   }
   TRI_IF_FAILURE("AlwaysSwapAnalyzersRevision") { swapAnalyzers = true; }
 
-  decltype(_replicatedLogs) newReplicatedLogs;
-  decltype(_collectionGroups) newCollectionGroups;
+  decltype(_replicatedLogs) newReplicatedLogs{_resourceMonitor};
+  decltype(_collectionGroups) newCollectionGroups{_resourceMonitor};
+
+  static_assert(std::uses_allocator_v<
+                ClusterInfo::NewStuffByDatabase,
+                ResourceUsageAllocator<ClusterInfo::NewStuffByDatabase>>);
+
+  std::make_obj_using_allocator<NewStuffByDatabase>(
+      ResourceUsageAllocator<int>(_resourceMonitor));
 
   auto allocate = [&]<typename T, typename... Args>(Args && ... args) {
-    return std::allocate_shared<T>(
-        std_pmr::polymorphic_allocator<T>(_memoryResource.get()),
-        std::forward<Args>(args)...);
+    return std::allocate_shared<T>(ResourceUsageAllocator<T>(_resourceMonitor),
+                                   std::forward<Args>(args)...);
   };
 
   // And now for replicated logs
@@ -1577,7 +1585,7 @@ void ClusterInfo::loadPlan() {
 
       auto logsSlice = query->slice()[0].get(replicatedLogsPaths);
       if (!logsSlice.isNone()) {
-        ReplicatedLogsMap newLogs;
+        ReplicatedLogsMap newLogs{_resourceMonitor};
         for (auto const& [idString, logSlice] :
              VPackObjectIterator(logsSlice)) {
           auto spec =
@@ -1595,7 +1603,7 @@ void ClusterInfo::loadPlan() {
           AgencyCommHelper::path(), "Plan", "CollectionGroups", databaseName};
       auto groupsSlice = query->slice()[0].get(collectionGroupsPath);
       if (!groupsSlice.isNone()) {
-        CollectionGroupMap groups;
+        CollectionGroupMap groups{_resourceMonitor};
         for (auto const& [idString, groupSlice] :
              VPackObjectIterator(groupsSlice)) {
           auto spec = allocate.operator()<
@@ -1730,8 +1738,7 @@ void ClusterInfo::loadPlan() {
     }
 
     auto databaseCollections = std::allocate_shared<DatabaseCollections>(
-        std_pmr::polymorphic_allocator<DatabaseCollections>(
-            _memoryResource.get()));
+        ResourceUsageAllocator<DatabaseCollections>(_resourceMonitor));
 
     // an iterator to all collections in the current database (from the previous
     // round) we can safely keep this iterator around because we hold the
@@ -1855,12 +1862,11 @@ void ClusterInfo::loadPlan() {
         for (auto const& p : *shardIDs) {
           TRI_ASSERT(p.first.size() >= 2);
           shards->push_back(p.first);
-          auto v = std_pmr::vector<pmr::ServerID>{};
+          auto v = ClusterInfo::ManagedVector<pmr::ServerID>{_resourceMonitor};
           v.assign(p.second.begin(), p.second.end());
-          newShardsToPlanServers.insert_or_assign(pmr::ShardID{p.first},
-                                                  std::move(v));
-          newShardToName.insert_or_assign(pmr::ShardID{p.first},
-                                          newCollection->name());
+          newShardsToPlanServers.insert_or_assign(
+              pmr::ShardID{p.first, _resourceMonitor}, std::move(v));
+          newShardToName.insert_or_assign(p.first, newCollection->name());
         }
 
         // Sort by the number in the shard ID ("s0000001" for example):
@@ -1928,9 +1934,11 @@ void ClusterInfo::loadPlan() {
               auto it = newShardGroups.find(groupLeaderCol->second->at(i));
               if (it == newShardGroups.end()) {
                 // Need to create a new list:
-                auto list = std::allocate_shared<std_pmr::vector<pmr::ShardID>>(
-                    std_pmr::polymorphic_allocator<
-                        std_pmr::vector<pmr::ShardID>>{_memoryResource.get()});
+                auto list = std::allocate_shared<
+                    ClusterInfo::ManagedVector<pmr::ShardID>>(
+                    ResourceUsageAllocator<
+                        ClusterInfo::ManagedVector<pmr::ShardID>>{
+                        _resourceMonitor});
                 list->reserve(2);
                 // group leader as well as member:
                 list->emplace_back(groupLeaderCol->second->at(i));
@@ -2080,7 +2088,7 @@ void ClusterInfo::loadCurrent() {
     currentIndex = _currentIndex;
     currentVersion = _currentVersion;
   }
-  decltype(_current) newCurrent;
+  decltype(_current) newCurrent{_resourceMonitor};
 
   bool changed = false;
   auto changeSet = agencyCache.changedSince("Current", currentIndex);
@@ -2103,10 +2111,9 @@ void ClusterInfo::loadCurrent() {
     return;
   }
 
-  decltype(_currentDatabases) newDatabases{_memoryResource.get()};
-  decltype(_currentCollections) newCollections{_memoryResource.get()};
-  decltype(_shardsToCurrentServers) newShardsToCurrentServers{
-      _memoryResource.get()};
+  decltype(_currentDatabases) newDatabases{_resourceMonitor};
+  decltype(_currentCollections) newCollections{_resourceMonitor};
+  decltype(_shardsToCurrentServers) newShardsToCurrentServers{_resourceMonitor};
 
   {
     READ_LOCKER(guard, _currentProt.lock);
@@ -2162,7 +2169,8 @@ void ClusterInfo::loadCurrent() {
     }
     databaseSlice = databaseSlice.get(dbPath);
 
-    AssocUnorderedContainer<pmr::ServerID, velocypack::Slice> serverList;
+    AssocUnorderedContainer<pmr::ServerID, velocypack::Slice> serverList{
+        _resourceMonitor};
     if (databaseSlice.isObject()) {
       for (auto const& serverSlicePair : VPackObjectIterator(databaseSlice)) {
         serverList.try_emplace(serverSlicePair.key.copyString(),
@@ -2170,8 +2178,7 @@ void ClusterInfo::loadCurrent() {
       }
     }
 
-    newDatabases.insert_or_assign(std_pmr::string{databaseName},
-                                  std::move(serverList));
+    newDatabases.insert_or_assign(databaseName, std::move(serverList));
     swapDatabases = true;
   }
 
@@ -2193,7 +2200,7 @@ void ClusterInfo::loadCurrent() {
     }
     databaseSlice = databaseSlice.get(dbPath);
 
-    DatabaseCollectionsCurrent databaseCollections;
+    DatabaseCollectionsCurrent databaseCollections{_resourceMonitor};
 
     auto const existingCollections = newCollections.find(databaseName);
     if (existingCollections != newCollections.end()) {
@@ -2233,7 +2240,8 @@ void ClusterInfo::loadCurrent() {
 
       for (auto const& shardSlice :
            velocypack::ObjectIterator(collectionSlice.value)) {
-        std_pmr::string shardID{shardSlice.key.copyString()};
+        pmr::ManagedString shardID{shardSlice.key.copyString(),
+                                   _resourceMonitor};
 
         collectionDataCurrent->add(shardID, shardSlice.value);
 
@@ -2246,7 +2254,10 @@ void ClusterInfo::loadCurrent() {
 
         // Now take note of this shard and its responsible server:
         auto const& xx = collectionDataCurrent->servers(shardID);
-        auto servers = std::make_shared<std_pmr::vector<pmr::ServerID>>(
+        auto servers = std::allocate_shared<
+            ClusterInfo::ManagedVector<pmr::ServerID>>(
+            ResourceUsageAllocator<ClusterInfo::ManagedVector<pmr::ServerID>>{
+                _resourceMonitor},
             xx.begin(), xx.end());
 
         newShardsToCurrentServers.insert_or_assign(std::move(shardID),
@@ -5863,11 +5874,11 @@ void ClusterInfo::loadServers() {
   }
 
   if (serversRegistered.isObject()) {
-    decltype(_servers) newServers{_memoryResource.get()};
-    decltype(_serverAliases) newAliases{_memoryResource.get()};
+    decltype(_servers) newServers{_resourceMonitor};
+    decltype(_serverAliases) newAliases{_resourceMonitor};
     decltype(_serverAdvertisedEndpoints) newAdvertisedEndpoints{
-        _memoryResource.get()};
-    decltype(_serverTimestamps) newTimestamps{_memoryResource.get()};
+        _resourceMonitor};
+    decltype(_serverTimestamps) newTimestamps{_resourceMonitor};
 
     containers::FlatHashSet<ServerID> serverIds;
 
@@ -6125,7 +6136,7 @@ void ClusterInfo::loadCurrentCoordinators() {
             AgencyCommHelper::path(), "Current", "Coordinators"});
 
     if (currentCoordinators.isObject()) {
-      decltype(_coordinators) newCoordinators{_memoryResource.get()};
+      decltype(_coordinators) newCoordinators{_resourceMonitor};
 
       for (auto const& coordinator : VPackObjectIterator(currentCoordinators)) {
         newCoordinators.try_emplace(coordinator.key.copyString(),
@@ -6174,7 +6185,7 @@ void ClusterInfo::loadCurrentMappings() {
             AgencyCommHelper::path(), "Target", "MapUniqueToShortID"});
 
     if (mappings.isObject()) {
-      decltype(_coordinatorIdMap) newCoordinatorIdMap{_memoryResource.get()};
+      decltype(_coordinatorIdMap) newCoordinatorIdMap{_resourceMonitor};
 
       for (auto const& mapping : VPackObjectIterator(mappings)) {
         auto mapObject = mapping.value;
@@ -6263,7 +6274,7 @@ void ClusterInfo::loadCurrentDBServers() {
   }
 
   if (currentDBServers.isObject() && failedDBServers.isObject()) {
-    decltype(_dbServers) newDBServers{_memoryResource.get()};
+    decltype(_dbServers) newDBServers{_resourceMonitor};
 
     for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
       bool found = false;
@@ -6358,7 +6369,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 /// it is still not there an empty string is returned as an error.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std_pmr::vector<pmr::ServerID> const>
+std::shared_ptr<ClusterInfo::ManagedVector<pmr::ServerID> const>
 ClusterInfo::getResponsibleServer(std::string_view shardID) {
   int tries = 0;
 
@@ -6527,7 +6538,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
   return std::make_shared<std::vector<ShardID>>();
 }
 
-std::shared_ptr<std_pmr::vector<pmr::ServerID> const>
+std::shared_ptr<ClusterInfo::ManagedVector<pmr::ServerID> const>
 ClusterInfo::getCurrentServersForShard(std::string_view shardId) {
   READ_LOCKER(readLocker, _currentProt.lock);
 
@@ -6719,7 +6730,9 @@ void ClusterInfo::setShardGroups(
   WRITE_LOCKER(writeLocker, _planProt.lock);
   _shardGroups.clear();
   for (auto const& [k, v] : shardGroups) {
-    auto vv = std::make_shared<std_pmr::vector<pmr::ShardID>>();
+    auto vv = std::allocate_shared<ClusterInfo::ManagedVector<pmr::ShardID>>(
+        ResourceUsageAllocator<ClusterInfo::ManagedVector<pmr::ShardID>>{
+            _resourceMonitor});
     vv->assign(v->begin(), v->end());
     _shardGroups.emplace(k, std::move(vv));
   }
@@ -6732,7 +6745,9 @@ void ClusterInfo::setShardIds(
   WRITE_LOCKER(writeLocker, _currentProt.lock);
   _shardsToCurrentServers.clear();
   for (auto const& [k, v] : shardIds) {
-    auto vv = std::make_shared<std_pmr::vector<pmr::ShardID>>();
+    auto vv = std::allocate_shared<ClusterInfo::ManagedVector<pmr::ShardID>>(
+        ResourceUsageAllocator<ClusterInfo::ManagedVector<pmr::ShardID>>{
+            _resourceMonitor});
     vv->assign(v->begin(), v->end());
     _shardsToCurrentServers.emplace(k, std::move(vv));
   }
@@ -7694,7 +7709,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
 }
 
 void ClusterInfo::triggerWaiting(
-    std_pmr::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
+    AssocMultiMap<uint64_t, futures::Promise<arangodb::Result>>& mm,
     uint64_t commitIndex) {
   auto* scheduler = SchedulerFeature::SCHEDULER;
   auto pit = mm.begin();

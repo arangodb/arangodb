@@ -23,7 +23,6 @@
 #pragma once
 
 #include <absl/container/flat_hash_map.h>
-#include <Basics/pmr.h>
 
 namespace arangodb::containers {
 namespace detail {
@@ -60,13 +59,5 @@ template<class K, class V,
          // TODO(MBkkt) After additional benchmarks make SizeofV smaller
          class = std::enable_if<detail::MapSizeofChecker<32, 64, K, V>(), void>>
 using FlatHashMap = absl::flat_hash_map<K, V, Hash, Eq, Allocator>;
-
-namespace pmr {
-template<class K, class V,
-         class Hash = typename absl::flat_hash_map<K, V>::hasher,
-         class Eq = typename absl::flat_hash_map<K, V, Hash>::key_equal>
-using FlatHashMap = arangodb::containers::FlatHashMap<
-    K, V, Hash, Eq, std_pmr::polymorphic_allocator<std::pair<const K, V>>>;
-}
 
 }  // namespace arangodb::containers
