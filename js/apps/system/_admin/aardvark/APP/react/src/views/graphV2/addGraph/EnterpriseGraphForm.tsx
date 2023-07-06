@@ -1,18 +1,21 @@
 import { Button, Stack, VStack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
+import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
+import { EditGraphButtons } from "../listGraphs/EditGraphButtons";
 import { ModalFooter } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
+import { useGraphsModeContext } from "../GraphsModeContext";
 import { EnterpriseGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 
 const enterpriseGraphFieldsMap = {
   name: {
     name: "name",
-    type: "string",
+    type: "text",
     label: "Name",
     tooltip:
       "String value. The name to identify the graph. Has to be unique and must follow the Document Keys naming conventions.",
@@ -20,7 +23,7 @@ const enterpriseGraphFieldsMap = {
   },
   numberOfShards: {
     name: "numberOfShards",
-    type: "string",
+    type: "number",
     label: "Shards",
     tooltip:
       "Numeric value. Must be at least 1. Number of shards the graph is using.",
@@ -28,7 +31,7 @@ const enterpriseGraphFieldsMap = {
   },
   replicationFactor: {
     name: "replicationFactor",
-    type: "string",
+    type: "number",
     label: "Replication factor",
     tooltip:
       "Numeric value. Must be at least 1. Total number of copies of the data in the cluster.If not given, the system default for new collections will be used.",
@@ -36,7 +39,7 @@ const enterpriseGraphFieldsMap = {
   },
   minReplicationFactor: {
     name: "minReplicationFactor",
-    type: "string",
+    type: "number",
     label: "Write concern",
     tooltip:
       "Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value, the collection will be read-only until enough copies are created. If not given, the system default for new collections will be used.",
@@ -67,6 +70,7 @@ const INITIAL_VALUES: EnterpriseGraphCreateValues = {
 };
 
 export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
+  const { initialGraph, mode } = useGraphsModeContext();
   const handleSubmit = async (values: EnterpriseGraphCreateValues) => {
     const currentDB = getCurrentDB();
     const graph = currentDB.graph(values.name);
@@ -84,6 +88,7 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
         "Graph",
         `Successfully created the graph ${values.name}`
       );
+      mutate("/graphs");
       onClose();
       return info;
     } catch (e: any) {
@@ -93,7 +98,7 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
   };
   return (
     <Formik
-      initialValues={INITIAL_VALUES}
+      initialValues={initialGraph || INITIAL_VALUES}
       validationSchema={Yup.object({
         name: Yup.string().required("Name is required")
       })}
@@ -103,7 +108,12 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
         <Form>
           <VStack spacing={4} align="stretch">
             <FieldsGrid maxWidth="full">
-              <FormField field={enterpriseGraphFieldsMap.name} />
+              <FormField
+                field={{
+                  ...enterpriseGraphFieldsMap.name,
+                  isDisabled: mode === "edit"
+                }}
+              />
               <FormField field={enterpriseGraphFieldsMap.numberOfShards} />
               <FormField field={enterpriseGraphFieldsMap.replicationFactor} />
               <FormField
@@ -119,6 +129,7 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
             </FieldsGrid>
             <ModalFooter>
               <Stack direction="row" spacing={4} align="center">
+                {mode === "edit" && <EditGraphButtons graph={initialGraph} />}
                 <Button onClick={onClose} colorScheme="gray">
                   Cancel
                 </Button>
@@ -127,7 +138,7 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
                   type="submit"
                   isLoading={isSubmitting}
                 >
-                  Create
+                  {mode === "edit" ? "Edit" : "Create"}
                 </Button>
               </Stack>
             </ModalFooter>
