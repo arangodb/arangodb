@@ -246,7 +246,22 @@ auto replicated_log::InMemoryLog::getMemtryIteratorRange(LogRange range) const
 
 auto replicated_log::InMemoryLog::getLogIterator() const
     -> std::unique_ptr<LogIterator> {
-  return std::make_unique<InMemoryPersistedLogIterator>(_log);
+  struct Iterator : LogIterator {
+    explicit Iterator(log_type container) : _iter(std::move(container)) {}
+
+    auto next() -> std::optional<LogEntry> override {
+      auto e = _iter.next();
+      if (e) {
+        return e->entry();
+      }
+      return std::nullopt;
+    }
+
+   private:
+    InMemoryLogIteratorImpl _iter;
+  };
+
+  return std::make_unique<Iterator>(_log);
 }
 
 auto replicated_log::InMemoryLog::getIteratorRange(LogIndex fromIdx,

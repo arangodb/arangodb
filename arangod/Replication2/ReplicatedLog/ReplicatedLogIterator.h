@@ -83,31 +83,6 @@ class ReplicatedLogIterator : public LogViewRangeIterator {
   log_type::const_iterator _end;
 };
 
-class InMemoryPersistedLogIterator : public LogIterator {
- public:
-  using log_type = ::immer::flex_vector<InMemoryLogEntry,
-                                        arangodb::immer::arango_memory_policy>;
-
-  explicit InMemoryPersistedLogIterator(log_type container)
-      : _container(std::move(container)),
-        _begin(_container.begin()),
-        _end(_container.end()) {}
-
-  auto next() -> std::optional<LogEntry> override {
-    if (_begin != _end) {
-      auto const& it = *_begin;
-      ++_begin;
-      return it.entry();
-    }
-    return std::nullopt;
-  }
-
- private:
-  log_type _container;
-  log_type::const_iterator _begin;
-  log_type::const_iterator _end;
-};
-
 struct InMemoryLogIteratorImpl : InMemoryLogIterator {
   using log_type = ::immer::flex_vector<InMemoryLogEntry,
                                         arangodb::immer::arango_memory_policy>;
