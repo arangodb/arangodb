@@ -2,13 +2,13 @@ v3.11.2 (XXXX-XX-XX)
 --------------------
 
 * Added transparent LZ4 compression for values in the in-memory edge cache if
-  their size exceeds a configurable threshold. This is configurable as an
-  opt-in functionality.
+  their size exceeds a configurable threshold. This is configurable as an opt-in
+  functionality.
 
   LZ4 compression of edge index cache values allows to store more data in main
   memory than without compression, so the available memory can be used more
-  efficiently. The compression is transparent and does not require any change
-  to queries or applications. 
+  efficiently. The compression is transparent and does not require any change to
+  queries or applications.
   The compression can add CPU overhead for compressing values when storing them
   in the cache, and for decompressing values when fetching them from the cache.
   
@@ -19,48 +19,69 @@ v3.11.2 (XXXX-XX-XX)
   compression for any payloads whose size exceeds this value.
   
   The new startup option `--cache.acceleration-factor-for-edge-compression` can
-  be used to fine-tune the compression. It controls the LZ4-internal 
+  be used to fine-tune the compression. It controls the LZ4-internal
   "acceleration" factor used for the compression. The default value is `1`.
   Higher values typically mean less compression but faster speeds.
 
-  The following new metrics can be used to determine the usefulness of 
+  The following new metrics can be used to determine the usefulness of
   compression:
 
-  - `rocksdb_cache_edge_effective_entries_size`: will return the total
-    number of bytes of all entries that were stored in the in-memory edge cache,
-    after compression was attempted/applied. This metric will be populated
-    regardless of whether compression is used or not.
-  - `rocksdb_cache_edge_uncompressed_entries_size`: will return the 
-    total number of bytes of all entries that were ever stored in the 
-    in-memory edge cache, before compression was applied. This metric will be
-    populated regardless of whether compression is used or not. 
+  - `rocksdb_cache_edge_effective_entries_size`: will return the total number of
+    bytes of all entries that were stored in the in-memory edge cache, after
+    compression was attempted/applied. This metric will be populated regardless
+    of whether compression is used or not.
+  - `rocksdb_cache_edge_uncompressed_entries_size`: will return the total number
+    of bytes of all entries that were ever stored in the in-memory edge cache,
+    before compression was applied. This metric will be populated regardless of
+    whether compression is used or not.
   - `rocksdb_cache_edge_compression_ratio`: will return the effective
     compression ratio for all edge cache entries ever stored in the cache.
 
-  Note that these metrics will be increased upon every insertion into the
-  edge cache, but not decreased when data gets evicted from the cache.
+  Note that these metrics will be increased upon every insertion into the edge
+  cache, but not decreased when data gets evicted from the cache.
 
-* Added new startup options `--cache.ideal-lower-fill-ratio` and 
+* Optimize runtime performance of exclusive locks.
+
+* Added startup option `--replication.active-failover-leader-grace-period`.
+  This startup option can be used to set the amount of time (in seconds) for
+  which the current leader in an active failover setup will continue to assume
+  its leadership even if it lost connection to the agency.
+
+  In case the leader cannot contact the agency anymore, the agency will elect a
+  new leader after the supervision grace period has elapsed.
+  In order to avoid a split-brain situation with multiple servers assuming
+  leadership, this option can be used to make a disconnected leader refuse any
+  incoming write operations after the grace period controled by this option has
+  elapsed.
+  Ideally the startup option should be given a value greater than the value of
+  the supervision grace period, in order to avoid a temporarily disconnected
+  leader giving up leadership too early and unnecessarily.
+
+  The default value is 120 seconds. Setting the option to a value of 0 will keep
+  the existing behavior, in which a disconnected leader will not refuse incoming
+  write operations.
+
+* Added new startup options `--cache.ideal-lower-fill-ratio` and
   `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
-  ratios for cache tables that trigger shrinking and growing of the table
-  by the cache rebalancer. The default values are:
+  ratios for cache tables that trigger shrinking and growing of the table by the
+  cache rebalancer. The default values are:
 
   - `0.04` (i.e. 4%) for the lower bound that triggers shrinking
   - `0.25` (i.e. 25%) for the upper bound that triggers growing
 
   These values were hard-coded in previous versions of ArangoDB.
 
-* Remove temporary `CREATING_{number}` directories from hot backup in case a
-  hot backup runs into an error.
+* Remove temporary `CREATING_{number}` directories from hot backup in case a hot
+  backup runs into an error.
 
-* BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in 
-  case the update AQL is of the pattern 
+* BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in
+  case the update AQL is of the pattern
 
       FOR doc IN collection
         UPDATE <doc> IN collection
 
   Previously the optimization was only possible if the update AQL was of the
-  pattern 
+  pattern
 
       FOR doc IN collection
         UPDATE <key> WITH <doc> IN collection
@@ -78,7 +99,7 @@ v3.11.2 (XXXX-XX-XX)
 
 * BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
 
-* Attempt to avoid busy looping when locking collections with a timeout
+* Attempt to avoid busy looping when locking collections with a timeout.
 
 * Add a `description` field to OptimizerRule and dump the explanations via the
   `GET /_api/query/rules` endpoint.
@@ -92,14 +113,14 @@ v3.11.2 (XXXX-XX-XX)
 * FE-285: Fix query download - use post request for query.
 
 * Fixed Github issue #19175.
-  This fixes a problem in traversal query optimization that was introduced
-  in 3.11 and that can lead to traversal queries being aborted with an error
-  `AQL: cannot and-combine normalized condition`.
+  This fixes a problem in traversal query optimization that was introduced in
+  3.11 and that can lead to traversal queries being aborted with an error `AQL:
+  cannot and-combine normalized condition`.
 
-* Fixed two possible deadlocks which could occur if all medium priority
-  threads are busy. One is that in this case the AgencyCache could no longer
-  receive updates from the agency and another that queries could no longer
-  be finished. This fixes BTS-1475 and BTS-1486.
+* Fixed two possible deadlocks which could occur if all medium priority threads
+  are busy. One is that in this case the AgencyCache could no longer receive
+  updates from the agency and another that queries could no longer be finished.
+  This fixes BTS-1475 and BTS-1486.
 
 
 v3.11.1 (2023-06-12)

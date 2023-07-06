@@ -466,6 +466,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     print(RESET);
     return;
   }
+  GDB_OUTPUT += `Analyzing crash of ${instanceInfo.name} PID[${instanceInfo.pid}]: ${checkStr}\n`;
   let message = 'during: ' + checkStr + ': Core dump written; ' +
       /*
         'copying ' + binary + ' to ' +
