@@ -133,39 +133,6 @@ const convertToGraphData = ({
       edges,
       settings: graphSettings
     };
-    /**
-     * var edgeObj = {};
-
-    _.each(data, function (edge) {
-      if (edge) {
-        vertices[edge._from] = null;
-        vertices[edge._to] = null;
-
-        if (edge._id) {
-          edgeObj[edge._id] = {
-            id: edge._id,
-            source: edge._from,
-            color: "#cccccc",
-            target: edge._to,
-          };
-        }
-      }
-    });
-
-    _.each(vertices, function (val, key) {
-      returnObj.nodes.push({
-        id: key,
-        label: key,
-        size: 0.3,
-        color: color,
-        x: Math.random(),
-        y: Math.random(),
-      });
-    });
-    _.each(edgeObj, function (edge) {
-      returnObj.edges.push(edge);
-    });
-     */
   }
 };
 
