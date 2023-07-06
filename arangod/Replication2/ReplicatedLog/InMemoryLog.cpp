@@ -403,17 +403,6 @@ auto replicated_log::InMemoryLog::getFirstIndex() const noexcept -> LogIndex {
   return _first;
 }
 
-auto replicated_log::InMemoryLog::loadFromMethods(
-    storage::IStorageEngineMethods& methods) -> InMemoryLog {
-  auto iter =
-      methods.getIterator(storage::IteratorPosition::fromLogIndex(LogIndex{0}));
-  auto log = log_type::transient_type{};
-  while (auto entry = iter->next()) {
-    log.push_back(InMemoryLogEntry(std::move(entry).value()));
-  }
-  return InMemoryLog{log.persistent()};
-}
-
 auto replicated_log::InMemoryLog::getIteratorRange(LogRange bounds) const
     -> std::unique_ptr<LogViewRangeIterator> {
   return getIteratorRange(bounds.from, bounds.to);

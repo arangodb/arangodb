@@ -151,9 +151,6 @@ struct InMemoryLog {
   [[nodiscard]] static auto dump(log_type const& log) -> std::string;
   [[nodiscard]] auto dump() const -> std::string;
 
-  [[nodiscard]] static auto loadFromMethods(storage::IStorageEngineMethods&)
-      -> InMemoryLog;
-
  protected:
   explicit InMemoryLog(log_type log, LogIndex first);
 };
