@@ -67,18 +67,18 @@ const std::uint64_t Manager::minCacheAllocation =
     Manager::cacheRecordOverhead;
 
 Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
-                 std::uint64_t globalLimit, bool enableWindowedStats)
+                 std::uint64_t globalLimit, bool enableWindowedStats,
+                 double idealLowerFillRatio, double idealUpperFillRatio)
     : _sharedPRNG(sharedPRNG),
-      _lock(),
       _shutdown(false),
       _shuttingDown(false),
       _resizing(false),
       _rebalancing(false),
+      _enableWindowedStats(enableWindowedStats),
       _accessStats(sharedPRNG,
                    (globalLimit >= (1024 * 1024 * 1024))
                        ? ((1024 * 1024) / sizeof(std::uint64_t))
                        : (globalLimit / (1024 * sizeof(std::uint64_t)))),
-      _enableWindowedStats(enableWindowedStats),
       _findHits(),
       _findMisses(),
       _caches(),
@@ -95,6 +95,8 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _peakGlobalAllocation(_fixedAllocation),
       _activeTables(0),
       _spareTables(0),
+      _idealLowerFillRatio(idealLowerFillRatio),
+      _idealUpperFillRatio(idealUpperFillRatio),
       _transactions(),
       _schedulerPost(std::move(schedulerPost)),
       _outstandingTasks(0),
@@ -808,7 +810,7 @@ std::shared_ptr<Table> Manager::leaseTable(std::uint32_t logSize) {
   if (_tables[logSize].empty()) {
     if (increaseAllowed(Table::allocationSize(logSize), true)) {
       try {
-        table = std::make_shared<Table>(logSize);
+        table = std::make_shared<Table>(logSize, this);
         _globalAllocation += table->memoryUsage();
         TRI_ASSERT(_globalAllocation >= _fixedAllocation);
         _peakGlobalAllocation =

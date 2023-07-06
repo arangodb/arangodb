@@ -3,6 +3,38 @@ v3.11.2 (XXXX-XX-XX)
 
 * Optimize runtime performance of exclusive locks.
 
+* Added startup option `--replication.active-failover-leader-grace-period`.
+  This startup option can be used to set the amount of time (in seconds) for
+  which the current leader in an active failover setup will continue to assume
+  its leadership even if it lost connection to the agency.
+
+  In case the leader cannot contact the agency anymore, the agency will elect a
+  new leader after the supervision grace period has elapsed.
+  In order to avoid a split-brain situation with multiple servers assuming
+  leadership, this option can be used to make a disconnected leader refuse any
+  incoming write operations after the grace period controled by this option has
+  elapsed.
+  Ideally the startup option should be given a value greater than the value of
+  the supervision grace period, in order to avoid a temporarily disconnected
+  leader giving up leadership too early and unnecessarily.
+
+  The default value is 120 seconds. Setting the option to a value of 0 will keep
+  the existing behavior, in which a disconnected leader will not refuse incoming
+  write operations.
+
+* Added new startup options `--cache.ideal-lower-fill-ratio` and
+  `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
+  ratios for cache tables that trigger shrinking and growing of the table by the
+  cache rebalancer. The default values are:
+
+  - `0.04` (i.e. 4%) for the lower bound that triggers shrinking
+  - `0.25` (i.e. 25%) for the upper bound that triggers growing
+
+  These values were hard-coded in previous versions of ArangoDB.
+
+* Remove temporary `CREATING_{number}` directories from hot backup in case a hot
+  backup runs into an error.
+
 * BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in
   case the update AQL is of the pattern
 
@@ -28,7 +60,7 @@ v3.11.2 (XXXX-XX-XX)
 
 * BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
 
-* Attempt to avoid busy looping when locking collections with a timeout
+* Attempt to avoid busy looping when locking collections with a timeout.
 
 * Add a `description` field to OptimizerRule and dump the explanations via the
   `GET /_api/query/rules` endpoint.
@@ -42,14 +74,14 @@ v3.11.2 (XXXX-XX-XX)
 * FE-285: Fix query download - use post request for query.
 
 * Fixed Github issue #19175.
-  This fixes a problem in traversal query optimization that was introduced
-  in 3.11 and that can lead to traversal queries being aborted with an error
-  `AQL: cannot and-combine normalized condition`.
+  This fixes a problem in traversal query optimization that was introduced in
+  3.11 and that can lead to traversal queries being aborted with an error `AQL:
+  cannot and-combine normalized condition`.
 
-* Fixed two possible deadlocks which could occur if all medium priority
-  threads are busy. One is that in this case the AgencyCache could no longer
-  receive updates from the agency and another that queries could no longer
-  be finished. This fixes BTS-1475 and BTS-1486.
+* Fixed two possible deadlocks which could occur if all medium priority threads
+  are busy. One is that in this case the AgencyCache could no longer receive
+  updates from the agency and another that queries could no longer be finished.
+  This fixes BTS-1475 and BTS-1486.
 
 
 v3.11.1 (2023-06-12)
