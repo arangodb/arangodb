@@ -11,6 +11,7 @@ import { useGraphsModeContext } from "../GraphsModeContext";
 import { EditGraphButtons } from "../listGraphs/EditGraphButtons";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
+import { useCollectionOptions } from "./useEdgeCollectionOptions";
 
 const generalGraphFieldsMap = {
   name: {
@@ -46,6 +47,7 @@ const INITIAL_VALUES: GeneralGraphCreateValues = {
 
 export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
   const { initialGraph, mode } = useGraphsModeContext();
+  const { documentCollectionOptions } = useCollectionOptions();
   const handleSubmit = async (values: GeneralGraphCreateValues) => {
     const currentDB = getCurrentDB();
     const graph = currentDB.graph(values.name);
@@ -87,7 +89,10 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
                 noOptionsMessage={() => "No collections found"}
               />
               <FormField
-                field={generalGraphFieldsMap.orphanCollections}
+                field={{
+                  ...generalGraphFieldsMap.orphanCollections,
+                  options: documentCollectionOptions
+                }}
               />
             </FieldsGrid>
             <ModalFooter>
