@@ -409,6 +409,8 @@ function LeaderDisconnectedSuite() {
   };
 }
 
-jsunity.run(LeaderDisconnectedSuite);
+if (require("internal").platform.substr(0, 3) !== 'win') {
+  jsunity.run(LeaderDisconnectedSuite);
+}
 
 return jsunity.done();
