@@ -29,7 +29,7 @@ export const useDisplayTypes = ({
     });
     if (isGraph && graphDataType) {
       setDisplayTypes(["graph"]);
-      setGraphDataType(graphDataType as GraphDataType);
+      setGraphDataType(graphDataType);
       setCurrentDisplayType(prevView => {
         if (prevView !== "graph") {
           return "graph";
@@ -87,14 +87,17 @@ type ObjectGraphType = {
   vertices: VertexGraphType[];
   edges: EdgeGraphType[];
 };
-const detectGraph = ({
+export const detectGraph = ({
   result
 }: {
   result: (EdgeGraphType | ObjectGraphType)[];
-}) => {
+}): {
+  isGraph: boolean;
+  graphDataType?: GraphDataType;
+} => {
   if (!result || !Array.isArray(result)) {
     return {
-      isGraph: false
+      isGraph: false,
     };
   }
   const firstValidIndex = result.findIndex(item => {

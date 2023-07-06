@@ -10,6 +10,7 @@ import {
   Text
 } from "@chakra-ui/react";
 import React from "react";
+import { useHistory } from "react-router";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { downloadPost } from "../../../utils/downloadHelper";
 import { QueryResultType, useQueryContext } from "../QueryContextProvider";
@@ -42,8 +43,8 @@ export const QueryExecuteResult = ({
     currentDisplayType,
     setCurrentDisplayType
   } = useDisplayTypes({
-      queryResult
-    });
+    queryResult
+  });
 
   if (queryResult.status === "error") {
     return (
@@ -277,6 +278,9 @@ const QueryExecuteResultFooter = ({
   return (
     <Flex padding="2" alignItems="center" justifyContent="end">
       <Stack direction="row">
+        {currentDisplayType === "graph" && (
+          <OpenInGraphButton queryResult={queryResult} />
+        )}
         <CSVDownloadButton queryResult={queryResult} />
         <Button size="sm" onClick={onDownload}>
           Download JSON
@@ -297,5 +301,25 @@ const QueryExecuteResultFooter = ({
         </Button>
       </Stack>
     </Flex>
+  );
+};
+
+const OpenInGraphButton = ({
+  queryResult
+}: {
+  queryResult: QueryResultType;
+}) => {
+  const { setQueryGraphResult } = useQueryContext();
+  const history = useHistory();
+  return (
+    <Button
+      size="sm"
+      onClick={() => {
+        setQueryGraphResult(queryResult);
+        history.push(`/queries/graph`);
+      }}
+    >
+      Open in Graph Viewer
+    </Button>
   );
 };

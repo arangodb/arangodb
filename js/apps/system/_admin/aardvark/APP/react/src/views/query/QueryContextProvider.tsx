@@ -63,6 +63,8 @@ type QueryContextType = {
     result: any;
     status: "success" | "error" | "loading";
   }) => void;
+  queryGraphResult: QueryResultType;
+  setQueryGraphResult: React.Dispatch<React.SetStateAction<QueryResultType>>;
 };
 // const defaultValue = 'FOR v,e,p IN 1..3 ANY "place/0" GRAPH "ldbc" LIMIT 100 return p'
 const QueryContext = React.createContext<QueryContextType>(
@@ -175,6 +177,8 @@ export const QueryContextProvider = ({
       return newResults;
     });
   };
+  const [queryGraphResult, setQueryGraphResult] =
+    React.useState<QueryResultType>({} as QueryResultType);
   return (
     <QueryContext.Provider
       value={{
@@ -209,7 +213,9 @@ export const QueryContextProvider = ({
         aqlJsonEditorRef,
         bindVariablesJsonEditorRef,
         setQueryResultById,
-        appendQueryResultById
+        appendQueryResultById,
+        queryGraphResult,
+        setQueryGraphResult
       }}
     >
       <QueryNavigationPrompt queryResults={queryResults} />
