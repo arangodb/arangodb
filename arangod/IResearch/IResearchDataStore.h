@@ -408,7 +408,7 @@ class IResearchDataStore {
       bool sorted, bool nested,
       std::span<const IResearchViewStoredValues::StoredColumn> storedColumns,
       irs::type_info::type_id primarySortCompression,
-      irs::IndexReaderOptions const& readerOptions);
+      irs::IndexReaderOptions& readerOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job
@@ -525,7 +525,7 @@ class IResearchDataStore {
   irs::IResourceManager* _writersMemory{&irs::IResourceManager::kNoop};
   irs::IResourceManager* _readersMemory{&irs::IResourceManager::kNoop};
   irs::IResourceManager* _consolidationsMemory{&irs::IResourceManager::kNoop};
-  irs::IResourceManager* _fileDescriptorsMemory{&irs::IResourceManager::kNoop};
+  irs::IResourceManager* _fileDescriptorsCount{&irs::IResourceManager::kNoop};
 
   metrics::Gauge<uint64_t>* _mappedMemory{nullptr};
 

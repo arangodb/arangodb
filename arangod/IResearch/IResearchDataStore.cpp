@@ -1207,7 +1207,7 @@ Result IResearchDataStore::initDataStore(
     bool sorted, bool nested,
     std::span<const IResearchViewStoredValues::StoredColumn> storedColumns,
     irs::type_info::type_id primarySortCompression,
-    irs::IndexReaderOptions const& readerOptions) {
+    irs::IndexReaderOptions& readerOptions) {
   // The data-store is being deallocated, link use is no longer valid
   // (wait for all the view users to finish)
   _asyncSelf->reset();
@@ -1287,6 +1287,10 @@ Result IResearchDataStore::initDataStore(
 
   // Register metrics before starting any background threads
   insertMetrics();
+  readerOptions.resource_manager.transactions = _writersMemory;
+  readerOptions.resource_manager.readers = _readersMemory;
+  readerOptions.resource_manager.consolidations = _consolidationsMemory;
+  readerOptions.resource_manager.file_descriptors = _fileDescriptorsCount;
 
   auto const openMode =
       pathExists ? (irs::OM_CREATE | irs::OM_APPEND) : irs::OM_CREATE;

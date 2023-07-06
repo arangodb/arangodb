@@ -259,6 +259,8 @@ void IResearchRocksDBInvertedIndex::insertMetrics() {
       &metric.add(getMetric<arangodb_search_readers_memory>(*this));
   _consolidationsMemory =
       &metric.add(getMetric<arangodb_search_consolidations_memory>(*this));
+  _fileDescriptorsCount =
+      &metric.add(getMetric<arangodb_search_file_descriptors>(*this));
   _mappedMemory = &metric.add(getMetric<arangodb_search_mapped_memory>(*this));
   _numFailedCommits =
       &metric.add(getMetric<arangodb_search_num_failed_commits>(*this));
@@ -289,6 +291,10 @@ void IResearchRocksDBInvertedIndex::removeMetrics() {
   if (_consolidationsMemory != &irs::IResourceManager::kNoop) {
     _consolidationsMemory = &irs::IResourceManager::kNoop;
     metric.remove(getMetric<arangodb_search_consolidations_memory>(*this));
+  }
+  if (_fileDescriptorsCount != &irs::IResourceManager::kNoop) {
+    _fileDescriptorsCount = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_file_descriptors>(*this));
   }
   if (_mappedMemory) {
     _mappedMemory = nullptr;
