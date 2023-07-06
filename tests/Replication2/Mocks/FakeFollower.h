@@ -22,14 +22,15 @@
 
 #pragma once
 
+#include "Basics/Exceptions.h"
+#include "Basics/Guarded.h"
+#include "Basics/UnshackledMutex.h"
+#include "Replication2/Helper/WaitForQueue.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/WaitForBag.h"
-#include "Replication2/Helper/WaitForQueue.h"
-#include "Basics/UnshackledMutex.h"
-#include "Basics/Guarded.h"
-#include "Replication2/Streams/MultiplexedValues.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/Streams/MultiplexedValues.h"
 
 namespace arangodb::replication2::test {
 

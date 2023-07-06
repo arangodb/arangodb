@@ -28,7 +28,7 @@
 namespace arangodb::replication2::storage {
 
 // TODO - cleanup usage and remove this interface
-struct IStorageEngineMethods : ILogPersistor, IStatePersistor {
+struct IStorageEngineMethods : virtual ILogPersistor, virtual IStatePersistor {
   virtual ~IStorageEngineMethods() = default;
 };
 

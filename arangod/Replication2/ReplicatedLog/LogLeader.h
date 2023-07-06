@@ -193,6 +193,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     LogIndex nextPrevLogIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};
     LogIndex lastAckedLowestIndexToKeep = LogIndex{0};
+    LogIndex syncIndex = LogIndex{0};
     MessageId lastSentMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason;
@@ -331,6 +332,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     // committed - latest active config that has committed at least one entry
     // Note that this will be nullptr until leadership is established!
     std::shared_ptr<InnerTermConfig const> committedInnerTermConfig;
+
+    // What would the commit index be if we were to consider only entries that
+    // have been synced to disk. Used only for reporting.
+    LogIndex _syncCommitIndex;
   };
 
   LoggerContext const _logContext;

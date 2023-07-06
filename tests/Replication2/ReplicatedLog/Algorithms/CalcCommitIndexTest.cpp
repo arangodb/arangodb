@@ -105,13 +105,17 @@ TEST_F(CalcCommitIndexTest, write_concern_1_single_participant) {
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
                        .snapshotAvailable = true,
-                       .flags = {}},
+                       .flags = {},
+                       .syncIndex = LogIndex{50}},
   };
   auto expectedLogIndex = LogIndex{50};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 1, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 1, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{0});
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
@@ -123,22 +127,28 @@ TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
                        .snapshotAvailable = true,
-                       .flags = {}},
+                       .flags = {},
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
                        .snapshotAvailable = true,
-                       .flags = {}},
+                       .flags = {},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C",
                        .snapshotAvailable = true,
-                       .flags = {}}};
+                       .flags = {},
+                       .syncIndex = LogIndex{35}}};
 
   auto expectedLogIndex = LogIndex{35};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 2, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
 
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
 
@@ -151,20 +161,26 @@ TEST_F(CalcCommitIndexTest, write_concern_0_3_participants) {
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
                        .snapshotAvailable = true,
-                       .flags = {}},
+                       .flags = {},
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
                        .snapshotAvailable = true,
-                       .flags = {}},
+                       .flags = {},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C",
                        .snapshotAvailable = true,
-                       .flags = {}}};
+                       .flags = {},
+                       .syncIndex = LogIndex{35}}};
   auto expectedLogIndex = LogIndex{50};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 0, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 0, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
@@ -177,21 +193,27 @@ TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
                        .snapshotAvailable = true,
-                       .flags = {}},
+                       .flags = {},
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
                        .snapshotAvailable = true,
-                       .flags = {}},
+                       .flags = {},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C",
                        .snapshotAvailable = true,
-                       .flags = {}}};
+                       .flags = {},
+                       .syncIndex = LogIndex{35}}};
   auto expectedLogIndex = LogIndex{25};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 3, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 3, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
 
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
 
@@ -206,18 +228,24 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
                        .snapshotAvailable = true,
-                       .flags = {.allowedInQuorum = false}},
+                       .flags = {.allowedInQuorum = false},
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C",
-                       .snapshotAvailable = true}};
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{35}}};
   auto expectedLogIndex = LogIndex{1};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 3, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 3, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<
           CommitFailReason::NonEligibleServerRequiredForQuorum>(reason.value));
@@ -241,20 +269,26 @@ TEST_F(CalcCommitIndexTest, excluded_and_forced) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
                        .snapshotAvailable = true,
-                       .flags = {.forced = true, .allowedInQuorum = false}},
+                       .flags = {.forced = true, .allowedInQuorum = false},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C",
-                       .snapshotAvailable = true},
-  };
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{35}}};
+
   auto expectedLogIndex = LogIndex{25};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 2, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(
           reason.value));
@@ -268,19 +302,25 @@ TEST_F(CalcCommitIndexTest, all_excluded) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
-                       .flags = {.allowedInQuorum = false}},
+                       .flags = {.allowedInQuorum = false},
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
-                       .flags = {.allowedInQuorum = false}},
+                       .flags = {.allowedInQuorum = false},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C",
-                       .flags = {.allowedInQuorum = false}},
-  };
+                       .flags = {.allowedInQuorum = false},
+                       .syncIndex = LogIndex{35}}};
+
   auto expectedLogIndex = LogIndex{1};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 3, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 3, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<
           CommitFailReason::NonEligibleServerRequiredForQuorum>(reason.value));
@@ -299,21 +339,27 @@ TEST_F(CalcCommitIndexTest, all_forced) {
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
                        .snapshotAvailable = true,
-                       .flags = {.forced = true}},
+                       .flags = {.forced = true},
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
                        .snapshotAvailable = true,
-                       .flags = {.forced = true}},
+                       .flags = {.forced = true},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C",
                        .snapshotAvailable = true,
-                       .flags = {.forced = true}},
+                       .flags = {.forced = true},
+                       .syncIndex = LogIndex{35}},
   };
   auto expectedLogIndex = LogIndex{25};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 3, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 3, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
 
@@ -327,26 +373,34 @@ TEST_F(CalcCommitIndexTest, not_enough_eligible) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "B",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{35}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "C",
                        .snapshotAvailable = true,
-                       .flags = {.allowedInQuorum = false}},
+                       .flags = {.allowedInQuorum = false},
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "D",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{35}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
                        .id = "E",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{15}},
   };
   auto expectedLogIndex = LogIndex{35};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 2, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
 
@@ -359,25 +413,31 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
                        .id = "A",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{15}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
                        .id = "B",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{15}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
                        .id = "C",
                        .snapshotAvailable = true,
-                       .flags = {.allowedInQuorum = false}},
+                       .flags = {.allowedInQuorum = false},
+                       .syncIndex = LogIndex{15}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
                        .id = "D",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{15}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
                        .id = "E",
-                       .snapshotAvailable = true},
-  };
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{15}}};
   auto expectedLogIndex = LogIndex{15};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 2, LogIndex{15}, createDefaultTermIndexPair(15));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{15},
+                                       createDefaultTermIndexPair(15),
+                                       LogIndex{15});
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
@@ -394,20 +454,26 @@ TEST_F(CalcCommitIndexTest, failed_and_forced) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
                        .snapshotAvailable = true,
-                       .flags = {.forced = true, .allowedInQuorum = false}},
+                       .flags = {.forced = true, .allowedInQuorum = false},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{35}},
   };
   auto expectedLogIndex = LogIndex{25};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 2, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(
           reason.value));
@@ -422,19 +488,25 @@ TEST_F(CalcCommitIndexTest, write_concern_0_forced_flag) {
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "A",
                        .snapshotAvailable = true,
-                       .flags = {.forced = true}},
+                       .flags = {.forced = true},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
                        .id = "B",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{15}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(55),
                        .id = "C",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{55}},
   };
   auto expectedLogIndex = LogIndex{25};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 0, LogIndex{15}, createDefaultTermIndexPair(55));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 0, LogIndex{15},
+                                       createDefaultTermIndexPair(55),
+                                       LogIndex{15});
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
@@ -452,27 +524,34 @@ TEST_F(CalcCommitIndexTest, DISABLED_more_forced_than_quorum_size) {
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "A",
                        .snapshotAvailable = true,
-                       .flags = {.forced = true}},
+                       .flags = {.forced = true},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
                        .snapshotAvailable = true,
-                       .flags = {.forced = true}},
+                       .flags = {.forced = true},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "C",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "D",
                        .snapshotAvailable = true,
-                       .flags = {.forced = true}},
+                       .flags = {.forced = true},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "E",
                        .snapshotAvailable = true,
-                       .flags = {.forced = true}},
+                       .flags = {.forced = true},
+                       .syncIndex = LogIndex{25}},
   };
   auto expectedLogIndex = LogIndex{25};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 2, LogIndex{15}, createDefaultTermIndexPair(25));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{15},
+                                       createDefaultTermIndexPair(25),
+                                       LogIndex{15});
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
@@ -485,17 +564,21 @@ TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C",
-                       .snapshotAvailable = true}};
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{35}}};
 
   auto const spearhead = createDefaultTermIndexPair(50);
-  auto [index, reason, quorum] =
-      algorithms::calculateCommitIndex(participants, 2, LogIndex{1}, spearhead);
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1}, spearhead,
+                                       LogIndex{1});
 
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
   who["B"] = {.isAllowedInQuorum = true,
@@ -515,17 +598,21 @@ TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached_multiple) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "A",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "C",
-                       .snapshotAvailable = true}};
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{25}}};
 
   auto const spearhead = createDefaultTermIndexPair(50);
-  auto [index, reason, quorum] =
-      algorithms::calculateCommitIndex(participants, 2, LogIndex{1}, spearhead);
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1}, spearhead,
+                                       LogIndex{1});
 
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
   who["A"] = {.isAllowedInQuorum = true,
@@ -548,38 +635,46 @@ TEST_F(CalcCommitIndexTest, who_forced_participant_not_in_quorum) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
                        .snapshotAvailable = true,
-                       .flags = {.forced = true, .allowedInQuorum = false}},
+                       .flags = {.forced = true, .allowedInQuorum = false},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
                        .id = "C",
-                       .snapshotAvailable = true},
-  };
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{35}}};
   auto expectedLogIndex = LogIndex{25};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 2, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
 
   EXPECT_EQ(reason, CommitFailReason::withForcedParticipantNotInQuorum("B"));
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
 }
 
 TEST_F(CalcCommitIndexTest, who_excluded) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "A",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "B",
                        .snapshotAvailable = true,
-                       .flags = {.allowedInQuorum = false}}};
+                       .flags = {.allowedInQuorum = false},
+                       .syncIndex = LogIndex{50}}};
 
   auto expectedLogIndex = LogIndex{25};
   auto const spearhead = createDefaultTermIndexPair(50);
-  auto [index, reason, quorum] =
-      algorithms::calculateCommitIndex(participants, 1, LogIndex{1}, spearhead);
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 1, LogIndex{1}, spearhead,
+                                       LogIndex{1});
 
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
   who["A"] = {.isAllowedInQuorum = true,
@@ -589,6 +684,7 @@ TEST_F(CalcCommitIndexTest, who_excluded) {
               .snapshotAvailable = true,
               .lastAcknowledged = participants[1].lastAckedEntry};
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   auto const expected =
       CommitFailReason::withQuorumSizeNotReached(std::move(who), spearhead);
   EXPECT_EQ(reason, expected)
@@ -601,18 +697,22 @@ TEST_F(CalcCommitIndexTest, who_all_excluded) {
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "A",
                        .snapshotAvailable = true,
-                       .flags = {.allowedInQuorum = false}},
+                       .flags = {.allowedInQuorum = false},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "B",
                        .snapshotAvailable = true,
-                       .flags = {.allowedInQuorum = false}},
-  };
+                       .flags = {.allowedInQuorum = false},
+                       .syncIndex = LogIndex{50}}};
 
   auto expectedLogIndex = LogIndex{1};
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 1, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 1, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
 
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_EQ(reason,
             (CommitFailReason::withNonEligibleServerRequiredForQuorum(
                 {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::
@@ -623,23 +723,27 @@ TEST_F(CalcCommitIndexTest, who_all_excluded) {
 }
 
 TEST_F(CalcCommitIndexTest, who_all_excluded_wrong_term) {
-  auto participants = std::vector{
-      ParticipantState{
-          .lastAckedEntry = TermIndexPair{LogTerm{1}, LogIndex{25}},
-          .id = "A",
-          .snapshotAvailable = true},
-      ParticipantState{
-          .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{50}},
-          .id = "B",
-          .snapshotAvailable = true,
-          .flags = {.allowedInQuorum = false}},
-  };
+  auto participants =
+      std::vector{ParticipantState{
+                      .lastAckedEntry = TermIndexPair{LogTerm{1}, LogIndex{25}},
+                      .id = "A",
+                      .snapshotAvailable = true,
+                      .syncIndex = LogIndex{25}},
+                  ParticipantState{
+                      .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{50}},
+                      .id = "B",
+                      .snapshotAvailable = true,
+                      .flags = {.allowedInQuorum = false},
+                      .syncIndex = LogIndex{50}}};
 
   auto expectedLogIndex = LogIndex{1};
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 1, LogIndex{1}, TermIndexPair{LogTerm{2}, LogIndex{50}});
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 1, LogIndex{1},
+                                       TermIndexPair{LogTerm{2}, LogIndex{50}},
+                                       LogIndex{1});
 
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_EQ(
       reason,
       (CommitFailReason::withNonEligibleServerRequiredForQuorum(
@@ -654,24 +758,30 @@ TEST_F(CalcCommitIndexTest, write_concern_too_big) {
   auto participants = std::vector{
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
                        .id = "A",
-                       .snapshotAvailable = true},
+                       .snapshotAvailable = true,
+                       .syncIndex = LogIndex{50}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
                        .id = "B",
                        .snapshotAvailable = true,
-                       .flags = {.allowedInQuorum = true}},
+                       .flags = {.allowedInQuorum = true},
+                       .syncIndex = LogIndex{25}},
       ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
                        .id = "C",
                        .snapshotAvailable = true,
-                       .flags = {.allowedInQuorum = true}}};
+                       .flags = {.allowedInQuorum = true},
+                       .syncIndex = LogIndex{15}}};
 
   auto expectedLogIndex = LogIndex{1};
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 4, LogIndex{1}, createDefaultTermIndexPair(50));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 4, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
 
   EXPECT_EQ(reason, CommitFailReason::withFewerParticipantsThanWriteConcern(
                         {.effectiveWriteConcern = 4, .numParticipants = 3}))
       << "Actual: " << basics::velocypackhelper::toJson(reason);
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
 }
 
 TEST_F(CalcCommitIndexTest, who_forced_participant_in_wrong_term) {
@@ -679,24 +789,30 @@ TEST_F(CalcCommitIndexTest, who_forced_participant_in_wrong_term) {
       ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}),
           .id = "A",
-          .snapshotAvailable = true},
+          .snapshotAvailable = true,
+          .syncIndex = LogIndex{50}},
       ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{1}, LogIndex{200}),
           .id = "B",
           .snapshotAvailable = true,
-          .flags = {.forced = true, .allowedInQuorum = true}},
+          .flags = {.forced = true, .allowedInQuorum = true},
+          .syncIndex = LogIndex{200}},
       ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}),
           .id = "C",
-          .snapshotAvailable = true},
+          .snapshotAvailable = true,
+          .syncIndex = LogIndex{50}},
   };
   auto expectedLogIndex = LogIndex{1};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 2, LogIndex{1}, TermIndexPair(LogTerm{2}, LogIndex{50}));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1},
+                                       TermIndexPair(LogTerm{2}, LogIndex{50}),
+                                       LogIndex{1});
 
   EXPECT_EQ(reason, CommitFailReason::withForcedParticipantNotInQuorum("B"));
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
 }
 
 TEST_F(CalcCommitIndexTest, non_eligible_participant_in_wrong_term) {
@@ -704,20 +820,25 @@ TEST_F(CalcCommitIndexTest, non_eligible_participant_in_wrong_term) {
       ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}),
           .id = "A",
-          .snapshotAvailable = true},
+          .snapshotAvailable = true,
+          .syncIndex = LogIndex{50}},
       ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{1}, LogIndex{25}),
           .id = "B",
-          .snapshotAvailable = true},
+          .snapshotAvailable = true,
+          .syncIndex = LogIndex{25}},
       ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}),
           .id = "C",
-          .snapshotAvailable = true},
+          .snapshotAvailable = true,
+          .syncIndex = LogIndex{50}},
   };
   auto expectedLogIndex = LogIndex{50};
 
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 2, LogIndex{1}, TermIndexPair(LogTerm{2}, LogIndex{50}));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1},
+                                       TermIndexPair(LogTerm{2}, LogIndex{50}),
+                                       LogIndex{1});
 
   EXPECT_EQ(reason, CommitFailReason::withNothingToCommit());
   verifyQuorum(participants, quorum, expectedLogIndex, LogTerm{2});
@@ -729,27 +850,34 @@ TEST_F(CalcCommitIndexTest, who_non_eligible_required) {
           .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{50}},
           .id = "A",
           .snapshotAvailable = true,
-          .flags = {.allowedInQuorum = false}},
+          .flags = {.allowedInQuorum = false},
+          .syncIndex = LogIndex{50}},
       ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{25}},
           .id = "B",
           .snapshotAvailable = true,
-          .flags = {.allowedInQuorum = false}},
+          .flags = {.allowedInQuorum = false},
+          .syncIndex = LogIndex{25}},
       ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{1}, LogIndex{15}},
           .id = "C",
-          .snapshotAvailable = true},
+          .snapshotAvailable = true,
+          .syncIndex = LogIndex{15}},
       ParticipantState{
           .lastAckedEntry = TermIndexPair{LogTerm{2}, LogIndex{15}},
           .id = "D",
-          .snapshotAvailable = true},
+          .snapshotAvailable = true,
+          .syncIndex = LogIndex{15}},
   };
 
   auto expectedLogIndex = LogIndex{1};
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 2, LogIndex{1}, TermIndexPair{LogTerm{2}, LogIndex{50}});
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1},
+                                       TermIndexPair{LogTerm{2}, LogIndex{50}},
+                                       LogIndex{1});
 
   EXPECT_EQ(index, expectedLogIndex);
+  EXPECT_EQ(syncCommitIndex, expectedLogIndex);
   EXPECT_EQ(reason,
             (CommitFailReason::withNonEligibleServerRequiredForQuorum(
                 {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::
@@ -766,15 +894,18 @@ TEST_F(CalcCommitIndexTest, no_snapshot_is_non_eligible) {
       ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}),
           .id = "A",
-          .snapshotAvailable = true},
+          .snapshotAvailable = true,
+          .syncIndex = LogIndex{50}},
       ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{25}),
           .id = "B",
-          .snapshotAvailable = true},
+          .snapshotAvailable = true,
+          .syncIndex = LogIndex{25}},
       ParticipantState{
           .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}),
           .id = "C",
-          .snapshotAvailable = false},
+          .snapshotAvailable = false,
+          .syncIndex = LogIndex{50}},
   };
   auto expectedCommitIndex = TermIndexPair(LogTerm{2}, LogIndex{25});
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
@@ -786,8 +917,10 @@ TEST_F(CalcCommitIndexTest, no_snapshot_is_non_eligible) {
               .lastAcknowledged = participants[2].lastAckedEntry};
   auto const expected = CommitFailReason::withQuorumSizeNotReached(
       std::move(who), TermIndexPair(LogTerm{2}, LogIndex{50}));
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 2, LogIndex{1}, TermIndexPair(LogTerm{2}, LogIndex{50}));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1},
+                                       TermIndexPair(LogTerm{2}, LogIndex{50}),
+                                       LogIndex{1});
 
   EXPECT_EQ(reason, expected)
       << basics::velocypackhelper::toJson(reason) << " vs "
@@ -796,20 +929,22 @@ TEST_F(CalcCommitIndexTest, no_snapshot_is_non_eligible) {
 }
 
 TEST_F(CalcCommitIndexTest, no_snapshot_is_non_eligible_but_required) {
-  auto participants = std::vector{
-      ParticipantState{
-          .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}),
-          .id = "A",
-          .snapshotAvailable = true},
-      ParticipantState{
-          .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{25}),
-          .id = "B",
-          .snapshotAvailable = true},
-      ParticipantState{
-          .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}),
-          .id = "C",
-          .snapshotAvailable = false},
-  };
+  auto participants =
+      std::vector{ParticipantState{
+                      .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}),
+                      .id = "A",
+                      .snapshotAvailable = true,
+                      .syncIndex = LogIndex{50}},
+                  ParticipantState{
+                      .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{25}),
+                      .id = "B",
+                      .snapshotAvailable = true,
+                      .syncIndex = LogIndex{25}},
+                  ParticipantState{
+                      .lastAckedEntry = TermIndexPair(LogTerm{2}, LogIndex{50}),
+                      .id = "C",
+                      .snapshotAvailable = false,
+                      .syncIndex = LogIndex{50}}};
   auto expectedCommitIndex = TermIndexPair(LogTerm{2}, LogIndex{25});
   auto who =
       CommitFailReason::NonEligibleServerRequiredForQuorum::CandidateMap{};
@@ -817,11 +952,43 @@ TEST_F(CalcCommitIndexTest, no_snapshot_is_non_eligible_but_required) {
       CommitFailReason::NonEligibleServerRequiredForQuorum::kSnapshotMissing;
   auto const expected =
       CommitFailReason::withNonEligibleServerRequiredForQuorum(std::move(who));
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, 3, LogIndex{1}, TermIndexPair(LogTerm{2}, LogIndex{50}));
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 3, LogIndex{1},
+                                       TermIndexPair(LogTerm{2}, LogIndex{50}),
+                                       LogIndex{1});
 
   EXPECT_EQ(reason, expected)
       << basics::velocypackhelper::toJson(reason) << " vs "
       << basics::velocypackhelper::toJson(expected);
   verifyQuorum(participants, quorum, expectedCommitIndex.index, LogTerm{2});
+}
+
+TEST_F(CalcCommitIndexTest, sync_commit_index_different_from_commit_index) {
+  auto participants = std::vector{
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(50),
+                       .id = "A",
+                       .snapshotAvailable = true,
+                       .flags = {},
+                       .syncIndex = LogIndex{3}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
+                       .id = "B",
+                       .snapshotAvailable = true,
+                       .flags = {},
+                       .syncIndex = LogIndex{3}},
+      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(35),
+                       .id = "C",
+                       .snapshotAvailable = true,
+                       .flags = {},
+                       .syncIndex = LogIndex{5}}};
+  auto expectedCommitIndex = LogIndex{25};
+  auto expectedSyncCommitIndex = LogIndex{3};
+
+  auto [index, syncCommitIndex, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 3, LogIndex{1},
+                                       createDefaultTermIndexPair(50),
+                                       LogIndex{1});
+
+  EXPECT_EQ(index, expectedCommitIndex);
+  EXPECT_EQ(syncCommitIndex, expectedSyncCommitIndex);
+  EXPECT_EQ(quorum.size(), 3U);
 }

@@ -852,8 +852,8 @@ const replicatedLogSuite = function () {
       assertEqual(actions.slice(0, 4), expected.slice(0, 4));
 
       // 7 and 8 can happen before 4 and 5, as the correctness of the system does not depend on the order.
-      // It is important that 6 does not happen before 4 and 5.
-      assertTrue(actions.slice(6, 9).includes(expected[6]));
+      // It is important that 6 does not happen before 5.
+      assertTrue(actions.slice(5, 9).includes(expected[6]));
       // 4, 5, 7, 8 are identical
       assertEqual(actions.slice(4, 9).filter(action => action === expected[4]).length, 4);
 

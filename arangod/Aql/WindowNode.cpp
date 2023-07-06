@@ -404,8 +404,7 @@ void WindowNode::calcAggregateTypes(
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 

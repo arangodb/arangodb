@@ -392,9 +392,9 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
   }
 }
 
-std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
-                                                      bool restore,
-                                                      bool& created) {
+std::shared_ptr<Index> RocksDBCollection::createIndex(
+    VPackSlice info, bool restore, bool& created,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(info.isObject());
 
   // Step 0. Lock all the things
@@ -545,9 +545,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
       }
 
       RocksDBFilePurgePreventer walKeeper(&engine);
-      res = buildIdx->fillIndexBackground(locker);
+      res = buildIdx->fillIndexBackground(locker, std::move(progress));
     } else {
-      res = buildIdx->fillIndexForeground();
+      res = buildIdx->fillIndexForeground(std::move(progress));
     }
     if (res.fail()) {
       return res;
@@ -764,13 +764,15 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
   auto const& indexes = indexesSnapshot.getIndexes();
 
   // delete index values
+  std::vector<TruncateGuard> guards;
+  guards.reserve(indexes.size());
   for (auto const& idx : indexes) {
-    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-    bounds = ridx->getBounds();
-    s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
-    if (!s.ok()) {
-      return rocksutils::convertStatus(s);
+    auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+    auto r = rIdx->truncateBegin(batch);
+    if (!r.ok()) {
+      return std::move(r).result();
     }
+    guards.push_back(std::move(r.get()));
   }
 
   // add the log entry so we can recover the correct count
@@ -787,25 +789,29 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
   }
+  // we need crash server if any failure in order to trigger recovery,
+  // as rocksdb truncate already committed here
+  [&]() noexcept {
+    // post commit sequence
+    rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber() - 1;
 
-  rocksdb::SequenceNumber seq =
-      db->GetLatestSequenceNumber() - 1;  // post commit sequence
+    uint64_t numDocs = _meta.numberDocuments();
+    _meta.adjustNumberDocuments(seq,
+                                /*revision*/ _logicalCollection.newRevisionId(),
+                                -static_cast<int64_t>(numDocs));
 
-  uint64_t numDocs = _meta.numberDocuments();
-  _meta.adjustNumberDocuments(seq,
-                              /*revision*/ _logicalCollection.newRevisionId(),
-                              -static_cast<int64_t>(numDocs));
+    for (auto it = guards.begin(); auto const& idx : indexes) {
+      // clears caches / clears links (if applicable)
+      auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+      rIdx->truncateCommit(std::move(*it++), seq, &trx);
+    }
 
-  for (auto const& idx : indexes) {
-    idx->afterTruncate(seq,
-                       &trx);  // clears caches / clears links (if applicable)
-  }
+    indexesSnapshot.release();
 
-  indexesSnapshot.release();
+    bufferTruncate(seq);
 
-  bufferTruncate(seq);
-
-  TRI_ASSERT(!state->hasOperations());  // not allowed
+    TRI_ASSERT(!state->hasOperations());  // not allowed
+  }();
   return {};
 }
 

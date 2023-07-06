@@ -24,29 +24,17 @@
 #pragma once
 
 #include "Replication2/Storage/IStorageEngineMethods.h"
-#include "Replication2/Storage/RocksDB/AsyncLogWriteContext.h"
 
 #include <memory>
 
-namespace rocksdb {
-class DB;
-class ColumnFamilyHandle;
-}  // namespace rocksdb
+namespace arangodb::replication2::storage {
 
-namespace arangodb::replication2::storage::rocksdb {
-
-struct AsyncLogWriteBatcherMetrics;
-struct IAsyncLogWriteBatcher;
 struct ILogPersistor;
 struct IStatePersistor;
 
 struct LogStorageMethods final : replication2::storage::IStorageEngineMethods {
-  explicit LogStorageMethods(
-      uint64_t objectId, std::uint64_t vocbaseId, replication2::LogId logId,
-      std::shared_ptr<IAsyncLogWriteBatcher> batcher, ::rocksdb::DB* db,
-      ::rocksdb::ColumnFamilyHandle* metaCf,
-      ::rocksdb::ColumnFamilyHandle* logCf,
-      std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics);
+  LogStorageMethods(std::unique_ptr<ILogPersistor> logPersistor,
+                    std::unique_ptr<IStatePersistor> statePersistor);
 
   [[nodiscard]] auto updateMetadata(
       replication2::storage::PersistedStateInfo info) -> Result override;
@@ -75,9 +63,8 @@ struct LogStorageMethods final : replication2::storage::IStorageEngineMethods {
   [[nodiscard]] auto drop() -> Result override;
   [[nodiscard]] auto compact() -> Result override;
 
-  AsyncLogWriteContext ctx;
   std::unique_ptr<ILogPersistor> _logPersistor;
   std::unique_ptr<IStatePersistor> _statePersistor;
 };
 
-}  // namespace arangodb::replication2::storage::rocksdb
+}  // namespace arangodb::replication2::storage

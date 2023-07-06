@@ -29,7 +29,7 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Replication2/MetricsHelper.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteContext.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -317,6 +317,11 @@ auto AsyncLogWriteBatcher::waitForSync(SequenceNumber seq)
 }
 
 void AsyncLogWriteBatcher::onSync(SequenceNumber seq) noexcept {
+  TRI_IF_FAILURE("AsyncLogWriteBatcher::syncIndexDisabled") {
+    // We'll no longer update the syncIndex
+    return;
+  }
+
   // Schedule a task to notify all the futures waiting for the sequence number
   // to be synced.
   auto res = basics::catchVoidToResult([&]() {

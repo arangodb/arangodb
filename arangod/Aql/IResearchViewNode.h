@@ -227,11 +227,8 @@ class IResearchViewNode final : public aql::ExecutionNode {
 #endif
 
   // Creates corresponding ExecutionBlock.
-  // TODO(MBkkt) Use containers::FlatHashMap
   std::unique_ptr<aql::ExecutionBlock> createBlock(
-      aql::ExecutionEngine& engine,
-      std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&)
-      const final;
+      aql::ExecutionEngine& engine) const final;
 
   aql::RegIdSet calcInputRegs() const;
 
