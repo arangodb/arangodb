@@ -54,6 +54,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
                       transaction::Methods* trx) final {
     IResearchDataStore::truncateCommit(std::move(guard), tick, trx);
+    guard = {};
   }
 
   bool canBeDropped() const final { return IResearchDataStore::canBeDropped(); }

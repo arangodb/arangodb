@@ -29,6 +29,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
+#include "resource_manager.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -141,14 +142,13 @@ class IResearchFeature final : public ArangodFeature {
   bool failQueriesOnOutOfSync() const noexcept;
 
 #ifdef USE_ENTERPRISE
-  bool trackColumnsCacheUsage(int64_t diff) noexcept;
+  irs::IResourceManager& getCachedColumnsManager() const noexcept {
+    return _columnsCacheMemoryUsed;
+  }
   bool columnsCacheOnlyLeaders() const noexcept;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   int64_t columnsCacheUsage() const noexcept;
-
-  void setCacheUsageLimit(uint64_t limit) noexcept {
-    _columnsCacheLimit = limit;
-  }
+  void setCacheUsageLimit(uint64_t limit) noexcept;
 
   void setColumnsCacheOnlyOnLeader(bool b) noexcept {
     _columnsCacheOnlyLeader = b;
@@ -180,6 +180,14 @@ class IResearchFeature final : public ArangodFeature {
   // found during recovery.
   std::vector<std::string> _skipRecoveryItems;
 
+  // number of links/indexes currently out of sync
+  metrics::Gauge<uint64_t>& _outOfSyncLinks;
+
+#ifdef USE_ENTERPRISE
+  irs::IResourceManager& _columnsCacheMemoryUsed;
+  bool _columnsCacheOnlyLeader{false};
+#endif
+
   uint32_t _consolidationThreads;
   uint32_t _consolidationThreadsIdle;
   uint32_t _commitThreads;
@@ -189,15 +197,6 @@ class IResearchFeature final : public ArangodFeature {
 
   std::shared_ptr<IndexTypeFactory> _clusterFactory;
   std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
-
-  // number of links/indexes currently out of sync
-  metrics::Gauge<uint64_t>& _outOfSyncLinks;
-
-#ifdef USE_ENTERPRISE
-  metrics::Gauge<int64_t>& _columnsCacheMemoryUsed;
-  uint64_t _columnsCacheLimit{0};
-  bool _columnsCacheOnlyLeader{false};
-#endif
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;

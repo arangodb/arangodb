@@ -454,6 +454,13 @@ void IResearchLink::insertMetrics() {
                      .vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>();
+  _writersMemory =
+      &metric.add(getMetric<arangodb_search_writers_memory>(*this));
+  _readersMemory =
+      &metric.add(getMetric<arangodb_search_readers_memory>(*this));
+  _consolidationsMemory =
+      &metric.add(getMetric<arangodb_search_consolidations_memory>(*this));
+  _mappedMemory = &metric.add(getMetric<arangodb_search_mapped_memory>(*this));
   _numFailedCommits =
       &metric.add(getMetric<arangodb_search_num_failed_commits>(*this));
   _numFailedCleanups =
@@ -474,6 +481,22 @@ void IResearchLink::removeMetrics() {
                      .vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>();
+  if (_writersMemory != &irs::IResourceManager::kNoop) {
+    _writersMemory = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_writers_memory>(*this));
+  }
+  if (_readersMemory != &irs::IResourceManager::kNoop) {
+    _readersMemory = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_readers_memory>(*this));
+  }
+  if (_consolidationsMemory != &irs::IResourceManager::kNoop) {
+    _consolidationsMemory = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_consolidations_memory>(*this));
+  }
+  if (_mappedMemory) {
+    _mappedMemory = nullptr;
+    metric.remove(getMetric<arangodb_search_mapped_memory>(*this));
+  }
   if (_numFailedCommits) {
     _numFailedCommits = nullptr;
     metric.remove(getMetric<arangodb_search_num_failed_commits>(*this));
