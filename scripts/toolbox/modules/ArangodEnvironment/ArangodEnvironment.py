@@ -48,3 +48,6 @@ class ArangodEnvironment:
     def insert_cluster_agency_endpoints(self, param):
         for agent in self._agents:
             param["--cluster.agency-endpoint"] = agent.get_endpoint()
+
+    def get_coordinator_http_endpoint(self):
+        return self._coordinators[0].get_http_endpoint()

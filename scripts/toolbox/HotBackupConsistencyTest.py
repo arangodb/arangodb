@@ -61,7 +61,7 @@ def run_test(client):
     time.sleep(1)
 
     # Concurrently, take a hotbackup
-    result = backup.create(
+    result = sys_db.backup.create(
         label="hotbackuptesthotbackup",
         allow_inconsistent=False,
         force=False,
@@ -77,7 +77,7 @@ def run_test(client):
     insjob.join()
 
     # restore the hotbackup taken above
-    result = backup.restore(result["backup_id"])
+    result = sys_db.backup.restore(result["backup_id"])
 
     # Check that all documents that are in the test_view
     # are also in the test_collection (and vice-versa)
@@ -111,24 +111,23 @@ def run_test(client):
         """))
     assert p == q
 
-
 def main():
     parser = argparse.ArgumentParser(
         prog="HotBackupConsistencyTest.py",
         description="tests hotbackups",
         epilog="")
-    parser.add_argument('--arangod')
-    parser.add_argument('--topdir')
+    parser.add_argument('--arangod', required=True)
+    parser.add_argument('--topdir', required=True)
     args = parser.parse_args()
 
     workdir = tempfile.mkdtemp(prefix="arangotest_")
     print(f"working directory is {workdir}")
 
     environment = start_cluster(args.arangod, args.topdir, workdir)
-    client = ArangoClient(hosts=environment._coordinators[0].get_endpoint())
 
     # TODO: replace this with API call for cluster readiness
     time.sleep(15)
+    client = ArangoClient(environment.get_coordinator_http_endpoint())
 
     run_test(client)
 

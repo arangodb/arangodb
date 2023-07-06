@@ -33,6 +33,9 @@ class ArangodServer:
     def get_endpoint(self):
         return f"tcp://127.0.0.1:{self._port}"
 
+    def get_http_endpoint(self):
+        return f"http://127.0.0.1:{self._port}"
+
     def start(self, silent=True):
         param = {}
         self.collect_parameters(param)
