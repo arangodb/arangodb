@@ -7,7 +7,6 @@ import { QuerySpotlight } from "./QuerySpotlight";
 export const QueryEditorTopBar = () => {
   const {
     setCurrentView,
-    currentView,
     onQueryChange,
     queryName,
     queryValue,
@@ -32,7 +31,7 @@ export const QueryEditorTopBar = () => {
         size="sm"
         colorScheme="gray"
         onClick={() => {
-          setCurrentView(currentView === "saved" ? "editor" : "saved");
+          setCurrentView("saved");
         }}
       >
         Saved Queries

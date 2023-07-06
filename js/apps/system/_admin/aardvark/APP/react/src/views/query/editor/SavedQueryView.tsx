@@ -45,7 +45,7 @@ export const SavedQueryView = () => {
 };
 
 const SavedQueryToolbar = () => {
-  const { setCurrentView, currentView } = useQueryContext();
+  const { setCurrentView } = useQueryContext();
   return (
     <Stack direction="row" padding="2">
       <Button
@@ -53,7 +53,7 @@ const SavedQueryToolbar = () => {
         size="sm"
         colorScheme="gray"
         onClick={() => {
-          setCurrentView(currentView === "saved" ? "editor" : "saved");
+          setCurrentView("editor");
         }}
       >
         Back
