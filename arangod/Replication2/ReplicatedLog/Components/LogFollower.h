@@ -30,7 +30,6 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "TermInformation.h"
@@ -60,7 +59,7 @@ namespace arangodb::replication2::replicated_log {
 
 struct FollowerManager {
   explicit FollowerManager(
-      std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+      std::unique_ptr<storage::IStorageEngineMethods> methods,
       std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
       std::shared_ptr<FollowerTermInformation const> termInfo,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
@@ -71,7 +70,7 @@ struct FollowerManager {
   auto getStatus() const -> LogStatus;
   auto getQuickStatus() const -> QuickLogStatus;
   auto resign()
-      -> std::tuple<std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      -> std::tuple<std::unique_ptr<storage::IStorageEngineMethods>,
                     std::unique_ptr<IReplicatedStateHandle>, DeferredAction>;
 
   auto appendEntries(AppendEntriesRequest request)
@@ -98,7 +97,7 @@ struct FollowerManager {
 struct LogFollowerImpl : ILogFollower {
   explicit LogFollowerImpl(
       ParticipantId myself,
-      std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+      std::unique_ptr<storage::IStorageEngineMethods> methods,
       std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
       std::shared_ptr<FollowerTermInformation const> termInfo,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
@@ -111,7 +110,7 @@ struct LogFollowerImpl : ILogFollower {
   auto getQuickStatus() const -> QuickLogStatus override;
 
   [[nodiscard]] auto resign() && -> std::tuple<
-      std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      std::unique_ptr<storage::IStorageEngineMethods>,
       std::unique_ptr<IReplicatedStateHandle>, DeferredAction> override;
 
   auto waitFor(LogIndex index) -> WaitForFuture override;

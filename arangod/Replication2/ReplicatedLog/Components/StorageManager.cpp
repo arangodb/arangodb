@@ -25,12 +25,14 @@
 #include <Futures/Future.h>
 
 #include <utility>
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
-#include "Replication2/coro-helper.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+
 #include "Basics/Guarded.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogContextKeys.h"
+#include "Replication2/coro-helper.h"
 #include "Replication2/IScheduler.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -82,8 +84,9 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
         });
   }
 
-  auto appendEntries(InMemoryLog slice,
-                     IStorageEngineMethods::WriteOptions writeOptions) noexcept
+  auto appendEntries(
+      InMemoryLog slice,
+      storage::IStorageEngineMethods::WriteOptions writeOptions) noexcept
       -> futures::Future<Result> override {
     LOG_CTX("eb8da", TRACE, manager.loggerContext)
         << "scheduling append, range = " << slice.getIndexRange();
@@ -316,7 +319,7 @@ struct comp::StateInfoTransaction : IStateInfoTransaction {
 
   auto get() noexcept -> InfoType& override { return info; }
 
-  replicated_state::PersistedStateInfo info;
+  storage::PersistedStateInfo info;
   GuardType guard;
   StorageManager& manager;
 };
@@ -349,7 +352,7 @@ arangodb::Result StorageManager::commitMetaInfoTrx(
 }
 
 auto StorageManager::getCommittedMetaInfo() const
-    -> replicated_state::PersistedStateInfo {
+    -> storage::PersistedStateInfo {
   return guardedData.getLockedGuard()->info;
 }
 

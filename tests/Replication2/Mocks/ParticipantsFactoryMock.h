@@ -25,6 +25,7 @@
 #include <gmock/gmock.h>
 
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -33,14 +34,12 @@ using namespace arangodb::replication2::replicated_log;
 namespace arangodb::replication2::test {
 struct ParticipantsFactoryMock : IParticipantsFactory {
   MOCK_METHOD(std::shared_ptr<ILogFollower>, constructFollower,
-              (std::unique_ptr<replicated_state::IStorageEngineMethods> &&
-                   methods,
+              (std::unique_ptr<storage::IStorageEngineMethods> && methods,
                FollowerTermInfo info, ParticipantContext context),
               (override));
 
   MOCK_METHOD(std::shared_ptr<ILogLeader>, constructLeader,
-              (std::unique_ptr<replicated_state::IStorageEngineMethods> &&
-                   methods,
+              (std::unique_ptr<storage::IStorageEngineMethods> && methods,
                LeaderTermInfo info, ParticipantContext context),
               (override));
 };

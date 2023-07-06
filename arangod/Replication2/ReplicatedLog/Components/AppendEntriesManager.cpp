@@ -51,12 +51,12 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
           .with<logContextKeyPrevLogIdx>(request.prevLogEntry);
   LOG_CTX("7f407", TRACE, lctx) << "receiving append entries";
 
+  auto self = shared_from_this();  // required for coroutine to keep this alive
   Guarded<GuardedData>::mutex_guard_type guard = guarded.getLockedGuard();
   if (guard->resigned) {
     throw ParticipantResignedException(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
   }
-  auto self = shared_from_this();  // required for coroutine to keep this alive
   auto requestGuard = guard->requestInFlight.acquire();
   if (not requestGuard) {
     LOG_CTX("58043", INFO, lctx)
@@ -65,7 +65,8 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
         termInfo->term, request.messageId,
         AppendEntriesErrorReason{
             AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight},
-        guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
+        guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE,
+        guard->storage.getSyncIndex());
   }
 
   if (auto error = guard->preflightChecks(request, *termInfo, lctx); error) {
@@ -87,7 +88,8 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
         LOG_CTX("c0981", ERR, lctx) << "failed to persist: " << result;
         co_return AppendEntriesResult::withPersistenceError(
             termInfo->term, request.messageId, result,
-            guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
+            guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE,
+            guard->storage.getSyncIndex());
       }
     }
   }
@@ -116,7 +118,8 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
         LOG_CTX("0982a", ERR, lctx) << "failed to persist: " << result;
         co_return AppendEntriesResult::withPersistenceError(
             termInfo->term, request.messageId, result,
-            guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
+            guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE,
+            guard->storage.getSyncIndex());
       }
       store = guard->storage.transaction();
     }
@@ -140,7 +143,8 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
             << "failed to persist new entries: " << result;
         co_return AppendEntriesResult::withPersistenceError(
             termInfo->term, request.messageId, result,
-            guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
+            guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE,
+            guard->storage.getSyncIndex());
       }
     }
   }
@@ -150,12 +154,13 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE;
   auto action =
       guard->stateHandle.updateCommitIndex(request.leaderCommit, hasSnapshot);
+  auto syncIndex = guard->storage.getSyncIndex();
   guard.unlock();
   action.fire();
   requestGuard.reset();
   LOG_CTX("f5ecd", TRACE, lctx) << "append entries successful";
   co_return AppendEntriesResult::withOk(termInfo->term, request.messageId,
-                                        hasSnapshot);
+                                        hasSnapshot, syncIndex);
 }
 
 AppendEntriesManager::AppendEntriesManager(
@@ -199,7 +204,8 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
         << " found " << request.leaderTerm;
     return AppendEntriesResult::withRejection(
         termInfo.term, request.messageId,
-        {AppendEntriesErrorReason::ErrorType::kWrongTerm}, false);
+        {AppendEntriesErrorReason::ErrorType::kWrongTerm}, false,
+        storage.getSyncIndex());
   }
 
   if (not messageIdManager.acceptReceivedMessageId(request.messageId)) {
@@ -209,7 +215,8 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
         << messageIdManager.getLastReceivedMessageId();
     return AppendEntriesResult::withRejection(
         termInfo.term, request.messageId,
-        {AppendEntriesErrorReason::ErrorType::kMessageOutdated}, false);
+        {AppendEntriesErrorReason::ErrorType::kMessageOutdated}, false,
+        storage.getSyncIndex());
   }
 
   if (request.leaderId != termInfo.leader) {
@@ -218,7 +225,8 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
         << termInfo.leader.value_or("<none>") << " found " << request.leaderId;
     return AppendEntriesResult::withRejection(
         termInfo.term, request.messageId,
-        {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId}, false);
+        {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId}, false,
+        storage.getSyncIndex());
   }
 
   // It is always allowed to replace the log entirely
@@ -232,7 +240,8 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
           << "rejecting append entries - log conflict - reason "
           << to_string(reason) << " next " << next;
       return AppendEntriesResult::withConflict(termInfo.term, request.messageId,
-                                               next, false);
+                                               next, false,
+                                               storage.getSyncIndex());
     }
   }
 
