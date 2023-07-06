@@ -642,16 +642,28 @@ class instanceManager {
   checkInstanceAlive({skipHealthCheck = false} = {}) {
     this.arangods.forEach(arangod => { arangod.netstat = {'in':{}, 'out': {}};});
     let obj = this;
-    netstat({platform: process.platform}, function (data) {
-      // skip server ports, we know what we bound.
-      if (data.state !== 'LISTEN') {
-        obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+    try {
+      netstat({platform: process.platform}, function (data) {
+        // skip server ports, we know what we bound.
+        if (data.state !== 'LISTEN') {
+          obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+        }
+      });
+      if (!this.options.noStartStopLogs) {
+        this.printNetstat();
       }
-    });
-    if (!this.options.noStartStopLogs) {
-      this.printNetstat();
+    } catch (ex) {
+      let timeout = internal.SetGlobalExecutionDeadlineTo(0.0);
+      let moreReason = ": " + ex.message;
+      if (timeout) {
+        moreReason = "because of :" + ex.message;
+      }
+      print(RED + 'netstat gathering has thrown: ' + moreReason);
+      print(ex, ex.stack);
+      print(RESET);
+      this.cleanup = false;
+      return this._forceTerminate(ex.message + " during health check: " + moreReason);
     }
-    
     if (this.options.activefailover &&
         this.hasOwnProperty('authOpts') &&
         (this.url !== this.agencyConfig.urls[0])
@@ -682,7 +694,6 @@ class instanceManager {
       for (
         const start = Date.now();
         !rc && Date.now() < start + seconds(60) && checkAllAlive();
-        internal.sleep(1)
       ) {
         rc = this._checkServersGOOD();
         if (first) {
@@ -690,6 +701,9 @@ class instanceManager {
             print(RESET + "Waiting for all servers to go GOOD...");
           }
           first = false;
+        }
+        if (!rc) {
+          internal.sleep(1);
         }
       }
     }
@@ -816,23 +830,20 @@ class instanceManager {
         print(e.stack);
       }
     }
+    return false;
   }
 
   _forceTerminate(moreReason="") {
-    print("Aggregating coredumps");
+    if (!this.options.coreCheck && !this.options.setInterruptable) {
+      print("Interactive mode: SIGABRT killing all arangods");
+    } else {
+      print("Aggregating coredumps");
+    }
     this.arangods.forEach((arangod) => {
-      if (arangod.pid !== null) {
-        arangod.killWithCoreDump('forced shutdown because of: ' + moreReason);
-        arangod.serverCrashedLocal = true;
-      } else {
-        print(RED + Date() + 'instance already gone? ' + arangod.name + RESET);
-      }
+      arangod.killWithCoreDump('force terminating');
     });
     this.arangods.forEach((arangod) => {
-      if (arangod.checkArangoAlive()) {
-        crashUtils.aggregateDebugger(arangod, this.options);
-        arangod.waitForExitAfterDebugKill();
-      }
+      arangod.aggregateDebugger();
     });
     return true;
   }
@@ -1075,6 +1086,12 @@ class instanceManager {
         }
         if (haveLeader === 1 && haveConfig === this.agencyConfig.agencySize) {
           print("Agency Up!");
+          try {
+            // set back log level to info for agents
+            for (let agentIndex = 0; agentIndex < this.agencyConfig.agencySize; agentIndex ++) {
+              this.agencyConfig.agencyInstances[agentIndex].getAgent('/_admin/log/level', 'PUT', JSON.stringify({"agency":"info"}));
+            }
+          } catch (err) {}
           return;
         }
         if (count === 0) {

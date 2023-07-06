@@ -352,7 +352,7 @@ class instance {
     }
 
     if (this.protocol === 'ssl' && !this.args.hasOwnProperty('ssl.keyfile')) {
-      this.args['ssl.keyfile'] = fs.join('UnitTests', 'server.pem');
+      this.args['ssl.keyfile'] = fs.join('etc', 'testing', 'server.pem');
     }
     if (this.options.encryptionAtRest && !this.args.hasOwnProperty('rocksdb.encryption-keyfile')) {
       this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
@@ -396,7 +396,10 @@ class instance {
         'agency.size': this.agencyConfig.agencySize,
         'agency.wait-for-sync': this.agencyConfig.waitForSync,
         'agency.supervision': this.agencyConfig.supervision,
-        'agency.my-address': this.protocol + '://127.0.0.1:' + this.port
+        'agency.my-address': this.protocol + '://127.0.0.1:' + this.port,
+        // Sometimes for unknown reason the agency startup is too slow.
+        // With this log level we might have a chance to see what is going on.
+        'log.level': "agency=debug",
       });
       if (!this.args.hasOwnProperty("agency.supervision-grace-period")) {
         this.args['agency.supervision-grace-period'] = '10.0';
@@ -575,7 +578,6 @@ class instance {
   }
   terminateInstance() {
     if (!this.hasOwnProperty('exitStatus')) {
-      // arangod.killWithCoreDump();
       this.exitStatus = killExternal(this.pid, termSignal);
     }
   }
@@ -657,6 +659,7 @@ class instance {
       print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
 
+    process.env['ARANGODB_SERVER_DIR'] = this.rootDir;
     return executeExternal(cmd, argv, false, pu.coverageEnvironment());
   }
   // //////////////////////////////////////////////////////////////////////////////
@@ -667,6 +670,9 @@ class instance {
   startArango () {
     try {
       this.pid = this._executeArangod().pid;
+      if (this.options.enableAliveMonitor) {
+        internal.addPidToMonitor(this.pid);
+      }
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
 
@@ -700,7 +706,6 @@ class instance {
       let args = {...this.args, ...moreArgs};
       /// TODO Y? Where?
       this.pid = this._executeArangod(args).pid;
-      
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x) + " - " + JSON.stringify(this.getStructure()));
 
@@ -717,6 +722,9 @@ class instance {
     }
     this.endpoint = this.args['server.endpoint'];
     this.url = pu.endpointToURL(this.endpoint);
+    if (this.options.enableAliveMonitor) {
+      internal.addPidToMonitor(this.pid);
+    }
   };
 
   waitForExitAfterDebugKill() {
@@ -789,10 +797,15 @@ class instance {
     if (this.pid === null) {
       return false;
     }
-    const res = statusExternal(this.pid, false);
+    let res = statusExternal(this.pid, false);
+    if (res.status === 'NOT-FOUND') {
+      print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
+      time.sleep(0.2);
+      res = statusExternal(this.pid, false);
+    }
     const running = res.status === 'RUNNING';
     if (!this.options.coreCheck && this.options.setInterruptable && !running) {
-      print(`fatal exit of {self.pid} arangod => {JSON.stringify(res)}! Bye!`);
+      print(`fatal exit of ${this.pid} arangod => ${JSON.stringify(res)}! Bye!`);
       pu.killRemainingProcesses({status: false});
       process.exit();
     }
@@ -830,18 +843,18 @@ class instance {
     }
     return ret;
   }
-  checkArangoConnection(count) {
+  checkArangoConnection(count, overrideVerbosity=false) {
     this.endpoint = this.args['server.endpoint'];
     while (count > 0) {
       try {
-        if(this.options.extremeVerbosity) {
+        if (this.options.extremeVerbosity || overrideVerbosity) {
           print('tickeling ' + this.endpoint);
         }
         arango.reconnect(this.endpoint, '_system', 'root', '', false, this.JWT);
         return;
       } catch (e) {
-        if(this.options.extremeVerbosity) {
-          print('no...');
+        if (this.options.extremeVerbosity || overrideVerbosity) {
+          print(`no... ${e.message}`);
         }
         sleep(0.5);
       }
@@ -849,10 +862,13 @@ class instance {
     }
     throw new Error(`unable to connect in ${count}s`);
   }
-  getAgent(path, method) {
+  getAgent(path, method, body = null) {
     let opts = {
       method: method
     };
+    if (body === null) {
+      body = (method === 'POST') ? '[["/"]]' : '';
+    }
 
     if (this.args.hasOwnProperty('authOpts')) {
       opts['jwt'] = crypto.jwtEncode(this.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
@@ -861,7 +877,7 @@ class instance {
     } else if (this.jwtFiles) {
       opts['jwt'] = crypto.jwtEncode(fs.read(this.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
     }
-    return download(this.url + path, method === 'POST' ? '[["/"]]' : '', opts);
+    return download(this.url + path, body, opts);
   }
 
   dumpAgent(path, method, fn, dumpdir) {
@@ -875,11 +891,26 @@ class instance {
     }
   }
   killWithCoreDump (message) {
-    if (this.pid === null) {
-      print(RED + Date() + this.name + " is not running, doesn't have a PID" + RESET);
-      return;
+    let pid = this.pid;
+    if (this.options.enableAliveMonitor) {
+      internal.removePidFromMonitor(this.pid);
     }
-    crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
+    this.getInstanceProcessStatus();
+    this.serverCrashedLocal = true;
+    if (this.pid === null) {
+      this.pid = pid;
+      print(`${RED}${Date()} instance already gone? ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
+      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
+      this.pid = null;
+    } else {
+      print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
+      crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
+    }
+  }
+  aggregateDebugger () {
+    crashUtils.aggregateDebugger(this, this.options);
+    print("unlisting our instance");
+    this.waitForExitAfterDebugKill();
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief commands a server to shut down via webcall
@@ -901,6 +932,9 @@ class instance {
     if (this.options.rr && forceTerminate) {
       forceTerminate = false;
       this.options.useKillExternal = true;
+    }
+    if (this.options.enableAliveMonitor) {
+      internal.removePidFromMonitor(this.pid);
     }
     if ((this.exitStatus === null) ||
         (this.exitStatus.status === 'RUNNING')) {
@@ -976,6 +1010,9 @@ class instance {
     if (this.pid === null) {
       throw new Error(this.name + " already exited!");
     }
+    if (this.options.enableAliveMonitor) {
+      internal.removePidFromMonitor(this.pid);
+    }
     while (timeout > 0) {
       this.exitStatus = statusExternal(this.pid, false);
       if (!crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, this.exitStatus)) {
@@ -996,6 +1033,9 @@ class instance {
 
   shutDownOneInstance(counters, forceTerminate, timeout) {
     let shutdownTime = time();
+    if (this.options.enableAliveMonitor) {
+      internal.removePidFromMonitor(this.pid);
+    }
     if (this.exitStatus === null) {
       this.shutdownArangod(forceTerminate);
       if (forceTerminate) {
@@ -1062,16 +1102,29 @@ class instance {
     }
   }
 
+  getInstanceProcessStatus() {
+    if (this.pid !== null) {
+      this.exitStatus = statusExternal(this.pid, false);
+      if (this.exitStatus.status !== 'RUNNING') {
+        this.pid = null;
+      }
+    }
+  }
+
   suspend() {
     if (this.suspended) {
       print(CYAN + Date() + ' NOT suspending "' + this.name + " again!" + RESET);
       return;
     }
     print(CYAN + Date() + ' suspending ' + this.name + RESET);
+    if (this.options.enableAliveMonitor) {
+      internal.removePidFromMonitor(this.pid);
+    }
     if (!suspendExternal(this.pid)) {
       throw new Error("Failed to suspend " + this.name);
     }
     this.suspended = true;
+    return true;
   }
 
   resume() {
@@ -1083,7 +1136,11 @@ class instance {
     if (!continueExternal(this.pid)) {
       throw new Error("Failed to resume " + this.name);
     }
+    if (this.options.enableAliveMonitor) {
+      internal.addPidToMonitor(this.pid);
+    }
     this.suspended = false;
+    return true;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
