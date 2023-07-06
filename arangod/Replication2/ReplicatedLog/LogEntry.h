@@ -30,6 +30,11 @@
 
 namespace arangodb::replication2 {
 
+// This class represents a complete log entry with all the necessary
+// information to be persisted and replicated. It contains a payload
+// that also owns the data.
+// On top of the LogEntry there are InMemoryLogEntry and PersistedLogEntry
+// which contain additional contextual information.
 class LogEntry {
  public:
   LogEntry(LogTerm term, LogIndex index, LogPayload payload)
