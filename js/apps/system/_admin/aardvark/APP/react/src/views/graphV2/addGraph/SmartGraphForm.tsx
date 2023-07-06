@@ -1,18 +1,19 @@
 import { Button, Stack, VStack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
+import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
 import { ModalFooter } from "../../../components/modal";
-import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
+import { createGraph } from "../GraphsHelpers";
 import { SmartGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 
 const smartGraphFieldsMap = {
   name: {
     name: "name",
-    type: "string",
+    type: "text",
     label: "Name",
     tooltip:
       "String value. The name to identify the graph. Has to be unique and must follow the Document Keys naming conventions.",
@@ -20,7 +21,7 @@ const smartGraphFieldsMap = {
   },
   numberOfShards: {
     name: "numberOfShards",
-    type: "string",
+    type: "number",
     label: "Shards",
     tooltip:
       "Numeric value. Must be at least 1. Number of shards the graph is using.",
@@ -28,7 +29,7 @@ const smartGraphFieldsMap = {
   },
   replicationFactor: {
     name: "replicationFactor",
-    type: "string",
+    type: "number",
     label: "Replication factor",
     tooltip:
       "Numeric value. Must be at least 1. Total number of copies of the data in the cluster.If not given, the system default for new collections will be used.",
@@ -36,7 +37,7 @@ const smartGraphFieldsMap = {
   },
   minReplicationFactor: {
     name: "minReplicationFactor",
-    type: "string",
+    type: "number",
     label: "Write concern",
     tooltip:
       "Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value, the collection will be read-only until enough copies are created. If not given, the system default for new collections will be used.",
@@ -52,7 +53,7 @@ const smartGraphFieldsMap = {
   },
   smartGraphAttribute: {
     name: "smartGraphAttribute",
-    type: "string",
+    type: "text",
     label: "SmartGraph Attribute",
     tooltip:
       "String value. The attribute name that is used to smartly shard the vertices of a graph. Every vertex in this Graph has to have this attribute. Cannot be modified later.",
@@ -81,11 +82,8 @@ const INITIAL_VALUES: SmartGraphCreateValues = {
   orphanCollections: [],
   isSmart: true
 };
-
 export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
   const handleSubmit = async (values: SmartGraphCreateValues) => {
-    const currentDB = getCurrentDB();
-    const graph = currentDB.graph(values.name);
     try {
       const options = {
         orphanCollections: values.orphanCollections,
@@ -94,13 +92,17 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
         minReplicationFactor: Number(values.minReplicationFactor),
         isDisjoint: values.isDisjoint,
         isSmart: true,
-        smartGraphAttribute: values.smartGraphAttribute
+        smartGraphAttribute: values.smartGraphAttribute,
+        name: values.name,
+        edgeDefinitions: values.edgeDefinitions
       };
-      const info = await graph.create(values.edgeDefinitions, options);
+      const info = await createGraph(options)
+
       window.arangoHelper.arangoNotification(
         "Graph",
         `Successfully created the graph ${values.name}`
       );
+      mutate("/graphs");
       onClose();
       return info;
     } catch (e: any) {
@@ -120,14 +122,40 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
         <Form>
           <VStack spacing={4} align="stretch">
             <FieldsGrid maxWidth="full">
-              <FormField field={smartGraphFieldsMap.name} />
-              <FormField field={smartGraphFieldsMap.numberOfShards} />
-              <FormField field={smartGraphFieldsMap.replicationFactor} />
-              <FormField field={smartGraphFieldsMap.minReplicationFactor} />
-              <FormField field={smartGraphFieldsMap.isDisjoint} />
-              <FormField field={smartGraphFieldsMap.smartGraphAttribute} />
+              <FormField
+                field={{
+                  ...smartGraphFieldsMap.name
+                }}
+              />
+              <FormField
+                field={{
+                  ...smartGraphFieldsMap.numberOfShards
+                }}
+              />
+              <FormField
+                field={{
+                  ...smartGraphFieldsMap.replicationFactor
+                }}
+              />
+              <FormField
+                field={{
+                  ...smartGraphFieldsMap.minReplicationFactor
+                }}
+              />
+              <FormField
+                field={{
+                  ...smartGraphFieldsMap.isDisjoint
+                }}
+              />
+              <FormField
+                field={{
+                  ...smartGraphFieldsMap.smartGraphAttribute
+                }}
+              />
               <EdgeDefinitionsField
-                noOptionsMessage={() => "Please enter a new and valid collection name"}
+                noOptionsMessage={() =>
+                  "Please enter a new and valid collection name"
+                }
                 allowExistingCollections={false}
               />
               <FormField field={smartGraphFieldsMap.orphanCollections} />
