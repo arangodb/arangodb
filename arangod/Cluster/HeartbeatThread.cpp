@@ -803,6 +803,9 @@ void HeartbeatThread::runSingleServer() {
 
   uint64_t lastSentVersion = 0;
   auto start = std::chrono::steady_clock::now();
+  // last time we were able to successfully send our heartbeat to the agency
+  std::chrono::time_point<std::chrono::steady_clock> lastSuccessfulHeartbeat;
+
   while (!isStopping()) {
     {
       CONDITION_LOCKER(locker, _condition);
@@ -818,10 +821,68 @@ void HeartbeatThread::runSingleServer() {
       break;
     }
 
+    double leaderGracePeriod = replication.activeFailoverLeaderGracePeriod();
+    TRI_IF_FAILURE("HeartbeatThread::reducedLeaderGracePeriod") {
+      leaderGracePeriod = 10.0;
+    }
+
     try {
       // send our state to the agency.
-      // we don't care if this fails
-      sendServerState();
+      // we don't care if this fails here. however, if sending the heartbeat
+      // works, we note the timestamp. the reason is that if we can't send our
+      // heartbeat to the agency for a prolonged time, we should not assume
+      // our own leadership, simply because it may have changed in the agency
+      // since we last contacted it.
+      if (sendServerState()) {
+        // heartbeat sent successfully
+        lastSuccessfulHeartbeat = std::chrono::steady_clock::now();
+      } else if (leaderGracePeriod > 0.0) {
+        // could not send heartbeat to agency.
+        // if this state continues for a long time, the agency may elect
+        // a different leader. this is a problem if we consider ourselves
+        // the leader as well.
+        auto now = std::chrono::steady_clock::now();
+        if (now - lastSuccessfulHeartbeat >=
+                std::chrono::duration<double>(leaderGracePeriod) &&
+            ServerState::instance()->mode() == ServerState::Mode::DEFAULT) {
+          // we were leader previously. now resign from leadership by refusing
+          // to accept any incoming write requests.
+          // as we couldn't send our own heartbeat to the agency for a prolonged
+          // period, we also don't try to inform the agency about that we block
+          // incoming requests.
+          // in case we can reach the agency again later, things will
+          // automatically fix themselves.
+          LOG_TOPIC("2cdc2", INFO, Logger::HEARTBEAT)
+              << "We were leader, but could not send our heartbeat to the "
+                 "agency for a prolonged time. "
+              << "Now refusing to serve incoming write requests until the "
+                 "agency is reachable again.";
+
+          // server is not responsible anymore for expiring outdated documents
+          ttlFeature.allowRunning(false);
+
+          ServerState::instance()->setFoxxmaster("");  // no foxxmater
+          ServerState::instance()->setReadOnly(
+              ServerState::API_TRUE);  // Disable writes
+
+          // refuse requests
+          ServerState::instance()->setServerMode(ServerState::Mode::TRYAGAIN);
+          TRI_ASSERT(!applier->isActive());
+          applier->forget();
+
+          auto& gs = server().getFeature<GeneralServerFeature>();
+          Result res = gs.jobManager().clearAllJobs();
+          if (res.fail()) {
+            LOG_TOPIC("22fa7", WARN, Logger::HEARTBEAT)
+                << "could not cancel all async jobs " << res.errorMessage();
+          }
+        }
+
+        // we can't continue from here until we are able to send our own state
+        // to the agency successfully again.
+        continue;
+      }
+
       double const timeout = 1.0;
 
       // check current local version of database objects version, and bump
@@ -900,7 +961,7 @@ void HeartbeatThread::runSingleServer() {
             << "Leadership vacuum detected, "
             << "attempting a takeover";
 
-        // if we stay a slave, the redirect will be turned on again
+        // if we stay a follower, the redirect will be turned on again
         ServerState::instance()->setServerMode(ServerState::Mode::TRYAGAIN);
         AgencyCommResult result;
         if (leader.isNone()) {
@@ -1001,19 +1062,19 @@ void HeartbeatThread::runSingleServer() {
       LOG_TOPIC("aeb38", TRACE, Logger::HEARTBEAT)
           << "Following: " << leaderStr;
 
-      // server is not responsible anymore for expiring outdated documents
-      ttlFeature.allowRunning(false);
-
-      ServerState::instance()->setFoxxmaster(leaderStr);  // leader is foxxmater
-      ServerState::instance()->setReadOnly(
-          ServerState::API_TRUE);  // Disable writes with dirty-read header
-
       std::string endpoint = ci.getServerEndpoint(leaderStr);
       if (endpoint.empty()) {
         LOG_TOPIC("05196", ERR, Logger::HEARTBEAT)
             << "Failed to resolve leader endpoint";
         continue;  // try again next time
       }
+
+      // server is not responsible anymore for expiring outdated documents
+      ttlFeature.allowRunning(false);
+
+      ServerState::instance()->setFoxxmaster(leaderStr);  // leader is foxxmater
+      ServerState::instance()->setReadOnly(
+          ServerState::API_TRUE);  // Disable writes with dirty-read header
 
       // enable redirection to leader
       auto prv =
@@ -1445,6 +1506,8 @@ void HeartbeatThread::notify() {
 
 bool HeartbeatThread::sendServerState() {
   LOG_TOPIC("3369a", TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
+
+  TRI_IF_FAILURE("HeartbeatThread::sendServerState") { return false; }
 
   auto const start = std::chrono::steady_clock::now();
   ScopeGuard sg([&]() noexcept {
