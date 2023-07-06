@@ -412,6 +412,7 @@ std::string const StaticStrings::Term("term");
 std::string const StaticStrings::CommitIndex("commitIndex");
 std::string const StaticStrings::FirstIndex("firstIndex");
 std::string const StaticStrings::ReleaseIndex("releaseIndex");
+std::string const StaticStrings::SyncIndex("syncIndex");
 std::string const StaticStrings::LowestIndexToKeep("lowestIndexToKeep");
 std::string const StaticStrings::Outcome("outcome");
 

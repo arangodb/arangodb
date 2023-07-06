@@ -332,6 +332,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     // committed - latest active config that has committed at least one entry
     // Note that this will be nullptr until leadership is established!
     std::shared_ptr<InnerTermConfig const> committedInnerTermConfig;
+
+    // What would the commit index be if we were to consider only entries that
+    // have been synced to disk. Used only for reporting.
+    LogIndex _syncCommitIndex;
   };
 
   LoggerContext const _logContext;
