@@ -32,6 +32,11 @@ using namespace arangodb::replication2::replicated_log;
 namespace {
 auto operator"" _Lx(unsigned long long x) -> LogIndex { return LogIndex{x}; }
 auto operator"" _T(unsigned long long x) -> LogTerm { return LogTerm{x}; }
+
+void insertMapping(TermIndexMapping& mapping, LogRange range, LogTerm term) {
+  mapping.insert(range, storage::IteratorPosition::fromLogIndex(range.from),
+                 term);
+}
 }  // namespace
 
 struct TermIndexMappingTest : ::testing::Test {
@@ -40,23 +45,23 @@ struct TermIndexMappingTest : ::testing::Test {
 
 TEST_F(TermIndexMappingTest, insert_range_and_query) {
   auto range = LogRange{10_Lx, 20_Lx};
-  mapping.insert(range, 4_T);
+  insertMapping(mapping, range, 4_T);
 
   EXPECT_EQ(mapping.getTermRange(5_T), std::nullopt);
   EXPECT_EQ(mapping.getTermRange(3_T), std::nullopt);
   EXPECT_EQ(mapping.getTermRange(4_T), range);
 
-  mapping.insert({20_Lx, 40_Lx}, 4_T);
+  insertMapping(mapping, {20_Lx, 40_Lx}, 4_T);
   EXPECT_EQ(mapping.getTermRange(4_T), (LogRange{10_Lx, 40_Lx}));
 
-  mapping.insert({40_Lx, 60_Lx}, 5_T);
+  insertMapping(mapping, {40_Lx, 60_Lx}, 5_T);
   EXPECT_EQ(mapping.getTermRange(4_T), (LogRange{10_Lx, 40_Lx}));
   EXPECT_EQ(mapping.getTermRange(5_T), (LogRange{40_Lx, 60_Lx}));
 }
 
 TEST_F(TermIndexMappingTest, remove_front_and_query) {
-  mapping.insert({10_Lx, 40_Lx}, 4_T);
-  mapping.insert({40_Lx, 60_Lx}, 5_T);
+  insertMapping(mapping, {10_Lx, 40_Lx}, 4_T);
+  insertMapping(mapping, {40_Lx, 60_Lx}, 5_T);
 
   EXPECT_EQ(mapping.getTermRange(4_T), (LogRange{10_Lx, 40_Lx}));
   EXPECT_EQ(mapping.getTermRange(5_T), (LogRange{40_Lx, 60_Lx}));
@@ -73,8 +78,8 @@ TEST_F(TermIndexMappingTest, remove_front_and_query) {
 }
 
 TEST_F(TermIndexMappingTest, remove_back_and_query) {
-  mapping.insert({10_Lx, 40_Lx}, 4_T);
-  mapping.insert({40_Lx, 60_Lx}, 5_T);
+  insertMapping(mapping, {10_Lx, 40_Lx}, 4_T);
+  insertMapping(mapping, {40_Lx, 60_Lx}, 5_T);
 
   EXPECT_EQ(mapping.getTermRange(4_T), (LogRange{10_Lx, 40_Lx}));
   EXPECT_EQ(mapping.getTermRange(5_T), (LogRange{40_Lx, 60_Lx}));
@@ -96,8 +101,8 @@ TEST_F(TermIndexMappingTest, remove_back_and_query) {
 }
 
 TEST_F(TermIndexMappingTest, get_first_index_of_term) {
-  mapping.insert({10_Lx, 40_Lx}, 4_T);
-  mapping.insert({40_Lx, 60_Lx}, 5_T);
+  insertMapping(mapping, {10_Lx, 40_Lx}, 4_T);
+  insertMapping(mapping, {40_Lx, 60_Lx}, 5_T);
 
   EXPECT_EQ(mapping.getFirstIndexOfTerm(3_T), std::nullopt);
   EXPECT_EQ(mapping.getFirstIndexOfTerm(4_T), 10_Lx);
@@ -106,8 +111,8 @@ TEST_F(TermIndexMappingTest, get_first_index_of_term) {
 }
 
 TEST_F(TermIndexMappingTest, get_term_of_index) {
-  mapping.insert({10_Lx, 40_Lx}, 4_T);
-  mapping.insert({40_Lx, 60_Lx}, 5_T);
+  insertMapping(mapping, {10_Lx, 40_Lx}, 4_T);
+  insertMapping(mapping, {40_Lx, 60_Lx}, 5_T);
 
   EXPECT_EQ(mapping.getTermOfIndex(8_Lx), std::nullopt);
   EXPECT_EQ(mapping.getTermOfIndex(15_Lx), 4_T);
@@ -121,8 +126,8 @@ TEST_F(TermIndexMappingTest, get_last_and_first_index) {
   EXPECT_EQ(mapping.getFirstIndex(), std::nullopt);
   EXPECT_EQ(mapping.getLastIndex(), std::nullopt);
 
-  mapping.insert({10_Lx, 50_Lx}, 4_T);
-  mapping.insert({50_Lx, 60_Lx}, 5_T);
+  insertMapping(mapping, {10_Lx, 50_Lx}, 4_T);
+  insertMapping(mapping, {50_Lx, 60_Lx}, 5_T);
 
   EXPECT_EQ(mapping.getFirstIndex(), (TermIndexPair{4_T, 10_Lx}));
   EXPECT_EQ(mapping.getLastIndex(), (TermIndexPair{5_T, 59_Lx}));

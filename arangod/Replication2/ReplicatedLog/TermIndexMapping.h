@@ -50,7 +50,7 @@ struct TermIndexMapping {
 
   void removeFront(LogIndex stop) noexcept;
   void removeBack(LogIndex start) noexcept;
-  void insert(LogRange, LogTerm) noexcept;
+  void insert(LogRange, storage::IteratorPosition, LogTerm) noexcept;
   void insert(storage::IteratorPosition, LogTerm) noexcept;
 
   void append(TermIndexMapping const&) noexcept;

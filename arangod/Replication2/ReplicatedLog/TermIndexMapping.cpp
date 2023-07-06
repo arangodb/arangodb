@@ -50,11 +50,12 @@ auto operator+(LogTerm t, std::uint64_t delta) -> LogTerm {
   return LogTerm{t.value + delta};
 }
 
-void TermIndexMapping::insert(LogRange range, LogTerm term) noexcept {
+void TermIndexMapping::insert(LogRange range,
+                              storage::IteratorPosition position,
+                              LogTerm term) noexcept {
+  TRI_ASSERT(range.from == position.index());
   if (_mapping.empty()) {
-    _mapping.emplace(
-        term,
-        TermInfo{range, storage::IteratorPosition::fromLogIndex(range.from)});
+    _mapping.emplace(term, TermInfo{range, position});
   } else {
     auto [prevTerm, prevInfo] = *_mapping.rbegin();
     ADB_PROD_ASSERT(prevInfo.range.to == range.from);
@@ -62,9 +63,7 @@ void TermIndexMapping::insert(LogRange range, LogTerm term) noexcept {
     if (prevTerm == term) {
       _mapping.rbegin()->second.range.to = range.to;
     } else {
-      _mapping.emplace_hint(
-          _mapping.end(), term,
-          TermInfo{range, storage::IteratorPosition::fromLogIndex(range.from)});
+      _mapping.emplace_hint(_mapping.end(), term, TermInfo{range, position});
     }
   }
 }
@@ -150,7 +149,7 @@ void TermIndexMapping::insert(storage::IteratorPosition position,
 void TermIndexMapping::append(TermIndexMapping const& other) noexcept {
   // TODO optimize
   for (auto [term, info] : other._mapping) {
-    insert(info.range, term);
+    insert(info.range, info.startPosition, term);
   }
 }
 
