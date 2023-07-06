@@ -74,12 +74,11 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
   auto maybeFuture = [&]() -> std::optional<futures::Future<Result>> {
     auto guard = _guardedData.getLockedGuard();
     if (res.ok()) {
-      ADB_PROD_ASSERT(guard->_applyEntriesIndexInFlight.has_value());
+      ADB_PROD_ASSERT(guard->_applyEntriesPositionInFlight.has_value());
       _metrics->replicatedStateApplyDebt->operator-=(
-          guard->_applyEntriesIndexInFlight->value -
+          guard->_applyEntriesPositionInFlight->index().value -
           guard->_lastAppliedPosition.index().value);
-      guard->_lastAppliedPosition = storage::IteratorPosition::fromLogIndex(
-          *guard->_applyEntriesIndexInFlight);
+      guard->_lastAppliedPosition = *guard->_applyEntriesPositionInFlight;
       auto const index = guard->_lastAppliedPosition.index();
       // TODO
       //   _metrics->replicatedStateNumberProcessedEntries->count(range.count());
@@ -95,7 +94,7 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
         });
       });
     }
-    guard->_applyEntriesIndexInFlight = std::nullopt;
+    guard->_applyEntriesPositionInFlight = std::nullopt;
 
     if (res.fail()) {
       _metrics->replicatedStateNumberApplyEntriesErrors->operator++();
@@ -159,19 +158,19 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
     return std::nullopt;
   }
   if (_commitIndex > _lastAppliedPosition.index() and
-      not _applyEntriesIndexInFlight.has_value()) {
+      not _applyEntriesPositionInFlight.has_value()) {
     // Apply at most 1000 entries at once, so we have a smoother progression.
-    _applyEntriesIndexInFlight =
-        std::min(_commitIndex, _lastAppliedPosition.index() + 1000);
+    _applyEntriesPositionInFlight = storage::IteratorPosition::fromLogIndex(
+        std::min(_commitIndex, _lastAppliedPosition.index() + 1000));
     auto range = LogRange{_lastAppliedPosition.index() + 1,
-                          *_applyEntriesIndexInFlight + 1};
+                          _applyEntriesPositionInFlight->index() + 1};
     auto promise = futures::Promise<Result>();
     auto future = promise.getFuture();
     auto rttGuard = MeasureTimeGuard(*metrics->replicatedStateApplyEntriesRtt);
     // As applyEntries is currently synchronous, we have to post it on the
     // scheduler to avoid blocking the current appendEntries request from
-    // returning. By using _applyEntriesIndexInFlight we make sure not to call
-    // it multiple time in parallel.
+    // returning. By using _applyEntriesPositionInFlight we make sure not to
+    // call it multiple time in parallel.
     scheduler->queue([promise = std::move(promise), stream = _stream, range,
                       followerState = _followerState,
                       rttGuard = std::move(rttGuard)]() mutable {

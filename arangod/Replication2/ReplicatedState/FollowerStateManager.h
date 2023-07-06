@@ -106,7 +106,8 @@ struct FollowerStateManager
     storage::IteratorPosition _lastAppliedPosition{};
     std::optional<Result> _lastSnapshotError{};
     std::uint64_t _snapshotErrorCounter{0};
-    std::optional<LogIndex> _applyEntriesIndexInFlight = std::nullopt;
+    std::optional<storage::IteratorPosition> _applyEntriesPositionInFlight =
+        std::nullopt;
   };
   Guarded<GuardedData> _guardedData;
 };
