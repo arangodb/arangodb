@@ -175,19 +175,22 @@ class GeneralRequest {
   auto parsedValue(std::string const& key) -> std::optional<T>;
 
   /// @brief the content length
-  virtual size_t contentLength() const = 0;
+  virtual size_t contentLength() const noexcept = 0;
   /// @brief unprocessed request payload
   virtual std::string_view rawPayload() const = 0;
   /// @brief parsed request payload
   virtual velocypack::Slice payload(bool strictValidation = true) = 0;
   /// @brief overwrite payload
-  virtual void setPayload(velocypack::Buffer<uint8_t> buffer) = 0;
+  virtual void setPayload(velocypack::Buffer<uint8_t> buffer);
 
-  virtual void setDefaultContentType() = 0;
+  virtual void setDefaultContentType() noexcept = 0;
   /// @brieg should reflect the Content-Type header
-  ContentType contentType() const { return _contentType; }
+  ContentType contentType() const noexcept { return _contentType; }
   /// @brief should generally reflect the Accept header
-  ContentType contentTypeResponse() const { return _contentTypeResponse; }
+  ContentType contentTypeResponse() const noexcept {
+    return _contentTypeResponse;
+  }
+
   std::string const& contentTypeResponsePlain() const {
     return _contentTypeResponsePlain;
   }
@@ -204,6 +207,8 @@ class GeneralRequest {
 
  protected:
   static RequestType findRequestType(char const*, size_t const);
+  void setValue(std::string key, std::string value);
+  void setArrayValue(std::string key, std::string value);
 
   void setStringValue(std::string& target, std::string&& value);
 

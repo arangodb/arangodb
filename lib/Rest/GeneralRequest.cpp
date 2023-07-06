@@ -184,6 +184,14 @@ void GeneralRequest::setRequestContext(RequestContext* requestContext,
   _isRequestContextOwner = isRequestContextOwner;
 }
 
+void GeneralRequest::setPayload(velocypack::Buffer<uint8_t> buffer) {
+  auto old = _payload.size();
+  _payload = std::move(buffer);
+  _memoryUsage += _payload.size();
+  TRI_ASSERT(_memoryUsage >= old);
+  _memoryUsage -= old;
+}
+
 void GeneralRequest::setFullUrl(std::string fullUrl) {
   setStringValue(_fullUrl, std::move(fullUrl));
   if (_fullUrl.empty()) {
@@ -277,6 +285,27 @@ std::string const& GeneralRequest::value(std::string const& key,
 std::string const& GeneralRequest::value(std::string const& key) const {
   bool unused = true;
   return value(key, unused);
+}
+
+void GeneralRequest::setValue(std::string key, std::string value) {
+  auto memoryUsage = key.size() + value.size();
+  auto it = _values.try_emplace(std::move(key), std::move(value));
+  if (!it.second) {
+    auto old = it.first->first.size() + it.first->second.size();
+    _values[std::move(key)] = std::move(value);
+    _memoryUsage -= old;
+  }
+  _memoryUsage += memoryUsage;
+}
+
+void GeneralRequest::setArrayValue(std::string key, std::string value) {
+  auto memoryUsage = value.size();
+  auto it = _arrayValues.find(key);
+  if (it == _arrayValues.end()) {
+    memoryUsage += key.size();
+  }
+  _arrayValues[std::move(key)].emplace_back(std::move(value));
+  _memoryUsage += memoryUsage;
 }
 
 std::map<std::string, std::string> GeneralRequest::parameters() const {

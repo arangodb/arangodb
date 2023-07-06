@@ -643,27 +643,6 @@ void HttpRequest::setHeader(std::string key, std::string value) {
   _memoryUsage += memoryUsage;
 }
 
-void HttpRequest::setValue(std::string key, std::string value) {
-  auto memoryUsage = key.size() + value.size();
-  auto it = _values.try_emplace(std::move(key), std::move(value));
-  if (!it.second) {
-    auto old = it.first->first.size() + it.first->second.size();
-    _values[std::move(key)] = std::move(value);
-    _memoryUsage -= old;
-  }
-  _memoryUsage += memoryUsage;
-}
-
-void HttpRequest::setArrayValue(std::string key, std::string value) {
-  auto memoryUsage = value.size();
-  auto it = _arrayValues.find(key);
-  if (it == _arrayValues.end()) {
-    memoryUsage += key.size();
-  }
-  _arrayValues[std::move(key)].emplace_back(std::move(value));
-  _memoryUsage += memoryUsage;
-}
-
 void HttpRequest::setValues(char* buffer, char* end) {
   char* keyBegin = nullptr;
   char* key = nullptr;
@@ -948,12 +927,4 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
   }
 
   return VPackSlice::noneSlice();
-}
-
-void HttpRequest::setPayload(velocypack::Buffer<uint8_t> buffer) {
-  auto old = _payload.size();
-  _payload = std::move(buffer);
-  _memoryUsage += _payload.size();
-  TRI_ASSERT(_memoryUsage >= old);
-  _memoryUsage -= old;
 }

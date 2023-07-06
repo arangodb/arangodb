@@ -55,15 +55,14 @@ class HttpRequest final : public GeneralRequest {
     return _cookies;
   }
 
-  void setDefaultContentType() override {
+  void setDefaultContentType() noexcept override {
     _contentType = rest::ContentType::JSON;
   }
   /// @brief the body content length
-  size_t contentLength() const override { return _payload.size(); }
+  size_t contentLength() const noexcept override { return _payload.size(); }
   // Payload
   std::string_view rawPayload() const override;
   velocypack::Slice payload(bool strictValidation) override;
-  void setPayload(velocypack::Buffer<uint8_t> buffer) override;
 
   velocypack::Buffer<uint8_t> const& body() { return _payload; }
   void appendBody(char const* data, size_t size);
@@ -76,8 +75,6 @@ class HttpRequest final : public GeneralRequest {
   void setHeader(std::string key, std::string value);
 
  private:
-  void setValue(std::string key, std::string value);
-  void setArrayValue(std::string key, std::string value);
   void setCookie(std::string key, std::string value);
   /// used by RestBatchHandler (an API straight from hell)
   void parseHeader(char* buffer, size_t length);
