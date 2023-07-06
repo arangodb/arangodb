@@ -49,7 +49,7 @@ export const EdgeDefinitionsField = ({
   noOptionsMessage,
   allowExistingCollections = true
 }: {
-  noOptionsMessage?: () => string,
+  noOptionsMessage?: () => string;
   allowExistingCollections?: boolean;
 }) => {
   const { values } = useFormikContext<GeneralGraphCreateValues>();
@@ -96,7 +96,7 @@ export const EdgeDefinitionsField = ({
                           ...graphRelationFieldsMap.collection,
                           options: allowExistingCollections
                             ? edgeCollectionOptions
-                            : [],
+                            : undefined,
                           isClearable: true,
                           name: `edgeDefinitions[${index}]${graphRelationFieldsMap.collection.name}`,
                           noOptionsMessage: noOptionsMessage
@@ -109,7 +109,7 @@ export const EdgeDefinitionsField = ({
                           isDisabled: isFromAndToDisabled[index],
                           options: allowExistingCollections
                             ? documentCollectionOptions
-                            : [],
+                            : undefined,
                           noOptionsMessage: noOptionsMessage
                         }}
                       />
@@ -120,7 +120,7 @@ export const EdgeDefinitionsField = ({
                           isDisabled: isFromAndToDisabled[index],
                           options: allowExistingCollections
                             ? documentCollectionOptions
-                            : [],
+                            : undefined,
                           noOptionsMessage: noOptionsMessage
                         }}
                       />
