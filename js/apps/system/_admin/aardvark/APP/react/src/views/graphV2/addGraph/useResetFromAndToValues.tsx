@@ -3,7 +3,7 @@ import { useFormikContext } from "formik";
 import { useEffect, useMemo, useState } from "react";
 import { useFetchGraphs } from "../useFetchGraphs";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
-
+import _ from "lodash";
 
 const useCollectionToFromAndToMap = () => {
   const { graphs } = useFetchGraphs();
@@ -39,10 +39,9 @@ export const useResetFromAndToValues = () => {
   const prevEdgeDefinitions = usePrevious(values.edgeDefinitions) as any as
     | typeof values.edgeDefinitions
     | undefined;
-  const isAnyCollectionUpdated = values.edgeDefinitions.some(def =>
-    prevEdgeDefinitions?.find(prevDef => {
-      return prevDef.collection !== def.collection;
-    })
+  const isAnyCollectionUpdated = _.isEqual(
+    values.edgeDefinitions,
+    prevEdgeDefinitions
   );
   useEffect(() => {
     const newEdgeDefinitions = values.edgeDefinitions.map(
