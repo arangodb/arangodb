@@ -380,7 +380,7 @@ auto StorageManager::getPersistedLogIterator(std::optional<LogRange> bounds)
   if (guard->methods == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,
-        "Participant gone while trying to get a parsisted log iterator");
+        "Participant gone while trying to get a persisted log iterator");
   }
 
   auto diskIter = guard->methods->read(range.from);
