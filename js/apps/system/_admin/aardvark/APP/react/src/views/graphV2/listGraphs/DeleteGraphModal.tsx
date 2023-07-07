@@ -41,7 +41,7 @@ export const DeleteGraphModal = ({
     const currentDB = getCurrentDB();
     const graph = currentDB.graph(values.name);
     try {
-      const info = await graph.drop();
+      const info = await graph.drop(values.dropCollections);
       window.arangoHelper.arangoNotification(
         "Graph",
         `"${values.name}" successfully deleted`
