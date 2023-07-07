@@ -92,23 +92,6 @@
       debug: 'rgb(64, 74, 83)'
     },
 
-    // convert a Unicode string to a string in which
-    // each 16-bit unit occupies only one byte.
-    // from https://developer.mozilla.org/en-US/docs/Web/API/btoa
-    toBinary: function (string) {
-      const codeUnits = Uint16Array.from(
-        { length: string.length },
-        (element, index) => string.charCodeAt(index)
-      );
-      const charCodes = new Uint8Array(codeUnits.buffer);
-
-      let result = "";
-      charCodes.forEach((char) => {
-        result += String.fromCharCode(char);
-      });
-      return result;
-    },
-
     getCurrentJwt: function () {
       return sessionStorage.getItem('jwt');
     },
@@ -1146,7 +1129,34 @@
         }, 500);
       }
     },
+    downloadQuery: function (url, body, callback) {
+      $.ajax({
+        type: 'POST',
+        data: JSON.stringify(body),
+        url: url,
+        contentType: 'application/json',
+        success: function (result, dummy, request) {
+          if (callback) {
+            callback(result);
+            return;
+          }
 
+          var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader('Content-Type') || 'application/octet-stream'});
+          var blobUrl = window.URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          document.body.appendChild(a);
+          a.style = 'display: none';
+          a.href = blobUrl;
+          a.download = request.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
+          a.click();
+
+          window.setTimeout(function () {
+            window.URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(a);
+          }, 500);
+        }
+      });
+    },
     download: function (url, callback) {
       $.ajax({
         type: 'GET',

@@ -71,7 +71,8 @@ class OptimizerRulesFeature final : public ArangodFeature {
   /// @brief register a rule, don't call this after prepare()
   void registerRule(std::string_view name, RuleFunction func,
                     OptimizerRule::RuleLevel level,
-                    std::underlying_type<OptimizerRule::Flags>::type flags);
+                    std::underlying_type<OptimizerRule::Flags>::type flags,
+                    std::string_view description);
 
  private:
   void addRules();

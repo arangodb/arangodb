@@ -10,7 +10,7 @@ const NormForm = ({ formState, dispatch, disabled }: FormProps<NormState>) =>
   <Grid>
     <Cell size={'1-2'}>
       <LocaleInput formState={formState} dispatch={dispatch as Dispatch<DispatchArgs<LocaleProperty>>}
-                   disabled={disabled}/>
+                   placeholder="language[_COUNTRY][_VARIANT]" disabled={disabled}/>
     </Cell>
 
     <Cell size={'1-8'}>
