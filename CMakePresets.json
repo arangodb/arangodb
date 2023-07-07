@@ -18,7 +18,8 @@
         "USE_IPO": "Off",
         "USE_STRICT_OPENSSL_VERSION": "On",
         "USE_MINIMAL_DEBUGINFO": "On",
-        "STATIC_EXECUTABLES": "On"
+        "STATIC_EXECUTABLES": "On",
+        "USE_FAIL_ON_WARNINGS": "On"
       }
     },
     {
