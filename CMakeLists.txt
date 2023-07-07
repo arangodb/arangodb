@@ -82,7 +82,7 @@ set(ARANGODB_VERSION_MINOR "11")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "1")
+  set(ARANGODB_VERSION_PATCH "2")
   set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -757,10 +757,13 @@ endfunction()
 # JEMALLOC
 # ------------------------------------------------------------------------------
 
-option(USE_JEMALLOC_PROF "use jemalloc profiler" OFF)
+option(USE_JEMALLOC_PROF "use jemalloc profiler" ON)
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+else ()
+  # Must not compile in profiling stuff if we are not using JEMALLOC
+  set(USE_JEMALLOC_PROF OFF)
 endif ()
 
 if (USE_JEMALLOC_PROF)
