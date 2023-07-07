@@ -160,11 +160,7 @@ StorageManager::StorageManager(std::unique_ptr<IStorageEngineMethods> methods,
     : guardedData(std::move(methods)),
       loggerContext(
           loggerContext.with<logContextKeyLogComponent>("storage-manager")),
-      scheduler(std::move(scheduler)),
-      syncIndex(getTermIndexMapping()
-                    .getLastIndex()
-                    .value_or(TermIndexPair{})
-                    .index) {}
+      scheduler(std::move(scheduler)) {}
 
 auto StorageManager::resign() noexcept
     -> std::unique_ptr<IStorageEngineMethods> {

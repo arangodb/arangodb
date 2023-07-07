@@ -1049,17 +1049,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         follower.nextPrevLogIndex = lastIndex.index;
         follower.lastAckedCommitIndex = currentCommitIndex;
         follower.lastAckedLowestIndexToKeep = currentLITK;
-
-        // Note that it is not necessary to update the follower's syncIndex
-        // exclusively on success. While doing so after getting an
-        // AppendEntriesError, but then we might end up with a syncIndex that is
-        // greater than the lastAckedIndex, which is correct, but
-        // counterintuitive. As this is not performance critical, it would be
-        // nicer to know that the syncIndex is always = lastAckedIndex (in case
-        // of waitForSync = true).
-        TRI_ASSERT(response.syncIndex >= follower.syncIndex)
-            << response.syncIndex << " vs. " << follower.syncIndex;
         follower.syncIndex = response.syncIndex;
+
+        TRI_ASSERT(follower.syncIndex <= follower.lastAckedIndex.index)
+            << follower.syncIndex << " vs. " << follower.lastAckedIndex.index;
       } else {
         TRI_ASSERT(response.reason.error !=
                    AppendEntriesErrorReason::ErrorType::kNone);
