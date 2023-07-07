@@ -30,14 +30,18 @@
 
 namespace arangodb::replication2 {
 
-class PersistingLogEntry {
+// This class represents a complete log entry with all the necessary
+// information to be persisted and replicated. It contains a payload
+// that also owns the data.
+// On top of the LogEntry there are InMemoryLogEntry and PersistedLogEntry
+// which contain additional contextual information.
+class LogEntry {
  public:
-  PersistingLogEntry(LogTerm term, LogIndex index, LogPayload payload)
-      : PersistingLogEntry(TermIndexPair{term, index}, std::move(payload)) {}
-  PersistingLogEntry(TermIndexPair, std::variant<LogMetaPayload, LogPayload>);
-  PersistingLogEntry(
-      LogIndex,
-      velocypack::Slice persisted);  // RocksDB from disk constructor
+  LogEntry(LogTerm term, LogIndex index, LogPayload payload)
+      : LogEntry(TermIndexPair{term, index}, std::move(payload)) {}
+  LogEntry(TermIndexPair, std::variant<LogMetaPayload, LogPayload>);
+  LogEntry(LogIndex,
+           velocypack::Slice persisted);  // RocksDB from disk constructor
 
   [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
@@ -52,10 +56,10 @@ class PersistingLogEntry {
   constexpr static auto omitLogIndex = OmitLogIndex();
   void toVelocyPack(velocypack::Builder& builder) const;
   void toVelocyPack(velocypack::Builder& builder, OmitLogIndex) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> PersistingLogEntry;
+  static auto fromVelocyPack(velocypack::Slice slice) -> LogEntry;
 
-  friend auto operator==(PersistingLogEntry const&,
-                         PersistingLogEntry const&) noexcept -> bool = default;
+  friend auto operator==(LogEntry const&, LogEntry const&) noexcept
+      -> bool = default;
 
  private:
   void entriesWithoutIndexToVelocyPack(velocypack::Builder& builder) const;
@@ -66,11 +70,11 @@ class PersistingLogEntry {
   std::variant<LogMetaPayload, LogPayload> _payload;
 
   // TODO this is a magic constant "measuring" the size of
-  //      of the non-payload data in a PersistingLogEntry
+  //      of the non-payload data in a LogEntry
   static inline constexpr auto approxMetaDataSize = std::size_t{42 * 2};
 };
 
-// ReplicatedLog-internal iterator over PersistingLogEntries
-struct PersistedLogIterator : TypedLogIterator<PersistingLogEntry> {};
+// ReplicatedLog-internal iterator over LogEntries
+struct LogIterator : TypedLogIterator<LogEntry> {};
 
 }  // namespace arangodb::replication2

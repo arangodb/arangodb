@@ -55,7 +55,7 @@ auto generateEntries(LogTerm term, LogRange range)
   auto tr = AppendEntriesRequest::EntryContainer::transient_type{};
   for (auto idx : range) {
     tr.push_back(InMemoryLogEntry{
-        PersistingLogEntry{term, idx, LogPayload::createFromString("foo")}});
+        LogEntry{term, idx, LogPayload::createFromString("foo")}});
   }
   return tr.persistent();
 }

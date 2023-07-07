@@ -46,11 +46,11 @@ struct StorageManager : IStorageManager,
   auto resign() noexcept -> std::unique_ptr<IStorageEngineMethods>;
   auto transaction() -> std::unique_ptr<IStorageTransaction> override;
   auto getCommittedLogIterator(std::optional<LogRange> range) const
-      -> std::unique_ptr<LogRangeIterator> override;
-  auto getPersistedLogIterator(LogIndex first) const
-      -> std::unique_ptr<PersistedLogIterator> override;
-  auto getPersistedLogIterator(std::optional<LogRange> range) const
-      -> std::unique_ptr<PersistedLogIterator>;
+      -> std::unique_ptr<LogViewRangeIterator> override;
+  auto getLogIterator(LogIndex first) const
+      -> std::unique_ptr<LogIterator> override;
+  auto getLogIterator(std::optional<LogRange> range) const
+      -> std::unique_ptr<LogIterator>;
   auto getTermIndexMapping() const -> TermIndexMapping override;
   auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> override;
   auto commitMetaInfoTrx(std::unique_ptr<IStateInfoTransaction> ptr)
@@ -85,6 +85,8 @@ struct StorageManager : IStorageManager,
     std::deque<StorageRequest> queue;
     storage::PersistedStateInfo info;
     bool workerActive{false};
+
+    auto computeTermIndexMap() const -> TermIndexMapping;
   };
   Guarded<GuardedData> guardedData;
   using GuardType = Guarded<GuardedData>::mutex_guard_type;

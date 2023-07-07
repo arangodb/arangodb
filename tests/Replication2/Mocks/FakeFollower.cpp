@@ -83,7 +83,7 @@ auto FakeFollower::getQuickStatus() const -> replicated_log::QuickLogStatus {
 auto FakeFollower::addEntry(LogPayload payload) -> LogIndex {
   auto index = guarded.doUnderLock([&](GuardedFollowerData& data) {
     auto index = data.log.getNextIndex();
-    auto memtry = InMemoryLogEntry(PersistingLogEntry(term, index, payload));
+    auto memtry = InMemoryLogEntry(LogEntry(term, index, payload));
     data.log.appendInPlace(LoggerContext(Logger::REPLICATION2),
                            std::move(memtry));
     return index;
@@ -107,7 +107,7 @@ auto FakeFollower::waitFor(LogIndex index) -> WaitForFuture {
 auto FakeFollower::waitForIterator(LogIndex index)
     -> replicated_log::ILogParticipant::WaitForIteratorFuture {
   return waitFor(index).thenValue(
-      [this, index](auto&&) -> std::unique_ptr<LogRangeIterator> {
+      [this, index](auto&&) -> std::unique_ptr<LogViewRangeIterator> {
         auto guard = guarded.getLockedGuard();
         return guard->log.getIteratorRange(index, guard->commitIndex + 1);
       });
@@ -129,7 +129,7 @@ void FakeFollower::resign() & {
 }
 
 auto FakeFollower::getInternalLogIterator(std::optional<LogRange> bounds) const
-    -> std::unique_ptr<PersistedLogIterator> {
+    -> std::unique_ptr<LogIterator> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
