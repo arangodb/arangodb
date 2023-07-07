@@ -821,7 +821,7 @@ It is normally not that useful to compress values that are smaller than 100 byte
           "--cache.acceleration-factor-for-edge-compression",
           "The acceleration factor for the LZ4 compression of in-memory "
           "edge cache entries.",
-          new UInt32Parameter(&_accelerationFactorForEdgeCompression, 1, 1, 50),
+          new UInt32Parameter(&_accelerationFactorForEdgeCompression, 1, 1, 65537),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Uncommon,
               arangodb::options::Flags::DefaultNoComponents,
