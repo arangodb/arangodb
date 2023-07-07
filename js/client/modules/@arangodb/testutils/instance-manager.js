@@ -1081,6 +1081,10 @@ class instanceManager {
     return shutdownSuccess;
   }
 
+  getAgency(path, method, body = null) {
+    return this.agencyConfig.agencyInstances[0].getAgent(path, method, body);
+  }
+
   detectAgencyAlive() {
     let count = 20;
     while (count > 0) {
