@@ -77,7 +77,9 @@ static const std::string TYPE = "type";
 
 BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
                        VPackSlice info)
-    : _engineId(TRI_NewTickServer()), _query(query) {
+    : _engineId(TRI_NewTickServer()),
+      _query(query),
+      _vertexShards{_query.resourceMonitor()} {
   VPackSlice shardsSlice = info.get(SHARDS);
 
   if (!shardsSlice.isObject()) {
