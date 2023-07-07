@@ -301,8 +301,7 @@ struct BaseOptions {
   /// (monitored: non-dynamic and dynamic memory)
   std::unique_ptr<TraverserCache> _cache;
 
-  // @brief - translations for one-shard-databases
-  // (currently not monitored as we've not introduced PMR or an alternative yet)
+  // @brief - translations for one-shard-databases (monitored)
   MonitoredCollectionToShardMap _collectionToShard;
 
   /// Section for Options the user has given in the AQL query
