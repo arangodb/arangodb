@@ -109,9 +109,12 @@ bool SenderThread::isDone() {
 }
 
 void SenderThread::run() {
-  while (!isStopping() && !_hasError) {
+  while (!isStopping()) {
     {
       std::unique_lock guard{_condition.mutex};
+      if (_hasError) {
+        break;
+      }
       _ready = true;
       if (_idle) {
         _condition.cv.wait(guard);
