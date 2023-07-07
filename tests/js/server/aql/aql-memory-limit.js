@@ -364,7 +364,7 @@ function ahuacatlMemoryLimitSkipTestSuite () {
       let docs = [];
       for (let i = 0; i < 100 * 1000; ++i) {
         docs.push({ payload });
-        if (docs.length === 1000) {
+        if (docs.length === 100) {
           c.insert(docs);
           docs = [];
         }
@@ -378,13 +378,13 @@ function ahuacatlMemoryLimitSkipTestSuite () {
     testUpdate : function () {
       const query = "FOR doc IN " + cn + " UPDATE doc WITH { foobar: 'bazbarkqux', p2: doc.payload } IN " + cn;
       
-      let actual = AQL_EXECUTE(query, null, { memoryLimit: 5 * 1000 * 1000 }).json;
+      let actual = AQL_EXECUTE(query, null, { memoryLimit: 512 * 1000 * 1000 }).json;
       assertEqual(0, actual.length);
       
       // this checks whether the same query uses substantially more memory when followed by a COLLECT WITH COUNT INTO.
       // this is not expected to use more memory than the original query, but due to an issue in the ModificationExecutor
       // it actually did. This was reported in OASIS-25321.
-      actual = AQL_EXECUTE(query + " COLLECT WITH COUNT INTO c RETURN c", null, { memoryLimit: 5 * 1000 * 1000 }).json;
+      actual = AQL_EXECUTE(query + " COLLECT WITH COUNT INTO c RETURN c", null, { memoryLimit: 512 * 1000 * 1000 }).json;
       assertEqual(1, actual.length);
       assertEqual(c.count(), actual[0]);
     },

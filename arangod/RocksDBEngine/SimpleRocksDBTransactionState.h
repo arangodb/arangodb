@@ -45,7 +45,8 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
     return _rocksMethods.get();
   }
 
-  void beginQuery(bool isModificationQuery) override;
+  void beginQuery(ResourceMonitor* resourceMonitor,
+                  bool isModificationQuery) override;
   void endQuery(bool isModificationQuery) noexcept override;
 
   /// @returns tick of last operation in a transaction

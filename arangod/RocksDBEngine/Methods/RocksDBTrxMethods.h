@@ -30,7 +30,6 @@
 #include <vector>
 
 namespace arangodb {
-
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
  public:
@@ -61,8 +60,9 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
 
   bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const override;
 
-  void beginQuery(bool isModificationQuery);
-  void endQuery(bool isModificationQuery) noexcept;
+  void beginQuery(ResourceMonitor* resourceMonitor,
+                  bool isModificationQuery) override;
+  void endQuery(bool isModificationQuery) noexcept override;
 
  private:
   friend class RocksDBStreamingTrxMethods;

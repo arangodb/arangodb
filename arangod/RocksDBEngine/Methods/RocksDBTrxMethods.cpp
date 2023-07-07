@@ -276,7 +276,11 @@ bool RocksDBTrxMethods::iteratorMustCheckBounds(
           _readWriteBatch->GetWriteBatch()->GetDataSize() > 0);
 }
 
-void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
+void RocksDBTrxMethods::beginQuery(ResourceMonitor* resourceMonitor,
+                                   bool isModificationQuery) {
+  // report to parent
+  RocksDBTrxBaseMethods::beginQuery(resourceMonitor, isModificationQuery);
+
   if (!_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // don't bother with query tracking in non globally managed trx
     return;
@@ -314,6 +318,9 @@ void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
 }
 
 void RocksDBTrxMethods::endQuery(bool isModificationQuery) noexcept {
+  // report to parent
+  RocksDBTrxBaseMethods::endQuery(isModificationQuery);
+
   if (!_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // don't bother with query tracking in non globally managed trx
     return;

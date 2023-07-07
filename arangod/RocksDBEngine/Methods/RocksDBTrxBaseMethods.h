@@ -29,6 +29,7 @@
 #include <memory>
 
 namespace arangodb {
+struct ResourceMonitor;
 struct RocksDBMethodsMemoryTracker;
 
 struct IRocksDBTransactionCallback {
@@ -47,9 +48,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   ~RocksDBTrxBaseMethods() override;
 
-  virtual bool isIndexingDisabled() const final override {
-    return _indexingDisabled;
-  }
+  bool isIndexingDisabled() const final override { return _indexingDisabled; }
 
   /// @brief returns true if indexing was disabled by this call
   bool DisableIndexing() final override;
@@ -115,6 +114,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   rocksdb::Status RollbackToSavePoint() final override;
   rocksdb::Status RollbackToWriteBatchSavePoint() final override;
   void PopSavePoint() final override;
+
+  virtual void beginQuery(ResourceMonitor* resourceMonitor,
+                          bool isModificationQuery);
+  virtual void endQuery(bool isModificationQuery) noexcept;
 
  protected:
   virtual void cleanupTransaction();

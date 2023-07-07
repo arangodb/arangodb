@@ -244,10 +244,11 @@ RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(
   return result;
 }
 
-void ReplicatedRocksDBTransactionState::beginQuery(bool isModificationQuery) {
+void ReplicatedRocksDBTransactionState::beginQuery(
+    ResourceMonitor* resourceMonitor, bool isModificationQuery) {
   for (auto& col : _collections) {
     static_cast<ReplicatedRocksDBTransactionCollection&>(*col).beginQuery(
-        isModificationQuery);
+        resourceMonitor, isModificationQuery);
   }
 }
 

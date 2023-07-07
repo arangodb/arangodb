@@ -58,6 +58,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace transaction {
 class Methods;
@@ -255,7 +256,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   virtual bool hasFailedOperations() const noexcept = 0;
 
-  virtual void beginQuery(bool /*isModificationQuery*/) {}
+  virtual void beginQuery(ResourceMonitor* resourceMonitor,
+                          bool /*isModificationQuery*/) {}
   virtual void endQuery(bool /*isModificationQuery*/) noexcept {}
 
   [[nodiscard]] TransactionCollection* findCollection(DataSourceId cid) const;

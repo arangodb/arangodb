@@ -24,6 +24,7 @@
 #include "RocksDBTrxBaseMethods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ResourceUsage.h"
 #include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
@@ -48,29 +49,63 @@ using namespace arangodb;
 // metrics for non-AQL transactions.
 class TrxMemoryTracker final : public RocksDBMethodsMemoryTracker {
  public:
-  TrxMemoryTracker() : _memoryUsage(0) {}
-  ~TrxMemoryTracker() { TRI_ASSERT(_memoryUsage == 0); }
+  TrxMemoryTracker()
+      : _memoryUsage(0),
+        _memoryUsageAtBeginQuery(0),
+        _resourceMonitor(nullptr) {}
+  ~TrxMemoryTracker() {
+    TRI_ASSERT(_memoryUsage == 0);
+    TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
+  }
 
   void reset() noexcept override {
+    // inform resource monitor
+    if (_resourceMonitor != nullptr) {
+      _resourceMonitor->decreaseMemoryUsage(_memoryUsage);
+    }
     _memoryUsage = 0;
+    _memoryUsageAtBeginQuery = 0;
     _savePoints.clear();
   }
 
   void increaseMemoryUsage(std::uint64_t value) override {
+    // inform resource monitor first
+    if (_resourceMonitor != nullptr) {
+      // can throw
+      _resourceMonitor->increaseMemoryUsage(value);
+    }
     _memoryUsage += value;
   }
 
   void decreaseMemoryUsage(std::uint64_t value) noexcept override {
     TRI_ASSERT(_memoryUsage >= value);
     _memoryUsage -= value;
+
+    // inform resource monitor
+    if (_resourceMonitor != nullptr) {
+      _resourceMonitor->decreaseMemoryUsage(value);
+    }
   }
 
   void setSavePoint() override { _savePoints.push_back(_memoryUsage); }
 
   void rollbackToSavePoint() noexcept override {
+    auto value = _memoryUsage;
     TRI_ASSERT(!_savePoints.empty());
     _memoryUsage = _savePoints.back();
     _savePoints.pop_back();
+
+    // inform resource monitor
+    if (_resourceMonitor != nullptr) {
+      if (value > _memoryUsage) {
+        // this should be the usual case, that after popping a
+        // SavePoint we will use _less_ memory
+        _resourceMonitor->decreaseMemoryUsage(value - _memoryUsage);
+      } else {
+        // somewhat unexpected case
+        _resourceMonitor->increaseMemoryUsage(_memoryUsage - value);
+      }
+    }
   }
 
   void popSavePoint() noexcept override {
@@ -80,8 +115,34 @@ class TrxMemoryTracker final : public RocksDBMethodsMemoryTracker {
 
   size_t memoryUsage() const noexcept override { return _memoryUsage; }
 
+  void beginQuery(ResourceMonitor* resourceMonitor) override {
+    TRI_ASSERT(_resourceMonitor == nullptr);
+    TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
+    _resourceMonitor = resourceMonitor;
+    if (_resourceMonitor != nullptr) {
+      _memoryUsageAtBeginQuery = _memoryUsage;
+    }
+  }
+
+  void endQuery() noexcept override {
+    if (_resourceMonitor != nullptr) {
+      if (_memoryUsage >= _memoryUsageAtBeginQuery) {
+        _resourceMonitor->decreaseMemoryUsage(_memoryUsage -
+                                              _memoryUsageAtBeginQuery);
+      } else {
+        _resourceMonitor->increaseMemoryUsage(_memoryUsageAtBeginQuery -
+                                              _memoryUsage);
+      }
+      _memoryUsage = _memoryUsageAtBeginQuery;
+      _memoryUsageAtBeginQuery = 0;
+    }
+    _resourceMonitor = nullptr;
+  }
+
  private:
   std::uint64_t _memoryUsage;
+  std::uint64_t _memoryUsageAtBeginQuery;
+  ResourceMonitor* _resourceMonitor;
   containers::SmallVector<std::uint64_t, 4> _savePoints;
 };
 
@@ -372,6 +433,15 @@ void RocksDBTrxBaseMethods::PopSavePoint() {
   if (s.ok()) {
     _memoryTracker->popSavePoint();
   }
+}
+
+void RocksDBTrxBaseMethods::beginQuery(ResourceMonitor* resourceMonitor,
+                                       bool /*isModificationQuery*/) {
+  _memoryTracker->beginQuery(resourceMonitor);
+}
+
+void RocksDBTrxBaseMethods::endQuery(bool /*isModificationQuery*/) noexcept {
+  _memoryTracker->endQuery();
 }
 
 void RocksDBTrxBaseMethods::cleanupTransaction() {
