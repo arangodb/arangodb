@@ -45,8 +45,8 @@ struct hash_monitored_string {
     return std::hash<std::string>{}(txt);
   }
 
-  std::size_t operator()(MonitoredString const& value) const noexcept {
-    return static_cast<std::size_t>(25);
+  [[nodiscard]] size_t operator()(MonitoredString const& value) const noexcept {
+    return std::hash<std::string_view>{}(std::string_view{value});
   }
 };
 
