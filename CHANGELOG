@@ -1,6 +1,10 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+* BTS-1331: Reduced the amount of required network calls when using traversals
+  combined with FILTER and/or PRUNE statements in a GeneralGraph in combination
+  with a clustered environment.
+
 * Added transparent LZ4 compression for values in the in-memory edge cache if
   their size exceeds a configurable threshold. This is configurable as an opt-in
   functionality.
