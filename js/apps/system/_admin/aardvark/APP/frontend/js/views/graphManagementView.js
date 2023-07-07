@@ -1051,7 +1051,7 @@
             false,
             [
               {
-                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                 msg: 'Must be a number.'
               }
             ]
@@ -1068,7 +1068,7 @@
             false,
             [
               {
-                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                 msg: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.'
               }
             ]
@@ -1131,7 +1131,7 @@
             false,
             [
               {
-                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                 msg: 'Must be a number.'
               }
             ]
@@ -1147,7 +1147,7 @@
             false,
             [
               {
-                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                 msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
               }
             ]

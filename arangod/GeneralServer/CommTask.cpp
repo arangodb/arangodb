@@ -211,11 +211,22 @@ CommTask::Flow CommTask::prepareExecution(
     }
       [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
+      bool allowReconnect = false;
+      TRI_IF_FAILURE("CommTask::allowReconnectRequests") {
+        // allow special requests that are necessary to reconnect to an endpoint
+        // from inside tests. these are currently:
+        // - GET /_api/version
+        // - GET /_api/database/current
+        // we need to allow such requests from a specific test even in TRYAGAIN
+        // mode. these are normally disallowed even in TRYAGAIN mode.
+        allowReconnect = true;
+      }
       // the following paths are allowed on followers
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
           !(path == "/_admin/compact") &&
           !::startsWith(path, "/_admin/license") &&
+          !::startsWith(path, "/_admin/debug/") &&
           !::startsWith(path, "/_admin/log") &&
           !::startsWith(path, "/_admin/metrics") &&
           !::startsWith(path, "/_admin/server/") &&
@@ -226,12 +237,16 @@ CommTask::Flow CommTask::prepareExecution(
           !(req.requestType() == RequestType::GET &&
             ::startsWith(path, "/_api/collection")) &&
           !::startsWith(path, "/_api/cluster/") &&
+          path != "/_api/database/current" &&
           !::startsWith(path, "/_api/engine/stats") &&
           !::startsWith(path, "/_api/replication") &&
           !::startsWith(path, "/_api/ttl/statistics") &&
+          !(req.requestType() == RequestType::GET && path == "/_api/user") &&
           (mode == ServerState::Mode::TRYAGAIN ||
            !::startsWith(path, "/_api/version")) &&
-          !::startsWith(path, "/_api/wal")) {
+          !::startsWith(path, "/_api/wal") &&
+          !(allowReconnect && (::startsWith(path, "/_api/version") ||
+                               ::startsWith(path, "/_api/database/current")))) {
         LOG_TOPIC("a5119", TRACE, arangodb::Logger::FIXME)
             << "Redirect/Try-again: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
@@ -719,7 +734,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
       } else if (req.requestType() == RequestType::POST && !username.empty() &&
                  StringUtils::isPrefix(path, ApiUser + username + '/')) {
         // simon: unauthorized users should be able to call
-        // `/_api/users/<name>` to check their passwords
+        // `/_api/user/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
       } else if (userAuthenticated && StringUtils::isPrefix(path, ApiUser)) {

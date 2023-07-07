@@ -31,7 +31,6 @@
 const jsunity = require("jsunity");
 
 const internal = require('internal');
-const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" :  "application/x-velocypack";
 
@@ -604,6 +603,16 @@ function checking_a_documentSuite () {
       doc = arango.HEAD_RAW(cmd, hdr);
 
       assertEqual(doc.code, 412);
+    },
+
+    test_use_empty_array_for_documents_read: function () {
+      let cmd = `/_api/document/${cid._id}?onlyget=true`;
+      let body = [];
+      let doc = arango.PUT_RAW(cmd, body);
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertEqual(doc.parsedBody, []);
     },
 
   };
