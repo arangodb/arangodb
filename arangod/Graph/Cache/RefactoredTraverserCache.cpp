@@ -72,8 +72,7 @@ bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
 RefactoredTraverserCache::RefactoredTraverserCache(
     transaction::Methods* trx, aql::QueryContext* query,
     ResourceMonitor& resourceMonitor, aql::TraversalStats& stats,
-    MonitoredCollectionToShardMap const&
-        collectionToShardMap,
+    MonitoredCollectionToShardMap const& collectionToShardMap,
     arangodb::aql::Projections const& vertexProjections,
     arangodb::aql::Projections const& edgeProjections, bool produceVertices)
     : _query(query),
