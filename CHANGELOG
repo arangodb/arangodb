@@ -1,9 +1,9 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
-* BTS-1331: Reduced the amount of required network calls when using
-  traversals combined with FILTER and/or PRUNE statements in a
-  GeneralGraph in combination with a clustered environment.
+* BTS-1331: Reduced the amount of required network calls when using traversals
+  combined with FILTER and/or PRUNE statements in a GeneralGraph in combination
+  with a clustered environment.
 
 * Added new startup options `--cache.ideal-lower-fill-ratio` and 
   `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
