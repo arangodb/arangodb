@@ -1,6 +1,9 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+* Use libunwind in jemalloc profiling to make it available with libmusl and
+  static binaries.
+
 * BTS-1331: Reduced the amount of required network calls when using traversals
   combined with FILTER and/or PRUNE statements in a GeneralGraph in combination
   with a clustered environment.
