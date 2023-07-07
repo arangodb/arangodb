@@ -140,8 +140,7 @@ RemoteNode::RemoteNode(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   auto const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   auto const nrInRegs = nrOutRegs;
 
@@ -195,8 +194,7 @@ ScatterNode::ScatterNode(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -312,8 +310,7 @@ ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -513,8 +510,7 @@ void GatherNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto registerInfos = createRegisterInfos({}, {});
@@ -639,8 +635,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(
 
 /// @brief creates corresponding SingleRemoteOperationNode
 std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
 
   TRI_ASSERT(previousNode != nullptr);

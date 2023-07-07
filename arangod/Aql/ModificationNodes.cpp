@@ -119,8 +119,7 @@ void RemoveNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
 
   TRI_ASSERT(previousNode != nullptr);
@@ -199,8 +198,7 @@ void InsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   using namespace arangodb::aql;
 
   ExecutionNode const* previousNode = getFirstDependency();
@@ -316,8 +314,7 @@ void UpdateReplaceNode::replaceVariables(
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   using namespace arangodb::aql;
 
   ExecutionNode const* previousNode = getFirstDependency();
@@ -406,8 +403,7 @@ ReplaceNode::ReplaceNode(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -514,8 +510,7 @@ void UpsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   using namespace arangodb::aql;
 
   ExecutionNode const* previousNode = getFirstDependency();

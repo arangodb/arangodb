@@ -26,7 +26,8 @@
 
 #include "Basics/Result.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
+
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/StorageEngineMethodsMock.h"
@@ -36,20 +37,21 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_state;
+using replication2::storage::IStorageEngineMethods;
 
 struct StorageManagerTest : ::testing::Test {
   std::uint64_t const objectId = 1;
   LogId const logId = LogId{12};
-  std::shared_ptr<test::DelayedExecutor> executor =
-      std::make_shared<test::DelayedExecutor>();
+  std::shared_ptr<storage::rocksdb::test::DelayedExecutor> executor =
+      std::make_shared<storage::rocksdb::test::DelayedExecutor>();
   std::shared_ptr<test::SyncScheduler> scheduler =
       std::make_shared<test::SyncScheduler>();
-  test::FakeStorageEngineMethodsContext methods{
+  storage::test::FakeStorageEngineMethodsContext methods{
       objectId,
       logId,
       executor,
       {LogIndex{1}, LogIndex{100}},
-      replicated_state::PersistedStateInfo{
+      storage::PersistedStateInfo{
           .stateId = logId,
           .snapshot = {.status = SnapshotStatus::kFailed,
                        .timestamp = {},
@@ -248,8 +250,8 @@ TEST_F(StorageManagerTest, update_meta_data_abort) {
 }
 
 struct StorageEngineMethodsMockFactory {
-  auto create() -> std::unique_ptr<tests::StorageEngineMethodsGMock> {
-    auto ptr = std::make_unique<tests::StorageEngineMethodsGMock>();
+  auto create() -> std::unique_ptr<storage::tests::StorageEngineMethodsGMock> {
+    auto ptr = std::make_unique<storage::tests::StorageEngineMethodsGMock>();
     lastPtr = ptr.get();
 
     EXPECT_CALL(*ptr, read).Times(1).WillOnce([](LogIndex idx) {
@@ -258,23 +260,23 @@ struct StorageEngineMethodsMockFactory {
     });
 
     EXPECT_CALL(*ptr, readMetadata).Times(1).WillOnce([]() {
-      return replicated_state::PersistedStateInfo{.stateId = LogId{1},
-                                                  .snapshot = {},
-                                                  .generation = {},
-                                                  .specification = {}};
+      return storage::PersistedStateInfo{.stateId = LogId{1},
+                                         .snapshot = {},
+                                         .generation = {},
+                                         .specification = {}};
     });
 
     return ptr;
   }
-  auto operator->() noexcept -> tests::StorageEngineMethodsGMock* {
+  auto operator->() noexcept -> storage::tests::StorageEngineMethodsGMock* {
     return lastPtr;
   }
-  auto operator*() noexcept -> tests::StorageEngineMethodsGMock& {
+  auto operator*() noexcept -> storage::tests::StorageEngineMethodsGMock& {
     return *lastPtr;
   }
 
  private:
-  tests::StorageEngineMethodsGMock* lastPtr{nullptr};
+  storage::tests::StorageEngineMethodsGMock* lastPtr{nullptr};
 };
 
 struct StorageManagerGMockTest : ::testing::Test {
@@ -287,7 +289,7 @@ struct StorageManagerGMockTest : ::testing::Test {
                                        LoggerContext{Logger::FIXME}, scheduler);
 
   using StorageEngineFuture =
-      futures::Promise<ResultT<IStorageEngineMethods::SequenceNumber>>;
+      futures::Promise<ResultT<storage::IStorageEngineMethods::SequenceNumber>>;
 };
 
 TEST_F(StorageManagerGMockTest, multiple_actions_with_error) {
@@ -295,10 +297,10 @@ TEST_F(StorageManagerGMockTest, multiple_actions_with_error) {
 
   EXPECT_CALL(*methods, removeFront)
       .Times(1)
-      .WillOnce(
-          [&p1](LogIndex stop, IStorageEngineMethods::WriteOptions const&) {
-            return p1.emplace().getFuture();
-          });
+      .WillOnce([&p1](LogIndex stop,
+                      storage::IStorageEngineMethods::WriteOptions const&) {
+        return p1.emplace().getFuture();
+      });
 
   auto trx = storageManager->transaction();
   auto f1 = trx->removeFront(LogIndex(20));

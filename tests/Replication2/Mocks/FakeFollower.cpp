@@ -134,7 +134,7 @@ auto FakeFollower::getInternalLogIterator(std::optional<LogRange> bounds) const
 }
 
 auto FakeFollower::resign() && -> std::tuple<
-    std::unique_ptr<replicated_state::IStorageEngineMethods>,
+    std::unique_ptr<storage::IStorageEngineMethods>,
     std::unique_ptr<replicated_log::IReplicatedStateHandle>, DeferredAction> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

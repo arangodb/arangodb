@@ -60,6 +60,7 @@
 #include "Metrics/LogScale.h"
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Replication2/IScheduler.h"
 #include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
@@ -67,9 +68,9 @@
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Replication2/IScheduler.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -330,7 +331,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 }
 
 auto replicated_log::LogLeader::construct(
-    std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+    std::unique_ptr<storage::IStorageEngineMethods>&& methods,
     std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
@@ -517,6 +518,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.compactionStatus = _compactionManager->getCompactionStatus();
     status.lowestIndexToKeep = lowestIndexToKeep;
     status.firstInMemoryIndex = _inMemoryLogManager->getFirstInMemoryIndex();
+    status.syncCommitIndex = leaderData._syncCommitIndex;
     status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
     status.activeParticipantsConfig =
@@ -931,6 +933,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
       << " entries , prevLogEntry.term = " << req.prevLogEntry.term
       << ", prevLogEntry.index = " << req.prevLogEntry.index
       << ", leaderCommit = " << req.leaderCommit
+      << ", waitForSync = " << req.waitForSync
       << ", lci = " << req.lowestIndexToKeep << ", msg-id = " << req.messageId;
 
   return std::make_pair(std::move(req), lastIndex);
@@ -1046,6 +1049,17 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         follower.nextPrevLogIndex = lastIndex.index;
         follower.lastAckedCommitIndex = currentCommitIndex;
         follower.lastAckedLowestIndexToKeep = currentLITK;
+
+        // Note that it is not necessary to update the follower's syncIndex
+        // exclusively on success. While doing so after getting an
+        // AppendEntriesError, but then we might end up with a syncIndex that is
+        // greater than the lastAckedIndex, which is correct, but
+        // counterintuitive. As this is not performance critical, it would be
+        // nicer to know that the syncIndex is always = lastAckedIndex (in case
+        // of waitForSync = true).
+        TRI_ASSERT(response.syncIndex >= follower.syncIndex)
+            << response.syncIndex << " vs. " << follower.syncIndex;
+        follower.syncIndex = response.syncIndex;
       } else {
         TRI_ASSERT(response.reason.error !=
                    AppendEntriesErrorReason::ErrorType::kNone);
@@ -1136,10 +1150,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerStates() const
         .lastAckedEntry = follower->lastAckedIndex,
         .id = pid,
         .snapshotAvailable = follower->snapshotAvailable,
-        .flags = flags->second});
+        .flags = flags->second,
+        .syncIndex = follower->syncIndex});
 
-    largestCommonIndex =
-        std::min(largestCommonIndex, follower->lastAckedIndex.index);
+    largestCommonIndex = std::min(largestCommonIndex, follower->syncIndex);
   }
 
   return {largestCommonIndex, std::move(participantStates)};
@@ -1161,13 +1175,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
   auto const currentCommitIndex = _self._inMemoryLogManager->getCommitIndex();
   auto const lastTermIndex =
       _self._inMemoryLogManager->getSpearheadTermIndexPair();
-  auto const [newCommitIndex, commitFailReason, quorum] =
+  auto [newCommitIndex, newSyncCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(
           indexes,
           this->activeInnerTermConfig->participantsConfig.config
               .effectiveWriteConcern,
-          currentCommitIndex, lastTermIndex);
+          currentCommitIndex, lastTermIndex, _syncCommitIndex);
   _lastCommitFailReason = commitFailReason;
+  _syncCommitIndex = std::max(_syncCommitIndex, newSyncCommitIndex);
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
       << "calculated commit index as " << newCommitIndex
@@ -1195,6 +1210,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
   result.firstIndex = mapping.getFirstIndex().value_or(TermIndexPair{}).index;
   result.spearHead = _self._inMemoryLogManager->getSpearheadTermIndexPair();
   result.releaseIndex = releaseIndex;
+  result.syncIndex = _self._storageManager->getSyncIndex();
   return result;
 }
 
@@ -1275,7 +1291,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
 
   auto returnAppendEntriesResult =
       [term = request.leaderTerm, messageId = request.messageId,
-       logContext = messageLogContext,
+       storageManager = _storageManager, logContext = messageLogContext,
        measureTime = std::move(measureTimeGuard)](Result const& res) mutable {
         // fire here because the lambda is destroyed much later in a future
         measureTime.fire();
@@ -1286,7 +1302,8 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
         }
         LOG_CTX("e0800", TRACE, logContext)
             << "local follower completed append entries";
-        return AppendEntriesResult{term, messageId, true};
+        return AppendEntriesResult{term, messageId, true,
+                                   storageManager->getSyncIndex()};
       };
 
   LOG_CTX("6fa8b", TRACE, messageLogContext)
@@ -1504,7 +1521,7 @@ auto replicated_log::LogLeader::ping(std::optional<std::string> message)
   return index;
 }
 auto replicated_log::LogLeader::resign() && -> std::tuple<
-    std::unique_ptr<replicated_state::IStorageEngineMethods>,
+    std::unique_ptr<storage::IStorageEngineMethods>,
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
   auto [actionOuter, leaderEstablished, stateHandle] =
       _guardedLeaderData.doUnderLock([this, &localFollower = *_localFollower,
@@ -1570,8 +1587,7 @@ auto replicated_log::LogLeader::getInternalLogIterator(
   auto iter = _inMemoryLogManager->getInternalLogIterator(range.from);
 
   struct Adapter : PersistedLogIterator {
-    explicit Adapter(std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> iter,
-                     LogRange range)
+    explicit Adapter(std::unique_ptr<InMemoryLogIterator> iter, LogRange range)
         : iter(std::move(iter)), range(range) {}
 
     auto next() -> std::optional<PersistingLogEntry> override {
@@ -1582,7 +1598,7 @@ auto replicated_log::LogLeader::getInternalLogIterator(
       return std::nullopt;
     }
 
-    std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> iter;
+    std::unique_ptr<InMemoryLogIterator> iter;
     LogRange range;
   };
 

@@ -387,6 +387,7 @@ class StaticStrings {
   static std::string const CommitIndex;
   static std::string const FirstIndex;
   static std::string const ReleaseIndex;
+  static std::string const SyncIndex;
   static std::string const LowestIndexToKeep;
   static std::string const Outcome;
   constexpr static std::string_view MessageId = "messageId";
