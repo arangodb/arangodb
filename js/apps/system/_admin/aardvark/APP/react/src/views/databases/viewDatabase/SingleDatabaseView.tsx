@@ -32,13 +32,14 @@ export const SingleDatabaseView = () => {
             history.push("/databases");
           }}
         />
-        <Heading marginLeft="2" as="h1" size="lg">
+        <Heading marginLeft="2" as="h1" size="lg" isTruncated title={databaseName}>
           Database: {databaseName}
         </Heading>
         {showDeleteButton && (
           <Button
             size="xs"
             marginLeft="auto"
+            flexShrink={0}
             leftIcon={<DeleteIcon />}
             colorScheme="red"
             onClick={() => {
