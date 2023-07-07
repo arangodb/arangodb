@@ -14,6 +14,7 @@ import { FormField } from "../../../components/form/FormField";
 import { Form, Formik } from "formik";
 import { FieldsGrid } from "../FieldsGrid";
 import { getCurrentDB } from "../../../utils/arangoClient";
+import { mutate } from "swr";
 
 export const DeleteGraphModal = ({
   graph,
@@ -24,7 +25,6 @@ export const DeleteGraphModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
-    console.log("graph in DeleteGraphMOdal: ", graph);
   const { initialGraph } = useGraphsModeContext();
 
   const INITIAL_VALUES: any = {
@@ -38,32 +38,21 @@ export const DeleteGraphModal = ({
   };
 
   const handleSubmit = async (values: any) => {
-    console.log("values: ", values);
-    console.log("values.name: ", values.name);
-
     const currentDB = getCurrentDB();
     const graph = currentDB.graph(values.name);
-    console.log("graph in DeleteModalGraph: ", graph);
-    /*
-      const info = await graph.create(values.edgeDefinitions, {
-        orphanCollections: values.orphanCollections
-      });
-      */
-    /*
     try {
       const info = await graph.drop();
       window.arangoHelper.arangoNotification(
         "Graph",
-        `Successfully created the graph: ${values.name}`
+        `"${values.name}" successfully deleted`
       );
       mutate("/graphs");
       onClose();
       return info;
     } catch (e: any) {
       const errorMessage = e.response.body.errorMessage;
-      window.arangoHelper.arangoError("Could not add graph", errorMessage);
+      window.arangoHelper.arangoError("Could not delete graph", errorMessage);
     }
-    */
   };
 
   return (
@@ -80,8 +69,8 @@ export const DeleteGraphModal = ({
               </Heading>
             </Flex>
           </ModalHeader>
-          <ModalBody>
-            <Form>
+          <Form>
+            <ModalBody>
               <VStack spacing={4} align="stretch">
                 <FieldsGrid maxWidth="full">
                   <FormField
@@ -91,22 +80,18 @@ export const DeleteGraphModal = ({
                   />
                 </FieldsGrid>
               </VStack>
-            </Form>
-          </ModalBody>
-          <ModalFooter>
-            <Stack direction="row" spacing={4} align="center">
-              <Button onClick={onClose} colorScheme="gray">
-                Cancel
-              </Button>
-              <Button
-                colorScheme="red"
-                type="submit"
-                //isLoading={isSubmitting}
-              >
-                Delete
-              </Button>
-            </Stack>
-          </ModalFooter>
+            </ModalBody>
+            <ModalFooter>
+              <Stack direction="row" spacing={4} align="center">
+                <Button onClick={onClose} colorScheme="gray">
+                  Cancel
+                </Button>
+                <Button colorScheme="red" type="submit">
+                  Delete
+                </Button>
+              </Stack>
+            </ModalFooter>
+          </Form>
         </Modal>
       </GraphsModeProvider>
     </Formik>
