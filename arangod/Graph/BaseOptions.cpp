@@ -485,8 +485,10 @@ void BaseOptions::setCollectionToShard(
   _collectionToShard.clear();
   _collectionToShard.reserve(in.size());
   for (auto const& [key, value] : in) {
-    auto myVec = MonitoredStringVector{};
-    auto myString = MonitoredString{value};
+    ResourceUsageAllocator<MonitoredCollectionToShardMap> alloc = {
+        _query.resourceMonitor()};
+    auto myVec = MonitoredStringVector{alloc};
+    auto myString = MonitoredString{value, alloc};
     myVec.emplace_back(myString);
     _collectionToShard.emplace(key, myVec);
   }
