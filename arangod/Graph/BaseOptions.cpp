@@ -277,10 +277,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _vertexProjections{},
-      _edgeProjections{} {
-  arangodb::ResourceUsageScope guard(resourceMonitor(), getMemoryUsedBytes());
-  guard.steal();  // now we are responsible for tracking the memory
-}
+      _edgeProjections{} {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
@@ -334,8 +331,6 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
 }
 
 BaseOptions::~BaseOptions() {
-  resourceMonitor().decreaseMemoryUsage(getMemoryUsedBytes());
-
   if (!getVertexProjections().empty()) {
     resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
                                           sizeof(aql::Projections::Projection));
@@ -691,9 +686,4 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
       resourceMonitor(),
       getEdgeProjections().size() * sizeof(aql::Projections::Projection));
   eGuard.steal();  // now we are responsible for tracking the memory
-}
-
-size_t BaseOptions::getMemoryUsedBytes() const {
-  // BaseOptions + TraverserCache
-  return sizeof(*this) + sizeof(TraverserCache);
 }

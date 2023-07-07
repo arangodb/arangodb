@@ -773,7 +773,7 @@ auto ShortestPathNode::options() const -> ShortestPathOptions* {
 }
 
 size_t ShortestPathNode::getMemoryUsedBytes() const {
-  return GraphNode::getMemoryUsedBytes() + sizeof(*this);
+  return sizeof(*this);
 }
 
 // This constructor is only used from LocalTraversalNode, and GraphNode

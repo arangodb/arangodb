@@ -1455,6 +1455,4 @@ void TraversalNode::validateCollections() const {
   }
 }
 
-size_t TraversalNode::getMemoryUsedBytes() const {
-  return GraphNode::getMemoryUsedBytes() + sizeof(*this);
-}
+size_t TraversalNode::getMemoryUsedBytes() const { return sizeof(*this); }
