@@ -109,7 +109,7 @@ function getApplierState(url) {
 
 // check the servers are in sync with the leader
 function checkInSync(leader, servers, ignore) {
-  print("Checking in-sync state with lead: ", leader.url);
+  print(Date() + "Checking in-sync state with lead: ", leader.url);
 
   const leaderTick = getLoggerState(leader.url).state.lastLogTick;
 
@@ -119,7 +119,7 @@ function checkInSync(leader, servers, ignore) {
     }
 
     let applier = getApplierState(arangod.url);
-    print("Checking endpoint ", arangod.url, " applier.state.running=", applier.state.running, " applier.endpoint=", applier.endpoint);
+    print(Date() + "Checking endpoint ", arangod.url, " applier.state.running=", applier.state.running, " applier.endpoint=", applier.endpoint);
     return applier.state.running && applier.endpoint === leader.endpoint &&
       (compareTicks(applier.state.lastAppliedContinuousTick, leaderTick) >= 0 ||
         compareTicks(applier.state.lastProcessedContinuousTick, leaderTick) >= 0);
@@ -128,17 +128,17 @@ function checkInSync(leader, servers, ignore) {
   let loop = 100;
   while (loop-- > 0) {
     if (servers.every(check)) {
-      print("All followers are in sync with: ", leader.name);
+      print(Date() + "All followers are in sync with: ", leader.name);
       return true;
     }
     wait(1.0);
   }
-  print("Timeout waiting for followers of: ", leader.name);
+  print(Date() + "Timeout waiting for followers of: ", leader.name);
   return false;
 }
 
 function readAgencyValue(path) {
-  print("Querying agency... (", path, ")");
+  print(Date() + "Querying agency... (", path, ")");
   let res = global.instanceManager.getAgency("/_api/agency/read", 'POST', JSON.stringify([[path]]));
   assertTrue(res.hasOwnProperty('code'), JSON.stringify(res));
   assertEqual(res.code, 200, JSON.stringify(res));
@@ -165,7 +165,7 @@ function waitUntilHealthStatusIs(isHealthy, isFailed) {
   let healthNames = [];
   isHealthy.forEach(arangod => healthNames.push(arangod.name));
 
-  print("Waiting for health status to be healthy: ", healthNames, " failed: ", JSON.stringify(isFailed));
+  print(Date() + "Waiting for health status to be healthy: ", healthNames, " failed: ", JSON.stringify(isFailed));
   // Wait 25 seconds, sleep 5 each run
   for (const start = Date.now(); (Date.now() - start) / 1000 < 25; internal.wait(5.0)) {
     let needToWait = false;
@@ -194,8 +194,8 @@ function waitUntilHealthStatusIs(isHealthy, isFailed) {
       return true;
     }
   }
-  print("Timing out, could not reach desired state: ", healthNames, " failed: ", JSON.stringify(isFailed));
-  print("We only got: ", JSON.stringify(readAgencyValue("/arango/Supervision/Health")[0].arango.Supervision.Health));
+  print(Date() + "Timing out, could not reach desired state: ", healthNames, " failed: ", JSON.stringify(isFailed));
+  print(Date() + "We only got: ", JSON.stringify(readAgencyValue("/arango/Supervision/Health")[0].arango.Supervision.Health));
   return false;
 }
 
@@ -222,7 +222,7 @@ function LeaderDisconnectedSuite() {
       });
 
       let currentLead = leaderInAgency();
-      print("connecting shell to leader ", currentLead.name);
+      print(Date() + "connecting shell to leader ", currentLead.name);
       connectToServer(currentLead);
       
       db._drop(cname);
@@ -233,12 +233,12 @@ function LeaderDisconnectedSuite() {
         if (endpoints.length === servers.length && endpoints[0].name === currentLead.name) {
           break;
         }
-        print("cluster endpoints not as expected: found =", endpoints.length, " expected =", servers.length);
+        print(Date() + "cluster endpoints not as expected: found =", endpoints.length, " expected =", servers.length);
         internal.wait(1); // settle down
       } while (i-- > 0);
 
       let endpoints = getClusterEndpoints();
-      print("endpoints: ", endpoints.length, " servers: ", servers.length);
+      print(Date() + "endpoints: ", endpoints.length, " servers: ", servers.length);
       assertEqual(endpoints.length, servers.length);
       assertEqual(endpoints[0], currentLead);
       
@@ -320,7 +320,7 @@ function LeaderDisconnectedSuite() {
 
       // this failure point makes the leader not send its heartbeat
       // to the agency anymore
-      print("Setting failure point to block heartbeats from leader");
+      print(Date() + "Setting failure point to block heartbeats from leader");
       debugSetFailAt(oldLead.endpoint, "HeartbeatThread::sendServerState");
 
       let currentLead;
@@ -333,25 +333,25 @@ function LeaderDisconnectedSuite() {
         internal.sleep(1.0);
       } while (i-- > 0);
 
-      print("Leader has changed to", currentLead.name);
+      print(Date() + "Leader has changed to", currentLead.name);
 
       // leader must have changed
       assertNotEqual(currentLead.name, oldLead.name);
 
       try {
         db._create(cname + "2");
-        fail();
+        fail("did not throw; failing test now");
       } catch (err) {
-        assertEqual(errors.ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING.code, err.errorNum);
+        assertEqual(errors.ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING.code, err.errorNum, err);
       }
 
       // clear failure points
-      print("Healing old leader", oldLead.name);
+      print(Date() + "Healing old leader", oldLead.name);
       debugRemoveFailAt(oldLead.endpoint, "HeartbeatThread::sendServerState");
 
       connectToServer(currentLead);
 
-      print("Waiting for old leader to become a follower");
+      print(Date() + "Waiting for old leader to become a follower");
       // wait until old leader responds properly again
       i = 60;
       do {
