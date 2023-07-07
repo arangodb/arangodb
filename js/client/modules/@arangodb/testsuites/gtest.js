@@ -150,7 +150,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   
   let iresearch_filter = ['gtest_filter=IResearch*'];
   testFns['gtest_iresearch'] = x => gtestRunner('arangodbtests', 'gtest-iresearch', x, iresearch_filter);
-  let no_iresearch_filter = ['gtest_filter=-IResearch*:LongRunning*'];
+  let no_iresearch_filter = ['gtest_filter=-IResearch*:*_LongRunning*'];
   testFns['gtest_arangodb'] = x => gtestRunner('arangodbtests', 'gtest-arangodb', x, no_iresearch_filter);
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
