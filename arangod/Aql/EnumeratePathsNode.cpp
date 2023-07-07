@@ -801,9 +801,7 @@ std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
   return indexAccessors;
 }
 
-size_t EnumeratePathsNode::getMemoryUsedBytes() const {
-  return sizeof(*this);
-}
+size_t EnumeratePathsNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 void EnumeratePathsNode::prepareOptions() {
   if (_optionsBuilt) {
