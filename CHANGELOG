@@ -1,9 +1,13 @@
-v3.11.1 (XXXX-XX-XX)
+v3.11.2 (XXXX-XX-XX)
 --------------------
 
 * Whenever there is a query request timeout in AQL (e.g., a server died)
   which causes the query to fail, the DBServers will now all directly kill
   their potentially ongoing parts of the query and not wait for garbage collection.
+
+
+v3.11.1 (XXXX-XX-XX)
+--------------------
 
 * Updated arangosync to v2.18.1.
 
