@@ -1,6 +1,21 @@
 devel
 -----
 
+* Track memory usage for write operations in AQL queries. The memory usage of
+  write operations in AQL queries was previously not tracked and not accounted
+  for in the query's own memory usage. The memory used for write operations
+  also was not accounted for when setting a memory limit for the query. The
+  memory used for write operations is now properly tracked, incldung in-memory
+  write batches and locked keys in RocksDB (for conflict checking).
+  With that change, the memory usage reported for AQL queries that perform
+  write operations will be significantly higher than before, but the values
+  now will reflect the reality a lot better. This has the consequence that
+  previously working AQL write queries can now fail because their actual memory
+  hits the configured per-query or global memory limit threshold.
+  In these cases it is useful to either revisit the per-query and/or global
+  memory limit settings, turn on intermediate commits for the query, or adjust
+  the query so that it uses less memory.
+
 * Added transparent LZ4 compression for values in the in-memory edge cache if
   their size exceeds a configurable threshold. This is configurable as an
   opt-in functionality.
