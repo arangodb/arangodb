@@ -105,8 +105,7 @@ auto InMemoryLogManager::appendLogEntry(
     bool const isMetaLogEntry = std::holds_alternative<LogMetaPayload>(payload);
 
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(TermIndexPair{term, index}, std::move(payload)),
-        waitForSync);
+        LogEntry(TermIndexPair{term, index}, std::move(payload)), waitForSync);
     logEntry.setInsertTp(insertTp);
     auto size = logEntry.entry().approxByteSize();
     data._inMemoryLog.appendInPlace(_logContext, std::move(logEntry));
@@ -135,11 +134,11 @@ auto InMemoryLogManager::getInternalLogIterator(LogIndex firstIdx) const
           return inMemoryLog.getMemtryIteratorFrom(firstIdx);
         }
 
-        auto diskIter = _storageManager->getPersistedLogIterator(firstIdx);
+        auto diskIter = _storageManager->getLogIterator(firstIdx);
 
         struct OverlayIterator : InMemoryLogIterator {
           explicit OverlayIterator(
-              std::unique_ptr<PersistedLogIterator> diskIter,
+              std::unique_ptr<LogIterator> diskIter,
               std::unique_ptr<InMemoryLogIterator> inMemoryIter,
               LogRange inMemoryRange)
               : _diskIter(std::move(diskIter)),
@@ -163,7 +162,7 @@ auto InMemoryLogManager::getInternalLogIterator(LogIndex firstIdx) const
             return _inMemoryIter->next();
           }
 
-          std::unique_ptr<PersistedLogIterator> _diskIter;
+          std::unique_ptr<LogIterator> _diskIter;
           std::unique_ptr<InMemoryLogIterator> _inMemoryIter;
           LogRange _inMemoryRange;
         };
@@ -174,17 +173,17 @@ auto InMemoryLogManager::getInternalLogIterator(LogIndex firstIdx) const
       });
 }
 
-auto InMemoryLogManager::getLogConsumerIterator(
-    std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
+auto InMemoryLogManager::getLogConsumerIterator(std::optional<LogRange> bounds)
+    const -> std::unique_ptr<LogViewRangeIterator> {
   return _guardedData.getLockedGuard()->getLogConsumerIterator(*_storageManager,
                                                                bounds);
 }
 
 auto InMemoryLogManager::getNonEmptyLogConsumerIterator(LogIndex const firstIdx)
-    const -> std::variant<std::unique_ptr<LogRangeIterator>, LogIndex> {
+    const -> std::variant<std::unique_ptr<LogViewRangeIterator>, LogIndex> {
   return _guardedData.doUnderLock(
       [&](auto& data)
-          -> std::variant<std::unique_ptr<LogRangeIterator>, LogIndex> {
+          -> std::variant<std::unique_ptr<LogViewRangeIterator>, LogIndex> {
         auto const commitIndex = data._commitIndex;
         auto const& inMemoryLog = data._inMemoryLog;
         TRI_ASSERT(firstIdx <= commitIndex);
@@ -269,7 +268,7 @@ InMemoryLogManager::GuardedData::GuardedData(LogIndex firstIndex)
 
 auto InMemoryLogManager::GuardedData::getLogConsumerIterator(
     IStorageManager& storageManager, std::optional<LogRange> bounds) const
-    -> std::unique_ptr<LogRangeIterator> {
+    -> std::unique_ptr<LogViewRangeIterator> {
   // Note that there can be committed log entries only in memory, because they
   // might not be persisted locally.
 
@@ -289,9 +288,9 @@ auto InMemoryLogManager::GuardedData::getLogConsumerIterator(
   // server from disk
   auto diskIter = storageManager.getCommittedLogIterator(range);
 
-  struct OverlayIterator : LogRangeIterator {
-    explicit OverlayIterator(std::unique_ptr<LogRangeIterator> diskIter,
-                             std::unique_ptr<LogRangeIterator> inMemoryIter,
+  struct OverlayIterator : LogViewRangeIterator {
+    explicit OverlayIterator(std::unique_ptr<LogViewRangeIterator> diskIter,
+                             std::unique_ptr<LogViewRangeIterator> inMemoryIter,
                              LogRange inMemoryRange, LogRange range)
         : _diskIter(std::move(diskIter)),
           _inMemoryIter(std::move(inMemoryIter)),
@@ -315,8 +314,8 @@ auto InMemoryLogManager::GuardedData::getLogConsumerIterator(
 
     auto range() const noexcept -> LogRange override { return _range; }
 
-    std::unique_ptr<LogRangeIterator> _diskIter;
-    std::unique_ptr<LogRangeIterator> _inMemoryIter;
+    std::unique_ptr<LogViewRangeIterator> _diskIter;
+    std::unique_ptr<LogViewRangeIterator> _inMemoryIter;
     LogRange _inMemoryRange;
     LogRange _range;
   };

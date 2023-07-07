@@ -21,28 +21,25 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PersistingLogEntry.h"
+#include "LogEntry.h"
 
 namespace arangodb::replication2 {
 
-PersistingLogEntry::PersistingLogEntry(
-    TermIndexPair termIndexPair,
-    std::variant<LogMetaPayload, LogPayload> payload)
+LogEntry::LogEntry(TermIndexPair termIndexPair,
+                   std::variant<LogMetaPayload, LogPayload> payload)
     : _termIndex(termIndexPair), _payload(std::move(payload)) {}
 
-auto PersistingLogEntry::logTerm() const noexcept -> LogTerm {
-  return _termIndex.term;
-}
+auto LogEntry::logTerm() const noexcept -> LogTerm { return _termIndex.term; }
 
-auto PersistingLogEntry::logIndex() const noexcept -> LogIndex {
+auto LogEntry::logIndex() const noexcept -> LogIndex {
   return _termIndex.index;
 }
 
-auto PersistingLogEntry::logPayload() const noexcept -> LogPayload const* {
+auto LogEntry::logPayload() const noexcept -> LogPayload const* {
   return std::get_if<LogPayload>(&_payload);
 }
 
-void PersistingLogEntry::toVelocyPack(velocypack::Builder& builder) const {
+void LogEntry::toVelocyPack(velocypack::Builder& builder) const {
   builder.openObject();
   builder.add(StaticStrings::LogIndex,
               velocypack::Value(_termIndex.index.value));
@@ -50,14 +47,14 @@ void PersistingLogEntry::toVelocyPack(velocypack::Builder& builder) const {
   builder.close();
 }
 
-void PersistingLogEntry::toVelocyPack(velocypack::Builder& builder,
-                                      PersistingLogEntry::OmitLogIndex) const {
+void LogEntry::toVelocyPack(velocypack::Builder& builder,
+                            LogEntry::OmitLogIndex) const {
   builder.openObject();
   entriesWithoutIndexToVelocyPack(builder);
   builder.close();
 }
 
-void PersistingLogEntry::entriesWithoutIndexToVelocyPack(
+void LogEntry::entriesWithoutIndexToVelocyPack(
     velocypack::Builder& builder) const {
   builder.add(StaticStrings::LogTerm, velocypack::Value(_termIndex.term.value));
   if (std::holds_alternative<LogPayload>(_payload)) {
@@ -69,8 +66,7 @@ void PersistingLogEntry::entriesWithoutIndexToVelocyPack(
   }
 }
 
-auto PersistingLogEntry::fromVelocyPack(velocypack::Slice slice)
-    -> PersistingLogEntry {
+auto LogEntry::fromVelocyPack(velocypack::Slice slice) -> LogEntry {
   auto const logTerm = slice.get(StaticStrings::LogTerm).extract<LogTerm>();
   auto const logIndex = slice.get(StaticStrings::LogIndex).extract<LogIndex>();
   auto const termIndex = TermIndexPair{logTerm, logIndex};
@@ -84,11 +80,11 @@ auto PersistingLogEntry::fromVelocyPack(velocypack::Slice slice)
   }
 }
 
-auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
+auto LogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
   return _termIndex;
 }
 
-auto PersistingLogEntry::approxByteSize() const noexcept -> std::size_t {
+auto LogEntry::approxByteSize() const noexcept -> std::size_t {
   auto size = approxMetaDataSize;
 
   if (std::holds_alternative<LogPayload>(_payload)) {
@@ -98,8 +94,7 @@ auto PersistingLogEntry::approxByteSize() const noexcept -> std::size_t {
   return size;
 }
 
-PersistingLogEntry::PersistingLogEntry(LogIndex index,
-                                       velocypack::Slice persisted) {
+LogEntry::LogEntry(LogIndex index, velocypack::Slice persisted) {
   _termIndex.index = index;
   _termIndex.term = persisted.get(StaticStrings::LogTerm).extract<LogTerm>();
   if (auto payload = persisted.get(StaticStrings::Payload); !payload.isNone()) {
@@ -111,14 +106,14 @@ PersistingLogEntry::PersistingLogEntry(LogIndex index,
   }
 }
 
-auto PersistingLogEntry::hasPayload() const noexcept -> bool {
+auto LogEntry::hasPayload() const noexcept -> bool {
   return std::holds_alternative<LogPayload>(_payload);
 }
-auto PersistingLogEntry::hasMeta() const noexcept -> bool {
+auto LogEntry::hasMeta() const noexcept -> bool {
   return std::holds_alternative<LogMetaPayload>(_payload);
 }
 
-auto PersistingLogEntry::meta() const noexcept -> const LogMetaPayload* {
+auto LogEntry::meta() const noexcept -> const LogMetaPayload* {
   return std::get_if<LogMetaPayload>(&_payload);
 }
 

@@ -18,27 +18,38 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "InMemoryLogEntry.h"
+#pragma once
+
+#include "Replication2/ReplicatedLog/LogEntry.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 namespace arangodb::replication2 {
 
-InMemoryLogEntry::InMemoryLogEntry(LogEntry entry, bool waitForSync)
-    : _waitForSync(waitForSync), _logEntry(std::move(entry)) {}
+// A log entry enriched with additional information about the position of where
+// this entry is stored. This allows us to efficiently acquire an iterator
+// starting at this entry.
+struct PersistedLogEntry {
+  PersistedLogEntry(LogEntry&& entry, storage::IteratorPosition position)
+      : _entry(std::move(entry)), _position(position) {
+    TRI_ASSERT(_entry.logIndex() == _position.index());
+  }
 
-void InMemoryLogEntry::setInsertTp(clock::time_point tp) noexcept {
-  _insertTp = tp;
-}
+  [[nodiscard]] auto entry() const noexcept -> LogEntry const& {
+    return _entry;
+  }
 
-auto InMemoryLogEntry::insertTp() const noexcept -> clock::time_point {
-  return _insertTp;
-}
+  [[nodiscard]] auto position() const noexcept -> storage::IteratorPosition {
+    return _position;
+  }
 
-auto InMemoryLogEntry::entry() const noexcept -> LogEntry const& {
-  // Note that while get() isn't marked as noexcept, it actually is.
-  return _logEntry.get();
-}
+ private:
+  LogEntry _entry;
+  storage::IteratorPosition _position;
+};
+
+struct PersistedLogIterator : TypedLogIterator<PersistedLogEntry> {};
 
 }  // namespace arangodb::replication2

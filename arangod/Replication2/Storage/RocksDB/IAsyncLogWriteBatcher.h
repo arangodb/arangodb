@@ -49,7 +49,7 @@ struct IAsyncLogWriteBatcher {
   using SequenceNumber = IStorageEngineMethods::SequenceNumber;
 
   virtual auto queueInsert(AsyncLogWriteContext& ctx,
-                           std::unique_ptr<PersistedLogIterator> iter,
+                           std::unique_ptr<LogIterator> iter,
                            WriteOptions const& opts)
       -> futures::Future<ResultT<SequenceNumber>> = 0;
 

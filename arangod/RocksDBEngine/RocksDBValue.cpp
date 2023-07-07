@@ -29,7 +29,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
 #include "Transaction/Helpers.h"
@@ -103,8 +103,7 @@ RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
 }
 
-RocksDBValue RocksDBValue::LogEntry(
-    replication2::PersistingLogEntry const& entry) {
+RocksDBValue RocksDBValue::LogEntry(replication2::LogEntry const& entry) {
   return RocksDBValue(RocksDBEntryType::LogEntry, entry);
 }
 
@@ -282,11 +281,11 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, std::string_view data)
 }
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type,
-                           replication2::PersistingLogEntry const& entry) {
+                           replication2::LogEntry const& entry) {
   TRI_ASSERT(type == RocksDBEntryType::LogEntry);
   _type = type;
   VPackBuilder builder;
-  entry.toVelocyPack(builder, replication2::PersistingLogEntry::omitLogIndex);
+  entry.toVelocyPack(builder, replication2::LogEntry::omitLogIndex);
   _buffer.reserve(builder.size());
   _buffer.append(reinterpret_cast<const char*>(builder.data()), builder.size());
 }
