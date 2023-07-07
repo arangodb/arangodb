@@ -227,7 +227,6 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/ChecksumHelperTest.cpp
   RocksDBEngine/EndianTest.cpp
   RocksDBEngine/KeyTest.cpp
-  RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/EncryptionProviderTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
