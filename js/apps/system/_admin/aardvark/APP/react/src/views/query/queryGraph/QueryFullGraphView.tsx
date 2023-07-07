@@ -26,7 +26,12 @@ import { Redirect, useHistory } from "react-router";
 import { AddAPhoto } from "styled-icons/material";
 import { downloadCanvas } from "../../graphV2/graphHeader/DownloadGraphButton";
 import { FullscreenGraphButton } from "../../graphV2/graphHeader/FullscreenGraphButton";
+import { EdgeStyleSelectorComponent } from "../../graphV2/graphSettings/EdgeStyleSelector";
 import { GraphLayoutSelectorComponent } from "../../graphV2/graphSettings/GraphLayoutSelector";
+import { ParameterEdgeColorComponent } from "../../graphV2/graphSettings/ParameterEdgeColor";
+import { ParameterEdgeColorByCollectionComponent } from "../../graphV2/graphSettings/ParameterEdgeColorByCollection";
+import { ParameterNodeColorComponent } from "../../graphV2/graphSettings/ParameterNodeColor";
+import { ParameterNodeColorByCollectionComponent } from "../../graphV2/graphSettings/ParameterNodeColorByCollection";
 import { LayoutType } from "../../graphV2/UrlParametersContext";
 import { useQueryContext } from "../QueryContextProvider";
 import { detectGraph } from "../queryResults/useDisplayTypes";
@@ -145,10 +150,69 @@ const SettingsMenuContent = () => {
             </Grid>
           </GraphAccordionItem>
           <GraphAccordionItem title="Nodes">
-            {/* <AccordionNodesContent /> */}
+            <Grid
+              rowGap="2"
+              alignItems="center"
+              templateColumns="150px 1fr 40px"
+              justifyItems="start"
+            >
+              <ParameterNodeColorComponent
+                isDisabled={settings.nodeColorByCollection}
+                value={settings.nodeColor}
+                onChange={event => {
+                  setSettings({
+                    ...settings,
+                    nodeColor: event.target.value
+                  });
+                }}
+              />
+              <ParameterNodeColorByCollectionComponent
+                isChecked={settings.nodeColorByCollection}
+                onChange={event => {
+                  setSettings({
+                    ...settings,
+                    nodeColorByCollection: event.target.checked
+                  });
+                }}
+              />
+            </Grid>
           </GraphAccordionItem>
           <GraphAccordionItem title="Edges">
-            {/* <AccordionEdgesContent /> */}
+            <Grid
+              rowGap="2"
+              alignItems="center"
+              templateColumns="150px 1fr 40px"
+              justifyItems="start"
+            >
+              <ParameterEdgeColorComponent
+                value={settings.edgeColor}
+                onChange={event => {
+                  setSettings({
+                    ...settings,
+                    edgeColor: event.target.value
+                  });
+                }}
+                isDisabled={settings.edgeColorByCollection}
+              />
+              <ParameterEdgeColorByCollectionComponent
+                isChecked={settings.edgeColorByCollection}
+                onChange={event => {
+                  setSettings({
+                    ...settings,
+                    edgeColorByCollection: event.target.checked
+                  });
+                }}
+              />
+              <EdgeStyleSelectorComponent
+                value={settings.edgeType}
+                onChange={event => {
+                  setSettings({
+                    ...settings,
+                    edgeType: event.target.value as any
+                  });
+                }}
+              />
+            </Grid>
           </GraphAccordionItem>
         </Accordion>
         <HStack

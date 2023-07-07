@@ -37,9 +37,9 @@ export const convertToGraphData = ({
   };
   let nodes = [] as NodeDataType[];
   let edges = [] as EdgeDataType[];
-  const color = "#48bb78";
   let nodeIds = [] as string[];
   let edgeIds = [] as string[];
+  const edgeColor = "#1D2A12";
   if (graphDataType === "graphObject") {
     (data as ObjectDataInputType[]).forEach(function (obj) {
       if (obj.edges && obj.vertices) {
@@ -48,7 +48,6 @@ export const convertToGraphData = ({
             const graphNode = {
               id: node._id,
               label: node._key,
-              color: color,
               shape: "dot",
               size: 10
             };
@@ -63,7 +62,7 @@ export const convertToGraphData = ({
             const graphEdge = {
               id: edge._id,
               from: edge._from,
-              color: "#cccccc",
+              color: edgeColor,
               to: edge._to
             };
             if (
@@ -89,7 +88,7 @@ export const convertToGraphData = ({
         const graphEdge = {
           id: edge._id,
           from: edge._from,
-          color: "#cccccc",
+          color: edgeColor,
           to: edge._to
         };
         if (!edgeIds.includes(edge._id)) {
@@ -99,7 +98,6 @@ export const convertToGraphData = ({
             const graphNode = {
               id: edge._from,
               label: edge._from,
-              color: color,
               shape: "dot",
               size: 10
             };
@@ -110,7 +108,6 @@ export const convertToGraphData = ({
             const graphNode = {
               id: edge._to,
               label: edge._to,
-              color: color,
               shape: "dot",
               size: 10
             };
@@ -158,8 +155,12 @@ export const useSetupQueryGraph = ({
     const nodesDataSet = new DataSet(nodes || []);
     const edgesDataSet = new DataSet(edges || []);
     setDatasets({ nodes: nodesDataSet, edges: edgesDataSet });
+    const color = "#48bb78";
     const newOptions = {
       ...options,
+      nodes: {
+        color
+      },
       manipulation: {
         enabled: false
       },
@@ -224,5 +225,5 @@ export const useSetupQueryGraph = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edges, nodes, options]);
-  return { progressValue, network, datasets };
+  return { progressValue, network, datasets, setDatasets };
 };
