@@ -72,7 +72,7 @@ class SingleServerProviderTest : public ::testing::Test {
   aql::Projections _vertexProjections{};
   aql::Projections _edgeProjections{};
 
-  std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+  MonitoredCollectionToShardMap _emptyShardMap{};
 
   // can be used for further testing to generate a expression
   // std::string stringToMatch = "0-1";

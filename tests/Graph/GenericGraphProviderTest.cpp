@@ -75,7 +75,7 @@ class GraphProviderTest : public ::testing::Test {
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
   std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
 
-  std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+  MonitoredCollectionToShardMap _emptyShardMap{};
   aql::Projections _vertexProjections{};
   aql::Projections _edgeProjections{};
 

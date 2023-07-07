@@ -54,7 +54,7 @@ class TraverserCacheTest : public ::testing::Test {
   std::unique_ptr<RefactoredTraverserCache> traverserCache{nullptr};
   std::shared_ptr<transaction::Context> queryContext{nullptr};
   std::unique_ptr<arangodb::transaction::Methods> trx{nullptr};
-  std::unordered_map<std::string, std::vector<std::string>>
+  MonitoredCollectionToShardMap
       collectionToShardMap{};  // can be empty, only used in standalone mode
   arangodb::ResourceMonitor* _monitor;
   arangodb::aql::Projections _vertexProjections{};

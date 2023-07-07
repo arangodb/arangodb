@@ -72,7 +72,7 @@ bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
 RefactoredTraverserCache::RefactoredTraverserCache(
     transaction::Methods* trx, aql::QueryContext* query,
     ResourceMonitor& resourceMonitor, aql::TraversalStats& stats,
-    std::unordered_map<std::string, std::vector<std::string>> const&
+    MonitoredCollectionToShardMap const&
         collectionToShardMap,
     arangodb::aql::Projections const& vertexProjections,
     arangodb::aql::Projections const& edgeProjections, bool produceVertices)
@@ -307,7 +307,7 @@ bool RefactoredTraverserCache::appendVertex(
               "' as the first line in your AQL");
     }
     for (auto const& shard : it->second) {
-      if (findDocumentInShard(shard)) {
+      if (findDocumentInShard(std::string{shard})) {
         // Short circuit, as soon as one shard contains this document
         // we can return it.
         return true;

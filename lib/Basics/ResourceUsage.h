@@ -146,7 +146,7 @@ class ResourceUsageAllocatorBase : public Allocator {
   using size_type = typename std::allocator_traits<Allocator>::size_type;
   using value_type = typename std::allocator_traits<Allocator>::value_type;
 
-  ResourceUsageAllocatorBase() = delete;
+  ResourceUsageAllocatorBase() = default;
 
   template<typename... Args>
   ResourceUsageAllocatorBase(ResourceMonitor& resourceMonitor, Args&&... args)
@@ -209,6 +209,15 @@ template<typename T>
 struct ResourceUsageAllocator : ResourceUsageAllocatorBase<std::allocator<T>> {
   using ResourceUsageAllocatorBase<
       std::allocator<T>>::ResourceUsageAllocatorBase;
+
+  template<typename U>
+  using rebind = ResourceUsageAllocator<U>;
+
+  template<typename X, typename... Args>
+  void construct(X* ptr, Args&&... args) {
+    std::uninitialized_construct_using_allocator(ptr, *this,
+                                                 std::forward<Args>(args)...);
+  }
 };
 
 }  // namespace arangodb

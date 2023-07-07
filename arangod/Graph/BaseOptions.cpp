@@ -272,6 +272,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _expressionCtx(_trx, query, _aqlFunctionsInternalCache),
       _query(query),
       _tmpVar(nullptr),
+      _collectionToShard{resourceMonitor()},
       _parallelism(1),
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
@@ -489,7 +490,10 @@ void BaseOptions::setCollectionToShard(
   _collectionToShard.clear();
   _collectionToShard.reserve(in.size());
   for (auto const& [key, value] : in) {
-    _collectionToShard.emplace(key, std::vector{value});
+    auto myVec = MonitoredStringVector{};
+    auto myString = MonitoredString{value};
+    myVec.emplace_back(myString);
+    _collectionToShard.emplace(key, myVec);
   }
 }
 
@@ -514,9 +518,6 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
 
 arangodb::aql::Expression* BaseOptions::getEdgeExpression(
     size_t cursorId, bool& needToInjectVertex) const {
-
-  ResourceUsageAllocator<MonitoredCollectionToShardMap> alloc = {resourceMonitor()};
-  BaseOptions::MonitoredCollectionToShardMap peter{5, alloc};
   TRI_ASSERT(!_baseLookupInfos.empty());
   TRI_ASSERT(_baseLookupInfos.size() > cursorId);
   needToInjectVertex = !_baseLookupInfos[cursorId].conditionNeedUpdate;

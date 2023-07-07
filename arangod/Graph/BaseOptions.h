@@ -30,7 +30,7 @@
 #include "Aql/Projections.h"
 #include "Aql/VarInfoMap.h"
 #include "Basics/Common.h"
-#include "Basics/ResourceUsage.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
@@ -77,19 +77,6 @@ class TraverserCache;
  */
 
 struct BaseOptions {
-  typedef std::basic_string<char, std::char_traits<char>,
-                            ResourceUsageAllocator<char>>
-      MonitoredString;
-
-  typedef std::vector<MonitoredString> MonitoredStringVector;
-  typedef std::unordered_map<
-      MonitoredString, MonitoredStringVector,
-      std::hash<std::basic_string<char, std::char_traits<char>, ResourceUsageAllocator<char>>>,
-      std::equal_to<>,
-      ResourceUsageAllocator<
-          std::pair<const MonitoredString, MonitoredStringVector>>>
-      MonitoredCollectionToShardMap;
-
  public:
   struct LookupInfo {
     // This struct does only take responsibility for the expression
