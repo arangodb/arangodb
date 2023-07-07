@@ -1,6 +1,11 @@
 devel
 -----
 
+
+* BTS-744: Disable development mode for system services.
+
+* Updated ArangoDB Starter to 0.16.0-preview-1.
+
 * Added transparent LZ4 compression for values in the in-memory edge cache if
   their size exceeds a configurable threshold. This is configurable as an
   opt-in functionality.
