@@ -45,13 +45,16 @@ RestBaseHandler::RestBaseHandler(ArangodServer& server, GeneralRequest* request,
 /// @brief parses the body as VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
+velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
   try {
     success = true;
+    // calling the payload(...) function may allocate more memory in the
+    // request. we want to track the additional memory here, but avoid
+    // duplicate counting. thus we keep track of the request's memory
+    // before making a call to payload() and after.
+    auto old = _request->memoryUsage();
     auto slice = _request->payload(true);
-    if (_request->contentType() != rest::ContentType::VPACK) {
-      this->_requestBodySizeTracker.add(slice.byteSize());
-    }
+    this->_requestBodySizeTracker.add(_request->memoryUsage() - old);
     return slice;
   } catch (VPackException const& e) {
     // simon: do not mess with the error message format, tests break
