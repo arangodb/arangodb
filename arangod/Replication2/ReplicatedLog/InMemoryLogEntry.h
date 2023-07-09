@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
 
 namespace arangodb::replication2 {
 
@@ -33,21 +33,22 @@ class InMemoryLogEntry {
  public:
   using clock = std::chrono::steady_clock;
 
-  explicit InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync = false);
+  explicit InMemoryLogEntry(LogEntry entry, bool waitForSync = false);
 
   [[nodiscard]] auto insertTp() const noexcept -> clock::time_point;
   void setInsertTp(clock::time_point) noexcept;
-  [[nodiscard]] auto entry() const noexcept -> PersistingLogEntry const&;
+  [[nodiscard]] auto entry() const noexcept -> LogEntry const&;
   [[nodiscard]] bool getWaitForSync() const noexcept { return _waitForSync; }
 
  private:
   bool _waitForSync;
   // Immutable box that allows sharing, i.e. cheap copying.
-  ::immer::box<PersistingLogEntry, ::arangodb::immer::arango_memory_policy>
-      _logEntry;
+  ::immer::box<LogEntry, ::arangodb::immer::arango_memory_policy> _logEntry;
   // Timepoint at which the insert was started (not the point in time where it
   // was committed)
   clock::time_point _insertTp{};
 };
+
+using InMemoryLogIterator = TypedLogIterator<InMemoryLogEntry>;
 
 }  // namespace arangodb::replication2

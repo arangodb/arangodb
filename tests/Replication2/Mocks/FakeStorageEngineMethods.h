@@ -23,12 +23,13 @@
 
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "Replication2/Storage/IteratorPosition.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
 
 namespace arangodb::replication2::storage::test {
 
 struct FakeStorageEngineMethodsContext {
-  using LogContainerType = std::map<LogIndex, PersistingLogEntry>;
+  using LogContainerType = std::map<LogIndex, LogEntry>;
   using SequenceNumber = IStorageEngineMethods::SequenceNumber;
 
   FakeStorageEngineMethodsContext(
@@ -53,10 +54,10 @@ struct FakeStorageEngineMethods : IStorageEngineMethods {
 
   auto readMetadata() -> ResultT<storage::PersistedStateInfo> override;
 
-  auto read(LogIndex first) -> std::unique_ptr<PersistedLogIterator> override;
+  auto getIterator(IteratorPosition position)
+      -> std::unique_ptr<PersistedLogIterator> override;
 
-  auto insert(std::unique_ptr<PersistedLogIterator> ptr,
-              const WriteOptions& options)
+  auto insert(std::unique_ptr<LogIterator> ptr, const WriteOptions& options)
       -> futures::Future<ResultT<SequenceNumber>> override;
 
   auto removeFront(LogIndex stop, const WriteOptions& options)

@@ -46,8 +46,10 @@ LogPersistor::LogPersistor(LogId logId, uint64_t objectId,
       db(db),
       logCf(logCf) {}
 
-std::unique_ptr<PersistedLogIterator> LogPersistor::read(LogIndex first) {
-  return std::make_unique<LogIterator>(ctx.objectId, db, logCf, first);
+std::unique_ptr<replication2::PersistedLogIterator> LogPersistor::getIterator(
+    IteratorPosition position) {
+  return std::make_unique<rocksdb::LogIterator>(ctx.objectId, db, logCf,
+                                                position.index());
 }
 
 auto LogPersistor::removeFront(LogIndex stop, WriteOptions const& opts)
@@ -74,7 +76,7 @@ auto LogPersistor::removeBack(LogIndex start, WriteOptions const& opts)
       });
 }
 
-auto LogPersistor::insert(std::unique_ptr<PersistedLogIterator> iter,
+auto LogPersistor::insert(std::unique_ptr<replication2::LogIterator> iter,
                           WriteOptions const& opts)
     -> futures::Future<ResultT<SequenceNumber>> {
   IAsyncLogWriteBatcher::WriteOptions wo;

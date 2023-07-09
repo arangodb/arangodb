@@ -39,7 +39,7 @@ namespace arangodb {
 namespace replication2 {
 struct LogTerm;
 struct LogPayload;
-class PersistingLogEntry;
+class LogEntry;
 }  // namespace replication2
 
 class RocksDBValue {
@@ -67,7 +67,7 @@ class RocksDBValue {
   static RocksDBValue ReplicationApplierConfig(VPackSlice data);
   static RocksDBValue KeyGeneratorValue(VPackSlice data);
   static RocksDBValue S2Value(S2Point const& c);
-  static RocksDBValue LogEntry(replication2::PersistingLogEntry const& entry);
+  static RocksDBValue LogEntry(replication2::LogEntry const& entry);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -166,7 +166,7 @@ class RocksDBValue {
                VPackSlice data);
   RocksDBValue(RocksDBEntryType type, VPackSlice data);
   RocksDBValue(RocksDBEntryType type, std::string_view data);
-  RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const&);
+  RocksDBValue(RocksDBEntryType type, replication2::LogEntry const&);
   explicit RocksDBValue(S2Point const&);
 
   static RocksDBEntryType type(char const* data, size_t size);
