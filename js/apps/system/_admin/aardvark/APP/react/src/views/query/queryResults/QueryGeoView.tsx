@@ -59,6 +59,31 @@ const MapInner = ({
 }: {
   geometryResult: GeoJSONUnionType[];
 }) => {
+  const areAllPoints = geometryResult.every(
+    geometry => geometry.type === "Point" || geometry.type === "MultiPoint"
+  );
+  const map = useMap();
+  React.useEffect(() => {
+    if (areAllPoints) {
+      const markers = geometryResult
+        .map(geometry => {
+          if (geometry.type === "Point" || geometry.type === "MultiPoint") {
+            return new L.CircleMarker(
+              L.latLng(
+                (geometry.coordinates as any)[1],
+                (geometry.coordinates as any)[0]
+              )
+            );
+          }
+          return null;
+        })
+        .filter(Boolean);
+      const featureGroup = new L.FeatureGroup(markers as any);
+      const bounds = featureGroup.getBounds();
+      map.fitBounds(bounds);
+    }
+  }, [areAllPoints, geometryResult, map]);
+
   return (
     <>
       <TileLayer
@@ -85,12 +110,13 @@ const SingleGeometry = ({ geometry }: { geometry: GeoJSONUnionType }) => {
   const isLineStringGeometry =
     geometry.type === "MultiLineString" || geometry.type === "LineString";
   React.useEffect(() => {
-    if (markers.length > 0) {
+    if (markers.length > 0 && !isPointGeometry) {
+      console.log({ markers }, "m2");
       const featureGroup = new L.FeatureGroup(markers);
       const bounds = featureGroup.getBounds();
       map.fitBounds(bounds);
     }
-  }, [markers, map]);
+  }, [markers, map, isPointGeometry]);
   React.useEffect(() => {
     if (isPolygonGeometry || isLineStringGeometry) {
       try {
@@ -120,6 +146,7 @@ const SingleGeometry = ({ geometry }: { geometry: GeoJSONUnionType }) => {
         }}
         data={geometry}
         pointToLayer={(_feature, latlng) => {
+          console.log({ latlng });
           const marker = L.circleMarker(latlng, geojsonMarkerOptions);
           setMarkers(markers => [...markers, marker]);
           return marker;
