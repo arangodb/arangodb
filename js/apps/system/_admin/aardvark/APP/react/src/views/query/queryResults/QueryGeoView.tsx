@@ -111,7 +111,6 @@ const SingleGeometry = ({ geometry }: { geometry: GeoJSONUnionType }) => {
     geometry.type === "MultiLineString" || geometry.type === "LineString";
   React.useEffect(() => {
     if (markers.length > 0 && !isPointGeometry) {
-      console.log({ markers }, "m2");
       const featureGroup = new L.FeatureGroup(markers);
       const bounds = featureGroup.getBounds();
       map.fitBounds(bounds);
@@ -146,7 +145,6 @@ const SingleGeometry = ({ geometry }: { geometry: GeoJSONUnionType }) => {
         }}
         data={geometry}
         pointToLayer={(_feature, latlng) => {
-          console.log({ latlng });
           const marker = L.circleMarker(latlng, geojsonMarkerOptions);
           setMarkers(markers => [...markers, marker]);
           return marker;
