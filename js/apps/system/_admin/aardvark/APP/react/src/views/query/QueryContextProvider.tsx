@@ -122,8 +122,7 @@ export const QueryContextProvider = ({
       setQueryValue,
       setQueryBindParams,
       queryValue,
-      setQueryName,
-      queryBindParams
+      setQueryName
     });
   const [resetEditor, setResetEditor] = React.useState<boolean>(false);
   const {
