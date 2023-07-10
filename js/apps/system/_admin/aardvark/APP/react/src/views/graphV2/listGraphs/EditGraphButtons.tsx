@@ -9,14 +9,29 @@ import { putUserConfig } from "../useGraphSettingsHandlers";
 export const EditGraphButtons = ({ graph }: { graph?: GraphInfo }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const resetDisplaySettings = async () => {
-    const fullConfig = await fetchUserConfig();
-    const info = await putUserConfig({
-      params: DEFAULT_URL_PARAMETERS,
-      fullConfig,
-      graphName: "routeplanner" // currently hardcoded: To be changed
-      //graphName: graph?.name
-    });
-    return info;
+    try {
+      const fullConfig = await fetchUserConfig();
+      if (!graph?.name) {
+        return;
+      }
+      const info = await putUserConfig({
+        params: DEFAULT_URL_PARAMETERS,
+        fullConfig,
+        graphName: graph.name
+      });
+      window.arangoHelper.arangoNotification(
+        "Graph",
+        `Successfully reset display settings for graph "${graph.name}"`
+      );
+      onClose();
+      return info;
+    } catch (e: any) {
+      const errorMessage = e.response.body.errorMessage;
+      window.arangoHelper.arangoError(
+        "Could not reset display settings: ",
+        errorMessage
+      );
+    }
   };
   return (
     <>
