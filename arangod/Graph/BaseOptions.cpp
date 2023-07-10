@@ -289,9 +289,10 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
       _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _maxProjections{other._maxProjections},
-      _vertexProjections{other._vertexProjections},
-      _edgeProjections{other._edgeProjections} {
+      _maxProjections{other._maxProjections} {
+  setVertexProjections(other._vertexProjections);
+  setEdgeProjections(other._edgeProjections);
+
   if (!allowAlreadyBuiltCopy) {
     TRI_ASSERT(other._baseLookupInfos.empty());
     TRI_ASSERT(other._tmpVar == nullptr);
@@ -334,11 +335,14 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
 BaseOptions::~BaseOptions() {
   if (!getVertexProjections().empty()) {
     resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
-                                          sizeof(aql::Projections::Projection));
+                                          sizeof(aql::Projections::Projection) *
+                                          _parallelism);
   }
+
   if (!getEdgeProjections().empty()) {
     resourceMonitor().decreaseMemoryUsage(getEdgeProjections().size() *
-                                          sizeof(aql::Projections::Projection));
+                                          sizeof(aql::Projections::Projection) *
+                                          _parallelism);
   }
 }
 
@@ -687,16 +691,22 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
   setMaxProjections(VPackHelper::getNumericValue<size_t>(
       info, StaticStrings::MaxProjections,
       DocumentProducingNode::kMaxProjections));
-  _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
-  _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
-  arangodb::ResourceUsageScope vGuard(resourceMonitor(),
-                                      getVertexProjections().size() *
-                                          sizeof(aql::Projections::Projection) *
-                                          _parallelism);
-  vGuard.steal();  // now we are responsible for tracking the memory
-  arangodb::ResourceUsageScope eGuard(resourceMonitor(),
-                                      getEdgeProjections().size() *
-                                          sizeof(aql::Projections::Projection) *
-                                          _parallelism);
-  eGuard.steal();  // now we are responsible for tracking the memory
+
+  {
+    arangodb::ResourceUsageScope vGuard(
+        resourceMonitor(), getVertexProjections().size() *
+                               sizeof(aql::Projections::Projection) *
+                               _parallelism);
+    _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
+    vGuard.steal();  // now we are responsible for tracking the memory
+  }
+
+  {
+    arangodb::ResourceUsageScope eGuard(
+        resourceMonitor(), getEdgeProjections().size() *
+                               sizeof(aql::Projections::Projection) *
+                               _parallelism);
+    _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
+    eGuard.steal();  // now we are responsible for tracking the memory
+  }
 }
