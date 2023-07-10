@@ -1366,7 +1366,7 @@ Result IResearchDataStore::initDataStore(
   auto& dbFeature = server.getFeature<DatabaseFeature>();
 
   if (_engine->inRecovery()) {
-    _recoveryRemoves = makePrimaryKeysFilter(_hasNestedFields);
+    _recoveryRemoves = makePrimaryKeysFilter(_hasNestedFields, *_writersMemory);
     _recoveryTrx = _dataStore._writer->GetBatch();
   }
 
