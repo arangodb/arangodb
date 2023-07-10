@@ -206,6 +206,12 @@ class ResourceUsageAllocatorBase : public Allocator {
 };
 
 namespace detail {
+template<typename T>
+struct uses_allocator_construction_args_t;
+
+template<typename T>
+inline constexpr auto uses_allocator_construction_args =
+    uses_allocator_construction_args_t<T>{};
 
 template<typename T>
 struct uses_allocator_construction_args_t {
@@ -281,10 +287,6 @@ struct uses_allocator_construction_args_t<std::pair<U, V>> {
         std::forward_as_tuple(std::move(pr.second)));
   }
 };
-
-template<typename T>
-inline constexpr auto uses_allocator_construction_args =
-    uses_allocator_construction_args_t<T>{};
 
 }  // namespace detail
 
