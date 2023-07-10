@@ -22,13 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SnapshotManager.h"
-#include "Replication2/ReplicatedLog/Components/IStorageManager.h"
+
+#include "Basics/application-exit.h"
+#include "Basics/Exceptions.h"
+#include "Logger/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Replication2/ReplicatedLog/Components/TermInformation.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Basics/application-exit.h"
-#include "Logger/LogContextKeys.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_log::comp;

@@ -58,8 +58,7 @@ MultipleRemoteModificationNode::MultipleRemoteModificationNode(
 
 /// @brief creates corresponding MultipleRemoteModificationNode
 std::unique_ptr<ExecutionBlock> MultipleRemoteModificationNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
 
   TRI_ASSERT(previousNode != nullptr);

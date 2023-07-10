@@ -459,7 +459,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-  Optimizer opt(_queryOptions.maxNumberOfPlans);
+  Optimizer opt(_resourceMonitor, _queryOptions.maxNumberOfPlans);
   // get enabled/disabled rules
   opt.createPlans(std::move(plan), _queryOptions, false);
   // Now plan and all derived plans belong to the optimizer
@@ -1031,7 +1031,7 @@ QueryResult Query::explain() {
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-    Optimizer opt(_queryOptions.maxNumberOfPlans);
+    Optimizer opt(_resourceMonitor, _queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
     opt.createPlans(std::move(plan), _queryOptions, true);
 
@@ -1289,7 +1289,7 @@ void Query::logAtEnd(QueryResult const& queryResult) const {
 
   // log failed queries?
   bool logFailed = feature.logFailedQueries() && queryResult.result.fail();
-  // log queries exceeded memory usage threshold
+  // log queries exceeding memory usage threshold
   bool logMemoryUsage =
       resourceMonitor().peak() >= feature.peakMemoryUsageThreshold();
 

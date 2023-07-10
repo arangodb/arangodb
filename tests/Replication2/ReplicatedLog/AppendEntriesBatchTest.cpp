@@ -84,9 +84,9 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
     }
     {
       // Add first entry in term
-      currentSize += PersistingLogEntry{TermIndexPair{LogTerm{5}, LogIndex{1}},
-                                        LogMetaPayload{}}
-                         .approxByteSize();
+      currentSize +=
+          LogEntry{TermIndexPair{LogTerm{5}, LogIndex{1}}, LogMetaPayload{}}
+              .approxByteSize();
       if (currentSize >= _optionsMock->_thresholdNetworkBatchSize) {
         numRequests += 1;
         currentSize = 0;

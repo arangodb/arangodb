@@ -23,10 +23,17 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <immer/flex_vector_transient.hpp>
+#include <memory>
 
 #include "Basics/Result.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
+#include "Replication2/ReplicatedLog/PersistedLogEntry.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Replication2/Storage/IteratorPosition.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
+
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/StorageEngineMethodsMock.h"
@@ -36,20 +43,21 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_state;
+using replication2::storage::IStorageEngineMethods;
 
 struct StorageManagerTest : ::testing::Test {
   std::uint64_t const objectId = 1;
   LogId const logId = LogId{12};
-  std::shared_ptr<test::DelayedExecutor> executor =
-      std::make_shared<test::DelayedExecutor>();
+  std::shared_ptr<storage::rocksdb::test::DelayedExecutor> executor =
+      std::make_shared<storage::rocksdb::test::DelayedExecutor>();
   std::shared_ptr<test::SyncScheduler> scheduler =
       std::make_shared<test::SyncScheduler>();
-  test::FakeStorageEngineMethodsContext methods{
+  storage::test::FakeStorageEngineMethodsContext methods{
       objectId,
       logId,
       executor,
       {LogIndex{1}, LogIndex{100}},
-      replicated_state::PersistedStateInfo{
+      storage::PersistedStateInfo{
           .stateId = logId,
           .snapshot = {.status = SnapshotStatus::kFailed,
                        .timestamp = {},
@@ -148,10 +156,30 @@ auto makeRange(LogTerm term, LogRange range) -> InMemoryLog {
   auto transient = log.transient();
   for (auto idx : range) {
     transient.push_back(InMemoryLogEntry{
-        PersistingLogEntry{term, idx, LogPayload::createFromString("")}});
+        LogEntry{term, idx, LogPayload::createFromString("")}});
   }
   return InMemoryLog(transient.persistent());
 }
+
+// we simulate a PersistedLogIterator on top of an InMemoryLog
+struct InMemoryPersistedLogIterator : PersistedLogIterator {
+  explicit InMemoryPersistedLogIterator(InMemoryLog log)
+      : _iter(std::move(log).copyFlexVector()) {}
+
+  auto next() -> std::optional<PersistedLogEntry> override {
+    auto e = _iter.next();
+    if (e) {
+      return PersistedLogEntry{
+          LogEntry{e->entry()},
+          storage::IteratorPosition::fromLogIndex(e->entry().logIndex())};
+    }
+    return std::nullopt;
+  }
+
+ private:
+  InMemoryLogIteratorImpl _iter;
+};
+
 }  // namespace
 
 TEST_F(StorageManagerTest, transaction_append) {
@@ -248,33 +276,35 @@ TEST_F(StorageManagerTest, update_meta_data_abort) {
 }
 
 struct StorageEngineMethodsMockFactory {
-  auto create() -> std::unique_ptr<tests::StorageEngineMethodsGMock> {
-    auto ptr = std::make_unique<tests::StorageEngineMethodsGMock>();
+  auto create() -> std::unique_ptr<storage::tests::StorageEngineMethodsGMock> {
+    auto ptr = std::make_unique<storage::tests::StorageEngineMethodsGMock>();
     lastPtr = ptr.get();
 
-    EXPECT_CALL(*ptr, read).Times(1).WillOnce([](LogIndex idx) {
-      auto log = makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{100}});
-      return log.getPersistedLogIterator();
-    });
+    EXPECT_CALL(*ptr, getIterator)
+        .Times(1)
+        .WillOnce([](storage::IteratorPosition pos) {
+          auto log = makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{100}});
+          return std::make_unique<InMemoryPersistedLogIterator>(log);
+        });
 
     EXPECT_CALL(*ptr, readMetadata).Times(1).WillOnce([]() {
-      return replicated_state::PersistedStateInfo{.stateId = LogId{1},
-                                                  .snapshot = {},
-                                                  .generation = {},
-                                                  .specification = {}};
+      return storage::PersistedStateInfo{.stateId = LogId{1},
+                                         .snapshot = {},
+                                         .generation = {},
+                                         .specification = {}};
     });
 
     return ptr;
   }
-  auto operator->() noexcept -> tests::StorageEngineMethodsGMock* {
+  auto operator->() noexcept -> storage::tests::StorageEngineMethodsGMock* {
     return lastPtr;
   }
-  auto operator*() noexcept -> tests::StorageEngineMethodsGMock& {
+  auto operator*() noexcept -> storage::tests::StorageEngineMethodsGMock& {
     return *lastPtr;
   }
 
  private:
-  tests::StorageEngineMethodsGMock* lastPtr{nullptr};
+  storage::tests::StorageEngineMethodsGMock* lastPtr{nullptr};
 };
 
 struct StorageManagerGMockTest : ::testing::Test {
@@ -287,7 +317,7 @@ struct StorageManagerGMockTest : ::testing::Test {
                                        LoggerContext{Logger::FIXME}, scheduler);
 
   using StorageEngineFuture =
-      futures::Promise<ResultT<IStorageEngineMethods::SequenceNumber>>;
+      futures::Promise<ResultT<storage::IStorageEngineMethods::SequenceNumber>>;
 };
 
 TEST_F(StorageManagerGMockTest, multiple_actions_with_error) {
@@ -295,10 +325,10 @@ TEST_F(StorageManagerGMockTest, multiple_actions_with_error) {
 
   EXPECT_CALL(*methods, removeFront)
       .Times(1)
-      .WillOnce(
-          [&p1](LogIndex stop, IStorageEngineMethods::WriteOptions const&) {
-            return p1.emplace().getFuture();
-          });
+      .WillOnce([&p1](LogIndex stop,
+                      storage::IStorageEngineMethods::WriteOptions const&) {
+        return p1.emplace().getFuture();
+      });
 
   auto trx = storageManager->transaction();
   auto f1 = trx->removeFront(LogIndex(20));
@@ -352,7 +382,7 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_index_update) {
 
   EXPECT_CALL(*methods, insert)
       .Times(2)
-      .WillRepeatedly([&](std::unique_ptr<PersistedLogIterator> ptr,
+      .WillRepeatedly([&](std::unique_ptr<LogIterator> ptr,
                           IStorageEngineMethods::WriteOptions const& options) {
         StorageEngineFuture promise;
         promise.setValue(ResultT<decltype(seqNumber)>{seqNumber});
@@ -410,7 +440,7 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_update_fails) {
   auto syncIndex1 = storageManager->getSyncIndex();
 
   EXPECT_CALL(*methods, insert)
-      .WillOnce([&](std::unique_ptr<PersistedLogIterator> ptr,
+      .WillOnce([&](std::unique_ptr<LogIterator> ptr,
                     IStorageEngineMethods::WriteOptions const& options) {
         StorageEngineFuture promise;
         promise.setValue(ResultT<decltype(seqNumber)>{seqNumber});
@@ -435,7 +465,7 @@ TEST_F(StorageManagerSyncIndexTest, manager_unavailable_during_update) {
   IStorageEngineMethods::SequenceNumber seqNumber{1};
 
   EXPECT_CALL(*methods, insert)
-      .WillOnce([&](std::unique_ptr<PersistedLogIterator> ptr,
+      .WillOnce([&](std::unique_ptr<LogIterator> ptr,
                     IStorageEngineMethods::WriteOptions const& options) {
         StorageEngineFuture promise;
         promise.setValue(ResultT<decltype(seqNumber)>{seqNumber});
@@ -458,7 +488,7 @@ TEST_F(StorageManagerSyncIndexTest, manager_unavailable_during_update) {
 
 TEST_F(StorageManagerSyncIndexTest, methods_insertion_fails) {
   EXPECT_CALL(*methods, insert)
-      .WillOnce([](std::unique_ptr<PersistedLogIterator> ptr,
+      .WillOnce([](std::unique_ptr<LogIterator> ptr,
                    IStorageEngineMethods::WriteOptions const& options) {
         StorageEngineFuture promise;
         promise.setValue(Result{TRI_ERROR_WAS_ERLAUBE});

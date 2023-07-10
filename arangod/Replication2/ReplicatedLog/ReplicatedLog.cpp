@@ -23,23 +23,23 @@
 
 #include "ReplicatedLog.h"
 
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/LogContextKeys.h"
+#include "Replication2/IScheduler.h"
+#include "Replication2/ReplicatedLog/IRebootIdCache.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/Components/LogFollower.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Metrics/Counter.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Metrics/Gauge.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
 
 #include <optional>
 #include <utility>
-#include "Metrics/Gauge.h"
-#include "Logger/LogContextKeys.h"
-#include "Replication2/IScheduler.h"
-#include "Replication2/ReplicatedLog/IRebootIdCache.h"
 
 namespace arangodb::replication2::replicated_log {
 struct AbstractFollower;
@@ -48,7 +48,7 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 replicated_log::ReplicatedLog::ReplicatedLog(
-    std::unique_ptr<replicated_state::IStorageEngineMethods> storage,
+    std::unique_ptr<storage::IStorageEngineMethods> storage,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<IParticipantsFactory> participantsFactory,
@@ -262,7 +262,7 @@ auto ReplicatedLog::getParticipant() const -> std::shared_ptr<ILogParticipant> {
 }
 
 auto ReplicatedLog::resign() && -> std::unique_ptr<
-    replicated_state::IStorageEngineMethods> {
+    storage::IStorageEngineMethods> {
   auto guard = _guarded.getLockedGuard();
   LOG_CTX("79025", DEBUG, _logContext) << "replicated log resigned";
   ADB_PROD_ASSERT(not guard->resigned)
@@ -290,6 +290,11 @@ auto ReplicatedLog::getStatus() const -> LogStatus {
   return maintenance::LogStatus{guard->getQuickStatus(), guard->_myself};
 }
 
+ReplicatedLog::GuardedData::GuardedData(
+    std::unique_ptr<storage::IStorageEngineMethods> methods,
+    agency::ServerInstanceReference myself)
+    : methods(std::move(methods)), _myself(std::move(myself)) {}
+
 auto ReplicatedLog::GuardedData::getQuickStatus() const -> QuickLogStatus {
   if (participant) {
     return participant->getQuickStatus();
@@ -308,7 +313,7 @@ ReplicatedLogConnection::ReplicatedLogConnection(ReplicatedLog* log)
     : _log(log) {}
 
 auto DefaultParticipantsFactory::constructFollower(
-    std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+    std::unique_ptr<storage::IStorageEngineMethods>&& methods,
     FollowerTermInfo info, ParticipantContext context)
     -> std::shared_ptr<ILogFollower> {
   std::shared_ptr<ILeaderCommunicator> leaderComm;
@@ -327,7 +332,7 @@ auto DefaultParticipantsFactory::constructFollower(
 }
 
 auto DefaultParticipantsFactory::constructLeader(
-    std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+    std::unique_ptr<storage::IStorageEngineMethods>&& methods,
     LeaderTermInfo info, ParticipantContext context)
     -> std::shared_ptr<ILogLeader> {
   return LogLeader::construct(

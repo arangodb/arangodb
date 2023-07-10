@@ -62,8 +62,11 @@ class TransactionDB;
 
 namespace arangodb {
 
-struct RocksDBAsyncLogWriteBatcher;
-struct RocksDBAsyncLogWriteBatcherMetrics;
+namespace replication2::storage::rocksdb {
+struct AsyncLogWriteBatcherMetrics;
+struct IAsyncLogWriteBatcher;
+}  // namespace replication2::storage::rocksdb
+
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
@@ -278,14 +281,14 @@ class RocksDBEngine final : public StorageEngine {
 
   auto dropReplicatedState(
       TRI_vocbase_t& vocbase,
-      std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
-          ptr) -> Result override;
+      std::unique_ptr<replication2::storage::IStorageEngineMethods>& ptr)
+      -> Result override;
 
   auto createReplicatedState(
       TRI_vocbase_t& vocbase, replication2::LogId id,
-      replication2::replicated_state::PersistedStateInfo const& info)
+      replication2::storage::PersistedStateInfo const& info)
       -> ResultT<std::unique_ptr<
-          replication2::replicated_state::IStorageEngineMethods>> override;
+          replication2::storage::IStorageEngineMethods>> override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -495,6 +498,12 @@ class RocksDBEngine final : public StorageEngine {
 
   std::shared_ptr<StorageSnapshot> currentSnapshot() override;
 
+  void addCacheMetrics(uint64_t initial, uint64_t effective) noexcept;
+
+  size_t minValueSizeForEdgeCompression() const noexcept;
+
+  int accelerationFactorForEdgeCompression() const noexcept;
+
  private:
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
   [[nodiscard]] Result dropReplicatedStates(TRI_voc_tick_t databaseId);
@@ -569,6 +578,9 @@ class RocksDBEngine final : public StorageEngine {
                                       // for intermediate commit
 
   uint64_t _maxParallelCompactions;
+
+  size_t _minValueSizeForEdgeCompression;
+  uint32_t _accelerationFactorForEdgeCompression;
 
   // hook-ins for recovery process
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
@@ -739,9 +751,17 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Counter& _metricsTreeHibernations;
   metrics::Counter& _metricsTreeResurrections;
 
+  // total size of uncompressed values for the edge cache
+  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeInitial;
+  // total size of values stored in the edge cache (can be smaller than the
+  // initial size because of compression)
+  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeEffective;
+
   // @brief persistor for replicated logs
-  std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> _logMetrics;
-  std::shared_ptr<RocksDBAsyncLogWriteBatcher> _logPersistor;
+  std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
+      _logMetrics;
+  std::shared_ptr<replication2::storage::rocksdb::IAsyncLogWriteBatcher>
+      _logPersistor;
 
   // Checksum env for when creation of sha files is enabled
   // this is for when encryption is enabled, sha files will be created

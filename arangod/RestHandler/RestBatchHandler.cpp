@@ -204,18 +204,14 @@ bool RestBatchHandler::executeNextHandler() {
   if (bodyLength > 0) {
     LOG_TOPIC("63afb", TRACE, arangodb::Logger::REPLICATION)
         << "part body is '" << std::string(bodyStart, bodyLength) << "'";
-    request->body().clear();
-    request->body().reserve(bodyLength + 1);
-    request->body().append(bodyStart, bodyLength);
-    request->body().push_back('\0');
-    request->body().resetTo(bodyLength);  // ensure null terminated
+    request->clearBody();
+    request->appendBody(bodyStart, bodyLength);
+    request->appendNullTerminator();
   }
 
   if (!authorization.empty()) {
     // inject Authorization header of multipart message into part message
-    request->setHeader(StaticStrings::Authorization.c_str(),
-                       StaticStrings::Authorization.size(),
-                       authorization.c_str(), authorization.size());
+    request->setHeader(StaticStrings::Authorization, authorization);
   }
 
   std::shared_ptr<RestHandler> handler;

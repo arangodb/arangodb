@@ -25,13 +25,13 @@
 
 #include "Basics/Result.h"
 #include "Replication2/ReplicatedLog/Components/SnapshotManager.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
 #include "Replication2/ReplicatedLog/Components/TermInformation.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 
 #include "Replication2/Mocks/LeaderCommunicatorMock.h"
 #include "Replication2/Mocks/StateHandleManagerMock.h"
@@ -75,7 +75,7 @@ struct SnapshotManagerTest : ::testing::Test {
 
 TEST_F(SnapshotManagerTest, create_with_valid_snapshot) {
   EXPECT_CALL(storageManagerMock, getCommittedMetaInfo).WillOnce([] {
-    return replicated_state::PersistedStateInfo{
+    return storage::PersistedStateInfo{
         .snapshot = {.status = SnapshotStatus::kCompleted}};
   });
 
@@ -83,7 +83,7 @@ TEST_F(SnapshotManagerTest, create_with_valid_snapshot) {
 }
 
 TEST_F(SnapshotManagerTest, create_with_invalid_snapshot) {
-  auto state = replicated_state::PersistedStateInfo{
+  auto state = storage::PersistedStateInfo{
       .snapshot = {.status = SnapshotStatus::kInvalidated}};
   EXPECT_CALL(storageManagerMock, getCommittedMetaInfo).WillOnce([&] {
     return state;
@@ -95,7 +95,7 @@ TEST_F(SnapshotManagerTest, create_with_invalid_snapshot) {
 }
 
 TEST_F(SnapshotManagerTest, invalidate_snapshot) {
-  auto state = replicated_state::PersistedStateInfo{
+  auto state = storage::PersistedStateInfo{
       .snapshot = {.status = SnapshotStatus::kCompleted}};
 
   EXPECT_CALL(storageManagerMock, getCommittedMetaInfo).WillOnce([&] {
@@ -133,7 +133,7 @@ TEST_F(SnapshotManagerTest, invalidate_snapshot) {
 }
 
 TEST_F(SnapshotManagerTest, invalidate_snapshot_twice) {
-  auto state = replicated_state::PersistedStateInfo{
+  auto state = storage::PersistedStateInfo{
       .snapshot = {.status = SnapshotStatus::kCompleted}};
 
   EXPECT_CALL(storageManagerMock, getCommittedMetaInfo).WillOnce([&] {
@@ -146,7 +146,7 @@ TEST_F(SnapshotManagerTest, invalidate_snapshot_twice) {
   EXPECT_CALL(storageManagerMock, beginMetaInfoTrx).WillOnce([&] {
     auto trx = std::make_unique<testing::NiceMock<StateInfoTransactionMock>>();
     ON_CALL(*trx, get).WillByDefault(
-        [&]() -> replicated_state::PersistedStateInfo& { return state; });
+        [&]() -> storage::PersistedStateInfo& { return state; });
     return trx;
   });
   EXPECT_CALL(storageManagerMock, commitMetaInfoTrx).WillOnce([&](auto trx) {

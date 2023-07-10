@@ -9,7 +9,7 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::test;
 
-auto MockLog::insert(PersistedLogIterator& iter, WriteOptions const& opts)
+auto MockLog::insert(LogIterator& iter, WriteOptions const& opts)
     -> arangodb::Result {
   auto lastIndex = LogIndex{0};
 
@@ -28,13 +28,13 @@ auto MockLog::insert(PersistedLogIterator& iter, WriteOptions const& opts)
 }
 
 template<typename I>
-struct MockLogContainerIterator : PersistedLogIterator {
+struct MockLogContainerIterator : LogIterator {
   MockLogContainerIterator(MockLog::storeType store, LogIndex start)
       : _store(std::move(store)),
         _current(_store.lower_bound(start)),
         _end(_store.end()) {}
 
-  auto next() -> std::optional<PersistingLogEntry> override {
+  auto next() -> std::optional<LogEntry> override {
     if (_current != _end) {
       auto it = _current;
       ++_current;
@@ -49,7 +49,7 @@ struct MockLogContainerIterator : PersistedLogIterator {
 };
 
 auto MockLog::read(replication2::LogIndex start)
-    -> std::unique_ptr<PersistedLogIterator> {
+    -> std::unique_ptr<LogIterator> {
   return std::make_unique<MockLogContainerIterator<iteratorType>>(_storage,
                                                                   start);
 }
@@ -89,16 +89,16 @@ AsyncMockLog::AsyncMockLog(replication2::LogId id)
 
 AsyncMockLog::~AsyncMockLog() noexcept { stop(); }
 
-void MockLog::setEntry(replication2::PersistingLogEntry entry) {
+void MockLog::setEntry(replication2::LogEntry entry) {
   _storage.emplace(entry.logIndex(), std::move(entry));
 }
 
-auto MockLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
+auto MockLog::insertAsync(std::unique_ptr<LogIterator> iter,
                           WriteOptions const& opts) -> futures::Future<Result> {
   return insert(*iter, opts);
 }
 
-auto AsyncMockLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
+auto AsyncMockLog::insertAsync(std::unique_ptr<LogIterator> iter,
                                WriteOptions const& opts)
     -> futures::Future<Result> {
   auto entry = std::make_shared<QueueEntry>();
@@ -140,7 +140,7 @@ void AsyncMockLog::runWorker() {
 }
 
 auto DelayedMockLog::insertAsync(
-    std::unique_ptr<replication2::PersistedLogIterator> iter,
+    std::unique_ptr<replication2::LogIterator> iter,
     PersistedLog::WriteOptions const& opts) -> futures::Future<Result> {
   TRI_ASSERT(!_pending.has_value());
   return _pending.emplace(std::move(iter), opts).promise.getFuture();
@@ -157,6 +157,5 @@ void DelayedMockLog::runAsyncInsert() {
 }
 
 DelayedMockLog::PendingRequest::PendingRequest(
-    std::unique_ptr<replication2::PersistedLogIterator> iter,
-    WriteOptions options)
+    std::unique_ptr<replication2::LogIterator> iter, WriteOptions options)
     : iter(std::move(iter)), options(options) {}

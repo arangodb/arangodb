@@ -506,4 +506,4 @@ auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
 
 }  // namespace arangodb::replication2::replicated_state::document
 
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
