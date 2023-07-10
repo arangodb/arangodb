@@ -323,5 +323,5 @@ workflows:
           edition: x64-enterprise
           enterprise: true
       - run-hotbackup-tests:
-          name: hot-backup
+          name: run-hotbackup-tests
           requires: build-ee
