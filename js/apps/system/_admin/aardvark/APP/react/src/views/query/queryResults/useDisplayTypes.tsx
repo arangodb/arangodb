@@ -97,7 +97,7 @@ export const detectGraph = ({
 } => {
   if (!result || !Array.isArray(result)) {
     return {
-      isGraph: false,
+      isGraph: false
     };
   }
   const firstValidIndex = result.findIndex(item => {
@@ -224,34 +224,42 @@ const detectGeo = ({
   let validGeojsonCount = 0;
   let isGeo = false;
   let isTable = false;
-  result?.forEach(item => {
-    if (typeof item !== "object" || item === null || Array.isArray(item)) {
+  // makes a map like {type: 1, coordinates: 2} across all resultItems
+  let attributeCountMap = {} as any;
+  result?.forEach(resultItem => {
+    if (
+      typeof resultItem !== "object" ||
+      resultItem === null ||
+      Array.isArray(resultItem)
+    ) {
       return {
         isGeo: false,
         isTable: false
       };
     }
-    if (item.coordinates && item.type) {
-      if (GEOMETRY_TYPES.includes(item.type)) {
-        if (isValidPoint(item) || isValidGeodesic(item)) {
+    if (resultItem.coordinates && resultItem.type) {
+      if (GEOMETRY_TYPES.includes(resultItem.type)) {
+        if (isValidPoint(resultItem) || isValidGeodesic(resultItem)) {
           validGeojsonCount++;
         }
       }
     } else if (
-      item.geometry &&
-      item.geometry.coordinates &&
-      item.geometry.type
+      resultItem.geometry &&
+      resultItem.geometry.coordinates &&
+      resultItem.geometry.type
     ) {
-      if (GEOMETRY_TYPES.includes(item.geometry.type)) {
-        if (isValidPoint(item.geometry) || isValidGeodesic(item.geometry)) {
+      if (GEOMETRY_TYPES.includes(resultItem.geometry.type)) {
+        if (
+          isValidPoint(resultItem.geometry) ||
+          isValidGeodesic(resultItem.geometry)
+        ) {
           validGeojsonCount++;
         }
       }
     }
 
-    // makes a map like {type: 1, coordinates: 2} across all items
-    let attributeCountMap = {} as any;
-    Object.keys(item).forEach(key => {
+    const resultItemKeys = Object.keys(resultItem);
+    resultItemKeys.forEach(key => {
       if (attributeCountMap.hasOwnProperty(key)) {
         attributeCountMap[key] = attributeCountMap[key] + 1;
       } else {
@@ -259,13 +267,14 @@ const detectGeo = ({
       }
     });
     //
-    // answers the question - what % of result items have a given attribute
+    // answers the question - what % of result resultItems have a given attribute
     // for eg, do 95% have attribute 'type'?
     // If yes, then it's can be displayed as a table
+
     Object.keys(attributeCountMap).forEach(key => {
       const attributeCount = attributeCountMap[key];
-      const attributeRateForItem = (attributeCount / result.length) * 100;
-      if (attributeRateForItem <= 95) {
+      const attributeRateForResultItem = (attributeCount / result.length) * 100;
+      if (attributeRateForResultItem <= 95) {
         isTable = false;
       } else {
         isTable = true;
