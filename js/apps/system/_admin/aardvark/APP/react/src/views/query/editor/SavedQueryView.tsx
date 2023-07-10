@@ -36,7 +36,7 @@ export const SavedQueryView = () => {
           {isFetchingQueries ? (
             <Spinner />
           ) : (
-            <SavedQueryTable savedQueries={savedQueries as QueryType[]} />
+            <SavedQueryTable savedQueries={savedQueries} />
           )}
         </Grid>
         <SavedQueryBottomBar />
@@ -171,7 +171,7 @@ const TABLE_COLUMNS = [
   })
 ];
 
-const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
+const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
   const finalData = useMemo(() => {
     // append aqlTemplates to savedQueries
     const updatedAqlTemplates = aqlTemplates.map(aqlTemplate => {
@@ -180,7 +180,9 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
         isTemplate: true
       };
     });
-    return savedQueries.concat(updatedAqlTemplates as unknown as QueryType);
+    return (savedQueries || []).concat(
+      updatedAqlTemplates as unknown as QueryType
+    );
   }, [savedQueries]);
   const tableInstance = useSortableReactTable<QueryType>({
     columns: TABLE_COLUMNS,
