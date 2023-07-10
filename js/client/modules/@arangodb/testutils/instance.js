@@ -843,6 +843,15 @@ class instance {
     }
     return ret;
   }
+
+  connect() {
+    if (this.JWT) {
+      return arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
+    } else {
+      return arango.reconnect(this.endpoint, '_system', 'root', '', true);
+    }
+  }
+
   checkArangoConnection(count, overrideVerbosity=false) {
     this.endpoint = this.args['server.endpoint'];
     while (count > 0) {
@@ -850,7 +859,7 @@ class instance {
         if (this.options.extremeVerbosity || overrideVerbosity) {
           print('tickeling ' + this.endpoint);
         }
-        arango.reconnect(this.endpoint, '_system', 'root', '', false, this.JWT);
+        this.connect();
         return;
       } catch (e) {
         if (this.options.extremeVerbosity || overrideVerbosity) {
@@ -951,11 +960,7 @@ class instance {
         let sockStat = this.getSockStat("Sock stat for: ");
         let reply = {code: 555};
         try {
-          if (this.JWT) {
-            print(arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT));
-          } else {
-            print(arango.reconnect(this.endpoint, '_system', 'root', '', true));
-          }
+          print(this.connect());
           reply = arango.DELETE_RAW('/_admin/shutdown');
         } catch(ex) {
           print(RED + 'while invoking shutdown via unix domain socket: ' + ex + RESET);
