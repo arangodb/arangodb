@@ -101,15 +101,6 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
                 <Button onClick={onClose} colorScheme="gray">
                   Cancel
                 </Button>
-                {mode === "edit" && (
-                  <Button
-                    colorScheme="blue"
-                    type="submit"
-                    isLoading={isSubmitting}
-                  >
-                    Save
-                  </Button>
-                )}
                 {mode === "add" && (
                   <Button
                     colorScheme="blue"
