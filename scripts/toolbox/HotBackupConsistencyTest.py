@@ -67,7 +67,7 @@ def run_test(client):
         force=False,
         timeout=1000
     )
-    print(f"result: {result}")
+    print(f"backup_id: {result['backup_id']}")
 
     # wait for the insertion job to finish
     # TODO:

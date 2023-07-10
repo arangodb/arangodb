@@ -262,6 +262,30 @@ jobs:
           path: ./work/
       - store_test_results:
           path: ./test-results/
+  run-hotbackup-tests:
+    docker:
+      - image: cimg/python:3.11.1
+    resource_class: medium
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Install dependencies
+          command: |
+            pip -r scripts/toolbox/requirements.txt
+            sudo apt update
+            sudo apt install 7zip
+            sudo apt install gdb
+      - run:
+          name: Run HotBackup tests
+          command: |
+            # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
+            python3 scripts/toolbox/HotBackupConsistencyTest.py \
+              --arangod build/bin/arangod \
+              --topdir $PWD
 
 workflows:
   lint:
@@ -298,3 +322,6 @@ workflows:
           preset: enterprise-pr
           edition: x64-enterprise
           enterprise: true
+      - run-hotbackup-tests:
+          name: hot-backup
+          requires: build-ee
