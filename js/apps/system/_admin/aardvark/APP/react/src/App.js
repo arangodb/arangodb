@@ -15,6 +15,7 @@ require('../../frontend/js/arango/arangoValidationHelper.js');
 // require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');
 require('./views/graphV2/GraphV2ReactView');
+require('./views/users/UsersReactView');
 require('./views/views/ViewSettingsReactView');
 require('./views/views/ViewsListReactView');
 require('./views/collections/indices/CollectionIndicesReactView');
