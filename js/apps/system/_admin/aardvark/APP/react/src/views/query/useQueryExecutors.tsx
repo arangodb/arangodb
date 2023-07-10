@@ -6,9 +6,17 @@ import {
 } from "../../utils/arangoClient";
 import { QueryExecutionOptions, QueryResultType } from "./QueryContextProvider";
 
-export const useQueryExecutors = (
-  setQueryResults: React.Dispatch<React.SetStateAction<QueryResultType[]>>
-) => {
+export const useQueryExecutors = ({
+  setQueryResults,
+  setQueryResultById
+}: {
+  setQueryResults: React.Dispatch<React.SetStateAction<QueryResultType[]>>;
+  setQueryResultById: ({
+    queryResult
+  }: {
+    queryResult: QueryResultType;
+  }) => void;
+}) => {
   const onRemoveResult = (index: number) => {
     setQueryResults(queryResults => {
       const newResults = [...queryResults];
@@ -67,9 +75,27 @@ export const useQueryExecutors = (
     const literal = aql.literal(queryValue);
     const path = `/_admin/aardvark/query/profile`;
     const route = currentDB.route(path);
+    setQueryResults(queryResults => [
+      {
+        queryValue,
+        queryBindParams,
+        type: "profile",
+        status: "loading"
+      },
+      ...queryResults
+    ]);
     const profile = await route.post({
       query: literal.toAQL(),
       bindVars: queryBindParams
+    });
+    setQueryResultById({
+      queryResult: {
+        queryValue,
+        queryBindParams,
+        type: "profile",
+        result: profile.body.msg,
+        status: "success"
+      }
     });
     setQueryResults(queryResults => [
       {
@@ -89,20 +115,28 @@ export const useQueryExecutors = (
       const path = `/_admin/aardvark/query/explain`;
       const route = currentDB.route(path);
       try {
-        const explainResult = await route.post({
-          query: literal.toAQL(),
-          bindVars: queryBindParams
-        });
         setQueryResults(queryResults => [
           {
             queryValue,
             queryBindParams,
             type: "explain",
-            result: explainResult.body.msg,
-            status: "success"
+            status: "loading"
           },
           ...queryResults
         ]);
+        const explainResult = await route.post({
+          query: literal.toAQL(),
+          bindVars: queryBindParams
+        });
+        setQueryResultById({
+          queryResult: {
+            queryValue,
+            queryBindParams,
+            type: "explain",
+            result: explainResult.body.msg,
+            status: "success"
+          }
+        });
       } catch (e: any) {
         const message = e.message || e.response.body.errorMessage;
         window.arangoHelper.arangoError(

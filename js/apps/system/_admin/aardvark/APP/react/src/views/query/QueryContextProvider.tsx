@@ -115,8 +115,7 @@ export const QueryContextProvider = ({
   const [queryBindParams, setQueryBindParams] = React.useState<{
     [key: string]: string;
   }>(initialQuery?.parameter || {});
-  const { onExecute, onProfile, onExplain, onRemoveResult } =
-    useQueryExecutors(setQueryResults);
+
   const { onQueryChange, onQueryValueChange, onBindParamsChange } =
     useQueryValueModifiers({
       setQueryValue,
@@ -176,6 +175,9 @@ export const QueryContextProvider = ({
       return newResults;
     });
   };
+  const { onExecute, onProfile, onExplain, onRemoveResult } = useQueryExecutors(
+    { setQueryResults, setQueryResultById }
+  );
   const [queryGraphResult, setQueryGraphResult] =
     React.useState<QueryResultType>({} as QueryResultType);
   return (

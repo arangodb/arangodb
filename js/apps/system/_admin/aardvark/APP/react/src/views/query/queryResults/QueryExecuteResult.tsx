@@ -5,7 +5,6 @@ import {
   Button,
   ButtonGroup,
   Flex,
-  Spinner,
   Stack,
   Text
 } from "@chakra-ui/react";
@@ -14,7 +13,6 @@ import { useHistory } from "react-router";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { downloadPost } from "../../../utils/downloadHelper";
 import { QueryResultType, useQueryContext } from "../QueryContextProvider";
-import { CancelQueryButton } from "./CancelQueryButton";
 import { CSVDownloadButton } from "./CSVDownloadButton";
 import { QueryGeoView } from "./QueryGeoView";
 import { QueryGraphView } from "./QueryGraphView";
@@ -46,45 +44,6 @@ export const QueryExecuteResult = ({
     queryResult
   });
 
-  if (queryResult.status === "error") {
-    return (
-      <Stack
-        boxShadow="0 0 15px 0 rgba(0,0,0,0.2)"
-        borderRadius="md"
-        marginBottom="4"
-        direction="row"
-        alignItems="center"
-        padding="2"
-      >
-        <ResultTypeBox queryResult={queryResult} />
-        <Alert status="error" borderRadius="0">
-          <Stack direction="row" alignItems="center">
-            <WarningIcon color="red.500" />
-            <Text>Query error: {queryResult.errorMessage}</Text>
-          </Stack>
-        </Alert>
-        <RemoveResultButton index={index} />
-      </Stack>
-    );
-  }
-  if (queryResult.status === "loading") {
-    return (
-      <Flex
-        boxShadow="0 0 15px 0 rgba(0,0,0,0.2)"
-        borderRadius="md"
-        marginBottom="4"
-        direction="row"
-        alignItems="center"
-        padding="2"
-        gap="2"
-      >
-        <ResultTypeBox queryResult={queryResult} />
-        <Spinner size="sm" />
-        <Text>Query in progress</Text>
-        <CancelQueryButton index={index} asyncJobId={queryResult.asyncJobId} />
-      </Flex>
-    );
-  }
   return (
     <Box
       boxShadow="0 0 15px 0 rgba(0,0,0,0.2)"
