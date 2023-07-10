@@ -14,7 +14,7 @@ export const QueryResults = () => {
   return (
     <Box background="white" marginTop="4" paddingBottom="4">
       {queryResults.map((queryResult, index) => {
-        if (queryResult.status === "loading") {
+        if (queryResult.status === "loading" && queryResult.type !== "query") {
           return (
             <QueryResultLoading
               key={index}

@@ -16,6 +16,9 @@ import { QueryResultType, useQueryContext } from "../QueryContextProvider";
 import { CSVDownloadButton } from "./CSVDownloadButton";
 import { QueryGeoView } from "./QueryGeoView";
 import { QueryGraphView } from "./QueryGraphView";
+import { QueryResultError } from "./QueryResultError";
+import { QueryResultLoading } from "./QueryResultLoading";
+
 import { QueryTableView } from "./QueryTableView";
 import { RemoveResultButton } from "./RemoveResultButton";
 import { ResultTypeBox } from "./ResultTypeBox";
@@ -43,7 +46,12 @@ export const QueryExecuteResult = ({
   } = useDisplayTypes({
     queryResult
   });
-
+  if (queryResult.status === "loading") {
+    return <QueryResultLoading index={index} queryResult={queryResult} />;
+  }
+  if (queryResult.status === "error") {
+    return <QueryResultError index={index} queryResult={queryResult} />;
+  }
   return (
     <Box
       boxShadow="0 0 15px 0 rgba(0,0,0,0.2)"
