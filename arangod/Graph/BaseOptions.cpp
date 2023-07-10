@@ -332,7 +332,6 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
 }
 
 BaseOptions::~BaseOptions() {
-  LOG_DEVEL << "Calling destructor";
   if (!getVertexProjections().empty()) {
     resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
                                           sizeof(aql::Projections::Projection));
