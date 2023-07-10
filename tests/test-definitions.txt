@@ -72,7 +72,7 @@ rta_makedata single suffix=afo -- --activeFailover true
 
 arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
 chaos cluster !mac !coverage !full -- --dumpAgencyOnError true parallelity=8
-restart !mac priority=1000 size=small sniff cluster -- --dumpAgencyOnError true --forceJson true
+restart !mac priority=1000 size=small cluster -- --dumpAgencyOnError true --forceJson true
 
 load_balancing priority=500 size=small cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
@@ -94,7 +94,7 @@ shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
-shell_server_aql priority=1000 size=medium+ cluster sniff buckets=16 -- --dumpAgencyOnError true --sniffFilter graph
+shell_server_aql priority=1000 size=medium+ cluster buckets=16 -- --dumpAgencyOnError true
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
