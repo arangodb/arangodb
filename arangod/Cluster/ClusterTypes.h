@@ -50,7 +50,6 @@ typedef ManagedString DatabaseID;       // ID/name of a database
 typedef ManagedString CollectionID;     // ID of a collection
 typedef ManagedString ViewID;           // ID of a view
 typedef ManagedString ShardID;          // ID of a shard
-typedef uint32_t ServerShortID;         // Short ID of a server
 typedef ManagedString ServerShortName;  // Short name of a server
 }  // namespace pmr
 

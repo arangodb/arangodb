@@ -160,11 +160,11 @@ class ClusterInfo final {
     template<typename T>
     size_t operator()(
         std::basic_string<char, std::char_traits<char>, T> const& str) const {
-      return std::hash<std::string_view>{}(str);
+      return absl::Hash<std::string_view>{}(str);
     }
     template<typename T>
     size_t operator()(T const& v) const {
-      return std::hash<T>{}(v);
+      return absl::Hash<T>{}(v);
     }
   };
   struct KeyEqual {
@@ -1100,7 +1100,7 @@ class ClusterInfo final {
   ProtectionData _coordinatorsProt;
 
   // Mappings between short names/IDs and full server IDs
-  AssocUnorderedContainer<pmr::ServerShortID, pmr::ServerID> _coordinatorIdMap;
+  AssocUnorderedContainer<ServerShortID, pmr::ServerID> _coordinatorIdMap;
   ProtectionData _mappingsProt;
 
   AssocUnorderedContainer<pmr::DatabaseID, std::shared_ptr<VPackBuilder>> _plan;

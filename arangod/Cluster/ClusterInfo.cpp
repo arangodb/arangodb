@@ -551,7 +551,7 @@ DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
                   "Plan loading runtimes [ms]");
 
 DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::size_t,
-              "Memory cluster info");
+              "Total memory used by internal cluster info data structures");
 
 ClusterInfo::ClusterInfo(ArangodServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
@@ -1561,9 +1561,6 @@ void ClusterInfo::loadPlan() {
   static_assert(std::uses_allocator_v<
                 ClusterInfo::NewStuffByDatabase,
                 ResourceUsageAllocator<ClusterInfo::NewStuffByDatabase>>);
-
-  std::make_obj_using_allocator<NewStuffByDatabase>(
-      ResourceUsageAllocator<int>(_resourceMonitor));
 
   auto allocate = [&]<typename T, typename... Args>(Args && ... args) {
     return std::allocate_shared<T>(ResourceUsageAllocator<T>(_resourceMonitor),
@@ -6431,7 +6428,7 @@ ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(
   }
   auto const& front = serverList->front();
   TRI_ASSERT(!front.empty());
-  if (front[0] == '_') {
+  if (front.starts_with('_')) {
     // This is a temporary situation in which the leader has already resigned,
     // so we don't know exactly right now.
     return ShardLeadership::kUnclear;
@@ -6682,6 +6679,7 @@ void ClusterInfo::setFailedServers(
     containers::FlatHashSet<ServerID> failedServers) {
   std::lock_guard lock{_failedServersMutex};
   _failedServers.clear();
+  _failedServers.reserve(failedServers.size());
   for (auto const& server : failedServers) {
     _failedServers.emplace(server);
   }
