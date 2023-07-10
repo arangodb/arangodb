@@ -93,12 +93,14 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   auto const cname = "testCollection";
   auto params = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection\" }");
-  vocbase.createCollection(params->slice());
+  vocbase.createCollection(params->slice(),
+                           arangodb::transaction::Hints::TrxType::INTERNAL);
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
   transaction::Options trxOpts;
   transaction::Methods trx{
-      ctx, {}, std::vector<std::string>{cname}, {}, trxOpts};
+      ctx, {},      std::vector<std::string>{cname},
+      {},  trxOpts, arangodb::transaction::Hints::TrxType::INTERNAL};
 
   Result res = trx.begin();
   ASSERT_TRUE(res.ok());
@@ -124,7 +126,9 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   bindVars->close();
 
   {
-    auto query = arangodb::aql::Query::create(ctx, queryString, bindVars);
+    auto query = arangodb::aql::Query::create(
+        ctx, queryString, bindVars,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     auto qres = query->executeSync();
     ASSERT_TRUE(qres.ok());
@@ -140,7 +144,9 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   ASSERT_TRUE(result2.ok());
 
   {
-    auto query = arangodb::aql::Query::create(ctx, queryString, bindVars);
+    auto query = arangodb::aql::Query::create(
+        ctx, queryString, bindVars,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     auto qres = query->executeSync();
     ASSERT_TRUE(qres.ok());

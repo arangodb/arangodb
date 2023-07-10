@@ -4153,7 +4153,8 @@ class IResearchViewBlockTest
     auto trx = std::make_shared<arangodb::transaction::Methods>(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         EMPTY_VECTOR, std::vector<std::string>{collection0->name()},
-        EMPTY_VECTOR, arangodb::transaction::Options());
+        EMPTY_VECTOR, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
     EXPECT_TRUE(trx->begin().ok());
     // Fill dummy data in index only (to simulate some documents where already

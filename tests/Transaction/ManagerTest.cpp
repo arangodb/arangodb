@@ -48,7 +48,8 @@ static arangodb::aql::QueryResult executeQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<transaction::Context> ctx) {
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), nullptr);
+      ctx, arangodb::aql::QueryString(queryString), nullptr,
+      arangodb::transaction::Hints::TrxType::INTERNAL);
 
   arangodb::aql::QueryResult result;
   while (true) {
@@ -121,7 +122,8 @@ TEST_F(TransactionManagerTest, transaction_id_reuse) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -144,7 +146,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -158,8 +161,9 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(ctx, "testCollection",
-                                    AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(
+        ctx, "testCollection", AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_TRUE(!trx.isMainTransaction());
 
     OperationOptions opts;
@@ -175,8 +179,9 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(ctx, "testCollection",
-                                    AccessMode::Type::READ);
+    SingleCollectionTransaction trx(
+        ctx, "testCollection", AccessMode::Type::READ,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_TRUE(!trx.isMainTransaction());
 
     OperationOptions opts;
@@ -202,7 +207,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -215,8 +221,9 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(ctx, "testCollection",
-                                    AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(
+        ctx, "testCollection", AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_TRUE(!trx.isMainTransaction());
     ASSERT_FALSE(
         trx.state()->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
@@ -253,7 +260,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -266,8 +274,9 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(ctx, "testCollection",
-                                    AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(
+        ctx, "testCollection", AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_TRUE(!trx.isMainTransaction());
     ASSERT_TRUE(
         trx.state()->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
@@ -297,7 +306,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -310,8 +320,9 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(ctx, "testCollection",
-                                    AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(
+        ctx, "testCollection", AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_TRUE(!trx.isMainTransaction());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
@@ -341,7 +352,8 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -382,7 +394,8 @@ TEST_F(TransactionManagerTest, lock_conflict) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -411,7 +424,8 @@ TEST_F(TransactionManagerTest, lock_conflict_side_user) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -446,7 +460,8 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -476,14 +491,16 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 
   {
     auto ctx = transaction::StandaloneContext::Create(vocbase);
-    SingleCollectionTransaction trx(ctx, "testCollection",
-                                    AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(
+        ctx, "testCollection", AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_TRUE(trx.begin().ok());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
@@ -510,7 +527,8 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -523,8 +541,9 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(ctx, "testCollection",
-                                    AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(
+        ctx, "testCollection", AccessMode::Type::WRITE,
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     ASSERT_TRUE(!trx.isMainTransaction());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
@@ -553,7 +572,8 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 
@@ -583,7 +603,8 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice());
+    coll = vocbase.createCollection(
+        json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
   }
   ASSERT_NE(coll, nullptr);
 

@@ -10529,7 +10529,9 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"" + arangodb::StaticStrings::AnalyzersCollection +
         "\", \"isSystem\":true }");
-    ASSERT_NE(nullptr, vocbase->createCollection(createJson->slice()));
+    ASSERT_NE(nullptr, vocbase->createCollection(
+                           createJson->slice(),
+                           arangodb::transaction::Hints::TrxType::INTERNAL));
   }
 
   auto& analyzers =
@@ -10547,11 +10549,13 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       ASSERT_TRUE(analyzers
                       .emplace(result, vocbase->name() + "::test_analyzer3",
                                "TestAnalyzer",
-                               VPackParser::fromJson("\"abc\"")->slice())
+                               VPackParser::fromJson("\"abc\"")->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL)
                       .ok());
       ASSERT_NE(nullptr,
                 analyzers.get(vocbase->name() + "::test_analyzer3",
-                              arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                              arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                              arangodb::transaction::Hints::TrxType::INTERNAL));
     }
 
     // create collection
@@ -10576,16 +10580,24 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
     }
 
-    EXPECT_FALSE(analyzers.remove(vocbase->name() + "::test_analyzer3", false)
+    EXPECT_FALSE(analyzers
+                     .remove(vocbase->name() + "::test_analyzer3",
+                             arangodb::transaction::Hints::TrxType::INTERNAL,
+                             false)
                      .ok());  // used by link
     EXPECT_NE(nullptr,
               analyzers.get(vocbase->name() + "::test_analyzer3",
-                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
-    EXPECT_TRUE(
-        analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                            arangodb::transaction::Hints::TrxType::INTERNAL));
+    EXPECT_TRUE(analyzers
+                    .remove(vocbase->name() + "::test_analyzer3",
+                            arangodb::transaction::Hints::TrxType::INTERNAL,
+                            true)
+                    .ok());
     EXPECT_EQ(nullptr,
               analyzers.get(vocbase->name() + "::test_analyzer3",
-                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                            arangodb::transaction::Hints::TrxType::INTERNAL));
 
     auto cleanup =
         arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
@@ -10609,11 +10621,13 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       ASSERT_TRUE(analyzers
                       .emplace(result, vocbase->name() + "::test_analyzer3",
                                "TestAnalyzer",
-                               VPackParser::fromJson("\"abc\"")->slice())
+                               VPackParser::fromJson("\"abc\"")->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL)
                       .ok());
       ASSERT_NE(nullptr,
                 analyzers.get(vocbase->name() + "::test_analyzer3",
-                              arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                              arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                              arangodb::transaction::Hints::TrxType::INTERNAL));
     }
 
     // create collection
@@ -10642,16 +10656,24 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
     }
 
-    EXPECT_FALSE(analyzers.remove(vocbase->name() + "::test_analyzer3", false)
+    EXPECT_FALSE(analyzers
+                     .remove(vocbase->name() + "::test_analyzer3",
+                             arangodb::transaction::Hints::TrxType::INTERNAL,
+                             false)
                      .ok());  // used by link
     EXPECT_NE(nullptr,
               analyzers.get(vocbase->name() + "::test_analyzer3",
-                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
-    EXPECT_TRUE(
-        analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                            arangodb::transaction::Hints::TrxType::INTERNAL));
+    EXPECT_TRUE(analyzers
+                    .remove(vocbase->name() + "::test_analyzer3",
+                            arangodb::transaction::Hints::TrxType::INTERNAL,
+                            true)
+                    .ok());
     EXPECT_EQ(nullptr,
               analyzers.get(vocbase->name() + "::test_analyzer3",
-                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                            arangodb::transaction::Hints::TrxType::INTERNAL));
 
     auto cleanup =
         arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
@@ -10675,11 +10697,13 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       ASSERT_TRUE(analyzers
                       .emplace(result, vocbase->name() + "::test_analyzer3",
                                "TestAnalyzer",
-                               VPackParser::fromJson("\"abcd\"")->slice())
+                               VPackParser::fromJson("\"abcd\"")->slice(),
+                               arangodb::transaction::Hints::TrxType::INTERNAL)
                       .ok());
       ASSERT_NE(nullptr,
                 analyzers.get(vocbase->name() + "::test_analyzer3",
-                              arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                              arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                              arangodb::transaction::Hints::TrxType::INTERNAL));
     }
 
     // create collection

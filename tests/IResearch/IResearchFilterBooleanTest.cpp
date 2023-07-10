@@ -148,7 +148,8 @@ class IResearchFilterBooleanTest
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\" }")
-            ->slice());  // cache analyzer
+            ->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);  // cache analyzer
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }

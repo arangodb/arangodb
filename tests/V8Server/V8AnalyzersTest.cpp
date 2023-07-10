@@ -517,9 +517,10 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   {
     const auto name =
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    ASSERT_TRUE(
-        analyzers.emplace(result, name, "identity", VPackSlice::noneSlice())
-            .ok());
+    ASSERT_TRUE(analyzers
+                    .emplace(result, name, "identity", VPackSlice::noneSlice(),
+                             arangodb::transaction::Hints::TrxType::INTERNAL)
+                    .ok());
   }
 
   {
@@ -529,6 +530,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         analyzers
             .emplace(result, name, "v8-analyzer-empty",
                      VPackParser::fromJson("{\"args\":\"12312\"}")->slice(),
+                     arangodb::transaction::Hints::TrxType::INTERNAL,
                      arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
             .ok());
   }
@@ -1490,10 +1492,12 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   auto res = analyzers.emplace(
       result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-      "identity", VPackSlice::noneSlice());
+      "identity", VPackSlice::noneSlice(),
+      arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_TRUE(res.ok());
   res = analyzers.emplace(result, "testVocbase::testAnalyzer2", "identity",
-                          VPackSlice::noneSlice());
+                          VPackSlice::noneSlice(),
+                          arangodb::transaction::Hints::TrxType::INTERNAL);
   ASSERT_TRUE(res.ok());
 
   struct ExecContext : public arangodb::ExecContext {
