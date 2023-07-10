@@ -389,7 +389,7 @@ TEST_F(StateManagerTest_EmptyState,
     auto payload = LogMetaPayload{std::move(meta)};
     auto const termIndexPair = TermIndexPair(term, LogIndex(1));
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+        LogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
         term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
@@ -494,7 +494,7 @@ TEST_F(
     // This should result in a truncate
     auto const termIndexPair = TermIndexPair(term, LogIndex(2));
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+        LogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
         term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
@@ -619,7 +619,7 @@ TEST_F(
     // This should result in a truncate
     auto const termIndexPair = TermIndexPair(term, LogIndex(2));
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+        LogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
         term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
@@ -741,7 +741,7 @@ TEST_F(
     auto payload = LogMetaPayload{std::move(meta)};
     auto const termIndexPair = TermIndexPair(term, LogIndex(1));
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+        LogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
         term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
@@ -882,7 +882,7 @@ TEST_F(
     auto payload = LogMetaPayload{std::move(meta)};
     auto const termIndexPair = TermIndexPair(term, LogIndex(1));
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+        LogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
         term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
@@ -971,7 +971,7 @@ TEST_F(StateManagerTest_FakeState, follower_acquire_snapshot) {
     auto payload = LogMetaPayload{std::move(meta)};
     auto const termIndexPair = TermIndexPair(term, LogIndex(1));
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+        LogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
         term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,

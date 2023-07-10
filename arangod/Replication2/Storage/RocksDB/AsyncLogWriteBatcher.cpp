@@ -29,7 +29,7 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Replication2/MetricsHelper.h"
-#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteContext.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -124,7 +124,7 @@ void AsyncLogWriteBatcher::runPersistorWorker(Lane& lane) noexcept {
         // For simplicity, a single LogIterator of a specific PersistRequest
         // (i.e. *nextReqToWrite->iter) is always written as a whole in a write
         // batch. This is not strictly necessary for correctness, as long as an
-        // error is reported when any PersistingLogEntry is not written. Because
+        // error is reported when any LogEntry is not written. Because
         // then, the write will be retried, and it does not hurt that the
         // persisted log already has some entries that are not yet confirmed
         // (which may be overwritten later). This could still be improved upon a
@@ -282,8 +282,7 @@ auto AsyncLogWriteBatcher::prepareRequest(Request const& req,
 }
 
 auto AsyncLogWriteBatcher::queueInsert(
-    AsyncLogWriteContext& ctx,
-    std::unique_ptr<replication2::PersistedLogIterator> iter,
+    AsyncLogWriteContext& ctx, std::unique_ptr<replication2::LogIterator> iter,
     WriteOptions const& opts) -> futures::Future<ResultT<SequenceNumber>> {
   return queue(ctx, InsertEntries{.iter = std::move(iter)}, opts);
 }

@@ -19,13 +19,13 @@ target_sources(arango_replication2_pure PRIVATE
   InMemoryLogEntry.cpp
   IRebootIdCache.h
   LogCommon.cpp
+  LogEntry.cpp
   LogEntryView.cpp
   LogLeader.cpp
   LogMetaPayload.cpp
   LogPayload.cpp
   LogStatus.cpp
   NetworkMessages.cpp
-  PersistingLogEntry.cpp
   ReplicatedLog.cpp
   ReplicatedLogMetrics.tpp
   Supervision.cpp

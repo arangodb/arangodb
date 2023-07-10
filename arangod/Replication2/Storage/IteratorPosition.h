@@ -18,27 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "InMemoryLogEntry.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
-namespace arangodb::replication2 {
+namespace arangodb::replication2::storage {
 
-InMemoryLogEntry::InMemoryLogEntry(LogEntry entry, bool waitForSync)
-    : _waitForSync(waitForSync), _logEntry(std::move(entry)) {}
+struct IteratorPosition {
+  IteratorPosition() = default;
 
-void InMemoryLogEntry::setInsertTp(clock::time_point tp) noexcept {
-  _insertTp = tp;
-}
+  static IteratorPosition fromLogIndex(LogIndex index) {
+    return IteratorPosition(index);
+  }
 
-auto InMemoryLogEntry::insertTp() const noexcept -> clock::time_point {
-  return _insertTp;
-}
+  [[nodiscard]] auto index() const noexcept -> LogIndex { return logIndex; }
 
-auto InMemoryLogEntry::entry() const noexcept -> LogEntry const& {
-  // Note that while get() isn't marked as noexcept, it actually is.
-  return _logEntry.get();
-}
+ private:
+  explicit IteratorPosition(LogIndex index) : logIndex(index) {}
+  LogIndex logIndex{0};
+};
 
-}  // namespace arangodb::replication2
+}  // namespace arangodb::replication2::storage
