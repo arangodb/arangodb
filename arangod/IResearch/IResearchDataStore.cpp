@@ -1675,6 +1675,7 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   };
 
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
+    CrashHandler::setHardKill();
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
