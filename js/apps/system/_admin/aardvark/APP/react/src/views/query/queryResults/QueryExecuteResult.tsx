@@ -66,6 +66,8 @@ export const QueryExecuteResult = ({
       boxShadow="0 0 15px 0 rgba(0,0,0,0.2)"
       borderRadius="md"
       marginBottom="4"
+      maxHeight="600px"
+      overflow="auto"
     >
       <QueryExecuteResultHeader
         queryResult={limitedQueryResult}

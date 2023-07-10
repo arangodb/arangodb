@@ -21,7 +21,14 @@ export const QueryGraphView = ({
   return (
     <Box position="relative">
       {progressValue < 100 && (
-        <Box marginX="10" marginY="10">
+        <Box
+          marginX="10"
+          marginY="10"
+          position="absolute"
+          top="50%"
+          transform={"translateY(-50%)"}
+          width="calc(100% - 80px)"
+        >
           <Progress value={progressValue} colorScheme="green" />
         </Box>
       )}
