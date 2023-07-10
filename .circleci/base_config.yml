@@ -324,4 +324,5 @@ workflows:
           enterprise: true
       - run-hotbackup-tests:
           name: run-hotbackup-tests
-          requires: build-ee
+          requires:
+            - build-ee
