@@ -138,7 +138,6 @@ window.JSONEditor = jsoneditor;
 
 // ace
 window.define = window.ace.define;
-window.aqltemplates = require('../public/assets/aqltemplates.json');
 
 window.d3 = d3;
 
