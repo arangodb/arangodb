@@ -66,7 +66,9 @@ Result fillIndexSingleThreaded(
     bool foreground, RocksDBMethods& batched, rocksdb::Options const& dbOptions,
     rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
     trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
-    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it);
+    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress =
+        nullptr);
 
 class RocksDBCollection;
 
@@ -107,8 +109,9 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
 
   Result drop() override { return _wrapped->drop(); }
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override {
-    _wrapped->afterTruncate(tick, trx);
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) final {
+    _wrapped->truncateCommit(std::move(guard), tick, trx);
   }
 
   void load() override { _wrapped->load(); }
@@ -139,7 +142,8 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
 
   /// @brief assumes an exclusive lock on the collection
-  Result fillIndexForeground();
+  Result fillIndexForeground(
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
   struct Locker {
     explicit Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
@@ -155,7 +159,9 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
 
   /// @brief fill the index, assume already locked exclusively
   /// @param locker locks and unlocks the collection
-  Result fillIndexBackground(Locker& locker);
+  Result fillIndexBackground(
+      Locker& locker,
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
  private:
   static constexpr uint64_t kThreadBatchSize = 100000;

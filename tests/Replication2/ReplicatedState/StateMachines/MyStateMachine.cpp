@@ -93,7 +93,7 @@ auto MyFollowerState::resign() && noexcept -> std::unique_ptr<MyCoreType> {
   return std::move(_core);
 }
 
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 
 template struct replicated_state::ReplicatedState<MyState>;
 template struct streams::LogMultiplexer<

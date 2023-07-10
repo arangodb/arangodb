@@ -512,7 +512,7 @@ bool AqlAnalyzer::reset(std::string_view field) noexcept {
       // necessary optimizer rules (we skip all other rules to save time). we
       // have to execute the "splice-subqueries" rule here so we replace all
       // SubqueryNodes with SubqueryStartNodes and SubqueryEndNodes.
-      Optimizer optimizer(1);
+      Optimizer optimizer(_query->resourceMonitor(), 1);
       // disable all rules which are not necessary
       optimizer.disableRules(plan.get(), [](OptimizerRule const& rule) -> bool {
         return rule.canBeDisabled() || rule.isClusterOnly();

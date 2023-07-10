@@ -235,10 +235,6 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void load() override {}
   void unload() override {}
-  void afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*) override {
-    _edgesFrom.clear();
-    _edgesTo.clear();
-  }
 
   void toVelocyPack(VPackBuilder& builder,
                     std::underlying_type<arangodb::Index::Serialize>::type
@@ -756,10 +752,6 @@ class HashIndexMock final : public arangodb::Index {
 
   void unload() override {}
 
-  void afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*) override {
-    _hashData.clear();
-  }
-
   void toVelocyPack(VPackBuilder& builder,
                     std::underlying_type<arangodb::Index::Serialize>::type
                         flags) const override {
@@ -973,7 +965,8 @@ PhysicalCollectionMock::PhysicalCollectionMock(
     : PhysicalCollection(collection), _lastDocumentId{0} {}
 
 std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
-    arangodb::velocypack::Slice info, bool restore, bool& created) {
+    arangodb::velocypack::Slice info, bool restore, bool& created,
+    std::shared_ptr<std::function<arangodb::Result(double)>>) {
   before();
 
   std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>

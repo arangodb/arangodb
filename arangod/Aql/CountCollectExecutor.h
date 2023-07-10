@@ -33,7 +33,6 @@
 #include "Aql/types.h"
 
 #include <memory>
-#include <unordered_set>
 
 namespace arangodb {
 namespace aql {

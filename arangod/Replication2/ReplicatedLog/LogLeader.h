@@ -49,6 +49,7 @@
 #include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/Storage/IteratorPosition.h"
 #include "Scheduler/Scheduler.h"
 #include "Replication2/IScheduler.h"
 #include "Replication2/ReplicatedLog/Components/InMemoryLogManager.h"
@@ -96,7 +97,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   ~LogLeader() override;
 
   [[nodiscard]] static auto construct(
-      std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+      std::unique_ptr<storage::IStorageEngineMethods>&& methods,
       std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
@@ -139,7 +140,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus override;
 
   auto resign() && -> std::tuple<
-      std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      std::unique_ptr<storage::IStorageEngineMethods>,
       std::unique_ptr<IReplicatedStateHandle>, DeferredAction> override;
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const&;
@@ -147,9 +148,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
   [[nodiscard]] auto compact() -> ResultT<CompactionResult> override;
   [[nodiscard]] auto getLogConsumerIterator(std::optional<LogRange> bounds)
-      const -> std::unique_ptr<LogRangeIterator>;
+      const -> std::unique_ptr<LogViewRangeIterator>;
   [[nodiscard]] auto getInternalLogIterator(std::optional<LogRange> bounds)
-      const -> std::unique_ptr<PersistedLogIterator> override;
+      const -> std::unique_ptr<LogIterator> override;
 
   auto waitForLeadership() -> WaitForFuture override;
   auto ping(std::optional<std::string> message) -> LogIndex override;
@@ -190,9 +191,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::chrono::steady_clock::time_point _errorBackoffEndTP{};
     std::shared_ptr<AbstractFollower> _impl;
     TermIndexPair lastAckedIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
-    LogIndex nextPrevLogIndex = LogIndex{0};
+    storage::IteratorPosition nextPrevLogPosition;
     LogIndex lastAckedCommitIndex = LogIndex{0};
     LogIndex lastAckedLowestIndexToKeep = LogIndex{0};
+    LogIndex syncIndex = LogIndex{0};
     MessageId lastSentMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason;
@@ -331,6 +333,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     // committed - latest active config that has committed at least one entry
     // Note that this will be nullptr until leadership is established!
     std::shared_ptr<InnerTermConfig const> committedInnerTermConfig;
+
+    // What would the commit index be if we were to consider only entries that
+    // have been synced to disk. Used only for reporting.
+    LogIndex _syncCommitIndex;
   };
 
   LoggerContext const _logContext;

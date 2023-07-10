@@ -1547,7 +1547,7 @@ TEST_F(
   auto linkCallbackRemover =
       arangodb::iresearch::IResearchLinkMock::setCallbackForScope([]() {
         return irs::directory_attributes{
-            0, std::make_unique<irs::mock::test_encryption>(kEncBlockSize)};
+            std::make_unique<irs::mock::test_encryption>(kEncBlockSize)};
       });
   static std::vector<std::string> const kEmpty;
   auto doc0 = arangodb::velocypack::Parser::fromJson(
@@ -1613,8 +1613,8 @@ TEST_F(
                  .string();
   irs::FSDirectory directory(
       dataPath,
-      irs::directory_attributes(
-          0, std::make_unique<irs::mock::test_encryption>(kEncBlockSize)));
+      irs::directory_attributes{
+          std::make_unique<irs::mock::test_encryption>(kEncBlockSize)});
 
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);

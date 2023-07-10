@@ -32,7 +32,6 @@
 #include "Replication2/ReplicatedLog/Components/ISnapshotManager.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/IScheduler.h"
 
 #include <iosfwd>
@@ -66,7 +65,7 @@ struct IReplicatedLogMethodsBase {
   // no range means everything
   virtual auto getCommittedLogIterator(
       std::optional<LogRange> range = std::nullopt)
-      -> std::unique_ptr<LogRangeIterator> = 0;
+      -> std::unique_ptr<LogViewRangeIterator> = 0;
   virtual auto waitFor(LogIndex) -> ILogParticipant::WaitForFuture = 0;
   virtual auto waitForIterator(LogIndex)
       -> ILogParticipant::WaitForIteratorFuture = 0;
@@ -124,13 +123,13 @@ struct IParticipantsFactory {
   // Exception guarantee: either constructFollower succeeds to create an
   // `ILogFollower`, or `logCore` stays untouched.
   virtual auto constructFollower(
-      std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+      std::unique_ptr<storage::IStorageEngineMethods>&& methods,
       FollowerTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogFollower> = 0;
   // Exception guarantee: either constructLeader succeeds to create an
   // `ILogLeader`, or `logCore` stays untouched.
   virtual auto constructLeader(
-      std::unique_ptr<replicated_state::IStorageEngineMethods>&& methods,
+      std::unique_ptr<storage::IStorageEngineMethods>&& methods,
       LeaderTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogLeader> = 0;
 };
@@ -161,7 +160,7 @@ struct ReplicatedLogConnection;
  */
 struct alignas(64) ReplicatedLog {
   explicit ReplicatedLog(
-      std::unique_ptr<replicated_state::IStorageEngineMethods> storage,
+      std::unique_ptr<storage::IStorageEngineMethods> storage,
       std::shared_ptr<ReplicatedLogMetrics> metrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
       std::shared_ptr<IParticipantsFactory> participantsFactory,
@@ -189,16 +188,15 @@ struct alignas(64) ReplicatedLog {
   [[nodiscard]] auto getStatus() const -> LogStatus;
 
   [[nodiscard]] auto
-  resign() && -> std::unique_ptr<replicated_state::IStorageEngineMethods>;
+  resign() && -> std::unique_ptr<storage::IStorageEngineMethods>;
 
   [[nodiscard]] auto getMaintenanceLogStatus() const -> maintenance::LogStatus;
 
  private:
   struct GuardedData {
     explicit GuardedData(
-        std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
-        agency::ServerInstanceReference myself)
-        : methods(std::move(methods)), _myself(std::move(myself)) {}
+        std::unique_ptr<storage::IStorageEngineMethods> methods,
+        agency::ServerInstanceReference myself);
 
     struct LatestConfig {
       explicit LatestConfig(agency::LogPlanTermSpecification term,
@@ -211,7 +209,7 @@ struct alignas(64) ReplicatedLog {
     [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus;
 
     bool resigned{false};
-    std::unique_ptr<replicated_state::IStorageEngineMethods> methods;
+    std::unique_ptr<storage::IStorageEngineMethods> methods;
     std::shared_ptr<ILogParticipant> participant = nullptr;
     agency::ServerInstanceReference _myself;
     std::optional<LatestConfig> latest;
@@ -258,13 +256,11 @@ struct DefaultParticipantsFactory : IParticipantsFactory {
       std::shared_ptr<IAbstractFollowerFactory> followerFactory,
       std::shared_ptr<IScheduler> scheduler,
       std::shared_ptr<IRebootIdCache> rebootIdCache);
-  auto constructFollower(
-      std::unique_ptr<replicated_state::IStorageEngineMethods>&&,
-      FollowerTermInfo info, ParticipantContext context)
+  auto constructFollower(std::unique_ptr<storage::IStorageEngineMethods>&&,
+                         FollowerTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogFollower> override;
-  auto constructLeader(
-      std::unique_ptr<replicated_state::IStorageEngineMethods>&&,
-      LeaderTermInfo info, ParticipantContext context)
+  auto constructLeader(std::unique_ptr<storage::IStorageEngineMethods>&&,
+                       LeaderTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogLeader> override;
 
   std::shared_ptr<IAbstractFollowerFactory> followerFactory;
