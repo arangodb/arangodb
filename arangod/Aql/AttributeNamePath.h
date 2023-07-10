@@ -23,11 +23,12 @@
 
 #pragma once
 
+#include "Basics/MemoryTypes/MemoryTypes.h"
+
 #include <cstdint>
 #include <functional>
 #include <iosfwd>
 #include <string>
-#include <vector>
 
 namespace arangodb::aql {
 
@@ -96,7 +97,7 @@ struct AttributeNamePath {
   static size_t commonPrefixLength(AttributeNamePath const& lhs,
                                    AttributeNamePath const& rhs);
 
-  std::vector<std::string> path;
+  MonitoredStringVector _path;
 };
 
 std::ostream& operator<<(std::ostream& stream, AttributeNamePath const& path);

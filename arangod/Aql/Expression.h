@@ -301,6 +301,8 @@ class Expression {
   union {
     uint8_t* _data;
     AttributeAccessor* _accessor;
+    // we keep the amount of used bytes by the buffer stored in "_data" here.
+    size_t _usedBytesByData = 0;
   };
 
   // type of expression

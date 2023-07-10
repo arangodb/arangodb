@@ -27,6 +27,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 typedef std::basic_string<char, std::char_traits<char>,
@@ -44,10 +45,6 @@ struct hash_monitored_string {
   [[nodiscard]] size_t operator()(const std::string& txt) const {
     return std::hash<std::string>{}(txt);
   }
-
-  /*[[nodiscard]] size_t operator()(MonitoredString const& value) const noexcept
-  { return std::hash<std::string_view>{}(std::string_view{value});
-  }*/
 };
 
 struct compare_monitored_string {
@@ -62,6 +59,7 @@ struct compare_monitored_string {
 
 typedef std::vector<MonitoredString, ResourceUsageAllocator<MonitoredString>>
     MonitoredStringVector;
+
 typedef std::unordered_map<MonitoredString, MonitoredStringVector,
                            hash_monitored_string, compare_monitored_string,
                            ResourceUsageAllocator<std::pair<

@@ -26,6 +26,7 @@
 #include "Aql/AttributeNamePath.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"

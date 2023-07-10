@@ -32,12 +32,15 @@
 namespace arangodb {
 namespace aql {
 
-AttributeNamePath::AttributeNamePath(std::string attribute) {
-  path.emplace_back(std::move(attribute));
+AttributeNamePath::AttributeNamePath(MonitoredString attribute,
+                                     arangodb::ResourceMonitor& resourceMonitor)
+    : _path(ResourceUsageAllocator<MonitoredStringVector>{resourceMonitor}) {
+  _path.emplace_back(std::move(attribute));
 }
 
-AttributeNamePath::AttributeNamePath(std::vector<std::string> p)
-    : path(std::move(p)) {}
+AttributeNamePath::AttributeNamePath(MonitoredStringVector p,
+                                     arangodb::ResourceMonitor& resourceMonitor)
+    : _path(std::move(p)) {}
 
 bool AttributeNamePath::empty() const noexcept { return path.empty(); }
 
