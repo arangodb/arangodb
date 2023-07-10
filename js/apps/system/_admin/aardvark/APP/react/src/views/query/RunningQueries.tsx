@@ -55,10 +55,6 @@ const TABLE_COLUMNS = [
     accessorFn: (row: any) => {
       return moment(row.started).format("YYYY-MM-DD HH:mm:ss");
     }
-  },
-  {
-    Header: "Actions",
-    accessor: "actions"
   }
 ];
 const useFetchRunningQueries = () => {
