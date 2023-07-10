@@ -24,6 +24,8 @@
 
 #include <utility>
 #include "Basics/Result.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 namespace {
 template<typename F, typename R = std::invoke_result_t<F>>
@@ -60,7 +62,7 @@ auto FakeStorageEngineMethods::readMetadata()
   }
 }
 
-auto FakeStorageEngineMethods::read(replication2::LogIndex start)
+auto FakeStorageEngineMethods::getIterator(IteratorPosition position)
     -> std::unique_ptr<PersistedLogIterator> {
   struct ContainerIterator : PersistedLogIterator {
     using Container = FakeStorageEngineMethodsContext::LogContainerType;
@@ -70,11 +72,13 @@ auto FakeStorageEngineMethods::read(replication2::LogIndex start)
           _current(_store.lower_bound(start)),
           _end(_store.end()) {}
 
-    auto next() -> std::optional<PersistingLogEntry> override {
+    auto next() -> std::optional<PersistedLogEntry> override {
       if (_current != _end) {
         auto it = _current;
         ++_current;
-        return it->second;
+        return PersistedLogEntry(
+            LogEntry{it->second},
+            storage::IteratorPosition::fromLogIndex(it->second.logIndex()));
       }
       return std::nullopt;
     }
@@ -84,11 +88,11 @@ auto FakeStorageEngineMethods::read(replication2::LogIndex start)
     Iterator _end;
   };
 
-  return std::make_unique<ContainerIterator>(_self.log, start);
+  return std::make_unique<ContainerIterator>(_self.log, position.index());
 }
 
 auto FakeStorageEngineMethods::insert(
-    std::unique_ptr<PersistedLogIterator> iter,
+    std::unique_ptr<LogIterator> iter,
     const storage::IStorageEngineMethods::WriteOptions& options)
     -> arangodb::futures::Future<
         arangodb::ResultT<storage::IStorageEngineMethods::SequenceNumber>> {
@@ -185,10 +189,10 @@ FakeStorageEngineMethodsContext::FakeStorageEngineMethodsContext(
 void FakeStorageEngineMethodsContext::emplaceLogRange(LogRange range,
                                                       LogTerm term) {
   for (auto idx : range) {
-    log.emplace(idx, PersistingLogEntry{term, idx,
-                                        LogPayload::createFromString(
-                                            "(" + to_string(term) + "," +
-                                            to_string(idx) + ")")});
+    log.emplace(
+        idx, LogEntry{term, idx,
+                      LogPayload::createFromString("(" + to_string(term) + "," +
+                                                   to_string(idx) + ")")});
   }
 }
 

@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Storage/IteratorPosition.h"
+
 #include <optional>
 #include <map>
 
@@ -46,13 +50,17 @@ struct TermIndexMapping {
 
   void removeFront(LogIndex stop) noexcept;
   void removeBack(LogIndex start) noexcept;
-  void insert(LogRange, LogTerm) noexcept;
-  void insert(LogIndex, LogTerm) noexcept;
+  void insert(LogRange, storage::IteratorPosition, LogTerm) noexcept;
+  void insert(storage::IteratorPosition, LogTerm) noexcept;
 
   void append(TermIndexMapping const&) noexcept;
 
  private:
-  using ContainerType = std::map<LogTerm, LogRange>;
+  struct TermInfo {
+    LogRange range;
+    storage::IteratorPosition startPosition;
+  };
+  using ContainerType = std::map<LogTerm, TermInfo>;
   ContainerType _mapping;
 };
 
