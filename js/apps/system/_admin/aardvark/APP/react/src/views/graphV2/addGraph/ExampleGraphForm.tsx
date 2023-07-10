@@ -1,5 +1,14 @@
-import { Box, Button, HStack, Stack, Text, VStack } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  HStack,
+  Link,
+  Stack,
+  Text,
+  VStack
+} from "@chakra-ui/react";
 import React, { useState } from "react";
+import { mutate } from "swr";
 import { ModalFooter } from "../../../components/modal";
 import { getRouteForDB } from "../../../utils/arangoClient";
 
@@ -70,6 +79,7 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
                     "Graph",
                     `Successfully created the graph: ${exampleGraphField.name}`
                   );
+                  mutate("/graphs");
                   onClose();
                 } catch (e: any) {
                   const errorMessage = e.response.body.errorMessage;
@@ -86,9 +96,14 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
           </HStack>
         );
       })}
+        <Text textAlign="center">
+          Need help? Visit our{" "}
+          <Link href="https://chakra-ui.com" isExternal textDecoration="underline">
+            Graph Documentation
+          </Link>
+        </Text>
       <ModalFooter>
         <VStack>
-          <Text>Need help</Text>
           <Stack direction="row" spacing={4} align="center">
             <Button onClick={onClose} colorScheme="gray">
               Cancel
