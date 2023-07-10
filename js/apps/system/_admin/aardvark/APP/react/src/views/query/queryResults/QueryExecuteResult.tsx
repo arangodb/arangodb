@@ -162,7 +162,7 @@ const QueryExecuteResultDisplay = ({
       theme="ace/theme/textmate"
       htmlElementProps={{
         style: {
-          height: "calc(100% - 48px)"
+          height: "400px"
         }
       }}
       mainMenuBar={false}
