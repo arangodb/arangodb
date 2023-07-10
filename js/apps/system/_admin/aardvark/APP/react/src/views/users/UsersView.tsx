@@ -1,9 +1,10 @@
 import { AddIcon } from "@chakra-ui/icons";
 import { Box, Button, Heading, Stack, useDisclosure } from "@chakra-ui/react";
 import React from "react";
+import { UsersProvider } from "./UsersContext";
 import { UsersModeProvider } from "./UsersModeContext";
 import { AddUserModal } from "./addUser/AddUserModal";
-//import { UsersTable } from "./listUsers/UsersTable";
+import { UsersTable } from "./listUsers/UsersTable";
 
 export const UsersView = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -13,9 +14,9 @@ export const UsersView = () => {
       <UsersModeProvider mode="add">
         <AddUserModal isOpen={isOpen} onClose={onClose} />
       </UsersModeProvider>
-      {/*
+      <UsersProvider>
         <UsersTable />
-        */}
+      </UsersProvider>
     </Box>
   );
 };
