@@ -23,7 +23,7 @@
 #include "FakeAsyncExecutor.h"
 
 #include "Basics/ResultT.h"
-#include "Replication2/ReplicatedLog/PersistingLogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
 
 #include <gtest/gtest.h>
 

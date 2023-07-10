@@ -116,18 +116,17 @@ auto FollowerCommitManager::waitFor(LogIndex index) noexcept
 
 auto FollowerCommitManager::waitForIterator(LogIndex index) noexcept
     -> ILogParticipant::WaitForIteratorFuture {
-  return waitFor(index).thenValue(
-      [index,
-       weak = weak_from_this()](auto&&) -> std::unique_ptr<LogRangeIterator> {
-        if (auto self = weak.lock(); self) {
-          auto guard = self->guardedData.getLockedGuard();
-          return guard->storage.getCommittedLogIterator(
-              LogRange{index, guard->resolveIndex + 1});
-        }
+  return waitFor(index).thenValue([index, weak = weak_from_this()](auto&&)
+                                      -> std::unique_ptr<LogViewRangeIterator> {
+    if (auto self = weak.lock(); self) {
+      auto guard = self->guardedData.getLockedGuard();
+      return guard->storage.getCommittedLogIterator(
+          LogRange{index, guard->resolveIndex + 1});
+    }
 
-        THROW_ARANGO_EXCEPTION(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
-      });
+    THROW_ARANGO_EXCEPTION(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+  });
 }
 
 void FollowerCommitManager::resign() noexcept {

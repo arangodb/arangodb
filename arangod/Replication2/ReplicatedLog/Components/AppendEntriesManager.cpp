@@ -155,6 +155,15 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   auto action =
       guard->stateHandle.updateCommitIndex(request.leaderCommit, hasSnapshot);
   auto syncIndex = guard->storage.getSyncIndex();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto lastIndex = guard->storage.getTermIndexMapping()
+                       .getLastIndex()
+                       .value_or(TermIndexPair{})
+                       .index;
+  TRI_ASSERT(syncIndex <= lastIndex) << syncIndex << " > " << lastIndex;
+#endif
+
   guard.unlock();
   action.fire();
   requestGuard.reset();

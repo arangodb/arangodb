@@ -32,6 +32,7 @@
 #include "Replication2/Mocks/SchedulerMocks.h"
 #include "Replication2/Mocks/StateHandleManagerMock.h"
 #include "Replication2/Mocks/StorageManagerMock.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -43,16 +44,17 @@ namespace {
 
 auto makeRange(LogRange range) -> TermIndexMapping {
   TermIndexMapping mapping;
-  mapping.insert(range, LogTerm{1});
+  mapping.insert(range, storage::IteratorPosition::fromLogIndex(range.from),
+                 LogTerm{1});
   return mapping;
 }
 
-auto makeRangeIter(LogRange range) -> std::unique_ptr<LogRangeIterator> {
+auto makeRangeIter(LogRange range) -> std::unique_ptr<LogViewRangeIterator> {
   InMemoryLog::log_type log;
   auto transient = log.transient();
   for (auto idx : range) {
     transient.push_back(InMemoryLogEntry{
-        PersistingLogEntry{LogTerm{1}, idx, LogPayload::createFromString("")}});
+        LogEntry{LogTerm{1}, idx, LogPayload::createFromString("")}});
   }
   return InMemoryLog(transient.persistent()).getIteratorRange(range);
 }

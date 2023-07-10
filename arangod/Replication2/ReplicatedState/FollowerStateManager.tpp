@@ -32,6 +32,7 @@
 #include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedState/LazyDeserializingIterator.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 namespace {
 inline auto calcRetryDuration(std::uint64_t retryCount)
@@ -73,12 +74,12 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
   auto maybeFuture = [&]() -> std::optional<futures::Future<Result>> {
     auto guard = _guardedData.getLockedGuard();
     if (res.ok()) {
-      ADB_PROD_ASSERT(guard->_applyEntriesIndexInFlight.has_value());
+      ADB_PROD_ASSERT(guard->_applyEntriesPositionInFlight.has_value());
       _metrics->replicatedStateApplyDebt->operator-=(
-          guard->_applyEntriesIndexInFlight->value -
-          guard->_lastAppliedIndex.value);
-      auto const index = guard->_lastAppliedIndex =
-          *guard->_applyEntriesIndexInFlight;
+          guard->_applyEntriesPositionInFlight->index().value -
+          guard->_lastAppliedPosition.index().value);
+      guard->_lastAppliedPosition = *guard->_applyEntriesPositionInFlight;
+      auto const index = guard->_lastAppliedPosition.index();
       // TODO
       //   _metrics->replicatedStateNumberProcessedEntries->count(range.count());
 
@@ -93,7 +94,7 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
         });
       });
     }
-    guard->_applyEntriesIndexInFlight = std::nullopt;
+    guard->_applyEntriesPositionInFlight = std::nullopt;
 
     if (res.fail()) {
       _metrics->replicatedStateNumberApplyEntriesErrors->operator++();
@@ -111,7 +112,8 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
         << _loggerContext
         << " Unexpected error returned by apply entries: " << res;
 
-    if (res.fail() || guard->_commitIndex > guard->_lastAppliedIndex) {
+    if (res.fail() ||
+        guard->_commitIndex > guard->_lastAppliedPosition.index()) {
       return guard->maybeScheduleApplyEntries(_metrics, _scheduler);
     }
     return std::nullopt;
@@ -155,20 +157,20 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
   if (_stream == nullptr) {
     return std::nullopt;
   }
-  if (_commitIndex > _lastAppliedIndex and
-      not _applyEntriesIndexInFlight.has_value()) {
+  if (_commitIndex > _lastAppliedPosition.index() and
+      not _applyEntriesPositionInFlight.has_value()) {
     // Apply at most 1000 entries at once, so we have a smoother progression.
-    _applyEntriesIndexInFlight =
-        std::min(_commitIndex, _lastAppliedIndex + 1000);
-    auto range =
-        LogRange{_lastAppliedIndex + 1, *_applyEntriesIndexInFlight + 1};
+    _applyEntriesPositionInFlight = storage::IteratorPosition::fromLogIndex(
+        std::min(_commitIndex, _lastAppliedPosition.index() + 1000));
+    auto range = LogRange{_lastAppliedPosition.index() + 1,
+                          _applyEntriesPositionInFlight->index() + 1};
     auto promise = futures::Promise<Result>();
     auto future = promise.getFuture();
     auto rttGuard = MeasureTimeGuard(*metrics->replicatedStateApplyEntriesRtt);
     // As applyEntries is currently synchronous, we have to post it on the
     // scheduler to avoid blocking the current appendEntries request from
-    // returning. By using _applyEntriesIndexInFlight we make sure not to call
-    // it multiple time in parallel.
+    // returning. By using _applyEntriesPositionInFlight we make sure not to
+    // call it multiple time in parallel.
     scheduler->queue([promise = std::move(promise), stream = _stream, range,
                       followerState = _followerState,
                       rttGuard = std::move(rttGuard)]() mutable {
@@ -213,10 +215,10 @@ auto FollowerStateManager<S>::GuardedData::getResolvablePromises(
 template<typename S>
 auto FollowerStateManager<S>::GuardedData::waitForApplied(LogIndex index)
     -> WaitForQueue::WaitForFuture {
-  if (index <= _lastAppliedIndex) {
+  if (index <= _lastAppliedPosition.index()) {
     // Resolve the promise immediately before returning the future
     auto promise = WaitForQueue::WaitForPromise();
-    promise.setTry(futures::Try(_lastAppliedIndex));
+    promise.setTry(futures::Try(_lastAppliedPosition.index()));
     return promise.getFuture();
   }
   return _waitQueue.waitFor(index);
