@@ -72,10 +72,10 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   std::shared_ptr<PrimaryKeysFilterBase> _removals;
 
   IResearchTrxState(LinkLock&& linkLock, irs::IndexWriter& writer,
-                    bool nested) noexcept
+                    std::shared_ptr<PrimaryKeysFilterBase>&& removals) noexcept
       : _linkLock{std::move(linkLock)},
         _ctx{writer.GetBatch()},
-        _removals{makePrimaryKeysFilter(nested)} {}
+        _removals{std::move(removals)} {}
 
   ~IResearchTrxState() final {
     // TODO(MBkkt) Make Abort in ~Transaction()

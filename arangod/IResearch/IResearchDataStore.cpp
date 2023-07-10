@@ -1524,7 +1524,8 @@ IResearchTrxState* IResearchDataStore::getContext(TransactionState& state) {
   }
   TRI_ASSERT(_dataStore);
   auto ptr = std::make_unique<IResearchTrxState>(
-      std::move(linkLock), *_dataStore._writer, _hasNestedFields);
+      std::move(linkLock), *_dataStore._writer,
+      makePrimaryKeysFilter(_hasNestedFields, *_writersMemory));
   context = ptr.get();
   TRI_ASSERT(context);
   state.cookie(key, std::move(ptr));
@@ -1663,7 +1664,7 @@ void IResearchDataStore::recoveryInsert(uint64_t recoveryTick,
   }
   if (!_recoveryRemoves->empty()) {
     _recoveryTrx.Remove(std::move(_recoveryRemoves));
-    _recoveryRemoves = makePrimaryKeysFilter(_hasNestedFields);
+    _recoveryRemoves = makePrimaryKeysFilter(_hasNestedFields, *_writersMemory);
   }
   _recoveryTrx.Commit(recoveryTick);
   // TODO(MBkkt) IndexWriter::Commit? Probably makes sense only if were removes
