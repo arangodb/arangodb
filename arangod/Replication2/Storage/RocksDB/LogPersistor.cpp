@@ -89,12 +89,7 @@ auto LogPersistor::insert(std::unique_ptr<replication2::LogIterator> iter,
       });
 }
 
-uint64_t LogPersistor::getObjectId() { return ctx.objectId; }
 LogId LogPersistor::getLogId() { return logId; }
-
-auto LogPersistor::getSyncedSequenceNumber() -> SequenceNumber {
-  FATAL_ERROR_ABORT();  // TODO not implemented
-}
 
 auto LogPersistor::waitForSync(IStorageEngineMethods::SequenceNumber number)
     -> futures::Future<Result> {

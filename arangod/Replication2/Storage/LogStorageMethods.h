@@ -49,10 +49,8 @@ struct LogStorageMethods final : IStorageEngineMethods {
       -> futures::Future<ResultT<SequenceNumber>> override;
   [[nodiscard]] auto removeBack(LogIndex start, WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> override;
-  [[nodiscard]] auto getObjectId() -> std::uint64_t override;
   [[nodiscard]] auto getLogId() -> LogId override;
 
-  [[nodiscard]] auto getSyncedSequenceNumber() -> SequenceNumber override;
   [[nodiscard]] auto waitForSync(SequenceNumber number)
       -> futures::Future<Result> override;
 

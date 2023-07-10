@@ -42,9 +42,7 @@ struct StorageEngineMethodsGMock : IStorageEngineMethods {
               (LogIndex stop, WriteOptions const&), (override));
   MOCK_METHOD(futures::Future<ResultT<SequenceNumber>>, removeBack,
               (LogIndex start, WriteOptions const&), (override));
-  MOCK_METHOD(std::uint64_t, getObjectId, (), (override));
   MOCK_METHOD(LogId, getLogId, (), (override));
-  MOCK_METHOD(SequenceNumber, getSyncedSequenceNumber, (), (override));
   MOCK_METHOD(futures::Future<Result>, waitForSync, (SequenceNumber),
               (override));
   MOCK_METHOD(void, waitForCompletion, (), (noexcept, override));

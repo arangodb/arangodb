@@ -67,14 +67,7 @@ auto LogStorageMethods::insert(std::unique_ptr<LogIterator> iter,
   return _logPersistor->insert(std::move(iter), opts);
 }
 
-uint64_t LogStorageMethods::getObjectId() {
-  return _logPersistor->getObjectId();
-}
 LogId LogStorageMethods::getLogId() { return _logPersistor->getLogId(); }
-
-auto LogStorageMethods::getSyncedSequenceNumber() -> SequenceNumber {
-  return _logPersistor->getSyncedSequenceNumber();
-}
 
 auto LogStorageMethods::waitForSync(
     IStorageEngineMethods::SequenceNumber number) -> futures::Future<Result> {

@@ -143,15 +143,8 @@ auto FakeStorageEngineMethods::removeBack(
       });
 }
 
-auto FakeStorageEngineMethods::getObjectId() -> std::uint64_t {
-  return _self.objectId;
-}
 auto FakeStorageEngineMethods::getLogId() -> LogId { return _self.logId; }
-auto FakeStorageEngineMethods::getSyncedSequenceNumber()
-    -> storage::IStorageEngineMethods::SequenceNumber {
-  TRI_ASSERT(false) << "not implemented";
-  std::abort();
-}
+
 auto FakeStorageEngineMethods::waitForSync(
     storage::IStorageEngineMethods::SequenceNumber number)
     -> arangodb::futures::Future<Result> {
