@@ -124,16 +124,17 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
         return Error(`lowestIndexToKeep should be >= 101 for ${leader}, status: ${JSON.stringify(status)}`);
       });
 
-      const fixedLowestIndexToKeep = status.participants[leader].response.lowestIndexToKeep;
-      const fixedFollowerSyncIndex = status.participants[followers[0]].response.local.syncIndex;
-
       // One of the followers no longer updates the syncIndex.
       // Therefore, the lowestIndexToKeep should no longer be updated globally.
       helper.debugSetFailAt(lh.getServerUrl(followers[0]), "AsyncLogWriteBatcher::syncIndexDisabled");
+
+      status = log.status();
+      const fixedLowestIndexToKeep = status.participants[leader].response.lowestIndexToKeep;
+      const fixedFollowerSyncIndex = status.participants[followers[0]].response.local.syncIndex;
+
       for (let i = 0; i < 100; i++) {
         log.insert({bar: `bar${i}`});
       }
-      status = log.status();
       assertEqual(status.participants[followers[0]].response.local.syncIndex, fixedFollowerSyncIndex,
         `syncIndex should be ${fixedFollowerSyncIndex} for ${followers[0]}, status: ${JSON.stringify(status)}`);
       assertEqual(status.participants[leader].response.lowestIndexToKeep, fixedLowestIndexToKeep,
