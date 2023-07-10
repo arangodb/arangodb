@@ -22,7 +22,6 @@ import {
   useMultiStyleConfig
 } from "@chakra-ui/react";
 import React, { ReactNode, useMemo } from "react";
-import { Redirect, useHistory } from "react-router";
 import { AddAPhoto } from "styled-icons/material";
 import { downloadCanvas } from "../../graphV2/graphHeader/DownloadGraphButton";
 import { FullscreenGraphButton } from "../../graphV2/graphHeader/FullscreenGraphButton";
@@ -53,9 +52,6 @@ export const QueryFullGraphView = () => {
     );
   }, [graphDataType, queryGraphResult.result]);
   const visJsRef = React.useRef(null);
-  if (!queryGraphResult.result) {
-    return <Redirect to="/queries" />;
-  }
   return (
     <QueryFullGraphContextProvider visJsRef={visJsRef} graphData={graphData}>
       <QueryFullGraphViewInner />
@@ -64,12 +60,12 @@ export const QueryFullGraphView = () => {
 };
 
 const QueryGraphHeader = () => {
-  const history = useHistory();
+  const { setQueryGraphResult } = useQueryContext();
   return (
     <Flex padding="2" alignItems="center">
       <Button
         onClick={() => {
-          history.push(`/queries`);
+          setQueryGraphResult({} as any);
         }}
         size="sm"
         leftIcon={<ArrowBackIcon />}

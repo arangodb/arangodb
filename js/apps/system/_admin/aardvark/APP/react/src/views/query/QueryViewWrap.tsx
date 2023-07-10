@@ -5,7 +5,7 @@ import { ChakraCustomProvider } from "../../theme/ChakraCustomProvider";
 import { useDisableNavBar } from "../../utils/useDisableNavBar";
 import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
 import { QueryEditorPane } from "./editor/QueryEditorPane";
-import { QueryContextProvider } from "./QueryContextProvider";
+import { QueryContextProvider, useQueryContext } from "./QueryContextProvider";
 import { QueryFullGraphView } from "./queryGraph/QueryFullGraphView";
 import { RunningQueries } from "./RunningQueries";
 import { SlowQueryHistory } from "./SlowQueryHistory";
@@ -18,11 +18,8 @@ export const QueryViewWrap = () => {
       <QueryContextProvider>
         <HashRouter basename="/" hashType={"noslash"}>
           <Switch>
-            <Route path="/queries" exact>
+            <Route path="/queries">
               <QueryViewWrapInner />
-            </Route>
-            <Route path="/queries/graph" exact>
-              <QueryFullGraphView />
             </Route>
           </Switch>
         </HashRouter>
@@ -32,6 +29,10 @@ export const QueryViewWrap = () => {
 };
 
 const QueryViewWrapInner = () => {
+  const { queryGraphResult } = useQueryContext();
+  if (queryGraphResult && queryGraphResult.result) {
+    return <QueryFullGraphView />;
+  }
   return (
     <Box width="full" height="calc(100vh - 60px)" overflow="auto">
       <Tabs height="full" isLazy>
