@@ -6,11 +6,15 @@ export type QueryType = {
   value: string;
   modified_at?: number;
   parameter: any;
+  isTemplate?: boolean;
 };
+
 export const useFetchUserSavedQueries = () => {
   const fetchUser = async () => {
     const currentDB = getCurrentDB();
-    const path = `/_api/user/${encodeURIComponent(window.App.currentUser)}`;
+    const path = `/_api/user/${encodeURIComponent(
+      window.App.currentUser || "root"
+    )}`;
     const user = await currentDB.request({
       absolutePath: false,
       path

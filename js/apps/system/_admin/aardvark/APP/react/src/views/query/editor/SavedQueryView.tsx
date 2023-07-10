@@ -9,7 +9,7 @@ import {
   useDisclosure
 } from "@chakra-ui/react";
 import { CellContext, createColumnHelper } from "@tanstack/react-table";
-import React from "react";
+import React, { useMemo } from "react";
 import { InfoCircle } from "styled-icons/boxicons-solid";
 import { PlayArrow } from "styled-icons/material";
 import momentMin from "../../../../../frontend/js/lib/moment.min";
@@ -23,6 +23,7 @@ import { AQLEditor } from "./AQLEditor";
 import { DeleteQueryModal } from "./DeleteQueryModal";
 import { ImportQueryModal } from "./ImportQueryModal";
 import { QueryType } from "./useFetchUserSavedQueries";
+import aqlTemplates from "../../../../public/assets/aqltemplates.json";
 
 export const SavedQueryView = () => {
   const { savedQueries, isFetchingQueries } = useQueryContext();
@@ -67,6 +68,7 @@ const ActionCell = (info: CellContext<QueryType, unknown>) => {
   const { onQueryChange, setCurrentView, onExecute, onExplain } =
     useQueryContext();
   const query = info.row.original;
+  const { name, value, parameter, isTemplate } = query;
   const {
     isOpen: isDeleteModalOpen,
     onOpen: onOpenDeleteModal,
@@ -82,57 +84,61 @@ const ActionCell = (info: CellContext<QueryType, unknown>) => {
         colorScheme="gray"
         onClick={() => {
           onQueryChange({
-            value: query.value,
-            parameter: query.parameter || {},
-            name: query.name
+            value,
+            parameter: parameter || {},
+            name
           });
 
           setCurrentView("editor");
         }}
         title="Copy"
       />
-      <IconButton
-        variant="ghost"
-        icon={<InfoCircle width="16px" height="16px" />}
-        aria-label={`Explain ${query.name}`}
-        size="sm"
-        colorScheme="gray"
-        onClick={() => {
-          onExplain({
-            queryValue: query.value,
-            queryBindParams: query.parameter
-          });
-        }}
-        title="Explain"
-      />
-      <IconButton
-        variant="ghost"
-        icon={<PlayArrow width="16px" height="16px" />}
-        aria-label={`Execute ${query.name}`}
-        size="sm"
-        colorScheme="green"
-        onClick={() => {
-          onExecute({
-            queryValue: query.value,
-            queryBindParams: query.parameter
-          });
-        }}
-        title="Execute"
-      />
-      <IconButton
-        variant="ghost"
-        icon={<DeleteIcon />}
-        aria-label={`Delete ${query.name}`}
-        size="sm"
-        colorScheme="red"
-        title="Delete"
-        onClick={onOpenDeleteModal}
-      />
-      <DeleteQueryModal
-        query={info.row.getIsSelected() ? query : null}
-        isOpen={isDeleteModalOpen}
-        onClose={onCloseDeleteModal}
-      />
+      {!isTemplate && (
+        <>
+          <IconButton
+            variant="ghost"
+            icon={<InfoCircle width="16px" height="16px" />}
+            aria-label={`Explain ${name}`}
+            size="sm"
+            colorScheme="gray"
+            onClick={() => {
+              onExplain({
+                queryValue: value,
+                queryBindParams: parameter
+              });
+            }}
+            title="Explain"
+          />
+          <IconButton
+            variant="ghost"
+            icon={<PlayArrow width="16px" height="16px" />}
+            aria-label={`Execute ${name}`}
+            size="sm"
+            colorScheme="green"
+            onClick={() => {
+              onExecute({
+                queryValue: value,
+                queryBindParams: parameter
+              });
+            }}
+            title="Execute"
+          />
+          <IconButton
+            variant="ghost"
+            icon={<DeleteIcon />}
+            aria-label={`Delete ${name}`}
+            size="sm"
+            colorScheme="red"
+            title="Delete"
+            onClick={onOpenDeleteModal}
+          />
+          <DeleteQueryModal
+            query={info.row.getIsSelected() ? query : null}
+            isOpen={isDeleteModalOpen}
+            onClose={onCloseDeleteModal}
+          />
+        </>
+      )}
     </Box>
   );
 };
@@ -166,9 +172,19 @@ const TABLE_COLUMNS = [
 ];
 
 const SavedQueryTable = ({ savedQueries }: { savedQueries: QueryType[] }) => {
+  const finalData = useMemo(() => {
+    // append aqlTemplates to savedQueries
+    const updatedAqlTemplates = aqlTemplates.map(aqlTemplate => {
+      return {
+        ...aqlTemplate,
+        isTemplate: true
+      };
+    });
+    return savedQueries.concat(updatedAqlTemplates as unknown as QueryType);
+  }, [savedQueries]);
   const tableInstance = useSortableReactTable<QueryType>({
     columns: TABLE_COLUMNS,
-    data: savedQueries,
+    data: finalData,
     initialRowSelection: {
       0: true
     },
