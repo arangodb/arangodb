@@ -1,7 +1,7 @@
-name: arangodb_search_writers_memory
+name: arangodb_search_readers_memory
 introducedIn: "3.12.0"
 help: |
-  Count of memory in bytes that used for read from this index.
+  Count of memory in bytes that is used for reading from this index.
 unit: number
 type: gauge
 category: ArangoSearch
@@ -10,4 +10,4 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Count of memory in bytes that used for read from this index.
+  Count of memory in bytes that is used for reading from this index.
