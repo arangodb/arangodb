@@ -261,8 +261,13 @@ const QueryExecuteResultFooter = ({
   queryResult: QueryResultType;
   currentDisplayType: DisplayType;
 }) => {
-  const { onQueryChange, setResetEditor, resetEditor, aqlJsonEditorRef } =
-    useQueryContext();
+  const {
+    onQueryChange,
+    setResetEditor,
+    resetEditor,
+    aqlJsonEditorRef,
+    setCurrentView
+  } = useQueryContext();
   const { queryValue, queryBindParams } = queryResult;
   const onDownload = async () => {
     const path = `query/result/download`;
@@ -292,9 +297,13 @@ const QueryExecuteResultFooter = ({
               value: queryValue,
               parameter: queryBindParams || {}
             });
+            setCurrentView("editor");
             setResetEditor(!resetEditor);
-            aqlJsonEditorRef.current?.jsonEditor?.container?.scrollIntoView();
             aqlJsonEditorRef.current?.jsonEditor?.focus();
+            const containerDiv = document.querySelector("#content-react > div");
+            if (containerDiv) {
+              containerDiv.scrollTop = 0;
+            }
           }}
         >
           Copy query to editor
