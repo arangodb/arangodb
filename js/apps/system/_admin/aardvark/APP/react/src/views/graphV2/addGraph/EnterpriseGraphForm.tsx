@@ -133,13 +133,15 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
                 <Button onClick={onClose} colorScheme="gray">
                   Cancel
                 </Button>
-                <Button
-                  colorScheme="blue"
-                  type="submit"
-                  isLoading={isSubmitting}
-                >
-                  {mode === "edit" ? "Edit" : "Create"}
-                </Button>
+                {mode === "add" && (
+                  <Button
+                    colorScheme="blue"
+                    type="submit"
+                    isLoading={isSubmitting}
+                  >
+                    Create
+                  </Button>
+                )}
               </Stack>
             </ModalFooter>
           </VStack>

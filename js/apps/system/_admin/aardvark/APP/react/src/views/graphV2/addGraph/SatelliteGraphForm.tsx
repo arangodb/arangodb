@@ -8,6 +8,7 @@ import { ModalFooter } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
 import { useGraphsModeContext } from "../GraphsModeContext";
+import { EditGraphButtons } from "../listGraphs/EditGraphButtons";
 import { SatelliteGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 
@@ -99,16 +100,19 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
             </FieldsGrid>
             <ModalFooter>
               <Stack direction="row" spacing={4} align="center">
+                {mode === "edit" && <EditGraphButtons graph={initialGraph} />}
                 <Button onClick={onClose} colorScheme="gray">
                   Cancel
                 </Button>
-                <Button
-                  colorScheme="blue"
-                  type="submit"
-                  isLoading={isSubmitting}
-                >
-                  Create
-                </Button>
+                {mode === "add" && (
+                  <Button
+                    colorScheme="blue"
+                    type="submit"
+                    isLoading={isSubmitting}
+                  >
+                    Create
+                  </Button>
+                )}
               </Stack>
             </ModalFooter>
           </VStack>

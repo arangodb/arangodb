@@ -10,6 +10,7 @@ import { useGraphsModeContext } from "../GraphsModeContext";
 import { createGraph } from "../GraphsHelpers";
 import { SmartGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
+import { EditGraphButtons } from "../listGraphs/EditGraphButtons";
 
 const smartGraphFieldsMap = {
   name: {
@@ -170,16 +171,19 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
             </FieldsGrid>
             <ModalFooter>
               <Stack direction="row" spacing={4} align="center">
+                {mode === "edit" && <EditGraphButtons graph={initialGraph} />}
                 <Button onClick={onClose} colorScheme="gray">
                   Cancel
                 </Button>
-                <Button
-                  colorScheme="blue"
-                  type="submit"
-                  isLoading={isSubmitting}
-                >
-                  Create
-                </Button>
+                {mode === "add" && (
+                  <Button
+                    colorScheme="blue"
+                    type="submit"
+                    isLoading={isSubmitting}
+                  >
+                    Create
+                  </Button>
+                )}
               </Stack>
             </ModalFooter>
           </VStack>
