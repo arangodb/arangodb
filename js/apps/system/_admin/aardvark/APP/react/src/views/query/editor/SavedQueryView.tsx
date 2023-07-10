@@ -31,7 +31,7 @@ export const SavedQueryView = () => {
   return (
     <Box background="white">
       <SavedQueryToolbar />
-      <Grid gridTemplateRows="1fr 60px">
+      <Grid gridTemplateRows="1fr 60px" maxHeight="500px" overflow="auto">
         <Grid gridTemplateColumns="minmax(450px, 0.5fr) 1fr">
           {isFetchingQueries ? (
             <Spinner />
