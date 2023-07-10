@@ -46,6 +46,7 @@
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -331,6 +332,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
 }
 
 BaseOptions::~BaseOptions() {
+  LOG_DEVEL << "Calling destructor";
   if (!getVertexProjections().empty()) {
     resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
                                           sizeof(aql::Projections::Projection));
@@ -617,17 +619,25 @@ void BaseOptions::isQueryKilledCallback() const {
 }
 
 void BaseOptions::setVertexProjections(Projections projections) {
+  if (!getVertexProjections().empty()) {
+    resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
+                                          sizeof(aql::Projections::Projection));
+  }
   arangodb::ResourceUsageScope guard(
       resourceMonitor(),
-      projections.size() * sizeof(aql::Projections::Projection));
+      projections.size() * sizeof(aql::Projections::Projection) * _parallelism);
   _vertexProjections = std::move(projections);
   guard.steal();  // now we are responsible for tracking the memory
 }
 
 void BaseOptions::setEdgeProjections(Projections projections) {
+  if (!getEdgeProjections().empty()) {
+    resourceMonitor().decreaseMemoryUsage(getEdgeProjections().size() *
+                                          sizeof(aql::Projections::Projection));
+  }
   arangodb::ResourceUsageScope guard(
       resourceMonitor(),
-      projections.size() * sizeof(aql::Projections::Projection));
+      projections.size() * sizeof(aql::Projections::Projection) * _parallelism);
   _edgeProjections = std::move(projections);
   guard.steal();  // now we are responsible for tracking the memory
 }
@@ -680,12 +690,14 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
       DocumentProducingNode::kMaxProjections));
   _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
   _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
-  arangodb::ResourceUsageScope vGuard(
-      resourceMonitor(),
-      getVertexProjections().size() * sizeof(aql::Projections::Projection));
+  arangodb::ResourceUsageScope vGuard(resourceMonitor(),
+                                      getVertexProjections().size() *
+                                          sizeof(aql::Projections::Projection) *
+                                          _parallelism);
   vGuard.steal();  // now we are responsible for tracking the memory
-  arangodb::ResourceUsageScope eGuard(
-      resourceMonitor(),
-      getEdgeProjections().size() * sizeof(aql::Projections::Projection));
+  arangodb::ResourceUsageScope eGuard(resourceMonitor(),
+                                      getEdgeProjections().size() *
+                                          sizeof(aql::Projections::Projection) *
+                                          _parallelism);
   eGuard.steal();  // now we are responsible for tracking the memory
 }
