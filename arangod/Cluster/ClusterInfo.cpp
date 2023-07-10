@@ -6409,7 +6409,8 @@ ClusterInfo::getResponsibleServer(std::string_view shardID) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
-  return {};
+  return std::make_shared<ClusterInfo::ManagedVector<pmr::ServerID>>(
+      _resourceMonitor);
 }
 
 ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(
