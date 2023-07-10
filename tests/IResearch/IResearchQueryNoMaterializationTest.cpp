@@ -83,6 +83,7 @@ class QueryTestMulti
     auto res = analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
         VPackParser::fromJson("\"abc\"")->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features(
             {}, irs::IndexFeatures::FREQ |
                     irs::IndexFeatures::POS));  // required for PHRASE
@@ -90,7 +91,8 @@ class QueryTestMulti
 
     res = analyzers.emplace(
         result, "testVocbase::test_csv_analyzer", "TestDelimAnalyzer",
-        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+        VPackParser::fromJson("\",\"")->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -98,6 +100,7 @@ class QueryTestMulti
         VPackParser::fromJson(
             "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
             ->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features{
             arangodb::iresearch::FieldFeatures::NORM,
             irs::IndexFeatures::FREQ |
@@ -114,6 +117,7 @@ class QueryTestMulti
     res =
         analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
                           VPackParser::fromJson("\"abc\"")->slice(),
+                          arangodb::transaction::Hints::TrxType::INTERNAL,
                           arangodb::iresearch::Features{
                               irs::IndexFeatures::FREQ |
                               irs::IndexFeatures::POS});  // required for PHRASE
@@ -123,6 +127,7 @@ class QueryTestMulti
         VPackParser::fromJson("{\"min\":1, \"max\":3, \"streamType\":\"utf8\", "
                               "\"preserveOriginal\":false}")
             ->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features{
             irs::IndexFeatures::FREQ |
             irs::IndexFeatures::POS});  // required for PHRASE
@@ -132,6 +137,7 @@ class QueryTestMulti
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                               "\"preserveOriginal\":false}")
             ->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL,
         arangodb::iresearch::Features{
             irs::IndexFeatures::FREQ |
             irs::IndexFeatures::POS});  // required for PHRASE
@@ -140,7 +146,8 @@ class QueryTestMulti
 
     res = analyzers.emplace(
         result, "_system::test_csv_analyzer", "TestDelimAnalyzer",
-        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+        VPackParser::fromJson("\",\"")->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
@@ -682,7 +689,8 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecord) {
     arangodb::OperationOptions opt;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        {logicalCollection->name()}, EMPTY, arangodb::transaction::Options());
+        {logicalCollection->name()}, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     auto const res = trx.insert(logicalCollection->name(), doc->slice(), opt);
     EXPECT_TRUE(res.ok());
@@ -845,7 +853,8 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecordWithCompression) {
     arangodb::OperationOptions opt;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        {logicalCollection->name()}, EMPTY, arangodb::transaction::Options());
+        {logicalCollection->name()}, EMPTY, arangodb::transaction::Options(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     EXPECT_TRUE(trx.begin().ok());
     auto const res = trx.insert(logicalCollection->name(), doc->slice(), opt);
     EXPECT_TRUE(res.ok());

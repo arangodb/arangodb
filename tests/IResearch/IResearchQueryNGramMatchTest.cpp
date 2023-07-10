@@ -80,6 +80,7 @@ class QueryNGramMatch : public QueryTest {
                 "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                 "\"preserveOriginal\":false}")
                 ->slice(),
+            arangodb::transaction::Hints::TrxType::INTERNAL,
             arangodb::iresearch::Features(
                 irs::IndexFeatures::FREQ |
                 irs::IndexFeatures::POS)  // required for PHRASE
@@ -114,7 +115,8 @@ class QueryNGramMatch : public QueryTest {
         options.returnNew = true;
         arangodb::SingleCollectionTransaction trx(
             arangodb::transaction::StandaloneContext::Create(vocbase),
-            *collection, arangodb::AccessMode::Type::WRITE);
+            *collection, arangodb::AccessMode::Type::WRITE,
+            arangodb::transaction::Hints::TrxType::INTERNAL);
         EXPECT_TRUE(trx.begin().ok());
 
         for (auto& entry : docs) {
@@ -139,6 +141,7 @@ class QueryNGramMatch : public QueryTest {
                 "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                 "\"preserveOriginal\":false}")
                 ->slice(),
+            arangodb::transaction::Hints::TrxType::INTERNAL,
             arangodb::iresearch::Features(
                 irs::IndexFeatures::FREQ |
                 irs::IndexFeatures::POS)  // required for PHRASE
@@ -168,6 +171,7 @@ class QueryNGramMatch : public QueryTest {
                 "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                 "\"preserveOriginal\":false}")
                 ->slice(),
+            arangodb::transaction::Hints::TrxType::INTERNAL,
             arangodb::iresearch::Features(
                 irs::IndexFeatures::FREQ |
                 irs::IndexFeatures::POS));  // cache analyzer
@@ -201,7 +205,8 @@ class QueryNGramMatch : public QueryTest {
         options.returnNew = true;
         arangodb::SingleCollectionTransaction trx(
             arangodb::transaction::StandaloneContext::Create(vocbase),
-            *collection, arangodb::AccessMode::Type::WRITE);
+            *collection, arangodb::AccessMode::Type::WRITE,
+            arangodb::transaction::Hints::TrxType::INTERNAL);
         EXPECT_TRUE(trx.begin().ok());
 
         for (auto& entry : docs) {

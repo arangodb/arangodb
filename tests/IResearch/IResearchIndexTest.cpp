@@ -215,10 +215,12 @@ class IResearchIndexTest
         unused);
     analyzers.emplace(
         result, "testVocbase::test_A", "TestInsertAnalyzer",
-        arangodb::velocypack::Parser::fromJson("{ \"args\": \"X\" }")->slice());
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"X\" }")->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
     analyzers.emplace(
         result, "testVocbase::test_B", "TestInsertAnalyzer",
-        arangodb::velocypack::Parser::fromJson("{ \"args\": \"Y\" }")->slice());
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"Y\" }")->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 
 #ifdef USE_ENTERPRISE
     analyzers.emplace(
@@ -226,7 +228,8 @@ class IResearchIndexTest
         arangodb::velocypack::Parser::fromJson(
             " { \"type\": \"shape\", \"options\":{\"maxCells\":20,\
                               \"minLevel\":4, \"maxLevel\":23}}")
-            ->slice());
+            ->slice(),
+        arangodb::transaction::Hints::TrxType::INTERNAL);
 #endif
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();

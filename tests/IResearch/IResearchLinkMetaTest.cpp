@@ -2641,6 +2641,7 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     // testVocbase with same name (it is ok to add both!).
     analyzers.emplace(emplaceResult, analyzerCustomInSystem, "identity",
                       VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
+                      arangodb::transaction::Hints::TrxType::INTERNAL,
                       {{}, irs::IndexFeatures::FREQ});
   }
 
@@ -2648,6 +2649,7 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
     analyzers.emplace(emplaceResult, analyzerCustomInTestVocbase, "identity",
                       VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
+                      arangodb::transaction::Hints::TrxType::INTERNAL,
                       {{}, irs::IndexFeatures::FREQ});
   }
 
