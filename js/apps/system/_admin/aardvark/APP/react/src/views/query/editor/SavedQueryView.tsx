@@ -218,30 +218,35 @@ const QueryPreview = ({ query }: { query: QueryType | null }) => {
     return <Box>Select a query to view</Box>;
   }
   return (
-    <Grid gridTemplateColumns="1fr 1fr">
-      <Stack>
-        <Box fontWeight="medium" fontSize="md">
-          Preview: {query.name}
-        </Box>
-        <AQLEditor isPreview value={query.value} />
-      </Stack>
-      <Stack>
-        <Box fontWeight="medium" fontSize="sm">
-          Bind Variables
-        </Box>
-        <ControlledJSONEditor
-          mode="code"
-          isReadOnly
-          value={query.parameter}
-          mainMenuBar={false}
-          htmlElementProps={{
-            style: {
-              height: "100%"
-            }
-          }}
-        />
-      </Stack>
-    </Grid>
+    <Stack>
+      <Box fontWeight="medium" fontSize="md">
+        Preview: {query.name}
+      </Box>
+      <Grid gridTemplateColumns="1fr 1fr">
+        <Stack>
+          <Box fontWeight="medium" fontSize="sm">
+            Value
+          </Box>
+          <AQLEditor isPreview value={query.value} />
+        </Stack>
+        <Stack>
+          <Box fontWeight="medium" fontSize="sm">
+            Bind Variables
+          </Box>
+          <ControlledJSONEditor
+            mode="code"
+            isReadOnly
+            value={query.parameter}
+            mainMenuBar={false}
+            htmlElementProps={{
+              style: {
+                height: "100%"
+              }
+            }}
+          />
+        </Stack>
+      </Grid>
+    </Stack>
   );
 };
 
