@@ -92,6 +92,9 @@ struct StorageManager : IStorageManager,
   using GuardType = Guarded<GuardedData>::mutex_guard_type;
   LoggerContext const loggerContext;
   std::shared_ptr<IScheduler> const scheduler;
+
+  // The syncIndex is initially 0 and will be updated to its real value when the
+  // first append-entries is synced.
   Guarded<LogIndex> syncIndex;
 
   auto scheduleOperation(GuardType&&, TermIndexMapping mapResult,
