@@ -1,6 +1,6 @@
 import { useDisclosure } from "@chakra-ui/react";
 import { CursorExtras } from "arangojs/cursor";
-import React from "react";
+import React, { useState } from "react";
 import {
   QueryType,
   useFetchUserSavedQueries
@@ -49,11 +49,7 @@ type QueryContextType = {
   setIsSpotlightOpen: (value: boolean) => void;
   aqlJsonEditorRef: React.MutableRefObject<any>;
   bindVariablesJsonEditorRef: React.MutableRefObject<any>;
-  setQueryResultById: ({
-    queryResult
-  }: {
-    queryResult: QueryResultType;
-  }) => void;
+  setQueryResultById: (queryResult: QueryResultType) => void;
   appendQueryResultById: ({
     asyncJobId,
     result,
@@ -65,6 +61,8 @@ type QueryContextType = {
   }) => void;
   queryGraphResult: QueryResultType;
   setQueryGraphResult: React.Dispatch<React.SetStateAction<QueryResultType>>;
+  queryLimit: number | "all";
+  setQueryLimit: (value: number | "all") => void;
 };
 // const defaultValue = 'FOR v,e,p IN 1..3 ANY "place/0" GRAPH "ldbc" LIMIT 100 return p'
 const QueryContext = React.createContext<QueryContextType>(
@@ -88,6 +86,7 @@ export type QueryResultType<ResultType extends any = any> = {
     message: string;
   }[];
   errorMessage?: string;
+  queryLimit?: number | "all";
 };
 type CachedQuery = {
   query: string;
@@ -137,11 +136,7 @@ export const QueryContextProvider = ({
   const [isSpotlightOpen, setIsSpotlightOpen] = React.useState<boolean>(false);
   const aqlJsonEditorRef = React.useRef(null);
   const bindVariablesJsonEditorRef = React.useRef(null);
-  const setQueryResultById = ({
-    queryResult
-  }: {
-    queryResult: QueryResultType;
-  }) => {
+  const setQueryResultById = (queryResult: QueryResultType) => {
     setQueryResults(prev => {
       const newResults = prev.map(prevQueryResult => {
         if (prevQueryResult.asyncJobId === queryResult.asyncJobId) {
@@ -163,10 +158,11 @@ export const QueryContextProvider = ({
   }) => {
     setQueryResults(prev => {
       const newResults = prev.map(prevQueryResult => {
+        console.log("append", { prevQueryResult, result });
         if (asyncJobId === prevQueryResult.asyncJobId) {
           return {
             ...prevQueryResult,
-            result,
+            result: [...prevQueryResult.result, ...result],
             status
           };
         }
@@ -175,6 +171,7 @@ export const QueryContextProvider = ({
       return newResults;
     });
   };
+  const [queryLimit, setQueryLimit] = useState<number | "all">(1000);
   const { onExecute, onProfile, onExplain, onRemoveResult } = useQueryExecutors(
     { setQueryResults, setQueryResultById }
   );
@@ -216,7 +213,9 @@ export const QueryContextProvider = ({
         setQueryResultById,
         appendQueryResultById,
         queryGraphResult,
-        setQueryGraphResult
+        setQueryGraphResult,
+        queryLimit,
+        setQueryLimit
       }}
     >
       <QueryNavigationPrompt queryResults={queryResults} />

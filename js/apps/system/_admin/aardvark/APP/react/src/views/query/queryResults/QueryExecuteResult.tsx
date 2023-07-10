@@ -8,7 +8,7 @@ import {
   Stack,
   Text
 } from "@chakra-ui/react";
-import React from "react";
+import React, { useMemo } from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { downloadPost } from "../../../utils/downloadHelper";
 import { QueryResultType, useQueryContext } from "../QueryContextProvider";
@@ -45,6 +45,16 @@ export const QueryExecuteResult = ({
   } = useDisplayTypes({
     queryResult
   });
+  const limitedQueryResult = useMemo(() => {
+    const limitedResult =
+      queryResult.queryLimit !== "all"
+        ? queryResult.result?.slice(0, queryResult.queryLimit)
+        : queryResult.result;
+    return {
+      ...queryResult,
+      result: limitedResult
+    };
+  }, [queryResult]);
   if (queryResult.status === "loading") {
     return <QueryResultLoading index={index} queryResult={queryResult} />;
   }
@@ -58,21 +68,21 @@ export const QueryExecuteResult = ({
       marginBottom="4"
     >
       <QueryExecuteResultHeader
-        queryResult={queryResult}
+        queryResult={limitedQueryResult}
         setCurrentDisplayType={setCurrentDisplayType}
         currentDisplayType={currentDisplayType}
         displayTypes={displayTypes}
         index={index}
       />
-      <WarningPane queryResult={queryResult} />
+      <WarningPane queryResult={limitedQueryResult} />
       <QueryExecuteResultDisplay
         currentDisplayType={currentDisplayType}
-        queryResult={queryResult}
+        queryResult={limitedQueryResult}
         graphDataType={graphDataType}
       />
       <QueryExecuteResultFooter
         currentDisplayType={currentDisplayType}
-        queryResult={queryResult}
+        queryResult={limitedQueryResult}
       />
     </Box>
   );

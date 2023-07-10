@@ -11,11 +11,7 @@ export const useQueryExecutors = ({
   setQueryResultById
 }: {
   setQueryResults: React.Dispatch<React.SetStateAction<QueryResultType[]>>;
-  setQueryResultById: ({
-    queryResult
-  }: {
-    queryResult: QueryResultType;
-  }) => void;
+  setQueryResultById: (queryResult: QueryResultType) => void;
 }) => {
   const onRemoveResult = (index: number) => {
     setQueryResults(queryResults => {
@@ -89,13 +85,11 @@ export const useQueryExecutors = ({
       bindVars: queryBindParams
     });
     setQueryResultById({
-      queryResult: {
-        queryValue,
-        queryBindParams,
-        type: "profile",
-        result: profile.body.msg,
-        status: "success"
-      }
+      queryValue,
+      queryBindParams,
+      type: "profile",
+      result: profile.body.msg,
+      status: "success"
     });
     setQueryResults(queryResults => [
       {
@@ -129,13 +123,11 @@ export const useQueryExecutors = ({
           bindVars: queryBindParams
         });
         setQueryResultById({
-          queryResult: {
-            queryValue,
-            queryBindParams,
-            type: "explain",
-            result: explainResult.body.msg,
-            status: "success"
-          }
+          queryValue,
+          queryBindParams,
+          type: "explain",
+          result: explainResult.body.msg,
+          status: "success"
         });
       } catch (e: any) {
         const message = e.message || e.response.body.errorMessage;
