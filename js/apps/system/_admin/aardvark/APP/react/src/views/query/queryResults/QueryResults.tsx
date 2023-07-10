@@ -42,7 +42,7 @@ export const QueryResults = () => {
         if (queryResult.type === "query") {
           return (
             <QueryExecuteResult
-              key={index}
+              key={queryResult.asyncJobId}
               index={index}
               queryResult={queryResult}
             />

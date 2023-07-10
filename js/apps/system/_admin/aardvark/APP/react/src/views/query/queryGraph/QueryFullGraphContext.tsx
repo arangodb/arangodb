@@ -1,16 +1,12 @@
 import React, { createContext, ReactNode, useContext } from "react";
 import { DataSet, Network } from "vis-network";
 import { EdgeDataType, NodeDataType } from "../../graphV2/GraphData.types";
-import { LayoutType } from "../../graphV2/UrlParametersContext";
-import { useSetupQueryGraph } from "../queryResults/useSetupQueryGraph";
-type SettingsType = {
-  layout: LayoutType;
-  nodeColorByCollection: boolean;
-  nodeColor: string;
-  edgeColor: string;
-  edgeColorByCollection: boolean;
-  edgeType: "solid" | "dashed" | "dotted";
-};
+import {
+  getLayout,
+  SettingsType,
+  useSetupQueryGraph
+} from "../queryResults/useSetupQueryGraph";
+
 type QueryFullGraphContextType = {
   network?: Network;
   settings: SettingsType;
@@ -27,49 +23,7 @@ type QueryFullGraphContextType = {
 const GraphContext = createContext<QueryFullGraphContextType>(
   {} as QueryFullGraphContextType
 );
-const getLayout = (layout: LayoutType) => {
-  const hierarchicalOptions = {
-    layout: {
-      randomSeed: 0,
-      hierarchical: {
-        levelSeparation: 150,
-        nodeSpacing: 300,
-        direction: "UD"
-      }
-    },
-    physics: {
-      barnesHut: {
-        gravitationalConstant: -2250,
-        centralGravity: 0.4,
-        damping: 0.095
-      },
-      solver: "barnesHut"
-    }
-  };
 
-  const forceAtlas2BasedOptions = {
-    layout: {
-      randomSeed: 0,
-      hierarchical: false
-    },
-    physics: {
-      forceAtlas2Based: {
-        springLength: 10,
-        springConstant: 1.5,
-        gravitationalConstant: -500
-      },
-      minVelocity: 0.75,
-      solver: "forceAtlas2Based"
-    }
-  };
-  switch (layout) {
-    case "hierarchical":
-      return hierarchicalOptions;
-    case "forceAtlas2":
-    default:
-      return forceAtlas2BasedOptions;
-  }
-};
 const edgeColors = [
   "rgba(166, 109, 161, 1)",
   "rgba(64, 74, 83, 1)",
