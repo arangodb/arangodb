@@ -282,7 +282,6 @@ jobs:
       - run:
           name: Run HotBackup tests
           command: |
-            # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             python3 scripts/toolbox/HotBackupConsistencyTest.py \
               --arangod $PWD/build/bin/arangod \
               --topdir $PWD \
@@ -294,7 +293,6 @@ jobs:
       - store_artifacts:
           destination: hotbackup-test
           path: /tmp/test-workdir
-
 
 workflows:
   lint:
