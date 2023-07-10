@@ -33,7 +33,7 @@ export const EditGraphModal = ({
         <ModalHeader fontSize="sm" fontWeight="normal">
           <Flex direction="row" alignItems="center">
             <Heading marginRight="4" size="md">
-              Edit graph
+              Graph: {graph.name}
             </Heading>
           </Flex>
         </ModalHeader>
