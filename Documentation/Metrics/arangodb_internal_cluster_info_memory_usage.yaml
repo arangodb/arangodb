@@ -1,16 +1,15 @@
-name: arangodb_internal_cluster_info_memory
+name: arangodb_internal_cluster_info_memory_usage
 introducedIn: "3.12"
 help: |
   Amount of memory spent in ClusterInfo.
 unit: byte
 type: gauge
-# all other categories are to specific
+# all other categories are too specific
 category: Statistics
 complexity: high
 exposedBy:
   - coordinator
   - dbserver
-  - agent
   - single
 description: |
   Amount of memory spent in ClusterInfo. ClusterInfo keeps all relevant 

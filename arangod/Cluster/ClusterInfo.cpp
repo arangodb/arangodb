@@ -550,7 +550,7 @@ DECLARE_HISTOGRAM(arangodb_load_current_runtime, ClusterInfoScale,
 DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
                   "Plan loading runtimes [ms]");
 
-DECLARE_GAUGE(arangodb_internal_cluster_info_memory, std::size_t,
+DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::size_t,
               "Memory cluster info");
 
 ClusterInfo::ClusterInfo(ArangodServer& server,
