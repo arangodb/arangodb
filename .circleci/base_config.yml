@@ -275,7 +275,7 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            pip -r scripts/toolbox/requirements.txt
+            pip install -r scripts/toolbox/requirements.txt
             sudo apt update
             sudo apt install 7zip
             sudo apt install gdb
@@ -284,8 +284,17 @@ jobs:
           command: |
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             python3 scripts/toolbox/HotBackupConsistencyTest.py \
-              --arangod build/bin/arangod \
-              --topdir $PWD
+              --arangod $PWD/build/bin/arangod \
+              --topdir $PWD \
+              --workdir /tmp/test-workdir
+      - run:
+          name: Cleanup
+          command: |
+            rm -rf /tmp/test-workdir
+      - store_artifacts:
+          destination: hotbackup-test
+          path: /tmp/test-workdir
+
 
 workflows:
   lint:

@@ -4,7 +4,10 @@ import threading
 import argparse
 import tempfile
 import time
+import os
+import sys
 
+from pathlib import Path
 from termcolor import colored
 from arango import ArangoClient
 from modules import ArangoDBInstanceManager
@@ -26,6 +29,18 @@ def start_cluster(binary, topdir, workdir):
         environment.start_dbserver()
 
     return environment
+
+def ensure_workdir(desired_workdir):
+    if desired_workdir is None:
+        return tempfile.mkdtemp(prefix="arangotest_")
+    else:
+        if os.path.exists(desired_workdir):
+            print(f"ERROR: desired working directory {desired_workdir} already exists")
+            sys.exit(-1)
+        else:
+            path = Path(desired_workdir)
+            path.mkdir(parents=True)
+            return(desired_workdir)
 
 def run_test(client):
     # create a database to run the test on
@@ -111,16 +126,27 @@ def run_test(client):
         """))
     assert p == q
 
+    txn_db.abort_transaction()
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="HotBackupConsistencyTest.py",
         description="tests hotbackups",
         epilog="")
-    parser.add_argument('--arangod', required=True)
-    parser.add_argument('--topdir', required=True)
+    parser.add_argument('--arangod', required=True,
+                        help="path to the arangod executable to use")
+    parser.add_argument('--topdir', required=True,
+                        help=("the top of the arangodb directory; "
+                              "paths to the js/ and enterprise/js "
+                              "folders are derived from this"))
+    parser.add_argument('--workdir', default=None,
+                        help=("working directory; all databases, "
+                              "logfiles, and backups will be stored "
+                              " there"))
     args = parser.parse_args()
 
-    workdir = tempfile.mkdtemp(prefix="arangotest_")
+    workdir = ensure_workdir(args.workdir)
     print(f"working directory is {workdir}")
 
     environment = start_cluster(args.arangod, args.topdir, workdir)
