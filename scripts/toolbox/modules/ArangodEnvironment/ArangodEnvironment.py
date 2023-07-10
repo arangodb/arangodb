@@ -17,7 +17,12 @@ class ArangodEnvironment:
         self._dbservers = []
 
     def __del__(self):
-        pass
+        for dbserver in self._dbservers:
+            dbserver.shutdown()
+        for coordinator in self._coordinators:
+            coordinator.shutdown()
+        for agent in self._agents:
+            agent.shutdown()
 
     def get_next_port(self):
         result = self._next_port

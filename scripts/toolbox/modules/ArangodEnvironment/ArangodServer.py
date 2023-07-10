@@ -45,3 +45,8 @@ class ArangodServer:
         else:
             print(json.dumps(param, indent=4))
             self._proc = subprocess.Popen([self._environment.binary] + flatten_dict(param))
+
+    def shutdown(self):
+        self._proc.terminate()
+        self._proc.wait()
+        self._proc = None
