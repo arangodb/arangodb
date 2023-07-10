@@ -114,10 +114,23 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
                   isDisabled: mode === "edit"
                 }}
               />
-              <FormField field={enterpriseGraphFieldsMap.numberOfShards} />
-              <FormField field={enterpriseGraphFieldsMap.replicationFactor} />
               <FormField
-                field={enterpriseGraphFieldsMap.minReplicationFactor}
+                field={{
+                  ...enterpriseGraphFieldsMap.numberOfShards,
+                  isDisabled: mode === "edit"
+                }}
+              />
+              <FormField
+                field={{
+                  ...enterpriseGraphFieldsMap.replicationFactor,
+                  isDisabled: mode === "edit"
+                }}
+              />
+              <FormField
+                field={{
+                  ...enterpriseGraphFieldsMap.minReplicationFactor,
+                  isDisabled: mode === "edit"
+                }}
               />
               <EdgeDefinitionsField
                 noOptionsMessage={() =>
@@ -125,7 +138,12 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
                 }
                 allowExistingCollections={false}
               />
-              <FormField field={enterpriseGraphFieldsMap.orphanCollections} />
+              <FormField
+                field={{
+                  ...enterpriseGraphFieldsMap.orphanCollections,
+                  isDisabled: mode === "edit"
+                }}
+              />
             </FieldsGrid>
             <ModalFooter>
               <Stack direction="row" spacing={4} align="center">

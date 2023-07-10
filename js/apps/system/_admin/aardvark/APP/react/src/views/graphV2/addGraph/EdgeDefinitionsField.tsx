@@ -10,6 +10,7 @@ import {
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
 import { FormField } from "../../../components/form/FormField";
+import { useGraphsModeContext } from "../GraphsModeContext";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
 import { useCollectionOptions } from "./useEdgeCollectionOptions";
 import { useResetFromAndToValues } from "./useResetFromAndToValues";
@@ -56,6 +57,7 @@ export const EdgeDefinitionsField = ({
   const { isFromAndToDisabled } = useResetFromAndToValues();
   const { edgeCollectionOptions, documentCollectionOptions } =
     useCollectionOptions();
+  const { mode } = useGraphsModeContext();
   return (
     <GridItem colSpan={3}>
       <FieldArray name="edgeDefinitions">
@@ -83,6 +85,7 @@ export const EdgeDefinitionsField = ({
                           variant="ghost"
                           colorScheme="red"
                           icon={<DeleteIcon />}
+                          isDisabled={mode === "edit"}
                           onClick={() => {
                             remove(index);
                           }}
@@ -99,6 +102,7 @@ export const EdgeDefinitionsField = ({
                             : undefined,
                           isClearable: true,
                           name: `edgeDefinitions[${index}]${graphRelationFieldsMap.collection.name}`,
+                          isDisabled: mode === "edit",
                           noOptionsMessage: noOptionsMessage
                         }}
                       />
@@ -138,6 +142,7 @@ export const EdgeDefinitionsField = ({
                 }}
                 variant="ghost"
                 colorScheme="blue"
+                isDisabled={mode === "edit"}
                 leftIcon={<AddIcon />}
               >
                 Add relation

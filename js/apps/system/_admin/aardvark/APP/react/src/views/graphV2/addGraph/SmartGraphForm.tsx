@@ -167,7 +167,12 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
                 }
                 allowExistingCollections={false}
               />
-              <FormField field={smartGraphFieldsMap.orphanCollections} />
+              <FormField
+                field={{
+                  ...smartGraphFieldsMap.orphanCollections,
+                  isDisabled: mode === "edit"
+                }}
+              />
             </FieldsGrid>
             <ModalFooter>
               <Stack direction="row" spacing={4} align="center">

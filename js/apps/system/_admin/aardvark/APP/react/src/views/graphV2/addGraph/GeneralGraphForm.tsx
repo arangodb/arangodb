@@ -91,7 +91,8 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
               <FormField
                 field={{
                   ...generalGraphFieldsMap.orphanCollections,
-                  options: documentCollectionOptions
+                  options: documentCollectionOptions,
+                  isDisabled: mode === "edit"
                 }}
               />
             </FieldsGrid>

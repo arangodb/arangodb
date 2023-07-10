@@ -42,7 +42,7 @@ const INITIAL_VALUES: SatelliteGraphCreateValues = {
     }
   ],
   orphanCollections: [],
-  replicationFactor: 'satellite'
+  replicationFactor: "satellite"
 };
 
 export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
@@ -69,7 +69,7 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
   };
   return (
     <Formik
-    initialValues={initialGraph || INITIAL_VALUES}
+      initialValues={initialGraph || INITIAL_VALUES}
       validationSchema={Yup.object({
         name: Yup.string().required("Name is required")
       })}
@@ -96,7 +96,12 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
                 }
                 allowExistingCollections={false}
               />
-              <FormField field={satelliteGraphFieldsMap.orphanCollections} />
+              <FormField
+                field={{
+                  ...satelliteGraphFieldsMap.orphanCollections,
+                  isDisabled: mode === "edit"
+                }}
+              />
             </FieldsGrid>
             <ModalFooter>
               <Stack direction="row" spacing={4} align="center">
