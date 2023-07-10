@@ -33,14 +33,12 @@ struct RewriteLogTest : ReplicatedLogTest {};
 
 TEST_F(RewriteLogTest, rewrite_old_leader) {
   auto const entries = std::vector{
-      replication2::PersistingLogEntry(
-          LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::PersistingLogEntry(
-          LogTerm{2}, LogIndex{2},
-          LogPayload::createFromString("second entry")),
-      replication2::PersistingLogEntry(
-          LogTerm{2}, LogIndex{3},
-          LogPayload::createFromString("third entry"))};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1},
+                             LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   // create one log that has three entries
   auto followerLog = std::invoke([&] {
@@ -126,7 +124,7 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   }
 
   {
-    auto entry = std::optional<PersistingLogEntry>();
+    auto entry = std::optional<LogEntry>();
     auto log = getPersistedLogById(LogId{1});
     auto iter = log->read(LogIndex{1});  // The mock log returns all entries
 
