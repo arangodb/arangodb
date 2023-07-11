@@ -232,9 +232,6 @@ struct BaseOptions {
 
   virtual void calculateIndexExpressions(aql::Ast* ast);
 
-  /// @brief return the amount of bytes used
-  size_t getMemoryUsedBytes() const;
-
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list,
                                size_t& createItems) const;
@@ -266,14 +263,12 @@ struct BaseOptions {
 
   // needed for expression evaluation.
   // This entry is required by API, but not actively used here
-  // (currently not monitored as we've not introduced PMR or an alternative yet)
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
   /// This context holds values for Variables/References in AqlNodes
   /// it is read from whenever we need to do a calculation in this class.
   /// e.g. edge.weight > a
   /// Here "a" is read from the expression context.
-  // (currently not monitored as we've not introduced PMR or an alternative yet)
   aql::FixedVarExpressionContext _expressionCtx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
@@ -284,7 +279,6 @@ struct BaseOptions {
   /// one LookupInfo.
   /// These list is consulted only if there is no overwrite for a specific depth
   /// so this resambles "ALL ==" parts of filters.
-  // (currently not monitored as we've not introduced PMR or an alternative yet)
   std::vector<LookupInfo> _baseLookupInfos;
 
   /// Reference to the query we are running in. Necessary for internal API
