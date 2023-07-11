@@ -244,9 +244,6 @@ start() {
       --http.trusted-origin all
       --database.check-version false
       --database.upgrade-check false
-      --log.time-format utc-datestring-micros
-      --rocksdb.debug-logging true
-      --log.level=rocksdb=debug
       $REPLICATION_VERSION_PARAM
 EOM
 
