@@ -22,14 +22,15 @@
 
 #pragma once
 
+#include "Basics/Exceptions.h"
+#include "Basics/Guarded.h"
+#include "Basics/UnshackledMutex.h"
+#include "Replication2/Helper/WaitForQueue.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/WaitForBag.h"
-#include "Replication2/Helper/WaitForQueue.h"
-#include "Basics/UnshackledMutex.h"
-#include "Basics/Guarded.h"
-#include "Replication2/Streams/MultiplexedValues.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/Streams/MultiplexedValues.h"
 
 namespace arangodb::replication2::test {
 
@@ -63,7 +64,7 @@ struct FakeFollower final : replicated_log::ILogFollower,
   auto addEntry(LogPayload) -> LogIndex;
   void triggerLeaderAcked();
   auto getInternalLogIterator(std::optional<LogRange> bounds) const
-      -> std::unique_ptr<PersistedLogIterator> override;
+      -> std::unique_ptr<LogIterator> override;
 
   template<typename State>
   auto insertMultiplexedValue(typename State::EntryType const& t) -> LogIndex {

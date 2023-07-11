@@ -25,17 +25,18 @@
 #include <Futures/Future.h>
 
 #include <utility>
+
+#include "Basics/Guarded.h"
+#include "Inspection/VPack.h"
+#include "Logger/LogContextKeys.h"
 #include "Replication2/coro-helper.h"
+#include "Replication2/IScheduler.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
-#include "Basics/Guarded.h"
-#include "Logger/LogContextKeys.h"
-#include "Replication2/IScheduler.h"
 
-using namespace arangodb;
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_state;
+
+namespace arangodb::replication2::replicated_log {
 
 struct comp::StorageManager::StorageOperation {
   virtual ~StorageOperation() = default;
@@ -94,7 +95,7 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
         << "tried to append non matching slice - log range is: "
         << guard->spearheadMapping.getIndexRange() << " new piece starts at "
         << slice.getFirstIndex();
-    auto iter = slice.getPersistedLogIterator();
+    auto iter = slice.getLogIterator();
     auto mapping = guard->spearheadMapping;
     auto sliceMapping = slice.computeTermIndexMap();
     mapping.append(sliceMapping);
@@ -158,11 +159,7 @@ StorageManager::StorageManager(std::unique_ptr<IStorageEngineMethods> methods,
     : guardedData(std::move(methods)),
       loggerContext(
           loggerContext.with<logContextKeyLogComponent>("storage-manager")),
-      scheduler(std::move(scheduler)),
-      syncIndex(getTermIndexMapping()
-                    .getLastIndex()
-                    .value_or(TermIndexPair{})
-                    .index) {}
+      scheduler(std::move(scheduler)) {}
 
 auto StorageManager::resign() noexcept
     -> std::unique_ptr<IStorageEngineMethods> {
@@ -177,10 +174,20 @@ StorageManager::GuardedData::GuardedData(
     std::unique_ptr<IStorageEngineMethods> methods_ptr)
     : methods(std::move(methods_ptr)) {
   ADB_PROD_ASSERT(methods != nullptr);
-  // TODO is it really necessary to load the entire log?
-  auto log = InMemoryLog::loadFromMethods(*methods);
   info = methods->readMetadata().get();
-  spearheadMapping = onDiskMapping = log.computeTermIndexMap();
+  spearheadMapping = onDiskMapping = computeTermIndexMap();
+}
+
+auto StorageManager::GuardedData::computeTermIndexMap() const
+    -> TermIndexMapping {
+  TermIndexMapping mapping;
+  auto iter = methods->getIterator(
+      storage::IteratorPosition::fromLogIndex(LogIndex{0}));
+  while (auto entry = iter->next()) {
+    auto& e = *entry;
+    mapping.insert(e.position(), e.entry().logTerm());
+  }
+  return mapping;
 }
 
 auto StorageManager::scheduleOperation(
@@ -239,8 +246,10 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
         LOG_CTX("4f5e3", DEBUG, self->loggerContext)
             << "aborting storage operation "
             << " because log core gone";
-        resolvePromise(std::move(req.promise),
-                       TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+        resolvePromise(
+            std::move(req.promise),
+            Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,
+                   "Storage operation aborted"});
         guard = self->guardedData.getLockedGuard();
         continue;
       }
@@ -302,8 +311,9 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
 auto StorageManager::transaction() -> std::unique_ptr<IStorageTransaction> {
   auto guard = guardedData.getLockedGuard();
   if (guard->methods == nullptr) {
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,
+        "Participant gone while trying to start storage manager transaction");
   }
   LOG_CTX("63ab8", TRACE, loggerContext) << "begin log transaction ";
   return std::make_unique<StorageManagerTransaction>(std::move(guard), *this);
@@ -326,8 +336,9 @@ auto StorageManager::beginMetaInfoTrx()
     -> std::unique_ptr<IStateInfoTransaction> {
   auto guard = guardedData.getLockedGuard();
   if (guard->methods == nullptr) {
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,
+        "Participant gone while trying to start meta info transaction");
   }
   LOG_CTX("ceb65", TRACE, loggerContext) << "begin meta info transaction";
   return std::make_unique<StateInfoTransaction>(std::move(guard), *this);
@@ -358,40 +369,41 @@ auto StorageManager::getTermIndexMapping() const -> TermIndexMapping {
   return guardedData.getLockedGuard()->onDiskMapping;
 }
 
-auto StorageManager::getPersistedLogIterator(LogIndex first) const
-    -> std::unique_ptr<PersistedLogIterator> {
-  return getPersistedLogIterator(
+auto StorageManager::getLogIterator(LogIndex first) const
+    -> std::unique_ptr<LogIterator> {
+  return getLogIterator(
       LogRange{first, LogIndex{static_cast<std::uint64_t>(-1)}});
 }
 
-auto StorageManager::getPersistedLogIterator(std::optional<LogRange> bounds)
-    const -> std::unique_ptr<PersistedLogIterator> {
-  auto range =
-      bounds ? *bounds
-             : LogRange{LogIndex{0}, LogIndex{static_cast<std::uint64_t>(-1)}};
+auto StorageManager::getLogIterator(std::optional<LogRange> bounds) const
+    -> std::unique_ptr<LogIterator> {
+  auto range = bounds.value_or(
+      LogRange{LogIndex{0}, LogIndex{static_cast<std::uint64_t>(-1)}});
 
   auto guard = guardedData.getLockedGuard();
   if (guard->methods == nullptr) {
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,
+        "Participant gone while trying to get a persisted log iterator");
   }
 
-  auto diskIter = guard->methods->read(range.from);
+  auto diskIter = guard->methods->getIterator(
+      storage::IteratorPosition::fromLogIndex(range.from));
 
-  struct Iterator : PersistedLogIterator {
+  struct Iterator : LogIterator {
     explicit Iterator(LogRange range,
                       std::unique_ptr<PersistedLogIterator> disk)
         : _range(range), _disk(std::move(disk)) {}
 
-    auto next() -> std::optional<PersistingLogEntry> override {
+    auto next() -> std::optional<LogEntry> override {
       auto entry = _disk->next();
       if (not entry) {
         return std::nullopt;
       }
-      if (not _range.contains(entry->logIndex())) {
+      if (not _range.contains(entry->entry().logIndex())) {
         return std::nullopt;  // end of range
       }
-      return entry;
+      return entry->entry();
     }
 
     LogRange _range;
@@ -401,21 +413,24 @@ auto StorageManager::getPersistedLogIterator(std::optional<LogRange> bounds)
   return std::make_unique<Iterator>(range, std::move(diskIter));
 }
 
-auto StorageManager::getCommittedLogIterator(
-    std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
+auto StorageManager::getCommittedLogIterator(std::optional<LogRange> bounds)
+    const -> std::unique_ptr<LogViewRangeIterator> {
   auto guard = guardedData.getLockedGuard();
   if (guard->methods == nullptr) {
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,
+        "Participant gone while trying to get committed log "
+        "iterator");
   }
 
   auto range = guard->onDiskMapping.getIndexRange();
   if (bounds) {
     range = intersect(*bounds, range);
   }
-  auto diskIter = guard->methods->read(range.from);
+  auto diskIter = guard->methods->getIterator(
+      storage::IteratorPosition::fromLogIndex(range.from));
 
-  struct Iterator : TypedLogRangeIterator<LogEntryView> {
+  struct Iterator : LogViewRangeIterator {
     explicit Iterator(LogRange range,
                       std::unique_ptr<PersistedLogIterator> disk)
         : _range(range), _disk(std::move(disk)) {}
@@ -427,18 +442,19 @@ auto StorageManager::getCommittedLogIterator(
         if (not _entry) {
           return std::nullopt;
         }
-        if (not _range.contains(_entry->logIndex())) {
+        if (not _range.contains(_entry->entry().logIndex())) {
           return std::nullopt;  // end of range
         }
-        if (_entry->hasPayload()) {
-          return LogEntryView{_entry->logIndex(), *_entry->logPayload()};
+        if (_entry->entry().hasPayload()) {
+          return LogEntryView{_entry->entry().logIndex(),
+                              *_entry->entry().logPayload()};
         }
       }
     }
 
     LogRange _range;
     std::unique_ptr<PersistedLogIterator> _disk;
-    std::optional<PersistingLogEntry> _entry;
+    std::optional<PersistedLogEntry> _entry;
   };
 
   return std::make_unique<Iterator>(range, std::move(diskIter));
@@ -458,3 +474,5 @@ StorageManager::StorageRequest::StorageRequest(
     std::unique_ptr<StorageOperation> op, TermIndexMapping mappingResult)
     : operation(std::move(op)), mappingResult(std::move(mappingResult)) {}
 StorageManager::StorageRequest::~StorageRequest() = default;
+
+}  // namespace arangodb::replication2::replicated_log

@@ -27,7 +27,7 @@
 #include "utils/string.hpp"
 
 #include "Basics/Exceptions.h"
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
 #include "Inspection/VPack.h"

@@ -23,9 +23,15 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <immer/flex_vector_transient.hpp>
+#include <memory>
 
 #include "Basics/Result.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
+#include "Replication2/ReplicatedLog/PersistedLogEntry.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Replication2/Storage/IteratorPosition.h"
 #include "Replication2/Storage/PersistedStateInfo.h"
 
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
@@ -150,10 +156,30 @@ auto makeRange(LogTerm term, LogRange range) -> InMemoryLog {
   auto transient = log.transient();
   for (auto idx : range) {
     transient.push_back(InMemoryLogEntry{
-        PersistingLogEntry{term, idx, LogPayload::createFromString("")}});
+        LogEntry{term, idx, LogPayload::createFromString("")}});
   }
   return InMemoryLog(transient.persistent());
 }
+
+// we simulate a PersistedLogIterator on top of an InMemoryLog
+struct InMemoryPersistedLogIterator : PersistedLogIterator {
+  explicit InMemoryPersistedLogIterator(InMemoryLog log)
+      : _iter(std::move(log).copyFlexVector()) {}
+
+  auto next() -> std::optional<PersistedLogEntry> override {
+    auto e = _iter.next();
+    if (e) {
+      return PersistedLogEntry{
+          LogEntry{e->entry()},
+          storage::IteratorPosition::fromLogIndex(e->entry().logIndex())};
+    }
+    return std::nullopt;
+  }
+
+ private:
+  InMemoryLogIteratorImpl _iter;
+};
+
 }  // namespace
 
 TEST_F(StorageManagerTest, transaction_append) {
@@ -254,10 +280,12 @@ struct StorageEngineMethodsMockFactory {
     auto ptr = std::make_unique<storage::tests::StorageEngineMethodsGMock>();
     lastPtr = ptr.get();
 
-    EXPECT_CALL(*ptr, read).Times(1).WillOnce([](LogIndex idx) {
-      auto log = makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{100}});
-      return log.getPersistedLogIterator();
-    });
+    EXPECT_CALL(*ptr, getIterator)
+        .Times(1)
+        .WillOnce([](storage::IteratorPosition pos) {
+          auto log = makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{100}});
+          return std::make_unique<InMemoryPersistedLogIterator>(log);
+        });
 
     EXPECT_CALL(*ptr, readMetadata).Times(1).WillOnce([]() {
       return storage::PersistedStateInfo{.stateId = LogId{1},
@@ -354,7 +382,7 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_index_update) {
 
   EXPECT_CALL(*methods, insert)
       .Times(2)
-      .WillRepeatedly([&](std::unique_ptr<PersistedLogIterator> ptr,
+      .WillRepeatedly([&](std::unique_ptr<LogIterator> ptr,
                           IStorageEngineMethods::WriteOptions const& options) {
         StorageEngineFuture promise;
         promise.setValue(ResultT<decltype(seqNumber)>{seqNumber});
@@ -412,7 +440,7 @@ TEST_F(StorageManagerSyncIndexTest, wait_for_sync_false_update_fails) {
   auto syncIndex1 = storageManager->getSyncIndex();
 
   EXPECT_CALL(*methods, insert)
-      .WillOnce([&](std::unique_ptr<PersistedLogIterator> ptr,
+      .WillOnce([&](std::unique_ptr<LogIterator> ptr,
                     IStorageEngineMethods::WriteOptions const& options) {
         StorageEngineFuture promise;
         promise.setValue(ResultT<decltype(seqNumber)>{seqNumber});
@@ -437,7 +465,7 @@ TEST_F(StorageManagerSyncIndexTest, manager_unavailable_during_update) {
   IStorageEngineMethods::SequenceNumber seqNumber{1};
 
   EXPECT_CALL(*methods, insert)
-      .WillOnce([&](std::unique_ptr<PersistedLogIterator> ptr,
+      .WillOnce([&](std::unique_ptr<LogIterator> ptr,
                     IStorageEngineMethods::WriteOptions const& options) {
         StorageEngineFuture promise;
         promise.setValue(ResultT<decltype(seqNumber)>{seqNumber});
@@ -460,7 +488,7 @@ TEST_F(StorageManagerSyncIndexTest, manager_unavailable_during_update) {
 
 TEST_F(StorageManagerSyncIndexTest, methods_insertion_fails) {
   EXPECT_CALL(*methods, insert)
-      .WillOnce([](std::unique_ptr<PersistedLogIterator> ptr,
+      .WillOnce([](std::unique_ptr<LogIterator> ptr,
                    IStorageEngineMethods::WriteOptions const& options) {
         StorageEngineFuture promise;
         promise.setValue(Result{TRI_ERROR_WAS_ERLAUBE});

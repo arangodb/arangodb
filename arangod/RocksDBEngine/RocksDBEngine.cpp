@@ -67,9 +67,11 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "Replication2/Storage/LogStorageMethods.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
-#include "Replication2/Storage/RocksDB/LogStorageMethods.h"
+#include "Replication2/Storage/RocksDB/LogPersistor.h"
+#include "Replication2/Storage/RocksDB/StatePersistor.h"
 #include "Replication2/Storage/RocksDB/Metrics.h"
 #include "Replication2/Storage/RocksDB/ReplicatedStateInfo.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
@@ -180,6 +182,15 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
                 "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
+DECLARE_GAUGE(rocksdb_cache_edge_uncompressed_entries_size, uint64_t,
+              "Total gross memory size of all edge cache entries ever stored "
+              "in memory");
+DECLARE_GAUGE(rocksdb_cache_edge_effective_entries_size, uint64_t,
+              "Total effective memory size of all edge cache entries ever "
+              "stored in memory (after compression)");
+DECLARE_GAUGE(rocksdb_cache_edge_compression_ratio, double,
+              "Overall compression ratio for all edge cache entries ever "
+              "stored in memory");
 
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
@@ -250,6 +261,8 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
       _maxParallelCompactions(2),
+      _minValueSizeForEdgeCompression(1073741824ULL),
+      _accelerationFactorForEdgeCompression(1),
       _pruneWaitTime(10.0),
       _pruneWaitTimeInitial(60.0),
       _maxWalArchiveSizeLimit(0),
@@ -312,7 +325,13 @@ RocksDBEngine::RocksDBEngine(Server& server,
           arangodb_revision_tree_hibernations_total{})),
       _metricsTreeResurrections(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_revision_tree_resurrections_total{})) {
+              arangodb_revision_tree_resurrections_total{})),
+      _metricsEdgeCacheEntriesSizeInitial(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_cache_edge_uncompressed_entries_size{})),
+      _metricsEdgeCacheEntriesSizeEffective(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_cache_edge_effective_entries_size{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
@@ -723,6 +742,7 @@ exit code if there is an error in any of the .sst files.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
+      .setDeprecatedIn(31200)
       .setLongDescription(R"(A value of `0` does not restrict the size of the
 archive, so the leader removes archived WAL files when there are no replication
 clients needing them. Any non-zero value restricts the size of the WAL files
@@ -746,7 +766,11 @@ You can use the option to force a deletion of WAL files from the archive even if
 there are followers attached that may want to read the archive. In case the
 option is set and a leader deletes files from the archive that followers want to
 read, this aborts the replication on the followers. Followers can restart the
-replication doing a resync, however.)");
+replication doing a resync, though, but they may not be able to catch up if WAL
+file deletion happens too early.
+
+Thus it is best to leave this option at its default value of `0` except in cases
+when disk size is very constrained and no replication is used.)");
 
   options
       ->addOption("--rocksdb.auto-flush-min-live-wal-files",
@@ -771,6 +795,46 @@ replication doing a resync, however.)");
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
+
+  options
+      ->addOption("--cache.min-value-size-for-edge-compression",
+                  "The size threshold (in bytes) from which on payloads in the "
+                  "edge index cache transparently get LZ4-compressed.",
+                  new SizeTParameter(&_minValueSizeForEdgeCompression, 1, 0,
+                                     1073741824ULL),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setLongDescription(
+          R"(By transparently compressing values in the in-memory
+edge index cache, more data can be held in memory than without compression.  
+Storing compressed values can increase CPU usage for the on-the-fly compression 
+and decompression. In case compression is undesired, this option can be set to a 
+very high value, which will effectively disable it. To use compression, set the
+option to a value that is lower than medium-to-large average payload sizes.
+It is normally not that useful to compress values that are smaller than 100 bytes.)")
+      .setIntroducedIn(31102);
+
+  options
+      ->addOption(
+          "--cache.acceleration-factor-for-edge-compression",
+          "The acceleration factor for the LZ4 compression of in-memory "
+          "edge cache entries.",
+          new UInt32Parameter(&_accelerationFactorForEdgeCompression, 1, 1,
+                              65537),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setLongDescription(
+          R"(This value controls the LZ4-internal acceleration factor for the 
+LZ4 compression. Higher values typically yield less compression in exchange
+for faster compression and decompression speeds. An increase of 1 commonly leads
+to a compression speed increase of 3%, and could slightly increase decompression
+speed.)")
+      .setIntroducedIn(31102);
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -869,6 +933,26 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
 }
 
 namespace {
+
+auto makeLogStorageMethods(
+    replication2::LogId logId, uint64_t objectId, std::uint64_t vocbaseId,
+    ::rocksdb::DB* const db, ::rocksdb::ColumnFamilyHandle* const logCf,
+    ::rocksdb::ColumnFamilyHandle* const metaCf,
+    std::shared_ptr<replication2::storage::rocksdb::IAsyncLogWriteBatcher>
+        batcher,
+    std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
+        metrics)
+    -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
+  auto logPersistor =
+      std::make_unique<replication2::storage::rocksdb::LogPersistor>(
+          logId, objectId, vocbaseId, db, logCf, std::move(batcher),
+          std::move(metrics));
+  auto statePersistor =
+      std::make_unique<replication2::storage::rocksdb::StatePersistor>(
+          logId, objectId, vocbaseId, db, metaCf);
+  return std::make_unique<replication2::storage::LogStorageMethods>(
+      std::move(logPersistor), std::move(statePersistor));
+}
 
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
     : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
@@ -2789,10 +2873,11 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
         replication2::storage::rocksdb::ReplicatedStateInfo>(slice);
     auto* cfLogs = RocksDBColumnFamilyManager::get(
         RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-    auto methods = replication2::storage::rocksdb::LogStorageMethods(
-        info.objectId, databaseId, info.stateId, _logPersistor, _db, cfDefs,
-        cfLogs, _logMetrics);
-    auto res = methods.drop();
+
+    auto methods =
+        makeLogStorageMethods(info.stateId, info.objectId, databaseId, _db,
+                              cfLogs, cfDefs, _logPersistor, _logMetrics);
+    auto res = methods->drop();
     // Save the first error we encounter, but try to drop the rest.
     if (rv.ok() && res.fail()) {
       rv = res;
@@ -2800,7 +2885,7 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
     // TODO Should we do this here and now, or defer it, or don't do it at all?
     //      To answer that, check whether and how compaction is usually done
     //      after dropping a collection or database.
-    std::ignore = methods.compact();
+    std::ignore = methods->compact();
   }
 
   return rv;
@@ -3174,14 +3259,13 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
 
     auto info = velocypack::deserialize<
         replication2::storage::rocksdb::ReplicatedStateInfo>(slice);
-    auto methods =
-        std::make_unique<replication2::storage::rocksdb::LogStorageMethods>(
-            info.objectId, vocbase.id(), info.stateId, _logPersistor, _db,
-            RocksDBColumnFamilyManager::get(
-                RocksDBColumnFamilyManager::Family::Definitions),
-            RocksDBColumnFamilyManager::get(
-                RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-            _logMetrics);
+    auto methods = makeLogStorageMethods(
+        info.stateId, info.objectId, vocbase.id(), _db,
+        RocksDBColumnFamilyManager::get(
+            RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+        RocksDBColumnFamilyManager::get(
+            RocksDBColumnFamilyManager::Family::Definitions),
+        _logPersistor, _logMetrics);
     registerReplicatedState(vocbase, info.stateId, std::move(methods));
   }
 }
@@ -3524,6 +3608,16 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     builder.add("cache.active-tables", VPackValue(stats->activeTables));
     builder.add("cache.unused-memory", VPackValue(stats->spareAllocation));
     builder.add("cache.unused-tables", VPackValue(stats->spareTables));
+
+    // edge cache compression ratio
+    double compressionRatio = 0.0;
+    auto initial = _metricsEdgeCacheEntriesSizeInitial.load();
+    auto effective = _metricsEdgeCacheEntriesSizeEffective.load();
+    if (initial != 0) {
+      compressionRatio = 100.0 * (1.0 - (static_cast<double>(effective) /
+                                         static_cast<double>(initial)));
+    }
+    builder.add("cache.edge-compression-ratio", VPackValue(compressionRatio));
 
     std::pair<double, double> rates;
     if (manager != nullptr) {
@@ -3971,19 +4065,15 @@ Result RocksDBEngine::dropReplicatedState(
     TRI_vocbase_t& vocbase,
     std::unique_ptr<replication2::storage::IStorageEngineMethods>& ptr) {
   // make sure that all pending async operations have completed
-  auto methods =
-      dynamic_cast<replication2::storage::rocksdb::LogStorageMethods*>(
-          ptr.get());
-  ADB_PROD_ASSERT(methods != nullptr);
-  methods->ctx.waitForCompletion();
+  ptr->waitForCompletion();
 
   // drop everything
-  if (auto res = methods->drop(); res.fail()) {
+  if (auto res = ptr->drop(); res.fail()) {
     return res;
   }
 
   // do a compaction for the log range
-  std::ignore = methods->compact();
+  std::ignore = ptr->compact();
   ptr.reset();
   return {};
 }
@@ -3993,14 +4083,13 @@ auto RocksDBEngine::createReplicatedState(
     replication2::storage::PersistedStateInfo const& info)
     -> ResultT<std::unique_ptr<replication2::storage::IStorageEngineMethods>> {
   auto objectId = TRI_NewTickServer();
-  auto methods =
-      std::make_unique<replication2::storage::rocksdb::LogStorageMethods>(
-          objectId, vocbase.id(), id, _logPersistor, _db,
-          RocksDBColumnFamilyManager::get(
-              RocksDBColumnFamilyManager::Family::Definitions),
-          RocksDBColumnFamilyManager::get(
-              RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-          _logMetrics);
+  auto methods = makeLogStorageMethods(
+      id, objectId, vocbase.id(), _db,
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::Definitions),
+      _logPersistor, _logMetrics);
   auto res = methods->updateMetadata(info);
   if (res.fail()) {
     return res;
@@ -4014,6 +4103,20 @@ std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
   } else {
     return nullptr;
   }
+}
+
+void RocksDBEngine::addCacheMetrics(uint64_t initial,
+                                    uint64_t effective) noexcept {
+  _metricsEdgeCacheEntriesSizeInitial.fetch_add(initial);
+  _metricsEdgeCacheEntriesSizeEffective.fetch_add(effective);
+}
+
+size_t RocksDBEngine::minValueSizeForEdgeCompression() const noexcept {
+  return _minValueSizeForEdgeCompression;
+}
+
+int RocksDBEngine::accelerationFactorForEdgeCompression() const noexcept {
+  return static_cast<int>(_accelerationFactorForEdgeCompression);
 }
 
 }  // namespace arangodb

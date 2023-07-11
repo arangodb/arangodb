@@ -32,10 +32,8 @@ class ColumnFamilyHandle;
 
 namespace arangodb::replication2::storage::rocksdb {
 
-struct AsyncLogWriteContext;
-
 struct StatePersistor final : storage::IStatePersistor {
-  StatePersistor(LogId logId, AsyncLogWriteContext& ctx,
+  StatePersistor(LogId logId, uint64_t objectId, std::uint64_t vocbaseId,
                  ::rocksdb::DB* const db,
                  ::rocksdb::ColumnFamilyHandle* const metaCf);
   [[nodiscard]] auto updateMetadata(
@@ -47,7 +45,8 @@ struct StatePersistor final : storage::IStatePersistor {
 
  private:
   LogId const logId;
-  AsyncLogWriteContext& ctx;
+  uint64_t const objectId;
+  std::uint64_t const vocbaseId;
   ::rocksdb::DB* const db;
   ::rocksdb::ColumnFamilyHandle* const metaCf;
 };
