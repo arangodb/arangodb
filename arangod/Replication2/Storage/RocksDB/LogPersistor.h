@@ -26,6 +26,7 @@
 #include <rocksdb/db.h>
 
 #include "Replication2/Storage/ILogPersistor.h"
+#include "Replication2/Storage/IteratorPosition.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteContext.h"
 
 namespace arangodb::replication2::storage::rocksdb {
@@ -34,26 +35,24 @@ struct AsyncLogWriteBatcherMetrics;
 struct AsyncLogWriteContext;
 struct IAsyncLogWriteBatcher;
 
-struct LogPersistor final : storage::ILogPersistor {
+struct LogPersistor final : ILogPersistor {
   LogPersistor(LogId logId, uint64_t objectId, std::uint64_t vocbaseId,
                ::rocksdb::DB* const db,
                ::rocksdb::ColumnFamilyHandle* const logCf,
                std::shared_ptr<IAsyncLogWriteBatcher> batcher,
                std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics);
 
-  [[nodiscard]] auto read(replication2::LogIndex first)
-      -> std::unique_ptr<replication2::PersistedLogIterator> override;
-  [[nodiscard]] auto insert(
-      std::unique_ptr<replication2::PersistedLogIterator> ptr,
-      WriteOptions const&) -> futures::Future<ResultT<SequenceNumber>> override;
-  [[nodiscard]] auto removeFront(replication2::LogIndex stop,
-                                 WriteOptions const&)
+  [[nodiscard]] auto getIterator(IteratorPosition position)
+      -> std::unique_ptr<PersistedLogIterator> override;
+  [[nodiscard]] auto insert(std::unique_ptr<LogIterator> ptr,
+                            WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> override;
-  [[nodiscard]] auto removeBack(replication2::LogIndex start,
-                                WriteOptions const&)
+  [[nodiscard]] auto removeFront(LogIndex stop, WriteOptions const&)
+      -> futures::Future<ResultT<SequenceNumber>> override;
+  [[nodiscard]] auto removeBack(LogIndex start, WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> override;
   [[nodiscard]] auto getObjectId() -> std::uint64_t override;
-  [[nodiscard]] auto getLogId() -> replication2::LogId override;
+  [[nodiscard]] auto getLogId() -> LogId override;
 
   [[nodiscard]] auto getSyncedSequenceNumber() -> SequenceNumber override;
   [[nodiscard]] auto waitForSync(SequenceNumber number)

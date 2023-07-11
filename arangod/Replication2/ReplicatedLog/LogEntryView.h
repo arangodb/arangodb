@@ -56,7 +56,7 @@ class LogEntryView {
   velocypack::Slice _payload;
 };
 
-using LogIterator = TypedLogIterator<LogEntryView>;
-using LogRangeIterator = TypedLogRangeIterator<LogEntryView>;
+using LogViewIterator = TypedLogIterator<LogEntryView>;
+using LogViewRangeIterator = TypedLogRangeIterator<LogEntryView>;
 
 }  // namespace arangodb::replication2

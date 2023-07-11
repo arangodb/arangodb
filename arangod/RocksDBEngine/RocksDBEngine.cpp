@@ -821,7 +821,8 @@ It is normally not that useful to compress values that are smaller than 100 byte
           "--cache.acceleration-factor-for-edge-compression",
           "The acceleration factor for the LZ4 compression of in-memory "
           "edge cache entries.",
-          new UInt32Parameter(&_accelerationFactorForEdgeCompression, 1, 1, 10),
+          new UInt32Parameter(&_accelerationFactorForEdgeCompression, 1, 1,
+                              65537),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Uncommon,
               arangodb::options::Flags::DefaultNoComponents,
@@ -830,7 +831,9 @@ It is normally not that useful to compress values that are smaller than 100 byte
       .setLongDescription(
           R"(This value controls the LZ4-internal acceleration factor for the 
 LZ4 compression. Higher values typically yield less compression in exchange
-for faster compression speeds.)")
+for faster compression and decompression speeds. An increase of 1 commonly leads
+to a compression speed increase of 3%, and could slightly increase decompression
+speed.)")
       .setIntroducedIn(31102);
 
 #ifdef USE_ENTERPRISE
