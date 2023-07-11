@@ -7,12 +7,7 @@
     model: window.queryManagementModel,
 
     url: function () {
-      var url = frontendConfig.basePath + '/_api/query/current';
-
-      if (window.frontendConfig.db !== '_system') {
-        url = arangoHelper.databaseUrl('/_api/query/current');
-      }
-
+      var url = arangoHelper.databaseUrl('/_api/query/current');
       return url;
     },
 
