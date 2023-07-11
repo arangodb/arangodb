@@ -140,7 +140,7 @@ struct InMemoryLogAppendTest
     auto result = InMemoryLog::log_type_persisted::transient_type{};
     for (auto idx : LogRange(first, first + length)) {
       result.push_back(
-          PersistingLogEntry{term, idx, LogPayload::createFromString("foo")});
+          LogEntry{term, idx, LogPayload::createFromString("foo")});
     }
     return result.persistent();
   }

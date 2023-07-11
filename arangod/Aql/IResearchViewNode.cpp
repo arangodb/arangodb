@@ -1777,9 +1777,7 @@ void IResearchViewNode::setFilterCondition(aql::AstNode const* node) noexcept {
 #pragma GCC diagnostic ignored "-Wswitch"
 #endif
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
-    aql::ExecutionEngine& engine,
-    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&)
-    const {
+    aql::ExecutionEngine& engine) const {
   auto const createNoResultsExecutor = [this](aql::ExecutionEngine& engine) {
     auto emptyRegisterInfos = createRegisterInfos({}, {});
     aql::ExecutionNode const* previousNode = getFirstDependency();

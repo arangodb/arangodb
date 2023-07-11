@@ -50,9 +50,7 @@ class SubqueryStartNode : public ExecutionNode {
   size_t getMemoryUsedBytes() const override final;
 
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;

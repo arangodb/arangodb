@@ -62,16 +62,17 @@ struct IInMemoryLogManager {
       -> LogIndex = 0;
 
   [[nodiscard]] virtual auto getInternalLogIterator(LogIndex firstIdx) const
-      -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> = 0;
+      -> std::unique_ptr<InMemoryLogIterator> = 0;
 
   [[nodiscard]] virtual auto getLogConsumerIterator(
       std::optional<LogRange> bounds) const
-      -> std::unique_ptr<LogRangeIterator> = 0;
+      -> std::unique_ptr<LogViewRangeIterator> = 0;
 
   // If there's at least one log entry with a payload on the given range,
   // returns a LogRangeIterator. Otherwise the next index to wait for.
-  [[nodiscard]] virtual auto getNonEmptyLogConsumerIterator(LogIndex firstIdx)
-      const -> std::variant<std::unique_ptr<LogRangeIterator>, LogIndex> = 0;
+  [[nodiscard]] virtual auto getNonEmptyLogConsumerIterator(
+      LogIndex firstIdx) const
+      -> std::variant<std::unique_ptr<LogViewRangeIterator>, LogIndex> = 0;
 };
 
 }  // namespace comp

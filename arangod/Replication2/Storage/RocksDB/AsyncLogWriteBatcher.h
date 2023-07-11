@@ -86,7 +86,7 @@ struct AsyncLogWriteBatcher final
   ~AsyncLogWriteBatcher() override;
 
   struct InsertEntries {
-    std::unique_ptr<PersistedLogIterator> iter;
+    std::unique_ptr<LogIterator> iter;
   };
 
   struct RemoveFront {
@@ -112,7 +112,7 @@ struct AsyncLogWriteBatcher final
 
   auto prepareRequest(Request const& req, ::rocksdb::WriteBatch& wb) -> Result;
   auto queueInsert(AsyncLogWriteContext& ctx,
-                   std::unique_ptr<replication2::PersistedLogIterator> iter,
+                   std::unique_ptr<replication2::LogIterator> iter,
                    const WriteOptions& opts)
       -> futures::Future<ResultT<SequenceNumber>> override;
   auto queueRemoveFront(AsyncLogWriteContext& ctx, replication2::LogIndex stop,
