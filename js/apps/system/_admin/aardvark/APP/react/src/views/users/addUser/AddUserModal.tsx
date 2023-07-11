@@ -147,11 +147,11 @@ export const AddUserModal = ({
                       ...addUserFields.passwd
                     }}
                   />
-                  <FormField
+                  {window.frontendConfig.isEnterprise && <FormField
                     field={{
                       ...addUserFields.role
                     }}
-                  />
+                  />}
                   <FormField
                     field={{
                       ...addUserFields.active
