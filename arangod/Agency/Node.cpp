@@ -543,9 +543,9 @@ ResultT<NodePtr> buildPathAndExecute(Node const* node, Iter begin, Iter end,
     }
 
     if (updated == nullptr) {
-      newChildren = newChildren.erase(key);
+      newChildren = std::move(newChildren).erase(key);
     } else {
-      newChildren = newChildren.set(key, updated.get());
+      newChildren = std::move(newChildren).set(key, updated.get());
     }
     return Node::create(std::move(newChildren));
   }

@@ -114,11 +114,11 @@ class Node : public std::enable_shared_from_this<Node> {
   /// @brief Check equality with slice
   bool operator==(arangodb::velocypack::Slice const&) const;
 
-  /// @brief Get node specified by path vector
+  /// @brief Get node specified by path vector. Returns nullptr if the node does
+  /// not exist.
   NodePtr get(PathTypeView pv) const;
   NodePtr get(std::initializer_list<std::string> const& pv) const;
-
-  /// @brief Get node specified by path
+  NodePtr get(std::string_view path) const;
   NodePtr get(std::shared_ptr<cluster::paths::Path const> const& path) const;
 
   /// @brief Dump to ostream
@@ -212,30 +212,30 @@ class Node : public std::enable_shared_from_this<Node> {
   /// @return  returns nullopt if not found or type doesn't match
   Array const* hasAsArray(std::string const&) const;
 
-  /// @brief Get node specified by path string
-  NodePtr get(std::string_view path) const;
-
-  /// @brief Get string value (throws if type NODE or if conversion fails)
+  /// @brief Get string value
+  /// @return  returns nullopt if not found or type doesn't match
   std::optional<std::string> getString() const;
 
-  /// @brief Get string value (throws if type NODE or if conversion fails)
+  /// @brief Get string value
+  /// @return  returns nullopt if not found or type doesn't match
   std::optional<std::string_view> getStringView() const;
 
-  /// @brief Get array value
+  /// @brief Get array value, or nullopt if wrong type
   Node::Array const* getArray() const;
 
-  /// @brief Get unsigned value (throws if type NODE or if conversion fails)
+  /// @brief Get unsigned value, or nullopt if wrong type
   std::optional<uint64_t> getUInt() const noexcept;
 
-  /// @brief Get integer value (throws if type NODE or if conversion fails)
+  /// @brief Get integer value, or nullopt if wrong type
   std::optional<int64_t> getInt() const noexcept;
 
-  /// @brief Get bool value (throws if type NODE or if conversion fails)
+  /// @brief Get bool value, or nullopt if wrong type
   std::optional<bool> getBool() const noexcept;
 
-  /// @brief Get double value (throws if type NODE or if conversion fails)
+  /// @brief Get double value, or nullopt if wrong type
   std::optional<double> getDouble() const noexcept;
 
+  /// @brief Get numeric value, or nullopt if wrong type
   template<typename T>
   std::optional<T> getNumber() const noexcept {
     if (auto s = slice(); s.isNumber<T>()) {
