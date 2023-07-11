@@ -286,16 +286,6 @@ TEST_F(NodeLoadInspectorTest, load_slice) {
     ASSERT_TRUE(result.ok());
     EXPECT_EQ("foobar", slice.stringView());
   }
-
-  {
-    auto node = consensus::Node::create("foobar");
-    inspection::NodeUnsafeLoadInspector<> inspector{node};
-
-    velocypack::Slice slice;
-    auto result = inspector.apply(slice);
-    ASSERT_TRUE(result.ok());
-    EXPECT_EQ("foobar", slice.stringView());
-  }
 }
 
 TEST_F(NodeLoadInspectorTest, load_builder) {
@@ -1104,25 +1094,6 @@ TEST_F(NodeLoadInspectorTest,
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Missing required attribute 'b'", result.error());
   EXPECT_EQ("a.b", result.path());
-}
-
-TEST_F(NodeLoadInspectorTest, load_type_with_unsafe_fields) {
-  auto node = consensus::Node::create();
-  node = node->placeAt("view", "foobar");
-  node = node->placeAt("slice", "blubb");
-  node = node->placeAt("hashed", "hashedString");
-  arangodb::inspection::NodeUnsafeLoadInspector<> inspector{node};
-
-  Unsafe u;
-  auto result = inspector.apply(u);
-  ASSERT_TRUE(result.ok());
-  EXPECT_EQ(node->get("view")->getStringView().value(), u.view);
-  EXPECT_EQ(node->get("view")->getStringView().value().data(), u.view.data());
-  EXPECT_EQ(node->get("slice")->slice().start(), u.slice.start());
-  EXPECT_EQ(node->get("hashed")->getStringView().value(),
-            u.hashed.stringView());
-  EXPECT_EQ(node->get("hashed")->getStringView().value().data(),
-            u.hashed.data());
 }
 
 TEST_F(NodeLoadInspectorTest, load_string_enum) {

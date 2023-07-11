@@ -184,28 +184,19 @@ bool FailedServer::start(bool& aborts) {
         for (auto const& collptr : database.second->children()) {
           auto const& collection = *(collptr.second);
 
-          auto const& replicationFactorPair =
+          auto const& replicationFactor =
               collection.get(StaticStrings::ReplicationFactor);
-          if (replicationFactorPair) {
-            VPackSlice const replicationFactor = replicationFactorPair->slice();
+          if (replicationFactor) {
             uint64_t number = 1;
             bool isSatellite = false;
 
-            if (replicationFactor.isString() &&
-                replicationFactor.compareString(StaticStrings::Satellite) ==
-                    0) {
+            if (replicationFactor->getStringView() ==
+                StaticStrings::Satellite) {
               isSatellite = true;  // do nothing - number =
                                    // Job::availableServers(_snapshot).size();
-            } else if (replicationFactor.isNumber()) {
-              try {
-                number = replicationFactor.getNumber<uint64_t>();
-              } catch (...) {
-                LOG_TOPIC("f5290", ERR, Logger::SUPERVISION)
-                    << "Failed to read replicationFactor. job: " << _jobId
-                    << " " << collection.hasAsString("id").value();
-                continue;
-              }
-
+            } else if (auto maybeNumber = replicationFactor->getUInt();
+                       maybeNumber) {
+              number = *maybeNumber;
               if (number == 1) {
                 continue;
               }

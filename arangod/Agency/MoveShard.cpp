@@ -72,8 +72,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   auto tmp_from = _snapshot.hasAsString(path + "fromServer");
   auto tmp_to = _snapshot.hasAsString(path + "toServer");
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
-  auto tmp_isLeader = _snapshot.hasAsSlice(path + "isLeader");
-  auto tmp_remainsFollower = _snapshot.hasAsSlice(path + "remainsFollower");
+  auto tmp_isLeader = _snapshot.hasAsBool(path + "isLeader");
+  auto tmp_remainsFollower = _snapshot.hasAsBool(path + "remainsFollower");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_parent = _snapshot.hasAsString(path + PARENT_JOB_ID);
   auto tmp_targetVersion = _snapshot.hasAsUInt(path + EXPECTED_TARGET_VERSION);
@@ -86,10 +86,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     _from = tmp_from.value();
     _to = tmp_to.value();
     _shard = tmp_shard.value();
-    _isLeader = tmp_isLeader.value().isTrue();
-    _remainsFollower = tmp_remainsFollower.has_value()
-                           ? tmp_remainsFollower->isTrue()
-                           : _isLeader;
+    _isLeader = *tmp_isLeader;
+    _remainsFollower = tmp_remainsFollower.value_or(_isLeader);
     _toServerIsFollower = false;
     _creator = tmp_creator.value();
     if (tmp_parent) {

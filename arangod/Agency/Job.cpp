@@ -507,9 +507,9 @@ bool Job::isInServerList(Node const& snap, std::string const& prefix,
                          std::string const& server, bool isArray) {
   bool found = false;
   if (isArray) {
-    auto slice = snap.hasAsSlice(prefix);
-    if (slice && slice->isArray()) {
-      for (VPackSlice srv : VPackArrayIterator(*slice)) {
+    auto slice = snap.hasAsArray(prefix);
+    if (slice) {
+      for (VPackSlice srv : *slice) {
         if (srv.isEqualString(server)) {
           found = true;
           break;
@@ -634,8 +634,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot,
     if (otherCollection != collection &&
         col.has("distributeShardsLike") &&  // use .has() form to prevent
                                             // logging of missing
-        col.hasAsSlice("distributeShardsLike").value().stringView() ==
-            collection) {
+        col.hasAsStringView("distributeShardsLike").value() == collection) {
       auto const& theirshards = sortedShardList(*col.get("shards"));
       if (theirshards.size() > 0) {  // do not care about virtual collections
         if (theirshards.size() == myshards.size()) {
@@ -993,6 +992,15 @@ void Job::addPreconditionShardNotBlocked(Builder& pre,
 
 void Job::addPreconditionUnchanged(Builder& pre, std::string_view key,
                                    Slice value) {
+  pre.add(VPackValue(key));
+  {
+    VPackObjectBuilder guard(&pre);
+    pre.add("old", value);
+  }
+}
+
+void Job::addPreconditionUnchanged(Builder& pre, std::string_view key,
+                                   VPackValue value) {
   pre.add(VPackValue(key));
   {
     VPackObjectBuilder guard(&pre);

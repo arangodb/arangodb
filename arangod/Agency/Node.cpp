@@ -759,6 +759,11 @@ bool Node::isString() const {
   return slice && slice->isString();
 }
 
+bool consensus::Node::isNull() const {
+  auto slice = std::get_if<VPackString>(&_value);
+  return slice && slice->isNull();
+}
+
 bool Node::isArray() const { return std::holds_alternative<Array>(_value); }
 
 bool Node::isObject() const { return std::holds_alternative<Children>(_value); }
@@ -786,14 +791,6 @@ std::optional<double> Node::getDouble() const noexcept {
   return std::nullopt;
 }
 
-std::optional<String> Node::hasAsSlice(std::string const& url) const noexcept {
-  if (auto node = get(url); node) {
-    return node->slice();
-  }
-
-  return std::nullopt;
-}  // hasAsSlice
-
 std::optional<uint64_t> Node::hasAsUInt(std::string const& url) const noexcept {
   if (auto node = get(url); node) {
     return node->getUInt();
@@ -817,6 +814,15 @@ std::optional<std::string> Node::hasAsString(std::string const& url) const {
 
   return std::nullopt;
 }  // hasAsString
+
+std::optional<std::string_view> Node::hasAsStringView(
+    std::string const& url) const {
+  if (auto node = get(url); node) {
+    return node->getStringView();
+  }
+
+  return std::nullopt;
+}  // hasAsStringView
 
 Node::Children const* Node::hasAsChildren(std::string const& url) const {
   if (auto node = get(url); node) {
@@ -958,10 +964,6 @@ NodePtr Node::create(Node::Children value) {
   return std::make_shared<NodeWrapper>(std::move(value));
 }
 
-std::shared_ptr<Node const> consensus::Node::dummyNode() {
-  return emptyObjectValue();
-}
-
 NodePtr consensus::Node::trueValue() {
   static auto node = std::make_shared<NodeWrapper>(VPackSlice::trueSlice());
   return node;
@@ -980,4 +982,13 @@ NodePtr consensus::Node::emptyObjectValue() {
 NodePtr consensus::Node::emptyArrayValue() {
   static auto node = std::make_shared<NodeWrapper>(Array{});
   return node;
+}
+
+velocypack::ValueType consensus::Node::getVelocyPackValueType() const noexcept {
+  return std::visit(
+      overload{
+          [&](Children const& ch) { return velocypack::ValueType::Object; },
+          [&](Array const& ar) { return velocypack::ValueType::Array; },
+          [](auto const& vpack) { return vpack.type(); }},
+      _value);
 }

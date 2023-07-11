@@ -68,21 +68,19 @@ struct NodeLoadInspectorImpl
 
   template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
   [[nodiscard]] Status value(T& v) {
-    try {
-      v = _node->slice().getNumber<T>();
+    if (auto s = _node->getNumber<T>(); s) {
+      v = *s;
       return {};
-    } catch (velocypack::Exception& e) {
-      return {e.what()};
     }
+    return {"not an intergral value or not representable"};
   }
 
   [[nodiscard]] Status value(double& v) {
-    try {
-      v = _node->slice().getNumber<double>();
+    if (auto s = _node->getNumber<double>(); s) {
+      v = *s;
       return {};
-    } catch (velocypack::Exception& e) {
-      return {e.what()};
     }
+    return {"not an floating point value or not representable"};
   }
 
   [[nodiscard]] Status value(std::string& v) {
@@ -115,34 +113,12 @@ struct NodeLoadInspectorImpl
     return {};
   }
 
-  [[nodiscard]] Status value(velocypack::Slice& v) {
-    static_assert(AllowUnsafeTypes);
-    if (!_node->isPrimitiveValue()) {
-      return {"Cannot parse non-primitive node as Slice."};
-    }
-    v = _node->slice();
-    return {};
-  }
-
   [[nodiscard]] Status::Success value(velocypack::SharedSlice& v) {
-    if (_node->isPrimitiveValue()) {
-      if constexpr (AllowUnsafeTypes) {
-        v = velocypack::SharedSlice(velocypack::SharedSlice{}, _node->slice());
-        return {};
-      } else {
-        auto slice = _node->slice();
-        velocypack::Buffer<std::uint8_t> buffer(slice.byteSize());
-        buffer.append(slice.start(), slice.byteSize());
-        v = velocypack::SharedSlice(std::move(buffer));
-        return {};
-      }
-    } else {
-      velocypack::Buffer<uint8_t> buffer;
-      velocypack::Builder builder(buffer);
-      _node->toBuilder(builder);
-      v = velocypack::SharedSlice(std::move(buffer));
-      return {};
-    }
+    velocypack::Buffer<uint8_t> buffer;
+    velocypack::Builder builder(buffer);
+    _node->toBuilder(builder);
+    v = velocypack::SharedSlice(std::move(buffer));
+    return {};
   }
 
   [[nodiscard]] Status::Success value(velocypack::Builder& v) {
@@ -176,16 +152,12 @@ struct NodeLoadInspectorImpl
 
   [[nodiscard]] Status::Success endArray() { return {}; }
 
-  bool isNull() const noexcept {
-    return _node == nullptr || _node->slice().isNull();
-  }
+  bool isNull() const noexcept { return _node == nullptr || _node->isNull(); }
 
   consensus::Node const* node() const noexcept { return _node; }
 
   VPackSlice slice() {
-    if (_node->isPrimitiveValue()) {
-      return _node->slice();
-    }
+    // does not work for agency nodes.
     return VPackSlice::noneSlice();
   }
 
@@ -211,15 +183,7 @@ struct NodeLoadInspectorImpl
     }
   }
 
-  auto getTypeTag() const noexcept {
-    if (_node->isPrimitiveValue()) {
-      return _node->slice().type();
-    } else if (_node->isArray()) {
-      return velocypack::ValueType::Array;
-    } else {
-      return velocypack::ValueType::Object;
-    }
-  }
+  auto getTypeTag() const noexcept { return _node->getVelocyPackValueType(); }
 
   template<class Func>
   auto doProcessObject(Func&& func)

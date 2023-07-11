@@ -176,10 +176,8 @@ class Node : public std::enable_shared_from_this<Node> {
   /// @brief Is object
   bool isObject() const;
 
-  /// @brief accessor to Node's Slice value
-  /// @return  returns nullopt if not found or type doesn't match
-  std::optional<velocypack::String> hasAsSlice(
-      std::string const&) const noexcept;
+  /// @brief Is null
+  bool isNull() const;
 
   /// @brief accessor to Node's uint64_t value
   /// @return  returns nullopt if not found or type doesn't match
@@ -192,6 +190,10 @@ class Node : public std::enable_shared_from_this<Node> {
   /// @brief accessor to Node's std::string value
   /// @return  returns nullopt if not found or type doesn't match
   std::optional<std::string> hasAsString(std::string const&) const;
+
+  /// @brief accessor to Node's std::string value
+  /// @return  returns nullopt if not found or type doesn't match
+  std::optional<std::string_view> hasAsStringView(std::string const&) const;
 
   /// @brief accessor to Node's _children
   /// @return  returns nullptr if not found or type doesn't match
@@ -234,7 +236,15 @@ class Node : public std::enable_shared_from_this<Node> {
   /// @brief Get double value (throws if type NODE or if conversion fails)
   std::optional<double> getDouble() const noexcept;
 
-  VPackSlice slice() const noexcept;
+  template<typename T>
+  std::optional<T> getNumber() const noexcept {
+    if (auto s = slice(); s.isNumber<T>()) {
+      return s.getNumber<T>();
+    }
+    return std::nullopt;
+  }
+
+  velocypack::ValueType getVelocyPackValueType() const noexcept;
 
   bool isLeaveNode() const noexcept { return !isObject(); }
   bool isPrimitiveValue() const noexcept { return !isObject() && !isArray(); }
@@ -316,9 +326,6 @@ class Node : public std::enable_shared_from_this<Node> {
   [[nodiscard]] static arangodb::ResultT<NodePtr> handle(
       Node const* target, arangodb::velocypack::Slice const&);
 
-  // @brief Helper function to return static instance of dummy node below
-  static std::shared_ptr<Node const> dummyNode();
-
   static NodePtr trueValue();
   static NodePtr falseValue();
   static NodePtr emptyObjectValue();
@@ -330,6 +337,8 @@ class Node : public std::enable_shared_from_this<Node> {
   Node& operator=(Node&& node) noexcept = delete;
 
  private:
+  VPackSlice slice() const noexcept;
+
   struct NodeWrapper;
   friend struct NodeWrapper;
 
