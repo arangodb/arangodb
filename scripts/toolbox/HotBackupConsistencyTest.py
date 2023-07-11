@@ -6,6 +6,7 @@ import tempfile
 import time
 import os
 import sys
+import json
 
 from pathlib import Path
 from termcolor import colored
@@ -30,6 +31,15 @@ def start_cluster(binary, topdir, workdir):
 
     return environment
 
+def wait_for_cluster(client):
+    while True:
+        time.sleep(1)
+        try:
+            client.db('_system', username='root', verify=True)
+            return True
+        except ServerConnectionError:
+            time.sleep(1)
+
 def ensure_workdir(desired_workdir):
     if desired_workdir is None:
         return tempfile.mkdtemp(prefix="arangotest_")
@@ -44,13 +54,13 @@ def ensure_workdir(desired_workdir):
 
 def run_test(client):
     # create a database to run the test on
-    sys_db = client.db('_system', username='root')
+    sys_db = client.db('_system', username='root', verify=True)
     sys_db.create_database('test')
 
     test_db = client.db('test', username='root')
 
     # collection into which documents will be inserted and indexed
-    test_collection = test_db.create_collection('test_collection')
+    test_collection = test_db.create_collection('test_collection', shard_count=20)
     index = test_collection.add_inverted_index(fields=["field1"])
     test_db.create_view(name="test_view", view_type="arangosearch",
                         properties = { "links": {
@@ -152,9 +162,8 @@ def main():
     environment = start_cluster(args.arangod, args.topdir, workdir)
 
     # TODO: replace this with API call for cluster readiness
-    time.sleep(15)
     client = ArangoClient(environment.get_coordinator_http_endpoint())
-
+    wait_for_cluster(client)
     run_test(client)
 
 if __name__ == "__main__":
