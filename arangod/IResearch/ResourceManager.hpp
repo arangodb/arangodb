@@ -41,8 +41,8 @@ struct ResourceManager final : metrics::Gauge<uint64_t>, irs::IResourceManager {
   }
 };
 
-struct LimittedResourceManager final : metrics::Gauge<uint64_t>,
-                                       irs::IResourceManager {
+struct LimitedResourceManager final : metrics::Gauge<uint64_t>,
+                                      irs::IResourceManager {
   using Value = uint64_t;
   using metrics::Gauge<uint64_t>::Gauge;
 

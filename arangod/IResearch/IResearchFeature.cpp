@@ -104,7 +104,7 @@ DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
 
 #ifdef USE_ENTERPRISE
 
-DECLARE_GAUGE(arangodb_search_columns_cache_size, LimittedResourceManager,
+DECLARE_GAUGE(arangodb_search_columns_cache_size, LimitedResourceManager,
               "ArangoSearch columns cache usage in bytes");
 #endif
 
@@ -1023,7 +1023,7 @@ but the returned data may be incomplete.)");
 
 #ifdef USE_ENTERPRISE
   auto& manager =
-      basics::downCast<LimittedResourceManager>(_columnsCacheMemoryUsed);
+      basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
   options
       ->addOption(CACHE_LIMIT,
                   "The limit (in bytes) for ArangoSearch columns cache "
@@ -1204,7 +1204,7 @@ void IResearchFeature::start() {
 
 #ifdef USE_ENTERPRISE
     auto& manager =
-        basics::downCast<LimittedResourceManager>(_columnsCacheMemoryUsed);
+        basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
     LOG_TOPIC("c2c74", INFO, arangodb::iresearch::TOPIC)
         << "ArangoSearch columns cache limit: " << manager.limit;
 #endif
@@ -1387,12 +1387,12 @@ void IResearchFeature::registerIndexFactory() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 int64_t IResearchFeature::columnsCacheUsage() const noexcept {
   auto& manager =
-      basics::downCast<LimittedResourceManager>(_columnsCacheMemoryUsed);
+      basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
   return manager.load();
 }
 void IResearchFeature::setCacheUsageLimit(uint64_t limit) noexcept {
   auto& manager =
-      basics::downCast<LimittedResourceManager>(_columnsCacheMemoryUsed);
+      basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
   manager.limit = limit;
 }
 #endif

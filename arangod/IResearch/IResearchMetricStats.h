@@ -160,5 +160,4 @@ DECLARE_GAUGE(arangodb_search_consolidation_time, uint64_t,
 
 inline constexpr std::string_view kSearchStats = "arangodb_search_link_stats";
 
-
 }  // namespace arangodb::iresearch
