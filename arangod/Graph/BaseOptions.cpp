@@ -335,14 +335,12 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
 BaseOptions::~BaseOptions() {
   if (!getVertexProjections().empty()) {
     resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
-                                          sizeof(aql::Projections::Projection) *
-                                          _parallelism);
+                                          sizeof(aql::Projections::Projection));
   }
 
   if (!getEdgeProjections().empty()) {
     resourceMonitor().decreaseMemoryUsage(getEdgeProjections().size() *
-                                          sizeof(aql::Projections::Projection) *
-                                          _parallelism);
+                                          sizeof(aql::Projections::Projection));
   }
 }
 
@@ -487,6 +485,10 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
 
 void BaseOptions::setCollectionToShard(
     std::unordered_map<std::string, std::string> const& in) {
+  if (in.empty()) {
+    return;
+  }
+
   _collectionToShard.clear();
   _collectionToShard.reserve(in.size());
   for (auto const& [key, value] : in) {
@@ -628,7 +630,7 @@ void BaseOptions::setVertexProjections(Projections projections) {
   }
   arangodb::ResourceUsageScope guard(
       resourceMonitor(),
-      projections.size() * sizeof(aql::Projections::Projection) * _parallelism);
+      projections.size() * sizeof(aql::Projections::Projection));
   _vertexProjections = std::move(projections);
   guard.steal();  // now we are responsible for tracking the memory
 }
@@ -640,7 +642,7 @@ void BaseOptions::setEdgeProjections(Projections projections) {
   }
   arangodb::ResourceUsageScope guard(
       resourceMonitor(),
-      projections.size() * sizeof(aql::Projections::Projection) * _parallelism);
+      projections.size() * sizeof(aql::Projections::Projection));
   _edgeProjections = std::move(projections);
   guard.steal();  // now we are responsible for tracking the memory
 }
@@ -693,20 +695,27 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
       DocumentProducingNode::kMaxProjections));
 
   {
-    arangodb::ResourceUsageScope vGuard(
-        resourceMonitor(), getVertexProjections().size() *
-                               sizeof(aql::Projections::Projection) *
-                               _parallelism);
+    if (!getVertexProjections().empty()) {
+      resourceMonitor().decreaseMemoryUsage(
+          getVertexProjections().size() * sizeof(aql::Projections::Projection));
+    }
+
     _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
+    arangodb::ResourceUsageScope vGuard(
+        resourceMonitor(),
+        getVertexProjections().size() * sizeof(aql::Projections::Projection));
     vGuard.steal();  // now we are responsible for tracking the memory
   }
 
   {
-    arangodb::ResourceUsageScope eGuard(
-        resourceMonitor(), getEdgeProjections().size() *
-                               sizeof(aql::Projections::Projection) *
-                               _parallelism);
+    if (!getEdgeProjections().empty()) {
+      resourceMonitor().decreaseMemoryUsage(
+          getEdgeProjections().size() * sizeof(aql::Projections::Projection));
+    }
     _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
+    arangodb::ResourceUsageScope eGuard(
+        resourceMonitor(),
+        getEdgeProjections().size() * sizeof(aql::Projections::Projection));
     eGuard.steal();  // now we are responsible for tracking the memory
   }
 }
