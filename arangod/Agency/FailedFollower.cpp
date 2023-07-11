@@ -231,7 +231,7 @@ bool FailedFollower::start(bool& aborts) {
   {
     VPackArrayBuilder a(&todo);
     if (_jb == nullptr) {
-      auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& jobIdNode = _snapshot.get(toDoPrefix + _jobId);
       if (jobIdNode) {
         jobIdNode->toBuilder(todo);
       } else {

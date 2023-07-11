@@ -621,7 +621,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot,
   std::string databasePath = planColPrefix + database,
               planPath = databasePath + "/" + collection + "/shards";
 
-  auto myshards = sortedShardList(*snapshot.hasAsNode(planPath));
+  auto myshards = sortedShardList(*snapshot.get(planPath));
   auto steps = std::distance(
       myshards.begin(), std::find(myshards.begin(), myshards.end(), shard));
 
@@ -636,7 +636,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot,
                                             // logging of missing
         col.hasAsSlice("distributeShardsLike").value().stringView() ==
             collection) {
-      auto const& theirshards = sortedShardList(*col.hasAsNode("shards"));
+      auto const& theirshards = sortedShardList(*col.get("shards"));
       if (theirshards.size() > 0) {  // do not care about virtual collections
         if (theirshards.size() == myshards.size()) {
           ret.emplace_back(otherCollection, theirshards[steps]);
@@ -836,7 +836,7 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
   if (!snapshot.has(pendingPrefix + jobId)) {
     return false;
   }
-  auto const& job = snapshot.hasAsNode(pendingPrefix + jobId);
+  auto const& job = snapshot.get(pendingPrefix + jobId);
   if (!job || !job->has("type")) {
     return false;
   }

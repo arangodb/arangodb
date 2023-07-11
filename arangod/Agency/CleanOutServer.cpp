@@ -233,7 +233,7 @@ bool CleanOutServer::start(bool& aborts) {
 
   // Check that _to is not in `Target/CleanedServers`:
   VPackBuilder cleanedServersBuilder;
-  auto const& cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
+  auto const& cleanedServersNode = _snapshot.get(cleanedPrefix);
   if (cleanedServersNode) {
     cleanedServersNode->toBuilder(cleanedServersBuilder);
   } else {
@@ -253,10 +253,10 @@ bool CleanOutServer::start(bool& aborts) {
 
   // Check that _to is not in `Target/FailedServers`:
   //  (this node is expected to NOT exists, so make test before processing
-  //   so that hasAsNode does not generate a warning log message)
+  //   so that get does not generate a warning log message)
   VPackBuilder failedServersBuilder;
   if (_snapshot.has(failedServersPrefix)) {
-    auto const& failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
+    auto const& failedServersNode = _snapshot.get(failedServersPrefix);
     if (failedServersNode) {
       failedServersNode->toBuilder(failedServersBuilder);
     } else {

@@ -786,12 +786,6 @@ std::optional<double> Node::getDouble() const noexcept {
   return std::nullopt;
 }
 
-std::shared_ptr<Node const> Node::hasAsNode(
-    std::string const& url) const noexcept {
-  // retrieve node, throws if does not exist
-  return get(url);
-}  // hasAsNode
-
 std::optional<String> Node::hasAsSlice(std::string const& url) const noexcept {
   if (auto node = get(url); node) {
     return node->slice();

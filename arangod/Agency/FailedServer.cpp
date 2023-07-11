@@ -147,7 +147,7 @@ bool FailedServer::start(bool& aborts) {
   {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      auto const& toDoJob = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& toDoJob = _snapshot.get(toDoPrefix + _jobId);
       if (toDoJob) {
         toDoJob->toBuilder(todo);
       } else {
@@ -185,7 +185,7 @@ bool FailedServer::start(bool& aborts) {
           auto const& collection = *(collptr.second);
 
           auto const& replicationFactorPair =
-              collection.hasAsNode(StaticStrings::ReplicationFactor);
+              collection.get(StaticStrings::ReplicationFactor);
           if (replicationFactorPair) {
             VPackSlice const replicationFactor = replicationFactorPair->slice();
             uint64_t number = 1;

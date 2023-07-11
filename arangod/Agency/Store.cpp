@@ -677,7 +677,7 @@ void Store::toBuilder(Builder& b, bool showHidden) const {
 void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
                 bool showHidden) const {
   std::lock_guard storeLocker{_storeLock};
-  if (auto node = _node->hasAsNode(path); node) {
+  if (auto node = _node->get(path); node) {
     node->toBuilder(b, showHidden);
   } else {
     // Backwards compatibility of a refactoring. Would be better to communicate
@@ -689,7 +689,7 @@ void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
 /// Get node at path under mutex
 std::shared_ptr<Node const> Store::get(std::string const& path) const {
   std::lock_guard storeLocker{_storeLock};
-  return _node->hasAsNode(path);
+  return _node->get(path);
 }
 
 /// Get node at path under mutex

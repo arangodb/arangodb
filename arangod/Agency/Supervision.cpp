@@ -538,7 +538,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   auto const& machinesPlanned =
       *snapshot().hasAsChildren(std::string("Plan/") + type);
   auto const& serversRegistered =
-      *snapshot().hasAsNode(currentServersRegisteredPrefix);
+      *snapshot().get(currentServersRegisteredPrefix);
   std::vector<std::string> todelete;
   for (auto const& machine : *snapshot().hasAsChildren(healthPrefix)) {
     if ((type == "DBServers" &&
@@ -615,7 +615,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Get last health entries from transient and persistent key value stores
       bool transientHealthRecordFound = true;
       if (_transient->has(healthPrefix + serverID)) {
-        transist = *_transient->hasAsNode(healthPrefix + serverID);
+        transist = *_transient->get(healthPrefix + serverID);
       } else {
         // In this case this is the first time we look at this server during our
         // new leadership. So we do not touch the persisted health record and
@@ -623,7 +623,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
         transientHealthRecordFound = false;
       }
       if (snapshot().has(healthPrefix + serverID)) {
-        persist = *snapshot().hasAsNode(healthPrefix + serverID);
+        persist = *snapshot().get(healthPrefix + serverID);
       }
 
       // Here is an important subtlety: We will derive the health status of this
@@ -1382,7 +1382,7 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
 
     for (auto const& serverId : snapshot.get(planPath)->children()) {
       auto const& transientHeartbeat =
-          transient.hasAsNode("/Supervision/Health/" + serverId.first);
+          transient.get("/Supervision/Health/" + serverId.first);
       try {
         // Do we have a transient heartbeat younger than a day?
         if (transientHeartbeat) {
@@ -1394,7 +1394,7 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
         }
         // Else do we have a persistent heartbeat younger than a day?
         auto const& persistentHeartbeat =
-            snapshot.hasAsNode("/Supervision/Health/" + serverId.first);
+            snapshot.get("/Supervision/Health/" + serverId.first);
         if (persistentHeartbeat) {
           persistedTimeStamp =
               persistentHeartbeat->get("Timestamp")->getString().value();
@@ -1921,7 +1921,7 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
         {
           VPackObjectBuilder guard3(envelope.get());
           envelope->add(VPackValue("old"));
-          auto oldJobs = snapshot.hasAsNode(HOTBACKUP_TRANSFER_JOBS);
+          auto oldJobs = snapshot.get(HOTBACKUP_TRANSFER_JOBS);
           TRI_ASSERT(oldJobs);
           oldJobs->toBuilder(*envelope);
         }
@@ -2423,7 +2423,7 @@ void Supervision::ifResourceCreatorLost(
 
 void Supervision::checkBrokenCreatedDatabases() {
   // check if snapshot has databases
-  auto databases = snapshot().hasAsNode(planDBPrefix);
+  auto databases = snapshot().get(planDBPrefix);
   if (!databases) {
     return;
   }
@@ -2448,7 +2448,7 @@ void Supervision::checkBrokenCreatedDatabases() {
 
 void Supervision::checkBrokenCollections() {
   // check if snapshot has databases
-  auto collections = snapshot().hasAsNode(planColPrefix);
+  auto collections = snapshot().get(planColPrefix);
   if (!collections) {
     return;
   }
@@ -2520,7 +2520,7 @@ void Supervision::checkBrokenCollections() {
 
 void Supervision::checkBrokenAnalyzers() {
   // check if snapshot has analyzers
-  auto node = snapshot().hasAsNode(planAnalyzersPrefix);
+  auto node = snapshot().get(planAnalyzersPrefix);
   if (!node) {
     return;
   }
@@ -2633,7 +2633,7 @@ auto parseReplicatedLogAgency(Node const& root, std::string const& dbName,
   auto targetPath =
       aliases::target()->replicatedLogs()->database(dbName)->log(idString);
   // first check if target exists
-  if (auto targetNode = root.hasAsNode(targetPath->str(SkipComponents(1)));
+  if (auto targetNode = root.get(targetPath->str(SkipComponents(1)));
       targetNode) {
     auto log = replication2::agency::Log{
         .target = parseSomethingFromNode<replication2::agency::LogTarget>(
@@ -2664,7 +2664,7 @@ auto parseCollectionGroupAgency(Node const& root, std::string const& dbName,
   auto targetPath =
       aliases::target()->collectionGroups()->database(dbName)->group(gid);
   // first check if target exists
-  if (auto targetNode = root.hasAsNode(targetPath->str(SkipComponents(1)));
+  if (auto targetNode = root.get(targetPath->str(SkipComponents(1)));
       targetNode) {
     replication2::document::supervision::CollectionGroup spec;
     spec.target =
@@ -2758,7 +2758,7 @@ auto replicatedLogOwnerGone(Node const& snapshot, Node const& node,
     return false;
   }
 
-  auto const& targetNode = snapshot.hasAsNode(planRepStatePrefix);
+  auto const& targetNode = snapshot.get(planRepStatePrefix);
   // now check if there is a replicated state in plan with that id
   if (targetNode && targetNode->has(std::vector{dbName, idString})) {
     return false;
@@ -2875,7 +2875,7 @@ void Supervision::checkReplicatedLogs() {
   using namespace replication2::agency;
 
   // check if Target has replicated logs
-  auto const& targetNode = snapshot().hasAsNode(targetRepStatePrefix);
+  auto const& targetNode = snapshot().get(targetRepStatePrefix);
   if (!targetNode) {
     return;
   }
@@ -2909,7 +2909,7 @@ void Supervision::checkCollectionGroups() {
   using namespace replication2::agency;
 
   // check if Target has replicated logs
-  auto const& targetNode = snapshot().hasAsNode("/Target/CollectionGroups");
+  auto const& targetNode = snapshot().get("/Target/CollectionGroups");
   if (!targetNode) {
     return;
   }
@@ -3078,12 +3078,12 @@ void Supervision::cleanupReplicatedLogs() {
   using namespace replication2::agency;
 
   // check if Plan has replicated logs
-  auto const& planNode = snapshot().hasAsNode(planRepStatePrefix);
+  auto const& planNode = snapshot().get(planRepStatePrefix);
   if (!planNode) {
     return;
   }
 
-  auto const& targetNode = snapshot().hasAsNode(targetRepStatePrefix);
+  auto const& targetNode = snapshot().get(targetRepStatePrefix);
 
   velocypack::Builder builder;
   auto envelope = arangodb::agency::envelope::into_builder(builder);
@@ -3526,7 +3526,7 @@ void Supervision::checkUndoLeaderChangeActions() {
       return std::nullopt;
     });
 
-    if (auto jobOpt = undoOp.hasAsNode("moveShard"); jobOpt != nullptr) {
+    if (auto jobOpt = undoOp.get("moveShard"); jobOpt != nullptr) {
       Node const& job(*jobOpt);
 
       auto fromServer = job.hasAsString("fromServer");
@@ -3568,7 +3568,7 @@ void Supervision::checkUndoLeaderChangeActions() {
                             std::move(*database), std::move(*collection), id,
                             std::move(*fromServer), std::move(*toServer)},
                         deadline, started, jobId, rebootId};
-    } else if (jobOpt = undoOp.hasAsNode("reconfigureReplicatedLog");
+    } else if (jobOpt = undoOp.get("reconfigureReplicatedLog");
                jobOpt != nullptr) {
       Node const& job(*jobOpt);
 
@@ -3641,8 +3641,8 @@ void Supervision::checkUndoLeaderChangeActions() {
 
     if (undo.started) {
       if (undo.jobId) {
-        auto inTodo = snapshot().hasAsNode(toDoPrefix + *undo.jobId);
-        auto inPending = snapshot().hasAsNode(pendingPrefix + *undo.jobId);
+        auto inTodo = snapshot().get(toDoPrefix + *undo.jobId);
+        auto inPending = snapshot().get(pendingPrefix + *undo.jobId);
         if (!inTodo && !inPending) {
           return true;
         }

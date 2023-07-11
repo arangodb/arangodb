@@ -275,7 +275,7 @@ bool MoveShard::start(bool&) {
     return false;
   }
   auto const& collection =
-      _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
+      _snapshot.get(planColPrefix + _database + "/" + _collection);
   if (collection && collection->has("distributeShardsLike")) {
     moveShardFinish(
         false, false,

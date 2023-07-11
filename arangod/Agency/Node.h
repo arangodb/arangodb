@@ -176,10 +176,6 @@ class Node : public std::enable_shared_from_this<Node> {
   /// @brief Is object
   bool isObject() const;
 
-  /// @brief accessor to Node object
-  /// @return  returns nullptr if not found or type doesn't match
-  std::shared_ptr<Node const> hasAsNode(std::string const&) const noexcept;
-
   /// @brief accessor to Node's Slice value
   /// @return  returns nullopt if not found or type doesn't match
   std::optional<velocypack::String> hasAsSlice(

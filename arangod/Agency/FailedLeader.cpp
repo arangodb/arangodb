@@ -233,7 +233,7 @@ bool FailedLeader::start(bool& aborts) {
   {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& jobIdNode = _snapshot.get(toDoPrefix + _jobId);
       if (jobIdNode) {
         jobIdNode->toBuilder(todo);
       } else {
@@ -502,7 +502,7 @@ JOB_STATUS FailedLeader::status() {
   }
 
   std::string database, shard;
-  auto const& job = _snapshot.hasAsNode(pendingPrefix + _jobId);
+  auto const& job = _snapshot.get(pendingPrefix + _jobId);
   if (job) {
     auto tmp_database = job->hasAsString("database");
     auto tmp_shard = job->hasAsString("shard");
