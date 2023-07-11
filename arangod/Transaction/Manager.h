@@ -243,12 +243,6 @@ class Manager final : public IManager {
     _softShutdownOngoing.store(true, std::memory_order_relaxed);
   }
 
-  template<typename F>
-  auto performCommit(F&& fn) {
-    READ_LOCKER(guard, _hotbackupCommitLock);
-    return std::forward<F>(fn)();
-  }
-
  private:
   Result prepareOptions(transaction::Options& options);
   bool isFollowerTransactionOnDBServer(

@@ -207,8 +207,7 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
 
   // We have to make sure that no intermediate commit happens while we
   // create a hotbackup.
-  Result res = arangodb::transaction::ManagerFeature::manager()->performCommit(
-      [&] { return doCommit(); });
+  Result res = doCommit();
   if (res.fail()) {
     // FIXME: do we abort the transaction ?
     return res;
