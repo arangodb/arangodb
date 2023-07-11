@@ -98,7 +98,9 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
             </FieldsGrid>
             <ModalFooter>
               <Stack direction="row" spacing={4} align="center">
-                {mode === "edit" && <EditGraphButtons graph={initialGraph} />}
+                {mode === "edit" && (
+                  <EditGraphButtons graph={initialGraph} onClose={onClose} />
+                )}
                 <Button onClick={onClose} colorScheme="gray">
                   Cancel
                 </Button>

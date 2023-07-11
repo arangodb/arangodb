@@ -6,8 +6,14 @@ import { fetchUserConfig } from "../useFetchAndSetupGraphParams";
 import { DEFAULT_URL_PARAMETERS } from "../UrlParametersContext";
 import { putUserConfig } from "../useGraphSettingsHandlers";
 
-export const EditGraphButtons = ({ graph }: { graph?: GraphInfo }) => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+export const EditGraphButtons = ({
+  graph,
+  onClose
+}: {
+  graph?: GraphInfo;
+  onClose: () => void;
+}) => {
+  const { isOpen: isDeleteModalOpen, onOpen: onOpenDeleteModal, onClose: onCloseDeleteModal } = useDisclosure();
   const resetDisplaySettings = async () => {
     try {
       const fullConfig = await fetchUserConfig();
@@ -35,8 +41,8 @@ export const EditGraphButtons = ({ graph }: { graph?: GraphInfo }) => {
   };
   return (
     <>
-      <DeleteGraphModal isOpen={isOpen} onClose={onClose} graph={graph} />
-      <Button colorScheme="red" type="button" onClick={onOpen}>
+      <DeleteGraphModal isOpen={isDeleteModalOpen} onClose={onCloseDeleteModal} graph={graph} />
+      <Button colorScheme="red" type="button" onClick={onOpenDeleteModal}>
         Delete
       </Button>
       <Button colorScheme="orange" type="button" onClick={resetDisplaySettings}>
