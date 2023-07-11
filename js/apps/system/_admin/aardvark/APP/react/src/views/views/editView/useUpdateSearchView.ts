@@ -1,7 +1,7 @@
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
-import { ViewPropertiesType } from "../searchView.types";
+import { ViewPropertiesType } from "../View.types";
 
 type GetPropertiesType = ({
   view,

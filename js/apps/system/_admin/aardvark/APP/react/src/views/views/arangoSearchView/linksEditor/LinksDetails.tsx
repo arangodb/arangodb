@@ -5,7 +5,7 @@ import { get } from "lodash";
 import React from "react";
 import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { useEditViewContext } from "../../editView/EditViewContext";
-import { ArangoSearchViewPropertiesType } from "../../searchView.types";
+import { ArangoSearchViewPropertiesType } from "../../View.types";
 import { AnalyzersDropdown } from "./AnalyzersDropdown";
 import { FieldsDropdown } from "./FieldsDropdown";
 import { LinksBreadCrumb } from "./LinksBreadCrumb";

@@ -1,5 +1,7 @@
 import { CheckIcon, EditIcon } from "@chakra-ui/icons";
 import {
+  Flex,
+  Heading,
   IconButton,
   Input,
   Stack,
@@ -7,7 +9,7 @@ import {
   useDisclosure
 } from "@chakra-ui/react";
 import React, { useState } from "react";
-import { ViewPropertiesType } from "../searchView.types";
+import { ViewPropertiesType } from "../View.types";
 
 export const EditableViewNameField = ({
   view,
@@ -25,6 +27,9 @@ export const EditableViewNameField = ({
   if (isOpen) {
     return (
       <Stack margin="0" direction="row" alignItems="center">
+        <Heading as="h1" size="lg">
+          View: <Text srOnly>{view.name}</Text>
+        </Heading>
         <Input
           autoFocus
           value={newName}
@@ -49,17 +54,18 @@ export const EditableViewNameField = ({
     );
   }
   return (
-    <Stack direction="row" alignItems="center">
-      <Text color="gray.700" fontWeight="600" fontSize="lg">
-        {view.name} {!isAdminUser ? "(read only)" : null}
-      </Text>
+    <Flex direction="row" alignItems="center">
+      <Heading as="h1" size="lg" isTruncated title={view.name}>
+        View: {view.name}
+      </Heading>
+      {!isAdminUser ? <Text flexShrink={0} color="gray.700" fontWeight="600" fontSize="lg">(read only)</Text> : null}
       {!isCluster && isAdminUser ? (
-        <IconButton
+        <IconButton flexShrink={0}
           aria-label="Open edit name input"
           icon={<EditIcon />}
           onClick={onOpen}
         />
       ) : null}
-    </Stack>
+    </Flex>
   );
 };

@@ -1,5 +1,6 @@
 import { ArrowBackIcon } from "@chakra-ui/icons";
 import { Box, Button, Spinner, Stack, Text } from "@chakra-ui/react";
+import { ViewDescription } from "../View.types";
 import { omit } from "lodash";
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
@@ -9,15 +10,14 @@ import SingleSelect from "../../../components/select/SingleSelect";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 import { useEditViewContext } from "../editView/EditViewContext";
-import { SearchAliasViewPropertiesType } from "../searchView.types";
-import { SearchViewType } from "../viewsList/useViewsList";
+import { SearchAliasViewPropertiesType } from "../View.types";
 
 export const CopyPropertiesDropdown = () => {
   const { data, isLoading: isLoadingList } = useSWR("/view", path =>
     getApiRouteForCurrentDB().get(path)
   );
 
-  const views = data?.body.result as SearchViewType[] | undefined;
+  const views = data?.body.result as ViewDescription[] | undefined;
   if (!views) {
     return null;
   }
@@ -27,7 +27,7 @@ export const CopyPropertiesDropdown = () => {
   return <CopyPropertiesInner views={views} />;
 };
 
-const CopyPropertiesInner = ({ views }: { views: SearchViewType[] }) => {
+const CopyPropertiesInner = ({ views }: { views: ViewDescription[] }) => {
   const { onCopy, isAdminUser, initialView, setChanged } = useEditViewContext();
   const initialViewName = views?.find(
     view => view.type === initialView.type
@@ -78,7 +78,7 @@ const CopyPropertiesInner = ({ views }: { views: SearchViewType[] }) => {
             selectedView
           });
           // TODO: remove this once there are forms in search-alias view
-          if (initialView.type === "search-alias") {
+          if ((initialView.type as any) === "search-alias") {
             setChanged(true);
           }
         }}

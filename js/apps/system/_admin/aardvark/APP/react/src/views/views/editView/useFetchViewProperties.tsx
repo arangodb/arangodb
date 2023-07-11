@@ -4,7 +4,7 @@ import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 
 import useSWR from "swr";
 import { encodeHelper } from "../../../utils/encodeHelper";
-import { ViewPropertiesType } from "../searchView.types";
+import { ViewPropertiesType } from "../View.types";
 
 export function useFetchViewProperties(name: string) {
   const [view, setView] = useState<ViewPropertiesType | undefined>();

@@ -1,7 +1,7 @@
 import { useFormikContext } from "formik";
 import { cloneDeep, get, set } from "lodash";
 import { useEditViewContext } from "../../editView/EditViewContext";
-import { ArangoSearchViewPropertiesType } from "../../searchView.types";
+import { ArangoSearchViewPropertiesType } from "../../View.types";
 
 /**
  * Converts to path.

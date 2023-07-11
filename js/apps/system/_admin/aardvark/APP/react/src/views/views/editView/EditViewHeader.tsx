@@ -1,93 +1,82 @@
-import { CheckIcon, DeleteIcon } from "@chakra-ui/icons";
-import { Box, Button, Stack, useDisclosure } from "@chakra-ui/react";
+import { ArrowBackIcon, CheckIcon, DeleteIcon } from "@chakra-ui/icons";
+import { Box, Button, Flex, Grid, IconButton } from "@chakra-ui/react";
 import { useField, useFormikContext } from "formik";
 import React from "react";
-import {
-  Modal,
-  ModalBody,
-  ModalFooter,
-  ModalHeader
-} from "../../../components/modal";
+import { useHistory } from "react-router-dom";
 import { useEditViewContext } from "../editView/EditViewContext";
-import { ViewPropertiesType } from "../searchView.types";
+import { ViewPropertiesType } from "../View.types";
 import { CopyPropertiesDropdown } from "./CopyPropertiesDropdown";
+import { DeleteViewModal } from "./DeleteViewModal";
 import { EditableViewNameField } from "./EditableViewNameField";
 
 export const EditViewHeader = () => {
-  const { isAdminUser } = useEditViewContext();
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const history = useHistory();
+  const { isAdminUser, initialView } = useEditViewContext();
   return (
     <Box padding="4" borderBottomWidth="2px" borderColor="gray.200">
-      <Box display="grid" gap="4" gridTemplateRows={"30px 1fr"}>
-        <EditableNameFieldWrap />
-        {isAdminUser && (
-          <Box display="grid" gridTemplateColumns="1fr 0.5fr">
-            <CopyPropertiesDropdown />
-            <ActionButtons />
-          </Box>
-        )}
-      </Box>
+      <Flex direction="row" alignItems="center">
+        <IconButton
+          aria-label="Back"
+          variant="ghost"
+          size="sm"
+          icon={<ArrowBackIcon width="24px" height="24px" />}
+          marginRight="2"
+          onClick={() => {
+            history.push("/views");
+          }}
+        />
+        <EditableViewHeading />
+        <Button
+          size="xs"
+          marginLeft="auto"
+          leftIcon={<DeleteIcon />}
+          colorScheme="red"
+          onClick={() => {
+            setShowDeleteModal(true);
+          }}
+        >
+          Delete
+        </Button>
+      </Flex>
+      {isAdminUser && <ViewActions />}
+      {showDeleteModal && (
+        <DeleteViewModal
+          view={initialView}
+          onSuccess={() => {
+            history.push("/views");
+          }}
+          onClose={() => {
+            setShowDeleteModal(false);
+          }}
+        />
+      )}
     </Box>
   );
 };
 
-const ActionButtons = () => {
+const ViewActions = () => {
   const { errors, changed, isAdminUser } = useEditViewContext();
   const { submitForm } = useFormikContext<ViewPropertiesType>();
   return (
-    <Box display={"flex"} justifyContent="end" alignItems={"center"} gap="4">
-      <Button
-        size="xs"
-        colorScheme="green"
-        leftIcon={<CheckIcon />}
-        onClick={submitForm}
-        isDisabled={errors.length > 0 || !changed || !isAdminUser}
-      >
-        Save view
-      </Button>
-      <DeleteViewButton />
-    </Box>
+    <Grid gridTemplateColumns="1fr 0.5fr" marginTop="4">
+      <CopyPropertiesDropdown />
+      <Grid justifyContent={"end"} alignItems={"center"}>
+        <Button
+          size="xs"
+          colorScheme="green"
+          leftIcon={<CheckIcon />}
+          onClick={submitForm}
+          isDisabled={errors.length > 0 || !changed || !isAdminUser}
+        >
+          Save view
+        </Button>
+      </Grid>
+    </Grid>
   );
 };
 
-const DeleteViewButton = () => {
-  const { onDelete, isAdminUser } = useEditViewContext();
-  const { values: view } = useFormikContext<ViewPropertiesType>();
-  const { onOpen, onClose, isOpen } = useDisclosure();
-  return (
-    <>
-      <Button
-        size="xs"
-        colorScheme="red"
-        leftIcon={<DeleteIcon />}
-        onClick={onOpen}
-        isDisabled={!isAdminUser}
-      >
-        Delete
-      </Button>
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalHeader>Delete view: {view.name}?</ModalHeader>
-        <ModalBody>
-          <p>
-            Are you sure? Clicking on the <b>Delete</b> button will permanently
-            delete this view.
-          </p>
-        </ModalBody>
-        <ModalFooter>
-          <Stack direction="row">
-            <Button colorScheme={"gray"} onClick={onClose}>
-              Close
-            </Button>
-            <Button colorScheme="red" onClick={onDelete}>
-              Delete
-            </Button>
-          </Stack>
-        </ModalFooter>
-      </Modal>
-    </>
-  );
-};
-
-const EditableNameFieldWrap = () => {
+const EditableViewHeading = () => {
   const { isAdminUser, isCluster } = useEditViewContext();
   const { values } = useFormikContext<ViewPropertiesType>();
   const [, , helpers] = useField("name");

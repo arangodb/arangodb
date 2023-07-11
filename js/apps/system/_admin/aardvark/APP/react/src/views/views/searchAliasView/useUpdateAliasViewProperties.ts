@@ -1,6 +1,6 @@
 import { differenceWith, isEqual } from "lodash";
 import { useUpdateSearchView } from "../editView/useUpdateSearchView";
-import { SearchAliasViewPropertiesType } from "../searchView.types";
+import { SearchAliasViewPropertiesType } from "../View.types";
 
 export const useUpdateAliasViewProperties = () => {
   const getProperties = (({

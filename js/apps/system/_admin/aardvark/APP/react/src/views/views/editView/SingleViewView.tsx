@@ -1,6 +1,5 @@
 import { Spinner } from "@chakra-ui/react";
 import React from "react";
-import { ChakraCustomProvider } from "../../../theme/ChakraCustomProvider";
 import { useDisableNavBar } from "../../../utils/useDisableNavBar";
 import { useGlobalStyleReset } from "../../../utils/useGlobalStyleReset";
 import { ArangoSearchViewSettings } from "../arangoSearchView/ArangoSearchViewSettings";
@@ -9,10 +8,12 @@ import { useFetchViewProperties } from "./useFetchViewProperties";
 import {
   ArangoSearchViewPropertiesType,
   SearchAliasViewPropertiesType
-} from "../searchView.types";
-import { SearchViewsCustomStyleReset } from "../SearchViewsCustomStyleReset";
+} from "../View.types";
+import { useRouteMatch } from "react-router-dom";
 
-export const EditViewWrap = ({ name }: { name: string }) => {
+export const SingleViewView = () => {
+  const { params } = useRouteMatch<{ viewName: string }>();
+  const { viewName: name } = params;
   const { view, isLoading } = useFetchViewProperties(name);
   useDisableNavBar();
   useGlobalStyleReset();
@@ -21,24 +22,12 @@ export const EditViewWrap = ({ name }: { name: string }) => {
   }
   if (view?.type === "search-alias") {
     return (
-      <ChakraCustomProvider overrideNonReact>
-        <SearchViewsCustomStyleReset>
-          <SearchAliasViewSettings
-            view={view as SearchAliasViewPropertiesType}
-          />
-        </SearchViewsCustomStyleReset>
-      </ChakraCustomProvider>
+      <SearchAliasViewSettings view={view as SearchAliasViewPropertiesType} />
     );
   }
   if (view?.type === "arangosearch") {
     return (
-      <ChakraCustomProvider overrideNonReact>
-        <SearchViewsCustomStyleReset>
-          <ArangoSearchViewSettings
-            view={view as ArangoSearchViewPropertiesType}
-          />
-        </SearchViewsCustomStyleReset>
-      </ChakraCustomProvider>
+      <ArangoSearchViewSettings view={view as ArangoSearchViewPropertiesType} />
     );
   }
   return null;

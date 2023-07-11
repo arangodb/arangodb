@@ -1,4 +1,4 @@
-import { Box } from "@chakra-ui/react";
+import { Box, Grid } from "@chakra-ui/react";
 import { Form, useFormikContext } from "formik";
 import React, { useEffect } from "react";
 import { Split, SplitDivider } from "../../../components/split/Split";
@@ -7,7 +7,7 @@ import {
   useEditViewContext
 } from "../editView/EditViewContext";
 import { EditViewHeader } from "../editView/EditViewHeader";
-import { ArangoSearchViewPropertiesType } from "../searchView.types";
+import { ArangoSearchViewPropertiesType } from "../View.types";
 import { ArangoSearchJSONEditor } from "./ArangoSearchJSONEditor";
 import { ArangoSearchViewForm } from "./ArangoSearchViewForm";
 import { useUpdateArangoSearchViewProperties } from "./useUpdateArangoSearchViewProperties";
@@ -33,15 +33,13 @@ export const ArangoSearchViewSettingsInner = () => {
     }
   }, [values, setChanged, dirty]);
   return (
-    <Box
+    <Grid
       as={Form}
       onChange={() => {
         setChanged(true);
       }}
-      backgroundColor="white"
-      width="full"
-      height="calc(100vh - 60px)"
-      display={"grid"}
+      backgroundColor="white" width="100%"
+      height="calc(100vh - 80px)"
       gridTemplateRows="120px 1fr"
     >
       <EditViewHeader />
@@ -59,6 +57,6 @@ export const ArangoSearchViewSettingsInner = () => {
           );
         }}
       />
-    </Box>
+    </Grid>
   );
 };

@@ -1,4 +1,21 @@
-import { SearchViewType } from "./viewsList/useViewsList";
+export interface ViewDescription {
+  /**
+   * A globally unique identifier for this View.
+   */
+  globallyUniqueId: string;
+  /**
+   * An identifier for this View.
+   */
+  id: string;
+  /**
+   * Name of the View.
+   */
+  name: string;
+  /**
+   * Type of the View.
+   */
+  type: "arangosearch" | "search-alias";
+}
 
 type Compression = "lz4" | "none";
 
@@ -67,7 +84,7 @@ export type LinkProperties = {
 export type LinksType = {
   [collectionName: string]: LinkProperties | null;
 };
-export type ArangoSearchViewPropertiesType = SearchViewType &
+export type ArangoSearchViewPropertiesType = ViewDescription &
   PrimarySort &
   StoredValues &
   ConsolidationPolicy &
@@ -75,7 +92,7 @@ export type ArangoSearchViewPropertiesType = SearchViewType &
     links?: LinksType;
   };
 
-export interface SearchAliasViewPropertiesType extends SearchViewType {
+export interface SearchAliasViewPropertiesType extends ViewDescription {
   indexes: Array<{ collection: string; index: string }>;
 }
 
