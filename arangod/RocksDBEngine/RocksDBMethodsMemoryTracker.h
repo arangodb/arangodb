@@ -26,6 +26,7 @@
 #include <cstdint>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 struct RocksDBMethodsMemoryTracker {
   virtual ~RocksDBMethodsMemoryTracker() {}
@@ -38,6 +39,8 @@ struct RocksDBMethodsMemoryTracker {
   virtual void popSavePoint() noexcept = 0;
 
   virtual size_t memoryUsage() const noexcept = 0;
+  virtual void beginQuery(ResourceMonitor* resourceMonitor) = 0;
+  virtual void endQuery() noexcept = 0;
 };
 
 }  // namespace arangodb

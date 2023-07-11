@@ -838,9 +838,9 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
   }
 
   // push our current transaction on the stack
-  state->beginQuery(true);
+  state->beginQuery(/*resourceMonitor*/ nullptr, /*isModificationQuery*/ true);
   auto stateGuard = scopeGuard([state, prvICC]() noexcept {
-    state->endQuery(true);
+    state->endQuery(/*isModificationQuery*/ true);
     // reset to previous value after truncate is finished
     state->options().intermediateCommitCount = prvICC;
   });

@@ -1255,9 +1255,9 @@ void Query::init(bool createProfile) {
 }
 
 void Query::registerQueryInTransactionState() {
-  // register ourselves in the TransactionState
   TRI_ASSERT(!_registeredQueryInTrx);
-  _trx->state()->beginQuery(isModificationQuery());
+  // register ourselves in the TransactionState
+  _trx->state()->beginQuery(&resourceMonitor(), isModificationQuery());
   _registeredQueryInTrx = true;
 }
 
