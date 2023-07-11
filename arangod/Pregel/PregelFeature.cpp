@@ -117,6 +117,8 @@ network::Headers buildHeaders() {
 }  // namespace
 
 auto PregelRunUser::authorized(ExecContext const& userContext) const -> bool {
+  auto f = 15;
+
   if (userContext.isSuperuser()) {
     return true;
   }
