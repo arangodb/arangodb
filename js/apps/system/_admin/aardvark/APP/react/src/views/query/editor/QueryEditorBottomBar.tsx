@@ -61,7 +61,7 @@ export const QueryEditorBottomBar = () => {
       <Text fontWeight="medium">
         Query name: {existingQuery && queryName ? queryName : "Untitled"}
       </Text>
-      {queryName && (
+      {existingQuery && queryName && (
         <Button
           marginLeft="2"
           size="sm"
