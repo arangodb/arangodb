@@ -283,8 +283,8 @@ workflows:
   community-pr:
     jobs:
       - compile-linux:
-#          context:
-#          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          context:
+          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ce
           preset: community-pr
           edition: x64-community
@@ -292,8 +292,8 @@ workflows:
   enterprise-pr:
     jobs:
       - compile-linux:
-#          context:
-#          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          context:
+          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ee
           preset: enterprise-pr
           edition: x64-enterprise
