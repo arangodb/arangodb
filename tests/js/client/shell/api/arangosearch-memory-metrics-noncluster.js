@@ -90,10 +90,8 @@ function MemoryMetrics() {
       assertTrue(mapped > 0);
       {
         const oldValue = getMetric("arangodb_search_writers_memory");
-        print("oldValue=" + oldValue);
         db._query("FOR d IN " + collection + " REMOVE d IN " + collection);
         const newValue = getMetric("arangodb_search_writers_memory");
-        print("newValue=" + newValue);
         assertNotEqual(oldValue, newValue);
       }
     },
