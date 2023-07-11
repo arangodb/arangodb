@@ -484,7 +484,6 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
 
 void BaseOptions::setCollectionToShard(
     std::unordered_map<std::string, std::string> const& in) {
-
   _collectionToShard.clear();
   _collectionToShard.reserve(in.size());
   for (auto const& [key, value] : in) {
@@ -697,10 +696,15 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
     }
 
     _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
-    arangodb::ResourceUsageScope vGuard(
-        resourceMonitor(),
-        getVertexProjections().size() * sizeof(aql::Projections::Projection));
-    vGuard.steal();  // now we are responsible for tracking the memory
+    try {
+      arangodb::ResourceUsageScope vGuard(
+          resourceMonitor(),
+          getVertexProjections().size() * sizeof(aql::Projections::Projection));
+      vGuard.steal();  // now we are responsible for tracking the memory
+    } catch (...) {
+      _vertexProjections.clear();
+      throw;
+    }
   }
 
   {
@@ -709,9 +713,14 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
           getEdgeProjections().size() * sizeof(aql::Projections::Projection));
     }
     _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
-    arangodb::ResourceUsageScope eGuard(
-        resourceMonitor(),
-        getEdgeProjections().size() * sizeof(aql::Projections::Projection));
-    eGuard.steal();  // now we are responsible for tracking the memory
+    try {
+      arangodb::ResourceUsageScope eGuard(
+          resourceMonitor(),
+          getEdgeProjections().size() * sizeof(aql::Projections::Projection));
+      eGuard.steal();  // now we are responsible for tracking the memory
+    } catch (...) {
+      _edgeProjections.clear();
+      throw;
+    }
   }
 }
