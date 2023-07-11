@@ -21,7 +21,7 @@ export const QueryTableView = ({
     return null;
   }
   return (
-    <TableContainer>
+    <TableContainer maxHeight="600px" overflowX="auto" overflowY="auto">
       <Table>
         <Thead>
           <Tr>
