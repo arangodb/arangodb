@@ -46,7 +46,30 @@ export const FormField = ({
             isRequired={field.isRequired}
             name={field.name}
           />
-          {field.tooltip ? <IndexInfoTooltip label={field.tooltip} /> : <Spacer />}
+          {field.tooltip ? (
+            <IndexInfoTooltip label={field.tooltip} />
+          ) : (
+            <Spacer />
+          )}
+        </>
+      );
+    case "password":
+      return (
+        <>
+          <FormLabel margin="0" htmlFor={field.name}>
+            {field.label}
+          </FormLabel>
+          <InputControl
+            isDisabled={field.isDisabled}
+            inputProps={{ type: "password", autoFocus }}
+            isRequired={field.isRequired}
+            name={field.name}
+          />
+          {field.tooltip ? (
+            <IndexInfoTooltip label={field.tooltip} />
+          ) : (
+            <Spacer />
+          )}
         </>
       );
     case "number":
@@ -61,7 +84,11 @@ export const FormField = ({
             isRequired={field.isRequired}
             name={field.name}
           />
-          {field.tooltip ? <IndexInfoTooltip label={field.tooltip} /> : <Spacer />}
+          {field.tooltip ? (
+            <IndexInfoTooltip label={field.tooltip} />
+          ) : (
+            <Spacer />
+          )}
         </>
       );
     case "multiSelect":
@@ -79,7 +106,11 @@ export const FormField = ({
             isRequired={field.isRequired}
             name={field.name}
           />
-          {field.tooltip ? <IndexInfoTooltip label={field.tooltip} /> : <Spacer />}
+          {field.tooltip ? (
+            <IndexInfoTooltip label={field.tooltip} />
+          ) : (
+            <Spacer />
+          )}
         </>
       );
     case "text":
@@ -95,7 +126,11 @@ export const FormField = ({
             name={field.name}
             inputProps={{ autoFocus }}
           />
-          {field.tooltip ? <IndexInfoTooltip label={field.tooltip} /> : <Spacer />}
+          {field.tooltip ? (
+            <IndexInfoTooltip label={field.tooltip} />
+          ) : (
+            <Spacer />
+          )}
         </>
       );
   }
