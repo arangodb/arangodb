@@ -232,9 +232,6 @@ struct BaseOptions {
 
   virtual void calculateIndexExpressions(aql::Ast* ast);
 
-  /// @brief return the amount of bytes used
-  size_t getMemoryUsedBytes() const;
-
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list,
                                size_t& createItems) const;
