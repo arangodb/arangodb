@@ -9,12 +9,23 @@ export type QueryType = {
   isTemplate?: boolean;
 };
 
-export const useFetchUserSavedQueries = () => {
+export const useFetchUserSavedQueries = ({
+  storageKey
+}: {
+  storageKey: string;
+}) => {
   const fetchUser = async () => {
+    // if LDAP is enabled, calls to /_api/user will fail
+    // so we need to fetch from localStorage
+    const currentUser = window.App.currentUser || "root";
+    if (window.frontendConfig.ldapEnabled) {
+      const savedQueries = JSON.parse(
+        localStorage.getItem(storageKey) || "[]"
+      ) as QueryType[];
+      return savedQueries.reverse();
+    }
     const currentDB = getCurrentDB();
-    const path = `/_api/user/${encodeURIComponent(
-      window.App.currentUser || "root"
-    )}`;
+    const path = `/_api/user/${encodeURIComponent(currentUser)}`;
     const user = await currentDB.request({
       absolutePath: false,
       path

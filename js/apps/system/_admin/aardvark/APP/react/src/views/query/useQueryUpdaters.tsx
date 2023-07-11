@@ -5,12 +5,14 @@ import { QueryType } from "./editor/useFetchUserSavedQueries";
 export const useQueryUpdaters = ({
   queryValue,
   queryBindParams,
-  savedQueries
+  savedQueries,
+  storageKey
 }: {
   queryValue: string;
   queryBindParams: { [key: string]: string };
   queryName?: string;
   savedQueries?: QueryType[];
+  storageKey: string;
 }) => {
   const onSaveAs = async (queryName: string) => {
     const newQueries = [
@@ -21,8 +23,10 @@ export const useQueryUpdaters = ({
       queries: newQueries,
       onSuccess: () => {
         window.arangoHelper.arangoNotification(`Saved query: ${queryName}`);
-      }
+      },
+      storageKey
     });
+    mutate("/savedQueries");
   };
   const onSave = async (queryName: string) => {
     await mutate("/savedQueries");
@@ -42,8 +46,10 @@ export const useQueryUpdaters = ({
         queries: newQueries || [],
         onSuccess: () => {
           window.arangoHelper.arangoNotification(`Updated query: ${queryName}`);
-        }
+        },
+        storageKey
       });
+      mutate("/savedQueries");
     }
   };
 
@@ -53,19 +59,28 @@ export const useQueryUpdaters = ({
       queries: newQueries || [],
       onSuccess: () => {
         window.arangoHelper.arangoNotification(`Deleted query: ${queryName}`);
-      }
+      },
+      storageKey
     });
+    mutate("/savedQueries");
   };
   return { onSaveAs, onSave, onDelete };
 };
 
 const patchQueries = async ({
   queries,
-  onSuccess
+  onSuccess,
+  storageKey
 }: {
   queries: QueryType[];
   onSuccess: () => void;
+  storageKey: string;
 }) => {
+  if (window.frontendConfig.ldapEnabled) {
+    localStorage.setItem(storageKey, JSON.stringify(queries));
+    onSuccess();
+    return Promise.resolve();
+  }
   const currentDB = getCurrentDB();
   try {
     await currentDB.request({

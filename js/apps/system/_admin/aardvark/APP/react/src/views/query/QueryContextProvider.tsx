@@ -97,12 +97,17 @@ export const QueryContextProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
+  const currentUser = window.App.currentUser || "root";
+  const currentDbName = window.frontendConfig.db;
+  const storageKey = `${currentDbName}-${currentUser}-savedQueries`;
   const initialQueryString = window.sessionStorage.getItem("cachedQuery");
   const initialQuery = initialQueryString
     ? JSON.parse(initialQueryString)
     : ({} as CachedQuery);
   const { savedQueries, isLoading: isFetchingQueries } =
-    useFetchUserSavedQueries();
+    useFetchUserSavedQueries({
+      storageKey
+    });
   const [currentView, setCurrentView] = React.useState<"saved" | "editor">(
     "editor"
   );
@@ -131,7 +136,8 @@ export const QueryContextProvider = ({
   const { onSave, onSaveAs, onDelete } = useQueryUpdaters({
     queryValue,
     queryBindParams,
-    savedQueries
+    savedQueries,
+    storageKey
   });
   const [isSpotlightOpen, setIsSpotlightOpen] = React.useState<boolean>(false);
   const aqlJsonEditorRef = React.useRef(null);

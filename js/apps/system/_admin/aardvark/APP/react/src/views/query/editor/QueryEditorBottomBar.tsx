@@ -59,7 +59,7 @@ export const QueryEditorBottomBar = () => {
         onCloseDebugPackageModal={onCloseDebugPackageModal}
       />
       <Text fontWeight="medium">
-        Query name: {queryName ? queryName : "Untitled"}
+        Query name: {existingQuery && queryName ? queryName : "Untitled"}
       </Text>
       {queryName && (
         <Button
