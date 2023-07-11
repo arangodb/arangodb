@@ -253,8 +253,7 @@ CollectNode::calcInputVariableNames() const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   switch (aggregationMethod()) {
     case CollectOptions::CollectMethod::HASH: {
       ExecutionNode const* previousNode = getFirstDependency();

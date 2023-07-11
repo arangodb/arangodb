@@ -579,4 +579,4 @@ auto DocumentFollowerState::GuardedData::applyEntry(
       activeTransactions.getReleaseIndex().value_or(index));
 }
 
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"

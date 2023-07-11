@@ -21,44 +21,32 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedState/StateCommon.h"
+
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/PersistedLogEntry.h"
+#include "Replication2/Storage/IPersistor.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 namespace arangodb {
 template<typename T>
 class ResultT;
-}
+}  // namespace arangodb
+
 namespace arangodb::futures {
 struct Unit;
 template<typename T>
 class Future;
 }  // namespace arangodb::futures
+
 namespace arangodb::replication2 {
-struct PersistedLogIterator;
+struct LogIterator;
 }
+namespace arangodb::replication2::storage {
 
-namespace arangodb::replication2::replicated_state {
+struct ILogPersistor : virtual IPersistor {
+  virtual ~ILogPersistor() = default;
 
-struct PersistedStateInfo {
-  LogId stateId;  // could be removed
-  SnapshotInfo snapshot;
-  StateGeneration generation;
-  replication2::agency::ImplementationSpec specification;
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, PersistedStateInfo& x) {
-  return f.object(x).fields(f.field("stateId", x.stateId),
-                            f.field("snapshot", x.snapshot),
-                            f.field("generation", x.generation),
-                            f.field("specification", x.specification));
-}
-
-struct IStorageEngineMethods {
-  virtual ~IStorageEngineMethods() = default;
-  [[nodiscard]] virtual auto updateMetadata(PersistedStateInfo) -> Result = 0;
-  [[nodiscard]] virtual auto readMetadata() -> ResultT<PersistedStateInfo> = 0;
-  [[nodiscard]] virtual auto read(LogIndex first)
+  [[nodiscard]] virtual auto getIterator(IteratorPosition position)
       -> std::unique_ptr<PersistedLogIterator> = 0;
 
   struct WriteOptions {
@@ -67,8 +55,7 @@ struct IStorageEngineMethods {
 
   using SequenceNumber = std::uint64_t;
 
-  virtual auto insert(std::unique_ptr<PersistedLogIterator>,
-                      WriteOptions const&)
+  virtual auto insert(std::unique_ptr<LogIterator>, WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> = 0;
   virtual auto removeFront(LogIndex stop, WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> = 0;
@@ -82,6 +69,8 @@ struct IStorageEngineMethods {
 
   // waits for all ongoing requests to be done
   virtual void waitForCompletion() noexcept = 0;
+
+  virtual auto compact() -> Result = 0;
 };
 
-}  // namespace arangodb::replication2::replicated_state
+}  // namespace arangodb::replication2::storage

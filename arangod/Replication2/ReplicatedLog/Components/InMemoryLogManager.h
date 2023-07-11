@@ -54,11 +54,11 @@ struct InMemoryLogManager : IInMemoryLogManager {
                       InMemoryLogEntry::clock::time_point insertTp,
                       bool waitForSync) -> LogIndex override;
   auto getInternalLogIterator(LogIndex firstIdx) const
-      -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> override;
+      -> std::unique_ptr<InMemoryLogIterator> override;
   auto getLogConsumerIterator(std::optional<LogRange> bounds) const
-      -> std::unique_ptr<LogRangeIterator> override;
+      -> std::unique_ptr<LogViewRangeIterator> override;
   auto getNonEmptyLogConsumerIterator(LogIndex firstIdx) const
-      -> std::variant<std::unique_ptr<LogRangeIterator>, LogIndex> override;
+      -> std::variant<std::unique_ptr<LogViewRangeIterator>, LogIndex> override;
 
   void resign() && noexcept;
 
@@ -71,7 +71,7 @@ struct InMemoryLogManager : IInMemoryLogManager {
 
     auto getLogConsumerIterator(IStorageManager& storageManager,
                                 std::optional<LogRange> bounds) const
-        -> std::unique_ptr<LogRangeIterator>;
+        -> std::unique_ptr<LogViewRangeIterator>;
   };
   LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _metrics;

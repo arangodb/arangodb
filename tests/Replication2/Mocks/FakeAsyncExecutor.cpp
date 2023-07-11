@@ -22,11 +22,12 @@
 
 #include "FakeAsyncExecutor.h"
 
+#include "Basics/ResultT.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
+
 #include <gtest/gtest.h>
 
-using namespace arangodb;
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::test;
+using namespace arangodb::replication2::storage::rocksdb::test;
 
 void ThreadAsyncExecutor::run() noexcept {
   while (true) {

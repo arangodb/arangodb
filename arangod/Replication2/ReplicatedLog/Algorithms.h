@@ -55,6 +55,7 @@ struct ParticipantState {
   ParticipantId id;
   bool snapshotAvailable = false;
   ParticipantFlags flags{};
+  LogIndex syncIndex;
 
   [[nodiscard]] auto isAllowedInQuorum() const noexcept -> bool;
   [[nodiscard]] auto isForced() const noexcept -> bool;
@@ -74,11 +75,17 @@ auto operator<=>(ParticipantState const& left,
 auto operator<<(std::ostream& os, ParticipantState const& p) noexcept
     -> std::ostream&;
 
+struct CommitIndexReport {
+  LogIndex commitIndex;
+  LogIndex syncCommitIndex;
+  replicated_log::CommitFailReason reason;
+  std::vector<ParticipantId> failedParticipants;
+};
+
 auto calculateCommitIndex(std::vector<ParticipantState> const& participants,
                           size_t effectiveWriteConcern,
                           LogIndex currentCommitIndex,
-                          TermIndexPair lastTermIndex)
-    -> std::tuple<LogIndex, replicated_log::CommitFailReason,
-                  std::vector<ParticipantId>>;
+                          TermIndexPair lastTermIndex,
+                          LogIndex currentSyncCommitIndex) -> CommitIndexReport;
 
 }  // namespace arangodb::replication2::algorithms

@@ -26,6 +26,7 @@
 
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 
 namespace arangodb::replication2::test {
 struct StorageTransactionMock : replicated_log::IStorageTransaction {
@@ -36,7 +37,7 @@ struct StorageTransactionMock : replicated_log::IStorageTransaction {
               (noexcept, override));
   MOCK_METHOD(futures::Future<Result>, appendEntries,
               (replicated_log::InMemoryLog,
-               replicated_state::IStorageEngineMethods::WriteOptions),
+               storage::IStorageEngineMethods::WriteOptions),
               (noexcept, override));
 };
 }  // namespace arangodb::replication2::test

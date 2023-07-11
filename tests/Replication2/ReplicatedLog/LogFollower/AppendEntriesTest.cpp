@@ -50,28 +50,27 @@ struct ReplicatedStateHandleMock : IReplicatedStateHandle {
               (const, override));
 };
 
+auto generateEntries(LogTerm term, LogRange range)
+    -> AppendEntriesRequest::EntryContainer {
+  auto tr = AppendEntriesRequest::EntryContainer::transient_type{};
+  for (auto idx : range) {
+    tr.push_back(InMemoryLogEntry{
+        LogEntry{term, idx, LogPayload::createFromString("foo")}});
+  }
+  return tr.persistent();
+}
+
 }  // namespace
 
 struct AppendEntriesFollowerTest : ::testing::Test {
   std::uint64_t const objectId = 1;
   LogId const logId = LogId{12};
-  std::shared_ptr<test::SyncExecutor> executor =
-      std::make_shared<test::SyncExecutor>();
+  std::shared_ptr<storage::rocksdb::test::SyncExecutor> executor =
+      std::make_shared<storage::rocksdb::test::SyncExecutor>();
   std::shared_ptr<test::SyncScheduler> scheduler =
       std::make_shared<test::SyncScheduler>();
 
-  test::FakeStorageEngineMethodsContext storage{
-      objectId,
-      logId,
-      executor,
-      {LogIndex{1}, LogIndex{100}},
-      replicated_state::PersistedStateInfo{
-          .stateId = logId,
-          .snapshot = {.status = SnapshotStatus::kCompleted,
-                       .timestamp = {},
-                       .error = {}},
-          .generation = {},
-          .specification = {}}};
+  std::shared_ptr<storage::test::FakeStorageEngineMethodsContext> storage;
 
   std::shared_ptr<ReplicatedLogGlobalSettings> options =
       std::make_shared<ReplicatedLogGlobalSettings>();
@@ -86,10 +85,26 @@ struct AppendEntriesFollowerTest : ::testing::Test {
 
   auto makeFollowerManager() {
     return std::make_shared<FollowerManager>(
-        storage.getMethods(),
+        storage->getMethods(),
         std::unique_ptr<ReplicatedStateHandleMock>(stateHandle), termInfo,
         options, metrics, nullptr, scheduler,
         LoggerContext{Logger::REPLICATION2});
+  }
+
+  void SetUp() override {
+    storage = std::make_shared<storage::test::FakeStorageEngineMethodsContext>(
+        storage::test::FakeStorageEngineMethodsContext{
+            objectId,
+            logId,
+            executor,
+            {LogIndex{1}, LogIndex{100}},
+            storage::PersistedStateInfo{
+                .stateId = logId,
+                .snapshot = {.status = SnapshotStatus::kCompleted,
+                             .timestamp = {},
+                             .error = {}},
+                .generation = {},
+                .specification = {}}});
   }
 };
 
@@ -192,6 +207,57 @@ TEST_F(AppendEntriesFollowerTest, append_entries_no_match) {
   }
 }
 
+TEST_F(AppendEntriesFollowerTest, append_entries_update_syncIndex) {
+  termInfo->leader = "leader";
+  termInfo->term = LogTerm{1};
+  options->_thresholdLogCompaction = 0;
+
+  auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
+  EXPECT_CALL(*stateHandle, becomeFollower)
+      .Times(1)
+      .WillOnce([&](auto&& newMethods) { methods = std::move(newMethods); });
+  auto follower = makeFollowerManager();
+  methods->releaseIndex(LogIndex{50});  // allow compaction upto 50
+
+  EXPECT_CALL(*stateHandle, updateCommitIndex(LogIndex{55})).Times(1);
+
+  auto oldMessageId = ++lastMessageId;
+
+  {
+    AppendEntriesRequest request;
+    request.messageId = ++lastMessageId;
+    request.lowestIndexToKeep = LogIndex{40};  // compaction up to 40
+    request.leaderCommit = LogIndex{55};
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{1};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
+    request.entries =
+        generateEntries(LogTerm{1}, LogRange{LogIndex{100}, LogIndex{120}});
+    auto result = follower->appendEntries(request).get();
+    EXPECT_TRUE(result.isSuccess());
+    EXPECT_EQ(result.syncIndex, LogIndex{119});
+  }
+
+  EXPECT_EQ(storage->log.begin()->first, LogIndex{40});    // compacted
+  EXPECT_EQ(storage->log.rbegin()->first, LogIndex{119});  // [40, 120)
+
+  // We report the correct syncIndex even in case of an append entries error
+  {
+    AppendEntriesRequest request;
+    request.messageId = oldMessageId;
+    request.lowestIndexToKeep = LogIndex{40};
+    request.leaderCommit = LogIndex{55};
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{1};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{119}};
+    request.entries =
+        generateEntries(LogTerm{1}, LogRange{LogIndex{230}, LogIndex{240}});
+    auto result = follower->appendEntries(request).get();
+    EXPECT_FALSE(result.isSuccess());
+    EXPECT_EQ(result.syncIndex, LogIndex{119});
+  }
+}
+
 TEST_F(AppendEntriesFollowerTest, append_entries_trigger_compaction) {
   termInfo->leader = "leader";
   termInfo->term = LogTerm{1};
@@ -220,21 +286,9 @@ TEST_F(AppendEntriesFollowerTest, append_entries_trigger_compaction) {
   }
 
   // we expect compaction to happen
-  ASSERT_FALSE(storage.log.empty());
-  EXPECT_EQ(storage.log.begin()->first, LogIndex{50});
+  ASSERT_FALSE(storage->log.empty());
+  EXPECT_EQ(storage->log.begin()->first, LogIndex{50});
 }
-
-namespace {
-auto generateEntries(LogTerm term, LogRange range)
-    -> AppendEntriesRequest::EntryContainer {
-  auto tr = AppendEntriesRequest::EntryContainer::transient_type{};
-  for (auto idx : range) {
-    tr.push_back(InMemoryLogEntry{
-        PersistingLogEntry{term, idx, LogPayload::createFromString("foo")}});
-  }
-  return tr.persistent();
-}
-}  // namespace
 
 TEST_F(AppendEntriesFollowerTest, append_entries_trigger_snapshot) {
   termInfo->leader = "leader";
@@ -268,10 +322,10 @@ TEST_F(AppendEntriesFollowerTest, append_entries_trigger_snapshot) {
 
   // we expect the snapshot to be invalidated
   // and the log truncated
-  ASSERT_FALSE(storage.log.empty());
-  EXPECT_EQ(storage.log.begin()->first, LogIndex{200});
-  ASSERT_TRUE(storage.meta.has_value());
-  EXPECT_EQ(storage.meta->snapshot.status, SnapshotStatus::kInvalidated);
+  ASSERT_FALSE(storage->log.empty());
+  EXPECT_EQ(storage->log.begin()->first, LogIndex{200});
+  ASSERT_TRUE(storage->meta.has_value());
+  EXPECT_EQ(storage->meta->snapshot.status, SnapshotStatus::kInvalidated);
 }
 
 TEST_F(AppendEntriesFollowerTest, append_entries_rewrite) {
@@ -305,9 +359,9 @@ TEST_F(AppendEntriesFollowerTest, append_entries_rewrite) {
 
   // we expect the snapshot to be invalidated
   // and the log truncated
-  ASSERT_FALSE(storage.log.empty());
-  EXPECT_EQ(storage.log.begin()->first, LogIndex{40});   // compacted
-  EXPECT_EQ(storage.log.rbegin()->first, LogIndex{59});  // [40, 60)
+  ASSERT_FALSE(storage->log.empty());
+  EXPECT_EQ(storage->log.begin()->first, LogIndex{40});   // compacted
+  EXPECT_EQ(storage->log.rbegin()->first, LogIndex{59});  // [40, 60)
 }
 
 TEST_F(AppendEntriesFollowerTest, outdated_message_id) {

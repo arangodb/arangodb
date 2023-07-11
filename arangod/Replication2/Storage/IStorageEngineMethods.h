@@ -20,4 +20,16 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#include "PersistedStateInfo.h"
+#pragma once
+
+#include "Replication2/Storage/ILogPersistor.h"
+#include "Replication2/Storage/IStatePersistor.h"
+
+namespace arangodb::replication2::storage {
+
+// TODO - cleanup usage and remove this interface
+struct IStorageEngineMethods : virtual ILogPersistor, virtual IStatePersistor {
+  virtual ~IStorageEngineMethods() = default;
+};
+
+}  // namespace arangodb::replication2::storage
