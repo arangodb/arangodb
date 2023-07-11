@@ -1266,9 +1266,18 @@ Result IResearchDataStore::initDataStore(
     }
   }
 
+  // Register metrics before starting any background threads
+  insertMetrics();
+  readerOptions.resource_manager.transactions = _writersMemory;
+  readerOptions.resource_manager.readers = _readersMemory;
+  readerOptions.resource_manager.consolidations = _consolidationsMemory;
+  readerOptions.resource_manager.file_descriptors = _fileDescriptorsCount;
+
   _dataStore._directory = std::make_unique<irs::MMapDirectory>(
       _dataStore._path,
-      initCallback ? initCallback() : irs::directory_attributes{});
+      initCallback
+          ? initCallback()
+          : irs::directory_attributes{} /*, readerOptions.resource_manager*/);
 
   switch (_engine->recoveryState()) {
     case RecoveryState::BEFORE:  // Link is being opened before recovery
@@ -1284,13 +1293,6 @@ Result IResearchDataStore::initDataStore(
     } break;
   }
   _lastCommittedTick = _dataStore._recoveryTickLow;
-
-  // Register metrics before starting any background threads
-  insertMetrics();
-  readerOptions.resource_manager.transactions = _writersMemory;
-  readerOptions.resource_manager.readers = _readersMemory;
-  readerOptions.resource_manager.consolidations = _consolidationsMemory;
-  readerOptions.resource_manager.file_descriptors = _fileDescriptorsCount;
 
   auto const openMode =
       pathExists ? (irs::OM_CREATE | irs::OM_APPEND) : irs::OM_CREATE;
