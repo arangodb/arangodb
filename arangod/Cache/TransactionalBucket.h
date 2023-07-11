@@ -213,8 +213,8 @@ struct TransactionalBucket {
 #endif
 };
 
-// ensure that TransactionalBucket is exactly BUCKET_SIZE
-static_assert(sizeof(TransactionalBucket) == BUCKET_SIZE,
-              "Expected sizeof(TransactionalBucket) == BUCKET_SIZE.");
+// ensure that TransactionalBucket is exactly kBucketSizeInBytes
+static_assert(sizeof(TransactionalBucket) == kBucketSizeInBytes,
+              "Expected sizeof(TransactionalBucket) == kBucketSizeInBytes.");
 
 }  // end namespace arangodb::cache

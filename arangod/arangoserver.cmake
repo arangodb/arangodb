@@ -28,7 +28,6 @@ add_library(arangoserver STATIC
   Cluster/DropDatabase.cpp
   Cluster/DropIndex.cpp
   Cluster/EnsureIndex.cpp
-  Cluster/FailureOracleFeature.cpp
   Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/Maintenance.cpp
@@ -90,6 +89,7 @@ add_library(arangoserver STATIC
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
   RestHandler/RestDocumentHandler.cpp
+  RestHandler/RestDumpHandler.cpp
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp

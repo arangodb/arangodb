@@ -30,7 +30,6 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 class Request;

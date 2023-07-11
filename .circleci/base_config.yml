@@ -4,7 +4,9 @@ parameters:
   enterprise-branch:
     type: string
     default: ""
-
+  default-enterprise-branch:
+    type: string
+    default: "devel"
 
 commands:
   checkout-enterprise:
@@ -155,8 +157,11 @@ jobs:
             git checkout $CIRCLE_SHA1
             git submodule init
             git submodule update --recursive --depth 1 --jobs 8
-      - checkout-enterprise:
-          destination: "/root/project/enterprise"
+      - when:
+          condition: << parameters.enterprise >>
+          steps:
+            - checkout-enterprise:
+                destination: "/root/project/enterprise"
       - run:
           name: Print SCCache Settings
           command: sccache -s

@@ -30,9 +30,8 @@
 #include "IResearchPrimaryKeyFilter.h"
 #include "Indexes/Index.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/TransactionState.h"
-#include "StorageEngine/StorageEngine.h"
+#include "RocksDBEngine/RocksDBIndex.h"
 
 #include "store/directory_attributes.hpp"
 #include "index/directory_reader.hpp"
@@ -45,6 +44,10 @@
 namespace arangodb {
 
 struct FlushSubscription;
+class DatabasePathFeature;
+class StorageEngine;
+class StorageSnapshot;
+class ClusterInfo;
 
 namespace iresearch {
 
@@ -168,7 +171,12 @@ class IResearchDataStore {
 
   bool hasNestedFields() const noexcept { return _hasNestedFields; }
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx);
+  TruncateGuard truncateBegin() {
+    _commitMutex.lock();
+    return {TruncateGuard::Ptr{&_commitMutex}};
+  }
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief give derived class chance to fine-tune iresearch storage

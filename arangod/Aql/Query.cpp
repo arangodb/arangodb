@@ -51,7 +51,6 @@
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -178,7 +177,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 /// method
 Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
-             Query::SchedulerT* scheduler)
+             Scheduler* scheduler)
     : Query(0, ctx, std::move(queryString), std::move(bindParameters),
             std::move(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server(),
@@ -250,14 +249,14 @@ void Query::destroy() {
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options,
-    Query::SchedulerT* scheduler) {
+    Scheduler* scheduler) {
   TRI_ASSERT(ctx != nullptr);
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : Query {
     MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
                     QueryString queryString,
                     std::shared_ptr<velocypack::Builder> bindParameters,
-                    QueryOptions options, Query::SchedulerT* scheduler)
+                    QueryOptions options, Scheduler* scheduler)
         : Query{std::move(ctx), std::move(queryString),
                 std::move(bindParameters), std::move(options), scheduler} {}
 
@@ -460,7 +459,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-  Optimizer opt(_queryOptions.maxNumberOfPlans);
+  Optimizer opt(_resourceMonitor, _queryOptions.maxNumberOfPlans);
   // get enabled/disabled rules
   opt.createPlans(std::move(plan), _queryOptions, false);
   // Now plan and all derived plans belong to the optimizer
@@ -1032,7 +1031,7 @@ QueryResult Query::explain() {
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-    Optimizer opt(_queryOptions.maxNumberOfPlans);
+    Optimizer opt(_resourceMonitor, _queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
     opt.createPlans(std::move(plan), _queryOptions, true);
 
@@ -1290,7 +1289,7 @@ void Query::logAtEnd(QueryResult const& queryResult) const {
 
   // log failed queries?
   bool logFailed = feature.logFailedQueries() && queryResult.result.fail();
-  // log queries exceeded memory usage threshold
+  // log queries exceeding memory usage threshold
   bool logMemoryUsage =
       resourceMonitor().peak() >= feature.peakMemoryUsageThreshold();
 

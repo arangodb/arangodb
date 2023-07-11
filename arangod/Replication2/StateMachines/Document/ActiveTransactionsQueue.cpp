@@ -30,67 +30,67 @@
 namespace arangodb::replication2::replicated_state::document {
 
 /**
- * Returns the first index which can be released without affecting discarding
- * any active transactions.
+ * @brief Marks a transaction as being active, thus preventing it from being
+ * released.
  */
-LogIndex ActiveTransactionsQueue::getReleaseIndex(LogIndex current) const {
-  if (_logIndices.empty()) {
-    return current;
+void ActiveTransactionsQueue::markAsActive(TransactionId tid, LogIndex index) {
+  if (_transactions.try_emplace(tid, index).second) {
+    markAsActive(index);
   }
-  auto const& idx = _logIndices.front();
-  TRI_ASSERT(idx.second == Status::kActive);
-  return idx.first.saturatedDecrement();
+}
+
+void ActiveTransactionsQueue::markAsActive(LogIndex index) {
+  if (!(_logIndices.empty() || index > _logIndices.back().first)) {
+    // Workaround: in some settings, gcc doesn't seem to find the appropriate
+    // operator<< via ADL.
+    auto stream = std::stringstream{};
+    arangodb::operator<<(stream, _logIndices);
+    ADB_PROD_CRASH() << "Trying to add index " << index << " after "
+                     << stream.str();
+  }
+  _logIndices.emplace_back(index, Status::kActive);
 }
 
 /**
  * @brief Remove a transaction from the active transactions map and update the
  * log indices list.
- * @return true if the transaction was found and removed, false otherwise
  */
-bool ActiveTransactionsQueue::erase(TransactionId const& tid) {
+void ActiveTransactionsQueue::markAsInactive(TransactionId tid) {
+  // Fetch the log index indicating when tid was first marked as active. Then,
+  // mark it as inactive. We assume that the log indices are always given in
+  // increasing order.
   auto it = _transactions.find(tid);
-  if (it == std::end(_transactions)) {
-    return false;
-  }
+  ADB_PROD_ASSERT(it != std::end(_transactions))
+      << "Could not find transaction " << tid;
+  markAsInactive(it->second);
+  _transactions.erase(it);
+}
 
+void ActiveTransactionsQueue::markAsInactive(LogIndex index) {
   auto deactivateIdx =
       std::lower_bound(std::begin(_logIndices), std::end(_logIndices),
-                       std::make_pair(it->second, Status::kActive));
-  TRI_ASSERT(deactivateIdx != std::end(_logIndices) &&
-             deactivateIdx->first == it->second);
+                       std::make_pair(index, Status::kActive));
+  ADB_PROD_ASSERT(deactivateIdx != std::end(_logIndices) &&
+                  deactivateIdx->first == index)
+      << "Could not find log index " << index
+      << " in the active transactions queue";
   deactivateIdx->second = Status::kInactive;
-  _transactions.erase(it);
-
   popInactive();
-
-  return true;
 }
 
 /**
- * @brief Try to insert an entry into the active transactions map. If the entry
- * is new, mark the log index as active.
+ * Returns the first index that can be released without discarding
+ * any actively ongoing operations.
  */
-void ActiveTransactionsQueue::emplace(TransactionId tid, LogIndex index) {
-  if (_transactions.try_emplace(tid, index).second) {
-    if (!_logIndices.empty()) {
-      TRI_ASSERT(index > _logIndices.back().first);
-    }
-    _logIndices.emplace_back(index, Status::kActive);
+std::optional<LogIndex> ActiveTransactionsQueue::getReleaseIndex() const {
+  if (_logIndices.empty()) {
+    return std::nullopt;
   }
-}
-
-/**
- * We should not leave the deque empty, even if the last transaction is
- * inactive. This ensures that we always have a release index to report.
- */
-void ActiveTransactionsQueue::popInactive() {
-  while (!_logIndices.empty() && _logIndices.front().second == kInactive) {
-    _logIndices.pop_front();
-  }
-}
-
-std::size_t ActiveTransactionsQueue::size() const noexcept {
-  return _transactions.size();
+  auto const& idx = _logIndices.front();
+  ADB_PROD_ASSERT(idx.second == Status::kActive)
+      << "An inactive index was found at the front of the dequeue: "
+      << idx.first;
+  return idx.first.saturatedDecrement();
 }
 
 auto ActiveTransactionsQueue::getTransactions() const
@@ -101,6 +101,15 @@ auto ActiveTransactionsQueue::getTransactions() const
 void ActiveTransactionsQueue::clear() {
   _transactions.clear();
   _logIndices.clear();
+}
+
+/**
+ * @brief Remove all inactive transactions from the front of the dequeue.
+ */
+void ActiveTransactionsQueue::popInactive() {
+  while (!_logIndices.empty() && _logIndices.front().second == kInactive) {
+    _logIndices.pop_front();
+  }
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
