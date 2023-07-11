@@ -484,9 +484,6 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
 
 void BaseOptions::setCollectionToShard(
     std::unordered_map<std::string, std::string> const& in) {
-  if (in.empty()) {
-    return;
-  }
 
   _collectionToShard.clear();
   _collectionToShard.reserve(in.size());
