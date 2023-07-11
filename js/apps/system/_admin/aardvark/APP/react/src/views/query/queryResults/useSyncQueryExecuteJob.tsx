@@ -97,19 +97,18 @@ export const useSyncQueryExecuteJob = ({
           if (shouldFetchMore) {
             await checkCursor({ cursorId, asyncJobId: asyncJobId });
           } else {
-            await deleteCursor({
-              cursorId,
-              asyncJobId: asyncJobId
-            });
+            try {
+              await deleteCursor({
+                cursorId,
+                asyncJobId: asyncJobId
+              });
+            } catch (e) {
+              // ignore
+            }
           }
         }
       } catch (e: any) {
         const message = e.response?.body?.errorMessage || e.message;
-        console.log("error", message, e);
-        const code = e.code || e.response?.statusCode;
-        if (code === 404) {
-          return;
-        }
         const positionError = detectPositionError(message);
         if (positionError) {
           const { text, position } = positionError;
