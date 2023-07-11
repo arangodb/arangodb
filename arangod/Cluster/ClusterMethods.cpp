@@ -72,7 +72,7 @@
 #include "VocBase/vocbase.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
+#include "Enterprise/RocksDBEngine/RocksDBHotBackup/RocksDBHotBackup.h"
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 #include <velocypack/Buffer.h>
