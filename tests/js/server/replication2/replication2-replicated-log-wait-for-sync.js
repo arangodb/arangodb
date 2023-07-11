@@ -125,36 +125,55 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
       });
 
       // One of the followers no longer updates the syncIndex.
-      // Therefore, the lowestIndexToKeep should no longer be updated globally.
+      // Therefore, the lowestIndexToKeep should no longer increase.
       helper.debugSetFailAt(lh.getServerUrl(followers[0]), "AsyncLogWriteBatcher::syncIndexDisabled");
 
       status = log.status();
-      const fixedLowestIndexToKeep = status.participants[leader].response.lowestIndexToKeep;
       const fixedFollowerSyncIndex = status.participants[followers[0]].response.local.syncIndex;
 
+      // Wait until all servers catch up to the fixedFollowerSyncIndex.
+      // The lowestIndexToKeep should not be greater than the lowest sync index.
+      lh.waitFor(() => {
+        let fixedLowestIndexToKeep = status.participants[leader].response.lowestIndexToKeep;
+        if (fixedLowestIndexToKeep === fixedFollowerSyncIndex) {
+          return true;
+        }
+        log.ping();
+        status = log.status();
+        return Error(`lowestIndexToKeep should be ${fixedFollowerSyncIndex} for ${leader}, ` +
+          `status: ${JSON.stringify(status)}`);
+      });
+      const fixedLowestIndexToKeep = status.participants[leader].response.lowestIndexToKeep;
+
+      // While a follower is unable to sync, insert more data.
       for (let i = 0; i < 100; i++) {
         log.insert({bar: `bar${i}`});
       }
+
+      status = log.status();
+      // Just a sanity check to make sure that the follower's syncIndex did not increase.
       assertEqual(status.participants[followers[0]].response.local.syncIndex, fixedFollowerSyncIndex,
         `syncIndex should be ${fixedFollowerSyncIndex} for ${followers[0]}, status: ${JSON.stringify(status)}`);
+      // The lowestIndexToKeep should be stuck.
       assertEqual(status.participants[leader].response.lowestIndexToKeep, fixedLowestIndexToKeep,
         `lowestIndexToKeep should be ${fixedLowestIndexToKeep} for ${leader}, status: ${JSON.stringify(status)}`);
 
       // Perform regular compaction
-      log.release(fixedLowestIndexToKeep + 100);
+      log.release(fixedLowestIndexToKeep + 1000);
       log.compact();
       status = log.status();
+      // We should only compact up to the lowestIndexToKeep.
       assertEqual(status.participants[leader].response.local.firstIndex, fixedLowestIndexToKeep,
         `firstIndex should be ${fixedLowestIndexToKeep} for ${leader}, status: ${JSON.stringify(status)}`);
 
-      assertTrue(status.participants[leader].response.syncCommitIndex <
-        status.participants[leader].response.local.commitIndex,
-        `syncCommitIndex should be less then commitIndex for ${leader}, status: ${JSON.stringify(status)}`);
+      // The syncCommitIndex should not be able to advance past the fixed sync index.
+      assertEqual(status.participants[leader].response.syncCommitIndex, fixedFollowerSyncIndex,
+        `syncCommitIndex should be ${fixedFollowerSyncIndex} for ${leader}, status: ${JSON.stringify(status)}`);
 
-      // Resume syncIndex updates for the affected follower
+      // Resume syncIndex updates for the affected follower.
       helper.debugClearFailAt(lh.getServerUrl(followers[0]));
 
-      // Wait for lowestIndexToKeep to be updated, an indication that data has been synced
+      // Wait for lowestIndexToKeep to be updated, an indication that data has been synced.
       lh.waitFor(() => {
         log.ping();
         status = log.status();
@@ -166,8 +185,8 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
       });
 
       // Expect the syncCommitIndex to be increased. We can't be certain of a specific value,
-      // so instead of doing a waitFor, we just check that it's higher than the previous lowestIndexToKeep.
-      assertTrue(status.participants[leader].response.syncCommitIndex > fixedLowestIndexToKeep,
+      // so instead of doing a waitFor, we just check that it's higher than the previous fixed sync index.
+      assertTrue(status.participants[leader].response.syncCommitIndex > fixedFollowerSyncIndex,
         `syncCommitIndex should be > ${fixedLowestIndexToKeep} for ${leader}, ` +
         `status: ${JSON.stringify(status)}`);
     }
