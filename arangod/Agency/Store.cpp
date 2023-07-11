@@ -621,7 +621,6 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
           continue;
         }
       }
-      auto uri = Store::normalize(abskeys.at(i.first));
 
       auto ret = node->applyOp(abskeys.at(i.first), value);
       if (ret.fail()) {
