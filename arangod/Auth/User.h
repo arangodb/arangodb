@@ -104,7 +104,7 @@ class User {
   // special '*' entry if either the database or collection is not
   // found.
   auth::Level collectionAuthLevel(std::string const& dbname,
-                                  std::string const& cname) const;
+                                  std::string_view cname) const;
 
   /// Content of `userData` or `extra` fields
   velocypack::Slice userData() const { return _userData.slice(); }
