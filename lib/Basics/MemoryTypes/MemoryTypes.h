@@ -44,7 +44,6 @@ struct hash_monitored_string {
   [[nodiscard]] size_t operator()(const std::string& txt) const {
     return std::hash<std::string>{}(txt);
   }
-
 };
 
 struct compare_monitored_string {
