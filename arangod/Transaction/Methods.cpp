@@ -1618,9 +1618,11 @@ bool transaction::Methods::addStatusChangeCallback(
 bool transaction::Methods::removeStatusChangeCallback(
     StatusChangeCallback const* callback) {
   if (!callback || !*callback) {
-    return true;   // nothing to call back
+    // nothing to call back
+    return true;
   } else if (!_state) {
-    return false;  // nothing to add to
+    // nothing to add to
+    return false;
   }
 
   auto* statusChangeCallbacks =
