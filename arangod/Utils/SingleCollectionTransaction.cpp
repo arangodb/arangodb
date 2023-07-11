@@ -106,7 +106,7 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
 }
 
 DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(
-    std::string const& name, AccessMode::Type type) {
+    std::string_view name, AccessMode::Type type) {
   TRI_ASSERT(!name.empty());
   if ((name[0] < '0' || name[0] > '9') &&
       name != resolveTrxCollection()->collectionName()) {
@@ -114,7 +114,7 @@ DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(
         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
         std::string(
             TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-            ": " + name);
+            ": " + std::string{name});
   }
 
   if (AccessMode::isWriteOrExclusive(type) &&
@@ -124,7 +124,8 @@ DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(
         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
         std::string(
             TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-            ": " + name + " [" + AccessMode::typeString(type) + "]");
+            ": " + std::string{name} + " [" + AccessMode::typeString(type) +
+            "]");
   }
 
   return _cid;

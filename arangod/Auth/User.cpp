@@ -555,7 +555,7 @@ auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
 
 /// Find the access level for a collection. Will automatically try to fall back
 auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
-                                            std::string const& cname) const {
+                                            std::string_view cname) const {
   if (cname.empty() || (dbname == "*" && cname != "*")) {
     return auth::Level::NONE;  // invalid collection names
   }
@@ -584,7 +584,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
     if (it != _dbAccess.end()) {
       // Second try to find a specific grant
       CollLevelMap::const_iterator pair =
-          it->second._collectionAccess.find(cname);
+          it->second._collectionAccess.find(std::string{cname});
       if (pair != it->second._collectionAccess.end()) {
         return pair->second;      // found specific collection grant
       } else if (cname == "*") {  // skip special rules for wildcard
