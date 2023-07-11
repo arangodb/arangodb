@@ -146,7 +146,6 @@ jobs:
       GIT_SSH_COMMAND: ssh
       SCCACHE_ERROR_LOG: /tmp/sccache.log
       SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
-      SCCACHE_DIR: /tmp/sccache.lol
     steps:
       - run:
           name: Checkout ArangoDB
@@ -169,7 +168,7 @@ jobs:
       - run:
           name: Configure
           command: |
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
+            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
       - run:
           name: Build
           command: |
@@ -284,8 +283,8 @@ workflows:
   community-pr:
     jobs:
       - compile-linux:
-#          context:
-#          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          context:
+          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ce
           preset: community-pr
           edition: x64-community
@@ -293,8 +292,8 @@ workflows:
   enterprise-pr:
     jobs:
       - compile-linux:
-#          context:
-#          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          context:
+          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ee
           preset: enterprise-pr
           edition: x64-enterprise
