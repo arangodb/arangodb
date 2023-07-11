@@ -85,7 +85,8 @@ const replicatedLogSuite = function ({waitForSync}) {
       waitFor(() => {
         let {plan} = helper.readReplicatedLogAgency(database, logId);
         if (plan.participantsConfig.config.effectiveWriteConcern !== replicationFactor) {
-          return Error(`effectiveWriteConcern not reached, found ${JSON.stringify(plan)}`);
+          return Error(`effectiveWriteConcern not reached, found ${JSON.stringify(plan)}, ` +
+            `expected ${replicationFactor}`);
         }
         return true;
       });

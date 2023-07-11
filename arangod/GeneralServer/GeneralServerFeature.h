@@ -30,6 +30,7 @@
 #include "Metrics/Counter.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/Histogram.h"
+#include "Metrics/Gauge.h"
 #include "RestServer/arangod.h"
 
 #include <cstdint>
@@ -91,6 +92,8 @@ class GeneralServerFeature final : public ArangodFeature {
   uint64_t telemetricsMaxRequestsPerInterval() const noexcept {
     return _telemetricsMaxRequestsPerInterval;
   }
+
+  metrics::Gauge<std::uint64_t>& _requestBodySize;
 
  private:
   // build HTTP server(s)
