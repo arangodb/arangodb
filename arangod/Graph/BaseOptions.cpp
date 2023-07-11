@@ -699,7 +699,8 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
           getVertexProjections().size() * sizeof(aql::Projections::Projection));
     }
 
-    _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
+    _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections",
+                                                     resourceMonitor());
     arangodb::ResourceUsageScope vGuard(
         resourceMonitor(),
         getVertexProjections().size() * sizeof(aql::Projections::Projection));
@@ -711,7 +712,8 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
       resourceMonitor().decreaseMemoryUsage(
           getEdgeProjections().size() * sizeof(aql::Projections::Projection));
     }
-    _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
+    _edgeProjections =
+        Projections::fromVelocyPack(info, "edgeProjections", resourceMonitor());
     arangodb::ResourceUsageScope eGuard(
         resourceMonitor(),
         getEdgeProjections().size() * sizeof(aql::Projections::Projection));

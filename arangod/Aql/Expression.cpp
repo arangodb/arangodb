@@ -374,7 +374,8 @@ void Expression::initAccessor() {
     auto v = static_cast<Variable const*>(member->getData());
 
     // specialize the simple expression into an attribute accessor
-    _accessor = AttributeAccessor::create(std::move(parts), v);
+    _accessor = AttributeAccessor::create(
+        AttributeNamePath(std::move(parts), _resourceMonitor), v);
     TRI_ASSERT(_accessor != nullptr);
   }
 }

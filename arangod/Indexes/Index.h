@@ -50,7 +50,6 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
-struct AttributeNamePath;
 class Projections;
 class SortCondition;
 struct Variable;

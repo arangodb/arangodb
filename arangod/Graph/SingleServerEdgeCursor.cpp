@@ -407,8 +407,11 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
     uint16_t coveringPosition = aql::Projections::kNoCoveringIndexPosition;
 
     // projections we want to cover
-    aql::Projections edgeProjections(std::vector<aql::AttributeNamePath>(
-        {StaticStrings::FromString, StaticStrings::ToString}));
+    std::vector<aql::AttributeNamePath> paths = {};
+    aql::AttributeNamePath path = aql::AttributeNamePath(
+        {StaticStrings::FromString, StaticStrings::ToString}, _monitor);
+    paths.emplace_back(std::move(path));
+    aql::Projections edgeProjections(std::move(paths));
 
     if (index->covers(edgeProjections)) {
       // find opposite attribute

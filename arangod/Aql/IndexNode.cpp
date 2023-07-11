@@ -586,7 +586,8 @@ void IndexNode::prepareProjections() {
 
     if (Ast::getReferencedAttributesRecursive(
             this->filter()->node(), this->outVariable(),
-            /*expectedAttribute*/ "", attributes)) {
+            /*expectedAttribute*/ "", attributes,
+            plan()->getAst()->query().resourceMonitor())) {
       if (!attributes.empty()) {
         Projections filterProjections(std::move(attributes));
         if (idx->covers(filterProjections)) {

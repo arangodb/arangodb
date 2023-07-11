@@ -53,8 +53,11 @@ EdgeCollectionInfo::EdgeCollectionInfo(ResourceMonitor& monitor,
   _trx->addCollectionAtRuntime(_collectionName, AccessMode::Type::READ);
 
   // projections we need to cover
-  aql::Projections edgeProjections(std::vector<aql::AttributeNamePath>(
-      {StaticStrings::FromString, StaticStrings::ToString}));
+  std::vector<aql::AttributeNamePath> paths = {};
+  aql::AttributeNamePath path = aql::AttributeNamePath(
+      {StaticStrings::FromString, StaticStrings::ToString}, _monitor);
+  paths.emplace_back(std::move(path));
+  aql::Projections edgeProjections(std::move(paths));
 
   _collection = _trx->documentCollection(_collectionName);
   TRI_ASSERT(_collection != nullptr);

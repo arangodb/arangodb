@@ -49,10 +49,15 @@ struct AttributeNamePath {
   AttributeNamePath() noexcept {}
 
   /// @brief construct an attribute path from a single attribute (e.g. _key)
-  AttributeNamePath(std::string attribute);
+  AttributeNamePath(std::string attribute,
+                    arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief construct an attribute path from a nested attribute (e.g. a.b.c)
-  AttributeNamePath(std::vector<std::string> path);
+  AttributeNamePath(std::vector<std::string> path,
+                    arangodb::ResourceMonitor& resourceMonitor);
+
+  AttributeNamePath(MonitoredStringVector path,
+                    arangodb::ResourceMonitor& resourceMonitor);
 
   AttributeNamePath(AttributeNamePath const& other) = default;
   AttributeNamePath& operator=(AttributeNamePath const& other) = default;
@@ -72,7 +77,7 @@ struct AttributeNamePath {
   size_t hash() const noexcept;
 
   /// @brief get attribute at level
-  std::string const& operator[](size_t index) const noexcept;
+  std::string_view operator[](size_t index) const noexcept;
 
   bool operator==(AttributeNamePath const& other) const noexcept;
   bool operator!=(AttributeNamePath const& other) const noexcept {
@@ -82,7 +87,10 @@ struct AttributeNamePath {
   bool operator<(AttributeNamePath const& other) const noexcept;
 
   /// @brief get the full path
-  std::vector<std::string> const& get() const noexcept;
+  MonitoredStringVector const& get() const noexcept;
+
+  /// @brief get the full path as an std::vector
+  std::vector<std::string> getCopy() const;
 
   /// @brief clear all path attributes
   void clear() noexcept;

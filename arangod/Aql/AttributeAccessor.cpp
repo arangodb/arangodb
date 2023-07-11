@@ -115,7 +115,7 @@ class AttributeAccessorMulti final : public AttributeAccessor {
     AqlValue const& value =
         context->getVariableValue(_variable, false, mustDestroy);
     // use general version for multiple attributes (e.g. variable.attr.subattr)
-    return value.get(resolver, _path.get(), mustDestroy, true);
+    return value.get(resolver, _path.getCopy(), mustDestroy, true);
   }
 
  private:
@@ -164,7 +164,7 @@ AttributeAccessor* AttributeAccessor::create(
     case AttributeNamePath::Type::ToAttribute:
       return new AttributeAccessorTo(variable);
     case AttributeNamePath::Type::SingleAttribute:
-      return new AttributeAccessorSingle(variable, path[0]);
+      return new AttributeAccessorSingle(variable, std::string{path[0]});
     case AttributeNamePath::Type::MultiAttribute:
       return new AttributeAccessorMulti(variable, std::move(path));
   }
