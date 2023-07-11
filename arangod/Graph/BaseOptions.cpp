@@ -492,8 +492,8 @@ void BaseOptions::setCollectionToShard(
         _query.resourceMonitor()};
     auto myVec = MonitoredStringVector{alloc};
     auto myString = MonitoredString{value, alloc};
-    myVec.emplace_back(myString);
-    _collectionToShard.emplace(key, myVec);
+    myVec.emplace_back(std::move(myString));
+    _collectionToShard.emplace(key, std::move(myVec));
   }
 }
 
