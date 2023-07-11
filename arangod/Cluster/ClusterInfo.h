@@ -43,6 +43,7 @@
 #include "Containers/NodeHashMap.h"
 #include "Containers/NodeHashSet.h"
 #include "Metrics/Fwd.h"
+#include "Metrics/MetricsResourceMonitor.h"
 #include "Network/types.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/Version.h"
@@ -182,18 +183,36 @@ class ClusterInfo final {
     }
   };
 
+  using ClusterInfoResourceMonitor =
+      metrics::GaugeResourceMonitor<metrics::Gauge<std::uint64_t>>;
+
+  template<typename T>
+  using ClusterInfoResourceAllocator =
+      ResourceUsageAllocator<T, ClusterInfoResourceMonitor>;
+
+  struct pmr {
+    using ManagedString = std::basic_string<char, std::char_traits<char>,
+                                            ClusterInfoResourceAllocator<char>>;
+    typedef ManagedString ServerID;         // ID of a server
+    typedef ManagedString DatabaseID;       // ID/name of a database
+    typedef ManagedString CollectionID;     // ID of a collection
+    typedef ManagedString ViewID;           // ID of a view
+    typedef ManagedString ShardID;          // ID of a shard
+    typedef ManagedString ServerShortName;  // Short name of a server
+  };                                        // namespace pmr
+
   template<typename K, typename V>
-  using AssocUnorderedContainer =
-      containers::NodeHashMap<K, V, Hasher, KeyEqual,
-                              ResourceUsageAllocator<std::pair<const K, V>>>;
+  using AssocUnorderedContainer = containers::NodeHashMap<
+      K, V, Hasher, KeyEqual,
+      ClusterInfoResourceAllocator<std::pair<const K, V>>>;
 
   template<typename K, typename V>
   using AssocMultiMap =
       std::multimap<K, V, KeyEqual,
-                    ResourceUsageAllocator<std::pair<const K, V>>>;
+                    ClusterInfoResourceAllocator<std::pair<const K, V>>>;
 
   template<typename T>
-  using ManagedVector = std::vector<T, ResourceUsageAllocator<T>>;
+  using ManagedVector = std::vector<T, ClusterInfoResourceAllocator<T>>;
 
   using DatabaseCollections =
       AssocUnorderedContainer<pmr::CollectionID, CollectionWithHash>;
@@ -1020,8 +1039,6 @@ class ClusterInfo final {
       std::vector<replication2::LogId> const& replicatedStatesIds)
       -> futures::Future<Result>;
 
-  ResourceMonitor _resourceMonitor;
-
   /// underlying application server
   ArangodServer& _server;
 
@@ -1065,6 +1082,9 @@ class ClusterInfo final {
   /// shutdown. normally this is TRI_ERROR_SHUTTING_DOWN, but it can be
   /// overridden during testing
   ErrorCode const _syncerShutdownCode;
+
+  metrics::Gauge<std::size_t>& _memoryUsage;
+  ClusterInfoResourceMonitor _resourceMonitor;
 
   // The servers, first all, we only need Current here:
   AssocUnorderedContainer<pmr::ServerID, pmr::ManagedString>
@@ -1256,7 +1276,7 @@ class ClusterInfo final {
   using NodeHashSet =
       containers::NodeHashSet<K, typename containers::NodeHashSet<K>::hasher,
                               typename containers::NodeHashSet<K>::key_equal,
-                              ResourceUsageAllocator<K>>;
+                              ClusterInfoResourceAllocator<K>>;
 
   NodeHashSet<pmr::ServerID> _failedServers;
 

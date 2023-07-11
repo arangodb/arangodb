@@ -30,8 +30,8 @@
 
 #include "Basics/Result.h"
 #include "Basics/RebootId.h"
-#include "Containers/FlatHashMap.h"
 #include "Basics/ResourceUsage.h"
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 
@@ -42,16 +42,6 @@ typedef std::string ViewID;           // ID of a view
 typedef std::string ShardID;          // ID of a shard
 typedef uint32_t ServerShortID;       // Short ID of a server
 typedef std::string ServerShortName;  // Short name of a server
-namespace pmr {
-using ManagedString = std::basic_string<char, std::char_traits<char>,
-                                        ResourceUsageAllocator<char>>;
-typedef ManagedString ServerID;         // ID of a server
-typedef ManagedString DatabaseID;       // ID/name of a database
-typedef ManagedString CollectionID;     // ID of a collection
-typedef ManagedString ViewID;           // ID of a view
-typedef ManagedString ShardID;          // ID of a shard
-typedef ManagedString ServerShortName;  // Short name of a server
-}  // namespace pmr
 
 enum class ServerHealth { kGood, kBad, kFailed, kUnclear };
 

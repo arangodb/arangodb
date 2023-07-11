@@ -31,6 +31,7 @@
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
@@ -62,6 +63,7 @@
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
@@ -96,9 +98,6 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <chrono>
-#include "Metrics/GaugeBuilder.h"
-
-#include "Basics/GlobalResourceMonitor.h"
 
 namespace arangodb {
 /// @brief internal helper struct for counting the number of shards etc.
@@ -556,12 +555,14 @@ DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::size_t,
 ClusterInfo::ClusterInfo(ArangodServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)
-    : _resourceMonitor(GlobalResourceMonitor::instance()),
-      _server(server),
+    : _server(server),
       _agency(server),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
       _syncerShutdownCode(syncerShutdownCode),
+      _memoryUsage(_server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_internal_cluster_info_memory_usage{})),
+      _resourceMonitor(_memoryUsage),
       _servers(_resourceMonitor),
       _serverAliases(_resourceMonitor),
       _serverAdvertisedEndpoints(_resourceMonitor),
@@ -1123,7 +1124,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
 }
 
 struct ClusterInfo::NewStuffByDatabase {
-  using allocator_type = ResourceUsageAllocator<NewStuffByDatabase>;
+  using allocator_type = ClusterInfoResourceAllocator<NewStuffByDatabase>;
 
   NewStuffByDatabase(allocator_type const& alloc)
       : replicatedLogs(alloc), collectionGroups(alloc) {}
@@ -1560,11 +1561,12 @@ void ClusterInfo::loadPlan() {
 
   static_assert(std::uses_allocator_v<
                 ClusterInfo::NewStuffByDatabase,
-                ResourceUsageAllocator<ClusterInfo::NewStuffByDatabase>>);
+                ClusterInfoResourceAllocator<ClusterInfo::NewStuffByDatabase>>);
 
   auto allocate = [&]<typename T, typename... Args>(Args && ... args) {
-    return std::allocate_shared<T>(ResourceUsageAllocator<T>(_resourceMonitor),
-                                   std::forward<Args>(args)...);
+    return std::allocate_shared<T>(
+        ClusterInfoResourceAllocator<T>(_resourceMonitor),
+        std::forward<Args>(args)...);
   };
 
   // And now for replicated logs
@@ -1735,7 +1737,7 @@ void ClusterInfo::loadPlan() {
     }
 
     auto databaseCollections = std::allocate_shared<DatabaseCollections>(
-        ResourceUsageAllocator<DatabaseCollections>(_resourceMonitor));
+        ClusterInfoResourceAllocator<DatabaseCollections>(_resourceMonitor));
 
     // an iterator to all collections in the current database (from the previous
     // round) we can safely keep this iterator around because we hold the
@@ -1933,7 +1935,7 @@ void ClusterInfo::loadPlan() {
                 // Need to create a new list:
                 auto list = std::allocate_shared<
                     ClusterInfo::ManagedVector<pmr::ShardID>>(
-                    ResourceUsageAllocator<
+                    ClusterInfoResourceAllocator<
                         ClusterInfo::ManagedVector<pmr::ShardID>>{
                         _resourceMonitor});
                 list->reserve(2);
@@ -2251,11 +2253,12 @@ void ClusterInfo::loadCurrent() {
 
         // Now take note of this shard and its responsible server:
         auto const& xx = collectionDataCurrent->servers(shardID);
-        auto servers = std::allocate_shared<
-            ClusterInfo::ManagedVector<pmr::ServerID>>(
-            ResourceUsageAllocator<ClusterInfo::ManagedVector<pmr::ServerID>>{
-                _resourceMonitor},
-            xx.begin(), xx.end());
+        auto servers =
+            std::allocate_shared<ClusterInfo::ManagedVector<pmr::ServerID>>(
+                ClusterInfoResourceAllocator<
+                    ClusterInfo::ManagedVector<pmr::ServerID>>{
+                    _resourceMonitor},
+                xx.begin(), xx.end());
 
         newShardsToCurrentServers.insert_or_assign(std::move(shardID),
                                                    std::move(servers));
@@ -6366,7 +6369,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 /// it is still not there an empty string is returned as an error.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<ClusterInfo::ManagedVector<pmr::ServerID> const>
+std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>
 ClusterInfo::getResponsibleServer(std::string_view shardID) {
   int tries = 0;
 
@@ -6536,7 +6539,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
   return std::make_shared<std::vector<ShardID>>();
 }
 
-std::shared_ptr<ClusterInfo::ManagedVector<pmr::ServerID> const>
+std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>
 ClusterInfo::getCurrentServersForShard(std::string_view shardId) {
   READ_LOCKER(readLocker, _currentProt.lock);
 
@@ -6730,7 +6733,7 @@ void ClusterInfo::setShardGroups(
   _shardGroups.clear();
   for (auto const& [k, v] : shardGroups) {
     auto vv = std::allocate_shared<ClusterInfo::ManagedVector<pmr::ShardID>>(
-        ResourceUsageAllocator<ClusterInfo::ManagedVector<pmr::ShardID>>{
+        ClusterInfoResourceAllocator<ClusterInfo::ManagedVector<pmr::ShardID>>{
             _resourceMonitor});
     vv->assign(v->begin(), v->end());
     _shardGroups.emplace(k, std::move(vv));
@@ -6745,7 +6748,7 @@ void ClusterInfo::setShardIds(
   _shardsToCurrentServers.clear();
   for (auto const& [k, v] : shardIds) {
     auto vv = std::allocate_shared<ClusterInfo::ManagedVector<pmr::ShardID>>(
-        ResourceUsageAllocator<ClusterInfo::ManagedVector<pmr::ShardID>>{
+        ClusterInfoResourceAllocator<ClusterInfo::ManagedVector<pmr::ShardID>>{
             _resourceMonitor});
     vv->assign(v->begin(), v->end());
     _shardsToCurrentServers.emplace(k, std::move(vv));

@@ -136,7 +136,7 @@ class ResourceUsageScope {
 
 /// @brief an std::allocator-like specialization that uses a ResourceMonitor
 /// underneath.
-template<typename Allocator>
+template<typename Allocator, typename ResourceMonitor>
 class ResourceUsageAllocatorBase : public Allocator {
  public:
   using difference_type =
@@ -170,7 +170,7 @@ class ResourceUsageAllocatorBase : public Allocator {
 
   template<typename A>
   ResourceUsageAllocatorBase(
-      ResourceUsageAllocatorBase<A> const& other) noexcept
+      ResourceUsageAllocatorBase<A, ResourceMonitor> const& other) noexcept
       : Allocator(other.rawAllocator()),
         _resourceMonitor(other.resourceMonitor()) {}
 
@@ -196,7 +196,8 @@ class ResourceUsageAllocatorBase : public Allocator {
   ResourceMonitor* resourceMonitor() const noexcept { return _resourceMonitor; }
 
   template<typename A>
-  bool operator==(ResourceUsageAllocatorBase<A> const& other) const noexcept {
+  bool operator==(ResourceUsageAllocatorBase<A, ResourceMonitor> const& other)
+      const noexcept {
     return rawAllocator() == other.rawAllocator() &&
            _resourceMonitor == other.resourceMonitor();
   }
@@ -290,14 +291,15 @@ struct uses_allocator_construction_args_t<std::pair<U, V>> {
 
 }  // namespace detail
 
-template<typename T>
-struct ResourceUsageAllocator : ResourceUsageAllocatorBase<std::allocator<T>> {
-  using ResourceUsageAllocatorBase<
-      std::allocator<T>>::ResourceUsageAllocatorBase;
+template<typename T, typename ResourceMonitor>
+struct ResourceUsageAllocator
+    : ResourceUsageAllocatorBase<std::allocator<T>, ResourceMonitor> {
+  using ResourceUsageAllocatorBase<std::allocator<T>,
+                                   ResourceMonitor>::ResourceUsageAllocatorBase;
 
   template<typename U>
   struct rebind {
-    using other = ResourceUsageAllocator<U>;
+    using other = ResourceUsageAllocator<U, ResourceMonitor>;
   };
 
   template<typename X, typename... Args>

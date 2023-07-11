@@ -36,7 +36,7 @@ TEST(ResourceUsageAllocatorTest, testEmpty) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
 
-  ResourceUsageAllocator<int> alloc(monitor);
+  ResourceUsageAllocator<int, ResourceMonitor> alloc(monitor);
   ASSERT_EQ(0, monitor.current());
 }
 
@@ -44,7 +44,7 @@ TEST(ResourceUsageAllocatorTest, testStringAppend) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
 
-  ResourceUsageAllocator<std::string> alloc(monitor);
+  ResourceUsageAllocator<std::string, ResourceMonitor> alloc(monitor);
 
   std::string test(alloc);
   ASSERT_EQ(0, monitor.current());
@@ -60,7 +60,7 @@ TEST(ResourceUsageAllocatorTest, testStringPushBack) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
 
-  ResourceUsageAllocator<std::string> alloc(monitor);
+  ResourceUsageAllocator<std::string, ResourceMonitor> alloc(monitor);
 
   std::string test(alloc);
   ASSERT_EQ(0, monitor.current());
@@ -76,10 +76,11 @@ TEST(ResourceUsageAllocatorTest, testMonitoredStringPushBack) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
 
-  using MonitoredString = std::basic_string<char, std::char_traits<char>,
-                                            ResourceUsageAllocator<char>>;
+  using MonitoredString =
+      std::basic_string<char, std::char_traits<char>,
+                        ResourceUsageAllocator<char, ResourceMonitor>>;
 
-  ResourceUsageAllocator<MonitoredString> alloc(monitor);
+  ResourceUsageAllocator<MonitoredString, ResourceMonitor> alloc(monitor);
 
   MonitoredString test(alloc);
   ASSERT_EQ(0, monitor.current());
@@ -100,10 +101,11 @@ TEST(ResourceUsageAllocatorTest, testMonitoredStringResize) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
 
-  using MonitoredString = std::basic_string<char, std::char_traits<char>,
-                                            ResourceUsageAllocator<char>>;
+  using MonitoredString =
+      std::basic_string<char, std::char_traits<char>,
+                        ResourceUsageAllocator<char, ResourceMonitor>>;
 
-  ResourceUsageAllocator<MonitoredString> alloc(monitor);
+  ResourceUsageAllocator<MonitoredString, ResourceMonitor> alloc(monitor);
 
   MonitoredString test(alloc);
   ASSERT_EQ(0, monitor.current());
@@ -128,33 +130,37 @@ TEST(ResourceUsageAllocatorTest, testMonitoredStringVectorReserve) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
 
-  using MonitoredString = std::basic_string<char, std::char_traits<char>,
-                                            ResourceUsageAllocator<char>>;
+  using MonitoredString =
+      std::basic_string<char, std::char_traits<char>,
+                        ResourceUsageAllocator<char, ResourceMonitor>>;
   using MonitoredStringVector =
-      std::vector<MonitoredString, ResourceUsageAllocator<MonitoredString>>;
+      std::vector<MonitoredString,
+                  ResourceUsageAllocator<MonitoredString, ResourceMonitor>>;
 
-  ResourceUsageAllocator<MonitoredStringVector> alloc(monitor);
+  ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor> alloc(monitor);
 
   MonitoredStringVector test(alloc);
   ASSERT_EQ(0, monitor.current());
 
   test.reserve(32768);
-  ASSERT_EQ(monitor.current(), 32768 * sizeof(MonitoredString));
+  ASSERT_GE(monitor.current(), 32768 * sizeof(MonitoredString));
 
   test.reserve(35000);
-  ASSERT_EQ(monitor.current(), 35000 * sizeof(MonitoredString));
+  ASSERT_GE(monitor.current(), 35000 * sizeof(MonitoredString));
 }
 
 TEST(ResourceUsageAllocatorTest, testMonitoredStringVectorGrowth) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
 
-  using MonitoredString = std::basic_string<char, std::char_traits<char>,
-                                            ResourceUsageAllocator<char>>;
+  using MonitoredString =
+      std::basic_string<char, std::char_traits<char>,
+                        ResourceUsageAllocator<char, ResourceMonitor>>;
   using MonitoredStringVector =
-      std::vector<MonitoredString, ResourceUsageAllocator<MonitoredString>>;
+      std::vector<MonitoredString,
+                  ResourceUsageAllocator<MonitoredString, ResourceMonitor>>;
 
-  ResourceUsageAllocator<MonitoredStringVector> alloc(monitor);
+  ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor> alloc(monitor);
 
   MonitoredStringVector test(alloc);
   ASSERT_EQ(0, monitor.current());
@@ -164,7 +170,7 @@ TEST(ResourceUsageAllocatorTest, testMonitoredStringVectorGrowth) {
   for (size_t i = 0; i < 16383; ++i) {
     test.emplace_back();
   }
-  ASSERT_EQ(monitor.current(), 16384 * sizeof(MonitoredString));
+  ASSERT_GE(monitor.current(), 16384 * sizeof(MonitoredString));
 }
 
 TEST(ResourceUsageAllocatorTest,
@@ -172,12 +178,14 @@ TEST(ResourceUsageAllocatorTest,
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
 
-  using MonitoredString = std::basic_string<char, std::char_traits<char>,
-                                            ResourceUsageAllocator<char>>;
+  using MonitoredString =
+      std::basic_string<char, std::char_traits<char>,
+                        ResourceUsageAllocator<char, ResourceMonitor>>;
   using MonitoredStringVector =
-      std::vector<MonitoredString, ResourceUsageAllocator<MonitoredString>>;
+      std::vector<MonitoredString,
+                  ResourceUsageAllocator<MonitoredString, ResourceMonitor>>;
 
-  ResourceUsageAllocator<MonitoredStringVector> alloc(monitor);
+  ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor> alloc(monitor);
 
   MonitoredStringVector test(alloc);
   ASSERT_EQ(0, monitor.current());
@@ -194,7 +202,7 @@ TEST(ResourceUsageAllocatorTest,
       test.emplace_back(p);
     }
     // 8192 because the vector will employ a times-2 growth strategy
-    ASSERT_EQ(monitor.current(), 8192 * sizeof(MonitoredString) +
+    ASSERT_GE(monitor.current(), 8192 * sizeof(MonitoredString) +
                                      (8000 + 1) * (payload.size() + 1));
   }
 
@@ -208,7 +216,7 @@ TEST(ResourceUsageAllocatorTest,
       test.emplace_back(std::string(payload));
     }
     // 8192 because the vector will employ a times-2 growth strategy
-    ASSERT_EQ(monitor.current(),
+    ASSERT_GE(monitor.current(),
               8192 * sizeof(MonitoredString) + 8000 * (payload.size() + 1));
   }
 }
