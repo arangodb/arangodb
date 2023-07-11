@@ -328,6 +328,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
   static NodePtr trueValue();
   static NodePtr falseValue();
+  static NodePtr nullValue();
   static NodePtr emptyObjectValue();
   static NodePtr emptyArrayValue();
 

@@ -217,7 +217,7 @@ template<>
 ResultT<NodePtr> Node::handle<ERASE>(Node const* target,
                                      VPackSlice const& slice) {
   VPackSlice valToErase = slice.get("val");
-  Slice posSlice = slice.get("pos");
+  VPackSlice posSlice = slice.get("pos");
   bool havePos = !posSlice.isNone();
   bool haveVal = !valToErase.isNone();
 
@@ -947,6 +947,8 @@ NodePtr Node::create(VPackSlice slice) {
       return trueValue();
     } else if (slice.isFalse()) {
       return falseValue();
+    } else if (slice.isNull()) {
+      return nullValue();
     }
     return std::make_shared<NodeWrapper>(VPackString(slice));
   }
@@ -971,6 +973,11 @@ NodePtr consensus::Node::trueValue() {
 
 NodePtr consensus::Node::falseValue() {
   static auto node = std::make_shared<NodeWrapper>(VPackSlice::falseSlice());
+  return node;
+}
+
+NodePtr consensus::Node::nullValue() {
+  static auto node = std::make_shared<NodeWrapper>(VPackSlice::nullSlice());
   return node;
 }
 
