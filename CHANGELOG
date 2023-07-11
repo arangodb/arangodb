@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-290: Unify Graphs View UI.
+
 * FE-240: disable JSON editor when viewing inverted index.
 
 * FE-262: Improve Analyzer table UI.
