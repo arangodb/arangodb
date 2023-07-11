@@ -907,30 +907,17 @@ NodePtr Node::create(VPackSlice slice) {
     for (auto const& [key, sub] : VPackObjectIterator(slice)) {
       auto keyStr = key.copyString();
       if (keyStr.find("/") != std::string::npos) {
-        // now slow path
-        auto segments = split(keyStr);
-        if (segments.empty()) {
-          return Node::create(sub);
-        }
-        NodePtr node = [&] {
-          if (auto x = trans.find(segments[0]); x) {
-            return *x;
-          }
-          return Node::create();
-        }();
-
-        node = node->placeAt(
-            std::span<std::string>{segments.begin() + 1, segments.end()}, sub);
-
-        trans.set(std::move(segments[0]), node);
-      } else {
-        // ADB_PROD_ASSERT(trans.find(keyStr) == nullptr)
-        //    << "key `" << keyStr
-        //    << "` could not be inserted, because it is "
-        //       "already present in the map. slice="
-        //    << slice.toJson();
-        trans.set(std::move(keyStr), Node::create(sub));
+        THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
+                                      "invalid object key detected: `%s`",
+                                      keyStr.c_str());
       }
+
+      // ADB_PROD_ASSERT(trans.find(keyStr) == nullptr)
+      //    << "key `" << keyStr
+      //    << "` could not be inserted, because it is "
+      //       "already present in the map. slice="
+      //    << slice.toJson();
+      trans.set(std::move(keyStr), Node::create(sub));
     }
     return std::make_shared<NodeWrapper>(trans.persistent());
   } else if (slice.isArray()) {

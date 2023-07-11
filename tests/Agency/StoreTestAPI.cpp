@@ -842,22 +842,6 @@ TEST_F(StoreTestAPI, order_evil) {
 /// @brief Test nasty willful attempt to break
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(StoreTestAPI, slash_o_rama) {
-  writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-  writeAndCheck(R"([[{"//////////////////////a/////////////////////b//":
-                    {"b///////c":4}}]])");
-  assertEqual(read(R"([["/"]])"), R"( [{"a":{"b":{"b":{"c":4}}}}])");
-  writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-  writeAndCheck(R"([[{"////////////////////////": "Hi there!"}]])");
-  assertEqual(read(R"([["/"]])"), R"(["Hi there!"])");
-  writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-  writeAndCheck(
-      R"([[{"/////////////////\\/////a/////////////^&%^&$^&%$////////b\\\n//":
-        {"b///////c":4}}]])");
-  assertEqual(read(R"([["/"]])"),
-              R"([{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}])");
-}
-
 TEST_F(StoreTestAPI, keys_beginning_with_same_string) {
   writeAndCheck(
       R"([[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]])");
