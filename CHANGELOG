@@ -16,6 +16,9 @@ devel
   memory limit settings, turn on intermediate commits for the query, or adjust
   the query so that it uses less memory.
 
+* FE-304, FE-305: use navigator.onLine for checking internet connection,
+  correct path for running/slow queries.
+
 * BTS-744: Disable development mode for system services.
 
 * Updated ArangoDB Starter to 0.16.0-preview-1.
