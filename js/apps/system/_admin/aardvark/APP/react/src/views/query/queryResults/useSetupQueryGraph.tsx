@@ -36,7 +36,8 @@ export const getLayout = (layout: LayoutType) => {
   const forceAtlas2BasedOptions = {
     layout: {
       randomSeed: 0,
-      hierarchical: false
+      hierarchical: false,
+      improvedLayout: false
     },
     physics: {
       forceAtlas2Based: {
@@ -242,9 +243,6 @@ export const useSetupQueryGraph = ({
         if (nodes?.length && nodes.length > 1) {
           const widthFactor = params.iterations / params.total;
           const calculatedProgressValue = Math.round(widthFactor * 100);
-          if (calculatedProgressValue < 20) {
-            hasDrawnOnce.current = false;
-          }
           setProgressValue(calculatedProgressValue);
         }
       });
