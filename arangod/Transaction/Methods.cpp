@@ -1595,9 +1595,11 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
 template<transaction::Methods::CallbacksTag tag, typename Callback>
 bool transaction::Methods::addCallbackImpl(Callback const* callback) {
   if (!callback || !*callback) {
-    return true;   // nothing to call back
+    // nothing to call back
+    return true;
   } else if (!_state) {
-    return false;  // nothing to add to
+    // nothing to add to
+    return false;
   }
 
   auto* statusChangeCallbacks = getCallbacks<tag>(*_state, true);
