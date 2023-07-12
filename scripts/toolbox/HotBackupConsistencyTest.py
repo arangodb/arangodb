@@ -48,16 +48,12 @@ def wait_for_cluster(client):
 
 
 def ensure_workdir(desired_workdir):
-    if desired_workdir is None:
-        return tempfile.mkdtemp(prefix="arangotest_")
+    if os.path.exists(desired_workdir):
+        print(f"WARNING: desired working directory {desired_workdir} already exists")
     else:
-        if os.path.exists(desired_workdir):
-            print(f"ERROR: desired working directory {desired_workdir} already exists")
-            sys.exit(-1)
-        else:
-            path = Path(desired_workdir)
-            path.mkdir(parents=True)
-            return (desired_workdir)
+        path = Path(desired_workdir)
+        path.mkdir(parents=True)
+    return desired_workdir
 
 
 def run_test_arangosearch(client):
@@ -365,6 +361,12 @@ def main():
     parser.add_argument('--test-filter', default=None,
                         help=("filter tests using a regex"))
     args = parser.parse_args()
+    if args.workdir is None:
+        workdir = tempfile.mkdtemp(prefix="arangotest_")
+    else:
+        workdir = args.workdir
+
+    ensure_workdir(workdir)
 
     tests = [run_test_arangosearch, run_test_aql, run_test_smart_graphs, run_test_el_cheapo_trx]
 
@@ -374,7 +376,7 @@ def main():
 
     for idx, test in enumerate(tests):
         print(f"running test {test.__name__}")
-        workdir = ensure_workdir(os.path.join(args.workdir, test.__name__))
+        workdir = ensure_workdir(os.path.join(workdir, test.__name__))
         print(f"working directory is {workdir}")
 
         # give each env a different port range because of lingering
