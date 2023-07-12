@@ -80,27 +80,31 @@ export const useQueryExecutors = ({
       },
       ...queryResults
     ]);
-    const profile = await route.post({
-      query: literal.toAQL(),
-      bindVars: queryBindParams
-    });
-    setQueryResultById({
-      queryValue,
-      queryBindParams,
-      type: "profile",
-      result: profile.body.msg,
-      status: "success"
-    });
-    setQueryResults(queryResults => [
-      {
+    try {
+      const profile = await route.post({
+        query: literal.toAQL(),
+        bindVars: queryBindParams
+      });
+      setQueryResultById({
         queryValue,
         queryBindParams,
         type: "profile",
         result: profile.body.msg,
         status: "success"
-      },
-      ...queryResults
-    ]);
+      });
+    } catch (e: any) {
+      const message = e.message || e.response.body.errorMessage;
+      setQueryResultById({
+        queryValue,
+        queryBindParams,
+        type: "profile",
+        status: "error",
+        errorMessage: message
+      });
+      window.arangoHelper.arangoError(
+        `Could not execute query. Error - ${message}`
+      );
+    }
   };
   const onExplain = useCallback(
     async ({ queryValue, queryBindParams }: QueryExecutionOptions) => {
@@ -108,16 +112,16 @@ export const useQueryExecutors = ({
       const literal = aql.literal(queryValue);
       const path = `/_admin/aardvark/query/explain`;
       const route = currentDB.route(path);
+      setQueryResults(queryResults => [
+        {
+          queryValue,
+          queryBindParams,
+          type: "explain",
+          status: "loading"
+        },
+        ...queryResults
+      ]);
       try {
-        setQueryResults(queryResults => [
-          {
-            queryValue,
-            queryBindParams,
-            type: "explain",
-            status: "loading"
-          },
-          ...queryResults
-        ]);
         const explainResult = await route.post({
           query: literal.toAQL(),
           bindVars: queryBindParams
@@ -131,12 +135,19 @@ export const useQueryExecutors = ({
         });
       } catch (e: any) {
         const message = e.message || e.response.body.errorMessage;
+        setQueryResultById({
+          queryValue,
+          queryBindParams,
+          type: "profile",
+          status: "error",
+          errorMessage: message
+        });
         window.arangoHelper.arangoError(
           `Could not execute query. Error - ${message}`
         );
       }
     },
-    [setQueryResults]
+    [setQueryResultById, setQueryResults]
   );
   return { onExecute, onProfile, onExplain, onRemoveResult };
 };

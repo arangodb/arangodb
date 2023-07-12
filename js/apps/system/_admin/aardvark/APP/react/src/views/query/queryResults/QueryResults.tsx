@@ -24,11 +24,13 @@ export const QueryResults = () => {
           );
         }
         if (queryResult.status === "error") {
-          <QueryResultError
-            key={index}
-            index={index}
-            queryResult={queryResult}
-          />;
+          return (
+            <QueryResultError
+              key={index}
+              index={index}
+              queryResult={queryResult}
+            />
+          );
         }
         if (queryResult.type === "profile" || queryResult.type === "explain") {
           return (
