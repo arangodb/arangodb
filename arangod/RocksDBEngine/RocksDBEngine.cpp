@@ -74,6 +74,9 @@
 #include "Replication2/Storage/RocksDB/StatePersistor.h"
 #include "Replication2/Storage/RocksDB/Metrics.h"
 #include "Replication2/Storage/RocksDB/ReplicatedStateInfo.h"
+#include "Replication2/Storage/WAL/IFileWriter.h"
+#include "Replication2/Storage/WAL/LogPersistor.h"
+#include "Replication2/Storage/WAL/WalManager.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
@@ -142,6 +145,8 @@
 // file ingestion until rocksdb external file ingestion is fixed to have
 // correct sequence numbers for the files without gaps
 #undef USE_SST_INGESTION
+
+#define USE_CUSTOM_WAL
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -934,26 +939,6 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
 
 namespace {
 
-auto makeLogStorageMethods(
-    replication2::LogId logId, uint64_t objectId, std::uint64_t vocbaseId,
-    ::rocksdb::DB* const db, ::rocksdb::ColumnFamilyHandle* const logCf,
-    ::rocksdb::ColumnFamilyHandle* const metaCf,
-    std::shared_ptr<replication2::storage::rocksdb::IAsyncLogWriteBatcher>
-        batcher,
-    std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
-        metrics)
-    -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
-  auto logPersistor =
-      std::make_unique<replication2::storage::rocksdb::LogPersistor>(
-          logId, objectId, vocbaseId, db, logCf, std::move(batcher),
-          std::move(metrics));
-  auto statePersistor =
-      std::make_unique<replication2::storage::rocksdb::StatePersistor>(
-          logId, objectId, vocbaseId, db, metaCf);
-  return std::make_unique<replication2::storage::LogStorageMethods>(
-      std::move(logPersistor), std::move(statePersistor));
-}
-
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
     : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
   explicit RocksDBAsyncLogWriteBatcherMetricsImpl(
@@ -1276,6 +1261,8 @@ void RocksDBEngine::start() {
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
   _dumpManager = std::make_unique<RocksDBDumpManager>(*this);
+  _walManager = std::make_shared<replication2::storage::wal::WalManager>(
+      databasePathFeature.subdirectoryName("replicated-logs"));
 
   struct SchedulerExecutor
       : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
@@ -2874,9 +2861,8 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
     auto* cfLogs = RocksDBColumnFamilyManager::get(
         RocksDBColumnFamilyManager::Family::ReplicatedLogs);
 
-    auto methods =
-        makeLogStorageMethods(info.stateId, info.objectId, databaseId, _db,
-                              cfLogs, cfDefs, _logPersistor, _logMetrics);
+    auto methods = makeLogStorageMethods(info.stateId, info.objectId,
+                                         databaseId, cfLogs, cfDefs);
     auto res = methods->drop();
     // Save the first error we encounter, but try to drop the rest.
     if (rv.ok() && res.fail()) {
@@ -3260,12 +3246,11 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
     auto info = velocypack::deserialize<
         replication2::storage::rocksdb::ReplicatedStateInfo>(slice);
     auto methods = makeLogStorageMethods(
-        info.stateId, info.objectId, vocbase.id(), _db,
+        info.stateId, info.objectId, vocbase.id(),
         RocksDBColumnFamilyManager::get(
             RocksDBColumnFamilyManager::Family::ReplicatedLogs),
         RocksDBColumnFamilyManager::get(
-            RocksDBColumnFamilyManager::Family::Definitions),
-        _logPersistor, _logMetrics);
+            RocksDBColumnFamilyManager::Family::Definitions));
     registerReplicatedState(vocbase, info.stateId, std::move(methods));
   }
 }
@@ -3295,6 +3280,27 @@ void RocksDBEngine::syncIndexCaches() {
   RocksDBIndexCacheRefillFeature& f =
       server().getFeature<RocksDBIndexCacheRefillFeature>();
   f.waitForCatchup();
+}
+
+auto RocksDBEngine::makeLogStorageMethods(
+    replication2::LogId logId, uint64_t objectId, std::uint64_t vocbaseId,
+    ::rocksdb::ColumnFamilyHandle* const logCf,
+    ::rocksdb::ColumnFamilyHandle* const metaCf)
+    -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
+#if defined(USE_CUSTOM_WAL)
+  auto logPersistor =
+      std::make_unique<replication2::storage::wal::LogPersistor>(logId,
+                                                                 _walManager);
+#else
+  auto logPersistor =
+      std::make_unique<replication2::storage::rocksdb::LogPersistor>(
+          logId, objectId, vocbaseId, _db, logCf, _logPersistor, _logMetrics);
+#endif
+  auto statePersistor =
+      std::make_unique<replication2::storage::rocksdb::StatePersistor>(
+          logId, objectId, vocbaseId, _db, metaCf);
+  return std::make_unique<replication2::storage::LogStorageMethods>(
+      std::move(logPersistor), std::move(statePersistor));
 }
 
 DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
@@ -4084,12 +4090,11 @@ auto RocksDBEngine::createReplicatedState(
     -> ResultT<std::unique_ptr<replication2::storage::IStorageEngineMethods>> {
   auto objectId = TRI_NewTickServer();
   auto methods = makeLogStorageMethods(
-      id, objectId, vocbase.id(), _db,
+      id, objectId, vocbase.id(),
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs),
       RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Definitions),
-      _logPersistor, _logMetrics);
+          RocksDBColumnFamilyManager::Family::Definitions));
   auto res = methods->updateMetadata(info);
   if (res.fail()) {
     return res;

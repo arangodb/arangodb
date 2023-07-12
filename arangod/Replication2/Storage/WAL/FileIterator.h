@@ -20,36 +20,25 @@
 ///
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/PersistedLogEntry.h"
 
-namespace arangodb::replication2::storage {
+namespace arangodb::replication2::storage::wal {
 
-struct IteratorPosition {
-  IteratorPosition() = default;
+struct IFileReader;
 
-  static IteratorPosition fromLogIndex(LogIndex index) {
-    return IteratorPosition(index);
-  }
+struct FileIterator : PersistedLogIterator {
+  FileIterator(IteratorPosition position, std::unique_ptr<IFileReader> reader);
 
-  static IteratorPosition withFileOffset(LogIndex index,
-                                         std::uint64_t fileOffset) {
-    return IteratorPosition(index, fileOffset);
-  }
-
-  [[nodiscard]] auto index() const noexcept -> LogIndex { return _logIndex; }
-
-  [[nodiscard]] auto fileOffset() const noexcept -> std::uint64_t {
-    return _fileOffset;
-  }
+  auto next() -> std::optional<PersistedLogEntry> override;
 
  private:
-  explicit IteratorPosition(LogIndex index) : _logIndex(index) {}
-  IteratorPosition(LogIndex index, std::uint64_t fileOffset)
-      : _logIndex(index), _fileOffset(fileOffset) {}
-  LogIndex _logIndex{0};
-  std::uint64_t _fileOffset{0};
+  void moveToFirstEntry();
+
+  IteratorPosition _pos;
+  std::unique_ptr<IFileReader> _reader;
 };
 
-}  // namespace arangodb::replication2::storage
+}  // namespace arangodb::replication2::storage::wal

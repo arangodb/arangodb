@@ -20,36 +20,15 @@
 ///
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
+namespace arangodb::replication2::storage::wal {
 
-namespace arangodb::replication2::storage {
-
-struct IteratorPosition {
-  IteratorPosition() = default;
-
-  static IteratorPosition fromLogIndex(LogIndex index) {
-    return IteratorPosition(index);
-  }
-
-  static IteratorPosition withFileOffset(LogIndex index,
-                                         std::uint64_t fileOffset) {
-    return IteratorPosition(index, fileOffset);
-  }
-
-  [[nodiscard]] auto index() const noexcept -> LogIndex { return _logIndex; }
-
-  [[nodiscard]] auto fileOffset() const noexcept -> std::uint64_t {
-    return _fileOffset;
-  }
-
- private:
-  explicit IteratorPosition(LogIndex index) : _logIndex(index) {}
-  IteratorPosition(LogIndex index, std::uint64_t fileOffset)
-      : _logIndex(index), _fileOffset(fileOffset) {}
-  LogIndex _logIndex{0};
-  std::uint64_t _fileOffset{0};
+enum class EntryType {
+  wMeta = 0,
+  wNormal = 1,
+  // in the future we can add more (e.g., compressed?)
 };
 
-}  // namespace arangodb::replication2::storage
+}  // namespace arangodb::replication2::storage::wal

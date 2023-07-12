@@ -18,41 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <cstdint>
+#include "Replication2/Storage/WAL/IFileWriter.h"
+
+#include <cstdio>
 #include <string_view>
-#include <velocypack/Buffer.h>
-#include <velocypack/Slice.h>
 
-namespace arangodb::replication2 {
+namespace arangodb::replication2::storage::wal {
 
-struct LogPayload {
-  using BufferType = velocypack::UInt8Buffer;
+struct FileWriterImpl final : IFileWriter {
+  FileWriterImpl(std::string path);
+  ~FileWriterImpl();
 
-  explicit LogPayload(BufferType const& dummy);
-  explicit LogPayload(BufferType&& dummy);
+  auto append(std::string_view data) -> Result override;
 
-  // Named constructors, have to make copies.
-  [[nodiscard]] static auto createFromSlice(velocypack::Slice slice)
-      -> LogPayload;
-  [[nodiscard]] static auto createFromString(std::string_view string)
-      -> LogPayload;
+  void truncate(std::uint64_t size) override;
 
-  friend auto operator==(LogPayload const&, LogPayload const&) -> bool;
+  void sync() override;
 
-  [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
-  [[nodiscard]] auto slice() const noexcept -> velocypack::Slice;
-  [[nodiscard]] auto copyBuffer() const -> velocypack::UInt8Buffer;
-  [[nodiscard]] auto stealBuffer() -> velocypack::UInt8Buffer&&;
+  auto getReader() const -> std::unique_ptr<IFileReader> override;
 
  private:
-  BufferType buffer;
+  std::string _path;
+  int _file = 0;
 };
 
-auto operator==(LogPayload const&, LogPayload const&) -> bool;
-
-}  // namespace arangodb::replication2
+}  // namespace arangodb::replication2::storage::wal

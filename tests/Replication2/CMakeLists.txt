@@ -82,6 +82,7 @@ target_link_libraries(arangodbtests_replication2 PRIVATE
   gtest
   arango_tests_basics
   arango_tests_replication2
+  arango_tests_replication2_pure
   arango_agency
   arango_cluster_engine
   arango_rocksdb
@@ -147,3 +148,5 @@ target_link_libraries(arangodbtests_replication2_pure PRIVATE
 add_test(NAME replication2_pure
   COMMAND arangodbtests_replication2_pure)
 target_link_libraries(arangodbtests_replication2 PUBLIC arango_tests_replication2_pure)
+
+add_subdirectory(Storage)

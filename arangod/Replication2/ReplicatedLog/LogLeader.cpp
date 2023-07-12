@@ -939,6 +939,15 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
       << ", waitForSync = " << req.waitForSync
       << ", lci = " << req.lowestIndexToKeep << ", msg-id = " << req.messageId;
 
+  ADB_PROD_ASSERT(isEmptyAppendEntries ||
+                  req.prevLogEntry.index + 1 ==
+                      req.entries.front().entry().logIndex())
+      << "isEmptyAppendEntries " << isEmptyAppendEntries << " prevLogEntry "
+      << req.prevLogEntry.index << " entries.front "
+      << (isEmptyAppendEntries
+              ? " nil "
+              : std::to_string(req.entries.front().entry().logIndex().value));
+
   return std::make_pair(std::move(req), lastIndex);
 }
 

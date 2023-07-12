@@ -39,7 +39,8 @@ auto operator==(LogPayload const& left, LogPayload const& right) -> bool {
   }
 }
 
-LogPayload::LogPayload(BufferType buffer) : buffer(std::move(buffer)) {}
+LogPayload::LogPayload(BufferType const& buffer) : buffer(buffer) {}
+LogPayload::LogPayload(BufferType&& buffer) : buffer(std::move(buffer)) {}
 
 auto LogPayload::createFromSlice(velocypack::Slice slice) -> LogPayload {
   BufferType buffer(slice.byteSize());

@@ -20,36 +20,28 @@
 ///
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
+#include "Basics/ResultT.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/PersistedLogEntry.h"
+#include "Replication2/Storage/WAL/Entry.h"
 
-namespace arangodb::replication2::storage {
+namespace arangodb::replication2::storage::wal {
 
-struct IteratorPosition {
-  IteratorPosition() = default;
+struct IFileReader;
 
-  static IteratorPosition fromLogIndex(LogIndex index) {
-    return IteratorPosition(index);
-  }
+// Seek to the entry with the specified index in the file, starting from the
+// current position of the reader, either forward or backward
+// In case of success, the reader is positioned at the start of the matching
+// entry.
+auto seekLogIndexForward(IFileReader& reader, LogIndex index)
+    -> ResultT<Entry::CompressedHeader>;
+auto seekLogIndexBackward(IFileReader& reader, LogIndex index)
+    -> ResultT<Entry::CompressedHeader>;
 
-  static IteratorPosition withFileOffset(LogIndex index,
-                                         std::uint64_t fileOffset) {
-    return IteratorPosition(index, fileOffset);
-  }
+// read the next entry, starting from the current position of the reader
+auto readLogEntry(IFileReader& reader) -> ResultT<PersistedLogEntry>;
 
-  [[nodiscard]] auto index() const noexcept -> LogIndex { return _logIndex; }
-
-  [[nodiscard]] auto fileOffset() const noexcept -> std::uint64_t {
-    return _fileOffset;
-  }
-
- private:
-  explicit IteratorPosition(LogIndex index) : _logIndex(index) {}
-  IteratorPosition(LogIndex index, std::uint64_t fileOffset)
-      : _logIndex(index), _fileOffset(fileOffset) {}
-  LogIndex _logIndex{0};
-  std::uint64_t _fileOffset{0};
-};
-
-}  // namespace arangodb::replication2::storage
+}  // namespace arangodb::replication2::storage::wal

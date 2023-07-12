@@ -39,6 +39,8 @@ class LogEntry {
  public:
   LogEntry(LogTerm term, LogIndex index, LogPayload payload)
       : LogEntry(TermIndexPair{term, index}, std::move(payload)) {}
+  LogEntry(LogTerm term, LogIndex index, LogMetaPayload payload)
+      : LogEntry(TermIndexPair{term, index}, std::move(payload)) {}
   LogEntry(TermIndexPair, std::variant<LogMetaPayload, LogPayload>);
   LogEntry(LogIndex,
            velocypack::Slice persisted);  // RocksDB from disk constructor
