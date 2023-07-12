@@ -416,7 +416,7 @@ TEST_F(NodeLoadInspectorTest, error_expecting_int) {
   int i{};
   auto result = inspector.apply(i);
   ASSERT_FALSE(result.ok());
-  EXPECT_EQ("Expecting type Int", result.error());
+  EXPECT_EQ("not an integral value or not representable", result.error());
 }
 
 TEST_F(NodeLoadInspectorTest, error_expecting_int16) {
@@ -426,7 +426,7 @@ TEST_F(NodeLoadInspectorTest, error_expecting_int16) {
   std::int16_t i{};
   auto result = inspector.apply(i);
   ASSERT_FALSE(result.ok());
-  EXPECT_EQ("Number out of range", result.error());
+  EXPECT_EQ("not an integral value or not representable", result.error());
 }
 
 TEST_F(NodeLoadInspectorTest, error_expecting_double) {
@@ -436,7 +436,7 @@ TEST_F(NodeLoadInspectorTest, error_expecting_double) {
   double d{};
   auto result = inspector.apply(d);
   ASSERT_FALSE(result.ok());
-  EXPECT_EQ("Expecting numeric type", result.error());
+  EXPECT_EQ("not an floating point value or not representable", result.error());
 }
 
 TEST_F(NodeLoadInspectorTest, error_expecting_bool) {
@@ -826,7 +826,7 @@ TEST_F(NodeLoadInspectorTest,
   QualifiedVariant v;
   auto result = inspector.apply(v);
   ASSERT_FALSE(result.ok());
-  EXPECT_EQ("Expecting type Int", result.error());
+  EXPECT_EQ("not an integral value or not representable", result.error());
   EXPECT_EQ("a.v", result.path());
 }
 
@@ -1053,7 +1053,7 @@ TEST_F(NodeLoadInspectorTest,
   EmbeddedVariant v;
   auto result = inspector.apply(v);
   ASSERT_FALSE(result.ok());
-  EXPECT_EQ("Expecting type Int", result.error());
+  EXPECT_EQ("not an integral value or not representable", result.error());
   EXPECT_EQ("a.v", result.path());
 }
 
@@ -1186,7 +1186,7 @@ TEST_F(NodeLoadInspectorTest, load_int_enum_returns_error_when_not_int) {
   MyIntEnum myEnum;
   auto result = inspector.apply(myEnum);
   EXPECT_FALSE(result.ok());
-  EXPECT_EQ("Expecting type UInt", result.error());
+  EXPECT_EQ("not an integral value or not representable", result.error());
 }
 
 TEST_F(NodeLoadInspectorTest,

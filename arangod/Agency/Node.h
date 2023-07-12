@@ -238,10 +238,11 @@ class Node : public std::enable_shared_from_this<Node> {
   /// @brief Get numeric value, or nullopt if wrong type
   template<typename T>
   std::optional<T> getNumber() const noexcept {
-    if (auto s = slice(); s.isNumber<T>()) {
-      return s.getNumber<T>();
+    try {
+      return slice().getNumber<T>();
+    } catch (...) {
+      return std::nullopt;
     }
-    return std::nullopt;
   }
 
   velocypack::ValueType getVelocyPackValueType() const noexcept;

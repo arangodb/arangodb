@@ -72,7 +72,7 @@ struct NodeLoadInspectorImpl
       v = *s;
       return {};
     }
-    return {"not an intergral value or not representable"};
+    return {"not an integral value or not representable"};
   }
 
   [[nodiscard]] Status value(double& v) {
