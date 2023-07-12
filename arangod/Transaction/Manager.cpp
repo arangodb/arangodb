@@ -1577,5 +1577,10 @@ std::shared_ptr<ManagedContext> Manager::buildManagedContextUnderLock(
   }
 }
 
+Manager::TransactionCommitGuard Manager::getTransactionCommitGuard() {
+  READ_LOCKER(guard, _hotbackupCommitLock);
+  return guard;
+}
+
 }  // namespace transaction
 }  // namespace arangodb

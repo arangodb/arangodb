@@ -2,14 +2,16 @@ from .Agent import Agent
 from .Coordinator import Coordinator
 from .DBServer import DBServer
 
+
 class ArangodEnvironment:
     """An environment for starting arangod processes
     """
-    def __init__(self, binary, topdir, workdir):
+
+    def __init__(self, binary, topdir, workdir, initial_port=8500):
         self.binary = binary
         self.topdir = topdir
         self._workdir = workdir
-        self._next_port = 8500
+        self._next_port = initial_port
         self._address = "127.0.0.1"
         self._transport = "tcp"
         self._agents = []
@@ -17,6 +19,9 @@ class ArangodEnvironment:
         self._dbservers = []
 
     def __del__(self):
+        self.shutdown()
+
+    def shutdown(self):
         for dbserver in self._dbservers:
             dbserver.shutdown()
         for coordinator in self._coordinators:

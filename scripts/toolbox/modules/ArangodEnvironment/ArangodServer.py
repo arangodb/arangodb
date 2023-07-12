@@ -18,9 +18,7 @@ class ArangodServer:
         self._port = environment.get_next_port()
 
     def __del__(self):
-        if self._proc is not None:
-            self._proc.terminate()
-            self._proc.wait()
+        self.shutdown()
 
     def collect_parameters(self, param):
         param["-c"] = "none"
@@ -36,7 +34,7 @@ class ArangodServer:
     def get_http_endpoint(self):
         return f"http://127.0.0.1:{self._port}"
 
-    def start(self, silent=True):
+    def start(self, silent=False):
         param = {}
         self.collect_parameters(param)
         if silent:
@@ -47,6 +45,7 @@ class ArangodServer:
             self._proc = subprocess.Popen([self._environment.binary] + flatten_dict(param))
 
     def shutdown(self):
-        self._proc.terminate()
-        self._proc.wait()
-        self._proc = None
+        if self._proc is not None:
+            self._proc.terminate()
+            self._proc.wait()
+            self._proc = None

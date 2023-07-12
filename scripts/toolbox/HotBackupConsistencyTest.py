@@ -17,12 +17,16 @@ from modules.ArangodEnvironment.Agent import Agent
 from modules.ArangodEnvironment.Coordinator import Coordinator
 from modules.ArangodEnvironment.DBServer import DBServer
 
-def inserter(collection):
+
+def inserter(collection, stop_ev):
     for i in range(10000):
         collection.insert({"number": i, "field1": "stone"})
+        if stop_ev.is_set():
+            break
 
-def start_cluster(binary, topdir, workdir):
-    environment = ArangodEnvironment(binary, topdir, workdir)
+
+def start_cluster(binary, topdir, workdir, initial_port):
+    environment = ArangodEnvironment(binary, topdir, workdir, initial_port=initial_port)
     environment.start_agent()
     environment.start_coordinator()
 
@@ -30,6 +34,7 @@ def start_cluster(binary, topdir, workdir):
         environment.start_dbserver()
 
     return environment
+
 
 def wait_for_cluster(client):
     while True:
@@ -39,6 +44,7 @@ def wait_for_cluster(client):
             return True
         except ServerConnectionError:
             time.sleep(1)
+
 
 def ensure_workdir(desired_workdir):
     if desired_workdir is None:
@@ -50,9 +56,10 @@ def ensure_workdir(desired_workdir):
         else:
             path = Path(desired_workdir)
             path.mkdir(parents=True)
-            return(desired_workdir)
+            return (desired_workdir)
 
-def run_test(client):
+
+def run_test_arangosearch(client):
     # create a database to run the test on
     sys_db = client.db('_system', username='root', verify=True)
     sys_db.create_database('test')
@@ -63,15 +70,15 @@ def run_test(client):
     test_collection = test_db.create_collection('test_collection', shard_count=20)
     index = test_collection.add_inverted_index(fields=["field1"])
     test_db.create_view(name="test_view", view_type="arangosearch",
-                        properties = { "links": {
+                        properties={"links": {
                             "test_collection": {
-                                "includeAllFields": True }}})
+                                "includeAllFields": True}}})
 
     test_collection2 = test_db.create_collection('test_collection2')
     test_db.create_view(name="test_view_squared", view_type="arangosearch",
-                        properties = { "links": {
+                        properties={"links": {
                             "test_collection2": {
-                                "includeAllFields": True }}})
+                                "includeAllFields": True}}})
 
     # Start a transaction
     txn_db = test_db.begin_transaction(read="test_collection2", write="test_collection2")
@@ -79,7 +86,8 @@ def run_test(client):
     txn_col.insert({"foo": "bar"})
 
     # Insert documents into test_collection
-    insjob = threading.Thread(target=inserter, args=[test_collection])
+    stop_ev = threading.Event()
+    insjob = threading.Thread(target=inserter, args=[test_collection, stop_ev])
     insjob.start()
     # :/ making sure that something has happened from the
     # inserter thread
@@ -99,6 +107,7 @@ def run_test(client):
     #  * have the inserter just continously insert documents
     #  * signal for it to stop here
     #  * join it.
+    stop_ev.set()
     insjob.join()
 
     # restore the hotbackup taken above
@@ -112,7 +121,7 @@ def run_test(client):
              FILTER w._key NOT IN x
              RETURN w
         """))
-    assert(p == [])
+    assert (p == [])
     q = list(test_db.aql.execute(
         """LET x = (FOR v IN test_view RETURN v._key)
            FOR w IN test_collection
@@ -139,6 +148,60 @@ def run_test(client):
     txn_db.abort_transaction()
 
 
+def run_test_aql(client):
+    # create a database to run the test on
+    sys_db = client.db('_system', username='root', verify=True)
+    sys_db.create_database('test')
+
+    test_db = client.db('test', username='root')
+
+    # collection into which documents will be inserted and indexed
+    test_collection = test_db.create_collection('test_collection', shard_count=20)
+
+    stop_ev = threading.Event()
+
+    def run_aql_thread(idx):
+        while not stop_ev.is_set():
+            test_db.aql.execute("FOR i IN 1..1000 INSERT {thrd: @idx, i} INTO test_collection",
+                                  bind_vars={"idx": str(idx)})
+
+    threads = []
+    for i in range(10):
+        thrd = threading.Thread(target=run_aql_thread, args=[i])
+        thrd.start()
+        threads.append(thrd)
+
+    time.sleep(1)
+
+    # Concurrently, take a hotbackup
+    result = sys_db.backup.create(
+        label="hotbackuptesthotbackup",
+        allow_inconsistent=False,
+        force=False,
+        timeout=1000
+    )
+    print(f"backup_id: {result['backup_id']}")
+
+    stop_ev.set()
+    [t.join() for t in threads]
+
+    # restore the hotbackup taken above
+    sys_db.backup.restore(result["backup_id"])
+
+    for i in range(10):
+        result = list(test_db.aql.execute("""
+            FOR doc IN test_collection
+                FILTER doc.thrd == @idx
+                COLLECT WITH COUNT INTO length
+                RETURN length
+        """, bind_vars={"idx": str(i)}))[0]
+
+        # each thread writes batches of 1000 documents
+        # thus is each query is transactional, we should only see multiples
+        assert result % 1000 == 0, f"found {result} documents for thread {i}"
+
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="HotBackupConsistencyTest.py",
@@ -156,15 +219,23 @@ def main():
                               " there"))
     args = parser.parse_args()
 
-    workdir = ensure_workdir(args.workdir)
-    print(f"working directory is {workdir}")
+    tests = [run_test_arangosearch, run_test_aql]
 
-    environment = start_cluster(args.arangod, args.topdir, workdir)
+    for idx, test in enumerate(tests):
+        print(f"running test {test.__name__}")
+        workdir = ensure_workdir(os.path.join(args.workdir, test.__name__))
+        print(f"working directory is {workdir}")
 
-    # TODO: replace this with API call for cluster readiness
-    client = ArangoClient(environment.get_coordinator_http_endpoint())
-    wait_for_cluster(client)
-    run_test(client)
+        # give each env a different port range because of lingering
+        environment = start_cluster(args.arangod, args.topdir, workdir, 8500 + idx * 100)
+
+        client = ArangoClient(environment.get_coordinator_http_endpoint())
+        wait_for_cluster(client)
+        print(f"cluster ready")
+        test(client)
+
+        environment.shutdown()
+
 
 if __name__ == "__main__":
     main()
