@@ -53,7 +53,6 @@ function MemoryMetrics() {
       const writers = getMetric("arangodb_search_writers_memory");
       assertTrue(writers > 0);
       const descriptors = getMetric("arangodb_search_file_descriptors");
-      // TODO(MBkkt) Fix API in iresearch
       assertTrue(descriptors > 0);
     },
 
