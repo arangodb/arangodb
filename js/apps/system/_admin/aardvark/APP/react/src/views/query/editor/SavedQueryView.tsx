@@ -31,14 +31,12 @@ export const SavedQueryView = () => {
   return (
     <Box background="white">
       <SavedQueryToolbar />
-      <Grid gridTemplateRows="1fr 60px" maxHeight="500px" overflow="auto">
-        <Grid gridTemplateColumns="minmax(450px, 0.5fr) 1fr">
-          {isFetchingQueries ? (
-            <Spinner />
-          ) : (
-            <SavedQueryTable savedQueries={savedQueries} />
-          )}
-        </Grid>
+      <Grid gridTemplateRows="440px 48px" maxHeight="500px" overflow="hidden">
+        {isFetchingQueries ? (
+          <Spinner />
+        ) : (
+          <SavedQueryTable savedQueries={savedQueries} />
+        )}
         <SavedQueryBottomBar />
       </Grid>
     </Box>
@@ -196,8 +194,13 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
   const selectedRowModel = tableInstance.getSelectedRowModel();
   const selectedQuery = selectedRowModel.rows[0]?.original;
   return (
-    <>
-      <Stack>
+    <Grid
+      borderBottom="4px solid"
+      borderColor="gray.400"
+      gridTemplateColumns="minmax(450px, 0.5fr) 1fr"
+      height="full"
+    >
+      <Stack height="full" overflow="auto">
         <FiltersList<QueryType> columns={TABLE_COLUMNS} table={tableInstance} />
         <ReactTable<QueryType>
           table={tableInstance}
@@ -209,7 +212,7 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
         />
       </Stack>
       <QueryPreview query={selectedQuery} />
-    </>
+    </Grid>
   );
 };
 
@@ -218,11 +221,11 @@ const QueryPreview = ({ query }: { query: QueryType | null }) => {
     return <Box>Select a query to view</Box>;
   }
   return (
-    <Stack>
+    <Stack height="full">
       <Box fontWeight="medium" fontSize="md">
         Preview: {query.name}
       </Box>
-      <Grid gridTemplateColumns="1fr 1fr">
+      <Grid gridTemplateColumns="1fr 1fr" height="full">
         <Stack>
           <Box fontWeight="medium" fontSize="sm">
             Value
@@ -266,6 +269,9 @@ const SavedQueryBottomBar = () => {
         onClose={onCloseImportModal}
       />
       <Stack
+        border="1px solid"
+        borderTop="0"
+        borderColor="gray.400"
         padding="2"
         direction="row"
         justifyContent="flex-end"
