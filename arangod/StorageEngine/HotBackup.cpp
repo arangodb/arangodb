@@ -33,7 +33,6 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
-#include "Logger/LogMacros.h"
 #endif
 
 namespace arangodb {

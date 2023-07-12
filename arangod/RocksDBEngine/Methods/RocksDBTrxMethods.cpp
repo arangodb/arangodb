@@ -31,8 +31,6 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
 #include "Metrics/Counter.h"
-#include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 

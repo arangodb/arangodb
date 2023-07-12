@@ -91,7 +91,6 @@ struct MGMethods final : arangodb::transaction::Methods {
 Manager::Manager(ManagerFeature& feature)
     : _feature(feature),
       _nrRunning(0),
-      _nrReadLocked(0),
       _disallowInserts(false),
       _hotbackupCommitLockHeld(false),
       _streamingLockTimeout(feature.streamingLockTimeout()),
@@ -108,10 +107,8 @@ void Manager::registerTransaction(TransactionId transactionId,
   if (!isReadOnlyTransaction && !isFollowerTransaction) {
     LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS)
         << "Acquiring read lock for tid " << transactionId.id();
-    _nrReadLocked.fetch_add(1, std::memory_order_relaxed);
     LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS)
-        << "Got read lock for tid " << transactionId.id()
-        << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
+        << "Got read lock for tid " << transactionId.id();
   }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
@@ -122,13 +119,11 @@ void Manager::unregisterTransaction(TransactionId transactionId,
                                     bool isReadOnlyTransaction,
                                     bool isFollowerTransaction) {
   // always perform an unlock when we leave this function
-  auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction,
+  auto guard = scopeGuard([transactionId, &isReadOnlyTransaction,
                            &isFollowerTransaction]() noexcept {
     if (!isReadOnlyTransaction && !isFollowerTransaction) {
-      _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
       LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS)
-          << "Released lock for tid " << transactionId.id()
-          << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
+          << "Released lock for tid " << transactionId.id();
     }
   });
 

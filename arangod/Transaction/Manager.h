@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Identifier.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
@@ -35,7 +36,6 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
-#include "Basics/ReadLocker.h"
 #include <absl/hash/hash.h>
 #include <atomic>
 #include <functional>
@@ -296,7 +296,6 @@ class Manager final : public IManager {
 
   /// Nr of running transactions
   std::atomic<uint64_t> _nrRunning;
-  std::atomic<uint64_t> _nrReadLocked;
 
   std::atomic<bool> _disallowInserts;
 
