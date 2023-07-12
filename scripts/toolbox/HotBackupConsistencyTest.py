@@ -201,7 +201,6 @@ def run_test_aql(client):
         assert result % 1000 == 0, f"found {result} documents for thread {i}"
 
 
-
 def main():
     parser = argparse.ArgumentParser(
         prog="HotBackupConsistencyTest.py",
