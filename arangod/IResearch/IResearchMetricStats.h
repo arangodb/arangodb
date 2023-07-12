@@ -63,7 +63,7 @@ class MetricStats : public metrics::Guard<IResearchDataStore::Stats> {
     if (r->empty()) {
       return true;  // TODO(MBkkt) We should fix cluster info :(
     }
-    if ((*r)[0] != ServerState::instance()->getId()) {
+    if (std::string_view{(*r)[0]} != ServerState::instance()->getId()) {
       // We want collect only leader shards stats
       return true;
     }
