@@ -1275,9 +1275,8 @@ Result IResearchDataStore::initDataStore(
 
   _dataStore._directory = std::make_unique<irs::MMapDirectory>(
       _dataStore._path,
-      initCallback
-          ? initCallback()
-          : irs::directory_attributes{} /*, readerOptions.resource_manager*/);
+      initCallback ? initCallback() : irs::directory_attributes{},
+      readerOptions.resource_manager);
 
   switch (_engine->recoveryState()) {
     case RecoveryState::BEFORE:  // Link is being opened before recovery
