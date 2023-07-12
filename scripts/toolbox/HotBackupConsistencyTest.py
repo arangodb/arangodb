@@ -217,7 +217,7 @@ def run_test_smart_graphs(client):
     # create 20 vertices with different attributes
     vertices = [{"_key": f"{i}:v{i}", "foo": str(i)} for i in range(20)]
     foo_collection = test_db.collection('foo')
-    foo_collection.import_bulk(vertices)
+    foo_collection.insert_many(vertices)
     assert foo_collection.count() == 20
 
     # now spawn a few threads, each inserting edges between all 20 vertices
@@ -234,7 +234,7 @@ def run_test_smart_graphs(client):
         edge_col = test_db.collection('is_foo')
 
         while not stop_ev.is_set():
-            edge_col.import_bulk(edge_docs)
+            edge_col.insert_many(edge_docs)
 
     threads = []
     for i in range(10):
