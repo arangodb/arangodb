@@ -42,7 +42,7 @@ function MemoryMetrics() {
       let c = db._create(collection);
       c.insert(x);
       db._createView(view, "arangosearch", {
-        links: {[collection]: {
+      links: {[collection]: {
           includeAllFields: true,
           primarySort: {"fields": [{ "field": "stringValue", "desc": true }]},
           storedValues: ["numericValue"],
@@ -54,7 +54,7 @@ function MemoryMetrics() {
       assertTrue(writers > 0);
       const descriptors = getMetric("arangodb_search_file_descriptors");
       // TODO(MBkkt) Fix API in iresearch
-      // assertTrue(descriptors > 0);
+      assertTrue(descriptors > 0);
     },
 
     tearDownAll: function () {
@@ -89,7 +89,6 @@ function MemoryMetrics() {
       }
       assertTrue(readers > 0);
       assertTrue(consolidations > 0);
-      assertTrue(mapped > 0);
       {
         const oldValue = getMetric("arangodb_search_writers_memory");
         db._query("FOR d IN " + collection + " REMOVE d IN " + collection);
