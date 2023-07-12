@@ -24,12 +24,18 @@
 
 #include "Basics/StaticStrings.h"
 #include "VocBase/Properties/UtilityInvariants.h"
+#include "Inspection/Access.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
 
 struct CollectionMutableProperties {
+
+  struct Invariants {
+    [[nodiscard]] static auto isJsonSchema(
+        inspection::NonNullOptional<arangodb::velocypack::Builder> const& value) -> inspection::Status;
+  };
   std::string name = StaticStrings::Empty;
 
   // TODO: This can be optimized into it's own struct.
@@ -38,7 +44,7 @@ struct CollectionMutableProperties {
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
-  arangodb::velocypack::Builder schema{VPackSlice::nullSlice()};
+  inspection::NonNullOptional<arangodb::velocypack::Builder> schema{std::nullopt};
 
   bool operator==(CollectionMutableProperties const&) const;
 };
@@ -49,7 +55,9 @@ auto inspect(Inspector& f, CollectionMutableProperties& props) {
       f.field(StaticStrings::DataSourceName, props.name)
           .fallback(f.keep())
           .invariant(UtilityInvariants::isNonEmpty),
-      f.field(StaticStrings::Schema, props.schema).fallback(f.keep()),
+      f.field(StaticStrings::Schema, props.schema)
+          .fallback(f.keep())
+          .invariant(CollectionMutableProperties::Invariants::isJsonSchema),
       f.field(StaticStrings::ComputedValues, props.computedValues)
           .fallback(f.keep()));
 }

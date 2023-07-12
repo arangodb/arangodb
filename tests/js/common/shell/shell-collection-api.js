@@ -159,7 +159,7 @@ const validateProperties = (overrides, colName, type, keepClusterSpecificAttribu
     expectedProps.minReplicationFactor = expectedProps.writeConcern;
   }
   for (const [key, value] of Object.entries(expectedProps)) {
-    assertEqual(props[key], value, `Differ on key ${key} ${JSON.stringify(props)} vs ${JSON.stringify(expectedProps)}`);
+    assertEqual(props[key], value, `Differ on key ${key} Got: ${JSON.stringify(props)} , expected: ${JSON.stringify(expectedProps)}`);
   }
   // Note we add +1 on expected for the globallyUniqueId.
   const expectedKeys = Object.keys(expectedProps);
@@ -493,13 +493,15 @@ function CreateCollectionsSuite() {
             }
           } else {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+            if (replicationFactor === 0) {
+              // 0 is actually not allowed anymore in the future
+              validateDeprecationLogEntryWritten();
+            }
             // MinReplicationFactor is forced to 0 on satellites
             // NOTE: SingleServer Enterprise for some reason this create returns MORE properties, then the others.
             if (!isCluster) {
               if (replicationFactor === 0) {
                 validateProperties({replicationFactor: "satellite", writeConcern: 1}, collname, 2);
-                // 0 is actually not allowed anymore in the future
-                validateDeprecationLogEntryWritten();
               } else {
                 validateProperties({
                   replicationFactor: "satellite",
@@ -525,7 +527,12 @@ function CreateCollectionsSuite() {
       const res = tryCreate({name: collname, writeConcern: 2, replicationFactor: 3});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
+        if (isCluster) {
+          // For Backwards Compatibility in Agency, cluster still exposes minReplicationFactor
+          validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
+        } else {
+          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
+        }
       } finally {
         db._drop(collname);
       }
@@ -535,7 +542,12 @@ function CreateCollectionsSuite() {
       const res = tryCreate({name: collname, minReplicationFactor: 2, replicationFactor: 3});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
+        if (isCluster) {
+          // For Backwards Compatibility in Agency, cluster still exposes minReplicationFactor
+          validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
+        } else {
+          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
+        }
       } finally {
         db._drop(collname);
       }
@@ -726,7 +738,14 @@ function CreateCollectionsSuite() {
         try {
           if (!isEnterprise) {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-            validateProperties({}, collname, 2);
+            if (!isCluster) {
+              validateProperties({}, collname, 2);
+            } else {
+              // SmartJoinAttribute not supported on Community
+              delete props.smartJoinAttribute;
+              // Number of Shards inherited from Leader
+              validateProperties({...props, numberOfShards: 3}, collname, 2);
+            }
             validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
             validateDeprecationLogEntryWritten();
           } else {
@@ -736,7 +755,8 @@ function CreateCollectionsSuite() {
               validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
             } else {
               assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-              validateProperties(props, collname, 2);
+              // Number of Shards inherited from Leader
+              validateProperties({...props, numberOfShards: 3}, collname, 2);
             }
           }
         } finally {
@@ -763,13 +783,8 @@ function CreateCollectionsSuite() {
       for (const name of names) {
         const res = tryCreate({name: name, isSystem: true});
         try {
-          if (isCluster && isEnterprise) {
-            isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_INTERNAL.code, res, {name: name, isSystem: true});
-          } else {
-            // SingleServer and Community don't care
-            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-            assertEqual(db._collections().filter(c => c.name() === name).length, 1, `Collection ${name} should exist`);
-          }
+          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+          assertEqual(db._collections().filter(c => c.name() === name).length, 1, `Collection ${name} should exist`);
         } finally {
           db._drop(name, {isSystem: true});
         }
@@ -904,71 +919,80 @@ function CreateCollectionsSuite() {
               delete vertex.isDisjoint;
             }
           }
+          if (!isEnterprise && !isCluster) {
+            validateDeprecationLogEntryWritten();
+          }
           validateProperties(vertex, vertexName, 2, shouldKeepClusterSpecificAttributes);
           const resEdge = tryCreate({...edge, type: "edge", name: edgeName});
           try {
-            // Should work, everything required for smartGraphs is there.
-            assertTrue(resEdge.result, `Result: ${JSON.stringify(resEdge)}`);
-            if (!isCluster) {
-              // The following are not available in single server
-              if (!isEnterprise) {
-                // Well unless we are in enterprise.
-                delete edge.isSmart;
-                delete edge.isDisjoint;
-              }
-              delete edge.shardingStrategy;
-              if (!isEnterprise) {
-                // And also erases distributeShardsLike
-                delete edge.distributeShardsLike;
-              }
-            } else {
-              if (!isEnterprise) {
-                // smartFeatures cannot be set
-                edge.isSmart = false;
-                edge.shardingStrategy = "hash";
-                edge.isDisjoint = false;
-              }
-            }
-            if (isServer) {
-              // Server has no special DC2DC case to let isDisjoint pass
-              if (isEnterprise) {
-                edge.isDisjoint = false;
-              } else {
-                // Community does not even have the attribute
-                delete edge.isDisjoint;
-              }
-              if (isCluster) {
-                // SmartEdge Leader
-                edge.internalValidatorType = 0;
-              }
-            }
-            if (isEnterprise && isCluster) {
-              // Check special creation path
-              const makeSmartEdgeAttributes = (isTo, isLocal) => {
-                const tmp = {...edge, isSystem: true, isSmart: false, shardingStrategy: "hash"};
-                if (isServer) {
-                  tmp.internalValidatorType = isLocal ? 2 : 4;
-                  tmp.isSmartChild = true;
-                }
-                if (isTo) {
-                  tmp.shardKeys = [":_key"];
-                }
-                return tmp;
-              };
-              validateProperties({...edge, numberOfShards: 0}, edgeName, 3, shouldKeepClusterSpecificAttributes);
-              validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
-              if (!isDisjoint || isServer) {
-                // If we are not disjoint we get all collections, as server test cannot let isDisjoint pass, we will also end up here
-                validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
-                validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
-              } else {
-                assertEqual(db._collections().filter(c => c.name() === `_from_${edgeName}` || c.name() === `_to_${edgeName}`).length, 0, "Created incorrect hidden collections");
-              }
-            } else {
-              validateProperties(edge, edgeName, 3, shouldKeepClusterSpecificAttributes);
-            }
-            if (!isEnterprise && !isCluster) {
+            if (isCluster && !isEnterprise) {
+              // Sharding strategy cannot match on Community Cluster
+              isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, resEdge, edge);
               validateDeprecationLogEntryWritten();
+            } else {
+              // Should work, everything required for smartGraphs is there.
+              assertTrue(resEdge.result, `Result: ${JSON.stringify(resEdge)}`);
+              if (!isCluster) {
+                // The following are not available in single server
+                if (!isEnterprise) {
+                  // Well unless we are in enterprise.
+                  delete edge.isSmart;
+                  delete edge.isDisjoint;
+                }
+                delete edge.shardingStrategy;
+                if (!isEnterprise) {
+                  // And also erases distributeShardsLike
+                  delete edge.distributeShardsLike;
+                }
+              } else {
+                if (!isEnterprise) {
+                  // smartFeatures cannot be set
+                  edge.isSmart = false;
+                  edge.shardingStrategy = "hash";
+                  edge.isDisjoint = false;
+                }
+              }
+              if (isServer) {
+                // Server has no special DC2DC case to let isDisjoint pass
+                if (isEnterprise) {
+                  edge.isDisjoint = false;
+                } else {
+                  // Community does not even have the attribute
+                  delete edge.isDisjoint;
+                }
+                if (isCluster) {
+                  // SmartEdge Leader
+                  edge.internalValidatorType = 0;
+                }
+              }
+              if (isEnterprise && isCluster) {
+                // Check special creation path
+                const makeSmartEdgeAttributes = (isTo, isLocal) => {
+                  const tmp = {...edge, isSystem: true, isSmart: false, shardingStrategy: "hash"};
+                  if (isServer) {
+                    tmp.internalValidatorType = isLocal ? 2 : 4;
+                    tmp.isSmartChild = true;
+                  }
+                  if (isTo) {
+                    tmp.shardKeys = [":_key"];
+                  }
+                  return tmp;
+                };
+                validateProperties({...edge, numberOfShards: 0}, edgeName, 3, shouldKeepClusterSpecificAttributes);
+                validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                if (!isDisjoint || isServer) {
+                  // If we are not disjoint we get all collections, as server test cannot let isDisjoint pass, we will also end up here
+                  validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                  validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                } else {
+                  assertEqual(db._collections().filter(c => c.name() === `_from_${edgeName}` || c.name() === `_to_${edgeName}`).length, 0, "Created incorrect hidden collections");
+                }
+              } else {
+                validateProperties(edge, edgeName, 3, shouldKeepClusterSpecificAttributes);
+              }
+              if (!isEnterprise && !isCluster) {
+                validateDeprecationLogEntryWritten();
+              }
             }
           } finally {
             db._drop(edgeName, true);
@@ -1391,7 +1415,12 @@ function CreateCollectionsSuite() {
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           // Needs to take into account the database defaults
-          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
+          if (isCluster) {
+            // For Backwards Compatibility in Agency, cluster still exposes minReplicationFactor
+            validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
+          } else {
+            validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
+          }
         } finally {
           db._drop(collname);
         }
@@ -1509,7 +1538,7 @@ function IgnoreIllegalTypesSuite() {
               if (isCluster) {
                 if (typeof ignoredValue === "number") {
                   // We take doubles for integers
-                  if (ignoredValue > 2) {
+                  if (prop === "replicationFactor" && ignoredValue > 2) {
                     // but they are too large to be allowed
                     isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, res, testParam);
                   } else {
@@ -1612,6 +1641,7 @@ function CreateCollectionsInOneShardSuite() {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           if (isCluster) {
             validateProperties(getOneShardShardingValues(), collname, 2);
+            validateDeprecationLogEntryWritten();
           } else {
             // OneShard has no meaning in single server, just assert values are taken
             validateProperties({}, collname, 2);

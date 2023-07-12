@@ -78,26 +78,18 @@ auto handleType(std::string_view key, VPackSlice value, VPackSlice, DatabaseConf
   }
 }
 
-auto handleReplicationFactor(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleReplicationFactor(std::string_view key, VPackSlice value,
+                             VPackSlice fullBody,
+                             DatabaseConfiguration const& config,
+                             VPackBuilder& result) {
   if (!hasDistributeShardsLike(fullBody, config) && !isSingleServer()) {
-    if (value.isNumber()) {
-      if (value.getNumericValue<int64_t>() == 0) {
-#ifdef USE_ENTERPRISE
-        result.add(key, VPackValue(StaticStrings::Satellite));
-#endif
-        // On non-enterprise take default
-      } else if (value.isInteger() && value.getNumericValue<int64_t>() > 0) {
-        // Just forward
-        result.add(key, value);
-      }
-#ifdef USE_ENTERPRISE
-      // On Enterprise allow satellite, otherwise ignore and take default
-    } else if (value.isString() && value.isEqualString(StaticStrings::Satellite)) {
-      // Just forward
+    if (value.isNumber() && value.getNumericValue<int64_t>() == 0) {
+      // Translate 0 to satellite
+      result.add(key, VPackValue(StaticStrings::Satellite));
+    } else {
+      // All others just forward
       result.add(key, value);
-#endif
     }
-    // Ignore other entries
   }
   // Ignore if we have distributeShardsLike
 }
@@ -109,18 +101,11 @@ auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice, Database
   // Ignore anything else
 }
 
-auto handleOnlyPositiveIntegers(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
-  if (value.isNumber() && value.isInteger() && value.getNumericValue<int64_t>() > 0) {
-    result.add(key, value);
-  }
-  // Ignore anything else
-}
-
 auto handleWriteConcern(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
   if (!hasDistributeShardsLike(fullBody, config) && !isSingleServer()) {
-    handleOnlyPositiveIntegers(key, value, fullBody, config, result);
+    result.add(key, value);
   }
-  // Just ignore if we have distributeShardsLike or are on SingleServer
+  // Just ignore if we have distributeShardsLike or are on SingleServer or do not get a number
 }
 
 auto handleNumberOfShards(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
@@ -146,7 +131,7 @@ auto handleStringsOnly(std::string_view key, VPackSlice value, VPackSlice, Datab
 
 auto handleDistributeShardsLike(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
   if (!config.isOneShardDB && !isSingleServer()) {
-    handleStringsOnly(key, value, fullBody, config, result);
+    justKeep(key, value, fullBody, config, result);
   }
   // In oneShardDb distributeShardsLike is forced.
 }
@@ -163,15 +148,28 @@ auto handleSmartGraphAttribute(std::string_view key, VPackSlice value, VPackSlic
 }
 
 auto handleSmartJoinAttribute(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+#ifdef USE_ENTERPRISE
   if (!isSingleServer()) {
     // Only allow smartJoinAttribute if we are no single server
     justKeep(key, value, fullBody, config, result);
   }
+#endif
   // Ignore anything else
 }
 
 auto handleShardKeys(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
-  if (!config.isOneShardDB) {
+  if (!isSingleServer() || !config.isOneShardDB) {
+    /*
+#ifndef USE_ENTERPRISE
+    // In Community variant we do not allow shardKeys _key: or :_key.
+    if (value.isArray() && value.length() == 1) {
+      if (value.at(0).isEqualString(StaticStrings::PrefixOfKeyString) ||
+          value.at(0).isEqualString(StaticStrings::PostfixOfKeyString)) {
+        return;
+      }
+    }
+#endif
+     */
     justKeep(key, value, fullBody, config, result);
   }
   // In oneShardDB shardKeys are ignored
@@ -186,6 +184,11 @@ auto handleIsSmart(std::string_view key, VPackSlice value, VPackSlice fullBody, 
 
 auto handleShardingStrategy(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
   if (!isSingleServer()) {
+#ifndef USE_ENTERPRISE
+    if (value.isString()) {
+      if (value.isEqualString())
+    }
+#endif
     handleStringsOnly(key, value, fullBody, config, result);
   }
   // Just ignore on SingleServer
@@ -260,6 +263,18 @@ auto transformFromBackwardsCompatibleBody(VPackSlice body, DatabaseConfiguration
 //  LOG_DEVEL << "Transformed body " << body.toJson() << " into" << result.slice().toJson();
   return result;
 }
+
+#ifndef USE_ENTERPRISE
+Result validateEnterpriseFeaturesNotUsed(CreateCollectionBody const& body) {
+  if (body.isSatellite()) {
+    return Result{TRI_ERROR_ONLY_ENTERPRISE, "satellite collections or only available in enterprise version"};
+  }
+  if (body.isSmart || body.isSmartChild) {
+    return Result{TRI_ERROR_ONLY_ENTERPRISE, "SmartGraphs or only available in enterprise version"};
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+#endif
 }
 
 CreateCollectionBody::CreateCollectionBody() {}
@@ -278,6 +293,12 @@ ResultT<CreateCollectionBody> parseAndValidate(
       if (result.fail()) {
         return result;
       }
+#ifndef USE_ENTERPRISE
+      result =validateEnterpriseFeaturesNotUsed(res);
+      if (result.fail()) {
+        return result;
+      }
+#endif
       return res;
     }
     if (status.path() == "name") {
@@ -293,6 +314,11 @@ ResultT<CreateCollectionBody> parseAndValidate(
     }
     if (status.path() == StaticStrings::SmartJoinAttribute) {
       return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
+    }
+
+    if (status.path() == StaticStrings::Schema) {
+      // Schema should return a validation bad parameter, not only bad parameter
+      return Result{TRI_ERROR_VALIDATION_BAD_PARAMETER, status.error()};
     }
     return Result{
         TRI_ERROR_BAD_PARAMETER,

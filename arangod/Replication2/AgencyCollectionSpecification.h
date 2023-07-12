@@ -103,7 +103,7 @@ struct Collection {
 
     // TODO: This can be optimized into it's own struct.
     // Did a short_cut here to avoid concatenated changes
-    arangodb::velocypack::Builder schema{VPackSlice::nullSlice()};
+    inspection::NonNullOptional<arangodb::velocypack::Builder> schema{std::nullopt};
   };
 
   MutableProperties mutableProperties;
