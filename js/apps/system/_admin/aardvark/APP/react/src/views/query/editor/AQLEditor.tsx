@@ -104,11 +104,8 @@ const useSetupKeyboardShortcuts = (
 ) => {
   const {
     onExecute,
-    queryValue,
     queryBindParams,
     onOpenSaveAsModal,
-    setIsSpotlightOpen,
-    onExplain,
     bindVariablesJsonEditorRef
   } = useQueryContext();
   useEffect(() => {
@@ -166,21 +163,6 @@ const useSetupKeyboardShortcuts = (
     });
 
     aceEditor.commands.addCommand({
-      name: "executeQuery",
-      bindKey: {
-        win: "Ctrl-Return",
-        mac: "Command-Return",
-        linux: "Ctrl-Return"
-      },
-      exec: function () {
-        onExecute({
-          queryValue,
-          queryBindParams
-        });
-      }
-    });
-
-    aceEditor.commands.addCommand({
       name: "executeSelectedQuery",
       bindKey: {
         win: "Ctrl-Alt-Return",
@@ -209,21 +191,6 @@ const useSetupKeyboardShortcuts = (
     });
 
     aceEditor.commands.addCommand({
-      name: "explainQuery",
-      bindKey: {
-        win: "Ctrl-Shift-Return",
-        mac: "Command-Shift-Return",
-        linux: "Ctrl-Shift-Return"
-      },
-      exec: function () {
-        onExplain({
-          queryValue,
-          queryBindParams
-        });
-      }
-    });
-
-    aceEditor.commands.addCommand({
       name: "togglecomment",
       bindKey: {
         win: "Ctrl-Shift-C",
@@ -235,22 +202,11 @@ const useSetupKeyboardShortcuts = (
       },
       multiSelectAction: "forEach"
     });
-
-    aceEditor.commands.addCommand({
-      name: "showSpotlight",
-      bindKey: { win: "Ctrl-Space", mac: "Ctrl-Space", linux: "Ctrl-Space" },
-      exec: function () {
-        setIsSpotlightOpen(true);
-      }
-    });
   }, [
     aqlJsonEditorRef,
     queryBindParams,
-    queryValue,
     onExecute,
     onOpenSaveAsModal,
-    setIsSpotlightOpen,
-    onExplain,
     bindVariablesJsonEditorRef
   ]);
 };
