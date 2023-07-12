@@ -112,37 +112,82 @@ export const QueryEditorBottomBar = () => {
         <Button size="sm" colorScheme="gray" onClick={onOpenDebugPackageModal}>
           Create debug package
         </Button>
-        <ButtonGroup isAttached>
-          <Button
-            size="sm"
-            colorScheme="green"
-            onClick={() => onExecute({ queryValue, queryBindParams })}
-          >
-            Execute
-          </Button>
-          <Menu>
-            <MenuButton
-              as={IconButton}
-              size="sm"
-              colorScheme="green"
-              aria-label="Query execution options"
-              icon={<ChevronDownIcon />}
-            />
-            <MenuList zIndex="500">
-              <MenuItem
-                onClick={() => onProfile({ queryValue, queryBindParams })}
-              >
-                Profile
-              </MenuItem>
-              <MenuItem
-                onClick={() => onExplain({ queryValue, queryBindParams })}
-              >
-                Explain
-              </MenuItem>
-            </MenuList>
-          </Menu>
-        </ButtonGroup>
+        <ActionButton
+          actions={{
+            execute: {
+              method: () =>
+                onExecute({
+                  queryValue,
+                  queryBindParams
+                }),
+              label: "Execute"
+            },
+            profile: {
+              method: () => onProfile({ queryValue, queryBindParams }),
+              label: "Profile"
+            },
+            explain: {
+              method: () => onExplain({ queryValue, queryBindParams }),
+              label: "Explain"
+            }
+          }}
+        />
       </Stack>
     </Flex>
+  );
+};
+
+const ActionButton = ({
+  actions,
+  initialDefaultAction = "execute"
+}: {
+  actions: {
+    [key: string]: {
+      method: () => void;
+      label: string;
+    };
+  };
+  initialDefaultAction?: string;
+}) => {
+  const [defaultAction, setDefaultAction] =
+    React.useState<string>(initialDefaultAction);
+  const restActions = Object.keys(actions).filter(
+    action => action !== defaultAction
+  );
+  return (
+    <ButtonGroup isAttached>
+      <Button
+        size="sm"
+        colorScheme="green"
+        onClick={actions[defaultAction].method}
+      >
+        {actions[defaultAction].label}
+      </Button>
+      <Menu>
+        <MenuButton
+          as={IconButton}
+          size="sm"
+          colorScheme="green"
+          aria-label="Query execution options"
+          icon={<ChevronDownIcon />}
+        />
+        <MenuList zIndex="500">
+          {restActions.map(
+            (action, index) =>
+              actions[action] && (
+                <MenuItem
+                  key={index}
+                  onClick={() => {
+                    setDefaultAction(action);
+                    actions[action].method();
+                  }}
+                >
+                  {actions[action].label}
+                </MenuItem>
+              )
+          )}
+        </MenuList>
+      </Menu>
+    </ButtonGroup>
   );
 };
