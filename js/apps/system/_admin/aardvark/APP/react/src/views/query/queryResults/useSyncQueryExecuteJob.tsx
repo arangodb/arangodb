@@ -28,6 +28,9 @@ export const useSyncQueryExecuteJob = ({
       cursorId: any;
       asyncJobId: string | undefined;
     }) => {
+      if (!cursorId) {
+        return Promise.resolve();
+      }
       const cursorResponse = await route.delete(`/cursor/${cursorId}`);
       return cursorResponse;
     };

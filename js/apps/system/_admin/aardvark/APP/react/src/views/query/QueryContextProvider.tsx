@@ -1,5 +1,7 @@
-import { useDisclosure } from "@chakra-ui/react";
+import { useDisclosure, usePrevious } from "@chakra-ui/react";
 import { CursorExtras } from "arangojs/cursor";
+import hotkeys from "hotkeys-js";
+import { isEqual } from "lodash";
 import React, { useState } from "react";
 import {
   QueryType,
@@ -164,7 +166,6 @@ export const QueryContextProvider = ({
   }) => {
     setQueryResults(prev => {
       const newResults = prev.map(prevQueryResult => {
-        console.log("append", { prevQueryResult, result });
         if (asyncJobId === prevQueryResult.asyncJobId) {
           return {
             ...prevQueryResult,
@@ -224,8 +225,38 @@ export const QueryContextProvider = ({
         setQueryLimit
       }}
     >
-      <QueryNavigationPrompt queryResults={queryResults} />
-      {children}
+      <KeyboardShortcutProvider>
+        <QueryNavigationPrompt queryResults={queryResults} />
+        {children}
+      </KeyboardShortcutProvider>
     </QueryContext.Provider>
   );
+};
+
+const KeyboardShortcutProvider = ({
+  children
+}: {
+  children: React.ReactNode;
+}) => {
+  const { onExecute, queryValue, queryBindParams } = useQueryContext();
+  const prevQueryBindParams = usePrevious(queryBindParams);
+  const areParamsEqual = prevQueryBindParams
+    ? isEqual(queryBindParams, prevQueryBindParams)
+    : true;
+  React.useEffect(() => {
+    hotkeys.filter = function (event) {
+      var target = event.target;
+      var tagName = (target as any)?.tagName;
+      return tagName === "INPUT";
+    };
+
+    hotkeys("ctrl+enter,command+enter", () => {
+      onExecute({ queryValue, queryBindParams });
+    });
+    return () => {
+      hotkeys.unbind("ctrl+enter,command+enter");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onExecute, queryValue, areParamsEqual]);
+  return <>{children}</>;
 };
