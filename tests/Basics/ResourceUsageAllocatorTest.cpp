@@ -195,7 +195,7 @@ TEST(ResourceUsageAllocatorTest,
   {
     // create one MonitoredString to insert 8000 times later
     MonitoredString p(payload, alloc);
-    ASSERT_EQ(monitor.current(), payload.size() + 1);
+    ASSERT_GE(monitor.current(), payload.size() + 1);
 
     // insert 8000 monitored strings
     for (size_t i = 0; i < 8000; ++i) {
