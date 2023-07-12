@@ -239,6 +239,13 @@ class Manager final : public IManager {
     }
   }
 
+  using TransactionCommitGuard = basics::ReadLocker<basics::ReadWriteLock>;
+
+  TransactionCommitGuard getTransactionCommitGuard() {
+    READ_LOCKER(guard, _hotbackupCommitLock);
+    return guard;
+  }
+
   void initiateSoftShutdown() {
     _softShutdownOngoing.store(true, std::memory_order_relaxed);
   }
