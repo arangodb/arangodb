@@ -284,6 +284,68 @@ def run_test_smart_graphs(client):
         side = ["_to", "_from"]
         assert count == 0, f"missing edge from {edge[0]} to {edge[1]} in {side[(count+1)//2]}"
 
+def run_test_el_cheapo_trx(client):
+    # create a database to run the test on
+    sys_db = client.db('_system', username='root', verify=True)
+    sys_db.create_database('test')
+
+    test_db = client.db('test', username='root')
+
+    # create four collections
+    collections = []
+    for i in range(4):
+        col = test_db.create_collection(f"col-{i}", shard_count=20)
+        collections.append(col)
+
+    # now spawn a few threads, each inserting edges between all 20 vertices
+    stop_ev = threading.Event()
+
+    def el_cheapo_writer(idx):
+        i = 0
+        while not stop_ev.is_set():
+            trx_db = test_db.begin_transaction()
+
+            for col in collections:
+                col.insert({"trd": idx, "i": i})
+            trx_db.commit_transaction()
+            i += 1
+
+
+    threads = []
+    for i in range(10):
+        thrd = threading.Thread(target=el_cheapo_writer, args=[i])
+        thrd.start()
+        threads.append(thrd)
+
+    time.sleep(2)
+
+    # Concurrently, take a hotbackup
+    result = sys_db.backup.create(
+        label="hotbackuptesthotbackup",
+        allow_inconsistent=False,
+        force=False,
+        timeout=1000
+    )
+    print(f"backup_id: {result['backup_id']}")
+
+    stop_ev.set()
+    [t.join() for t in threads]
+
+    # restore the hotbackup taken above
+    sys_db.backup.restore(result["backup_id"])
+
+    result = {}
+    for col in collections:
+        for doc in col:
+            key = (doc["trd"], doc["i"])
+            if key in result:
+                result[key] += 1
+            else:
+                result[key] = 1
+
+    for trx, count in result.items():
+        assert count == len(collections), f"expected {len(collections)} documents, but only found {count}"
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -304,7 +366,7 @@ def main():
                         help=("filter tests using a regex"))
     args = parser.parse_args()
 
-    tests = [run_test_arangosearch, run_test_aql, run_test_smart_graphs]
+    tests = [run_test_arangosearch, run_test_aql, run_test_smart_graphs, run_test_el_cheapo_trx]
 
     if args.test_filter is not None:
         regex = re.compile(args.test_filter)
