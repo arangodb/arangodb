@@ -856,6 +856,7 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
   // '_dataStore' can be asynchronously modified
 
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
+    CrashHandler::setHardKill();
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
