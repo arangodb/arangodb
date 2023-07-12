@@ -1083,7 +1083,7 @@ class ClusterInfo final {
   /// overridden during testing
   ErrorCode const _syncerShutdownCode;
 
-  metrics::Gauge<std::size_t>& _memoryUsage;
+  metrics::Gauge<std::uint64_t>& _memoryUsage;
   ClusterInfoResourceMonitor _resourceMonitor;
 
   // The servers, first all, we only need Current here:
