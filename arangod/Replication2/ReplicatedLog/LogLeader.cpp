@@ -736,8 +736,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
         -> std::unique_ptr<LogViewRangeIterator> override {
       return _log.getLogConsumerIterator(range);
     }
-    auto insert(LogPayload payload) -> LogIndex override {
-      return _log.insert(std::move(payload));
+    auto insert(LogPayload payload, bool waitForSync) -> LogIndex override {
+      return _log.insert(std::move(payload), waitForSync);
     }
     auto waitFor(LogIndex index) -> WaitForFuture override {
       return _log.waitFor(index);
