@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-
+import random
+import re
 import threading
 import argparse
 import tempfile
@@ -163,7 +164,7 @@ def run_test_aql(client):
     def run_aql_thread(idx):
         while not stop_ev.is_set():
             test_db.aql.execute("FOR i IN 1..1000 INSERT {thrd: @idx, i} INTO test_collection",
-                                  bind_vars={"idx": str(idx)})
+                                bind_vars={"idx": str(idx)})
 
     threads = []
     for i in range(10):
@@ -201,6 +202,89 @@ def run_test_aql(client):
         assert result % 1000 == 0, f"found {result} documents for thread {i}"
 
 
+def run_test_smart_graphs(client):
+    # create a database to run the test on
+    sys_db = client.db('_system', username='root', verify=True)
+    sys_db.create_database('test')
+
+    test_db = client.db('test', username='root')
+
+    # create a smart graph
+    test_db.create_graph('graph', smart=True, smart_field="foo", edge_definitions=[
+        {
+            'edge_collection': 'is_foo',
+            'from_vertex_collections': ['foo'],
+            'to_vertex_collections': ['foo']
+        }
+    ], shard_count=20)
+
+    # create 20 vertices with different attributes
+    vertices = [{"_key": f"{i}:v{i}", "foo": str(i)} for i in range(20)]
+    foo_collection = test_db.collection('foo')
+    foo_collection.import_bulk(vertices)
+    assert foo_collection.count() == 20
+
+    # now spawn a few threads, each inserting edges between all 20 vertices
+    stop_ev = threading.Event()
+
+    def edge_inserter(idx):
+        ids = list(range(20))
+        random.shuffle(ids)
+
+        pairs = zip(ids[:-1], ids[1:])
+        edge_docs = [{"_from": f"foo/{i}:v{i}", "_to": f"foo/{j}:v{j}", "idx": str(idx), "f": i, "t": j} for i, j in
+                     pairs]
+
+        edge_col = test_db.collection('is_foo')
+
+        while not stop_ev.is_set():
+            edge_col.import_bulk(edge_docs)
+
+    threads = []
+    for i in range(10):
+        thrd = threading.Thread(target=edge_inserter, args=[i])
+        thrd.start()
+        threads.append(thrd)
+
+    time.sleep(1)
+
+    # Concurrently, take a hotbackup
+    result = sys_db.backup.create(
+        label="hotbackuptesthotbackup",
+        allow_inconsistent=False,
+        force=False,
+        timeout=1000
+    )
+    print(f"backup_id: {result['backup_id']}")
+
+    stop_ev.set()
+    [t.join() for t in threads]
+
+    # restore the hotbackup taken above
+    sys_db.backup.restore(result["backup_id"])
+
+    result = {}
+
+    # now check for each vertex pair get the list of incident edges
+    for i in range(20):
+        edges = list(test_db.aql.execute("""
+            FOR v, e, p IN 1..1 ANY @start GRAPH "graph"
+                RETURN e
+        """, bind_vars={"start": f"foo/{i}:v{i}"}))
+
+        for e in edges:
+            key = (e["f"], e["t"], e["_rev"])
+            value = -1 if e["t"] == i else 1
+            if key in result:
+                result[key] += value
+            else:
+                result[key] = value
+
+    for edge, count in result.items():
+        side = ["_to", "_from"]
+        assert count == 0, f"missing edge from {edge[0]} to {edge[1]} in {side[(count+1)//2]}"
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="HotBackupConsistencyTest.py",
@@ -216,9 +300,15 @@ def main():
                         help=("working directory; all databases, "
                               "logfiles, and backups will be stored "
                               " there"))
+    parser.add_argument('--test-filter', default=None,
+                        help=("filter tests using a regex"))
     args = parser.parse_args()
 
-    tests = [run_test_arangosearch, run_test_aql]
+    tests = [run_test_arangosearch, run_test_aql, run_test_smart_graphs]
+
+    if args.test_filter is not None:
+        regex = re.compile(args.test_filter)
+        tests = [test for test in tests if regex.match(test.__name__)]
 
     for idx, test in enumerate(tests):
         print(f"running test {test.__name__}")
